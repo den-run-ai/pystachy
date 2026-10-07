@@ -8,8 +8,10 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <math.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdio_ext.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -291,15 +293,28 @@ static void gc_init(char *sb, I **roots, I nroots) {
   gc_roots = roots; gc_nroots = nroots;
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
-  if ((gc_stats = e && !strcmp(e, "stats"))) atexit(gc_report);
+  gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
 }
 
-_Noreturn void pys_fail(const char *m) { fflush(stdout); fprintf(stderr, "%s\n", m); exit(1); }
-_Noreturn void pys_raise(Str *kind, Str *msg) {
-  fflush(stdout);
-  if (msg->len) fprintf(stderr, "%s: %s\n", kind->s, msg->s); else fprintf(stderr, "%s\n", kind->s);
+/* errors end the program after flushing stdout; a flush that fails is reported at exit, as
+   CPython reports it, with status 120 */
+static int out_errno;
+static void out_flush(void) { if (fflush(stdout) && !out_errno) out_errno = errno; }
+void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
+_Noreturn void pys_fail(const char *m) { out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1); }
+_Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
+  out_flush();
+  fwrite(kind->s, 1, kind->len, stderr);
+  if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
+  fputc('\n', stderr);
+  pys_finish();
+  if (!strcmp(kind->s, "KeyboardInterrupt")) { fflush(NULL); signal(SIGINT, SIG_DFL); raise(SIGINT); }   /* status 130 */
   exit(1);
+}
+void pys_exit(I c) { pys_finish(); exit((int)c); }
+_Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
+  out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
 __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
@@ -1267,6 +1282,28 @@ typedef struct {
   I rstart, rcons;                   /* where the current run of reads began; raw bytes it consumed */
 } File;
 static File std_in, std_out, std_err;
+static const char *errcls(int e) {     /* CPython's OSError subclass for an errno */
+  return e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
+    e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" :
+    e == EPIPE ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" : "OSError";
+}
+static void wcheck(File *f) {          /* a write that failed raises, as in CPython; its data is dropped */
+  if (!ferror(f->f)) return;
+  int e = errno; char b[160];
+  __fpurge(f->f); clearerr(f->f);
+  snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
+}
+void pys_finish(void) {                /* at exit: the collector's report; a failed flush of stdout is
+                                          reported as CPython does, status 120 */
+  static int done;
+  if (done++) return;
+  if (gc_stats) gc_report();
+  if (!fflush(stdout) && !ferror(stdout) && !out_errno) return;
+  int e = out_errno ? out_errno : errno;
+  __fpurge(stdout); clearerr(stdout);
+  fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
+  fflush(NULL); _exit(120);
+}
 static File **files;                   /* the open files, malloc'd: the collector does not see them */
 static I cfiles;
 static int gc_marked(const void *p) {
@@ -1295,10 +1332,11 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal */
 }
 List *pys_argv(void) { return args; }
 File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
-void pys_write(Str *s, I fd) { File *f = fd == 2 ? &std_err : &std_out; if (f->closed) closed_err(); fwrite(s->s, 1, s->len, f->f); }
+void pys_write(Str *s, I fd) { File *f = fd == 2 ? &std_err : &std_out; if (f->closed) closed_err(); fwrite(s->s, 1, s->len, f->f); wcheck(f); }
 void pys_flush(void) { fflush(stdout); }
 Str *pys_input(Str *prompt) {
   char *line = 0; size_t cap = 0;
@@ -1414,10 +1452,11 @@ I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as t
   use(f, 0);
   if (f->nl < 3) fwrite(s->s, 1, s->len, f->f);
   else for (I i = 0; i < s->len; i++) if (s->s[i] != '\n') putc(s->s[i], f->f); else fputs(f->nl == 3 ? "\r" : "\r\n", f->f);
+  wcheck(f);
   return s->len;
 }
 void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
-void pys_file_flush(File *f) { if (f->closed) closed_err(); fflush(f->f); }
+void pys_file_flush(File *f) { if (f->closed) closed_err(); fflush(f->f); wcheck(f); }
 void pys_file_close(File *f) {
   if (f->closed) return;
   f->closed = 1;
@@ -1427,7 +1466,6 @@ void pys_file_close(File *f) {
 I pys_file_closed(File *f) { return f->closed; }
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
-void pys_exit(I c) { exit((int)c); }
 I pys_system(Str *c) {
   if (nul(c)) pys_fail("ValueError: embedded null byte");
   return system(c->s);                 /* like CPython, without flushing stdout first */
@@ -1439,9 +1477,7 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
 /* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
 static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
   int e = errno; Buf b = {0}; char t[32];
-  const char *k = e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
-    e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" : "OSError";
-  const char *m = strerror(e);
+  const char *k = errcls(e), *m = strerror(e);
   put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
   repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
 }

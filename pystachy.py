@@ -502,7 +502,11 @@ class Parser:
             self.p += 1
             if self.peek() == "nl":
                 return mk("raise", "", line, [])
-            return mk("raise", "", line, [self.test()])
+            n = mk("raise", "", line, [self.test()])
+            if self.peek() == "from":
+                self.p += 1
+                n.kids.append(self.test())
+            return n
         if k == "del":
             self.p += 1
             return mk("del", "", line, [self.test()])
@@ -932,7 +936,7 @@ CALLS: dict[str, str] = {
     "sum(list[float],int)": "pys_sum_float_int:float", "sum(list[int],float)": "pys_sum_int_float:float",
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
-    "sys.exit(int)": "pys_exit:None", "os.system(str)": "pys_system:int",
+    "os.system(str)": "pys_system:int",
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
@@ -960,9 +964,26 @@ FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
     FUTURE[_k] = True
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
-DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float": "0.0", "str": '""', "bool": "False",
+DEFAULTS: dict[str, str] = {"input": '""', "int": "0", "float": "0.0", "str": '""', "bool": "False",
                             "list": "[]", "dict": "{}", "int(str)": "10", "sum(list[int])": "0",
                             "sum(list[float])": "0.0", "sum(list[bool])": "0"}
+# the builtin exceptions raise accepts; "x": special arguments, so at most one is supported;
+# "-": arguments that cannot be given here
+EXCEPTIONS: dict[str, str] = {}
+for _k in ("BaseException GeneratorExit KeyboardInterrupt SystemExit Exception ArithmeticError FloatingPointError OverflowError "
+           "ZeroDivisionError AssertionError AttributeError BufferError EOFError ImportError ModuleNotFoundError LookupError "
+           "IndexError KeyError MemoryError NameError UnboundLocalError ReferenceError RuntimeError NotImplementedError "
+           "RecursionError PythonFinalizationError StopAsyncIteration StopIteration SystemError TypeError ValueError "
+           "UnicodeError Warning BytesWarning DeprecationWarning EncodingWarning FutureWarning ImportWarning "
+           "PendingDeprecationWarning ResourceWarning RuntimeWarning SyntaxWarning UnicodeWarning UserWarning").split():
+    EXCEPTIONS[_k] = ""
+for _k in ("OSError IOError EnvironmentError BlockingIOError ChildProcessError ConnectionError BrokenPipeError "
+           "ConnectionAbortedError ConnectionRefusedError ConnectionResetError FileExistsError FileNotFoundError "
+           "InterruptedError IsADirectoryError NotADirectoryError PermissionError ProcessLookupError TimeoutError "
+           "SyntaxError IndentationError TabError").split():
+    EXCEPTIONS[_k] = "x"
+for _k in "UnicodeDecodeError UnicodeEncodeError UnicodeTranslateError ExceptionGroup BaseExceptionGroup".split():
+    EXCEPTIONS[_k] = "-"
 # encoding= names of UTF-8 and Latin-1 (lowercase, without "-" and "_"): a str holds the file's
 # bytes either way, which is what CPython's str holds for a Latin-1 file
 UTF8: dict[str, bool] = {}
@@ -1971,11 +1992,13 @@ class Gen:
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals
         hdr.append("declare void @pys_init(i32, ptr, ptr, ptr, i64)")
+        hdr.append("declare void @pys_finish()")
         hdr.append("declare ptr @llvm.frameaddress.p0(i32)")
         hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
         hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
         hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
         hdr.append("  call void @main.init()")
+        hdr.append("  call void @pys_finish()")
         hdr.append("  ret i32 0")
         hdr.append("}")
         return "\n".join(hdr) + "\n"
@@ -2323,8 +2346,9 @@ class Gen:
             self.err(f"cannot import name '{x}' from '{mod}' (not supported by Pystachy)")
 
     def known_path(self, p: str) -> bool:
-        # a module attribute Pystachy implements: a CALLS entry, a modattr() value or a module
-        if p in MODULES or p in MODATTRS:
+        # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
+        # a function builtin() handles itself
+        if p in MODULES or p in MODATTRS or p == "sys.exit":
             return True
         for k in CALLS:
             if k.startswith(p + "(") or k.startswith(p + "."):
@@ -2396,6 +2420,69 @@ class Gen:
         # leaving with blocks (break, continue, return): their files close, innermost first
         for i in range(len(self.withs) - 1, depth - 1, -1):
             self.rt("pys_file_close", "void", [f"ptr {self.withs[i]}"])
+
+    def exc_args(self, e: Node) -> list[Node]:
+        # the arguments of raise E / raise E(args), checking that E is a builtin exception
+        if e.kind == "call" and e.kids[0].kind == "name":
+            name = e.kids[0].s
+            args = e.kids[1:]
+        elif e.kind == "name":
+            name = e.s
+            args = []
+        else:
+            self.err("raise needs an exception class or a call of one, such as raise ValueError(msg)")
+        if name in self.classes:
+            self.err(f"'{name}' is not an exception class: only the builtin exceptions can be raised (there is no inheritance)")
+        if name in self.ltype or name in self.gtypes or name in self.funcs:
+            self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
+        if name not in EXCEPTIONS:
+            self.err(f"name '{name}' is not defined")
+        if EXCEPTIONS[name] == "-":
+            self.err(f"raising {name} is not supported")
+        for a in args:
+            if a.kind == "kw":
+                self.err(f"{name}() takes no keyword arguments")
+        if len(args) > 1 and EXCEPTIONS[name] != "":
+            self.err(f"{name}() with more than one argument is not supported")
+        return args
+
+    def raise_stmt(self, n: Node) -> None:
+        # raise E(args) [from C]: CPython's last traceback line, "E: str(arg)" (KeyError: repr(arg);
+        # several arguments: their tuple's repr); SystemExit ends the program like sys.exit
+        if len(n.kids) == 0:
+            self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
+            return
+        e = n.kids[0]
+        args = self.exc_args(e)
+        name = e.kids[0].s if e.kind == "call" else e.s
+        vals = [self.expr(a, "") for a in args]
+        if len(n.kids) > 1 and n.kids[1].kind != "None":
+            for a in self.exc_args(n.kids[1]):
+                self.expr(a, "")
+        if name == "SystemExit":
+            self.exit_(vals)
+            return
+        if len(vals) > 1:
+            msg = self.repr(self.tuple_(vals)).v
+        elif len(vals) == 1:
+            msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
+        else:
+            msg = self.sconst("")
+        self.raise_("OSError" if name == "IOError" or name == "EnvironmentError" else name, msg)
+
+    def exit_(self, vals: list[Val]) -> None:
+        # sys.exit(code) and raise SystemExit(code): None is status 0, an int is the status, and
+        # anything else is printed to stderr with status 1
+        if len(vals) > 1:
+            self.rt("pys_exit_msg", "void", [f"ptr {self.repr(self.tuple_(vals)).v}"])
+        elif len(vals) == 0 or vals[0].t == "None":
+            self.rt("pys_exit", "void", ["i64 0"])
+        elif vals[0].t == "int" or vals[0].t == "bool":
+            self.rt("pys_exit", "void", [f"i64 {self.as_int(vals[0]).v}"])
+        else:
+            self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
+        self.emit("unreachable")
+        self.term = True
 
     def raise_(self, name: str, msg: str) -> None:
         self.rt("pys_raise", "void", [f"ptr {self.sconst(name)}", f"ptr {msg}"])
@@ -2484,19 +2571,7 @@ class Gen:
             self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
             self.place(l2)
         elif k == "raise":
-            name = "Exception"
-            msg = self.sconst("")
-            if len(n.kids) > 0:
-                e = n.kids[0]
-                if e.kind == "call" and e.kids[0].kind == "name":
-                    name = e.kids[0].s
-                    if len(e.kids) > 1:
-                        msg = self.to_str(self.expr(e.kids[1], "")).v
-                elif e.kind == "name":
-                    name = e.s
-                else:
-                    self.err("unsupported raise statement")
-            self.raise_(name, msg)
+            self.raise_stmt(n)
         elif k == "del":
             dt = n.kids[0]
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
@@ -3636,6 +3711,11 @@ class Gen:
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
+        if name == "sys.exit":
+            if len(vals) > 1:
+                self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
+            self.exit_(vals)
+            return Val("null", "None")
         if name == "os.getenv" and len(vals) == 1:
             self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
