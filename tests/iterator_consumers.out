@@ -1,0 +1,9 @@
+[2, 1, 3] cba ['b', 'a'] [1, 2, 3]
+[(0, 3), (1, 1), (2, 2)] [(1, 'a'), (2, 'b')] [(3, 'a'), (1, 'b'), (2, 'c')] [(3,), (1,), (2,)]
+45 7 [5, 3, 1] [2, 1, 0]
+True True (0, 3)
+True False False True False False
+True True
+3,2,1,0 [2, 1, 0]
+True False False True True False
+[exit 0]

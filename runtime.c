@@ -17,7 +17,7 @@
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
 typedef struct { I len, cap; I *a; } List;
-typedef struct { I len, kind, cap; I *keys, *vals, *idx; } Dict; /* insertion-ordered; kind 1 = str keys */
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 1: str keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
@@ -751,9 +751,10 @@ static const char *repr(Buf *b, I v, const char *d) {
   }
   case 'D': {
     Dict *m = (Dict *)v; const char *dv = skip(d); put(b, "{", 1);
-    for (I i = 0; i < m->len; i++) {
-      if (i) put(b, ", ", 2);
-      repr(b, m->keys[i], d); put(b, ": ", 2); repr(b, m->vals[i], dv);
+    for (I e = 0, k = 0; e < m->n; e++) {
+      if (!m->hs[e]) continue;
+      if (k++) put(b, ", ", 2);
+      repr(b, m->keys[e], d); put(b, ": ", 2); repr(b, m->vals[e], dv);
     }
     put(b, "}", 1); return skip(dv);
   }
@@ -767,7 +768,7 @@ static const char *repr(Buf *b, I v, const char *d) {
   return d;
 }
 Str *pys_repr(I v, Str *d) { Buf b = {0}; repr(&b, v, d->s); return done(&b); }
-static I *slot(Dict *d, I k);
+static I entry(Dict *d, I k);
 static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'f': return dbl(a) == dbl(b);
@@ -781,9 +782,10 @@ static int eqv(I a, I b, const char *d) {
   case 'D': {
     Dict *x = (Dict *)a, *y = (Dict *)b; const char *dv = skip(d + 1);
     if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++) {
-      I *c = y->cap ? slot(y, x->keys[i]) : 0;
-      if (!c || !*c || !eqv(x->vals[i], y->vals[*c - 1], dv)) return 0;
+    for (I e = 0; e < x->n; e++) {
+      if (!x->hs[e]) continue;
+      I f = entry(y, x->keys[e]);
+      if (f < 0 || !eqv(x->vals[e], y->vals[f], dv)) return 0;
     }
     return 1;
   }
@@ -800,6 +802,7 @@ I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
+static _Noreturn void failf(const char *f, ...);
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
@@ -817,6 +820,7 @@ static int opv(I a, I b, const char *d, I op) {
     return cmpop(0, op);
   }
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
+  case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -852,6 +856,7 @@ I pys_list_pop(List *l, I i) {
   i = idx(i, l->len, "IndexError: pop index out of range");
   I v = l->a[i]; memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->len--; return v;
 }
+void pys_list_del(List *l, I i) { i = idx(i, l->len, "IndexError: list assignment index out of range"); memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->len--; }
 void pys_list_insert(List *l, I i, I v) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
@@ -903,6 +908,7 @@ static void msort(I *a, I *t, I n, const char *d) {   /* stable merge sort, like
   memcpy(a, t, k * 8);
 }
 void pys_list_sort(List *l, Str *d) { msort(l->a, pys_alloc_atomic(l->len * 8), l->len, d->s); }
+void pys_list_sort_r(List *l, Str *d, I rev) { if (rev) pys_list_reverse(l); pys_list_sort(l, d); if (rev) pys_list_reverse(l); }
 I pys_list_minmax(List *l, Str *d, I max) {
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
   I m = l->a[0];
@@ -912,14 +918,28 @@ I pys_list_minmax(List *l, Str *d, I max) {
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
 I pys_sum_int(List *l, I s) { for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
-double pys_sum_float(List *l, double s) {    /* CPython 3.12's compensated (Neumaier) sum */
+static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
   double c = 0;
-  for (I i = 0; i < l->len; i++) {
+  for (; i < l->len; i++) {
     double x = dbl(l->a[i]), t = s + x;
     if (fabs(s) >= fabs(x)) c += (s - t) + x; else c += (x - t) + s;
     s = t;
   }
   return c && isfinite(c) ? s + c : s;
+}
+double pys_sum_float(List *l, double s) { return fsum(l, 0, s); }
+/* an int start: CPython adds the first float to it plainly, then sums the rest compensated */
+double pys_sum_float_int(List *l, I s) { return l->len ? fsum(l, 1, (double)s + dbl(l->a[0])) : (double)s; }
+double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
+I pys_range_len(I a, I b, I s) {                     /* len(range(a, b, s)) as an unsigned count */
+  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
+  uint64_t d = s > 0 ? (uint64_t)b - (uint64_t)a : (uint64_t)a - (uint64_t)b, st = s > 0 ? (uint64_t)s : -(uint64_t)s;
+  return (s > 0 ? a < b : a > b) ? (I)((d - 1) / st + 1) : 0;
+}
+I pys_range_has(I x, I a, I b, I s) {               /* x in range(a, b, s) */
+  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
+  if (s > 0 ? !(a <= x && x < b) : !(b < x && x <= a)) return 0;
+  return (s > 0 ? (uint64_t)x - (uint64_t)a : (uint64_t)a - (uint64_t)x) % (s > 0 ? (uint64_t)s : -(uint64_t)s) == 0;
 }
 List *pys_range_list(I a, I b, I s) {
   List *l = pys_list_new(0);
@@ -956,60 +976,110 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
   return l;
 }
 
-/* ---------- dicts: compact ordered table + open-addressing index ---------- */
+/* ---------- dicts: CPython's compact ordered layout ---------- */
+/* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a
+   hole with hash 0 until the table is rebuilt, so deletion is O(1) and a loop's position
+   stays valid. idx is open addressing over 2*size slots holding entry + 1 (0 empty, -1
+   deleted). The sizes are CPython 3.13's, because they decide what a loop that changes its
+   dict sees: size is a power of two >= 8 (0 before the first insertion and after clear()),
+   at most size*2/3 entries are used, and inserting into a full table rebuilds it without
+   holes at the size for len*3. */
 static uint64_t hsh(Dict *d, I k) {
   uint64_t h;
   if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
   } else h = (uint64_t)k * 0x9E3779B97F4A7C15ULL;
-  return h ^ (h >> 29);
+  h ^= h >> 29;
+  return h ? h : 1;                                  /* 0 marks a hole */
 }
-static I *slot(Dict *d, I k) {
-  I m = d->cap * 2 - 1;
-  for (I i = hsh(d, k) & m;; i = (i + 1) & m) {
-    I e = d->idx[i];
-    if (!e || (d->kind ? pys_str_eq((Str *)d->keys[e - 1], (Str *)k) : d->keys[e - 1] == k)) return &d->idx[i];
+static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
+static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *free: where to insert k */
+  I m = d->size * 2 - 1, f = -1;
+  if (!d->size) return -1;
+  for (I i = h & m;; i = (i + 1) & m) {
+    int32_t e = d->idx[i];
+    if (!e) { if (free) *free = f < 0 ? i : f; return -1; }
+    if (e < 0) { if (f < 0) f = i; }
+    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)))) return i;
   }
 }
-static void reindex(Dict *d) { memset(d->idx, 0, d->cap * 16); for (I e = 0; e < d->len; e++) *slot(d, d->keys[e]) = e + 1; }
-static void grow(Dict *d) {
-  I c = d->cap ? d->cap * 2 : 8, *k = pys_alloc(c * 8), *v = pys_alloc(c * 8);
-  if (d->len) { memcpy(k, d->keys, d->len * 8); memcpy(v, d->vals, d->len * 8); }   /* first growth: NULL arrays */
-  d->keys = k; d->vals = v; d->cap = c; d->idx = pys_alloc_atomic(c * 16); reindex(d);
+static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
+  I u = size * 2 / 3, *k = pys_alloc(u * 8), *v = pys_alloc(u * 8), n = 0, m = size * 2 - 1;
+  uint64_t *hs = pys_alloc_atomic(u * 8); int32_t *ix = pys_alloc_atomic(size * 8);
+  for (I e = 0; e < src->n; e++) {
+    if (!src->hs[e]) continue;
+    I i = src->hs[e] & m;
+    while (ix[i]) i = (i + 1) & m;
+    k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = src->hs[e]; ix[i] = (int32_t)++n;
+  }
+  d->len = n; d->n = n; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix;
 }
-Dict *pys_dict_new(I kind) { Dict *d = pys_alloc(sizeof(Dict)); d->kind = kind; return d; }
+Dict *pys_dict_new(I kind, I n) {                     /* a display of n items is presized, as in CPython */
+  Dict *d = pys_alloc(sizeof(Dict)); d->kind = kind;
+  if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
+  return d;
+}
 static _Noreturn void keyerr(Dict *d, I k) { Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p); }
-static I *look(Dict *d, I k) { I *c = d->cap ? slot(d, k) : 0; return c && *c ? c : 0; }
-I pys_dict_has(Dict *d, I k) { return look(d, k) != 0; }
-I pys_dict_getitem(Dict *d, I k) { I *c = look(d, k); if (!c) keyerr(d, k); return d->vals[*c - 1]; }
-I pys_dict_get(Dict *d, I k, I dflt) { I *c = look(d, k); return c ? d->vals[*c - 1] : dflt; }
+static I entry(Dict *d, I k) { I i = dfind(d, k, hsh(d, k), 0); return i < 0 ? -1 : d->idx[i] - 1; }
+I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
+I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
+I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : d->vals[e]; }
 void pys_dict_set(Dict *d, I k, I v) {
-  I *c = look(d, k);
-  if (c) { d->vals[*c - 1] = v; return; }
-  if (d->len == d->cap) grow(d);
-  c = slot(d, k); d->keys[d->len] = k; d->vals[d->len] = v; *c = ++d->len;
+  uint64_t h = hsh(d, k); I f = -1, i = dfind(d, k, h, &f);
+  if (i >= 0) { d->vals[d->idx[i] - 1] = v; return; }
+  if (d->n >= d->size * 2 / 3) { build(d, d, keysize(d->len * 3)); dfind(d, k, h, &f); }   /* full: insertion_resize */
+  d->keys[d->n] = k; d->vals[d->n] = v; d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
 }
-I pys_dict_pop(Dict *d, I k) {
-  I *c = look(d, k); if (!c) keyerr(d, k);
-  I e = *c - 1, v = d->vals[e];
-  memmove(d->keys + e, d->keys + e + 1, (d->len - e - 1) * 8);
-  memmove(d->vals + e, d->vals + e + 1, (d->len - e - 1) * 8);
-  d->len--; reindex(d); return v;
+static I dpop(Dict *d, I k, I dflt, int has) {
+  I i = dfind(d, k, hsh(d, k), 0);
+  if (i < 0) { if (!has) keyerr(d, k); return dflt; }
+  I e = d->idx[i] - 1, v = d->vals[e];
+  d->idx[i] = -1; d->hs[e] = 0; d->keys[e] = d->vals[e] = 0; d->len--;
+  return v;
 }
-I pys_dict_setdefault(Dict *d, I k, I v) { I *c = look(d, k); if (c) return d->vals[*c - 1]; pys_dict_set(d, k, v); return v; }
-I pys_dict_key(Dict *d, I i) { return d->keys[i]; }
-I pys_dict_val(Dict *d, I i) { return d->vals[i]; }
-void pys_dict_clear(Dict *d) { d->len = 0; if (d->cap) reindex(d); }
-static List *col(Dict *d, I *a) { List *l = pys_list_new(d->len); if (d->len) memcpy(l->a, a, d->len * 8); l->len = d->len; return l; }
+I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
+I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+I pys_dict_setdefault(Dict *d, I k, I v) { I e = entry(d, k); if (e >= 0) return d->vals[e]; pys_dict_set(d, k, v); return v; }
+void pys_dict_clear(Dict *d) { d->len = d->n = d->size = 0; d->keys = d->vals = 0; d->hs = 0; d->idx = 0; }
+/* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
+   -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
+   used = len when the loop started, count = items produced so far */
+I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
+I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
+I pys_dict_end(Dict *d) { return d->n; }
+static void changed(Dict *d, I used) { if (d->len != used) pys_fail("RuntimeError: dictionary changed size during iteration"); }
+I pys_dict_next(Dict *d, I e, I used, I count) {
+  changed(d, used);
+  while (e < d->n && !d->hs[e]) e++;
+  if (e >= d->n) return -1;
+  if (count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
+  return e;
+}
+I pys_dict_prev(Dict *d, I e, I used) {
+  changed(d, used);
+  if (e >= d->n) e = d->n - 1;
+  while (e >= 0 && !d->hs[e]) e--;
+  return e;
+}
+static List *col(Dict *d, I *a) { List *l = pys_list_new(d->len); for (I e = 0; e < d->n; e++) if (d->hs[e]) l->a[l->len++] = a[e]; return l; }
 List *pys_dict_keys(Dict *d) { return col(d, d->keys); }
 List *pys_dict_values(Dict *d) { return col(d, d->vals); }
 List *pys_dict_items(Dict *d) {
   List *l = pys_list_new(d->len);
-  for (I i = 0; i < d->len; i++) { I *t = pys_alloc(16); t[0] = d->keys[i]; t[1] = d->vals[i]; pys_list_append(l, (I)t); }
+  for (I e = 0; e < d->n; e++) if (d->hs[e]) { I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e]; l->a[l->len++] = (I)t; }
   return l;
 }
-Dict *pys_dict_copy(Dict *d) { Dict *r = pys_dict_new(d->kind); for (I i = 0; i < d->len; i++) pys_dict_set(r, d->keys[i], d->vals[i]); return r; }
+Dict *pys_dict_copy(Dict *d) {                        /* dict.copy(): clone a table with few holes, else rebuild */
+  Dict *r = pys_dict_new(d->kind, 0);
+  if (!d->len) return r;
+  if (d->len < d->n * 2 / 3) { build(r, d, keysize((d->len * 3 + 1) / 2)); return r; }
+  I u = d->size * 2 / 3;                              /* the clone keeps the holes, as CPython's does */
+  r->keys = pys_alloc(u * 8); r->vals = pys_alloc(u * 8); r->hs = pys_alloc_atomic(u * 8); r->idx = pys_alloc_atomic(d->size * 8);
+  memcpy(r->keys, d->keys, d->n * 8); memcpy(r->vals, d->vals, d->n * 8); memcpy(r->hs, d->hs, d->n * 8);
+  memcpy(r->idx, d->idx, d->size * 8); r->len = d->len; r->n = d->n; r->size = d->size;
+  return r;
+}
 
 /* ---------- formatting: f"{x:spec}" ---------- */
 /* CPython's format-spec mini-language for int (and bool), float and str:

@@ -296,6 +296,15 @@ def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
     return n
 
 
+def as_target(n: Node) -> Node:
+    # [a, b] = ... and for [a, b] in ...: a list display as a target unpacks like a tuple
+    if n.kind == "list" or n.kind == "tuple":
+        n.kind = "tuple"
+        for k in n.kids:
+            as_target(k)
+    return n
+
+
 STARTS: dict[str, bool] = {}
 for _k in "id int float str fstr rfstr ( [ { - + ~ not None True False lambda".split():
     STARTS[_k] = True
@@ -492,9 +501,11 @@ class Parser:
                 n.kids.append(self.exprlist())
             return n
         if self.peek() == "=":
-            n = mk("assign", "", line, [e])
+            n = mk("assign", "", line, [as_target(e)])
             while self.eat("="):
                 n.kids.append(self.exprlist())
+            for i in range(1, len(n.kids) - 1):
+                as_target(n.kids[i])
             return n
         k = self.peek()
         if k in AUGOPS:
@@ -545,27 +556,32 @@ class Parser:
     # ---- expressions
     def exprlist(self) -> Node:
         line = self.line()
-        e = self.test()
+        e = self.item()
         if self.peek() != ",":
             return e
         t = mk("tuple", "", line, [e])
         while self.eat(","):
-            if self.peek() not in STARTS:
+            if self.peek() not in STARTS and self.peek() != "*":
                 break
-            t.kids.append(self.test())
+            t.kids.append(self.item())
         return t
+
+    def item(self) -> Node:
+        if self.peek() == "*":
+            fail("starred expressions (*x) are not supported", self.line())
+        return self.test()
 
     def targets(self) -> Node:
         line = self.line()
         e = self.postfix()
         if self.peek() != ",":
-            return e
+            return as_target(e)
         t = mk("tuple", "", line, [e])
         while self.eat(","):
             if self.peek() == "in":
                 break
             t.kids.append(self.postfix())
-        return t
+        return as_target(t)
 
     def test(self) -> Node:
         line = self.line()
@@ -898,7 +914,9 @@ CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
     "float(str)": "pys_float_str:float", "round(float)": "pys_round:int", "round(float,int)": "pys_round_n:float", "input(str)": "pys_input:str",
     "abs(float)": "fabs:float", "list(str)": "pys_str_list:list[str]",
-    "sum(list[int],int)": "pys_sum_int:int", "sum(list[float],float)": "pys_sum_float:float", "any(list[bool])": "pys_any:bool",
+    "sum(list[int],int)": "pys_sum_int:int", "sum(list[float],float)": "pys_sum_float:float", "sum(list[bool],int)": "pys_sum_int:int",
+    "sum(list[float],int)": "pys_sum_float_int:float", "sum(list[int],float)": "pys_sum_int_float:float",
+    "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "open(str,str)": "pys_open:file", "sys.exit(int)": "pys_exit:None", "sys.stdout.flush()": "pys_flush:None",
     "sys.stdout.write(str)": "pys_out:int", "sys.stderr.write(str)": "pys_err:int", "os.system(str)": "pys_system:int",
@@ -931,7 +949,11 @@ for _k in "annotations division absolute_import print_function generators nested
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
 DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float": "0.0", "str": '""', "bool": "False",
                             "list": "[]", "dict": "{}", "int(str)": "10", "open(str)": '"r"', "sum(list[int])": "0",
-                            "sum(list[float])": "0.0"}
+                            "sum(list[float])": "0.0", "sum(list[bool])": "0"}
+# the most positional arguments a builtin takes: more are a compile error (a TypeError in CPython)
+ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "chr": 1, "bool": 1, "float": 1, "list": 1,
+                         "dict": 1, "str": 1, "sorted": 1, "any": 1, "all": 1, "input": 1, "int": 2, "round": 2,
+                         "divmod": 2, "sum": 2, "pow": 3}
 # Builtin methods, "ret:arg,arg=default". *X: passed/returned as an 8-byte slot; #: element
 # type descriptor; T: list element, K/V: dict key/value, S: the receiver's own type.
 # Each maps to the C function pys_<type>_<method>.
@@ -944,7 +966,7 @@ METHODS: dict[str, str] = {
     "str.isupper": "bool:", "str.islower": "bool:", "str.ljust": "str:int", "str.rjust": "str:int",
     "list.append": "None:*T", "list.pop": "*T:int=-1", "list.insert": "None:int,*T", "list.extend": "None:S",
     "list.index": "int:*T,#", "list.count": "int:*T,#", "list.remove": "None:*T,#", "list.reverse": "None:",
-    "list.sort": "None:#", "list.copy": "S:", "list.clear": "None:",
+    "list.copy": "S:", "list.clear": "None:",
     "dict.get": "*V:*K,*V=0", "dict.pop": "*V:*K", "dict.setdefault": "*V:*K,*V", "dict.keys": "list[K]:",
     "dict.values": "list[V]:", "dict.items": "list[tuple[K,V]]:", "dict.clear": "None:", "dict.copy": "S:",
     "file.read": "str:", "file.readline": "str:", "file.write": "int:str", "file.close": "None:",
@@ -1729,12 +1751,14 @@ class Gen:
                     self.globals_in(kid.kids, out)
 
     def target_type(self, n: Node) -> str:
-        # expected type of an assignment target (types empty [] / {} literals)
+        # expected type of an assignment target (types empty [] / {} literals): a name, or a
+        # chain of attributes and subscripts on one (g.groups["a"], d["x"]["y"])
         if n.kind == "name":
             return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
-        if (n.kind == "attr" or n.kind == "index") and n.kids[0].kind == "name":
-            o = n.kids[0].s
-            t = self.ltype.get(o, self.gtypes.get(o, ""))
+        if n.kind == "slice":
+            self.err("assignment to a slice is not supported")
+        if n.kind == "attr" or n.kind == "index":
+            t = self.target_type(n.kids[0])
             if n.kind == "attr" and t in self.classes:
                 return self.classes[t].ftypes.get(n.s, "")
             if n.kind == "index" and is_list(t):
@@ -2343,7 +2367,7 @@ class Gen:
         elif k == "assign":
             val = n.kids[-1]
             t0 = n.kids[0]
-            if len(n.kids) == 2 and t0.kind == "tuple" and val.kind == "tuple" and len(t0.kids) == len(val.kids):
+            if len(n.kids) == 2 and t0.kind == "tuple" and (val.kind == "tuple" or val.kind == "list") and len(t0.kids) == len(val.kids):
                 vs: list[Val] = []
                 for i in range(len(val.kids)):
                     vs.append(self.expr(val.kids[i], self.target_type(t0.kids[i])))
@@ -2430,7 +2454,7 @@ class Gen:
             dt = n.kids[0]
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             if is_list(o.t):
-                self.rt("pys_list_pop", "i64", [f"ptr {o.v}", f"i64 {self.coerce(self.expr(dt.kids[1], 'int'), 'int').v}"])
+                self.rt("pys_list_del", "void", [f"ptr {o.v}", f"i64 {self.coerce(self.expr(dt.kids[1], 'int'), 'int').v}"])
             elif is_dict(o.t):
                 kt = targs(o.t)[0]
                 self.rt("pys_dict_pop", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))])
@@ -2552,7 +2576,10 @@ class Gen:
                 vs = self.range_args(args)
                 self.for_range(tgt, vs[0], vs[1], vs[2], body, hide)
                 return
-            if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 1):
+            if fn == "reversed" and len(args) == 1 and args[0].kind == "call" and args[0].kids[0].kind == "name" and args[0].kids[0].s == "range" and "range" not in self.ltype:
+                self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide)
+                return
+            if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 0):
                 self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body, "0", hide)
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
@@ -2613,30 +2640,90 @@ class Gen:
         self.cbr(r[1], le, lc)
         self.place(le)
 
-    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str]) -> None:
+    def for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[str]) -> None:
+        # reversed(range(a, b, s)): the range's items from the last, a + k*s for k = len-1 .. 0
+        # (the length is unsigned, and the arithmetic wraps: every result is an item of the range)
         self.hide(hide)
-        # one indexed loop serves lists, strings, dicts, enumerate, zip and reversed
+        n = self.rt("pys_range_len", "i64", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
         ctr = self.alloca("int", "")
-        self.emit(f"store i64 0, ptr {ctr}")
+        self.emit(f"store i64 {n}, ptr {ctr}")
         lc = self.label()
         lb = self.label()
         ls = self.label()
         le = self.label()
         self.place(lc)
-        i = self.ins(f"load i64, ptr {ctr}")
-        size = ""
+        c = self.ins(f"load i64, ptr {ctr}")
+        self.cbr(self.ins(f"icmp ne i64 {c}, 0"), lb, le)
+        self.place(lb)
+        k = self.ins(f"sub i64 {c}, 1")
+        self.emit(f"store i64 {k}, ptr {ctr}")
+        self.assign(tgt, Val(self.ins(f"add i64 {vs[0]}, {self.ins(f'mul i64 {k}, {vs[2]}')}"), "int"))
+        self.loop(body, ls, le)
+        self.place(ls)
+        self.br(lc)
+        self.place(le)
+
+    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str]) -> None:
+        self.hide(hide)
+        # One loop serves lists, strings, dicts, enumerate, zip and reversed. Each round takes
+        # the next item of every sequence, in order, the way its CPython iterator would: lists
+        # and strings by index, checked against their current length (reversed: counting down
+        # from the length at the start); dicts by entry position, skipping deleted entries and
+        # failing if the dict changed size. The loop ends at the first exhausted sequence.
+        ctr = self.alloca("int", "")
+        self.emit(f"store i64 0, ptr {ctr}")
+        st: list[str] = []
+        used: list[str] = []
         for s in seqs:
             if not (s.t == "str" or is_list(s.t) or is_dict(s.t)):
                 self.err(f"cannot iterate over {s.t}")
-            k = self.ins(f"load i64, ptr {s.v}")
-            size = k if size == "" else self.ins(f"select i1 {self.ins(f'icmp slt i64 {k}, {size}')}, i64 {k}, i64 {size}")
-        self.cbr(self.ins(f"icmp slt i64 {i}, {size}"), lb, le)
-        self.place(lb)
-        j = self.ins(f"sub i64 {self.ins(f'sub i64 {size}, 1')}, {i}") if mode == "reversed" else i
+            n0 = self.ins(f"load i64, ptr {s.v}")
+            used.append(n0)
+            if is_dict(s.t):
+                pos = self.alloca("int", "")
+                p0 = "0"
+                if mode == "reversed":
+                    p0 = self.ins(f"sub i64 {self.rt('pys_dict_end', 'i64', [f'ptr {s.v}'])}, 1")
+                self.emit(f"store i64 {p0}, ptr {pos}")
+                st.append(pos)
+            else:
+                st.append(n0)
+        lc = self.label()
+        ls = self.label()
+        le = self.label()
+        self.place(lc)
+        i = self.ins(f"load i64, ptr {ctr}")
+        at: list[str] = []
+        for k in range(len(seqs)):
+            s = seqs[k]
+            if is_dict(s.t):
+                p = self.ins(f"load i64, ptr {st[k]}")
+                if mode == "reversed":
+                    j = self.rt("pys_dict_prev", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}"])
+                    nx = self.ins(f"sub i64 {j}, 1")
+                else:
+                    j = self.rt("pys_dict_next", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}", f"i64 {i}"])
+                    nx = self.ins(f"add i64 {j}, 1")
+                ok = self.ins(f"icmp sge i64 {j}, 0")
+            elif mode == "reversed":
+                j = self.ins(f"sub i64 {self.ins(f'sub i64 {st[k]}, 1')}, {i}")
+                # 0 <= j < the current length, as CPython's reversed iterator checks
+                ok = self.ins(f"icmp ult i64 {j}, {self.ins(f'load i64, ptr {s.v}') if is_list(s.t) else st[k]}")
+            else:
+                j = i
+                ok = self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {s.v}')}")
+            go = self.label()
+            self.cbr(ok, go, le)
+            self.place(go)
+            if is_dict(s.t):
+                self.emit(f"store i64 {nx}, ptr {st[k]}")
+            at.append(j)
         vals: list[Val] = []
         if mode == "enumerate":
             vals.append(Val(i if start == "0" else self.iop("sadd", i, start), "int"))
-        for s in seqs:
+        for k in range(len(seqs)):
+            s = seqs[k]
+            j = at[k]
             if is_list(s.t):
                 vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
             elif s.t == "str":
@@ -2647,17 +2734,17 @@ class Gen:
                     vals.append(self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
                 if mode == "values" or mode == "items":
                     vals.append(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[1]))
-        if len(vals) == 1:
+        if len(vals) == 1 and mode != "zip":
             self.assign(tgt, vals[0])
-        elif tgt.kind == "tuple" and len(tgt.kids) == len(vals):
+        elif (tgt.kind == "tuple" or tgt.kind == "list") and len(tgt.kids) == len(vals):
             for k2 in range(len(vals)):
                 self.assign(tgt.kids[k2], vals[k2])
         else:
             self.assign(tgt, self.tuple_(vals))
         self.loop(body, ls, le)
         self.place(ls)
-        nx = self.ins(f"add i64 {i}, 1")
-        self.emit(f"store i64 {nx}, ptr {ctr}")
+        nx2 = self.ins(f"add i64 {i}, 1")
+        self.emit(f"store i64 {nx2}, ptr {ctr}")
         self.br(lc)
         self.place(le)
 
@@ -2768,9 +2855,9 @@ class Gen:
                 if et == "" and v.t != "None":
                     et = v.t
                 items.append(v)
-            items = [self.coerce(v, et) for v in items]
             if et == "" or et == "None":
-                self.err("cannot infer the type of an empty list; add a type annotation")
+                self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
+            items = [self.coerce(v, et) for v in items]
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
             for v in items:
                 self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(v)])
@@ -2788,12 +2875,12 @@ class Gen:
                     kv[1] = b.t
                 ks.append(self.coerce(a, kv[0]))
                 vs.append(b)
+            if kv[0] == "" or kv[1] == "":
+                self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
             vs = [self.coerce(x, kv[1]) for x in vs]
-            if kv[0] == "":
-                self.err("cannot infer the type of an empty dict; add a type annotation")
             if kv[0] != "int" and kv[0] != "str":
                 self.err("dict keys must be int or str")
-            r = self.rt("pys_dict_new", "ptr", [f"i64 {1 if kv[0] == 'str' else 0}"])
+            r = self.rt("pys_dict_new", "ptr", [f"i64 {1 if kv[0] == 'str' else 0}", f"i64 {len(ks)}"])
             for i in range(len(ks)):
                 self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])])
             return Val(r, f"dict[{kv[0]},{kv[1]}]")
@@ -3146,9 +3233,20 @@ class Gen:
     def compare(self, n: Node) -> Val:
         ops = n.s.split(",")
         if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and len(n.kids[0].kids) == 0:
+            # [] == xs, {} in ds: an empty display takes its type from the other side
             b = self.expr(n.kids[1], "")
-            return self.cmp2(ops[0], self.expr(n.kids[0], b.t), b)
+            w = b.t
+            if ops[0] == "in" or ops[0] == "not in":
+                w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+            return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
         a = self.expr(n.kids[0], "")
+        if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
+            # x in range(...): arithmetic, as CPython's range.__contains__ does for ints
+            if a.t != "int" and a.t != "bool":
+                self.err(f"'in range(...)' needs an int, not {a.t}")
+            vs = self.range_args(n.kids[1].kids[1:])
+            hit = self.rt("pys_range_has", "i64", [f"i64 {self.as_int(a).v}", f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
+            return Val(self.ins(f"icmp {'ne' if ops[0] == 'in' else 'eq'} i64 {hit}, 0"), "bool")
         if len(ops) == 1:
             return self.cmp2(ops[0], a, self.expr(n.kids[1], a.t))
         l3 = self.label()
@@ -3364,28 +3462,44 @@ class Gen:
             return self.print_(args)
         if (name == "any" or name == "all") and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
             return self.listcomp(args[0], "", name)
+        npos = 0
         for a in args:
-            if a.kind == "kw" and name != "open":
+            if a.kind != "kw":
+                npos += 1
+            elif name == "sorted" and a.s == "key":
+                self.err("sorted(key=...) is not supported: functions are not values")
+            elif name != "open" and not (name == "sorted" and a.s == "reverse"):
                 self.err(f"{name}() does not accept keyword arguments")
-        if name == "list" and len(args) == 1 and args[0].kind == "call" and args[0].kids[0].kind == "name" and args[0].kids[0].s == "range":
-            vs = self.range_args(args[0].kids[1:])
-            return Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
+        if name in ARITY and npos > ARITY[name]:
+            m = ARITY[name]
+            self.err(f"{name}() takes {'exactly one argument' if m == 1 else f'at most {m} arguments'} ({npos} given)")
         if len(args) == 0 and name in DEFAULTS:
             args = [self.parse_expr(DEFAULTS[name])]
         w = want if name == "list" or name == "sorted" or name == "dict" else ""
-        vals = [self.expr(a, w) for a in args if a.kind != "kw"]
+        fresh = False
+        if npos == 1 and (name == "sorted" or name == "min" or name == "max" or name == "sum" or name == "any" or name == "all" or name == "list"):
+            # these iterate their argument at once, so range(), reversed(), enumerate() and zip() may be it
+            fresh = self.iterator_call(args[0])
+            vals = [self.as_list(self.consume(args[0], w), name)]
+        else:
+            vals = [self.expr(a, w) for a in args if a.kind != "kw"]
+        rev = "0"
+        for a in args:
+            if a.kind == "kw" and a.s == "reverse":
+                rev = self.reverse_arg(a.kids[0], name)
+        if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
+            vals[1] = self.as_int(vals[1])
         key = f"{name}({','.join([v.t for v in vals])})"
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
-        if name == "sum" and len(vals) == 2 and vals[0].t == "list[float]" and (vals[1].t == "int" or vals[1].t == "bool"):
-            vals[1] = self.as_float(vals[1])
-            key = "sum(list[float],float)"
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"
+        if (name == "any" or name == "all") and len(vals) == 1 and is_list(vals[0].t) and key not in CALLS:
+            return self.anyall(vals[0], name)
         if key in CALLS:
             spec = CALLS[key].split(":")
             r = spec[1] if spec[1] != "" else vals[0].t
@@ -3393,8 +3507,6 @@ class Gen:
         if len(vals) == 0:
             self.err(f"unsupported call {name}()")
         v = vals[0]
-        if v.t == "str" and len(vals) == 1 and (name == "sorted" or name == "min" or name == "max"):
-            v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         t = v.t
         if name == "len":
             if t in self.classes and "__len__" in self.classes[t].methods:
@@ -3425,6 +3537,8 @@ class Gen:
             d = self.sconst(self.desc(elem(t)))
             r = self.rt("pys_list_minmax", "i64", [f"ptr {v.v}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"])
             return self.from_slot(r, elem(t))
+        elif (name == "min" or name == "max") and len(vals) == 1:
+            self.err(f"'{tname(t)}' object is not iterable")
         elif name == "min" or name == "max":
             for b in vals[1:]:
                 b = self.coerce(b, t)
@@ -3432,9 +3546,9 @@ class Gen:
                 v = Val(self.ins(f"select i1 {gt.v}, {lt(t)} {b.v}, {lt(t)} {v.v}"), t)
             return v
         elif (name == "sorted" or name == "list") and is_list(t):
-            c = self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
+            c = v.v if fresh else self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
             if name == "sorted":
-                self.rt("pys_list_sort", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t)))}"])
+                self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t)))}", f"i64 {rev}"])
             return Val(c, t)
         elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
             dn = self.as_int(v)
@@ -3455,11 +3569,82 @@ class Gen:
         elif name == "list" and is_dict(t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(t)[0]}]")
         elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
-            self.err(f"{name}() is only supported directly in a for loop")
+            self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all() or str.join()")
         if name in self.gtypes or name in self.ltype:
             self.err(f"'{name}' is not callable")
         self.err(f"unsupported call {key}")
         return v
+
+    def anyall(self, v: Val, name: str) -> Val:
+        # any(xs) / all(xs) by each item's truth, stopping at the first item that decides
+        res = self.alloca("bool", "")
+        self.emit(f"store i1 {'false' if name == 'any' else 'true'}, ptr {res}")
+        ctr = self.alloca("int", "")
+        self.emit(f"store i64 0, ptr {ctr}")
+        lc = self.label()
+        lb = self.label()
+        hit = self.label()
+        ls = self.label()
+        le = self.label()
+        self.place(lc)
+        i = self.ins(f"load i64, ptr {ctr}")
+        self.cbr(self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {v.v}')}"), lb, le)
+        self.place(lb)
+        c = self.truth(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
+        if name == "any":
+            self.cbr(c, hit, ls)
+        else:
+            self.cbr(c, ls, hit)
+        self.place(hit)
+        self.emit(f"store i1 {'true' if name == 'any' else 'false'}, ptr {res}")
+        self.br(le)
+        self.place(ls)
+        self.emit(f"store i64 {self.ins(f'add i64 {i}, 1')}, ptr {ctr}")
+        self.br(lc)
+        self.place(le)
+        return Val(self.ins(f"load i1, ptr {res}"), "bool")
+
+    def iterator_call(self, n: Node) -> bool:
+        if n.kind != "call" or n.kids[0].kind != "name" or n.kids[0].s in self.ltype or n.kids[0].s in self.funcs:
+            return False
+        fn = n.kids[0].s
+        return fn == "range" or fn == "reversed" or fn == "enumerate" or fn == "zip"
+
+    def consume(self, n: Node, want: str) -> Val:
+        # range(), reversed(), enumerate() and zip() where their items are used at once (list(),
+        # sorted(), "".join(), ...) become a fresh list of those items, built by the for loop
+        # machinery; anywhere else they are rejected, as a list would print differently
+        if not self.iterator_call(n):
+            return self.expr(n, want)
+        if n.kids[0].s == "range":
+            vs = self.range_args(n.kids[1:])
+            return Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
+        it = mk("name", "__item", n.line, [])
+        return self.listcomp(mk("listcomp", "", n.line, [it, mk("name", "__item", n.line, []), n]), want)
+
+    def as_list(self, v: Val, name: str) -> Val:
+        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple of one item type, as a list
+        if is_dict(v.t):
+            return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
+        if is_tuple(v.t):
+            ts = targs(v.t)
+            for x in ts:
+                if x != ts[0]:
+                    self.err(f"{name}() of a {v.t} needs items of a single type")
+            r = self.rt("pys_list_new", "ptr", [f"i64 {len(ts)}"])
+            for i in range(len(ts)):
+                self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.tget(v, i))])
+            return Val(r, f"list[{ts[0]}]")
+        if v.t == "str" and (name == "sorted" or name == "min" or name == "max"):
+            return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
+        return v
+
+    def reverse_arg(self, n: Node, name: str) -> str:
+        # sorted(..., reverse=r) and list.sort(reverse=r): r is a bool or an int, as in CPython
+        r = self.expr(n, "bool")
+        if r.t != "bool" and r.t != "int":
+            self.err(f"{name}() argument 'reverse' must be a bool, not {tname(r.t)}")
+        return self.ins(f"zext i1 {self.truth(r)} to i64")
 
     def parse_expr(self, text: str) -> Node:
         return Parser(Lexer(text, self.line).run()).test()
@@ -3494,9 +3679,25 @@ class Gen:
         return Val("", "None")
 
     def bmethod(self, o: Val, m: str, args: list[Node]) -> Val:
+        if is_list(o.t) and m == "sort":
+            rev = "0"
+            for a in args:
+                if a.kind != "kw":
+                    self.err("list.sort() takes no positional arguments")
+                elif a.s == "reverse":
+                    rev = self.reverse_arg(a.kids[0], "sort")
+                else:
+                    self.err(f"list.sort({a.s}=...) is not supported" if a.s == "key" else f"sort() got an unexpected keyword argument '{a.s}'")
+            self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(elem(o.t)))}", f"i64 {rev}"])
+            return Val("null", "None")
         for a in args:
             if a.kind == "kw":
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
+        if is_dict(o.t) and m == "pop" and len(args) == 2:
+            kv = targs(o.t)
+            k = self.to_slot(self.coerce(self.expr(args[0], kv[0]), kv[0]))
+            dv = self.to_slot(self.coerce(self.expr(args[1], kv[1]), kv[1]))
+            return self.from_slot(self.rt("pys_dict_pop_default", "i64", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), kv[1])
         base = o.t
         T = ""
         K = ""
@@ -3532,7 +3733,7 @@ class Gen:
             slot = p.startswith("*")
             pt = subst(p[1:] if slot else p, T, K, V, o.t)
             if i < len(args):
-                v = self.coerce(self.expr(args[i], pt), pt)
+                v = self.coerce(self.consume(args[i], pt) if key == "str.join" else self.expr(args[i], pt), pt)
                 av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
             elif dflt != "":
                 av.append(("i64 " if slot else rtt(pt) + " ") + dflt)
