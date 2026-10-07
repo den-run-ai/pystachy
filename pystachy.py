@@ -688,22 +688,32 @@ class Parser:
             line = self.line()
             if self.eat("("):
                 c = mk("call", "", line, [e])
+                kws: dict[str, bool] = {}
+                gen = False
                 while not self.eat(")"):
                     if self.peek() == "*" or self.peek() == "**":
                         fail("star arguments are not supported", line)
                     if self.peek() == "id" and self.ahead() == "=":
                         name = self.toks[self.p].text
+                        if name in kws:
+                            fail(f"keyword argument repeated: {name}", line)
+                        kws[name] = True
                         self.p += 2
                         c.kids.append(mk("kw", name, line, [self.test()]))
                     else:
+                        if len(kws) > 0:
+                            fail("positional argument follows keyword argument", line)
                         a = self.test()
                         if self.peek() == "for":
                             a = self.comp(a, line)
                             a.s = "gen"
+                            gen = True
                         c.kids.append(a)
                     if not self.eat(","):
                         self.expect(")")
                         break
+                if gen and len(c.kids) > 2:
+                    fail("Generator expression must be parenthesized", line)
                 e = c
             elif self.eat("["):
                 lo = mk("omit", "", line, [])
@@ -1364,6 +1374,8 @@ class Gen:
         return f"{lt(v.t)} {v.v}"
 
     def rres(self, r: str, t: str) -> Val:
+        if t == "None":
+            return Val("null", "None")
         if t == "bool":
             return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
         return Val(r, t)
@@ -3627,7 +3639,7 @@ class Gen:
         call = f"call {lt(f.ret)} {f.ll}({', '.join([lt(v.t) + ' ' + v.v for v in vals])})"
         if f.ret == "None":
             self.emit(call)
-            return Val("", "None")
+            return Val("null", "None")
         return Val(self.ins(call), f.ret)
 
     def dotted(self, n: Node) -> str:
@@ -3665,7 +3677,7 @@ class Gen:
         if name == "__pys_repr_enter" or name == "__pys_repr_leave":
             o = self.expr(args[0], "")
             r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])
-            return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if name.endswith("enter") else Val("", "None")
+            return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if name.endswith("enter") else Val("null", "None")
         if name == "__pys_repr" or name == "__pys_str" or name == "__pys_ascii":
             # compiler-written calls (f"{x!r}", dataclass __repr__): always the builtin
             name = name[6:]
