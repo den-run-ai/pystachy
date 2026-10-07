@@ -246,12 +246,26 @@ class Lexer:
         triple = src.startswith(q + q + q, self.i)
         self.i += 3 if triple else 1
         start = self.i
+        depth = 0  # f-strings: inside a replacement field
         while True:
             if self.i >= len(src):
                 fail("unterminated string", line)
             c = src[self.i]
             if c == q and (not triple or src.startswith(q + q + q, self.i)):
+                if depth > 0 and not triple:
+                    fail("f-string: reusing the string's quote inside a replacement field (PEP 701) is not supported; use the other quote", line)
                 break
+            if "f" in prefix and (c == "{" or c == "}"):
+                if depth == 0 and src[self.i + 1 : self.i + 2] == c:
+                    self.i += 2
+                    continue
+                depth = depth + 1 if c == "{" else max(depth - 1, 0)
+            elif "f" in prefix and depth > 0 and (c == "'" or c == '"'):
+                # a string inside a field ends at its own quote
+                j = src.find(c, self.i + 1)
+                if j > 0 and src.find("\n", self.i, j) < 0:
+                    self.i = j + 1
+                    continue
             if c == "\n":
                 if not triple:
                     fail("unterminated string", line)
