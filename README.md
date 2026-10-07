@@ -106,7 +106,8 @@ integers.
 - `int` is 64-bit two's complement and wraps on overflow.
 - `str` is a byte string: `len` and indexing count UTF-8 bytes. ASCII behaves exactly
   like CPython and non-ASCII text passes through unchanged.
-- Memory is never freed (bump allocation), which suits batch programs like compilers.
+- Memory is reclaimed by a conservative mark-and-sweep collector in `runtime.c`, not by
+  reference counting: garbage is freed in batches, and there are no finalizers.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots.
 - A runtime error prints only the last line of CPython's traceback (for example
   `IndexError: list index out of range`) and exits with status 1 after flushing stdout.
@@ -212,6 +213,5 @@ including JIT compilation, again producing identical IR.
 
 ## Natural next steps
 
-Garbage collection (Boehm GC drops into `pys_alloc` for AOT builds), exception
-handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
+Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
 `set`/`frozenset` on top of the existing dict table.

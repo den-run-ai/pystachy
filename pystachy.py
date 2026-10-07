@@ -982,6 +982,7 @@ class Gen:
         self.aliases: dict[str, str] = {}
         self.gtypes: dict[str, str] = {}
         self.globs: list[str] = []
+        self.gcroots: list[str] = []
         self.consts: list[str] = []
         self.strs: dict[str, str] = {}
         self.decls: dict[str, str] = {}
@@ -1425,6 +1426,13 @@ class Gen:
             self.emit(f"store i1 true, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
 
     # ---- variables
+    def global_var(self, g: str, ty: str) -> None:
+        # every module-level variable, visible or hidden, is defined here: the garbage
+        # collector scans the pointer-typed ones, whose addresses @main hands to pys_init
+        self.globs.append(f"{g} = internal global {ty} zeroinitializer")
+        if ty == "ptr":
+            self.gcroots.append(g)
+
     def is_global(self, name: str) -> bool:
         if name in self.ltype or name in self.compvars:
             return False
@@ -1467,9 +1475,9 @@ class Gen:
         if self.is_global(name):
             if name not in self.gtypes:
                 self.gtypes[name] = t
-                self.globs.append(f"@g.{name} = internal global {lt(t)} zeroinitializer")
+                self.global_var(f"@g.{name}", lt(t))
                 if name in self.gflag:
-                    self.globs.append(f"@g.{name}.def = internal global i1 false")
+                    self.global_var(f"@g.{name}.def", "i1")
             old = self.gtypes[name]
         elif name in self.ltype:
             old = self.ltype[name]
@@ -1682,12 +1690,18 @@ class Gen:
                 ts.append("i1")
             hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
         hdr.extend(self.globs)
+        roots = ", ".join([f"ptr {g}" for g in self.gcroots])
+        hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
         hdr.extend(self.consts)
         hdr.extend(self.out)
         hdr.extend(self.decls.values())
-        hdr.append("declare void @pys_init(i32, ptr)")
+        # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
+        # covers @main.init if inlined here) and the table of pointer-typed globals
+        hdr.append("declare void @pys_init(i32, ptr, ptr, ptr, i64)")
+        hdr.append("declare ptr @llvm.frameaddress.p0(i32)")
         hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
-        hdr.append("  call void @pys_init(i32 %argc, ptr %argv)")
+        hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
+        hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
         hdr.append("  call void @main.init()")
         hdr.append("  ret i32 0")
         hdr.append("}")
@@ -1947,7 +1961,7 @@ class Gen:
 
     def hidden(self, name: str, v: Val) -> str:
         # a compiler-made global, assigned here
-        self.globs.append(f"{name} = internal global {lt(v.t)} zeroinitializer")
+        self.global_var(name, lt(v.t))
         self.emit(f"store {lt(v.t)} {v.v}, ptr {name}")
         return name
 

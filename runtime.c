@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 typedef int64_t I;
@@ -18,16 +19,273 @@ typedef struct { I len, kind, cap; I *keys, *vals, *idx; } Dict; /* insertion-or
 typedef struct { char *p; I n, cap; } Buf;
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
-/* ---------- memory: bump allocator, never frees (batch-program model) ---------- */
-static char *hp, *he;
-void *pys_alloc(I n) {
-  n = n ? (n + 7) & ~7 : 8;
-  if (n > he - hp) {
-    I c = n > (8 << 20) ? n : (8 << 20);
-    if (!(hp = calloc(1, c))) { fputs("MemoryError\n", stderr); exit(1); }
-    he = hp + c;
+/* ---------- memory: conservative mark-and-sweep garbage collector ----------
+   Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
+   Layout. A request for n bytes gets n + 1 (one byte of slack, so a pointer one past the
+   end still points into the object), rounded up to one of 40 size classes up to 8200
+   bytes: 16..136 in steps of 8, then four per power of two, each 8 bytes above a multiple
+   of a power of two so that 2^k-byte arrays fit tightly. Small objects live in 64 KiB
+   chunks of one class each, carved from 1 MiB calloc'd arenas (big enough for malloc to map
+   fresh memory, which comes zeroed at no cost); larger objects get a calloc'd block each.
+   Every chunk and large object starts with a Seg header on a page boundary, and a two-level
+   page map (48-bit addresses, 4 KiB pages) sends each of its pages to that header, so "is
+   this word a pointer into the heap, and into which object" is a range check, two loads and
+   a multiply by the reciprocal of the slot size: O(1), interior pointers included.
+   Kinds. pys_alloc returns scanned memory (objects, tuples, list headers and arrays, dict
+   key and value arrays); pys_alloc_atomic returns memory that is never scanned (strings, Buf
+   data, dict index arrays, sort buffers). Each (class, kind) has a free list. Memory is
+   handed out zeroed: the sweep zeroes dead slots, so allocation pops a slot and clears its
+   link word (inlined into callers for the classes up to 136 bytes). A chunk's never-used
+   slots are linked about a page at a time, so memory the program has not needed stays
+   untouched (only a recycled chunk's must be zeroed). Links are stored complemented, so a
+   free slot never looks like a pointer, and accessed as may_alias words, so TBAA cannot
+   reorder them with the program's typed accesses to the first word of an object.
+   Roots, all conservative: the C stack from the collector's frame up to the frame of @main
+   (the generated @main passes its frame address to pys_init, so a @main.init inlined into
+   it is covered); callee-saved registers, which __builtin_unwind_init spills into the
+   collector's frame; the program's pointer-typed globals (@main passes a table of their
+   addresses: under the JIT they live in memory that no scanner would find); and the
+   runtime's own statics. Container slots hold ints, float bits or pointers, so every word of
+   a scanned object is a possible pointer. Marking uses an explicit stack and takes big
+   arrays in 4 KiB slices.
+   Policy. A collection runs when a free list or a large allocation needs memory and the
+   bytes handed out since the last one reach max(32 MiB, live bytes after it), so the heap
+   stays near twice the live set. Dead large objects go straight back to the C allocator;
+   empty chunks are kept for the next cycle's allocations, and beyond that every arena whose
+   chunks are all empty is freed. A chunk that handed out nothing and lost nothing since the
+   last sweep keeps its free list as is.
+   The code is compact on purpose: under the JIT it is compiled again at every program start.
+   Testing: PYSTACHY_GC_STRESS=N collects every N allocations, PYSTACHY_GC=off never
+   collects, PYSTACHY_GC=stats prints a summary at exit. */
+#define PAGE 4096
+#define CHUNK 65536                    /* small-object chunk */
+#define ARENA 16                       /* chunks per calloc'd arena */
+#define SMALL 8200                     /* largest size class */
+#define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
+#define GC_MIN ((I)32 << 20)           /* least allocation between collections */
+typedef uintptr_t __attribute__((may_alias)) W;   /* a heap or stack word: aliases every type */
+typedef struct Seg Seg;
+struct Seg {                           /* header on the first page of a chunk or large object */
+  Seg *next, *avail;                   /* chunk, pool or large-object list; chunks with free slots */
+  char *start;                         /* first slot, or the large object */
+  I size, nobj, bump, lim;             /* slot size (large: bytes + 1) and count; slots [0, bump)
+                                          have been handed out; lim: bytes from start that can hold
+                                          objects (bump * size, large: size, pooled: 0) */
+  I nfree, nlive, nmark;               /* slots in free; survivors of the last sweep; marked now */
+  uint64_t inv;                        /* ceil(2^40 / size): slot = offset * inv >> 40 */
+  W free;                              /* complemented head of the free slots not yet handed out */
+  void *raw;                           /* calloc'd block: the large object's, or the arena's (its
+                                          first word counts the arena's chunks in use) */
+  int k, large, used, dirty;           /* free list 2 * class + atomic (large: atomic); slots were
+                                          handed out since the last sweep; [bump, nobj) needs zeroing */
+  uint64_t mark[];                     /* one bit per slot */
+};
+#define HB ((I)((sizeof(Seg) + 8 + 15) & ~(size_t)15))   /* large-object header: one mark word */
+static const short csize[NK / 2] = {16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128,
+  136, 168, 200, 232, 264, 328, 392, 456, 520, 648, 776, 904, 1032, 1288, 1544, 1800, 2056,
+  2568, 3080, 3592, 4104, 5128, 6152, 7176, 8200};
+static W *fl[NK], *sfl[NK];            /* free list being allocated from; its stand-in under stress */
+static Seg *avail[NK], *chunks, *pool, *bigs, ***pmap;
+static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
+static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
+static int gc_off, gc_stats;
+static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
+static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
+static I msp, mcap;
+static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
+static List *args;
+
+static _Noreturn void oom(void) { fflush(stdout); fputs("MemoryError\n", stderr); exit(1); }
+static I cls(I n) {                    /* size class for n bytes plus one byte of slack */
+  uint64_t r = (uint64_t)n + 1, y = r - 8;
+  if (r <= 136) return r <= 16 ? 0 : (I)((r + 7) >> 3) - 2;
+  int e = 63 - __builtin_clzll(y - 1);   /* 2^e < y <= 2^(e+1); classes are (5..8) * 2^(e-2) + 8 */
+  return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
+}
+__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v, I bytes) {
+  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap), account bytes */
+  if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
+  if (v && e > gc_hi) gc_hi = e;
+  if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap;
+  for (; a < e; a += PAGE) {
+    Seg **m = pmap[a >> 30];
+    if (!m && !(m = pmap[a >> 30] = calloc(1 << 18, sizeof *m))) oom();
+    m[a >> 12 & 0x3ffff] = v;
   }
-  void *p = hp; hp += n; return p;
+}
+__attribute__((noinline)) static void mstk_grow(void) {
+  if (!(mstk = realloc(mstk, (mcap = 2 * mcap + 4096) * sizeof *mstk))) oom();
+}
+__attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, const W *e) {
+  uintptr_t lo = gc_lo, span = gc_hi - gc_lo;   /* fixed while marking: keep them in registers */
+  Seg ***pm = pmap;
+  for (; p < e; p++) {                 /* mark every heap object a word in [p, e) points into */
+    uintptr_t w = *p, off, i = 0;
+    Seg **m, *s;
+    if (w - lo >= span || !(m = pm[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) continue;
+    if ((off = w - (uintptr_t)s->start) >= (uintptr_t)s->lim) continue;   /* header, tail, unused */
+    if (!s->large) i = off * s->inv >> 40;
+    if (s->mark[i >> 6] >> (i & 63) & 1) continue;
+    s->mark[i >> 6] |= 1ULL << (i & 63); s->nmark++;
+    if (s->k & 1) continue;            /* atomic: nothing to scan */
+    if (msp + 2 > mcap) mstk_grow();
+    mstk[msp++] = (uintptr_t)s->start + i * s->size;
+    mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
+  }
+}
+__attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
+  scan((const W *)((uintptr_t)__builtin_frame_address(0) & ~(uintptr_t)7), (const W *)gc_bottom);
+  for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
+  scan((const W *)ch1, (const W *)(ch1 + 256));
+  scan((const W *)&args, (const W *)(&args + 1));
+}
+__attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
+  I n = s->bump, sz = s->size;
+  W *tail = &s->free;
+  s->nfree = n - s->nmark; s->nlive = s->nmark; s->used = 0;
+  for (I i = 0, j; i < n; i = j) {     /* runs of equal mark bits, a mark word at a time */
+    uint64_t w = s->mark[i >> 6] >> (i & 63), r = w & 1 ? ~w : w;
+    j = r ? i + __builtin_ctzll(r) : (i | 63) + 1;
+    if (j > n) j = n;
+    if (w & 1) continue;               /* [i, j) survived */
+    memset(s->start + i * sz, 0, (j - i) * sz);   /* [i, j) is dead or free */
+#pragma clang loop unroll(disable) vectorize(disable)
+    for (I x = i; x < j; x++) { *tail = ~(uintptr_t)(s->start + x * sz); tail = (W *)(s->start + x * sz); }
+  }
+  *tail = ~(uintptr_t)0;
+}
+static void sweep(void) {
+  I live = 0, spare = 0;
+  memset(fl, 0, sizeof fl); memset(sfl, 0, sizeof sfl); memset(avail, 0, sizeof avail);
+  for (Seg **pp = &chunks, *s; (s = *pp);) {
+    I sz = s->size, m = s->nmark;
+    if (!m) {                          /* empty: pool it */
+      *pp = s->next; s->lim = 0; s->next = pool; pool = s; --*(I *)s->raw;
+      continue;
+    }
+    live += m * sz;
+    if (s->used || m != s->nlive) rebuild(s);   /* else nothing was allocated or died here */
+    memset(s->mark, 0, (s->bump + 63) / 64 * 8); s->nmark = 0;
+    if (s->nfree || s->bump < s->nobj) {
+      s->avail = avail[s->k]; avail[s->k] = s; spare += (s->nfree + s->nobj - s->bump) * sz;
+    }
+    pp = &s->next;
+  }
+  for (Seg **pp = &bigs, *s; (s = *pp);) {
+    if (s->mark[0]) { s->mark[0] = 0; live += s->size; pp = &s->next; continue; }
+    *pp = s->next;                     /* the header lives in the block: unmap, then free */
+    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0, -(PAGE + HB + s->size - 1));
+    free(s->raw);
+  }
+  gc_live = live; gc_allocd = 0; gc_limit = live > GC_MIN ? live : GC_MIN;
+  I pooled = 0;                        /* keep the empty chunks the next cycle may need; beyond */
+  for (Seg *s = pool; s; s = s->next) pooled += CHUNK;   /* that, free arenas with none in use */
+  for (Seg *s = pool; s && pooled > gc_limit - spare; s = s->next)
+    if (!*(I *)s->raw) { *(I *)s->raw = -1; pooled -= ARENA * CHUNK; }   /* -1: doomed */
+  for (Seg **pp = &pool, *s; (s = *pp);) {
+    I *a = s->raw;
+    if (*a >= 0) { pp = &s->next; continue; }
+    *pp = s->next; pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0, 0);
+    if (--*a < -ARENA) { gc_heap -= ARENA * CHUNK + PAGE; free(a); }   /* its last chunk */
+  }
+}
+__attribute__((noinline)) static void collect(void) {
+  struct timespec t0, t1;
+  __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
+  if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
+  mark_roots();
+  while (msp) {                        /* trace; big arrays in 4 KiB slices keep the stack short */
+    I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
+    if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+    else msp -= 2;
+    scan(p, p + n / 8);
+  }
+  sweep(); gc_n++;
+  if (gc_stats) {
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
+  }
+}
+static void refill(int k) {            /* give free list k more free slots */
+  Seg *s = avail[k];
+  if (!s && !gc_off && gc_allocd >= gc_limit) { collect(); s = avail[k]; }
+  if (!s) {                            /* format a pooled chunk; its slots come lazily */
+    I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15;
+    if (!pool) {                       /* a new arena: its chunks start out pooled and zero */
+      char *raw = calloc(1, ARENA * CHUNK + PAGE + 16), *c;
+      if (!raw) oom();
+      c = (char *)(((uintptr_t)raw + 16 + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
+      for (int i = ARENA - 1; i >= 0; i--) {
+        s = (Seg *)(c + i * CHUNK); s->raw = raw; s->next = pool; pool = s;
+        pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s, i ? 0 : ARENA * CHUNK + PAGE);
+      }
+    }
+    s = pool; pool = s->next;
+    void *raw = s->raw;
+    int dirty = s->size != 0;          /* formatted before: old objects need zeroing */
+    ++*(I *)raw;
+    memset(s, 0, hdr);
+    s->raw = raw; s->k = k; s->size = sz; s->inv = ((1ULL << 40) + sz - 1) / sz; s->dirty = dirty;
+    s->start = (char *)s + hdr; s->nobj = (CHUNK - hdr) / sz; s->free = ~(uintptr_t)0;
+    s->next = chunks; chunks = s; avail[k] = s;
+  }
+  I sz = s->size;
+  if (~s->free) {                      /* the slots the last sweep freed */
+    fl[k] = (W *)~s->free; s->free = ~(uintptr_t)0; gc_allocd += s->nfree * sz; s->nfree = 0;
+  } else {                             /* about a page of never-used slots, so untouched memory stays so */
+    I i = s->bump, j = i + (PAGE + sz - 1) / sz;
+    if (j > s->nobj) j = s->nobj;
+    if (s->dirty) memset(s->start + i * sz, 0, (j - i) * sz);
+#pragma clang loop unroll(disable) vectorize(disable)
+    for (I x = i; x < j; x++) *(W *)(s->start + x * sz) = ~(uintptr_t)(x + 1 < j ? s->start + (x + 1) * sz : 0);
+    fl[k] = (W *)(s->start + i * sz); s->bump = j; s->lim = j * sz; gc_allocd += (j - i) * sz;
+  }
+  s->used = 1;
+  if (s->bump == s->nobj) avail[k] = s->avail;   /* nothing left after this */
+}
+__attribute__((noinline)) static void *gc_slow(I n, int atomic) {
+  if ((uint64_t)n > (uint64_t)1 << 40) oom();
+  if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
+  if (n >= SMALL) {                    /* large object: a page-aligned header in its own block */
+    if (!gc_off && gc_allocd + n >= gc_limit) collect();
+    char *raw = calloc(1, PAGE + HB + n);
+    if (!raw) oom();
+    Seg *s = (Seg *)(((uintptr_t)raw + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
+    s->raw = raw; s->large = 1; s->k = atomic; s->size = s->lim = n + 1; s->start = (char *)s + HB;
+    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s, PAGE + HB + n);
+    s->next = bigs; bigs = s; gc_allocd += n;
+    return s->start;
+  }
+  int k = 2 * (int)cls(n) + atomic;
+  if (gc_stress) fl[k] = sfl[k];       /* under stress every allocation comes through here */
+  if (!fl[k]) refill(k);
+  W *p = fl[k];
+  fl[k] = (W *)~*p; *p = 0;
+  if (gc_stress) { sfl[k] = fl[k]; fl[k] = 0; }
+  return p;
+}
+static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
+  if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
+    W **h = &fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
+    if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
+  }
+  return gc_slow(n, atomic);
+}
+__attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
+__attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+static void gc_report(void) {
+  fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
+          (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+}
+static void gc_init(char *sb, I **roots, I nroots) {
+  const char *e = getenv("PYSTACHY_GC");
+  gc_bottom = sb + 2 * sizeof(void *); /* sb is @main's frame address: include its frame record */
+  gc_roots = roots; gc_nroots = nroots;
+  if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
+  gc_off = e && !strcmp(e, "off");
+  if ((gc_stats = e && !strcmp(e, "stats"))) atexit(gc_report);
+  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
 }
 
 _Noreturn void pys_fail(const char *m) { fflush(stdout); fprintf(stderr, "%s\n", m); exit(1); }
@@ -37,20 +295,19 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {
   exit(1);
 }
 
-static void put(Buf *b, const char *s, I n) {
+__attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
   if (b->n + n > b->cap) {
-    I c = b->cap * 2 + n + 64; char *p = pys_alloc(c);
+    I c = b->cap * 2 + n + 64; char *p = pys_alloc_atomic(c);
     if (b->n) memcpy(p, b->p, b->n);
     b->p = p; b->cap = c;
   }
-  memcpy(b->p + b->n, s, n); b->n += n;
+  if (n) { memcpy(b->p + b->n, s, n); b->n += n; }   /* n = 0 on an empty Buf: b->p is NULL */
 }
 
 /* ---------- strings ---------- */
-Str *pys_str(const char *p, I n) { Str *s = pys_alloc(sizeof(Str) + n + 1); s->len = n; if (n) memcpy(s->s, p, n); return s; }
+Str *pys_str(const char *p, I n) { Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; if (n) memcpy(s->s, p, n); return s; }
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
-static Str *ch1[256];
 Str *pys_chr(I c) {
   if (c < 0 || c > 255) pys_fail("ValueError: chr() arg not in range(256)");
   if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
@@ -66,13 +323,13 @@ static void span(I *lo, I *hi, I n) {
 Str *pys_str_get(Str *s, I i) { return pys_chr((unsigned char)s->s[idx(i, s->len, "IndexError: string index out of range")]); }
 Str *pys_str_slice(Str *s, I lo, I hi) { span(&lo, &hi, s->len); return pys_str(s->s + lo, hi - lo); }
 Str *pys_str_add(Str *a, Str *b) {
-  Str *s = pys_alloc(sizeof(Str) + a->len + b->len + 1);
+  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 1);
   s->len = a->len + b->len; memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
 }
 Str *pys_str_mul(Str *a, I n) {
   if (n < 0) n = 0;
   if (n && a->len > (INT64_MAX - 64) / n) pys_fail("OverflowError: repeated string is too long");
-  Str *s = pys_alloc(sizeof(Str) + a->len * n + 1); s->len = a->len * n;
+  Str *s = pys_alloc_atomic(sizeof(Str) + a->len * n + 1); s->len = a->len * n;
   for (I i = 0; i < n; i++) memcpy(s->s + i * a->len, a->s, a->len);
   return s;
 }
@@ -158,7 +415,7 @@ Str *pys_str_upper(Str *s) { return mapc(s, 1); }
 Str *pys_str_lower(Str *s) { return mapc(s, 0); }
 static Str *pad(Str *s, I w, int left) {
   if (s->len >= w) return s;
-  Str *r = pys_alloc(sizeof(Str) + w + 1); r->len = w; memset(r->s, ' ', w);
+  Str *r = pys_alloc_atomic(sizeof(Str) + w + 1); r->len = w; memset(r->s, ' ', w);
   memcpy(r->s + (left ? 0 : w - s->len), s->s, s->len); return r;
 }
 Str *pys_str_ljust(Str *s, I w) { return pad(s, w, 1); }
@@ -450,7 +707,7 @@ static void msort(I *a, I *t, I n, const char *d) {   /* stable merge sort, like
   while (i < h) t[k++] = a[i++];
   memcpy(a, t, k * 8);
 }
-void pys_list_sort(List *l, Str *d) { msort(l->a, pys_alloc(l->len * 8), l->len, d->s); }
+void pys_list_sort(List *l, Str *d) { msort(l->a, pys_alloc_atomic(l->len * 8), l->len, d->s); }
 I pys_list_minmax(List *l, Str *d, I max) {
   if (!l->len) pys_fail("ValueError: arg is an empty sequence");
   I m = l->a[0];
@@ -471,7 +728,7 @@ List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s
 Str *pys_str_join(Str *sep, List *l) {
   I n = 0;
   for (I i = 0; i < l->len; i++) n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
-  Str *r = pys_alloc(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
+  Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
   for (I i = 0; i < l->len; i++) {
     Str *s = (Str *)l->a[i];
     if (i) { memcpy(w, sep->s, sep->len); w += sep->len; }
@@ -514,8 +771,8 @@ static I *slot(Dict *d, I k) {
 static void reindex(Dict *d) { memset(d->idx, 0, d->cap * 16); for (I e = 0; e < d->len; e++) *slot(d, d->keys[e]) = e + 1; }
 static void grow(Dict *d) {
   I c = d->cap ? d->cap * 2 : 8, *k = pys_alloc(c * 8), *v = pys_alloc(c * 8);
-  memcpy(k, d->keys, d->len * 8); memcpy(v, d->vals, d->len * 8);
-  d->keys = k; d->vals = v; d->cap = c; d->idx = pys_alloc(c * 16); reindex(d);
+  if (d->len) { memcpy(k, d->keys, d->len * 8); memcpy(v, d->vals, d->len * 8); }   /* first growth: NULL arrays */
+  d->keys = k; d->vals = v; d->cap = c; d->idx = pys_alloc_atomic(c * 16); reindex(d);
 }
 Dict *pys_dict_new(I kind) { Dict *d = pys_alloc(sizeof(Dict)); d->kind = kind; return d; }
 static _Noreturn void keyerr(Dict *d, I k) { Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p); }
@@ -600,7 +857,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   }
   if (!align) align = '<';
   if (body->len >= width) return body;
-  Str *r = pys_alloc(sizeof(Str) + width + 1); r->len = width; memset(r->s, fill, width);
+  Str *r = pys_alloc_atomic(sizeof(Str) + width + 1); r->len = width; memset(r->s, fill, width);
   I gap = width - body->len, at = align == '<' ? 0 : align == '^' ? gap / 2 : gap;
   if (align == '=') {                                  /* pad after the sign */
     I s = body->s[0] == '-' || body->s[0] == '+' || body->s[0] == ' ';
@@ -610,8 +867,10 @@ Str *pys_format(I v, Str *desc, Str *spec) {
 }
 
 /* ---------- I/O and process ---------- */
-static List *args;
-void pys_init(int argc, char **argv) { args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i])); }
+__attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
+  gc_init(sb, roots, nroots);
+  args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
+}
 List *pys_argv(void) { return args; }
 void pys_write(Str *s, I fd) { fwrite(s->s, 1, s->len, fd == 2 ? stderr : stdout); }
 void pys_flush(void) { fflush(stdout); }
