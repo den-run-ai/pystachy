@@ -4,15 +4,16 @@
 # CPython wrote to stderr, the last line (tests/*.err) must match too.
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
-# usage: tests/run.sh [COMPILER]   (default: ./pystachy; e.g. "python3 pystachy.py")
+# usage: tests/run.sh [COMPILER [MODES]]   (default: ./pystachy "jit aot"; e.g. "python3 pystachy.py")
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
+MODES=${2:-jit aot}
 T=${TMPDIR:-/tmp}/pystachy-tests.$$
 mkdir -p "$T"
 pass=0; fail=0
 for t in tests/*.py; do
   n=$(basename "$t" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
-  for mode in jit aot; do
+  for mode in $MODES; do
     if [ $mode = jit ]; then
       ($PYS run "$t" a1 a2 < "$in"; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
@@ -30,7 +31,7 @@ done
 for t in tests/deviations/*.py; do
   [ -f "$t" ] || continue
   n=$(basename "$t" .py); exp="tests/deviations/$n.out"
-  for mode in jit aot; do
+  for mode in $MODES; do
     if [ $mode = jit ]; then
       ($PYS run "$t" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
     else

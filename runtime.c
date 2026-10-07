@@ -797,7 +797,7 @@ I pys_dict_setdefault(Dict *d, I k, I v) { I *c = look(d, k); if (c) return d->v
 I pys_dict_key(Dict *d, I i) { return d->keys[i]; }
 I pys_dict_val(Dict *d, I i) { return d->vals[i]; }
 void pys_dict_clear(Dict *d) { d->len = 0; if (d->cap) reindex(d); }
-static List *col(Dict *d, I *a) { List *l = pys_list_new(d->len); memcpy(l->a, a, d->len * 8); l->len = d->len; return l; }
+static List *col(Dict *d, I *a) { List *l = pys_list_new(d->len); if (d->len) memcpy(l->a, a, d->len * 8); l->len = d->len; return l; }
 List *pys_dict_keys(Dict *d) { return col(d, d->keys); }
 List *pys_dict_values(Dict *d) { return col(d, d->vals); }
 List *pys_dict_items(Dict *d) {
@@ -902,3 +902,38 @@ I pys_system(Str *c) { fflush(stdout); return system(c->s); }
 I pys_getpid(void) { return getpid(); }
 I pys_exists(Str *p) { return access(p->s, F_OK) == 0; }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = getenv(k->s); return v ? cstr(v) : dflt; }
+
+/* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
+static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
+  int e = errno; Buf b = {0}; char t[32];
+  const char *k = e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
+    e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" : "OSError";
+  const char *m = strerror(e);
+  put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
+}
+void pys_remove(Str *p) { if (unlink(p->s)) oserr(p->s); }
+void pys_rmdir(Str *p) { if (rmdir(p->s)) oserr(p->s); }
+static void abspath(Buf *r, const char *d) {            /* os.path.abspath + "/": no symlink resolution */
+  char cwd[4096]; Buf b = {0};
+  if (*d != '/' && getcwd(cwd, sizeof cwd)) { put(&b, cwd, strlen(cwd)); put(&b, "/", 1); }
+  put(&b, d, strlen(d)); put(r, "/", 1);
+  for (I i = 0, j; i < b.n; i = j + 1) {                /* one path component per round: drop "" and ".", pop on ".." */
+    for (j = i; j < b.n && b.p[j] != '/'; j++) {}
+    if (j - i == 2 && b.p[i] == '.' && b.p[i + 1] == '.') { if (r->n > 1) for (r->n--; r->p[r->n - 1] != '/'; r->n--) {} }
+    else if (j > i && !(j - i == 1 && b.p[i] == '.')) { put(r, b.p + i, j - i); put(r, "/", 1); }
+  }
+}
+Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP /tmp /var/tmp /usr/tmp cwd, mode 0700 */
+  static const char *env[] = {"TMPDIR", "TEMP", "TMP"}, *none = "FileNotFoundError: [Errno 2] No usable temporary directory found in [";
+  const char *c[7]; int n = 0; char cwd[4096];
+  for (int i = 0; i < 3; i++) { char *v = getenv(env[i]); if (v && *v) c[n++] = v; }
+  c[n++] = "/tmp"; c[n++] = "/var/tmp"; c[n++] = "/usr/tmp"; c[n++] = getcwd(cwd, sizeof cwd) ? cwd : ".";
+  for (int i = 0; i < n; i++) {
+    Buf b = {0}; abspath(&b, c[i]); put(&b, "tmpXXXXXX", 10);
+    if (mkdtemp(b.p)) return cstr(b.p);
+  }
+  Buf b = {0}; put(&b, none, strlen(none));
+  for (int i = 0; i < n; i++) { if (i) put(&b, ", ", 2); repr_str(&b, cstr(c[i])); }
+  put(&b, "]", 2); pys_fail(b.p);
+}
