@@ -7,6 +7,7 @@ with clang. This file is itself written in the Pystachy subset and compiles itse
 from __future__ import annotations
 import sys
 import os
+import tempfile
 
 SRC = "<input>"
 
@@ -712,6 +713,10 @@ ICMP: dict[str, str] = {"==": "eq", "!=": "ne", "<": "slt", "<=": "sle", ">": "s
 FCMP: dict[str, str] = {"==": "oeq", "!=": "une", "<": "olt", "<=": "ole", ">": "ogt", ">=": "oge"}
 DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "__truediv__", "//": "__floordiv__", "%": "__mod__",
                           "==": "__eq__", "!=": "__ne__", "<": "__lt__", "<=": "__le__", ">": "__gt__", ">=": "__ge__"}
+# Modules a program may import -- the one list to extend. True: built in, "module.name" paths
+# resolve through CALLS and Gen.modattr; False: accepted only so the file also runs under CPython.
+MODULES: dict[str, bool] = {"sys": True, "os": True, "math": True, "tempfile": True,
+                            "__future__": False, "typing": False, "dataclasses": False}
 # builtin and module functions that are one runtime call: "name(argtypes)": "C function:result type"
 CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
@@ -722,6 +727,7 @@ CALLS: dict[str, str] = {
     "open(str,str)": "pys_open:file", "sys.exit(int)": "pys_exit:None", "sys.stdout.flush()": "pys_flush:None",
     "sys.stdout.write(str)": "pys_out:int", "sys.stderr.write(str)": "pys_err:int", "os.system(str)": "pys_system:int",
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
+    "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.pow(float,float)": "pow:float",
     "math.atan2(float,float)": "atan2:float", "math.hypot(float,float)": "hypot:float", "math.fmod(float,float)": "fmod:float",
 }
@@ -2115,7 +2121,7 @@ class Gen:
     def dotted(self, n: Node) -> str:
         # "sys.argv", "os.path.exists", ... when n is an attribute chain on a module
         if n.kind == "name":
-            if (n.s == "sys" or n.s == "os" or n.s == "math") and n.s not in self.ltype and n.s not in self.gtypes:
+            if n.s in MODULES and MODULES[n.s] and n.s not in self.ltype and n.s not in self.gtypes:
                 return n.s
         elif n.kind == "attr":
             p = self.dotted(n.kids[0])
@@ -2376,14 +2382,13 @@ def main() -> None:
         else:
             rest.append(argv[i])
             i += 1
-    if cmd == "ir" and out == "":
-        print(ir, end="")
-        return
-    tmp = out if cmd == "ir" else f"/tmp/pystachy{os.getpid()}.ll"
-    f = open(tmp, "w", encoding="latin-1")
-    f.write(ir)
-    f.close()
     if cmd == "ir":
+        if out == "":
+            print(ir, end="")
+        else:
+            f = open(out, "w", encoding="latin-1")
+            f.write(ir)
+            f.close()
         return
     home = os.getenv("PYSTACHY_HOME", "")
     if home == "":
@@ -2392,26 +2397,48 @@ def main() -> None:
         if not os.path.exists(home + "/runtime.c"):
             home = home + "/.."
     rtc = home + "/runtime.c"
-    rtb = home + "/build/runtime.bc"
+    # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link;
+    # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags
+    flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    key = 2166136261
+    for c in " ".join(flags):
+        key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
+    rtb = home + ("/build/runtime.bc" if len(flags) == 0 else f"/build/runtime-{key:08x}.bc")
+    cflags = "".join([" " + q(a) for a in flags])
     llvm = os.getenv("PYSTACHY_LLVM", "")  # optional directory holding clang, opt, lli, llvm-link, llvm-as
     if llvm != "" and not llvm.endswith("/"):
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
-    if sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || {llvm}clang -O2 -S -emit-llvm {q(rtc)} -o - | {strip} | {llvm}llvm-as -o {q(rtb)})") != 0:
-        fail("cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM)", 0)
-    bc = tmp[:-3] + ".bc"
-    link = f"{llvm}llvm-link --only-needed {q(tmp)} {q(rtb)} -o {q(bc)}"
-    if cmd == "build":
+    # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
+    tmp = tempfile.mkdtemp()
+    ll = tmp + "/prog.ll"
+    bc = tmp + "/prog.bc"
+    rll = tmp + "/runtime.ll"
+    part = f"{rtb}.{os.getpid()}"  # renamed over the cache only once complete
+    f = open(ll, "w", encoding="latin-1")
+    f.write(ir)
+    f.close()
+    msg = ""
+    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
+    link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
+    if code != 0:
+        msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
+    elif cmd == "build":
         # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
         if out == "":
             out = SRC[:-3] if SRC.endswith(".py") else SRC + ".exe"
-        code = sh(f"{link} && {llvm}clang -O2 {q(bc)} -o {q(out)} -lm")
+        code = sh(f"{link} && {llvm}clang -O2 {q(bc)} -o {q(out)} -lm{cflags}")
     else:
         # JIT tier: cheap SSA cleanup, then LLVM's ORC JIT compiles for the host CPU
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
         code = sh(f"{link} && {fast} {q(bc)} -o {q(bc)} && {llvm}lli {q(bc)} {' '.join([q(a) for a in rest])}")
-    sh(f"rm -f {q(tmp)} {q(bc)}")
+    for p in [ll, bc, rll, part]:
+        if os.path.exists(p):
+            os.remove(p)
+    os.rmdir(tmp)
+    if msg != "":
+        fail(msg, 0)
     sys.exit(code)
 
 

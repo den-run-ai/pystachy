@@ -2,15 +2,16 @@
 # Differential tests. Every tests/*.py must print exactly what CPython printed
 # (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled.
 # Every tests/errors/*.py must be rejected with the message in its first line.
-# usage: tests/run.sh [COMPILER]   (default: ./pystachy; e.g. "python3 pystachy.py")
+# usage: tests/run.sh [COMPILER [MODES]]   (default: ./pystachy "jit aot"; e.g. "python3 pystachy.py")
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
+MODES=${2:-jit aot}
 T=${TMPDIR:-/tmp}/pystachy-tests.$$
 mkdir -p "$T"
 pass=0; fail=0
 for t in tests/*.py; do
   n=$(basename "$t" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
-  for mode in jit aot; do
+  for mode in $MODES; do
     if [ $mode = jit ]; then
       ($PYS run "$t" a1 a2 < "$in"; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else

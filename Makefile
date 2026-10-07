@@ -22,7 +22,11 @@ test-py:
 bench: pystachy
 	bench/run.sh
 
+# Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks) -> build/verification.json
+verify:
+	PY="$(PY)" tests/verify.sh
+
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py bench clean
+.PHONY: test test-py bench verify clean
