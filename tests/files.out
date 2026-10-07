@@ -1,0 +1,35 @@
+new
+'a\r\nb\r\n'
+'hello\n'
+36000
+'one\n' 'two\nthree\nfour'
+'' ['one\r\n', 'two\r', 'three\n', 'four'] ['one\r\n', 'two\r', 'three\n', 'four']
+'\n' ['one\r\n', 'two\rthree\n', 'four'] ['one\r\n', 'two\rthree\n', 'four']
+'\r' ['one\r', '\ntwo\r', 'three\nfour'] ['one\r', '\ntwo\r', 'three\nfour']
+'\r\n' ['one\r\n', 'two\rthree\nfour'] ['one\r\n', 'two\rthree\nfour']
+['one\n', 'two\n', 'three\n', 'four'] ['one\n', 'two\n', 'three\n', 'four'] ['four', 'one\n', 'three\n', 'two\n']
+0 'one\n'
+1 'two\n'
+2 'three\n'
+3 'four'
+'on' 'e' '\ntwo' '' '\nthree\nfour' ''
+''
+'hello\n'
+'23456789\n'
+'AB'
+''
+'AB23456789\nXZ'
+created
+closed twice True True w
+'a\nb\n'
+'a,1,2.5\nb'
+2
+2 ['a', 'b'] True
+out
+via a variable
+x-y!
+w
+2 <stdin> <stdout> w
+None
+False
+[exit 0]

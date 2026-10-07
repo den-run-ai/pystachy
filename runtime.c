@@ -4,6 +4,7 @@
    links a precompiled object instead, since the JIT tier does not inline.
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
+#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <math.h>
@@ -11,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -192,6 +194,8 @@ static void sweep(void) {
     if (--*a < -ARENA) { gc_heap -= ARENA * CHUNK + PAGE; free(a); }   /* its last chunk */
   }
 }
+static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
+static void files_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
@@ -203,6 +207,7 @@ __attribute__((noinline)) static void collect(void) {
     else msp -= 2;
     scan(p, p + n / 8);
   }
+  if (nfiles) files_sweep();
   sweep(); gc_n++;
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -310,12 +315,19 @@ __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not
 Str *pys_str(const char *p, I n) { Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; if (n) memcpy(s->s, p, n); return s; }
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
-Str *pys_chr(I c) {
-  if (c < 0 || c > 255) pys_fail("ValueError: chr() arg not in range(256)");
+static I u8enc(char *o, I c);
+Str *pys_chr(I c) {                    /* below 256 the byte itself (str holds bytes); above, UTF-8 */
+  if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
+  if (c > 255) { char b[4]; return pys_str(b, u8enc(b, c)); }
   if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
   return ch1[c];
 }
-I pys_ord(Str *s) {
+I pys_ord(Str *s) {                    /* a byte, or one UTF-8 encoded character */
+  unsigned char c = s->len ? s->s[0] : 0; I n = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC2 ? 2 : 1, cp = c & (0x7F >> n);
+  if (s->len == n && n > 1) {
+    for (I k = 1; k < n; k++) { if ((s->s[k] & 0xC0) != 0x80) { cp = -1; break; } cp = cp << 6 | (s->s[k] & 0x3F); }
+    if (cp >= (n == 2 ? 0x80 : n == 3 ? 0x800 : 0x10000) && cp <= 0x10FFFF) return cp;
+  }
   if (s->len != 1) {
     char b[96]; snprintf(b, 96, "TypeError: ord() expected a character, but string of length %lld found", (long long)s->len); pys_fail(b);
   }
@@ -364,22 +376,39 @@ static I find(Str *h, Str *n, I i) {
   char *p = i <= h->len ? memmem(h->s + i, h->len - i, n->s, n->len) : 0;
   return p ? p - h->s : -1;
 }
-static I start(I s, I n) { if (s < 0 && (s += n) < 0) s = 0; return s; }
-I pys_str_find(Str *h, Str *n, I s) { return find(h, n, start(s, h->len)); }
-I pys_str_rfind(Str *h, Str *n) {
-  for (I i = h->len - n->len; i >= 0; i--) if (!memcmp(h->s + i, n->s, n->len)) return i;
+static void adjust(I *st, I *en, I n) {   /* CPython's ADJUST_INDICES: s[st:en] for the search methods */
+  if (*en > n) *en = n; else if (*en < 0 && (*en += n) < 0) *en = 0;
+  if (*st < 0 && (*st += n) < 0) *st = 0;
+}
+I pys_str_find(Str *h, Str *n, I st, I en) {
+  adjust(&st, &en, h->len);
+  if (en - st < n->len) return -1;
+  char *p = memmem(h->s + st, en - st, n->s, n->len);
+  return p ? p - h->s : -1;
+}
+I pys_str_rfind(Str *h, Str *n, I st, I en) {
+  adjust(&st, &en, h->len);
+  for (I i = en - n->len; i >= st; i--) if (!memcmp(h->s + i, n->s, n->len)) return i;
   return -1;
 }
-I pys_str_index(Str *h, Str *n) { I i = find(h, n, 0); if (i < 0) pys_fail("ValueError: substring not found"); return i; }
-I pys_str_count(Str *h, Str *n) {
+I pys_str_index(Str *h, Str *n, I st, I en) { I i = pys_str_find(h, n, st, en); if (i < 0) pys_fail("ValueError: substring not found"); return i; }
+I pys_str_rindex(Str *h, Str *n, I st, I en) { I i = pys_str_rfind(h, n, st, en); if (i < 0) pys_fail("ValueError: substring not found"); return i; }
+I pys_str_count(Str *h, Str *n, I st, I en) {
   I c = 0;
-  if (!n->len) return h->len + 1;
-  for (I i = 0; (i = find(h, n, i)) >= 0; i += n->len) c++;
+  adjust(&st, &en, h->len);
+  if (en - st < n->len) return 0;
+  if (!n->len) return en - st + 1;
+  for (char *p; (p = memmem(h->s + st, en - st, n->s, n->len)); st = p - h->s + n->len) c++;
   return c;
 }
 I pys_str_contains(Str *h, Str *n) { return find(h, n, 0) >= 0; }
-I pys_str_startswith(Str *s, Str *p, I i) { i = start(i, s->len); return i + p->len <= s->len && !memcmp(s->s + i, p->s, p->len); }
-I pys_str_endswith(Str *s, Str *p) { return p->len <= s->len && !memcmp(s->s + s->len - p->len, p->s, p->len); }
+static I tail(Str *s, Str *p, I st, I en, int end) {   /* CPython's tailmatch */
+  adjust(&st, &en, s->len);
+  if (en - p->len < st) return 0;
+  return !memcmp(s->s + (end ? en - p->len : st), p->s, p->len);
+}
+I pys_str_startswith(Str *s, Str *p, I st, I en) { return tail(s, p, st, en, 0); }
+I pys_str_endswith(Str *s, Str *p, I st, I en) { return tail(s, p, st, en, 1); }
 Str *pys_str_replace(Str *s, Str *a, Str *b) {
   Buf o = {0}; I i = 0;
   if (!a->len) {
@@ -479,9 +508,6 @@ I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
 I pys_f2i(double d);
-static void badnum(const char *what, Str *s) {
-  Buf b = {0}; put(&b, what, strlen(what)); put(&b, s->s, s->len); put(&b, "'", 2); pys_fail(b.p);
-}
 static _Noreturn void badlit(const char *what, I base, Str *s) {
   Buf b = {0}; char t[64];
   put(&b, what, strlen(what));
@@ -489,11 +515,12 @@ static _Noreturn void badlit(const char *what, I base, Str *s) {
   put(&b, ": ", 2); repr_str(&b, s); put(&b, "", 1); pys_fail(b.p);
 }
 static int digitv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'z' ? (c | 32) - 'a' + 10 : 99; }
+static int aws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }   /* int()/float() strip only these */
 I pys_int_str(Str *s, I base) {
   if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
   const char *p = s->s, *e = s->s + s->len; I b0 = base;
-  while (p < e && ws(*p)) p++;
-  while (e > p && ws(e[-1])) e--;
+  while (p < e && aws(*p)) p++;
+  while (e > p && aws(e[-1])) e--;
   int neg = 0;
   if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
   if (e - p >= 2 && p[0] == '0') {
@@ -518,8 +545,8 @@ I pys_int_str(Str *s, I base) {
 }
 double pys_float_str(Str *s) {
   const char *p = s->s, *e = s->s + s->len;
-  while (p < e && ws(*p)) p++;
-  while (e > p && ws(e[-1])) e--;
+  while (p < e && aws(*p)) p++;
+  while (e > p && aws(e[-1])) e--;
   Buf b = {0}; const char *q = p;
   if (q < e && (*q == '+' || *q == '-')) put(&b, q++, 1);
   I n = e - q;
@@ -887,8 +914,11 @@ List *pys_list_mul(List *a, I n) {
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqv(l->a[i], v, d->s)) return i; return -1; }
-I pys_list_index(List *l, I v, Str *d) {
-  I i = pys_list_find(l, v, d);
+I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
+  I i = -1;
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  for (I j = st; j < en && j < l->len; j++) if (eqv(l->a[j], v, d->s)) { i = j; break; }
   if (i < 0) { Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, v, d->s); put(&b, " is not in list", 16); pys_fail(b.p); }
   return i;
 }
@@ -1226,41 +1256,185 @@ Str *pys_format(I v, Str *desc, Str *spec) {
 }
 
 /* ---------- I/O and process ---------- */
+/* Text files as CPython's open() makes them, over C stdio: its modes and errors, newline
+   translation, and positions when a "+" file switches between reading and writing. A
+   file that becomes unreachable is closed by the collector (CPython closes it when its last
+   reference goes); the compiler closes a file used in one expression, open(p).read(),
+   right after that use. sys.stdin, sys.stdout and sys.stderr are files too. */
+typedef struct {
+  FILE *f; Str *name, *mode;
+  I rd, wr, closed, nl, last, std;   /* nl: newline None 0, "" 1, "\n" 2, "\r" 3, "\r\n" 4; last: 1 wrote, 2 read */
+  I rstart, rcons;                   /* where the current run of reads began; raw bytes it consumed */
+} File;
+static File std_in, std_out, std_err;
+static File **files;                   /* the open files, malloc'd: the collector does not see them */
+static I cfiles;
+static int gc_marked(const void *p) {
+  uintptr_t w = (uintptr_t)p; Seg **m, *s;
+  if (w - gc_lo >= gc_hi - gc_lo || !(m = pmap[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) return 1;
+  I i = s->large ? 0 : (I)((w - (uintptr_t)s->start) * s->inv >> 40);
+  return s->mark[i >> 6] >> (i & 63) & 1;
+}
+static void files_sweep(void) {        /* after marking: close the open files nothing refers to */
+  I j = 0;
+  for (I i = 0; i < nfiles; i++) {
+    File *f = files[i];
+    if (f->closed) continue;
+    if (!gc_marked(f)) { fclose(f->f); f->closed = 1; continue; }
+    files[j++] = f;
+  }
+  nfiles = j;
+}
+static _Noreturn void oserr(const char *path);
+static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
+  char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
+  if (a0 && argc) { args->a[0] = (I)cstr(a0); unsetenv("PYSTACHY_ARGV0"); }
+  std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
+  std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
+  std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
 }
 List *pys_argv(void) { return args; }
-void pys_write(Str *s, I fd) { fwrite(s->s, 1, s->len, fd == 2 ? stderr : stdout); }
+File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+void pys_write(Str *s, I fd) { File *f = fd == 2 ? &std_err : &std_out; if (f->closed) closed_err(); fwrite(s->s, 1, s->len, f->f); }
 void pys_flush(void) { fflush(stdout); }
-I pys_out(Str *s) { pys_write(s, 1); return s->len; }
-I pys_err(Str *s) { pys_write(s, 2); return s->len; }
 Str *pys_input(Str *prompt) {
   char *line = 0; size_t cap = 0;
   pys_write(prompt, 1); fflush(stdout);
+  if (std_in.closed) closed_err();
   ssize_t n = getline(&line, &cap, stdin);
   if (n < 0) pys_fail("EOFError: EOF when reading a line");
   if (n && line[n - 1] == '\n') n--;
   Str *s = pys_str(line, n); free(line); return s;
 }
-void *pys_open(Str *path, Str *mode) {
-  FILE *f = fopen(path->s, mode->s);
-  if (!f) badnum("FileNotFoundError: No such file or directory: '", path);
-  return f;
+static int nul(Str *s) { return memchr(s->s, 0, s->len) != 0; }
+File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0;   /* CPython's checks, in its order */
+  for (I i = 0; i < mode->len; i++) {
+    char c = mode->s[i];
+    int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
+    if (!p || *p) failf("ValueError: invalid mode: '%s'", mode->s);
+    *p = 1;
+  }
+  if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
+  if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
+  if (b) pys_fail("NotImplementedError: binary mode is not supported (no bytes type)");
+  if (!buffering) pys_fail("ValueError: can't have unbuffered text I/O");
+  if (nul(path)) pys_fail("ValueError: embedded null byte");
+  if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
+  for (I i = 0; i < nfiles && !gc_off; i++)   /* a writer to this path that nothing refers to any more has */
+    if (files[i]->wr && !files[i]->closed && pys_str_eq(files[i]->name, path)) { collect(); break; }   /* been closed in CPython */
+  char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
+  if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
+  FILE *f = fopen(path->s, m);
+  if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
+  if (!f) oserr(path->s);
+  struct stat st;
+  if (!fstat(fileno(f), &st) && S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  if (a) fseek(f, 0, SEEK_END);        /* CPython starts an append file at its end */
+  if (enc) {                           /* checked once the file is open, as CPython does */
+    static const char *ok = " utf8 u8 utf latin1 latin l1 iso88591 iso8859 8859 cp819 ibm819 csisolatin1 iso885911987 isoir100 ";
+    char e[24] = " "; I n = 1;
+    for (I i = 0; i < enc->len && n < 22; i++) if (enc->s[i] != '-' && enc->s[i] != '_') e[n++] = tolower((unsigned char)enc->s[i]);
+    e[n++] = ' '; e[n] = 0;
+    if (enc->len > 20 || nul(enc) || !strstr(ok, e)) {
+      fclose(f); failf("NotImplementedError: only UTF-8 and Latin-1 files are supported, not encoding '%s'", enc->s);
+    }
+  }
+  I k = !nl ? 0 : !nl->len ? 1 : !strcmp(nl->s, "\n") ? 2 : !strcmp(nl->s, "\r") ? 3 : !strcmp(nl->s, "\r\n") ? 4 : -1;
+  if (k < 0 || (nl && nul(nl))) { fclose(f); failf("ValueError: illegal newline value: %s", nl->s); }
+  File *o = pys_alloc(sizeof(File));
+  o->f = f; o->name = path; o->mode = mode; o->rd = r || plus; o->wr = !r || plus; o->nl = k;
+  o->rstart = a ? ftell(f) : 0;
+  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  files[nfiles++] = o;
+  return o;
 }
-Str *pys_file_read(FILE *f) { Buf b = {0}; char t[1 << 16]; size_t n; while ((n = fread(t, 1, sizeof t, f)) > 0) put(&b, t, n); return done(&b); }
-Str *pys_file_readline(FILE *f) {
-  Buf b = {0}; int c;
-  while ((c = fgetc(f)) != EOF) { char ch = c; put(&b, &ch, 1); if (c == '\n') break; }
+static void use(File *f, int rd) {     /* check a read (rd) or write, and reposition between them */
+  if (f->closed) closed_err();
+  if (rd ? !f->rd : !f->wr) pys_fail(rd ? "io.UnsupportedOperation: not readable" : "io.UnsupportedOperation: not writable");
+  if (f->std || f->last == (rd ? 2 : 1)) return;
+  if (rd) {                            /* after writing: read from where the writes ended */
+    fflush(f->f); f->rstart = ftell(f->f); f->rcons = 0;
+  } else if (f->last == 2) {           /* after reading: CPython's text layer read ahead in 8 KiB chunks */
+    I end = f->rstart + (f->rcons + 8191) / 8192 * 8192, size;
+    fseek(f->f, 0, SEEK_END); size = ftell(f->f);
+    fseek(f->f, end < size ? end : size, SEEK_SET);
+  }
+  f->last = rd ? 2 : 1;
+}
+static int get(File *f) { int c = getc_unlocked(f->f); f->rcons += c != EOF; return c; }
+static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
+static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as "\n" */
+  if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
+  return c;
+}
+Str *pys_file_read(File *f, I n) {     /* n < 0: to the end; else n characters */
+  use(f, 1); Buf b = {0};
+  if (n < 0) {
+    char t[1 << 16]; size_t k;
+    while ((k = fread(t, 1, sizeof t, f->f)) > 0) { put(&b, t, k); f->rcons += k; }
+    I j = 0;
+    if (!f->nl) for (I i = 0; i < b.n; i++) { char c = b.p[i]; if (c == '\r') { c = '\n'; i += i + 1 < b.n && b.p[i + 1] == '\n'; } b.p[j++] = c; }
+    if (!f->nl) b.n = j;
+    return done(&b);
+  }
+  for (I k = 0;;) {
+    int c = get(f);
+    if (c == EOF) break;
+    if ((c & 0xC0) != 0x80 && n >= 0 && k++ == n) { unget(f, c); break; }   /* the next character starts */
+    char ch = getnl(f, c); put(&b, &ch, 1);
+  }
   return done(&b);
 }
-I pys_file_write(FILE *f, Str *s) { fwrite(s->s, 1, s->len, f); return s->len; }
-void pys_file_close(FILE *f) { fclose(f); }
+Str *pys_file_readline(File *f) {      /* a line ends as newline= says: None "\n" after translation; "" any of
+                                          "\n" "\r" "\r\n"; otherwise exactly that string */
+  use(f, 1); Buf b = {0}; int c;
+  while ((c = get(f)) != EOF) {
+    char ch = getnl(f, c); put(&b, &ch, 1);
+    if (ch == '\n' && f->nl != 3 && f->nl != 4) break;
+    if (ch == '\r' && f->nl == 3) break;
+    if (ch == '\r' && (f->nl == 1 || f->nl == 4)) {
+      int d = get(f);
+      if (d == '\n') { put(&b, "\n", 1); break; }
+      if (d != EOF) unget(f, d);
+      if (f->nl == 1) break;
+    }
+  }
+  return done(&b);
+}
+List *pys_file_readlines(File *f) {
+  List *l = pys_list_new(0);
+  for (Str *s; (s = pys_file_readline(f))->len;) pys_list_append(l, (I)s);
+  return l;
+}
+I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as that */
+  use(f, 0);
+  if (f->nl < 3) fwrite(s->s, 1, s->len, f->f);
+  else for (I i = 0; i < s->len; i++) if (s->s[i] != '\n') putc(s->s[i], f->f); else fputs(f->nl == 3 ? "\r" : "\r\n", f->f);
+  return s->len;
+}
+void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
+void pys_file_flush(File *f) { if (f->closed) closed_err(); fflush(f->f); }
+void pys_file_close(File *f) {
+  if (f->closed) return;
+  f->closed = 1;
+  if (f->std) { fflush(f->f); return; }   /* sys.stdout.close(): the stream stays open underneath */
+  if (fclose(f->f)) { char b[160]; snprintf(b, sizeof b, "OSError: [Errno %d] %s", errno, strerror(errno)); pys_fail(b); }
+}
+I pys_file_closed(File *f) { return f->closed; }
+Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
+Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
 void pys_exit(I c) { exit((int)c); }
-I pys_system(Str *c) { fflush(stdout); return system(c->s); }
+I pys_system(Str *c) {
+  if (nul(c)) pys_fail("ValueError: embedded null byte");
+  return system(c->s);                 /* like CPython, without flushing stdout first */
+}
 I pys_getpid(void) { return getpid(); }
-I pys_exists(Str *p) { return access(p->s, F_OK) == 0; }
-Str *pys_getenv(Str *k, Str *dflt) { char *v = getenv(k->s); return v ? cstr(v) : dflt; }
+I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
+Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
 
 /* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
 static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
@@ -1271,8 +1445,8 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
   put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
   repr_str(&b, cstr(path)); put(&b, "", 1); pys_fail(b.p);
 }
-void pys_remove(Str *p) { if (unlink(p->s)) oserr(p->s); }
-void pys_rmdir(Str *p) { if (rmdir(p->s)) oserr(p->s); }
+void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
+void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
 static void abspath(Buf *r, const char *d) {            /* os.path.abspath + "/": no symlink resolution */
   char cwd[4096]; Buf b = {0};
   if (*d != '/' && getcwd(cwd, sizeof cwd)) { put(&b, cwd, strlen(cwd)); put(&b, "/", 1); }
@@ -1289,8 +1463,14 @@ Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP
   for (int i = 0; i < 3; i++) { char *v = getenv(env[i]); if (v && *v) c[n++] = v; }
   c[n++] = "/tmp"; c[n++] = "/var/tmp"; c[n++] = "/usr/tmp"; c[n++] = getcwd(cwd, sizeof cwd) ? cwd : ".";
   for (int i = 0; i < n; i++) {
-    Buf b = {0}; abspath(&b, c[i]); put(&b, "tmpXXXXXX", 10);
-    if (mkdtemp(b.p)) return cstr(b.p);
+    Buf b = {0}; abspath(&b, c[i]); put(&b, "tmpXXXXXXXX", 12);
+    for (int tries = 0; tries < 10000; tries++) {   /* CPython's names: "tmp" and 8 of [a-z0-9_] */
+      unsigned char r[8]; char *x = b.p + b.n - 9;
+      if (getentropy(r, 8)) for (int k = 0; k < 8; k++) r[k] = rand();
+      for (int k = 0; k < 8; k++) x[k] = "abcdefghijklmnopqrstuvwxyz0123456789_"[r[k] % 37];
+      if (!mkdir(b.p, 0700)) return cstr(b.p);
+      if (errno != EEXIST) break;
+    }
   }
   Buf b = {0}; put(&b, none, strlen(none));
   for (int i = 0; i < n; i++) { if (i) put(&b, ", ", 2); repr_str(&b, cstr(c[i])); }

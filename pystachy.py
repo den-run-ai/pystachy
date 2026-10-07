@@ -398,7 +398,21 @@ class Parser:
             if d.kind != "class":
                 fail(f"unsupported decorator @{name}", line)
             d.kids.append(mk("deco", name, line, []))
-        elif k == "try" or k == "with" or k == "async":
+        elif k == "with":
+            # with open(p) as f, ...: kids are the items (expression [, target]) and the block
+            self.p += 1
+            items: list[Node] = []
+            while True:
+                it = mk("withitem", "", line, [self.test()])
+                if self.eat("as"):
+                    it.kids.append(as_target(self.postfix()))
+                items.append(it)
+                if not self.eat(","):
+                    break
+            self.expect(":")
+            items.append(self.block())
+            out.append(mk("with", "", line, items))
+        elif k == "try" or k == "async":
             fail(f"'{k}' statements are not supported", line)
         else:
             self.simple(out)
@@ -918,8 +932,7 @@ CALLS: dict[str, str] = {
     "sum(list[float],int)": "pys_sum_float_int:float", "sum(list[int],float)": "pys_sum_int_float:float",
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
-    "open(str,str)": "pys_open:file", "sys.exit(int)": "pys_exit:None", "sys.stdout.flush()": "pys_flush:None",
-    "sys.stdout.write(str)": "pys_out:int", "sys.stderr.write(str)": "pys_err:int", "os.system(str)": "pys_system:int",
+    "sys.exit(int)": "pys_exit:None", "os.system(str)": "pys_system:int",
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
@@ -938,7 +951,7 @@ MODULES: dict[str, bool] = {}
 for _k in "sys os os.path math tempfile typing dataclasses __future__".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in "sys.argv sys.maxsize sys.stdout sys.stderr math.pi math.e math.inf math.tau math.nan".split():
+for _k in "sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr math.pi math.e math.inf math.tau math.nan".split():
     MODATTRS[_k] = True
 TYPING: dict[str, bool] = {}
 for _k in "List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Iterable Iterator Sequence Mapping Final ClassVar NamedTuple TypeVar Generic cast".split():
@@ -948,8 +961,13 @@ for _k in "annotations division absolute_import print_function generators nested
     FUTURE[_k] = True
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
 DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float": "0.0", "str": '""', "bool": "False",
-                            "list": "[]", "dict": "{}", "int(str)": "10", "open(str)": '"r"', "sum(list[int])": "0",
+                            "list": "[]", "dict": "{}", "int(str)": "10", "sum(list[int])": "0",
                             "sum(list[float])": "0.0", "sum(list[bool])": "0"}
+# encoding= names of UTF-8 and Latin-1 (lowercase, without "-" and "_"): a str holds the file's
+# bytes either way, which is what CPython's str holds for a Latin-1 file
+UTF8: dict[str, bool] = {}
+for _k in "utf8 u8 utf latin1 latin l1 iso88591 iso8859 8859 cp819 ibm819 csisolatin1 iso885911987 isoir100".split():
+    UTF8[_k] = True
 # the most positional arguments a builtin takes: more are a compile error (a TypeError in CPython)
 ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "chr": 1, "bool": 1, "float": 1, "list": 1,
                          "dict": 1, "str": 1, "sorted": 1, "any": 1, "all": 1, "input": 1, "int": 2, "round": 2,
@@ -959,17 +977,18 @@ ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "c
 # Each maps to the C function pys_<type>_<method>.
 METHODS: dict[str, str] = {
     "str.join": "str:list[str]", "str.split": "list[str]:str=null,int=-1", "str.strip": "str:str=null",
-    "str.lstrip": "str:str=null", "str.rstrip": "str:str=null", "str.startswith": "bool:str,int=0",
-    "str.endswith": "bool:str", "str.find": "int:str,int=0", "str.rfind": "int:str", "str.index": "int:str",
-    "str.count": "int:str", "str.replace": "str:str,str", "str.upper": "str:", "str.lower": "str:",
+    "str.lstrip": "str:str=null", "str.rstrip": "str:str=null", "str.startswith": "bool:str,int=0,int=9223372036854775807",
+    "str.endswith": "bool:str,int=0,int=9223372036854775807", "str.find": "int:str,int=0,int=9223372036854775807", "str.rfind": "int:str,int=0,int=9223372036854775807",
+    "str.index": "int:str,int=0,int=9223372036854775807", "str.rindex": "int:str,int=0,int=9223372036854775807", "str.count": "int:str,int=0,int=9223372036854775807", "str.replace": "str:str,str", "str.upper": "str:", "str.lower": "str:",
     "str.isdigit": "bool:", "str.isalpha": "bool:", "str.isalnum": "bool:", "str.isspace": "bool:",
     "str.isupper": "bool:", "str.islower": "bool:", "str.ljust": "str:int", "str.rjust": "str:int",
     "list.append": "None:*T", "list.pop": "*T:int=-1", "list.insert": "None:int,*T", "list.extend": "None:S",
-    "list.index": "int:*T,#", "list.count": "int:*T,#", "list.remove": "None:*T,#", "list.reverse": "None:",
+    "list.index": "int:*T,#,int=0,int=9223372036854775807", "list.count": "int:*T,#", "list.remove": "None:*T,#", "list.reverse": "None:",
     "list.copy": "S:", "list.clear": "None:",
     "dict.get": "*V:*K,*V=0", "dict.pop": "*V:*K", "dict.setdefault": "*V:*K,*V", "dict.keys": "list[K]:",
     "dict.values": "list[V]:", "dict.items": "list[tuple[K,V]]:", "dict.clear": "None:", "dict.copy": "S:",
-    "file.read": "str:", "file.readline": "str:", "file.write": "int:str", "file.close": "None:",
+    "file.read": "str:int=-1", "file.readline": "str:", "file.readlines": "list[str]:", "file.write": "int:str",
+    "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:",
     "float.hex": "str:", "float.is_integer": "bool:",
 }
 
@@ -1177,6 +1196,8 @@ class Gen:
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
         self.loops: list[str] = []
+        self.withs: list[str] = []  # files of the enclosing with blocks, closed when the code leaves them
+        self.wdepth: list[int] = []  # len(withs) when each enclosing loop began
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = "None"
@@ -1589,6 +1610,10 @@ class Gen:
                 return c
             if c == "len" or c == "ord":
                 return "int"
+            if c == "input" or c == "repr" or c == "chr" or c == "ascii":
+                return "str"
+            if c == "open":
+                return "file"
         me = f.params[0] if f.cls != "" else ""
         if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s == me:
             return self.classes[f.cls].ftypes.get(e.s, "")
@@ -1731,9 +1756,13 @@ class Gen:
         # Python's rule: a name assigned anywhere in a function is local to it
         for st in body:
             k = st.kind
-            if k == "assign" or k == "annassign" or k == "augassign" or k == "for":
+            if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "with":
                 names: list[str] = []
-                for i in range(len(st.kids) - 1 if k == "assign" else 1):
+                if k == "with":
+                    for it in st.kids[:-1]:
+                        if len(it.kids) == 2:
+                            self.names_in(it.kids[1], names)
+                for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
                     self.names_in(st.kids[i], names)
                 for nm in names:
                     out[nm] = True
@@ -1812,6 +1841,8 @@ class Gen:
         self.assigned = {}
         self.compvars = {}
         self.loops = []
+        self.withs = []
+        self.wdepth = []
         self.n = 0
         self.cur = "entry"
         self.term = False
@@ -2130,6 +2161,12 @@ class Gen:
         elif k == "expr" or k == "assert" or k == "del":
             for c in n.kids:
                 self.fl_expr(fl, c)
+        elif k == "with":
+            for it in n.kids[:-1]:
+                self.fl_expr(fl, it.kids[0])
+                if len(it.kids) == 2:
+                    self.fl_target(fl, it.kids[1])
+            self.fl_stmts(fl, n.kids[-1].kids)
 
     def fl_target(self, fl: Flow, t: Node) -> None:
         if t.kind == "name":
@@ -2349,9 +2386,16 @@ class Gen:
     def loop(self, body: list[Node], cont: str, brk: str) -> None:
         self.loops.append(cont)
         self.loops.append(brk)
+        self.wdepth.append(len(self.withs))
         self.stmts(body)
+        self.wdepth.pop()
         self.loops.pop()
         self.loops.pop()
+
+    def close_withs(self, depth: int) -> None:
+        # leaving with blocks (break, continue, return): their files close, innermost first
+        for i in range(len(self.withs) - 1, depth - 1, -1):
+            self.rt("pys_file_close", "void", [f"ptr {self.withs[i]}"])
 
     def raise_(self, name: str, msg: str) -> None:
         self.rt("pys_raise", "void", [f"ptr {self.sconst(name)}", f"ptr {msg}"])
@@ -2415,16 +2459,19 @@ class Gen:
             if len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None":
                     self.err(f"missing return value of type {self.ret}")
+                self.close_withs(0)
                 self.emit("ret void")
             else:
                 if self.ret == "None":
                     self.err("returning a value from a function without a return annotation")
                 v = self.coerce(self.expr(n.kids[0], self.ret), self.ret)
+                self.close_withs(0)
                 self.emit(f"ret {lt(self.ret)} {v.v}")
             self.term = True
         elif k == "break" or k == "continue":
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
+            self.close_withs(self.wdepth[-1])
             self.br(self.loops[-1] if k == "break" else self.loops[-2])
         elif k == "global":
             for nm in n.kids:
@@ -2460,6 +2507,21 @@ class Gen:
                 self.rt("pys_dict_pop", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))])
             else:
                 self.err("only 'del list[i]' and 'del dict[key]' are supported")
+        elif k == "with":
+            # with open(p) as f: the file closes when the block is left, at its end or through
+            # break, continue or return (an error ends the program, and exit flushes every file)
+            n0 = len(self.withs)
+            for it in n.kids[:-1]:
+                v = self.expr(it.kids[0], "")
+                if v.t != "file":
+                    self.err(f"'with' is supported for files only (with open(...) as f:), not {v.t}")
+                if len(it.kids) == 2:
+                    self.assign(it.kids[1], v)
+                self.withs.append(v.v)
+            self.stmts(n.kids[-1].kids)
+            if not self.term:
+                self.close_withs(n0)
+            self.withs = self.withs[:n0]
         elif k == "anyall":
             hit = self.label()
             go = self.label()
@@ -2580,12 +2642,16 @@ class Gen:
                 self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide)
                 return
             if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 0):
-                self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body, "0", hide)
+                seqs = [self.expr(a, "") for a in args]
+                self.for_seq(tgt, seqs, fn, body, "0", hide)
+                for i in range(len(args)):
+                    self.close_temp(args[i], seqs[i])
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
                 seq = self.expr(args[0], "")
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
                 self.for_seq(tgt, [seq], fn, body, self.coerce(self.expr(a1, "int"), "int").v, hide)
+                self.close_temp(args[0], seq)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
             m = it.kids[0].s
@@ -2596,7 +2662,9 @@ class Gen:
                 else:
                     self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide)
                 return
-        self.for_seq(tgt, [self.expr(it, "")], "", body, "0", hide)
+        seq = self.expr(it, "")
+        self.for_seq(tgt, [seq], "", body, "0", hide)
+        self.close_temp(it, seq)
 
     def range_args(self, args: list[Node]) -> list[str]:
         vs: list[str] = []
@@ -2675,8 +2743,12 @@ class Gen:
         st: list[str] = []
         used: list[str] = []
         for s in seqs:
-            if not (s.t == "str" or is_list(s.t) or is_dict(s.t)):
-                self.err(f"cannot iterate over {s.t}")
+            if not (s.t == "str" or is_list(s.t) or is_dict(s.t) or (s.t == "file" and mode != "reversed")):
+                self.err(f"cannot iterate over {s.t}" if s.t != "file" else "a file is not reversible")
+            if s.t == "file":
+                st.append("")
+                used.append("")
+                continue
             n0 = self.ins(f"load i64, ptr {s.v}")
             used.append(n0)
             if is_dict(s.t):
@@ -2696,7 +2768,11 @@ class Gen:
         at: list[str] = []
         for k in range(len(seqs)):
             s = seqs[k]
-            if is_dict(s.t):
+            if s.t == "file":
+                j = self.rt("pys_file_readline", "ptr", [f"ptr {s.v}"])
+                ok = self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {j}')}, 0")
+                nx = ""
+            elif is_dict(s.t):
                 p = self.ins(f"load i64, ptr {st[k]}")
                 if mode == "reversed":
                     j = self.rt("pys_dict_prev", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}"])
@@ -2728,6 +2804,8 @@ class Gen:
                 vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
             elif s.t == "str":
                 vals.append(Val(self.rt("pys_str_get", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str"))
+            elif s.t == "file":
+                vals.append(Val(j, "str"))
             else:
                 kv = targs(s.t)
                 if mode != "values":
@@ -2823,9 +2901,12 @@ class Gen:
             return self.call(n, want)
         if k == "attr":
             path = self.dotted(n)
-            if path != "":
+            if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.modattr(path)
             o = self.expr(n.kids[0], "")
+            if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
+                r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
+                return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if n.s == "closed" else Val(r, "str")
             return self.getfield(o, self.field(o, n.s), n.s)
         if k == "index":
             return self.index(n)
@@ -3368,11 +3449,65 @@ class Gen:
             return self.builtin(f.s, args, want)
         if f.kind == "attr":
             path = self.dotted(f)
-            if path != "":
+            if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.builtin(path, args, want)
-            return self.method(self.expr(f.kids[0], ""), f.s, args)
+            o = self.expr(f.kids[0], "")
+            r = self.method(o, f.s, args)
+            if f.s != "close":
+                self.close_temp(f.kids[0], o)
+            return r
         self.err("only functions, classes and methods can be called")
         return Val("", "")
+
+    def open_call(self, n: Node) -> bool:
+        return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and "open" not in self.ltype and "open" not in self.funcs
+
+    def close_temp(self, n: Node, v: Val) -> None:
+        # open(p).read(): nothing else refers to the file, so CPython closes it right after its use
+        if v.t == "file" and self.open_call(n):
+            self.rt("pys_file_close", "void", [f"ptr {v.v}"])
+
+    def open_(self, args: list[Node]) -> Val:
+        # open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None): text files
+        names = ["file", "mode", "buffering", "encoding", "errors", "newline"]
+        given: dict[str, Node] = {}
+        pos = 0
+        for a in args:
+            nm = a.s if a.kind == "kw" else names[pos] if pos < len(names) else ""
+            if a.kind != "kw":
+                pos += 1
+            if nm == "closefd" or nm == "opener" or (a.kind != "kw" and nm == ""):
+                self.err("open() supports only file, mode, buffering, encoding, errors and newline")
+            if nm not in names:
+                self.err(f"open() got an unexpected keyword argument '{nm}'")
+            if nm in given:
+                self.err(f"open() got multiple values for argument '{nm}'")
+            given[nm] = a.kids[0] if a.kind == "kw" else a
+        if "file" not in given:
+            self.err("open() missing required argument 'file' (pos 1)")
+        if "mode" in given and given["mode"].kind == "str" and given["mode"].s.find("b") >= 0:
+            self.err("binary files are not supported (there is no bytes type)")
+        e = given.get("errors", mk("None", "", self.line, []))
+        if not (e.kind == "None" or (e.kind == "str" and e.s == "strict")):
+            self.err("open(errors=...) is not supported: files are UTF-8, and decoding errors are not checked")
+        e = given.get("encoding", mk("None", "", self.line, []))
+        if e.kind == "str" and e.s.lower().replace("-", "").replace("_", "") not in UTF8:
+            self.err(f"only UTF-8 and Latin-1 files are supported, not encoding='{e.s}'")
+        # every argument is evaluated in the order written, then the file is opened
+        vals: dict[str, str] = {"mode": self.sconst("r"), "buffering": "-1", "encoding": "null", "newline": "null"}
+        pos = 0
+        for a in args:
+            nm = a.s if a.kind == "kw" else names[pos]
+            if a.kind != "kw":
+                pos += 1
+            x = a.kids[0] if a.kind == "kw" else a
+            want = "int" if nm == "buffering" else "str"
+            v = self.expr(x, want)
+            if v.t == "None" and (nm == "encoding" or nm == "errors" or nm == "newline"):
+                continue
+            vals[nm] = self.coerce(v, want).v
+        return Val(self.rt("pys_open", "ptr", [f"ptr {vals['file']}", f"ptr {vals['mode']}", f"ptr {vals['encoding']}", f"ptr {vals['newline']}",
+                                               f"i64 {vals['buffering']}"]), "file")
 
     def method(self, o: Val, m: str, args: list[Node]) -> Val:
         if o.t in self.classes:
@@ -3436,6 +3571,8 @@ class Gen:
             return Val(self.rt("pys_argv", "ptr", []), "list[str]")
         if path == "sys.maxsize":
             return Val("9223372036854775807", "int")
+        if path == "sys.stdin" or path == "sys.stdout" or path == "sys.stderr":
+            return Val(self.rt("pys_std", "ptr", [f"i64 {0 if path == 'sys.stdin' else 1 if path == 'sys.stdout' else 2}"]), "file")
         if path == "math.pi":
             return Val(fbits("3.141592653589793"), "float")
         if path == "math.e":
@@ -3460,6 +3597,10 @@ class Gen:
         # builtins and module functions ("os.system"); most are one call listed in CALLS
         if name == "print":
             return self.print_(args)
+        if name == "open":
+            return self.open_(args)
+        if name == "map" or name == "filter":
+            self.err(f"{name}() is not supported; use a list comprehension")
         if (name == "any" or name == "all") and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
             return self.listcomp(args[0], "", name)
         npos = 0
@@ -3480,7 +3621,9 @@ class Gen:
         if npos == 1 and (name == "sorted" or name == "min" or name == "max" or name == "sum" or name == "any" or name == "all" or name == "list"):
             # these iterate their argument at once, so range(), reversed(), enumerate() and zip() may be it
             fresh = self.iterator_call(args[0])
-            vals = [self.as_list(self.consume(args[0], w), name)]
+            v0 = self.consume(args[0], w)
+            vals = [self.as_list(v0, name)]
+            self.close_temp(args[0], v0)
         else:
             vals = [self.expr(a, w) for a in args if a.kind != "kw"]
         rev = "0"
@@ -3493,6 +3636,8 @@ class Gen:
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
+        if name == "os.getenv" and len(vals) == 1:
+            self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
         if key not in CALLS and name.startswith("math."):
@@ -3637,6 +3782,8 @@ class Gen:
             return Val(r, f"list[{ts[0]}]")
         if v.t == "str" and (name == "sorted" or name == "min" or name == "max"):
             return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
+        if v.t == "file":
+            return Val(self.rt("pys_file_readlines", "ptr", [f"ptr {v.v}"]), "list[str]")
         return v
 
     def reverse_arg(self, n: Node, name: str) -> str:
@@ -3650,33 +3797,59 @@ class Gen:
         return Parser(Lexer(text, self.line).run()).test()
 
     def print_(self, args: list[Node]) -> Val:
+        # every argument is evaluated in the order written, then each is converted as it is
+        # written; sys.stdout and sys.stderr directly, any other file through its checks
         sep = self.sconst(" ")
         end = self.sconst("\n")
         fd = "1"
+        fv = ""
+        flush = ""
         vals: list[Val] = []
         for a in args:
             if a.kind != "kw":
                 vals.append(self.expr(a, ""))
-            elif a.s == "sep" or a.s == "end":
-                s = self.coerce(self.expr(a.kids[0], "str"), "str").v
-                if a.s == "sep":
-                    sep = s
-                else:
-                    end = s
+                continue
+            x = a.kids[0]
+            if a.s == "sep" or a.s == "end":
+                if x.kind != "None":
+                    sv = self.coerce(self.expr(x, "str"), "str").v
+                    if a.s == "sep":
+                        sep = sv
+                    else:
+                        end = sv
             elif a.s == "file":
-                p = self.dotted(a.kids[0])
-                if p != "sys.stdout" and p != "sys.stderr":
-                    self.err("print(file=...) supports only sys.stdout and sys.stderr")
-                fd = "2" if p == "sys.stderr" else "1"
-            elif a.s != "flush":
+                p = self.dotted(x)
+                if p == "sys.stdout" or p == "sys.stderr":
+                    fd = "2" if p == "sys.stderr" else "1"
+                elif x.kind != "None":
+                    v = self.expr(x, "file")
+                    if v.t != "file":
+                        self.err(f"print(file=...) needs a file, not {v.t}")
+                    fv = v.v
+            elif a.s == "flush":
+                flush = self.truth(self.expr(x, "bool"))
+            else:
                 self.err(f"print() got an unexpected keyword argument '{a.s}'")
         for i in range(len(vals)):
-            # every argument is evaluated first, then each is converted as it is written
             if i > 0:
-                self.rt("pys_write", "void", [f"ptr {sep}", f"i64 {fd}"])
-            self.rt("pys_write", "void", [f"ptr {self.to_str(vals[i]).v}", f"i64 {fd}"])
-        self.rt("pys_write", "void", [f"ptr {end}", f"i64 {fd}"])
-        return Val("", "None")
+                self.pwrite(fd, fv, sep)
+            self.pwrite(fd, fv, self.to_str(vals[i]).v)
+        self.pwrite(fd, fv, end)
+        if flush != "":
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(flush, l1, l2)
+            self.place(l1)
+            self.rt("pys_file_flush", "void", [f"ptr {fv if fv != '' else self.rt('pys_std', 'ptr', [f'i64 {fd}'])}"])
+            self.br(l2)
+            self.place(l2)
+        return Val("null", "None")
+
+    def pwrite(self, fd: str, fv: str, s: str) -> None:
+        if fv != "":
+            self.rt("pys_file_write", "i64", [f"ptr {fv}", f"ptr {s}"])
+        else:
+            self.rt("pys_write", "void", [f"ptr {s}", f"i64 {fd}"])
 
     def bmethod(self, o: Val, m: str, args: list[Node]) -> Val:
         if is_list(o.t) and m == "sort":
@@ -3893,7 +4066,7 @@ def main() -> None:
         # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
-        code = sh(f"{fast} {q(ll)} -o {q(bc)} && {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
+        code = sh(f"{fast} {q(ll)} -o {q(bc)} && PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
     for p in [ll, bc, rll, part]:
         if os.path.exists(p):
             os.remove(p)
