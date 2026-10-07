@@ -308,11 +308,11 @@ class Parser:
             out.append(mk("for", "", line, [t, it, self.block()]))
         elif k == "@":
             self.p += 1
-            name = self.expect("id").text
+            name = self.dotted_name()
             self.expect("nl")
             self.stmt(out)
             d = out[-1]
-            if name != "dataclass" or d.kind != "class":
+            if d.kind != "class":
                 fail(f"unsupported decorator @{name}", line)
             d.kids.append(mk("deco", name, line, []))
         elif k == "try" or k == "with" or k == "async":
@@ -341,16 +341,22 @@ class Parser:
         name = self.expect("id").text
         self.expect("(")
         params = mk("params", "", line, [])
+        seen: dict[str, bool] = {}
         while not self.eat(")"):
             if self.peek() == "*" or self.peek() == "**" or self.peek() == "/":
                 fail("*args, **kwargs and positional-only markers are not supported", line)
             pname = self.expect("id").text
+            if pname in seen:
+                fail(f"duplicate argument '{pname}' in function definition", line)
+            seen[pname] = True
             ann = mk("noann", "", line, [])
             dflt = mk("noann", "", line, [])
             if self.eat(":"):
                 ann = self.test()
             if self.eat("="):
                 dflt = self.test()
+            elif len(params.kids) > 0 and params.kids[-1].kids[1].kind != "noann":
+                fail("parameter without a default follows parameter with a default", line)
             params.kids.append(mk("param", pname, line, [ann, dflt]))
             if not self.eat(","):
                 self.expect(")")
@@ -722,7 +728,7 @@ class Parser:
                 e = Parser(Lexer(s[i + 1 : j], t.line).run()).test()
                 if s[j] == "!":
                     if s[j + 1 : j + 2] == "r":
-                        e = mk("call", "", t.line, [mk("name", "repr", t.line, []), e])
+                        e = mk("call", "", t.line, [mk("name", "__pys_repr", t.line, []), e])
                     j += 2
                 if s[j] == ":":
                     k = s.find("}", j)
@@ -773,6 +779,15 @@ for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fab
 MODULES: dict[str, bool] = {}
 for _k in "sys os os.path math tempfile typing dataclasses __future__".split():
     MODULES[_k] = True
+MODATTRS: dict[str, bool] = {}
+for _k in "sys.argv sys.maxsize sys.stdout sys.stderr math.pi math.e math.inf math.tau math.nan".split():
+    MODATTRS[_k] = True
+TYPING: dict[str, bool] = {}
+for _k in "List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Iterable Iterator Sequence Mapping Final ClassVar NamedTuple TypeVar Generic cast".split():
+    TYPING[_k] = True
+FUTURE: dict[str, bool] = {}
+for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
+    FUTURE[_k] = True
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
 DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float": "0.0", "str": '""', "bool": "False",
                             "list": "[]", "dict": "{}", "int(str)": "10", "open(str)": '"r"'}
@@ -982,6 +997,8 @@ class Gen:
         self.classes: dict[str, ClassInfo] = {}
         self.funcs: dict[str, FnInfo] = {}
         self.aliases: dict[str, str] = {}
+        self.imports: dict[str, str] = {}
+        self.fglobals: dict[str, bool] = {}
         self.gtypes: dict[str, str] = {}
         self.globs: list[str] = []
         self.gcroots: list[str] = []
@@ -1214,12 +1231,14 @@ class Gen:
             s = n.s
             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
                 return s
-            if s == "TextIO":
+            if self.typing_name(s) == "TextIO":
                 return "file"
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
             return self.opt(self.typeof(n.kids[0]))
         elif k == "index" and n.kids[0].kind == "name":
-            base = n.kids[0].s.lower()
+            base = n.kids[0].s
+            if base != "list" and base != "dict" and base != "tuple":
+                base = self.typing_name(base).lower()
             a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
             ts = [self.typeof(x) for x in a]
             if base == "list" and len(ts) == 1:
@@ -1235,6 +1254,17 @@ class Gen:
         self.err("unsupported type annotation")
         return ""
 
+    def typing_name(self, s: str) -> str:
+        # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
+        # evaluated (from __future__ import annotations)
+        if self.imported(s).startswith("typing."):
+            return self.imported(s)[7:]
+        if s in TYPING and "__future__.annotations" in self.imports.values():
+            return s
+        if s in TYPING:
+            self.err(f"name '{s}' is not defined (import it from typing)")
+        return ""
+
     def opt(self, t: str) -> str:
         if t not in self.classes:
             self.err(f"None/Optional is only supported for class types, not {t}")
@@ -1244,6 +1274,8 @@ class Gen:
         self.line = d.line
         f = FnInfo(d.s, f"@f.{d.s}" if cls == "" else f"@m.{cls}.{d.s}", d, cls)
         ps = d.kids[0].kids
+        if cls != "" and len(ps) == 0:
+            self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
         for i in range(len(ps)):
             p = ps[i]
             f.params.append(p.s)
@@ -1269,12 +1301,16 @@ class Gen:
 
     def declare_fields(self, ci: ClassInfo) -> None:
         noann = mk("noann", "", ci.node.line, [])
+        last = ""
         for st in ci.node.kids[0].kids:
             self.line = st.line
             if st.kind == "annassign" and st.kids[0].kind == "name":
                 self.add_field(ci, st.kids[0].s, self.typeof(st.kids[1]))
                 if len(st.kids) == 3:
                     ci.fdefault[st.kids[0].s] = st.kids[2]
+                    last = st.kids[0].s
+                elif last != "" and self.is_dc(ci.name):
+                    self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
                 self.err("a class body may only contain annotated fields and methods")
         if self.is_dc(ci.name):
@@ -1328,7 +1364,7 @@ class Gen:
             lit = ci.name + "("
             for i in range(len(ci.fields)):
                 parts.append(mk("str", lit + (", " if i > 0 else "") + ci.fields[i] + "=", line, []))
-                parts.append(mk("call", "", line, [mk("name", "repr", line, []), mk("attr", ci.fields[i], line, [me])]))
+                parts.append(mk("call", "", line, [mk("name", "__pys_repr", line, []), mk("attr", ci.fields[i], line, [me])]))
                 lit = ""
             parts.append(mk("str", lit + ")", line, []))
             self.synth(ci, "__repr__", "str", [mk("return", "", line, [mk("fstr", "", line, parts)])])
@@ -1444,7 +1480,7 @@ class Gen:
         if name in self.ltype:
             t = self.ltype[name]
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
-            if name == self.selfname:
+            if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
             return Val(r, t)
         if name in self.assigned and name not in self.gdecl:
@@ -1458,6 +1494,8 @@ class Gen:
             return self.modattr(self.aliases[name])
         if name in self.funcs:
             self.err(f"function '{name}' cannot be used as a value")
+        if name in self.fglobals:
+            self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level first ({name}: T)")
         self.err(f"name '{name}' is not defined")
         return Val("", "")
 
@@ -1641,16 +1679,28 @@ class Gen:
 
     def module(self, m: Node) -> str:
         top: list[Node] = []
+        self.scan_imports(m.kids)
         for st in m.kids:
             if st.kind == "class":
+                self.line = st.line
+                if st.s in self.classes:
+                    self.err(f"redefinition of class '{st.s}' is not supported")
                 self.classes[st.s] = ClassInfo(st.s, st)
+                if len(st.kids) > 1 and self.imported(st.kids[1].s) != "dataclasses.dataclass":
+                    self.err(f"unsupported decorator @{st.kids[1].s} (import dataclass from dataclasses)")
         for st in m.kids:
+            self.line = st.line
             if st.kind == "def":
+                if st.s in self.funcs or st.s in self.classes:
+                    self.err(f"redefinition of '{st.s}' is not supported")
                 self.funcs[st.s] = self.declare_fn(st, "")
                 top.append(mk("defaults", st.s, st.line, []))
             elif st.kind == "class":
                 for d in st.kids[0].kids:
                     if d.kind == "def":
+                        self.line = d.line
+                        if d.s in self.classes[st.s].methods:
+                            self.err(f"redefinition of method '{st.s}.{d.s}' is not supported")
                         self.classes[st.s].methods[d.s] = self.declare_fn(d, st.s)
                 top.append(mk("cdefaults", st.s, st.line, []))
             else:
@@ -1658,6 +1708,9 @@ class Gen:
         for ci in self.classes.values():
             self.declare_fields(ci)
         self.flow_program(top)
+        for nm in self.gflag:
+            if nm in self.funcs or nm in self.classes:
+                self.global_var(f"@g.{nm}.def", "i1")
         self.modlevel = True
         self.function(FnInfo("<module>", "@main.init", m, ""), top)
         self.modlevel = False
@@ -1728,7 +1781,21 @@ class Gen:
             self.collect(f.node.kids[2].kids, asg)
             for nm in decl:
                 if nm in asg:
+                    if nm not in gl:
+                        self.fglobals[nm] = True
                     gl[nm] = True
+        # one binding per name: a function, a class, an import or a variable
+        for nm in gl:
+            if nm in self.funcs or nm in self.classes or (nm in self.imports and not self.imports[nm].startswith("__future__")):
+                self.err(f"'{nm}' is bound both as a variable and as a function, class or import (not supported)")
+        for nm in self.imports:
+            if nm in self.funcs or nm in self.classes:
+                self.err(f"'{nm}' is bound both by an import and by a def or class (not supported)")
+        # def and class statements bind their names when they run: calls that may come first are checked
+        for nm in self.funcs:
+            gl[nm] = True
+        for nm in self.classes:
+            gl[nm] = True
         mfl = Flow(gl, {}, True)
         self.fl_stmts(mfl, top)
         self.gflag = mfl.marks
@@ -1772,8 +1839,12 @@ class Gen:
             if not self.is_dc(ci.name):
                 fl.exposed()
         else:
-            fl.me = init.params[0]
-            self.fl_stmts(fl, init.node.kids[2].kids)
+            asg: dict[str, bool] = {}
+            self.collect(init.node.kids[2].kids, asg)
+            if init.params[0] not in asg:
+                # (if __init__ rebinds self, no assignment is known to reach the new object)
+                fl.me = init.params[0]
+                self.fl_stmts(fl, init.node.kids[2].kids)
             fl.exposed()
         for f in ci.fields:
             if f in fl.unsafe:
@@ -1868,6 +1939,7 @@ class Gen:
         elif k == "defaults" or k == "cdefaults":
             for d in self.fl_defaults(n):
                 self.fl_expr(fl, d)
+            fl.defd[n.s] = True
         elif k == "expr" or k == "assert" or k == "del":
             for c in n.kids:
                 self.fl_expr(fl, c)
@@ -1905,10 +1977,14 @@ class Gen:
                     self.fl_expr(fl, e.kids[i])
             fl.defd = saved
         elif k == "call":
-            if e.kids[0].kind == "attr":
-                self.fl_expr(fl, e.kids[0].kids[0])
-            elif e.kids[0].kind != "name":
-                self.fl_expr(fl, e.kids[0])
+            c = e.kids[0]
+            if c.kind == "attr":
+                self.fl_expr(fl, c.kids[0])
+            elif c.kind != "name":
+                self.fl_expr(fl, c)
+            elif (c.s in self.funcs or c.s in self.classes) and c.s in fl.tracked and c.s not in fl.defd and " dead" not in fl.defd:
+                c.chk = True
+                fl.marks[c.s] = True
             for i in range(1, len(e.kids)):
                 self.fl_expr(fl, e.kids[i])
         else:
@@ -1930,7 +2006,7 @@ class Gen:
             msg = mk("str", f"'<' not supported between instances of '{c}' and '{c}'", line, [])
             lt_ = mk("raise", "", line, [mk("call", "", line, [mk("name", "TypeError", line, []), msg])])
         bodies = [mk("return", "", line, [mk("cmp", "==", line, [a, b])]), lt_ if lt_.kind == "raise" else mk("return", "", line, [lt_]),
-                  mk("return", "", line, [mk("call", "", line, [mk("name", "repr", line, []), a])])]
+                  mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])]
         ops = ["eq", "lt", "repr"]
         for i in range(3):
             f = FnInfo(ops[i], f"@o.{ops[i]}.{c}", self.classes[c].node, "")
@@ -1961,6 +2037,55 @@ class Gen:
         self.out.append("  unreachable")
         self.out.append("}")
 
+    def scan_imports(self, body: list[Node]) -> None:
+        # every import anywhere in the program, checked up front; the alias table that code
+        # generation uses is still filled statement by statement
+        for st in body:
+            self.line = st.line
+            if st.kind == "import":
+                for a in st.kids:
+                    self.check_import(a)
+                    self.imports[a.s] = a.kids[0].s
+            for k in st.kids:
+                if k.kind == "block":
+                    self.scan_imports(k.kids)
+            if st.kind == "def" or st.kind == "class":
+                self.scan_imports(st.kids[-1].kids if st.kind == "class" else st.kids[2].kids)
+
+    def imported(self, name: str) -> str:
+        # what an imported name (possibly dotted) refers to, or ""
+        root = name[: name.find(".")] if "." in name else name
+        return self.imports[root] + name[len(root) :] if root in self.imports else ""
+
+    def check_import(self, a: Node) -> None:
+        mod = a.kids[1].s
+        tgt = a.kids[0].s
+        if mod not in MODULES:
+            self.err(f"module '{mod}' is not supported (available: {', '.join(MODULES.keys())})")
+        if tgt == mod or tgt == mod[: mod.find(".")] or (tgt + ".") == mod[: len(tgt) + 1]:
+            return
+        x = tgt[len(mod) + 1 :]
+        if mod == "__future__":
+            if x not in FUTURE:
+                self.err(f"future feature {x} is not defined")
+        elif mod == "typing":
+            if x not in TYPING:
+                self.err(f"cannot import name '{x}' from 'typing'")
+        elif mod == "dataclasses":
+            if x != "dataclass":
+                self.err(f"dataclasses.{x} is not supported")
+        elif not self.known_path(tgt):
+            self.err(f"cannot import name '{x}' from '{mod}' (not supported by Pystachy)")
+
+    def known_path(self, p: str) -> bool:
+        # a module attribute Pystachy implements: a CALLS entry, a modattr() value or a module
+        if p in MODULES or p in MODATTRS:
+            return True
+        for k in CALLS:
+            if k.startswith(p + "(") or k.startswith(p + "."):
+                return True
+        return False
+
     def hidden(self, name: str, v: Val) -> str:
         # a compiler-made global, assigned here
         self.global_var(name, lt(v.t))
@@ -1977,21 +2102,41 @@ class Gen:
                 f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", self.coerce(self.expr(d, t), t))
 
     def hoist_class(self, ci: ClassInfo) -> None:
-        # class-body defaults are evaluated once, when the class statement runs, and shared
-        for fl in ci.fields:
-            if fl in ci.fdefault and not is_const(ci.fdefault[fl]) and fl not in ci.fglob:
-                t = ci.ftypes[fl]
-                self.line = ci.fdefault[fl].line
-                if self.is_dc(ci.name) and (is_list(t) or is_dict(t) or self.is_dc(t)):
-                    self.err(f"mutable default {t} for dataclass field '{fl}' is not allowed")
-                ci.fglob[fl] = self.hidden(f"@d.c.{ci.name}.{fl}", self.coerce(self.expr(ci.fdefault[fl], t), t))
+        # class-body defaults are evaluated once, when the class statement runs, in body order,
+        # and shared. Pystachy has no class scope: names bound earlier in the body are rejected.
+        bound: dict[str, bool] = {}
         init = ci.methods["__init__"]
-        for f in ci.methods.values():
-            if f.name != "__init__" or init.node.kids[0].kind != "noann":
-                self.hoist(f)
+        for st in ci.node.kids[0].kids:
+            self.line = st.line
+            if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
+                fl = st.kids[0].s
+                self.no_class_names(st.kids[2], bound, ci.name)
+                bound[fl] = True
+                t = ci.ftypes[fl]
+                if self.is_dc(ci.name) and not is_const(st.kids[2]) and (is_list(t) or is_dict(t) or self.is_dc(t) or self.unhashable(t)):
+                    self.err(f"mutable default {t} for dataclass field '{fl}' is not allowed")
+                if not is_const(st.kids[2]) and fl not in ci.fglob:
+                    ci.fglob[fl] = self.hidden(f"@d.c.{ci.name}.{fl}", self.coerce(self.expr(st.kids[2], t), t))
+            elif st.kind == "def":
+                f = ci.methods[st.s]
+                for d in f.defaults:
+                    self.no_class_names(d, bound, ci.name)
+                bound[st.s] = True
+                if f.name != "__init__" or init.node.kids[0].kind != "noann":
+                    self.hoist(f)
         if init.node.kids[0].kind == "noann":
             for j in range(1, len(init.params)):
                 init.dglob[j] = ci.fglob.get(init.params[j], "")
+
+    def no_class_names(self, e: Node, bound: dict[str, bool], cls: str) -> None:
+        if e.kind == "name" and e.s in bound:
+            self.err(f"class attribute '{e.s}' of '{cls}' used in a class-body default is not supported")
+        for k in e.kids:
+            self.no_class_names(k, bound, cls)
+
+    def unhashable(self, t: str) -> bool:
+        # a class that defines __eq__ without __hash__ has __hash__ = None in CPython
+        return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods
 
     def loop(self, body: list[Node], cont: str, brk: str) -> None:
         self.loops.append(cont)
@@ -2055,7 +2200,7 @@ class Gen:
             self.br(l1)
             self.place(l3)
         elif k == "for":
-            self.for_(n)
+            self.for_(n, [])
         elif k == "return":
             if self.modlevel:
                 self.err("'return' outside function")
@@ -2114,17 +2259,15 @@ class Gen:
                 self.lct[-1] = v.t
                 et = v.t
             self.rt("pys_list_append", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.coerce(v, et))])
-        elif k == "defaults":
-            self.hoist(self.funcs[n.s])
-        elif k == "cdefaults":
-            self.hoist_class(self.classes[n.s])
+        elif k == "defaults" or k == "cdefaults":
+            if k == "defaults":
+                self.hoist(self.funcs[n.s])
+            else:
+                self.hoist_class(self.classes[n.s])
+            if n.s in self.gflag:
+                self.emit(f"store i1 true, ptr @g.{n.s}.def")
         elif k == "import":
             for a in n.kids:
-                mod = a.kids[1].s
-                if mod not in MODULES:
-                    self.err(f"module '{mod}' is not supported (available: {', '.join(MODULES.keys())})")
-                if mod == "dataclasses" and a.kids[0].s != "dataclasses" and a.kids[0].s != "dataclasses.dataclass":
-                    self.err(f"{a.kids[0].s} is not supported")
                 self.aliases[a.s] = a.kids[0].s
         elif k == "def" or k == "class":
             self.err("nested functions and classes are not supported")
@@ -2167,7 +2310,14 @@ class Gen:
         else:
             self.err("invalid target for augmented assignment")
 
-    def for_(self, n: Node) -> None:
+    def hide(self, names: list[str]) -> None:
+        # comprehension variables shadow outer names once the iterable has been evaluated
+        for nm in names:
+            if nm in self.ltype:
+                del self.ltype[nm]
+            self.compvars[nm] = self.compvars.get(nm, 0) + 1
+
+    def for_(self, n: Node, hide: list[str]) -> None:
         tgt = n.kids[0]
         it = n.kids[1]
         body = n.kids[2].kids
@@ -2176,26 +2326,26 @@ class Gen:
             args = it.kids[1:]
             if fn == "range":
                 vs = self.range_args(args)
-                self.for_range(tgt, vs[0], vs[1], vs[2], body)
+                self.for_range(tgt, vs[0], vs[1], vs[2], body, hide)
                 return
             if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 1):
-                self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body, "0")
+                self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body, "0", hide)
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
                 seq = self.expr(args[0], "")
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-                self.for_seq(tgt, [seq], fn, body, self.coerce(self.expr(a1, "int"), "int").v)
+                self.for_seq(tgt, [seq], fn, body, self.coerce(self.expr(a1, "int"), "int").v, hide)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
             m = it.kids[0].s
             if m == "items" or m == "keys" or m == "values":
                 o = self.expr(it.kids[0].kids[0], "")
                 if is_dict(o.t):
-                    self.for_seq(tgt, [o], m, body, "0")
+                    self.for_seq(tgt, [o], m, body, "0", hide)
                 else:
-                    self.for_seq(tgt, [self.method(o, m, [])], "", body, "0")
+                    self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide)
                 return
-        self.for_seq(tgt, [self.expr(it, "")], "", body, "0")
+        self.for_seq(tgt, [self.expr(it, "")], "", body, "0", hide)
 
     def range_args(self, args: list[Node]) -> list[str]:
         vs: list[str] = []
@@ -2209,7 +2359,8 @@ class Gen:
             self.err("range() takes 1 to 3 arguments")
         return vs
 
-    def for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node]) -> None:
+    def for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str]) -> None:
+        self.hide(hide)
         if step.startswith("%") or int(step) == 0:
             self.guard(self.ins(f"icmp eq i64 {step}, 0"), "ValueError: range() arg 3 must not be zero")
         ctr = self.alloca("int", "")
@@ -2238,7 +2389,8 @@ class Gen:
         self.cbr(r[1], le, lc)
         self.place(le)
 
-    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str) -> None:
+    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str]) -> None:
+        self.hide(hide)
         # one indexed loop serves lists, strings, dicts, enumerate, zip and reversed
         ctr = self.alloca("int", "")
         self.emit(f"store i64 0, ptr {ctr}")
@@ -2487,16 +2639,13 @@ class Gen:
         saved: list[str] = []
         for nm in names:
             saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
-            if nm in self.ltype:
-                del self.ltype[nm]
-            self.compvars[nm] = self.compvars.get(nm, 0) + 1
         app = mk("lcappend", "", n.line, [n.kids[0]])
         body = [app]
         if len(n.kids) == 4:
             body = [mk("if", "", n.line, [n.kids[3], mk("block", "", n.line, [app]), mk("block", "", n.line, [])])]
         self.lcs.append(res)
         self.lct.append(elem(want) if is_list(want) else "")
-        self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]))
+        self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names)
         et = self.lct.pop()
         self.lcs.pop()
         for i in range(len(names)):
@@ -2734,6 +2883,10 @@ class Gen:
         f = n.kids[0]
         args = n.kids[1:]
         if f.kind == "name" and f.s not in self.ltype:
+            if f.chk and f.s in self.gflag:
+                # a call that may run before the def or class statement
+                bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{f.s}.def')}, true")
+                self.guard(bad, f"NameError: name '{f.s}' is not defined")
             if f.s in self.funcs:
                 return self.call_fn(self.funcs[f.s], [], args)
             if f.s in self.aliases and f.s not in self.gtypes:
@@ -2821,10 +2974,17 @@ class Gen:
             return Val(fbits("2.718281828459045"), "float")
         if path == "math.inf":
             return Val(fbits("inf"), "float")
+        if path == "math.tau":
+            return Val(fbits("6.283185307179586"), "float")
+        if path == "math.nan":
+            return Val("0x7FF8000000000000", "float")
         self.err(f"unsupported module attribute {path}")
         return Val("", "")
 
     def builtin(self, name: str, args: list[Node], want: str) -> Val:
+        if name == "__pys_repr" or name == "__pys_str":
+            # compiler-written calls (f"{x!r}", dataclass __repr__): always the builtin
+            name = name[6:]
         # builtins and module functions ("os.system"); most are one call listed in CALLS
         if name == "print":
             return self.print_(args)

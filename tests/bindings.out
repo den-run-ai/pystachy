@@ -1,0 +1,7 @@
+eval a
+eval ff
+eval bbb
+6 2 Pair(a=1, b=2) Single(v=5)
+['p!', 'q!'] [[], [0], [0, 1]] 1 2 3
+Pair(a=3, b=4) 7 user repr outer
+[exit 0]
