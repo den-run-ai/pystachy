@@ -1,0 +1,5 @@
+5.0 3.14159 2 3 2.718281828459045
+3 ['a1', 'a2'] True False
+Node(val=1, nxt=Node(val=2, nxt=None)) {'a': 1}
+done
+[exit 3]

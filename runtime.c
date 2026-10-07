@@ -71,6 +71,7 @@ Str *pys_str_add(Str *a, Str *b) {
 }
 Str *pys_str_mul(Str *a, I n) {
   if (n < 0) n = 0;
+  if (n && a->len > (INT64_MAX - 64) / n) pys_fail("OverflowError: repeated string is too long");
   Str *s = pys_alloc(sizeof(Str) + a->len * n + 1); s->len = a->len * n;
   for (I i = 0; i < n; i++) memcpy(s->s + i * a->len, a->s, a->len);
   return s;
@@ -207,11 +208,13 @@ double pys_float_str(Str *s) {
   return v;
 }
 
-/* ---------- arithmetic with Python semantics ---------- */
+/* ---------- arithmetic with Python semantics ----------
+   ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
 #define ZDE "ZeroDivisionError: division by zero"
+#define OVF "OverflowError: integer result does not fit in 64 bits"
 I pys_floordiv(I a, I b) {
   if (!b) pys_fail(ZDE);
-  if (b == -1) return (I)(0 - (uint64_t)a);
+  if (b == -1) { if (a == INT64_MIN) pys_fail(OVF); return -a; }
   I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
 }
 I pys_mod(I a, I b) {
@@ -221,11 +224,22 @@ I pys_mod(I a, I b) {
 }
 I pys_pow(I a, I b) {
   if (b < 0) pys_fail("ValueError: negative exponent for int ** int");
-  uint64_t r = 1, x = (uint64_t)a;
-  for (; b; b >>= 1) { if (b & 1) r *= x; x *= x; }
-  return (I)r;
+  I r = 1, x = a;
+  if (a == 0 || a == 1) return b ? a : 1;
+  if (a == -1) return b & 1 ? -1 : 1;
+  for (;;) {                                   /* |a| >= 2, so overflow comes within 63 steps */
+    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) pys_fail(OVF);
+    if (!(b >>= 1)) return r;
+    if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
+  }
 }
-I pys_shl(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return b > 63 ? 0 : (I)((uint64_t)a << b); }
+I pys_shl(I a, I b) {
+  if (b < 0) pys_fail("ValueError: negative shift count");
+  if (!a) return 0;
+  I r = b > 63 ? 0 : (I)((uint64_t)a << b);
+  if (b > 63 || r >> b != a) pys_fail(OVF);
+  return r;
+}
 I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
 double pys_fdiv(double a, double b) { if (b == 0) pys_fail(ZDE); return a / b; }
 static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
@@ -238,10 +252,27 @@ double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail(ZDE); retur
 double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail(ZDE); pymod(a, b, &q); return q; }
 I pys_f2i(double d) {
   if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
+  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
   if (!(d >= -9223372036854775808.0 && d < 9223372036854775808.0)) pys_fail("OverflowError: float too large for a 64-bit int");
   return (I)d;
 }
 I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
+  static char b[1500], o[1500];
+  if (!isfinite(x) || n > 400) return x;
+  if (n >= 0) { snprintf(b, sizeof b, "%.*f", (int)n, x); return strtod(b, 0); }
+  int k = n < -400 ? 400 : (int)-n, len = snprintf(b, sizeof b, "%.1080f", fabs(x));
+  int h = (int)(strchr(b, '.') - b) - k, up = 0, m = h;   /* keep h integer digits, drop k */
+  if (h < 0) return copysign(0.0, x);
+  if (b[h] != '5') up = b[h] > '5';
+  else { up = -1; for (int i = h + 1; i < len; i++) if (b[i] > '0') { up = 1; break; } }
+  memcpy(o, b, h);
+  if (up < 0) up = h > 0 && (o[h - 1] - '0') % 2;          /* exact tie: round half to even */
+  if (up) { int i = m - 1; while (i >= 0 && o[i] == '9') o[i--] = '0'; if (i >= 0) o[i]++; else { memmove(o + 1, o, m); o[0] = '1'; m++; } }
+  if (!m) o[m++] = '0';
+  memset(o + m, '0', k); o[m + k] = 0;
+  return copysign(strtod(o, 0), x);
+}
 I pys_floor(double d) { return pys_f2i(floor(d)); }
 I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
@@ -381,7 +412,9 @@ List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
 void pys_list_clear(List *l) { l->len = 0; }
 List *pys_list_add(List *a, List *b) { List *r = pys_list_new(a->len + b->len); pys_list_extend(r, a); pys_list_extend(r, b); return r; }
 List *pys_list_mul(List *a, I n) {
-  I m = a->len; List *r = pys_list_new(n > 0 ? m * n : 0);
+  I m = a->len;
+  if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  List *r = pys_list_new(n > 0 ? m * n : 0);
   for (I i = 0; i < n; i++) memcpy(r->a + i * m, a->a, m * 8);
   r->len = n > 0 ? m * n : 0; return r;
 }
@@ -407,12 +440,12 @@ I pys_list_minmax(List *l, Str *d, I max) {
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
-I pys_sum_int(List *l) { uint64_t s = 0; for (I i = 0; i < l->len; i++) s += (uint64_t)l->a[i]; return (I)s; }
+I pys_sum_int(List *l) { I s = 0; for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
 double pys_sum_float(List *l) { double s = 0; for (I i = 0; i < l->len; i++) s += dbl(l->a[i]); return s; }
 List *pys_range_list(I a, I b, I s) {
   List *l = pys_list_new(0);
   if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  for (I i = a; s > 0 ? i < b : i > b; i += s) pys_list_append(l, i);
+  for (I i = a; s > 0 ? i < b : i > b;) { pys_list_append(l, i); if (__builtin_add_overflow(i, s, &i)) break; }
   return l;
 }
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
