@@ -1,0 +1,13 @@
+3 2 (-4, 3)
+2 1
+(1, 'two', 3.0, True) 1 two True 4 (5,) True True True
+[(1, 'Z'), (1, 'a'), (2, 'b'), (3, 'c')] (1, 'Z') True
+1 Z, 1 a, 2 b, 3 c, 
+Vec(1.5, 2.5) Vec(3.0, 5.0) Vec(-1.5, -2.5) Vec(0.75, 1.25) 1.5
+5 55 [25, 16, 9, 4, 1] True 16
+True 0 [] 0
+['pen', 'book', 'mug'] 30.25 3
+5 5 True False True
+12 [0, 3, 6, 9] 6
+Item(name='pen', price=1.5, qty=5) True True Item(name='z', price=0.5, qty=1)
+[exit 0]

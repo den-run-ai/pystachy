@@ -1,0 +1,13 @@
+[10, 7, 4, 1] 26 ['negative', 'zero', 'odd', 'even'] 111
+0 1 0 2 1 0 1 2 2 0 2 1 
+101
+5 5 0 0 default set [0]
+True False True False True True
+2 yes 8
+True True False
+2318
+1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz
+5 4
+20 -1
+main block True
+[exit 0]

@@ -1,0 +1,6 @@
+'line 0\nline 1\nline 2\n' 4
+'line 0\n' 'line 1\n'
+False ['a1', 'a2']
+name? hello Ada, next year 37; THE END
+written directly
+[exit 3]
