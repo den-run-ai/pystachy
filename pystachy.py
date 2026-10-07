@@ -3664,11 +3664,14 @@ def main() -> None:
     bc = tmp + "/prog.bc"
     rll = tmp + "/runtime.ll"
     part = f"{rtb}.{os.getpid()}"  # renamed over the cache only once complete
+    rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
     f = open(ll, "w", encoding="latin-1")
     f.write(ir)
     f.close()
     msg = ""
     code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
+    if code == 0 and cmd == "run":
+        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} && mv -f {q(part)} {q(rto)})")
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
     if code != 0:
         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
@@ -3678,9 +3681,10 @@ def main() -> None:
             out = SRC[:-3] if SRC.endswith(".py") else SRC + ".exe"
         code = sh(f"{link} && {llvm}clang -O2 {q(bc)} -o {q(out)} -lm{cflags}")
     else:
-        # JIT tier: cheap SSA cleanup, then LLVM's ORC JIT compiles for the host CPU
+        # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
+        # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
-        code = sh(f"{link} && {fast} {q(bc)} -o {q(bc)} && {llvm}lli {q(bc)} {' '.join([q(a) for a in rest])}")
+        code = sh(f"{fast} {q(ll)} -o {q(bc)} && {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
     for p in [ll, bc, rll, part]:
         if os.path.exists(p):
             os.remove(p)

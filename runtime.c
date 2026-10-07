@@ -1140,13 +1140,14 @@ Str *pys_format(I v, Str *desc, Str *spec) {
     put(&o, t + ip, n - ip);
   }
   if (!align) align = numeric ? '>' : '<';
-  I len = ulen(o.p ? o.p : "", o.n);
-  if (len >= width) return pys_str(o.p ? o.p : "", o.n);
+  const char *body = o.p ? o.p : "";          /* an empty body leaves o.p NULL */
+  I len = ulen(body, o.n);
+  if (len >= width) return pys_str(body, o.n);
   I gap = width - len, left = align == '<' ? 0 : align == '^' ? gap / 2 : align == '=' ? 0 : gap;
   Buf r = {0};
-  if (align == '=') put(&r, o.p, pre);
+  if (align == '=') put(&r, body, pre);
   for (I i = 0; i < (align == '=' ? gap : left); i++) put(&r, fill, fl);
-  put(&r, o.p + (align == '=' ? pre : 0), o.n - (align == '=' ? pre : 0));
+  put(&r, body + (align == '=' ? pre : 0), o.n - (align == '=' ? pre : 0));
   for (I i = 0; i < (align == '=' ? 0 : gap - left); i++) put(&r, fill, fl);
   return pys_str(r.p, r.n);
 }
