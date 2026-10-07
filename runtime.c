@@ -313,7 +313,26 @@ Str *pys_chr(I c) {
   if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
   return ch1[c];
 }
-I pys_ord(Str *s) { if (s->len != 1) pys_fail("TypeError: ord() expected a character"); return (unsigned char)s->s[0]; }
+I pys_ord(Str *s) {
+  if (s->len != 1) {
+    char b[96]; snprintf(b, 96, "TypeError: ord() expected a character, but string of length %lld found", (long long)s->len); pys_fail(b);
+  }
+  return (unsigned char)s->s[0];
+}
+Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
+  Buf b = {0}; char t[16];
+  for (I i = 0; i < r->len;) {
+    unsigned char c = r->s[i]; I n = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1, cp = c;
+    if (c < 128) { put(&b, (char *)&c, 1); i++; continue; }
+    if (n > 1 && i + n <= r->len) {          /* a UTF-8 sequence; anything else is a lone byte */
+      cp = c & (0x7F >> n);
+      for (I k = 1; k < n; k++) { if ((r->s[i + k] & 0xC0) != 0x80) { n = 1; cp = c; break; } cp = cp << 6 | (r->s[i + k] & 0x3F); }
+    } else n = 1;
+    put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
+    i += n;
+  }
+  return pys_str(b.p, b.n);
+}
 static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
 static void span(I *lo, I *hi, I n) {
   if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
@@ -327,7 +346,7 @@ Str *pys_str_add(Str *a, Str *b) {
   s->len = a->len + b->len; memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
 }
 Str *pys_str_mul(Str *a, I n) {
-  if (n < 0) n = 0;
+  if (n < 0 || !a->len) n = 0;
   if (n && a->len > (INT64_MAX - 64) / n) pys_fail("OverflowError: repeated string is too long");
   Str *s = pys_alloc_atomic(sizeof(Str) + a->len * n + 1); s->len = a->len * n;
   for (I i = 0; i < n; i++) memcpy(s->s + i * a->len, a->s, a->len);
@@ -667,6 +686,14 @@ static int opv(I a, I b, const char *d, I op) {
 }
 I pys_cmpop(I a, I b, Str *d, I op) { return opv(a, b, d->s, op); }
 
+void pys_unpack_check(I have, I want) {
+  char b[96];
+  if (have < want) snprintf(b, 96, "ValueError: not enough values to unpack (expected %lld, got %lld)", (long long)want, (long long)have);
+  else if (have > want) snprintf(b, 96, "ValueError: too many values to unpack (expected %lld)", (long long)want);
+  else return;
+  pys_fail(b);
+}
+
 /* ---------- lists ---------- */
 List *pys_list_new(I cap) {
   List *l = pys_alloc(sizeof(List));
@@ -712,6 +739,7 @@ void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
 }
 List *pys_list_mul(List *a, I n) {
   I m = a->len;
+  if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   List *r = pys_list_new(n > 0 ? m * n : 0);
   for (I i = 0; i < n; i++) memcpy(r->a + i * m, a->a, m * 8);

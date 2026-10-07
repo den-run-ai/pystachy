@@ -25,6 +25,58 @@ OPS: list[str] = "**= //= >>= <<= -> ** // == != <= >= += -= *= /= %= &= |= ^= <
 ESCAPES: dict[str, str] = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", "'": "'", '"': '"', "a": "\a", "b": "\b", "f": "\f", "v": "\v"}
 
 
+def utf8(c: int) -> str:
+    # the UTF-8 bytes of code point c, one character per byte (strings are byte strings)
+    if c < 128:
+        return chr(c)
+    if c < 2048:
+        return chr(192 | (c >> 6)) + chr(128 | (c & 63))
+    if c < 65536:
+        return chr(224 | (c >> 12)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
+    return chr(240 | (c >> 18)) + chr(128 | ((c >> 12) & 63)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
+
+
+def unescape(s: str, line: int) -> str:
+    # decode the backslash escapes of a string literal's source text
+    out: list[str] = []
+    i = 0
+    n = len(s)
+    while i < n:
+        c = s[i]
+        if c != "\\" or i + 1 >= n:
+            out.append(c)
+            i += 1
+            continue
+        e = s[i + 1]
+        i += 2
+        if e == "\n":
+            continue
+        if e == "x" or e == "u" or e == "U":
+            k = 2 if e == "x" else (4 if e == "u" else 8)
+            h = s[i : i + k]
+            for d in h:
+                if d not in "0123456789abcdefABCDEF":
+                    fail(f"truncated \\{e} escape in string literal", line)
+            if len(h) != k or int(h, 16) > 1114111:
+                fail(f"invalid \\{e} escape in string literal", line)
+            out.append(utf8(int(h, 16)))
+            i += k
+        elif e >= "0" and e <= "7":
+            v = ord(e) - 48
+            for _ in range(2):
+                if i < n and s[i] >= "0" and s[i] <= "7":
+                    v = v * 8 + ord(s[i]) - 48
+                    i += 1
+            out.append(utf8(v))
+        elif e == "N":
+            fail("\\N{...} escapes are not supported", line)
+        elif e in ESCAPES:
+            out.append(ESCAPES[e])
+        else:
+            out.append("\\" + e)
+    return "".join(out)
+
+
 class Tok:
     def __init__(self, kind: str, text: str, line: int):
         self.kind = kind
@@ -161,41 +213,31 @@ class Lexer:
         line = self.line
         triple = src.startswith(q + q + q, self.i)
         self.i += 3 if triple else 1
-        out: list[str] = []
+        start = self.i
         while True:
             if self.i >= len(src):
                 fail("unterminated string", line)
             c = src[self.i]
             if c == q and (not triple or src.startswith(q + q + q, self.i)):
-                self.i += 3 if triple else 1
                 break
             if c == "\n":
                 if not triple:
                     fail("unterminated string", line)
                 self.line += 1
-            if c == "\\" and "r" not in prefix:
-                e = src[self.i + 1]
-                self.i += 2
-                if e == "\n":
+            if c == "\\":
+                # an escaped character never ends the literal, even in a raw string
+                if src[self.i + 1 : self.i + 2] == "\n":
                     self.line += 1
-                elif e == "x":
-                    out.append(chr(int(src[self.i : self.i + 2], 16)))
-                    self.i += 2
-                elif e >= "0" and e <= "7":
-                    v = ord(e) - 48
-                    for _ in range(2):
-                        if self.i < len(src) and src[self.i] >= "0" and src[self.i] <= "7":
-                            v = v * 8 + ord(src[self.i]) - 48
-                            self.i += 1
-                    out.append(chr(v & 255))
-                elif e in ESCAPES:
-                    out.append(ESCAPES[e])
-                else:
-                    out.append("\\" + e)
+                self.i += 2
                 continue
-            out.append(c)
             self.i += 1
-        self.toks.append(Tok("fstr" if "f" in prefix else "str", "".join(out), line))
+        text = src[start : self.i]
+        self.i += 3 if triple else 1
+        if "f" in prefix:
+            # decoded later, piece by piece, so escapes never turn into replacement fields
+            self.toks.append(Tok("rfstr" if "r" in prefix else "fstr", text, line))
+        else:
+            self.toks.append(Tok("str", text if "r" in prefix else unescape(text, line), line))
 
     def op(self) -> None:
         for o in OPS:
@@ -223,7 +265,7 @@ def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
 
 
 STARTS: dict[str, bool] = {}
-for _k in "id int float str fstr ( [ { - + ~ not None True False lambda".split():
+for _k in "id int float str fstr rfstr ( [ { - + ~ not None True False lambda".split():
     STARTS[_k] = True
 CMPOPS: dict[str, bool] = {"<": True, ">": True, "==": True, ">=": True, "<=": True, "!=": True, "in": True}
 AUGOPS: dict[str, bool] = {}
@@ -602,7 +644,7 @@ class Parser:
                     lo = self.test()
                 if self.eat(":"):
                     hi = mk("omit", "", line, [])
-                    if self.peek() != "]":
+                    if self.peek() != "]" and self.peek() != ":":
                         hi = self.test()
                     if self.peek() == ":":
                         fail("slice steps are not supported", line)
@@ -641,14 +683,25 @@ class Parser:
             return mk("name", t.text, line, [])
         if k == "int" or k == "float":
             return mk(k, t.text, line, [])
-        if k == "str":
-            s = t.text
-            while self.peek() == "str":
-                s = s + self.toks[self.p].text
+        if k == "str" or k == "fstr" or k == "rfstr":
+            # adjacent literals concatenate; any f-string among them makes the whole an f-string
+            parts: list[Tok] = [t]
+            while self.peek() == "str" or self.peek() == "fstr" or self.peek() == "rfstr":
+                parts.append(self.toks[self.p])
                 self.p += 1
-            return mk("str", s, line, [])
-        if k == "fstr":
-            return self.fstring(t)
+            n = mk("fstr", "", line, [])
+            for pt in parts:
+                if pt.kind == "str":
+                    n.kids.append(mk("str", pt.text, pt.line, []))
+                else:
+                    self.fparts(pt.text, pt.kind == "rfstr", pt.line, n)
+            plain = True
+            for kd in n.kids:
+                if kd.kind != "str":
+                    plain = False
+            if plain:
+                return mk("str", "".join([kd.s for kd in n.kids]), line, [])
+            return n
         if k == "None" or k == "True" or k == "False":
             return mk(k, "", line, [])
         if k == "(":
@@ -697,9 +750,9 @@ class Parser:
         fail(f"unexpected '{t.text or k}'", line)
         return mk("omit", "", line, [])
 
-    def fstring(self, t: Tok) -> Node:
-        s = t.text
-        n = mk("fstr", "", t.line, [])
+    def fparts(self, s: str, raw: bool, line: int, n: Node) -> None:
+        # the parts of an f-string body (or of a format spec with nested fields), appended to n:
+        # literal text as str nodes, each replacement field as fmt(expression, spec)
         lit: list[str] = []
         i = 0
         while i < len(s):
@@ -707,43 +760,80 @@ class Parser:
             if (c == "{" or c == "}") and s[i + 1 : i + 2] == c:
                 lit.append(c)
                 i += 2
+            elif c == "}":
+                fail("f-string: single '}' is not allowed", line)
             elif c == "{":
+                # the expression ends at a top-level '}', ':' or '!' (but not '!=')
                 j = i + 1
                 depth = 0
                 while j < len(s) and (depth > 0 or not (s[j] == "}" or s[j] == ":" or (s[j] == "!" and s[j + 1 : j + 2] != "="))):
                     if s[j] == "'" or s[j] == '"':
                         j = s.find(s[j], j + 1)
                         if j < 0:
-                            fail("bad f-string", t.line)
+                            fail("f-string: unterminated string", line)
                     elif s[j] == "(" or s[j] == "[" or s[j] == "{":
                         depth += 1
                     elif s[j] == ")" or s[j] == "]" or s[j] == "}":
                         depth -= 1
                     j += 1
                 if j >= len(s):
-                    fail("unterminated '{' in f-string", t.line)
-                if len(lit) > 0:
-                    n.kids.append(mk("str", "".join(lit), t.line, []))
-                    lit = []
-                e = Parser(Lexer(s[i + 1 : j], t.line).run()).test()
+                    fail("f-string: expecting '}'", line)
+                self.flush(lit, raw, line, n)
+                lit = []
+                text = s[i + 1 : j]
+                src = text.rstrip()
+                selfdoc = src.endswith("=") and not (src.endswith("==") or src.endswith("!=") or src.endswith("<=") or src.endswith(">="))
+                if selfdoc:
+                    # f"{x=}" prints the expression's text, then its value
+                    n.kids.append(mk("str", text, line, []))
+                    src = src[:-1]
+                if src.strip() == "":
+                    fail("f-string: valid expression required before '}'", line)
+                sub = Parser(Lexer(src.strip(), line).run())
+                e = sub.test()
+                if sub.peek() != "nl" and sub.peek() != "eof":
+                    fail("f-string: invalid syntax", line)
+                conv = ""
                 if s[j] == "!":
-                    if s[j + 1 : j + 2] == "r":
-                        e = mk("call", "", t.line, [mk("name", "__pys_repr", t.line, []), e])
+                    conv = s[j + 1 : j + 2]
+                    if conv != "r" and conv != "s" and conv != "a":
+                        fail(f"f-string: invalid conversion character '{conv}': expected 's', 'r', or 'a'", line)
                     j += 2
-                if s[j] == ":":
-                    k = s.find("}", j)
-                    if k < 0:
-                        fail("unterminated '{' in f-string", t.line)
-                    e = mk("fmt", s[j + 1 : k], t.line, [e])
+                spec = mk("str", "", line, [])
+                if j < len(s) and s[j] == ":":
+                    # the spec runs to the matching '}' and may hold nested fields: {x:>{w}}
+                    k = j + 1
+                    depth = 0
+                    while k < len(s) and (depth > 0 or s[k] != "}"):
+                        if s[k] == "{":
+                            depth += 1
+                        elif s[k] == "}":
+                            depth -= 1
+                        k += 1
+                    st = s[j + 1 : k]
+                    if "{" in st:
+                        spec = mk("fstr", "", line, [])
+                        self.fparts(st, raw, line, spec)
+                    else:
+                        spec = mk("str", st if raw else unescape(st, line), line, [])
                     j = k
-                n.kids.append(e)
+                if j >= len(s) or s[j] != "}":
+                    fail("f-string: expecting '}'", line)
+                if selfdoc and conv == "" and (spec.kind != "str" or spec.s == ""):
+                    conv = "r"
+                if conv != "":
+                    fn = "__pys_repr" if conv == "r" else ("__pys_str" if conv == "s" else "__pys_ascii")
+                    e = mk("call", "", line, [mk("name", fn, line, []), e])
+                n.kids.append(mk("fmt", "", line, [e, spec]))
                 i = j + 1
             else:
                 lit.append(c)
                 i += 1
+        self.flush(lit, raw, line, n)
+
+    def flush(self, lit: list[str], raw: bool, line: int, n: Node) -> None:
         if len(lit) > 0:
-            n.kids.append(mk("str", "".join(lit), t.line, []))
-        return n
+            n.kids.append(mk("str", "".join(lit) if raw else unescape("".join(lit), line), line, []))
 
 
 # ---------------------------------------------------------------- types
@@ -1628,6 +1718,14 @@ class Gen:
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))])
             else:
                 self.err(f"'{o.t}' does not support item assignment")
+        elif k == "tuple" and (is_list(v.t) or v.t == "str"):
+            # a, b = xs: the length is checked when it runs, as CPython does
+            self.rt("pys_unpack_check", "void", [f"i64 {self.ins(f'load i64, ptr {v.v}')}", f"i64 {len(t.kids)}"])
+            for i in range(len(t.kids)):
+                if v.t == "str":
+                    self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
+                else:
+                    self.assign(t.kids[i], self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
         elif k == "tuple":
             if not is_tuple(v.t) or len(targs(v.t)) != len(t.kids):
                 self.err(f"cannot unpack {v.t} into {len(t.kids)} targets")
@@ -2592,7 +2690,16 @@ class Gen:
             o = self.expr(n.kids[0], "")
             bnd: list[str] = []
             for x in n.kids[1:]:
-                bnd.append("-9223372036854775808" if x.kind == "omit" else self.coerce(self.expr(x, "int"), "int").v)
+                if x.kind == "omit":
+                    bnd.append("-9223372036854775808")  # the runtime's "omitted" marker
+                else:
+                    # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
+                    bd = self.coerce(self.expr(x, "int"), "int").v
+                    if bd.startswith("%"):
+                        bd = self.ins(f"select i1 {self.ins(f'icmp eq i64 {bd}, -9223372036854775808')}, i64 -9223372036854775807, i64 {bd}")
+                    elif bd == "-9223372036854775808":
+                        bd = "-9223372036854775807"
+                    bnd.append(bd)
             if o.t != "str" and not is_list(o.t):
                 self.err(f"'{o.t}' cannot be sliced")
             fn = "pys_str_slice" if o.t == "str" else "pys_list_slice"
@@ -2651,20 +2758,42 @@ class Gen:
             acc = Val(self.sconst(""), "str")
             for i in range(len(n.kids)):
                 part = n.kids[i]
-                if part.kind == "fmt" and part.s == "":
-                    s = self.to_str(self.expr(part.kids[0], ""))
-                elif part.kind == "fmt":
-                    v = self.expr(part.kids[0], "")
-                    if not self.isnum(v.t) and v.t != "str":
-                        self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
-                    d = self.sconst(self.desc(v.t))
-                    s = Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {self.sconst(part.s)}"]), "str")
+                if part.kind == "fmt":
+                    s = self.format_(self.expr(part.kids[0], ""), part.kids[1])
+                elif part.kind == "str":
+                    s = Val(self.sconst(part.s), "str")
                 else:
-                    s = self.to_str(self.expr(part, ""))
+                    s = self.to_str(self.expr(part, ""))  # compiler-written parts (dataclass __repr__)
                 acc = s if i == 0 else Val(self.rt("pys_str_add", "ptr", [f"ptr {acc.v}", f"ptr {s.v}"]), "str")
             return acc
         self.err(f"unsupported expression '{k}'")
         return Val("", "")
+
+    def format_(self, v: Val, spec: Node) -> Val:
+        # format(v, spec), as an f-string field computes it; spec is a str or an f-string node
+        empty = spec.kind == "str" and spec.s == ""
+        if v.t in self.classes and "__format__" in self.classes[v.t].methods:
+            sv = self.expr(spec, "str")
+            if v.v not in self.nn:
+                # None's own __format__ accepts only an empty spec
+                self.guard(self.ins(f"icmp eq ptr {v.v}, null"), "TypeError: unsupported format string passed to NoneType.__format__")
+            return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
+        if empty or v.t == "None":
+            if not empty and spec.kind == "str":
+                self.err("unsupported format string passed to NoneType.__format__")
+            return self.to_str(v)
+        if v.t in self.classes or v.t == "file":
+            if spec.kind == "str":
+                self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
+            # a computed spec: str(v) when it turns out empty, TypeError otherwise
+            sv = self.expr(spec, "str")
+            self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), f"TypeError: unsupported format string passed to {tname(v.t)}.__format__")
+            return self.to_str(v)
+        if spec.kind == "str" and not self.isnum(v.t) and v.t != "str":
+            self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
+        sv = self.expr(spec, "str")
+        d = self.sconst(self.desc(v.t))
+        return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
 
     def tuple_(self, vals: list[Val]) -> Val:
         p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
@@ -3154,7 +3283,7 @@ class Gen:
             o = self.expr(args[0], "")
             r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])
             return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if name.endswith("enter") else Val("", "None")
-        if name == "__pys_repr" or name == "__pys_str":
+        if name == "__pys_repr" or name == "__pys_str" or name == "__pys_ascii":
             # compiler-written calls (f"{x!r}", dataclass __repr__): always the builtin
             name = name[6:]
         # builtins and module functions ("os.system"); most are one call listed in CALLS
@@ -3199,6 +3328,8 @@ class Gen:
             return self.to_str(v)
         elif name == "repr":
             return self.repr(v)
+        elif name == "ascii":
+            return Val(self.rt("pys_ascii", "ptr", [f"ptr {self.repr(v).v}"]), "str")
         elif name == "bool":
             return Val(self.truth(v), "bool")
         elif name == "int" and (t == "int" or t == "bool"):
