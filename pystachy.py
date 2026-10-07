@@ -931,7 +931,7 @@ DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float":
 # type descriptor; T: list element, K/V: dict key/value, S: the receiver's own type.
 # Each maps to the C function pys_<type>_<method>.
 METHODS: dict[str, str] = {
-    "str.join": "str:list[str]", "str.split": "list[str]:str=null", "str.strip": "str:str=null",
+    "str.join": "str:list[str]", "str.split": "list[str]:str=null,int=-1", "str.strip": "str:str=null",
     "str.lstrip": "str:str=null", "str.rstrip": "str:str=null", "str.startswith": "bool:str,int=0",
     "str.endswith": "bool:str", "str.find": "int:str,int=0", "str.rfind": "int:str", "str.index": "int:str",
     "str.count": "int:str", "str.replace": "str:str,str", "str.upper": "str:", "str.lower": "str:",
@@ -3489,6 +3489,9 @@ class Gen:
         return Val("", "None")
 
     def bmethod(self, o: Val, m: str, args: list[Node]) -> Val:
+        for a in args:
+            if a.kind == "kw":
+                self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
         base = o.t
         T = ""
         K = ""

@@ -1,6 +1,7 @@
-/* Pystachy runtime: strings, lists, dicts, printing and I/O.
-   Compiled to LLVM bitcode and linked into every program, so LLVM inlines these
-   helpers across the program boundary (whole-program optimization).
+/* Pystachy runtime: memory, strings, lists, dicts, formatting, printing and I/O.
+   `pystachy build` links it into every program as LLVM bitcode, so LLVM inlines these
+   helpers across the program boundary (whole-program optimization); `pystachy run`
+   links a precompiled object instead, since the JIT tier does not inline.
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -937,18 +938,19 @@ Str *pys_str_join(Str *sep, List *l) {
   }
   return r;
 }
-List *pys_str_split(Str *s, Str *sep) {
+List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit */
   List *l = pys_list_new(0); I i = 0, n = s->len;
   if (!sep) {
     for (;;) {
       while (i < n && ws(s->s[i])) i++;
       if (i >= n) return l;
+      if (maxsplit-- == 0) { I j = n; while (j > i && ws(s->s[j - 1])) j--; pys_list_append(l, (I)pys_str(s->s + i, j - i)); return l; }
       I j = i; while (j < n && !ws(s->s[j])) j++;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
     }
   }
   if (!sep->len) pys_fail("ValueError: empty separator");
-  for (I j; (j = find(s, sep, i)) >= 0; i = j + sep->len) pys_list_append(l, (I)pys_str(s->s + i, j - i));
+  for (I j; maxsplit-- != 0 && (j = find(s, sep, i)) >= 0; i = j + sep->len) pys_list_append(l, (I)pys_str(s->s + i, j - i));
   pys_list_append(l, (I)pys_str(s->s + i, n - i));
   return l;
 }
@@ -1008,7 +1010,7 @@ List *pys_dict_items(Dict *d) {
 }
 Dict *pys_dict_copy(Dict *d) { Dict *r = pys_dict_new(d->kind); for (I i = 0; i < d->len; i++) pys_dict_set(r, d->keys[i], d->vals[i]); return r; }
 
-/* ---------- formatting: f"{x:spec}" with [[fill]align][sign][0][width][,][.prec][type] ---------- */
+/* ---------- formatting: f"{x:spec}" ---------- */
 /* CPython's format-spec mini-language for int (and bool), float and str:
    [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points;
    other types accept only an empty spec, which the compiler turns into str(). */
