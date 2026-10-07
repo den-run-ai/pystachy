@@ -4,6 +4,7 @@
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <stdarg.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -465,22 +466,75 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   }
   return pys_str(o, w - o);
 }
-Str *pys_float_hex(double d) { char b[40]; return pys_str(b, snprintf(b, 40, "%.13a", d)); }
+Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zero 0x0.0p+0, NaN unsigned */
+  char b[40];
+  if (isnan(d)) return cstr("nan");
+  if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
+  return pys_str(b, snprintf(b, 40, "%.13a", d));
+}
 I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
+/* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
+   digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
+static void repr_str(Buf *b, Str *s);
+I pys_f2i(double d);
 static void badnum(const char *what, Str *s) {
   Buf b = {0}; put(&b, what, strlen(what)); put(&b, s->s, s->len); put(&b, "'", 2); pys_fail(b.p);
 }
+static _Noreturn void badlit(const char *what, I base, Str *s) {
+  Buf b = {0}; char t[64];
+  put(&b, what, strlen(what));
+  if (base >= 0) put(&b, t, snprintf(t, 64, " with base %lld", (long long)base));
+  put(&b, ": ", 2); repr_str(&b, s); put(&b, "", 1); pys_fail(b.p);
+}
+static int digitv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'z' ? (c | 32) - 'a' + 10 : 99; }
 I pys_int_str(Str *s, I base) {
-  char *e; errno = 0; I v = strtoll(s->s, &e, (int)base);
-  while (*e && ws(*e)) e++;
-  if (e == s->s || *e || !s->len) badnum("ValueError: invalid literal for int(): '", s);
-  if (errno == ERANGE) badnum("OverflowError: int too large for 64 bits: '", s);
-  return v;
+  if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
+  const char *p = s->s, *e = s->s + s->len; I b0 = base;
+  while (p < e && ws(*p)) p++;
+  while (e > p && ws(e[-1])) e--;
+  int neg = 0;
+  if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
+  if (e - p >= 2 && p[0] == '0') {
+    int pb = (p[1] | 32) == 'x' ? 16 : (p[1] | 32) == 'o' ? 8 : (p[1] | 32) == 'b' ? 2 : 0;
+    if (pb && (base == 0 || base == pb)) { base = pb; p += 2; if (p < e && *p == '_') p++; }
+  }
+  if (base == 0) {                             /* decimal: no leading zeros unless the value is 0 */
+    base = 10;
+    if (p < e && *p == '0') for (const char *q = p; q < e; q++) if (*q != '0' && *q != '_') badlit("ValueError: invalid literal for int()", b0, s);
+  }
+  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int any = 0, ovf = 0;
+  for (; p < e; p++) {
+    if (*p == '_' && any && p + 1 < e && p[1] != '_') continue;
+    int dv = digitv(*p);
+    if (dv >= base) badlit("ValueError: invalid literal for int()", b0, s);
+    if (u > (lim - dv) / base) ovf = 1; else u = u * base + dv;
+    any = 1;
+  }
+  if (!any) badlit("ValueError: invalid literal for int()", b0, s);
+  if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
+  return neg ? (I)(0 - u) : (I)u;
 }
 double pys_float_str(Str *s) {
-  char *e; double v = strtod(s->s, &e);
-  while (*e && ws(*e)) e++;
-  if (e == s->s || *e || !s->len) badnum("ValueError: could not convert string to float: '", s);
+  const char *p = s->s, *e = s->s + s->len;
+  while (p < e && ws(*p)) p++;
+  while (e > p && ws(e[-1])) e--;
+  Buf b = {0}; const char *q = p;
+  if (q < e && (*q == '+' || *q == '-')) put(&b, q++, 1);
+  I n = e - q;
+  if ((n == 3 && !strncasecmp(q, "inf", 3)) || (n == 8 && !strncasecmp(q, "infinity", 8)) || (n == 3 && !strncasecmp(q, "nan", 3))) {
+    put(&b, q, n); put(&b, "", 1); return strtod(b.p, 0);
+  }
+  int digits = 0, prev = 0;                    /* prev: 1 after a digit; underscores only between digits */
+  for (; q < e; q++) {
+    char c = *q;
+    if (c >= '0' && c <= '9') { digits = 1; prev = 1; put(&b, q, 1); continue; }
+    if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') { prev = 0; continue; }
+    if (c == '.' || c == 'e' || c == 'E' || ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; put(&b, q, 1); continue; }
+    badlit("ValueError: could not convert string to float", -1, s);
+  }
+  put(&b, "", 1);
+  char *end; double v = strtod(b.p, &end);
+  if (!digits || *end) badlit("ValueError: could not convert string to float", -1, s);
   return v;
 }
 
@@ -526,7 +580,84 @@ I pys_shl(I a, I b) {
 }
 I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
 double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
-double pys_idiv(I a, I b) { if (!b) pys_fail("ZeroDivisionError: division by zero"); return (double)a / (double)b; }
+double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPython's true division */
+  if (!b) pys_fail("ZeroDivisionError: division by zero");
+  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a, y = b < 0 ? 0 - (uint64_t)b : (uint64_t)b;
+  if (x <= (1ULL << 53) && y <= (1ULL << 53)) return (double)a / (double)b;   /* both exact: one rounding */
+  int k = 55 + (63 - __builtin_clzll(y)) - (63 - __builtin_clzll(x)); if (k < 0) k = 0;
+  unsigned __int128 num = (unsigned __int128)x << k, q = num / y; int sticky = num % y != 0;
+  double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
+  return (a < 0) != (b < 0) ? -r : r;
+}
+I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
+  if (isnan(d)) return 2;
+  if (d >= 9223372036854775808.0) return -1;
+  if (d < -9223372036854775808.0) return 1;
+  double t = trunc(d); I j = (I)t;
+  if (i != j) return i < j ? -1 : 1;
+  return d > t ? -1 : d < t ? 1 : 0;
+}
+double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
+  if (a == 0 && b < 0) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
+  double r = pow(a, b);
+  if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
+  return r;
+}
+/* math functions raise like CPython's math module: a NaN from a non-NaN argument is a domain
+   error, an infinity from finite arguments a range error (or a domain error for log and sqrt) */
+static double mchk(double r, double x, double y, int ovf) {
+  if (isnan(r) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
+  if (isinf(r) && isfinite(x) && isfinite(y)) pys_fail(ovf ? "OverflowError: math range error" : "ValueError: math domain error");
+  return r;
+}
+#define M1(f, ovf) double pys_m_##f(double x) { return mchk(f(x), x, 0, ovf); }
+M1(sqrt, 0) M1(sin, 0) M1(cos, 0) M1(tan, 0) M1(asin, 0) M1(acos, 0) M1(atan, 0) M1(sinh, 1) M1(cosh, 1) M1(tanh, 0)
+M1(exp, 1) M1(log, 0) M1(log2, 0) M1(log10, 0) M1(fabs, 0) M1(log1p, 0) M1(expm1, 1) M1(exp2, 1) M1(cbrt, 0)
+double pys_m_pow(double x, double y) {
+  if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
+  return mchk(pow(x, y), x, y, 1);
+}
+double pys_m_fmod(double x, double y) { if (isinf(x) || (y == 0 && !isnan(x))) pys_fail("ValueError: math domain error"); return fmod(x, y); }
+double pys_m_atan2(double y, double x) { return atan2(y, x); }
+double pys_m_hypot(double x, double y) { return mchk(hypot(x, y), x, y, 1); }
+double pys_m_copysign(double x, double y) { return copysign(x, y); }
+double pys_m_logb(double x, double b) { return mchk(log(x), x, 0, 0) / mchk(log(b), b, 0, 0); }
+double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
+double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
+I pys_m_isfinite(double x) { return isfinite(x); }
+I pys_m_isinf(double x) { return isinf(x); }
+I pys_m_isnan(double x) { return isnan(x); }
+I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
+I pys_m_gcd(I a, I b) { uint64_t x = a < 0 ? 0 - (uint64_t)a : a, y = b < 0 ? 0 - (uint64_t)b : b; while (y) { uint64_t t = x % y; x = y; y = t; } if (x >> 63) pys_fail(OVF); return (I)x; }
+I pys_m_lcm(I a, I b) { if (!a || !b) return 0; I g = pys_m_gcd(a, b), r; if (__builtin_mul_overflow(a / g, b, &r)) pys_fail(OVF); return r < 0 ? -r : r; }
+I pys_m_isqrt(I n) {
+  if (n < 0) pys_fail("ValueError: isqrt() argument must be nonnegative");
+  I r = (I)sqrt((double)n);
+  while (r > 0 && r > n / r) r--;
+  while ((r + 1) <= n / (r + 1)) r++;
+  return r;
+}
+I pys_m_factorial(I n) {
+  if (n < 0) pys_fail("ValueError: factorial() not defined for negative values");
+  I r = 1; for (I i = 2; i <= n; i++) if (__builtin_mul_overflow(r, i, &r)) pys_fail(OVF);
+  return r;
+}
+I pys_m_comb(I n, I k) {
+  if (n < 0 || k < 0) pys_fail(n < 0 ? "ValueError: n must be a non-negative integer" : "ValueError: k must be a non-negative integer");
+  if (k > n) return 0;
+  if (k > n - k) k = n - k;
+  unsigned __int128 r = 1;
+  for (I i = 1; i <= k; i++) { r = r * (n - k + i) / i; if (r >> 63) pys_fail(OVF); }
+  return (I)r;
+}
+I pys_m_perm(I n, I k) {
+  if (n < 0 || k < 0) pys_fail(n < 0 ? "ValueError: n must be a non-negative integer" : "ValueError: k must be a non-negative integer");
+  if (k > n) return 0;
+  I r = 1; for (I i = 0; i < k; i++) if (__builtin_mul_overflow(r, n - i, &r)) pys_fail(OVF);
+  return r;
+}
+
 static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
   double m = fmod(a, b), d = (a - m) / b;
   if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
@@ -546,6 +677,7 @@ double pys_round_n(double x, I n) {           /* round(x, n): half-even on the e
   static char b[1500], o[1500];
   if (!isfinite(x) || n > 400) return x;
   if (n >= 0) { snprintf(b, sizeof b, "%.*f", (int)n, x); return strtod(b, 0); }
+  if (n < -308 && fabs(x) < 1e308) return copysign(0.0, x);
   int k = n < -400 ? 400 : (int)-n, len = snprintf(b, sizeof b, "%.1080f", fabs(x));
   int h = (int)(strchr(b, '.') - b) - k, up = 0, m = h;   /* keep h integer digits, drop k */
   if (h < 0) return copysign(0.0, x);
@@ -556,7 +688,9 @@ double pys_round_n(double x, I n) {           /* round(x, n): half-even on the e
   if (up) { int i = m - 1; while (i >= 0 && o[i] == '9') o[i--] = '0'; if (i >= 0) o[i]++; else { memmove(o + 1, o, m); o[0] = '1'; m++; } }
   if (!m) o[m++] = '0';
   memset(o + m, '0', k); o[m + k] = 0;
-  return copysign(strtod(o, 0), x);
+  double r = strtod(o, 0);
+  if (isinf(r)) pys_fail("OverflowError: rounded value too large to represent");
+  return copysign(r, x);
 }
 I pys_floor(double d) { return pys_f2i(floor(d)); }
 I pys_ceil(double d) { return pys_f2i(ceil(d)); }
@@ -775,8 +909,16 @@ I pys_list_minmax(List *l, Str *d, I max) {
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
-I pys_sum_int(List *l) { I s = 0; for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
-double pys_sum_float(List *l) { double s = 0; for (I i = 0; i < l->len; i++) s += dbl(l->a[i]); return s; }
+I pys_sum_int(List *l, I s) { for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+double pys_sum_float(List *l, double s) {    /* CPython 3.12's compensated (Neumaier) sum */
+  double c = 0;
+  for (I i = 0; i < l->len; i++) {
+    double x = dbl(l->a[i]), t = s + x;
+    if (fabs(s) >= fabs(x)) c += (s - t) + x; else c += (x - t) + s;
+    s = t;
+  }
+  return c && isfinite(c) ? s + c : s;
+}
 List *pys_range_list(I a, I b, I s) {
   List *l = pys_list_new(0);
   if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
@@ -867,62 +1009,146 @@ List *pys_dict_items(Dict *d) {
 Dict *pys_dict_copy(Dict *d) { Dict *r = pys_dict_new(d->kind); for (I i = 0; i < d->len; i++) pys_dict_set(r, d->keys[i], d->vals[i]); return r; }
 
 /* ---------- formatting: f"{x:spec}" with [[fill]align][sign][0][width][,][.prec][type] ---------- */
-Str *pys_format(I v, Str *desc, Str *spec) {
-  const char *p = spec->s; char fill = ' ', align = 0, sign = '-', type = 0, num[1024], f[16];
-  int width = 0, prec = -1, comma = 0, zero = 0, n;
-  if (p[0] && (p[1] == '<' || p[1] == '>' || p[1] == '^')) { fill = p[0]; align = p[1]; p += 2; }
-  else if (*p == '<' || *p == '>' || *p == '^') align = *p++;
-  if (*p == '+' || *p == '-' || *p == ' ') sign = *p++;
-  if (*p == '0') { zero = 1; p++; }
-  while (*p >= '0' && *p <= '9') width = width * 10 + *p++ - '0';
-  if (*p == ',') { comma = 1; p++; }
-  if (*p == '.') { prec = 0; p++; while (*p >= '0' && *p <= '9') prec = prec * 10 + *p++ - '0'; }
-  if (*p) type = *p++;
-  if (*p) pys_fail("ValueError: invalid format specifier");
-  char d = desc->s[0];
-  Str *body;
-  if (prec > 100) prec = 100;
-  if (d == 's' || (d != 'i' && d != 'f' && d != 'b')) {
-    body = d == 's' ? (Str *)v : pys_repr(v, desc);
-    if (prec >= 0 && prec < body->len) body = pys_str(body->s, prec);
-  } else {
-    int isf = d == 'f' || (type && strchr("eEfFgG%", type));
-    double x = d == 'f' ? dbl(v) : (double)v;
-    if (isf && !type && prec < 0) body = pys_str_float(x);
-    else if (isf) {
-      char t = type ? type : 'g';
-      if (t == '%') x *= 100;
-      snprintf(f, 16, "%%.%d%c", prec < 0 ? 6 : prec, t == '%' ? 'f' : t);
-      n = snprintf(num, 1000, f, x);
-      if (t == '%') num[n++] = '%';
-      if (!type && isfinite(x) && !strpbrk(num, ".e")) { num[n++] = '.'; num[n++] = '0'; }
-      body = pys_str(num, n);
-    } else {
-      const char *fm = type == 'x' ? "%llx" : type == 'X' ? "%llX" : type == 'o' ? "%llo" : "%lld";
-      if (type && !strchr("dxXoc", type)) pys_fail("ValueError: unknown format code for int");
-      body = type == 'c' ? pys_chr(v) : pys_str(num, snprintf(num, 1000, fm, (long long)(type && type != 'd' && v < 0 ? -v : v)));
-      if (type && type != 'd' && type != 'c' && v < 0) body = pys_str_add(cstr("-"), body);
-    }
-    if (comma) {
-      Buf b = {0}; I s = body->s[0] == '-', e = s;
-      while (e < body->len && body->s[e] >= '0' && body->s[e] <= '9') e++;
-      put(&b, body->s, s);
-      for (I i = s; i < e; i++) { put(&b, body->s + i, 1); if ((e - i - 1) % 3 == 0 && i < e - 1) put(&b, ",", 1); }
-      put(&b, body->s + e, body->len - e); body = done(&b);
-    }
-    if (sign != '-' && body->s[0] != '-') body = pys_str_add(cstr(sign == '+' ? "+" : " "), body);
-    if (!align) align = zero ? '=' : '>';
-    if (zero && fill == ' ') fill = '0';
+/* CPython's format-spec mini-language for int (and bool), float and str:
+   [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points;
+   other types accept only an empty spec, which the compiler turns into str(). */
+static _Noreturn void failf(const char *f, ...) {
+  char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
+}
+static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
+static I uoff(const char *p, I n, I k) {          /* byte offset of code point k */
+  I i = 0;
+  for (; i < n && k > 0; k--) { i++; while (i < n && ((unsigned char)p[i] & 0xC0) == 0x80) i++; }
+  return i;
+}
+static I u8enc(char *o, I c) {
+  if (c < 0x80) { o[0] = c; return 1; }
+  if (c < 0x800) { o[0] = 0xC0 | c >> 6; o[1] = 0x80 | (c & 63); return 2; }
+  if (c < 0x10000) { o[0] = 0xE0 | c >> 12; o[1] = 0x80 | (c >> 6 & 63); o[2] = 0x80 | (c & 63); return 3; }
+  o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
+}
+static const char *tyname(char d) {
+  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' ? "tuple" : "object";
+}
+static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   /* digits with separators */
+  I z = 0, len = n + (sep ? (n - 1) / every : 0);
+  while (len < minw) { z++; len = n + z + (sep ? (n + z - 1) / every : 0); }   /* zero padding is grouped too */
+  for (I i = 0; i < n + z; i++) {
+    char c = i < z ? '0' : dg[i - z];
+    put(o, &c, 1);
+    if (sep && (n + z - i - 1) % every == 0 && i < n + z - 1) put(o, &sep, 1);
   }
-  if (!align) align = '<';
-  if (body->len >= width) return body;
-  Str *r = pys_alloc_atomic(sizeof(Str) + width + 1); r->len = width; memset(r->s, fill, width);
-  I gap = width - body->len, at = align == '<' ? 0 : align == '^' ? gap / 2 : gap;
-  if (align == '=') {                                  /* pad after the sign */
-    I s = body->s[0] == '-' || body->s[0] == '+' || body->s[0] == ' ';
-    memcpy(r->s, body->s, s); memcpy(r->s + s + gap, body->s + s, body->len - s);
-  } else memcpy(r->s + at, body->s, body->len);
-  return r;
+}
+Str *pys_format(I v, Str *desc, Str *spec) {
+  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
+  char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
+  int alt = 0, zneg = 0, fillset = 0;
+  I fl = 1, width = 0, prec = -1;
+  if (d != 'i' && d != 'b' && d != 'f' && d != 's') {
+    if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
+    return pys_repr(v, desc);
+  }
+  I cl = p < end ? uoff(p, end - p, 1) : 0;
+  if (cl && p + cl < end && p[cl] && strchr("<>=^", p[cl])) { fill = p; fl = cl; fillset = 1; align = p[cl]; p += cl + 1; }
+  else if (p < end && *p && strchr("<>=^", *p)) align = *p++;
+  if (p < end && (*p == '+' || *p == '-' || *p == ' ')) sign = *p++;
+  if (p < end && *p == 'z') { zneg = 1; p++; }
+  if (p < end && *p == '#') { alt = 1; p++; }
+  int numeric = d != 's';
+  if (p < end && *p == '0') {                  /* zero padding: fill '0', and '=' alignment for numbers */
+    if (!fillset) { fill = "0"; fl = 1; if (!align && numeric) align = '='; }
+    p++;
+  }
+  while (p < end && *p >= '0' && *p <= '9') { width = width * 10 + *p++ - '0'; if (width > 100000000) failf("ValueError: Too many decimal digits in format string"); }
+  if (p < end && (*p == ',' || *p == '_')) { sep = *p++; if (p < end && (*p == ',' || *p == '_')) failf("ValueError: Cannot specify both ',' and '_'."); }
+  if (p < end && *p == '.') {
+    p++;
+    if (p >= end || *p < '0' || *p > '9') failf("ValueError: Format specifier missing precision");
+    prec = 0;
+    while (p < end && *p >= '0' && *p <= '9') { prec = prec * 10 + *p++ - '0'; if (prec > 100000000) failf("ValueError: Too many decimal digits in format string"); }
+  }
+  if (end - p > 1) failf("ValueError: Invalid format specifier '%s' for object of type '%s'", spec->s, tyname(d));
+  if (p < end) type = *p;
+  if (!type && d == 's') type = 's';
+  if (!type && d != 'f') type = 'd';
+  if (sep && !strchr("defgEFG%", type)) {
+    if (sep == '_' && strchr("boxX", type) && type) {} else failf("ValueError: Cannot specify '%c' with '%c'.", sep, type);
+  }
+  Buf o = {0}; char tb[1100];
+  I pre = 0;                                   /* bytes of sign and prefix, before '=' padding */
+  if (d == 's') {
+    if (type != 's') failf("ValueError: Unknown format code '%c' for object of type 'str'", type);
+    if (sign) failf("ValueError: Sign not allowed in string format specifier");
+    if (zneg) failf("ValueError: Negative zero coercion (z) not allowed in string format specifier");
+    if (alt) failf("ValueError: Alternate form (#) not allowed in string format specifier");
+    if (align == '=') failf("ValueError: '=' alignment not allowed in string format specifier");
+    Str *x = (Str *)v;
+    put(&o, x->s, prec >= 0 ? uoff(x->s, x->len, prec) : x->len);
+  } else if ((d == 'i' || d == 'b') && strchr("bcdoxXn", type) && type) {
+    if (prec >= 0) failf("ValueError: Precision not allowed in integer format specifier");
+    if (zneg) failf("ValueError: Negative zero coercion (z) not allowed in integer format specifier");
+    if (type == 'c') {
+      if (sign) failf("ValueError: Sign not allowed with integer format specifier 'c'");
+      if (alt) failf("ValueError: Alternate form (#) not allowed with integer format specifier 'c'");
+      if (v < 0 || v > 0x10FFFF) failf("OverflowError: %%c arg not in range(0x110000)");
+      put(&o, tb, u8enc(tb, v));
+    } else {
+      uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v; int base = type == 'b' ? 2 : type == 'o' ? 8 : type == 'x' || type == 'X' ? 16 : 10;
+      const char *dig = type == 'X' ? "0123456789ABCDEF" : "0123456789abcdef"; char r[70]; I n = 0;
+      do { r[n++] = dig[u % base]; u /= base; } while (u);
+      for (I i = 0; i < n / 2; i++) { char c = r[i]; r[i] = r[n - 1 - i]; r[n - 1 - i] = c; }
+      if (v < 0) put(&o, "-", 1); else if (sign == '+' || sign == ' ') put(&o, &sign, 1);
+      if (alt && base != 10) { char pf[2] = {'0', type == 'X' ? 'X' : type == 'x' ? 'x' : type}; put(&o, pf, 2); }
+      pre = o.n;
+      I minw = fl == 1 && *fill == '0' && align == '=' ? width - pre : 0;
+      group(&o, r, n, sep, base == 10 ? 3 : 4, minw);
+    }
+  } else {                                     /* float, or int with a float type */
+    double x = d == 'f' ? dbl(v) : (double)v;
+    if (type && !strchr("eEfFgGn%", type)) failf("ValueError: Unknown format code '%c' for object of type '%s'", type, tyname(d));
+    int neg = signbit(x) && !isnan(x), up = type && strchr("EFG", type);
+    double m = fabs(x);
+    I tsz = (prec > 0 ? prec : 0) + 400; char *t = tsz > (I)sizeof tb ? pys_alloc_atomic(tsz) : tb; I n;
+    if (isnan(m) || isinf(m)) n = snprintf(t, tsz, "%s%s", isnan(m) ? (up ? "NAN" : "nan") : (up ? "INF" : "inf"), type == '%' ? "%" : "");
+    else if (!type && prec < 0) {
+      Str *r = pys_str_float(m); n = r->len; memcpy(t, r->s, n + 1);
+      char *e = strchr(t, 'e');                 /* '#': a point even in 1e+16 */
+      if (alt && e && !memchr(t, '.', e - t)) { memmove(e + 1, e, n - (e - t) + 1); *e = '.'; n++; }
+    }
+    else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
+      int pr = prec ? (int)prec : 1;
+      snprintf(t, tsz, "%.*e", pr - 1, m);
+      int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
+      n = ex ? snprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : snprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
+      if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
+        char *e = strchr(t, 'e'); I me = e ? e - t : n;
+        if (memchr(t, '.', me)) { I k = me; while (t[k - 1] == '0') k--; if (t[k - 1] == '.') k--; memmove(t + k, t + me, n - me + 1); n -= me - k; }
+      }
+      if (!ex && !memchr(t, '.', n)) { t[n++] = '.'; t[n++] = '0'; t[n] = 0; }
+    } else {
+      char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
+      snprintf(f, 16, alt ? "%%#.%d%c" : "%%.%d%c", pr, c);
+      n = snprintf(t, tsz, f, type == '%' ? m * 100 : m);
+      if (type == '%') { t[n++] = '%'; t[n] = 0; }
+    }
+    if (zneg && neg && !isinf(m) && strtod(t, 0) == 0) neg = 0;   /* z: no "-0" after rounding */
+    if (neg) put(&o, "-", 1); else if (sign == '+' || sign == ' ') put(&o, &sign, 1);
+    pre = o.n;
+    I ip = 0; while (ip < n && t[ip] >= '0' && t[ip] <= '9') ip++;   /* the integer digits */
+    I minw = fl == 1 && *fill == '0' && align == '=' ? width - pre - (n - ip) : 0;
+    if (ip) group(&o, t, ip, sep, 3, minw); else for (I i = 0; i < minw; i++) put(&o, "0", 1);
+    put(&o, t + ip, n - ip);
+  }
+  if (!align) align = numeric ? '>' : '<';
+  I len = ulen(o.p ? o.p : "", o.n);
+  if (len >= width) return pys_str(o.p ? o.p : "", o.n);
+  I gap = width - len, left = align == '<' ? 0 : align == '^' ? gap / 2 : align == '=' ? 0 : gap;
+  Buf r = {0};
+  if (align == '=') put(&r, o.p, pre);
+  for (I i = 0; i < (align == '=' ? gap : left); i++) put(&r, fill, fl);
+  put(&r, o.p + (align == '=' ? pre : 0), o.n - (align == '=' ? pre : 0));
+  for (I i = 0; i < (align == '=' ? 0 : gap - left); i++) put(&r, fill, fl);
+  return pys_str(r.p, r.n);
 }
 
 /* ---------- I/O and process ---------- */

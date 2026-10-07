@@ -165,14 +165,33 @@ class Lexer:
     def number(self) -> None:
         src = self.src
         j = self.i
-        if src.startswith("0x", j) or src.startswith("0X", j):
+        pfx = src[j : j + 2].lower()
+        if pfx == "0x" or pfx == "0o" or pfx == "0b":
+            base = 16 if pfx == "0x" else (8 if pfx == "0o" else 2)
+            kind = "hexadecimal" if base == 16 else ("octal" if base == 8 else "binary")
             j += 2
             while j < len(src) and (src[j].isalnum() or src[j] == "_"):
                 j += 1
-            h = src[self.i + 2 : j].replace("_", "").lstrip("0")
-            if len(h) > 16 or (len(h) == 16 and h[0] > "7"):
+            body = src[self.i + 2 : j]
+            for c in body:
+                dv = "0123456789abcdef".find(c.lower())
+                if c != "_" and (dv < 0 or dv >= base):
+                    fail(f"invalid {kind} literal", self.line)
+            if body.replace("_", "") == "" or "__" in body or body.endswith("_"):
+                fail(f"invalid {kind} literal", self.line)
+            h = body.replace("_", "").lstrip("0")
+            # significant bits, without converting a number that may not fit
+            bits = 0
+            if h != "":
+                d0 = int(h[0], 16)
+                while d0 > 0:
+                    bits += 1
+                    d0 = d0 >> 1
+                bits += (len(h) - 1) * (4 if base == 16 else (3 if base == 8 else 1))
+            if bits > 64 or (bits == 64 and (h[1:].strip("0") != "" or int(h[0], 16) & (int(h[0], 16) - 1) != 0)):
                 fail("integer literal does not fit in 64 bits", self.line)
-            self.add("int", str(int("0" + h, 16)))
+            # 2**63 is valid only negated; Gen checks that, as for decimal literals
+            self.add("int", "9223372036854775808" if bits == 64 else str(int("0" + h, base)))
             self.i = j
             return
         isf = False
@@ -181,16 +200,24 @@ class Lexer:
         if src.startswith(".", j) and not src.startswith("..", j):
             isf = True
             j += 1
-            while j < len(src) and src[j].isdigit():
+            while j < len(src) and (src[j].isdigit() or src[j] == "_"):
                 j += 1
         if j < len(src) and (src[j] == "e" or src[j] == "E"):
             isf = True
             j += 1
-            if src[j] == "+" or src[j] == "-":
+            if j < len(src) and (src[j] == "+" or src[j] == "-"):
                 j += 1
-            while j < len(src) and src[j].isdigit():
+            if j >= len(src) or not src[j].isdigit():
+                fail("invalid float literal", self.line)
+            while j < len(src) and (src[j].isdigit() or src[j] == "_"):
                 j += 1
-        self.add("float" if isf else "int", src[self.i : j].replace("_", ""))
+        text = src[self.i : j]
+        low = text.lower()
+        if "__" in text or text.endswith("_") or "_." in text or "._" in text or "_e" in low or "e_" in low:
+            fail("invalid decimal literal", self.line)
+        if not isf and len(text) > 1 and text[0] == "0" and text.replace("_", "").strip("0") != "":
+            fail("leading zeros in decimal integer literals are not permitted", self.line)
+        self.add("float" if isf else "int", text.replace("_", ""))
         self.i = j
 
     def word(self) -> None:
@@ -633,6 +660,7 @@ class Parser:
                         a = self.test()
                         if self.peek() == "for":
                             a = self.comp(a, line)
+                            a.s = "gen"
                         c.kids.append(a)
                     if not self.eat(","):
                         self.expect(")")
@@ -710,6 +738,7 @@ class Parser:
             e = self.test()
             if self.peek() == "for":
                 e = self.comp(e, line)
+                e.s = "gen"
             elif self.peek() == ",":
                 e = mk("tuple", "", line, [e])
                 while self.eat(","):
@@ -844,7 +873,7 @@ IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
 FOPS: dict[str, str] = {"+": "fadd", "-": "fsub", "*": "fmul"}
-FRT: dict[str, str] = {"/": "pys_fdiv", "//": "pys_ffloordiv", "%": "pys_fmod", "**": "pow"}
+FRT: dict[str, str] = {"/": "pys_fdiv", "//": "pys_ffloordiv", "%": "pys_fmod", "**": "pys_fpow"}
 ICMP: dict[str, str] = {"==": "eq", "!=": "ne", "<": "slt", "<=": "sle", ">": "sgt", ">=": "sge"}
 FCMP: dict[str, str] = {"==": "oeq", "!=": "une", "<": "olt", "<=": "ole", ">": "ogt", ">=": "oge"}
 # special methods: "number of parameters (with self):required return type"
@@ -852,6 +881,9 @@ SPECIAL: dict[str, str] = {"__str__": "1:str", "__repr__": "1:str", "__len__": "
                            "__eq__": "2:bool", "__ne__": "2:bool", "__lt__": "2:bool", "__le__": "2:bool", "__gt__": "2:bool", "__ge__": "2:bool"}
 for _k in "add sub mul truediv floordiv mod iadd isub imul itruediv ifloordiv imod".split():
     SPECIAL[f"__{_k}__"] = "2:"
+# a comparison from pys_cmp_if's result R (-1, 0, 1, or 2 when a NaN makes it unordered)
+MIXCMP: dict[str, str] = {"==": "icmp eq i64 R, 0", "!=": "icmp ne i64 R, 0", "<": "icmp eq i64 R, -1", "<=": "icmp sle i64 R, 0",
+                          ">": "icmp eq i64 R, 1", ">=": "icmp ule i64 R, 1"}
 REFL: dict[str, str] = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}  # a < b may run b.__gt__(a)
 ORDOP: dict[str, int] = {"<": 0, "<=": 1, ">": 2, ">=": 3}  # op codes shared with runtime.c
 DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "__truediv__", "//": "__floordiv__", "%": "__mod__",
@@ -861,17 +893,23 @@ CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
     "float(str)": "pys_float_str:float", "round(float)": "pys_round:int", "round(float,int)": "pys_round_n:float", "input(str)": "pys_input:str",
     "abs(float)": "fabs:float", "list(str)": "pys_str_list:list[str]",
-    "sum(list[int])": "pys_sum_int:int", "sum(list[float])": "pys_sum_float:float", "any(list[bool])": "pys_any:bool",
+    "sum(list[int],int)": "pys_sum_int:int", "sum(list[float],float)": "pys_sum_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "open(str,str)": "pys_open:file", "sys.exit(int)": "pys_exit:None", "sys.stdout.flush()": "pys_flush:None",
     "sys.stdout.write(str)": "pys_out:int", "sys.stderr.write(str)": "pys_err:int", "os.system(str)": "pys_system:int",
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
-    "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.pow(float,float)": "pow:float",
-    "math.atan2(float,float)": "atan2:float", "math.hypot(float,float)": "hypot:float", "math.fmod(float,float)": "fmod:float",
+    "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
+    "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
+    "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
+    "math.isfinite(float)": "pys_m_isfinite:bool", "math.isinf(float)": "pys_m_isinf:bool", "math.isnan(float)": "pys_m_isnan:bool",
+    "math.log(float,float)": "pys_m_logb:float",
 }
-for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs".split():
-    CALLS[f"math.{_k}(float)"] = _k + ":float"
+# math functions raise CPython's domain and range errors (runtime.c, pys_m_*)
+for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians".split():
+    CALLS[f"math.{_k}(float)"] = f"pys_m_{_k}:float"
+for _k in "pow atan2 hypot fmod copysign".split():
+    CALLS[f"math.{_k}(float,float)"] = f"pys_m_{_k}:float"
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
 for _k in "sys os os.path math tempfile typing dataclasses __future__".split():
@@ -887,7 +925,8 @@ for _k in "annotations division absolute_import print_function generators nested
     FUTURE[_k] = True
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
 DEFAULTS: dict[str, str] = {"input": '""', "sys.exit": "0", "int": "0", "float": "0.0", "str": '""', "bool": "False",
-                            "list": "[]", "dict": "{}", "int(str)": "10", "open(str)": '"r"'}
+                            "list": "[]", "dict": "{}", "int(str)": "10", "open(str)": '"r"', "sum(list[int])": "0",
+                            "sum(list[float])": "0.0"}
 # Builtin methods, "ret:arg,arg=default". *X: passed/returned as an 8-byte slot; #: element
 # type descriptor; T: list element, K/V: dict key/value, S: the receiver's own type.
 # Each maps to the C function pys_<type>_<method>.
@@ -2392,6 +2431,18 @@ class Gen:
                 self.rt("pys_dict_pop", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))])
             else:
                 self.err("only 'del list[i]' and 'del dict[key]' are supported")
+        elif k == "anyall":
+            hit = self.label()
+            go = self.label()
+            c = self.cond(n.kids[0])
+            if n.s == "any":
+                self.cbr(c, hit, go)
+            else:
+                self.cbr(c, go, hit)
+            self.place(hit)
+            self.emit(f"store i1 {'true' if n.s == 'any' else 'false'}, ptr {self.lcs[-1]}")
+            self.br(self.loops[-1])
+            self.place(go)
         elif k == "lcappend":
             et = self.lct[-1]
             v = self.expr(n.kids[0], et)
@@ -2835,15 +2886,20 @@ class Gen:
         self.err(f"'{t}' object is not subscriptable")
         return o
 
-    def listcomp(self, n: Node, want: str) -> Val:
-        # [e for t in it if c] runs as a loop appending to a fresh list; t is scoped to it
-        res = self.rt("pys_list_new", "ptr", ["i64 0"])
+    def listcomp(self, n: Node, want: str, mode: str = "") -> Val:
+        # [e for t in it if c] runs as a loop appending to a fresh list; t is scoped to it.
+        # mode any/all: any(e for ...) / all(...) instead, stopping at the deciding element.
+        if mode != "":
+            res = self.alloca("bool", "")
+            self.emit(f"store i1 {'false' if mode == 'any' else 'true'}, ptr {res}")
+        else:
+            res = self.rt("pys_list_new", "ptr", ["i64 0"])
         names: list[str] = []
         self.names_in(n.kids[1], names)
         saved: list[str] = []
         for nm in names:
             saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
-        app = mk("lcappend", "", n.line, [n.kids[0]])
+        app = mk("lcappend" if mode == "" else "anyall", mode, n.line, [n.kids[0]])
         body = [app]
         if len(n.kids) == 4:
             body = [mk("if", "", n.line, [n.kids[3], mk("block", "", n.line, [app]), mk("block", "", n.line, [])])]
@@ -2864,6 +2920,8 @@ class Gen:
             self.compvars[nm] -= 1
             if self.compvars[nm] == 0:
                 del self.compvars[nm]
+        if mode != "":
+            return Val(self.ins(f"load i1, ptr {res}"), "bool")
         if et == "":
             self.err("cannot infer the element type of this comprehension")
         return Val(res, f"list[{et}]")
@@ -3153,7 +3211,17 @@ class Gen:
         if self.isnum(a.t) and self.isnum(b.t):
             if a.t != "float" and b.t != "float":
                 return Val(self.ins(f"icmp {ICMP[op]} i64 {self.as_int(a).v}, {self.as_int(b).v}"), "bool")
-            return Val(self.ins(f"fcmp {FCMP[op]} double {self.as_float(a).v}, {self.as_float(b).v}"), "bool")
+            if a.t == "float" and b.t == "float":
+                return Val(self.ins(f"fcmp {FCMP[op]} double {a.v}, {b.v}"), "bool")
+            # int against float: exact, as CPython compares them (double rounding would not be)
+            iv = self.as_int(b if a.t == "float" else a)
+            if not iv.v.startswith("%") and abs(int(iv.v)) <= 9007199254740992:
+                return Val(self.ins(f"fcmp {FCMP[op]} double {self.as_float(a).v}, {self.as_float(b).v}"), "bool")
+            fv = a if a.t == "float" else b
+            r = self.rt("pys_cmp_if", "i64", [f"i64 {iv.v}", f"double {fv.v}"])
+            if a.t == "float":
+                r = self.ins(f"select i1 {self.ins(f'icmp eq i64 {r}, 2')}, i64 2, i64 {self.ins(f'sub i64 0, {r}')}")
+            return Val(self.ins(MIXCMP[op].replace("R", r)), "bool")
         eq = op == "==" or op == "!="
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
@@ -3289,6 +3357,8 @@ class Gen:
         # builtins and module functions ("os.system"); most are one call listed in CALLS
         if name == "print":
             return self.print_(args)
+        if (name == "any" or name == "all") and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
+            return self.listcomp(args[0], "", name)
         for a in args:
             if a.kind == "kw" and name != "open":
                 self.err(f"{name}() does not accept keyword arguments")
@@ -3303,6 +3373,11 @@ class Gen:
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
+        if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
+            return self.as_int(vals[0])
+        if name == "sum" and len(vals) == 2 and vals[0].t == "list[float]" and (vals[1].t == "int" or vals[1].t == "bool"):
+            vals[1] = self.as_float(vals[1])
+            key = "sum(list[float],float)"
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"
