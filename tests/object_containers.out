@@ -1,0 +1,10 @@
+[P(x=1, y=2), P(x=3, y=4)] True False 1 1 True
+[Tok('a', 1), Tok('c', 2), Tok('b', 3)] Tok('a', 1) Tok('b', 3) True
+[Tok('a', 1), Tok('c', 2), Tok('b', 3)] (Tok('x', 1), 2)
+{'a': P(x=0, y=0)} True {'k': [P(x=1, y=1)]}
+[None, P(x=5, y=5)] True True
+Tree(val=1, kids=[Tree(val=2, kids=[]), Tree(val=3, kids=[Tree(val=4, kids=[])])]) True
+True True True
+P(x=1, y=2) 3 True x None
+True False
+[exit 0]

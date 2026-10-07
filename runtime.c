@@ -278,9 +278,16 @@ I pys_floor(double d) { return pys_f2i(floor(d)); }
 I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
-   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple */
+   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
+   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
+I pys_obj_eq(I c, I a, I b);
+I pys_obj_lt(I c, I a, I b);
+Str *pys_obj_repr(I c, I a, I b);
+static I ocls(const char *d) { return (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0'; }
+Str *pys_default_repr(Str *cls, void *p) { char b[160]; return pys_str(b, snprintf(b, 160, "<__main__.%s object at %p>", cls->s, p)); }
 static const char *skip(const char *d) {
   char c = *d++;
+  if (c == 'O') return d + 3;
   if (c == 'L') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
@@ -325,6 +332,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
+  case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
   }
   return d;
 }
@@ -354,6 +362,7 @@ static int eqv(I a, I b, const char *d) {
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqv(x[i], y[i], e)) return 0;
     return 1;
   }
+  case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
   }
   return a == b;
 }
@@ -372,6 +381,7 @@ static I cmpv(I a, I b, const char *d) {
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) { I c = cmpv(x[i], y[i], e); if (c) return c; }
     return 0;
   }
+  case 'O': { I c = ocls(d + 1); return pys_obj_lt(c, a, b) ? -1 : pys_obj_lt(c, b, a); }
   }
   return (a > b) - (a < b);
 }
