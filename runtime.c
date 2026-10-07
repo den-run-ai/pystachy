@@ -349,7 +349,8 @@ Str *pys_str_add(Str *a, Str *b) {
 }
 Str *pys_str_mul(Str *a, I n) {
   if (n < 0 || !a->len) n = 0;
-  if (n && a->len > (INT64_MAX - 64) / n) pys_fail("OverflowError: repeated string is too long");
+  if (n && a->len > INT64_MAX / n) pys_fail("OverflowError: repeated string is too long");
+  if (a->len * n > INT64_MAX - 64) pys_fail("MemoryError");
   Str *s = pys_alloc_atomic(sizeof(Str) + a->len * n + 1); s->len = a->len * n;
   for (I i = 0; i < n; i++) memcpy(s->s + i * a->len, a->s, a->len);
   return s;

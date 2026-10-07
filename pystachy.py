@@ -99,6 +99,8 @@ class Lexer:
         n = len(src)
         indents = [0]
         depth = 0
+        if src.startswith(chr(239) + chr(187) + chr(191)):  # a UTF-8 byte order mark
+            self.i = 3
         bol = True
         while self.i < n:
             c = src[self.i]
@@ -226,6 +228,9 @@ class Lexer:
         while j < len(src) and (src[j].isalnum() or src[j] == "_" or ord(src[j]) >= 128):
             j += 1
         w = src[self.i : j]
+        for ch in w:
+            if ord(ch) >= 128:
+                fail("non-ASCII identifiers are not supported", self.line)
         self.i = j
         if j < len(src) and (src[j] == '"' or src[j] == "'") and len(w) <= 2:
             p = w.lower()
