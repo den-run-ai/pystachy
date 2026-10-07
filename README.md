@@ -313,23 +313,25 @@ compilation; outputs are checked against CPython's.
 
 | benchmark | CPython | Pystachy JIT | Pystachy AOT | AOT speedup |
 |---|---:|---:|---:|---:|
-| fib(35) — calls | 1.19 s | 0.11 s | 0.05 s | 22× |
-| mandelbrot — float loops | 1.78 s | 0.12 s | 0.06 s | 31× |
-| n-body — floats, objects | 2.49 s | 0.16 s | 0.04 s | 57× |
-| spectral norm — nested loops | 1.50 s | 0.20 s | 0.02 s | 71× |
-| sieve — 4M-element list | 1.01 s | 0.27 s | 0.21 s | 5× |
-| word count — strings, dicts | 0.25 s | 0.14 s | 0.08 s | 3× |
+| fib(35) — calls | 1.02 s | 0.10 s | 0.05 s | 20× |
+| mandelbrot — float loops | 1.55 s | 0.10 s | 0.05 s | 33× |
+| n-body — floats, objects | 2.16 s | 0.11 s | 0.04 s | 58× |
+| spectral norm — nested loops | 1.26 s | 0.18 s | 0.02 s | 62× |
+| sieve — 4M-element list | 0.79 s | 0.24 s | 0.18 s | 4× |
+| word count — strings, dicts | 0.20 s | 0.12 s | 0.06 s | 3× |
 
 The sieve is memory-bound, and string- and dict-heavy code spends its time in the C
 runtime, as CPython does, so their gains are smaller. Integer arithmetic is
-overflow-checked, which costs most on call-heavy integer code: `fib` takes 0.052 s instead
-of the 0.027 s of Ouro v1's wrapping arithmetic, because LLVM can no longer turn
+overflow-checked, which costs most on call-heavy integer code: `fib` takes 0.050 s instead
+of the 0.024 s of Ouro v1's wrapping arithmetic, because LLVM can no longer turn
 `fib(n - 1) + fib(n - 2)` into a loop; the other benchmarks are unaffected. The JIT tier
-starts a program in about 50 ms. The collector keeps peak memory near the live set: ten
-million short-lived strings peak at 35 MiB instead of 376 MiB with Ouro v1's bump
-allocator, and building and discarding fifty 2M-element lists at 50 MiB instead of
-1.5 GiB, while running faster (0.63 s instead of 0.84 s, and 0.37 s instead of 2.25 s).
-The native compiler compiles itself in 0.07 s, against 0.35 s when CPython runs it.
+starts a program in about 45 ms. The collector keeps peak memory near the live set: ten
+million short-lived strings (`str(i)` in a loop) peak at 35 MiB instead of 155 MiB with
+Ouro v1's bump allocator, and building and discarding fifty 2M-element lists at 50 MiB
+instead of 1.5 GiB, while running faster (0.47 s instead of 0.52 s, and 0.30 s instead of
+2.0 s). Sorting is CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the
+earlier merge sort. The native compiler compiles itself in 0.06 s, against 0.32 s when
+CPython runs it.
 
 ## Next steps
 
