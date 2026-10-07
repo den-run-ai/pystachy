@@ -142,23 +142,25 @@ constants, which raise CPython's domain and range errors.
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
 feature: exception handling (`try`; `with` works for files), generators, lambdas and closures,
 inheritance (so user exception classes), `*args`/`**kwargs`, sets, dict and multi-clause
-comprehensions, slice steps, first-class functions (`map`, `key=`), `isinstance`/`getattr`/
+comprehensions, `for`/`while` ... `else`, slice steps, first-class functions (`map`, `key=`), `isinstance`/`getattr`/
 `eval`, user modules, `bytes` and binary files, complex numbers and arbitrary-precision
 integers.
 
 **Deviations from CPython** (the program compiles but can behave differently):
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
   result or `int()` of a long string, Pystachy raises `OverflowError` instead of
-  wrapping. `int ** negative int` is a `ValueError` (the result type would be dynamic),
-  and so is a negative float to a fractional power (CPython returns a complex).
+  wrapping. `int ** negative int` is a `ValueError` (the result type would be dynamic;
+  `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
+  fractional power (CPython returns a complex).
 - `str` is a byte string holding UTF-8: `len`, indexing and `write()`'s result count
   bytes, and `chr(i)` for `i < 256` is that byte (above, its UTF-8). ASCII behaves exactly
   like CPython; escapes such as `\xe9` and `€` produce UTF-8, format widths, `read(n)` and
   `ord()` count characters. Files hold the same bytes, read as UTF-8 or Latin-1.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots.
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
-  "Did you mean" hints) and exits with status 1 after flushing stdout. Deep recursion
-  overflows the stack instead of raising `RecursionError`.
+  "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
+  compile-time `SyntaxWarning`s are not printed. Deep recursion overflows the stack instead
+  of raising `RecursionError`.
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and the order
   `sort` gives lists containing NaN can differ. `sort` is a stable merge sort, so the
   sequence of `__lt__` calls differs from timsort's (the result does not). The sum of an

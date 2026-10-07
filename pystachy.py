@@ -527,6 +527,8 @@ class Parser:
         if k == "nonlocal" or k == "yield":
             fail(f"'{k}' is not supported", line)
         e = self.exprlist()
+        if e.kind == "name" and e.s == "print" and (self.peek() in STARTS or self.peek() == "id"):
+            fail("Missing parentheses in call to 'print'. Did you mean print(...)?", line)
         if self.eat(":"):
             n = mk("annassign", "", line, [e, self.test()])
             if self.eat("="):
@@ -1687,9 +1689,14 @@ class Gen:
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
         if o.t not in self.classes:
+            base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else o.t
+            if base + "." + name in METHODS:
+                self.err(f"{tname(o.t)}.{name} is a method: call it, {name}(...) (methods are not values)")
             self.err(f"type {o.t} has no attribute '{name}'")
         ci = self.classes[o.t]
         if name not in ci.ftypes:
+            if name in ci.methods:
+                self.err(f"{o.t}.{name} is a method: call it, {name}(...) (methods are not values)")
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
@@ -1853,7 +1860,7 @@ class Gen:
         elif k == "index":
             o = self.expr(t.kids[0], "")
             if is_list(o.t):
-                ix = self.coerce(self.expr(t.kids[1], "int"), "int")
+                ix = self.ival(t.kids[1])
                 s = self.to_slot(self.coerce(v, elem(o.t)))
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", f"i64 {s}"])
             elif is_dict(o.t):
@@ -2602,7 +2609,7 @@ class Gen:
             dt = n.kids[0]
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             if is_list(o.t):
-                self.rt("pys_list_del", "void", [f"ptr {o.v}", f"i64 {self.coerce(self.expr(dt.kids[1], 'int'), 'int').v}"])
+                self.rt("pys_list_del", "void", [f"ptr {o.v}", f"i64 {self.ival(dt.kids[1]).v}"])
             elif is_dict(o.t):
                 kt = targs(o.t)[0]
                 self.rt("pys_dict_pop", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))])
@@ -2672,7 +2679,7 @@ class Gen:
             o = self.expr(t.kids[0], "")
             if is_list(o.t):
                 et = elem(o.t)
-                i = self.coerce(self.expr(t.kids[1], "int"), "int")
+                i = self.ival(t.kids[1])
                 cur = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), et)
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
@@ -2767,10 +2774,14 @@ class Gen:
         self.for_seq(tgt, [seq], "", body, "0", hide)
         self.close_temp(it, seq)
 
+    def ival(self, n: Node) -> Val:
+        # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does)
+        return self.coerce(self.as_int(self.expr(n, "int")), "int")
+
     def range_args(self, args: list[Node]) -> list[str]:
         vs: list[str] = []
         for a in args:
-            vs.append(self.coerce(self.expr(a, "int"), "int").v)
+            vs.append(self.ival(a).v)
         if len(vs) == 1:
             vs.insert(0, "0")
         if len(vs) == 2:
@@ -3019,7 +3030,7 @@ class Gen:
                     bnd.append("-9223372036854775808")  # the runtime's "omitted" marker
                 else:
                     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
-                    bd = self.coerce(self.expr(x, "int"), "int").v
+                    bd = self.ival(x).v
                     if bd.startswith("%"):
                         bd = self.ins(f"select i1 {self.ins(f'icmp eq i64 {bd}, -9223372036854775808')}, i64 -9223372036854775807, i64 {bd}")
                     elif bd == "-9223372036854775808":
@@ -3138,7 +3149,7 @@ class Gen:
         o = self.expr(n.kids[0], "")
         t = o.t
         if is_list(t) or t == "str":
-            i = self.coerce(self.expr(n.kids[1], "int"), "int")
+            i = self.ival(n.kids[1])
             if t == "str":
                 return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
             return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(t))
@@ -3737,7 +3748,10 @@ class Gen:
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
-        if name == "sys.exit":
+        if name == "input" and len(vals) == 1 and vals[0].t != "str":
+            vals[0] = self.to_str(vals[0])
+            key = "input(str)"
+        if name == "sys.exit" or name == "exit" or name == "quit":
             if len(vals) > 1:
                 self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
             self.exit_(vals)

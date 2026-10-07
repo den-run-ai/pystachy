@@ -531,9 +531,41 @@ static _Noreturn void badlit(const char *what, I base, Str *s) {
 }
 static int digitv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'z' ? (c | 32) - 'a' + 10 : 99; }
 static int aws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }   /* int()/float() strip only these */
+static const int32_t decruns[] = {      /* Unicode 15.1 (CPython 3.13): first of each run of decimal digits 0-9 */
+  0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66,
+  0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90,
+  0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
+  0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730,
+  0x118e0, 0x11950, 0x11c50, 0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2,
+  0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0,
+};
+static Str *asciinum(Str *s) {         /* CPython's first step for int()/float() of a non-ASCII string: a
+                                          Unicode space becomes ' ', a decimal digit its ASCII digit, and
+                                          any other character '?', where the text then ends */
+  I i = 0;
+  while (i < s->len && !(s->s[i] & 0x80)) i++;
+  if (i == s->len) return s;
+  Buf b = {0}; put(&b, s->s, i);
+  while (i < s->len) {
+    unsigned char c = s->s[i]; I n = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1, cp = c & (0x7F >> n);
+    if (c < 0x80) { put(&b, s->s + i++, 1); continue; }
+    if (n == 1 || i + n > s->len) cp = -1;
+    for (I k = 1; cp >= 0 && k < n; k++) cp = (s->s[i + k] & 0xC0) == 0x80 ? cp << 6 | (s->s[i + k] & 0x3F) : -1;
+    char o = '?';
+    if (cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 ||
+        cp == 0x202F || cp == 0x205F || cp == 0x3000) o = ' ';
+    for (I r = 0; o == '?' && cp >= 0 && r < (I)(sizeof decruns / sizeof *decruns); r++)
+      if (cp >= decruns[r] && cp < decruns[r] + 10) o = (char)('0' + cp - decruns[r]);
+    put(&b, &o, 1);
+    if (o == '?') break;
+    i += n;
+  }
+  return done(&b);
+}
 I pys_int_str(Str *s, I base) {
   if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
-  const char *p = s->s, *e = s->s + s->len; I b0 = base;
+  Str *t = asciinum(s);
+  const char *p = t->s, *e = t->s + t->len; I b0 = base;
   while (p < e && aws(*p)) p++;
   while (e > p && aws(e[-1])) e--;
   int neg = 0;
@@ -559,7 +591,8 @@ I pys_int_str(Str *s, I base) {
   return neg ? (I)(0 - u) : (I)u;
 }
 double pys_float_str(Str *s) {
-  const char *p = s->s, *e = s->s + s->len;
+  Str *t = asciinum(s);
+  const char *p = t->s, *e = t->s + t->len;
   while (p < e && aws(*p)) p++;
   while (e > p && aws(e[-1])) e--;
   Buf b = {0}; const char *q = p;
@@ -597,7 +630,7 @@ I pys_mod(I a, I b) {
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
 I pys_pow(I a, I b) {
-  if (b < 0) pys_fail("ValueError: negative exponent for int ** int");
+  if (b < 0) pys_fail(a ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
   I r = 1, x = a;
   if (a == 0 || a == 1) return b ? a : 1;
   if (a == -1) return b & 1 ? -1 : 1;
