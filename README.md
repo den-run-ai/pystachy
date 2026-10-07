@@ -2,14 +2,14 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 44k-line
+and it can compile itself. The native compiler it produces reproduces its own 50k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (43805 lines of IR)
+fixed point: stage1 == stage2 == stage3 (49998 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -23,9 +23,9 @@ first bootstrap step only, CPython 3 (tested with 3.13). Set
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 3,706 | lexer 263 · parser 590 · types, tables and the definite-assignment pass 262 · type checker + IR generator 2,467 · driver 105 |
-| `runtime.c` | 1,228 | garbage collector, strings, lists, dicts, generic repr/compare, formatting, I/O |
-| `tests/` | 90 programs, 51 rejection cases, 3 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `pystachy.py` | 4,200 | lexer 277 · parser 636 · types, tables and the definite-assignment pass 290 · type checker + IR generator 2,873 · driver 105 |
+| `runtime.c` | 1,735 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O |
+| `tests/` | 128 programs, 74 rejection cases, 3 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -285,7 +285,7 @@ dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, de
 imports, definite assignment, sorting (timsort's exact comparisons), loops that change what
 they iterate, files and the standard streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Current result:
-**237 passed, 0 failed** with both the CPython-hosted and the self-compiled compiler.
+**336 passed, 0 failed** with both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
 `build/verification.json` with each step's result, duration and counts, the toolchain
