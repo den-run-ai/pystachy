@@ -546,10 +546,20 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
    of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
 I pys_obj_eq(I c, I a, I b);
-I pys_obj_lt(I c, I a, I b);
+I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 static I ocls(const char *d) { return (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0'; }
-Str *pys_default_repr(Str *cls, void *p) { char b[160]; return pys_str(b, snprintf(b, 160, "<__main__.%s object at %p>", cls->s, p)); }
+Str *pys_default_repr(Str *cls, void *p) {
+  const char *f = "<__main__.%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
+  Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
+}
+static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
+I pys_repr_enter(void *p) {
+  for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
+  if (nbusy == cbusy) { cbusy = cbusy * 2 + 8; busy = realloc(busy, cbusy * sizeof(void *)); if (!busy) pys_fail("MemoryError"); }
+  busy[nbusy++] = p; return 1;
+}
+void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
@@ -632,25 +642,30 @@ static int eqv(I a, I b, const char *d) {
   return a == b;
 }
 I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
-static I cmpv(I a, I b, const char *d) {
+/* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
+   items that are not equal (identity, then ==) and apply OP to that pair only, else compare
+   lengths; objects go through the program's rich comparison (reflection, TypeError) */
+static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
+static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
-  case 'f': return (dbl(a) > dbl(b)) - (dbl(a) < dbl(b));
-  case 's': return pys_str_cmp((Str *)a, (Str *)b);
+  case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
+  case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
   case 'L': {
-    List *x = (List *)a, *y = (List *)b;
-    for (I i = 0; i < x->len && i < y->len; i++) { I c = cmpv(x->a[i], y->a[i], d + 1); if (c) return c; }
-    return (x->len > y->len) - (x->len < y->len);
+    List *x = (List *)a, *y = (List *)b; I i = 0;
+    while (i < x->len && i < y->len && eqv(x->a[i], y->a[i], d + 1)) i++;
+    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
+    return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
   case 'T': {
     I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
-    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) { I c = cmpv(x[i], y[i], e); if (c) return c; }
-    return 0;
+    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqv(x[i], y[i], e)) return opv(x[i], y[i], e, op);
+    return cmpop(0, op);
   }
-  case 'O': { I c = ocls(d + 1); return pys_obj_lt(c, a, b) ? -1 : pys_obj_lt(c, b, a); }
+  case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   }
-  return (a > b) - (a < b);
+  return cmpop((a > b) - (a < b), op);
 }
-I pys_cmp(I a, I b, Str *d) { return cmpv(a, b, d->s); }
+I pys_cmpop(I a, I b, Str *d, I op) { return opv(a, b, d->s, op); }
 
 /* ---------- lists ---------- */
 List *pys_list_new(I cap) {
@@ -687,6 +702,14 @@ List *pys_list_slice(List *l, I lo, I hi) {
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
 void pys_list_clear(List *l) { l->len = 0; }
 List *pys_list_add(List *a, List *b) { List *r = pys_list_new(a->len + b->len); pys_list_extend(r, a); pys_list_extend(r, b); return r; }
+void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
+  I m = l->len;
+  if (n <= 0 || !m) { l->len = 0; return; }
+  if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  reserve(l, m * n);
+  for (I i = 1; i < n; i++) memcpy(l->a + i * m, l->a, m * 8);
+  l->len = m * n;
+}
 List *pys_list_mul(List *a, I n) {
   I m = a->len;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
@@ -695,23 +718,31 @@ List *pys_list_mul(List *a, I n) {
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqv(l->a[i], v, d->s)) return i; return -1; }
-I pys_list_index(List *l, I v, Str *d) { I i = pys_list_find(l, v, d); if (i < 0) pys_fail("ValueError: value is not in list"); return i; }
+I pys_list_index(List *l, I v, Str *d) {
+  I i = pys_list_find(l, v, d);
+  if (i < 0) { Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, v, d->s); put(&b, " is not in list", 16); pys_fail(b.p); }
+  return i;
+}
 I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += eqv(l->a[i], v, d->s); return c; }
-void pys_list_remove(List *l, I v, Str *d) { pys_list_pop(l, pys_list_index(l, v, d)); }
+void pys_list_remove(List *l, I v, Str *d) {
+  I i = pys_list_find(l, v, d);
+  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
+  pys_list_pop(l, i);
+}
 void pys_list_reverse(List *l) { for (I i = 0, j = l->len - 1; i < j; i++, j--) { I t = l->a[i]; l->a[i] = l->a[j]; l->a[j] = t; } }
 static void msort(I *a, I *t, I n, const char *d) {   /* stable merge sort, like Python's */
   if (n < 2) return;
   I h = n / 2, i = 0, j = h, k = 0;
   msort(a, t, h, d); msort(a + h, t, n - h, d);
-  while (i < h && j < n) t[k++] = cmpv(a[j], a[i], d) < 0 ? a[j++] : a[i++];
+  while (i < h && j < n) t[k++] = opv(a[j], a[i], d, 0) ? a[j++] : a[i++];   /* one a[j] < a[i] per step */
   while (i < h) t[k++] = a[i++];
   memcpy(a, t, k * 8);
 }
 void pys_list_sort(List *l, Str *d) { msort(l->a, pys_alloc_atomic(l->len * 8), l->len, d->s); }
 I pys_list_minmax(List *l, Str *d, I max) {
-  if (!l->len) pys_fail("ValueError: arg is an empty sequence");
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
   I m = l->a[0];
-  for (I i = 1; i < l->len; i++) if (max ? cmpv(l->a[i], m, d->s) > 0 : cmpv(l->a[i], m, d->s) < 0) m = l->a[i];
+  for (I i = 1; i < l->len; i++) if (opv(l->a[i], m, d->s, max ? 2 : 0)) m = l->a[i];   /* item > max / item < min */
   return m;
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }

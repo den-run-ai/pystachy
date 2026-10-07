@@ -1,0 +1,9 @@
+True
+eq 3 1
+eq 4 1
+False
+eq 5 1
+eq 1 1
+True
+True True
+[exit 0]

@@ -1,0 +1,2 @@
+xs = [1]
+xs.remove(2)

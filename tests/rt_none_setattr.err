@@ -1,0 +1,1 @@
+AttributeError: 'NoneType' object has no attribute 'x' and no __dict__ for setting new attributes
