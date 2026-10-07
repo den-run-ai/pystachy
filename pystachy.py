@@ -2163,18 +2163,23 @@ class Gen:
                 self.for_range(tgt, vs[0], vs[1], vs[2], body)
                 return
             if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 1):
-                self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body)
+                self.for_seq(tgt, [self.expr(a, "") for a in args], fn, body, "0")
+                return
+            if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
+                seq = self.expr(args[0], "")
+                a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
+                self.for_seq(tgt, [seq], fn, body, self.coerce(self.expr(a1, "int"), "int").v)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
             m = it.kids[0].s
             if m == "items" or m == "keys" or m == "values":
                 o = self.expr(it.kids[0].kids[0], "")
                 if is_dict(o.t):
-                    self.for_seq(tgt, [o], m, body)
+                    self.for_seq(tgt, [o], m, body, "0")
                 else:
-                    self.for_seq(tgt, [self.method(o, m, [])], "", body)
+                    self.for_seq(tgt, [self.method(o, m, [])], "", body, "0")
                 return
-        self.for_seq(tgt, [self.expr(it, "")], "", body)
+        self.for_seq(tgt, [self.expr(it, "")], "", body, "0")
 
     def range_args(self, args: list[Node]) -> list[str]:
         vs: list[str] = []
@@ -2217,7 +2222,7 @@ class Gen:
         self.cbr(r[1], le, lc)
         self.place(le)
 
-    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node]) -> None:
+    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str) -> None:
         # one indexed loop serves lists, strings, dicts, enumerate, zip and reversed
         ctr = self.alloca("int", "")
         self.emit(f"store i64 0, ptr {ctr}")
@@ -2238,7 +2243,7 @@ class Gen:
         j = self.ins(f"sub i64 {self.ins(f'sub i64 {size}, 1')}, {i}") if mode == "reversed" else i
         vals: list[Val] = []
         if mode == "enumerate":
-            vals.append(Val(i, "int"))
+            vals.append(Val(i if start == "0" else self.iop("sadd", i, start), "int"))
         for s in seqs:
             if is_list(s.t):
                 vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
@@ -2872,6 +2877,20 @@ class Gen:
             if name == "sorted":
                 self.rt("pys_list_sort", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t)))}"])
             return Val(c, t)
+        elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
+            dn = self.as_int(v)
+            dd = self.as_int(vals[1])
+            if dn.t == "int" and dd.t == "int":
+                return self.tuple_([self.arith("//", dn, dd), self.arith("%", dn, dd)])
+            dn = self.as_float(dn)
+            dd = self.as_float(dd)
+            self.guard(self.ins(f"fcmp oeq double {dd.v}, 0.0"), "ZeroDivisionError: float divmod()")
+            return self.tuple_([self.arith("//", dn, dd), self.arith("%", dn, dd)])
+        elif name == "pow" and len(vals) == 2:
+            return self.arith("**", v, vals[1])
+        elif name == "pow" and len(vals) == 3 and self.as_int(v).t == "int":
+            pm = [self.coerce(self.as_int(x), "int").v for x in vals]
+            return Val(self.rt("pys_powmod", "i64", [f"i64 {pm[0]}", f"i64 {pm[1]}", f"i64 {pm[2]}"]), "int")
         elif name == "dict" and is_dict(t):
             return Val(self.rt("pys_dict_copy", "ptr", [f"ptr {v.v}"]), t)
         elif name == "list" and is_dict(t):

@@ -91,7 +91,8 @@ list/dict/tuple displays, list comprehensions and generator arguments
 `__len__`, `__str__`, `__repr__`, ...) resolved statically.
 
 **Library.** `print`, `len`, `str`, `repr`, `int`, `float`, `bool`, `ord`, `chr`, `abs`,
-`min`, `max`, `sum`, `sorted`, `list`, `dict`, `round`, `any`, `all`, `input`, `open`;
+`min`, `max`, `sum`, `sorted`, `list`, `dict`, `round`, `divmod`, `pow`, `any`, `all`, `input`,
+`open`;
 the common `str`, `list`, `dict` and file methods; `sys.argv/exit/stdout/stderr`,
 `os.system/getpid/getenv/path.exists`, and `math` functions and constants.
 

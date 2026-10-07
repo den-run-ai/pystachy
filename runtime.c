@@ -233,6 +233,14 @@ I pys_pow(I a, I b) {
     if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
   }
 }
+I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m): 128-bit products cannot overflow */
+  if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
+  if (b < 0) pys_fail("ValueError: pow() 2nd argument cannot be negative when 3rd argument specified");
+  __int128 r = 1 % m, x = a % m;
+  for (; b; b >>= 1) { if (b & 1) r = r * x % m; x = x * x % m; }
+  I v = (I)r;
+  return v && (v < 0) != (m < 0) ? v + m : v;   /* the result has the sign of m, as in Python */
+}
 I pys_shl(I a, I b) {
   if (b < 0) pys_fail("ValueError: negative shift count");
   if (!a) return 0;
