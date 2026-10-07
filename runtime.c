@@ -210,7 +210,7 @@ double pys_float_str(Str *s) {
 
 /* ---------- arithmetic with Python semantics ----------
    ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
-#define ZDE "ZeroDivisionError: division by zero"
+#define ZDE "ZeroDivisionError: integer division or modulo by zero"
 #define OVF "OverflowError: integer result does not fit in 64 bits"
 I pys_floordiv(I a, I b) {
   if (!b) pys_fail(ZDE);
@@ -218,7 +218,7 @@ I pys_floordiv(I a, I b) {
   I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
 }
 I pys_mod(I a, I b) {
-  if (!b) pys_fail(ZDE);
+  if (!b) pys_fail("ZeroDivisionError: integer modulo by zero");
   if (b == -1) return 0;
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
@@ -241,15 +241,16 @@ I pys_shl(I a, I b) {
   return r;
 }
 I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
-double pys_fdiv(double a, double b) { if (b == 0) pys_fail(ZDE); return a / b; }
+double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
+double pys_idiv(I a, I b) { if (!b) pys_fail("ZeroDivisionError: division by zero"); return (double)a / (double)b; }
 static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
   double m = fmod(a, b), d = (a - m) / b;
   if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
   if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
   *q = d; return m;
 }
-double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail(ZDE); return pymod(a, b, &q); }
-double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail(ZDE); pymod(a, b, &q); return q; }
+double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero"); return pymod(a, b, &q); }
+double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero"); pymod(a, b, &q); return q; }
 I pys_f2i(double d) {
   if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
   if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");

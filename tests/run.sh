@@ -1,6 +1,7 @@
 #!/bin/sh
 # Differential tests. Every tests/*.py must print exactly what CPython printed
-# (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled.
+# (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
+# CPython wrote to stderr, the last line (tests/*.err) must match too.
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # usage: tests/run.sh [COMPILER]   (default: ./pystachy; e.g. "python3 pystachy.py")
@@ -18,8 +19,10 @@ for t in tests/*.py; do
       $PYS build "$t" -o "$T/$n.exe" 2> "$T/$n.err" &&
         ("$T/$n.exe" a1 a2 < "$in"; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
-    if cmp -s "$T/$n.$mode" "tests/$n.out"; then pass=$((pass + 1)); else
-      fail=$((fail + 1)); echo "FAIL $n ($mode)"; diff "tests/$n.out" "$T/$n.$mode" | head -10; head -5 "$T/$n.err"; fi
+    if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then
+      pass=$((pass + 1)); else
+      fail=$((fail + 1)); echo "FAIL $n ($mode)"; diff "tests/$n.out" "$T/$n.$mode" | head -10
+      [ -f "tests/$n.err" ] && echo "  stderr: want '$(cat "tests/$n.err")', got '$(tail -1 "$T/$n.err")'"; head -5 "$T/$n.err"; fi
   done
 done
 # Documented deviations from CPython: tests/deviations/*.out is written by hand and holds

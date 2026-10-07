@@ -212,6 +212,7 @@ class Node:
         self.s = s
         self.line = line
         self.kids: list[Node] = []
+        self.chk = False  # a variable read that may find the variable unassigned
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
@@ -755,7 +756,7 @@ DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "
 CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
     "float(str)": "pys_float_str:float", "round(float)": "pys_round:int", "round(float,int)": "pys_round_n:float", "input(str)": "pys_input:str",
-    "abs(float)": "fabs:float", "list(str)": "pys_str_list:list[str]", "dict(dict)": "pys_dict_copy:",
+    "abs(float)": "fabs:float", "list(str)": "pys_str_list:list[str]",
     "sum(list[int])": "pys_sum_int:int", "sum(list[float])": "pys_sum_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "open(str,str)": "pys_open:file", "sys.exit(int)": "pys_exit:None", "sys.stdout.flush()": "pys_flush:None",
@@ -922,6 +923,7 @@ class FnInfo:
         self.ptypes: list[str] = []
         self.defaults: list[Node] = []
         self.dglob: list[str] = []  # global holding a default evaluated at def time, or ""
+        self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
         self.ret = "None"
 
 
@@ -933,7 +935,43 @@ class ClassInfo:
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
         self.fglob: dict[str, str] = {}
+        self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.methods: dict[str, FnInfo] = {}
+
+
+class Flow:
+    # definite assignment over one scope: which reads may find their variable unassigned
+    def __init__(self, tracked: dict[str, bool], defd: dict[str, bool], top: bool):
+        self.tracked = tracked
+        self.defd = defd  # names assigned on every path to here; " dead" marks unreachable code
+        self.top = top
+        self.brks: list[dict[str, bool]] = []
+        self.marks: dict[str, bool] = {}
+        self.call: dict[str, bool] = {}
+        self.called = False
+        # field mode, over __init__: which fields may be seen unassigned (".f" in defd = assigned)
+        self.me = ""
+        self.fields: list[str] = []
+        self.unsafe: dict[str, bool] = {}
+
+    def exposed(self) -> None:
+        # self escapes or __init__ returns: fields not assigned yet may be read unassigned
+        if " dead" not in self.defd:
+            for f in self.fields:
+                if "." + f not in self.defd:
+                    self.unsafe[f] = True
+
+    def join(self, other: dict[str, bool]) -> None:
+        if " dead" in other:
+            return
+        if " dead" in self.defd:
+            self.defd = dict(other)
+            return
+        out: dict[str, bool] = {}
+        for k in self.defd:
+            if k in other:
+                out[k] = True
+        self.defd = out
 
 
 # ---------------------------------------------------------------- code generator
@@ -964,6 +1002,9 @@ class Gen:
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
         self.called: dict[str, bool] = {}
+        self.gflag: dict[str, bool] = {}
+        self.uflags: dict[str, bool] = {}
+        self.lflag: dict[str, str] = {}
         self.modlevel = False
         self.n = 0
         self.cur = "entry"
@@ -1064,6 +1105,11 @@ class Gen:
         if name != "":
             self.ltype[name] = t
             self.lreg[name] = r
+            if name in self.uflags and name not in self.compvars:
+                # "is assigned" flag for a local that some read may find unassigned
+                self.lflag[name] = f"%{name}.def.{self.n}"
+                self.allocas.append(f"  {self.lflag[name]} = alloca i1")
+                self.allocas.append(f"  store i1 false, ptr {self.lflag[name]}")
         return r
 
     # ---- value conversions
@@ -1323,6 +1369,28 @@ class Gen:
                 return c
             if c == "len" or c == "ord":
                 return "int"
+        me = f.params[0] if f.cls != "" else ""
+        if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s == me:
+            return self.classes[f.cls].ftypes.get(e.s, "")
+        if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
+            ms = self.classes[f.cls].methods
+            return ms[e.kids[0].s].ret if e.kids[0].s in ms else ""
+        if k == "cmp" or (k == "unary" and e.s == "not"):
+            return "bool"
+        if k == "ifexp":
+            return self.guess(e.kids[1], f)
+        if k == "list" and len(e.kids) > 0:
+            t = self.guess(e.kids[0], f)
+            return f"list[{t}]" if t != "" else ""
+        if k == "binop":
+            a = self.guess(e.kids[0], f)
+            b = self.guess(e.kids[1], f)
+            if self.isnum(a) and self.isnum(b):
+                if e.s == "/" or a == "float" or b == "float":
+                    return "float"
+                return "bool" if a == "bool" and b == "bool" and e.s in IOPS else "int"
+            if a == b and (a == "str" or is_list(a)):
+                return a
         return ""
 
     def field(self, o: Val, name: str) -> Val:
@@ -1334,6 +1402,20 @@ class Gen:
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'")
         i = ci.fields.index(name)
         return Val(self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}"), ci.ftypes[name])
+
+    def getfield(self, o: Val, p: Val, name: str) -> Val:
+        # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
+        ci = self.classes[o.t]
+        if name in ci.fflag:
+            f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
+            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{o.t}' object has no attribute '{name}'")
+        return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+
+    def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
+        self.emit(f"store {lt(p.t)} {self.coerce(v, p.t).v}, ptr {p.v}")
+        ci = self.classes[o.t]
+        if name in ci.fflag:
+            self.emit(f"store i1 true, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
 
     # ---- variables
     def is_global(self, name: str) -> bool:
@@ -1349,7 +1431,7 @@ class Gen:
                 self.nn[r] = True
             return Val(r, t)
         if name in self.assigned and name not in self.gdecl:
-            self.err(f"local variable '{name}' is read before its first assignment")
+            self.err(f"local variable '{name}' is read before its first assignment; declare it first ({name}: T)")
         if name in self.gtypes:
             t = self.gtypes[name]
             return Val(self.ins(f"load {lt(t)}, ptr @g.{name}"), t)
@@ -1362,11 +1444,25 @@ class Gen:
         self.err(f"name '{name}' is not defined")
         return Val("", "")
 
+    def read(self, n: Node) -> Val:
+        # a variable read; if flow analysis found it may be unassigned, check at run time
+        name = n.s
+        if n.chk and name in self.ltype:
+            if name in self.lflag and name not in self.compvars:
+                bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {self.lflag[name]}')}, true")
+                self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
+        elif n.chk and name in self.gflag and name in self.gtypes:
+            bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
+            self.guard(bad, f"NameError: name '{name}' is not defined")
+        return self.load_name(name)
+
     def declare(self, name: str, t: str) -> None:
         if self.is_global(name):
             if name not in self.gtypes:
                 self.gtypes[name] = t
                 self.globs.append(f"@g.{name} = internal global {lt(t)} zeroinitializer")
+                if name in self.gflag:
+                    self.globs.append(f"@g.{name}.def = internal global i1 false")
             old = self.gtypes[name]
         elif name in self.ltype:
             old = self.ltype[name]
@@ -1384,11 +1480,15 @@ class Gen:
                 self.declare(name, v.t)
             t = self.gtypes[name]
             self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr @g.{name}")
+            if name in self.gflag:
+                self.emit(f"store i1 true, ptr @g.{name}.def")
         else:
             if name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
             self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr {self.lreg[name]}")
+            if name in self.lflag and name not in self.compvars:
+                self.emit(f"store i1 true, ptr {self.lflag[name]}")
 
     def names_in(self, t: Node, out: list[str]) -> None:
         if t.kind == "name":
@@ -1397,7 +1497,7 @@ class Gen:
             for k in t.kids:
                 self.names_in(k, out)
 
-    def collect(self, body: list[Node]) -> None:
+    def collect(self, body: list[Node], out: dict[str, bool]) -> None:
         # Python's rule: a name assigned anywhere in a function is local to it
         for st in body:
             k = st.kind
@@ -1406,10 +1506,19 @@ class Gen:
                 for i in range(len(st.kids) - 1 if k == "assign" else 1):
                     self.names_in(st.kids[i], names)
                 for nm in names:
-                    self.assigned[nm] = True
+                    out[nm] = True
             for kid in st.kids:
                 if kid.kind == "block":
-                    self.collect(kid.kids)
+                    self.collect(kid.kids, out)
+
+    def globals_in(self, body: list[Node], out: dict[str, bool]) -> None:
+        for st in body:
+            if st.kind == "global":
+                for nm in st.kids:
+                    out[nm.s] = True
+            for kid in st.kids:
+                if kid.kind == "block":
+                    self.globals_in(kid.kids, out)
 
     def target_type(self, n: Node) -> str:
         # expected type of an assignment target (types empty [] / {} literals)
@@ -1431,8 +1540,8 @@ class Gen:
         if k == "name":
             self.store_name(t.s, v)
         elif k == "attr":
-            p = self.field(self.expr(t.kids[0], ""), t.s)
-            self.emit(f"store {lt(p.t)} {self.coerce(v, p.t).v}, ptr {p.v}")
+            o = self.expr(t.kids[0], "")
+            self.setfield(o, self.field(o, t.s), t.s, v)
         elif k == "index":
             o = self.expr(t.kids[0], "")
             if is_list(o.t):
@@ -1470,9 +1579,11 @@ class Gen:
         self.cold = {}
         self.nn = {}
         self.selfname = ""
+        self.uflags = f.uflags
+        self.lflag = {}
         self.line = f.node.line
         if not self.modlevel:
-            self.collect(body)
+            self.collect(body, self.assigned)
         ps: list[str] = []
         if f.cls != "":
             # callers check the receiver, so self is never None inside a method
@@ -1494,7 +1605,7 @@ class Gen:
                         v = Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[fl]}"), t)
                     else:
                         v = self.coerce(self.expr(ci.fdefault[fl], t), t)
-                    self.emit(f"store {lt(t)} {v.v}, ptr {self.field(me, fl).v}")
+                    self.setfield(me, self.field(me, fl), fl, v)
         self.stmts(body)
         if not self.term:
             if f.ret == "None":
@@ -1529,6 +1640,7 @@ class Gen:
                 top.append(st)
         for ci in self.classes.values():
             self.declare_fields(ci)
+        self.flow_program(top)
         self.modlevel = True
         self.function(FnInfo("<module>", "@main.init", m, ""), top)
         self.modlevel = False
@@ -1551,7 +1663,10 @@ class Gen:
                 self.function(f, f.node.kids[2].kids)
         hdr: list[str] = ["; generated by pystachy"]
         for ci in self.classes.values():
-            hdr.append(f"%C.{ci.name} = type {{{', '.join([lt(ci.ftypes[x]) for x in ci.fields])}}}")
+            ts = [lt(ci.ftypes[x]) for x in ci.fields]
+            for _ in ci.fflag:
+                ts.append("i1")
+            hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
         hdr.extend(self.globs)
         hdr.extend(self.consts)
         hdr.extend(self.out)
@@ -1563,6 +1678,212 @@ class Gen:
         hdr.append("  ret i32 0")
         hdr.append("}")
         return "\n".join(hdr) + "\n"
+
+    # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
+    # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;
+    # the others (Node.chk) test an "is assigned" flag kept only for the variables they read.
+    def flow_program(self, top: list[Node]) -> None:
+        fns: list[FnInfo] = []
+        for f in self.funcs.values():
+            fns.append(f)
+        for ci in self.classes.values():
+            for f in ci.methods.values():
+                fns.append(f)
+        gl: dict[str, bool] = {}
+        self.collect(top, gl)
+        for f in fns:
+            decl: dict[str, bool] = {}
+            asg: dict[str, bool] = {}
+            self.globals_in(f.node.kids[2].kids, decl)
+            self.collect(f.node.kids[2].kids, asg)
+            for nm in decl:
+                if nm in asg:
+                    gl[nm] = True
+        mfl = Flow(gl, {}, True)
+        self.fl_stmts(mfl, top)
+        self.gflag = mfl.marks
+        # functions run only from module code: globals assigned before its first call into user
+        # code stay assigned while any function runs
+        safe = mfl.call if mfl.called else gl
+        for f in fns:
+            body = f.node.kids[2].kids
+            loc: dict[str, bool] = {}
+            decl: dict[str, bool] = {}
+            self.collect(body, loc)
+            self.globals_in(body, decl)
+            tracked = dict(gl)
+            defd: dict[str, bool] = {}
+            for nm in loc:
+                tracked[nm] = True
+            for nm in gl:
+                if nm in safe and (nm not in loc or nm in decl):
+                    defd[nm] = True
+            for nm in f.params:
+                defd[nm] = True
+            fl = Flow(tracked, defd, False)
+            self.fl_stmts(fl, body)
+            for nm in fl.marks:
+                if nm in loc and nm not in decl:
+                    f.uflags[nm] = True
+                else:
+                    self.gflag[nm] = True
+        for ci in self.classes.values():
+            self.fl_fields(ci)
+
+    def fl_fields(self, ci: ClassInfo) -> None:
+        # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
+        # read raises AttributeError as in CPython instead of seeing 0 or null
+        init = ci.methods["__init__"]
+        fl = Flow({}, {}, False)
+        for f in ci.fdefault:
+            fl.defd["." + f] = True
+        fl.fields = ci.fields
+        if init.node.kids[0].kind == "noann":
+            if not self.is_dc(ci.name):
+                fl.exposed()
+        else:
+            fl.me = init.params[0]
+            self.fl_stmts(fl, init.node.kids[2].kids)
+            fl.exposed()
+        for f in ci.fields:
+            if f in fl.unsafe:
+                ci.fflag[f] = len(ci.fields) + len(ci.fflag)
+
+    def fl_defaults(self, n: Node) -> list[Node]:
+        # the default values a def or class statement evaluates (see hoist)
+        out: list[Node] = []
+        fs: list[FnInfo] = []
+        if n.kind == "defaults":
+            fs.append(self.funcs[n.s])
+        else:
+            ci = self.classes[n.s]
+            for fl in ci.fields:
+                if fl in ci.fdefault and not is_const(ci.fdefault[fl]):
+                    out.append(ci.fdefault[fl])
+            for f in ci.methods.values():
+                fs.append(f)
+        for f in fs:
+            for d in f.defaults:
+                if not is_const(d):
+                    out.append(d)
+        return out
+
+    def user_call(self, n: Node) -> bool:
+        # may running n call a user function, method or constructor?
+        if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.funcs or n.kids[0].s in self.classes):
+            return True
+        if n.kind == "defaults" or n.kind == "cdefaults":
+            for d in self.fl_defaults(n):
+                if self.user_call(d):
+                    return True
+        for k in n.kids:
+            if self.user_call(k):
+                return True
+        return False
+
+    def fl_stmts(self, fl: Flow, body: list[Node]) -> None:
+        for st in body:
+            self.fl_stmt(fl, st)
+
+    def fl_stmt(self, fl: Flow, n: Node) -> None:
+        k = n.kind
+        if fl.top and not fl.called and self.user_call(n):
+            fl.called = True
+            fl.call = dict(fl.defd)
+        if k == "assign":
+            self.fl_expr(fl, n.kids[-1])
+            for i in range(len(n.kids) - 1):
+                self.fl_target(fl, n.kids[i])
+        elif k == "annassign":
+            if len(n.kids) == 3:
+                self.fl_expr(fl, n.kids[2])
+                self.fl_target(fl, n.kids[0])
+        elif k == "augassign":
+            self.fl_expr(fl, n.kids[0])
+            self.fl_expr(fl, n.kids[1])
+            self.fl_target(fl, n.kids[0])
+        elif k == "if":
+            self.fl_expr(fl, n.kids[0])
+            pre = dict(fl.defd)
+            self.fl_stmts(fl, n.kids[1].kids)
+            then = fl.defd
+            fl.defd = pre
+            self.fl_stmts(fl, n.kids[2].kids)
+            fl.join(then)
+        elif k == "while" or k == "for":
+            self.fl_expr(fl, n.kids[0] if k == "while" else n.kids[1])
+            pre = dict(fl.defd)
+            outer = fl.brks
+            fl.brks = []
+            if k == "for":
+                self.fl_target(fl, n.kids[0])
+            self.fl_stmts(fl, n.kids[-1].kids)
+            brks = fl.brks
+            fl.brks = outer
+            fl.defd = pre
+            if k == "while" and n.kids[0].kind == "True":
+                # while True is left only through break
+                fl.defd[" dead"] = True
+                for b in brks:
+                    fl.join(b)
+        elif k == "break":
+            fl.brks.append(dict(fl.defd))
+            fl.defd[" dead"] = True
+        elif k == "continue" or k == "return" or k == "raise":
+            for c in n.kids:
+                self.fl_expr(fl, c)
+            if k == "return":
+                fl.exposed()
+            fl.defd[" dead"] = True
+        elif k == "defaults" or k == "cdefaults":
+            for d in self.fl_defaults(n):
+                self.fl_expr(fl, d)
+        elif k == "expr" or k == "assert" or k == "del":
+            for c in n.kids:
+                self.fl_expr(fl, c)
+
+    def fl_target(self, fl: Flow, t: Node) -> None:
+        if t.kind == "name":
+            fl.defd[t.s] = True
+        elif t.kind == "attr" and fl.me != "" and t.kids[0].kind == "name" and t.kids[0].s == fl.me:
+            fl.defd["." + t.s] = True
+        elif t.kind == "tuple":
+            for k in t.kids:
+                self.fl_target(fl, k)
+        else:
+            for k in t.kids:
+                self.fl_expr(fl, k)
+
+    def fl_expr(self, fl: Flow, e: Node) -> None:
+        k = e.kind
+        if k == "name":
+            if e.s in fl.tracked and e.s not in fl.defd and " dead" not in fl.defd:
+                e.chk = True
+                fl.marks[e.s] = True
+            if e.s == fl.me:
+                fl.exposed()
+        elif k == "attr" and fl.me != "" and e.kids[0].kind == "name" and e.kids[0].s == fl.me:
+            if "." + e.s not in fl.defd and " dead" not in fl.defd:
+                fl.unsafe[e.s] = True
+        elif k == "listcomp":
+            # [elt for target in iter if cond]: iter is read outside, the rest with target bound
+            self.fl_expr(fl, e.kids[2])
+            saved = dict(fl.defd)
+            self.fl_target(fl, e.kids[1])
+            for i in range(len(e.kids)):
+                if i != 1 and i != 2:
+                    self.fl_expr(fl, e.kids[i])
+            fl.defd = saved
+        elif k == "call":
+            if e.kids[0].kind == "attr":
+                self.fl_expr(fl, e.kids[0].kids[0])
+            elif e.kids[0].kind != "name":
+                self.fl_expr(fl, e.kids[0])
+            for i in range(1, len(e.kids)):
+                self.fl_expr(fl, e.kids[i])
+        else:
+            for c in e.kids:
+                self.fl_expr(fl, c)
 
     # ---- statements
     def stmts(self, body: list[Node]) -> None:
@@ -1743,19 +2064,19 @@ class Gen:
         t = n.kids[0]
         op = n.s
         if t.kind == "name":
-            cur = self.load_name(t.s)
+            cur = self.read(t)
             if is_list(cur.t) and op == "+":
                 self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(self.expr(n.kids[1], cur.t), cur.t).v}"])
             else:
                 self.store_name(t.s, self.arith(op, cur, self.expr(n.kids[1], cur.t)))
         elif t.kind == "attr":
-            p = self.field(self.expr(t.kids[0], ""), t.s)
-            cur = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+            o = self.expr(t.kids[0], "")
+            p = self.field(o, t.s)
+            cur = self.getfield(o, p, t.s)
             if is_list(cur.t) and op == "+":
                 self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(self.expr(n.kids[1], cur.t), cur.t).v}"])
             else:
-                r = self.coerce(self.arith(op, cur, self.expr(n.kids[1], cur.t)), p.t)
-                self.emit(f"store {lt(p.t)} {r.v}, ptr {p.v}")
+                self.setfield(o, p, t.s, self.arith(op, cur, self.expr(n.kids[1], cur.t)))
         elif t.kind == "index":
             o = self.expr(t.kids[0], "")
             if is_list(o.t):
@@ -1947,7 +2268,7 @@ class Gen:
         if k == "None":
             return Val("null", "None")
         if k == "name":
-            return self.load_name(n.s)
+            return self.read(n)
         if k == "binop":
             a = self.expr(n.kids[0], want)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t))
@@ -1965,8 +2286,8 @@ class Gen:
             path = self.dotted(n)
             if path != "":
                 return self.modattr(path)
-            p = self.field(self.expr(n.kids[0], ""), n.s)
-            return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+            o = self.expr(n.kids[0], "")
+            return self.getfield(o, self.field(o, n.s), n.s)
         if k == "index":
             return self.index(n)
         if k == "slice":
@@ -2231,6 +2552,8 @@ class Gen:
             return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
         a = self.as_int(a)
         b = self.as_int(b)
+        if a.t == "int" and b.t == "int" and op == "/":
+            return Val(self.rt("pys_idiv", "double", [f"i64 {a.v}", f"i64 {b.v}"]), "float")
         if a.t == "int" and b.t == "int" and op != "/":
             if op in CHECKED:
                 return Val(self.iop(CHECKED[op], a.v, b.v), "int")
@@ -2490,6 +2813,8 @@ class Gen:
             if name == "sorted":
                 self.rt("pys_list_sort", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t)))}"])
             return Val(c, t)
+        elif name == "dict" and is_dict(t):
+            return Val(self.rt("pys_dict_copy", "ptr", [f"ptr {v.v}"]), t)
         elif name == "list" and is_dict(t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(t)[0]}]")
         elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
