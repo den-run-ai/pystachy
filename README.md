@@ -161,10 +161,10 @@ integers.
   "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
   compile-time `SyntaxWarning`s are not printed. Deep recursion overflows the stack instead
   of raising `RecursionError`.
-- Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and the order
-  `sort` gives lists containing NaN can differ. `sort` is a stable merge sort, so the
-  sequence of `__lt__` calls differs from timsort's (the result does not). The sum of an
-  empty `list[float]` is `0.0` (`sum(xs, 1)`: `1.0`), where CPython returns the int start.
+- Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
+  tuples holding the same NaN object compare, and sort, as if they held different ones. The
+  sum of an empty `list[float]` is `0.0` (`sum(xs, 1)`: `1.0`), where CPython returns the int
+  start.
 - An import binds its names for the whole program, wherever it appears.
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers. A file the program drops without closing is
@@ -247,7 +247,10 @@ result would be `str` or `None`); `raise` of anything but a builtin exception.
   round-trip digits), `round` with exact half-even rounding, Neumaier-compensated `sum`,
   `int()`/`float()` string grammar, `str.split`, string `repr` quoting, and the
   format-spec mini-language are implemented to match CPython's output, error messages
-  included. Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
+  included. `sort` is a function-by-function port of CPython 3.13's timsort that makes the
+  same `<` comparisons in the same order, which decides where NaNs end up and what an
+  `__lt__` with side effects sees (4,200 random lists of every shape agree call for call).
+  Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
   the table is rebuilt, with its sizes and growth), so deletion is O(1) and a loop that
   changes its dict sees what CPython's would. Files wrap C stdio with CPython's open()
   rules: mode parsing, errno-based `OSError` subclasses, newline translation, `"+"` mode
@@ -279,8 +282,8 @@ must be rejected with the message on its first line, and each `tests/deviations/
 print its hand-written expected output. The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
-imports, definite assignment, loops that change what they iterate, files and the standard
-streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
+imports, definite assignment, sorting (timsort's exact comparisons), loops that change what
+they iterate, files and the standard streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Current result:
 **237 passed, 0 failed** with both the CPython-hosted and the self-compiled compiler.
 

@@ -976,17 +976,205 @@ void pys_list_remove(List *l, I v, Str *d) {
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
   pys_list_pop(l, i);
 }
-void pys_list_reverse(List *l) { for (I i = 0, j = l->len - 1; i < j; i++, j--) { I t = l->a[i]; l->a[i] = l->a[j]; l->a[j] = t; } }
-static void msort(I *a, I *t, I n, const char *d) {   /* stable merge sort, like Python's */
-  if (n < 2) return;
-  I h = n / 2, i = 0, j = h, k = 0;
-  msort(a, t, h, d); msort(a + h, t, n - h, d);
-  while (i < h && j < n) t[k++] = opv(a[j], a[i], d, 0) ? a[j++] : a[i++];   /* one a[j] < a[i] per step */
-  while (i < h) t[k++] = a[i++];
-  memcpy(a, t, k * 8);
+static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
+void pys_list_reverse(List *l) { rev(l->a, l->len); }
+/* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
+   function by function so that it makes exactly CPython's sequence of `<` comparisons, which is
+   observable (where NaNs end up, what an __lt__ with side effects sees): each ISLT(x, y) there is
+   one LT(x, y) here, in the same order. Natural runs, extended to minrun items by binary insertion,
+   are merged as the powersort policy decides; a merge copies the shorter run to a buffer and
+   gallops while one side keeps winning. No key=; CPython's type-specialized compares make the same
+   comparisons as opv. As in CPython (ob_item NULL, allocated -1), the list looks empty while it is
+   sorted, and growing it from __lt__ makes the sort fail afterwards. Items can exist only in the
+   merge buffer when a comparison runs the collector: the buffer is scanned memory, and it and the
+   item array stay in volatile fields of the MergeState (MS) on the stack. Speed: the common item
+   types compare inline, and binary insertion and the one-at-a-time merging of ints and floats use
+   selects, as random data makes their branches unpredictable (merging strings or objects keeps
+   the branches, which let the CPU fetch their data early). */
+#define MIN_GALLOP 7
+typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
+typedef struct {
+  const char *d; int kind; I cls;                   /* element descriptor; its kind (below) and class id */
+  I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
+  I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
+} MS;
+static I sorting[1];                                /* the items of a list while it is being sorted */
+enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
+static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
+  int k = ms->kind;
+  return k == INT ? x < y : k == FLOAT ? dbl(x) < dbl(y) : k == STR ? pys_str_cmp((Str *)x, (Str *)y) < 0 :
+         k == OBJ ? pys_obj_cmp(ms->cls, 0, x, y) != 0 : opv(x, y, ms->d, 0);
 }
-void pys_list_sort(List *l, Str *d) { msort(l->a, pys_alloc_atomic(l->len * 8), l->len, d->s); }
-void pys_list_sort_r(List *l, Str *d, I rev) { if (rev) pys_list_reverse(l); pys_list_sort(l, d); if (rev) pys_list_reverse(l); }
+#define LT(x, y) islt(ms, x, y)
+static void binarysort(MS *ms, I *a, I n, I ok) {   /* a[:ok] is sorted: binary insertion of the rest */
+  for (ok += !ok; ok < n; ok++) {
+    I L = 0, R = ok, x = a[ok];
+    do { I M = (L + R) >> 1; if (__builtin_unpredictable(LT(x, a[M]))) R = M; else L = M + 1; } while (L < R);   /* selects */
+    memmove(a + L + 1, a + L, (ok - L) * 8); a[L] = x;
+  }
+}
+static I count_run(MS *ms, I *a, I n) {             /* length of the run that starts a[:n], made ascending */
+  I k = 1, neq = 0;
+  while (k < n && !LT(a[k], a[k - 1])) k++;
+  if (k == n) return k;
+  if (k > 1) { if (LT(a[0], a[k - 1])) return k; rev(a, k); }   /* all equal so far: descending */
+  for (k++; k < n; k++) {                           /* descending: stretches of equal items are */
+    if (LT(a[k], a[k - 1])) { rev(a + k - neq - 1, neq + 1); neq = 0; }   /* reversed on the way, */
+    else if (LT(a[k - 1], a[k])) break;             /* so the final reversal keeps them in order */
+    else neq++;
+  }
+  rev(a + k - neq - 1, neq + 1); rev(a, k);
+  while (k < n && !LT(a[k], a[k - 1])) k++;         /* reversed, it may go on ascending */
+  return k;
+}
+/* gallop_left (right 0) and gallop_right (right 1): where key goes in the sorted a[:n], searching
+   outwards from a[hint]; the k with a[k-1] < key <= a[k], or a[k-1] <= key < a[k]. PRE(x) says x
+   goes before key: x < key for gallop_left, not key < x for gallop_right. */
+static I gallop(MS *ms, I key, I *a, I n, I hint, int right) {
+#define PRE(x) (right ? !LT(key, x) : LT(x, key))
+  I ofs = 1, last = 0, k;
+  if (PRE(a[hint])) {                               /* right, until a[hint+ofs] does not go before key */
+    I max = n - hint;
+    while (ofs < max && PRE(a[hint + ofs])) { last = ofs; ofs = (ofs << 1) + 1; }
+    if (ofs > max) ofs = max;
+    last += hint; ofs += hint;
+  } else {                                          /* left, until a[hint-ofs] goes before key */
+    I max = hint + 1;
+    while (ofs < max && !PRE(a[hint - ofs])) { last = ofs; ofs = (ofs << 1) + 1; }
+    if (ofs > max) ofs = max;
+    k = last; last = hint - ofs; ofs = hint - k;
+  }
+  for (last++; last < ofs;) { I m = last + ((ofs - last) >> 1); if (PRE(a[m])) last = m + 1; else ofs = m; }
+  return ofs;
+#undef PRE
+}
+static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geometrically */
+  if (need > ms->nt) { ms->nt = need > 2 * ms->nt ? need : 2 * ms->nt; ms->t = pys_alloc(ms->nt * 8); }
+  return ms->t;
+}
+static void merge_lo(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */
+  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;
+  *d++ = *pb++;
+  if (--nb == 0) goto done;
+  if (na == 1) goto copyb;
+  for (;;) {
+    I ac = 0, bc = 0, w;                            /* times a and b won in a row */
+    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */
+      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;
+      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;
+    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */
+    else for (;;) {                                 /* the others by branches */
+      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }
+      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }
+    }
+    if (!nb) goto done;
+    if (na == 1) goto copyb;
+    mg++;
+    do {                                            /* galloping */
+      mg -= mg > 1; ms->min_gallop = mg;
+      ac = k = gallop(ms, *pb, pa, na, 0, 1);
+      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }
+      *d++ = *pb++;
+      if (--nb == 0) goto done;
+      bc = k = gallop(ms, *pa, pb, nb, 0, 0);
+      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }
+      *d++ = *pa++;
+      if (--na == 1) goto copyb;
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
+    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */
+  }
+done:
+  if (na) memcpy(d, pa, na * 8);
+  return;
+copyb:                                              /* the last of a goes after the rest of b */
+  memmove(d, pb, nb * 8); d[nb] = *pa;
+}
+static void merge_hi(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */
+  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;
+  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */
+  if (--na == 0) goto done;
+  if (nb == 1) goto copya;
+  for (;;) {
+    I ac = 0, bc = 0, w;
+    if (ms->kind == INT || ms->kind == FLOAT) do {
+      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];
+      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;
+    } while (na && nb > 1 && ac < mg && bc < mg);
+    else for (;;) {
+      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }
+      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }
+    }
+    if (!na) goto done;
+    if (nb == 1) goto copya;
+    mg++;
+    do {
+      mg -= mg > 1; ms->min_gallop = mg;
+      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);
+      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }
+      *--d = *--pb;
+      if (--nb == 1) goto copya;
+      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);
+      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }
+      *--d = *--pa;
+      if (--na == 0) goto done;
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
+    ms->min_gallop = ++mg;
+  }
+done:
+  if (nb) memcpy(d - nb, t, nb * 8);
+  return;
+copya:                                              /* the first of b goes before the rest of a */
+  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];
+}
+static void merge_at(MS *ms, int i) {               /* merge pending runs i and i+1 */
+  Run *p = ms->p;
+  I *a = ms->a + p[i].s, na = p[i].n, *b = a + na, nb = p[i + 1].n, k;
+  p[i].n = na + nb;
+  if (i == ms->np - 3) p[i + 1] = p[i + 2];
+  ms->np--;
+  k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
+  a += k;
+  if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
+  if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
+}
+static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
+  if (!ms->np) return;
+  Run *p = ms->p + ms->np - 1;
+  I n = ms->n, a = 2 * p->s + p->n, b = a + p->n + n2;   /* powerloop: twice the two runs' midpoints */
+  int power = 0;
+  for (;; a <<= 1, b <<= 1) {                       /* the first bit where a/n and b/n differ */
+    power++;
+    if (a >= n) { a -= n; b -= n; } else if (b >= n) break;
+  }
+  while (ms->np > 1 && ms->p[ms->np - 2].power > power) merge_at(ms, ms->np - 2);
+  ms->p[ms->np - 1].power = power;
+}
+void pys_list_sort_r(List *l, Str *d, I reverse) {
+  I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
+  MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
+           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+  l->len = l->cap = 0; l->a = sorting;
+  if (n > 1) {
+    if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
+    while (m >= 64) { r |= m & 1; m >>= 1; }        /* merge_compute_minrun */
+    m += r;
+    for (I lo = 0, k; lo < n; lo += k) {
+      k = count_run(&ms, a + lo, n - lo);
+      if (k < m) { I f = n - lo < m ? n - lo : m; binarysort(&ms, a + lo, f, k); k = f; }   /* extend to minrun */
+      found_new_run(&ms, k);
+      ms.p[ms.np++] = (Run){lo, k, 0};
+    }
+    while (ms.np > 1) {                             /* merge_force_collapse */
+      int i = ms.np - 2;
+      if (i > 0 && ms.p[i - 1].n < ms.p[i + 1].n) i--;
+      merge_at(&ms, i);
+    }
+    if (reverse) rev(a, n);
+  }
+  if (l->a != sorting) pys_fail("ValueError: list modified during sort");
+  l->len = n; l->cap = cap; l->a = a;
+}
+void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
 I pys_list_minmax(List *l, Str *d, I max) {
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
   I m = l->a[0];
