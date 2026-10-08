@@ -1,0 +1,12 @@
+3 3.5 ab [1, 2, 3] Pt(x=4, y=6) 2
+42 abab 5 xy
+7 s empty Pt(x=5, y=6) None
+5 0 100 40 10 1.0
+str of length 3 number 3 number 2.5 number True list of 2 something else something else
+3628800 1 2432902008176640000
+6 14.0 10
+[1, 2] ['a', 'b']
+1 2 3
+Pt(x=1, y=2) None True
+a=1, b=2 1=2.5
+[exit 0]
