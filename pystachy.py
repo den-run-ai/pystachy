@@ -4337,24 +4337,47 @@ class Gen:
                     out.append(d)
         return out
 
-    def scc(self, a: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
-        # Tarjan's algorithm over the import graph (deps) from module a: the modules numbered and
-        # not yet in a component are on the stack
-        num[a] = len(num)
-        low[a] = num[a]
-        stack.append(a)
-        for x in self.deps.get(a, "").split():
-            if x not in num:
-                self.scc(x, num, low, stack)
-                low[a] = min(low[a], low[x])
-            elif x not in self.comp:
-                low[a] = min(low[a], num[x])
-        if low[a] == num[a]:
-            while True:
-                x = stack.pop()
-                self.comp[x] = a
-                if x == a:
-                    break
+    def scc(self, root: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
+        # Tarjan's algorithm over the import graph (deps) from module root: the modules numbered
+        # and not yet in a component are on the stack. The search keeps its path in lists, since
+        # a chain of imports can be longer than CPython's recursion limit
+        path: list[str] = []
+        outs: list[list[str]] = []
+        nxt: list[int] = []
+        x = root
+        enter = True
+        while True:
+            if enter:
+                # enter module x
+                num[x] = len(num)
+                low[x] = num[x]
+                stack.append(x)
+                path.append(x)
+                outs.append(self.deps.get(x, "").split())
+                nxt.append(0)
+                enter = False
+            a = path[-1]
+            if nxt[-1] < len(outs[-1]):
+                x = outs[-1][nxt[-1]]
+                nxt[-1] += 1
+                if x not in num:
+                    enter = True
+                elif x not in self.comp:
+                    low[a] = min(low[a], num[x])
+                continue
+            # leave module a
+            path.pop()
+            outs.pop()
+            nxt.pop()
+            if low[a] == num[a]:
+                while True:
+                    y = stack.pop()
+                    self.comp[y] = a
+                    if y == a:
+                        break
+            if len(path) == 0:
+                return
+            low[path[-1]] = min(low[path[-1]], low[a])
 
     def user_call(self, n: Node) -> bool:
         # may running n call a user function, method or constructor? (an import of a user module
