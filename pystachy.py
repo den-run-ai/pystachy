@@ -2105,7 +2105,8 @@ CALLS: dict[str, str] = {
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int",
-    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
+    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+    "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
@@ -6864,9 +6865,15 @@ def main() -> None:
         home = argv[0][:s] if s >= 0 else "."
         if not os.path.exists(home + "/runtime.c"):
             home = home + "/.."
-    # where imported modules are found: the program's directory, PYSTACHY_PATH, lib/ of the checkout
+    # where imported modules are found: the directory of the program's real path (symbolic links
+    # resolved, as CPython's sys.path[0]; spelled as given where that is the same), PYSTACHY_PATH,
+    # lib/ of the checkout
     s = SRC.rfind("/")
-    dirs = [SRC[:s] if s > 0 else "/" if s == 0 else "."]
+    d = SRC[:s] if s > 0 else "/" if s == 0 else "."
+    real = os.path.realpath(SRC)
+    if os.path.realpath(d).rstrip("/") + "/" + SRC[s + 1 :] != real:
+        d = real[: real.rfind("/")] if real.rfind("/") > 0 else "/"
+    dirs = [d]
     for d in os.getenv("PYSTACHY_PATH", "").split(":"):
         if d != "":
             dirs.append(d)
