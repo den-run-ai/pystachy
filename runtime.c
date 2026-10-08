@@ -640,10 +640,10 @@ I pys_pow(I a, I b) {
     if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
   }
 }
-I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m): 128-bit products cannot overflow */
+I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m): 128-bit remainders and products cannot overflow */
   if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
   if (b < 0) pys_fail("ValueError: pow() 2nd argument cannot be negative when 3rd argument specified");
-  __int128 r = 1 % m, x = a % m;
+  __int128 r = 1 % m, x = (__int128)a % m;    /* INT64_MIN % -1 traps in 64 bits */
   for (; b; b >>= 1) { if (b & 1) r = r * x % m; x = x * x % m; }
   I v = (I)r;
   return v && (v < 0) != (m < 0) ? v + m : v;   /* the result has the sign of m, as in Python */
@@ -741,7 +741,12 @@ I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
 I pys_m_gcd(I a, I b) { uint64_t x = a < 0 ? 0 - (uint64_t)a : a, y = b < 0 ? 0 - (uint64_t)b : b; while (y) { uint64_t t = x % y; x = y; y = t; } if (x >> 63) pys_fail(OVF); return (I)x; }
-I pys_m_lcm(I a, I b) { if (!a || !b) return 0; I g = pys_m_gcd(a, b), r; if (__builtin_mul_overflow(a / g, b, &r)) pys_fail(OVF); return r < 0 ? -r : r; }
+I pys_m_lcm(I a, I b) {                       /* |a / gcd * b|; a product of -2**63 has no 64-bit absolute value */
+  if (!a || !b) return 0;
+  I g = pys_m_gcd(a, b), r;
+  if (__builtin_mul_overflow(a / g, b, &r) || r == INT64_MIN) pys_fail(OVF);
+  return r < 0 ? -r : r;
+}
 I pys_m_isqrt(I n) {
   if (n < 0) pys_fail("ValueError: isqrt() argument must be nonnegative");
   I r = (I)sqrt((double)n);
@@ -1261,6 +1266,7 @@ Str *pys_str_join(Str *sep, List *l) {
 }
 List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit */
   List *l = pys_list_new(0); I i = 0, n = s->len;
+  if (maxsplit < 0) maxsplit = INT64_MAX;     /* no limit: counting down from it cannot reach 0, or overflow */
   if (!sep) {
     for (;;) {
       while (i < n && ws(s->s[i])) i++;
