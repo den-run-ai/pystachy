@@ -5620,10 +5620,16 @@ class Gen:
                 return sv
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
+            # one character, from a str of length 1 or a code point; a precision and the flags
+            # other than '-' change nothing
             if v.t == "str":
-                return v
-            v = self.coerce(self.as_int(v), "int")
-            cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
+                cv = Val(self.rt("pys_pct_char", "ptr", [f"ptr {v.v}"]), "str")
+            else:
+                v = self.as_int(v)
+                if v.t != "int":
+                    self.err("%c requires int or char")
+                self.guard(self.ins(f"icmp ugt i64 {v.v}, 1114111"), "OverflowError: %c arg not in range(0x110000)")
+                cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
         spec = "<" if "-" in flags else ""
         spec += "+" if "+" in flags else " " if " " in flags else ""
