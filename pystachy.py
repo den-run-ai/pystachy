@@ -7466,15 +7466,21 @@ def sh(cmd: str) -> int:
 def main() -> None:
     global SRC
     argv = sys.argv
-    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir"):
+    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir" and argv[1] != "check"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
+        print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
         sys.exit(2)
     cmd = argv[1]
     SRC = argv[2]
     if not os.path.exists(SRC):
         fail("file not found", 0)
+    if cmd == "check":
+        f = open(SRC, "r", encoding="latin-1")
+        Parser(Lexer(f.read(), 1).run()).module()
+        f.close()
+        return
     home = os.getenv("PYSTACHY_HOME", "")
     if home == "":
         s = argv[0].rfind("/")
