@@ -134,6 +134,11 @@ class Lexer:
                 if self.i >= n:
                     break
                 c = src[self.i]
+                j = self.i
+                while j < n and (src[j] == " " or src[j] == "\t"):
+                    j += 1
+                if c == "\t" and (j >= n or src[j] == "\n" or src[j] == "#" or src[j] == "\r"):
+                    c = src[j] if j < n else "\n"  # a blank or comment line may be indented with tabs
                 if c == "\n" or c == "#" or c == "\r":
                     while self.i < n and src[self.i] != "\n":
                         self.i += 1
@@ -1241,11 +1246,15 @@ def builtin_module(path: str) -> bool:
 
 
 def accel_try(st: Node) -> bool:
-    # try: <import statements> / except ImportError: (or ModuleNotFoundError), without finally
-    if st.kind != "try" or len(st.kids) < 2 or st.kids[1].kind != "except" or len(st.kids[0].kids) == 0:
+    # try: <import statements, then others> / except ImportError: (or ModuleNotFoundError),
+    # without finally
+    if st.kind != "try" or len(st.kids) < 2 or st.kids[1].kind != "except" or len(st.kids[0].kids) == 0 or st.kids[0].kids[0].kind != "import":
         return False
+    seen = False
     for x in st.kids[0].kids:
         if x.kind != "import":
+            seen = True
+        elif seen:
             return False
     for h in st.kids[1:]:
         if h.kind == "block" and h.s == "finally":
@@ -1446,7 +1455,7 @@ class Loader:
             elif accel_try(st):
                 found = ""
                 for x in st.kids[0].kids:
-                    for a in x.kids:
+                    for a in x.kids if x.kind == "import" else []:
                         p = a.kids[1].s
                         if x.s.startswith("from."):
                             p = self.relative(m, x.s, p, x.line)
@@ -2086,6 +2095,31 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
             if kid.kind == "block":
                 collect(kid.kids, out)
 
+def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
+    # every value assigned to each qualified (module-level) name in body and the functions in it;
+    # a name bound any other way (for, with, +=, an annotation, unpacking) gets an "omit" node
+    for st in body:
+        k = st.kind
+        if k == "assign":
+            for t in st.kids[:-1]:
+                names: list[str] = []
+                names_in(t, names)
+                for nm in names:
+                    if nm not in out:
+                        out[nm] = []
+                    out[nm].append(st.kids[-1] if t.kind == "name" else mk("omit", "", st.line, []))
+        elif k == "annassign" or k == "augassign" or k == "for" or k == "with":
+            asg: dict[str, bool] = {}
+            collect([st], asg)
+            for nm in asg:
+                if nm not in out:
+                    out[nm] = []
+                out[nm].append(mk("omit", "", st.line, []))
+        for kid in st.kids:
+            if kid.kind == "block":
+                none_assigns(kid.kids, out)
+
+
 def local_names(body: list[Node], out: dict[str, bool]) -> None:
     # a function's locals: the names it assigns, but not a qualified name (M$x), which an
     # assignment to a module's attribute (M.x = ...) or a global M declares makes
@@ -2268,6 +2302,7 @@ class Gen:
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        self.noneglobals: dict[str, bool] = {}  # module globals of imported modules that are always None
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
@@ -2852,7 +2887,7 @@ class Gen:
         return self.modlevel or name in self.gdecl or "$" in name
 
     def load_name(self, name: str) -> Val:
-        if name in self.nonevars and name not in self.ltype:
+        if (name in self.nonevars or name in self.noneglobals) and name not in self.ltype:
             return Val("null", "None")
         if "?" in self.qtype(name) and not self.allowq and self.lookahead(name) == "":
             t = self.qtype(name)
@@ -3073,6 +3108,8 @@ class Gen:
             self.err(f"'{name}' was declared as {old}, not {t}")
 
     def store_name(self, name: str, v: Val) -> None:
+        if name in self.noneglobals and name not in self.ltype and v.t == "None":
+            return
         if self.is_global(name):
             if name not in self.gtypes:
                 if v.t == "None":
@@ -3354,17 +3391,36 @@ class Gen:
         for nm in self.gflag:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
+        for m in mods:
+            if m.name != "":
+                # a module global that every assignment sets to None (an optional accelerator's
+                # fallback: _json = None) and that is assigned before any read is the constant None
+                vals: dict[str, list[Node]] = {}
+                none_assigns(m.body.kids, vals)
+                for nm in vals:
+                    nones = True
+                    for v in vals[nm]:
+                        if v.kind != "None":
+                            nones = False
+                    if nones and nm not in self.gflag and nm in self.mvars:
+                        self.noneglobals[nm] = True
         self.modlevel = True
         for i in range(len(mods)):
             m = mods[i]
             self.function(FnInfo("<module>", "@init." + m.name if m.name != "" else "@main.init", m.body, ""), tops[i])
         self.modlevel = False
+        # the functions and methods of imported modules are compiled only if the program calls
+        # them, as templates are
         for f in self.funcs.values():
-            if not f.generic:
+            if f.mod != "" and not f.generic:
+                self.lazy[f.ll] = f
+            elif not f.generic:
                 self.function(f, f.node.kids[2].kids)
         for ci in self.classes.values():
             for f in ci.methods.values():
-                if f.ll not in self.lazy:
+                if ci.mod != "" and f.ll not in self.lazy:
+                    self.lazy[f.ll] = f
+                elif f.ll not in self.lazy:
                     self.function(f, f.node.kids[2].kids)
         # generate on demand: dataclass methods that were called, and helpers for classes that
         # appear inside containers (which can make more of both necessary)
@@ -3672,6 +3728,10 @@ class Gen:
     # ---- statements
     def stmts(self, body: list[Node]) -> None:
         for s in body:
+            if self.term and self.curfn.infer:
+                # after a return, raise, break or continue: in a template's function, where a
+                # static test leaves code for other argument types behind one, it is not compiled
+                return
             self.stmt(s)
 
     def obj_helpers(self, c: str) -> None:
@@ -3801,9 +3861,33 @@ class Gen:
             if f.dglob[j] == "" and not is_const(d):
                 t = f.ptypes[j]
                 self.line = d.line
+                bad = self.default_problem(d, t) if f.mod != "" else ""
+                if bad != "":
+                    # a function of an imported module: the default is an error only where a call needs it
+                    f.dglob[j] = "!" + bad
+                    continue
                 v = self.expr(d, t)
+                if v.t == "None" and t == "":
+                    continue  # a None value is no global: a call evaluates the default to None again
                 f.dtypes[j] = v.t
                 f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", self.coerce(v, t) if t != "" else v)
+
+    def default_problem(self, e: Node, t: str) -> str:
+        # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
+        # as its form shows, or ""
+        if e.kind == "name" and (e.s in self.funcs or e.s in self.classes):
+            return f"function '{e.s}' cannot be used as a value"
+        if t == "" and (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0:
+            return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
+        if e.kind == "badattr":
+            return e.s
+        if e.kind in UNSUPPORTED:
+            return UNSUPPORTED[e.kind]
+        for k in e.kids:
+            r = self.default_problem(k, "?")
+            if r != "":
+                return r
+        return ""
 
     def hoist_class(self, ci: ClassInfo) -> None:
         # class-body defaults are evaluated once, when the class statement runs, in body order,
@@ -4460,6 +4544,8 @@ class Gen:
         # assigned), and not/and/or of those; -1 otherwise. A template's function, compiled for its
         # argument types, can so dispatch on them as unannotated code does.
         k = n.kind
+        if k == "name" and self.static_type(n) == "None":
+            return 0  # a parameter whose argument is None is false
         if k == "unary" and n.s == "not":
             r = self.static(n.kids[0])
             return 1 - r if r >= 0 else -1
@@ -4499,7 +4585,7 @@ class Gen:
         # the type of a variable read that cannot fail, or ""
         if n.kind != "name" or n.chk:
             return ""
-        if n.s in self.nonevars and n.s not in self.ltype:
+        if (n.s in self.nonevars or n.s in self.noneglobals) and n.s not in self.ltype:
             return "None"
         if n.s in self.ltype:
             return self.ltype[n.s]
@@ -5333,6 +5419,8 @@ class Gen:
                 if f.defaults[j].kind == "noann":
                     self.err(f"missing argument '{f.params[j]}' in call to {f.name}()")
                 t = f.ptypes[j]
+                if f.dglob[j].startswith("!"):
+                    self.err(f.dglob[j][1:])
                 if f.dglob[j] != "":
                     t = t if t != "" else f.dtypes[j]
                     vals[j] = Val(self.ins(f"load {lt(t)}, ptr {f.dglob[j]}"), t)
