@@ -1364,6 +1364,9 @@ class Mod:
         self.fnonly: dict[str, bool] = {}  # those its top-level code does not
         self.rebound: dict[str, bool] = {}  # the names it binds other than as os, sys, TYPE_CHECKING (rebound())
         self.fails = ""  # the exception its top-level code surely raises, ImportError or ModuleNotFoundError
+        # a package's names that an import of the submodule of that name rebinds at a time Pystachy
+        # cannot tell (Loader.submodules()); True if that may happen while its own code runs
+        self.amb: dict[str, bool] = {}
 
 
 # Python's builtin names: in an imported module, a name it does not bind is one of these or an
@@ -1548,6 +1551,11 @@ class Loader:
         self.sites: list[Node] = []
         self.sitem: list[Mod] = []
         self.siteall: list[bool] = []
+        # each from-import of a name a package binds itself (take()), with the bindings it went to,
+        # for submodules(): s is the name bound, the kids the package, the name and the copy if any
+        self.taken: list[Node] = []
+        self.takek: list[dict[str, str]] = []
+        self.qdef = False  # is qstmts() in a function
 
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
@@ -1580,6 +1588,7 @@ class Loader:
                     b.kids = b.kids[:j] + out + b.kids[j + 1 :]
                     break
         self.guarded()
+        self.submodules()
         for x in self.order:
             self.late_aliases(x)
         for x in self.order:
@@ -1978,6 +1987,50 @@ class Loader:
                 return True
         return False
 
+    def submodules(self) -> None:
+        # a package that binds a name x itself (util = "a string") while the program imports its
+        # submodule x too: the first import of the submodule rebinds the package's x to it, at a time
+        # Pystachy cannot tell, unless the package's own code imports the submodule before it binds x
+        # (from .parse import parse). Such an x is ambiguous (Mod.amb): reading it from another module
+        # (qmod(), take()) or in the package's functions (qexpr()) is an error where it is compiled
+        for t in self.order:
+            for x in t.kinds:
+                sub = t.name + "." + x
+                if t.pdir != "" and sub in self.mods and t.kinds[x] != "m:" + sub and not self.own_first(t, x):
+                    t.amb[x] = self.imports_mod(t.body, sub, {})
+        for i in range(len(self.taken)):
+            n = self.taken[i]
+            t = self.mods[n.kids[0].s]
+            x = n.kids[1].s
+            if x in t.amb:
+                # (import t.x as y runs the submodule's code after t's, so t's x is the submodule from
+                # then on, unless the submodule's code may run within t's or a function of t rebinds x)
+                sure = n.kind == "takesub" and not t.amb[x] and x not in t.fnglobal
+                msg = self.ambiguous(t.name, x)
+                if len(n.kids) > 2:
+                    n.kids[2].kind = "pass" if sure else "badimport"  # (the copy of a variable)
+                    n.kids[2].s = msg
+                    n.kids[2].kids = []
+                self.takek[i][n.s] = "m:" + t.name + "." + x if sure else "x:" + msg
+
+    def own_first(self, t: Mod, x: str) -> bool:
+        # does package t's top-level code import its submodule x before anything in it binds x, while
+        # no function rebinds x? Then x is t's own binding once t's code has run
+        if x in t.fnglobal:
+            return False
+        for st in t.body.kids:
+            for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+                if y.s == t.name + "." + x:
+                    return True
+            names: dict[str, bool] = {}
+            binds([st], names, True)
+            if x in names:
+                return False
+        return False
+
+    def ambiguous(self, p: str, x: str) -> str:
+        return f"'{p}.{x}' is the package's own '{x}' until the program's first import of its submodule '{p}.{x}' replaces it, and Pystachy cannot tell which of the two this is (not supported)"
+
     def decide(self, m: Mod, e: Node, scope: dict[str, bool], pre: list[Node]) -> int:
         # an if condition that tests the platform, decided for the POSIX systems Pystachy compiles
         # for (sys.platform == "win32" or "cygwin", ..., sys.platform.startswith("win"), os.name ==
@@ -2116,8 +2169,16 @@ class Loader:
                 if len(a.kids) > 2:
                     inits.kids[-1].kind = "guard"
                 continue
-            if st.s == "":
-                # import a.b.c binds a; import a.b.c as x binds x to a.b.c
+            if st.s == "" and "." in a.kids[0].s:
+                # import a.b.c as x binds x to attribute c of a.b, as from a.b import c as x does: the
+                # submodule, unless a.b binds c itself
+                tgt = a.kids[0].s
+                n = len(self.taken)
+                self.take(m, self.mods[tgt[: tgt.rfind(".")]], tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
+                if len(self.taken) > n:
+                    self.taken[n].kind = "takesub"  # (this import runs the submodule's code: submodules())
+            elif st.s == "":
+                # import a.b.c binds a; import a as x binds x to a
                 self.bind(m, a.s, "m:" + a.kids[0].s, infn)
             elif a.s == "*":
                 for x in self.public(src):
@@ -2222,6 +2283,10 @@ class Loader:
             if not infn:
                 m.kinds[name] = "v"
             copies.append(mk("assign", "", line, [mk("name", name, line, []), mk("name", src.q + x, line, [])]))
+        if src.pdir != "" and k != "" and k != "m:" + src.name + "." + x:
+            # the package binds x itself, which an import of its submodule x may rebind (submodules())
+            self.taken.append(mk("take", name, line, [mk("str", src.name, line, []), mk("str", x, line, [])] + (copies[-1:] if k == "v" else copies[:0])))
+            self.takek.append(self.fks[self.curdef] if infn else m.kinds)
 
     # ---- qualification of names
     def kind(self, m: Mod, s: str) -> str:
@@ -2260,6 +2325,8 @@ class Loader:
             return ""
         t = self.mods[base]
         k = t.kinds.get(n.s, "")
+        if n.s in t.amb:
+            k = "x:" + self.ambiguous(base, n.s)
         if k.startswith("m:"):
             return k[2:]
         if k == "" and base + "." + n.s in self.mods:
@@ -2267,6 +2334,9 @@ class Loader:
         if k == "":
             n.kind = "badattr"
             n.s = f"module '{base}' has no attribute '{n.s}'"
+        elif k.startswith("x:"):
+            n.kind = "badattr"
+            n.s = k[2:]
         else:
             n.kind = "name"
             n.s = self.qname(t, n.s, {})
@@ -2288,6 +2358,10 @@ class Loader:
             elif n.kind == "name" and n.s not in loc and self.kind(m, n.s).startswith("x:"):
                 n.kind = "badattr"
                 n.s = self.kind(m, n.s)[2:]
+            elif n.kind == "name" and n.s not in loc and n.s not in self.fk and n.s in m.amb and (self.qdef or m.amb[n.s]):
+                # a package's own name that an import of its submodule may have rebound (submodules())
+                n.kind = "badattr"
+                n.s = self.ambiguous(m.name, n.s)
             elif n.kind == "name":
                 n.s = self.qname(m, n.s, loc)
             elif n.kind == "attr":
@@ -2345,8 +2419,11 @@ class Loader:
                     if nm in inner:
                         del inner[nm]
                 saved = self.fk
+                indef = self.qdef
                 self.fk = self.fks.get(str(st.line), {})
+                self.qdef = True
                 self.qstmts(m, st.kids[2].kids, inner, False)
+                self.qdef = indef
                 self.fk = saved
             elif k == "subclass":
                 self.qstmts(m, [st.kids[0]], loc, cls)
