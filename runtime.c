@@ -841,7 +841,7 @@ I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 static I ocls(const char *d) { return (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0'; }
 Str *pys_default_repr(Str *cls, void *p) {
-  const char *f = "<__main__.%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
+  const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
 }
 static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */

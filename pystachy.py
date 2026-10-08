@@ -10,10 +10,29 @@ import os
 import tempfile
 
 SRC = "<input>"
+# the files of the program's modules: a node of FILES[k] has line k * LINES + its line in the file
+LINES = 10000000
+FILES: list[str] = []
+
+
+def shown(s: str) -> str:
+    # a name as Python spells it: the "$" of a qualified name (heapq$heappush) between two
+    # identifier characters is the "." of a module attribute
+    out: list[str] = []
+    for i in range(len(s)):
+        c = s[i]
+        if c == "$" and i > 0 and i + 1 < len(s) and (s[i - 1].isalnum() or s[i - 1] == "_") and (s[i + 1].isalnum() or s[i + 1] == "_"):
+            c = "."
+        out.append(c)
+    return "".join(out)
 
 
 def fail(msg: str, line: int) -> None:
-    print(f"{SRC}:{line}: error: {msg}", file=sys.stderr)
+    path = SRC
+    if line >= LINES:
+        path = FILES[line // LINES]
+        line = line % LINES
+    print(f"{path}:{line}: error: {shown(msg)}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -620,7 +639,8 @@ class Parser:
         return s
 
     def import_(self, line: int) -> Node:
-        # one alias per bound name: s = the name, kids = [target path, imported module]
+        # one alias per bound name: s = the name, kids = [target path, imported module]. The node's
+        # own s is "" for import and "from" for from-imports, followed by a relative import's dots
         n = mk("import", "", line, [])
         if self.eat("import"):
             while True:
@@ -634,20 +654,20 @@ class Parser:
                 if not self.eat(","):
                     return n
         self.expect("from")
-        if self.peek() == ".":
-            fail("relative imports are not supported", line)
-        path = self.dotted_name()
+        n.s = "from"
+        while self.peek() == ".":
+            self.p += 1
+            n.s += "."
+        path = self.dotted_name() if self.peek() == "id" or n.s == "from" else ""
         self.expect("import")
         paren = self.eat("(")
         while True:
-            if self.peek() == "*":
-                fail(f"'from {path} import *' is not supported", line)
-            x = self.expect("id").text
+            x = "*" if self.eat("*") else self.expect("id").text
             name = x
-            if self.eat("as"):
+            if x != "*" and self.eat("as"):
                 name = self.expect("id").text
-            n.kids.append(mk("alias", name, line, [mk("str", path + "." + x, line, []), mk("str", path, line, [])]))
-            if not self.eat(",") or (paren and self.peek() == ")"):
+            n.kids.append(mk("alias", name, line, [mk("str", path + "." + x if path != "" else x, line, []), mk("str", path, line, [])]))
+            if x == "*" or not self.eat(",") or (paren and self.peek() == ")"):
                 break
         if paren:
             self.expect(")")
@@ -998,6 +1018,377 @@ class Parser:
             n.kids.append(mk("str", "".join(lit) if raw else unescape("".join(lit), line), line, []))
 
 
+# ---------------------------------------------------------------- modules
+# A program may import Python modules: the package NAME/__init__.py or the file NAME.py found
+# first next to the main program, on PYSTACHY_PATH or in the lib/ directory beside the compiler
+# (the builtin modules, sys, os, math and the others in MODULES, come before them). The loader
+# parses each module once and rewrites its AST so that every module-level name is qualified by
+# the module's name (heapq$heappush: "$" cannot occur in an identifier) and every reference
+# through a module (heapq.heappush, or heappush after from heapq import heappush) is that name.
+# Code generation then sees one program with no module objects in it. A module's top-level code
+# runs as the function @init.<module> the first time an import of it runs ("uimport" nodes).
+class Mod:
+    def __init__(self, name: str, path: str, pdir: str):
+        self.name = name  # the dotted module name; "" for the main program
+        self.path = path  # its file; "" for a namespace package
+        self.pdir = pdir  # the directory of its submodules if it is a package, else ""
+        self.q: str = name.replace(".", "$") + "$" if name != "" else ""  # prefix of its qualified names
+        self.body = mk("block", "", 1, [])
+        # what each module-level name binds: "f" a def, "c" a class, "v" a variable, "m:<module>"
+        # a user module, "a:<qualified name>" another module's def or class, "b:<path>" a
+        # builtin module or one of its attributes
+        self.kinds: dict[str, str] = {}
+
+
+def builtin_module(path: str) -> bool:
+    root = path[: path.find(".")] if "." in path else path
+    return path in MODULES or root in MODULES
+
+
+def is_main_guard(st: Node) -> bool:
+    # if __name__ == "__main__":
+    if st.kind != "if" or st.kids[0].kind != "cmp" or st.kids[0].s != "==":
+        return False
+    a = st.kids[0].kids[0]
+    b = st.kids[0].kids[1]
+    if a.kind == "str":
+        c = a
+        a = b
+        b = c
+    return a.kind == "name" and a.s == "__name__" and b.kind == "str" and b.s == "__main__"
+
+
+class Loader:
+    def __init__(self, dirs: list[str]):
+        self.dirs = dirs  # the module search path
+        self.mods: dict[str, Mod] = {}
+        self.order: list[Mod] = []  # every module after those its top-level code imports
+
+    def program(self, path: str, src: str) -> list[Mod]:
+        # the main program and the modules it imports, in the order their code may first run
+        m = Mod("", path, "")
+        FILES.append(path)
+        m.body = Parser(Lexer(src, 1).run()).module()
+        self.bindings(m)
+        self.imports(m, m.body, False)
+        self.order.append(m)
+        for x in self.order:
+            self.qstmts(x, x.body.kids, {}, False)
+        return self.order
+
+    def find(self, name: str, line: int) -> Mod:
+        # the user module called name, loaded with its parent packages unless it is already
+        if name in self.mods:
+            return self.mods[name]
+        dirs = self.dirs
+        base = name
+        dot = name.rfind(".")
+        if dot >= 0:
+            par = self.find(name[:dot], line)
+            if par.pdir == "":
+                fail(f"No module named '{name}'; '{par.name}' is not a package", line)
+            if name in self.mods:
+                return self.mods[name]  # the package's own code imported it
+            dirs = [par.pdir]
+            base = name[dot + 1 :]
+        ns = ""
+        for d in dirs:
+            p = d + "/" + base
+            if os.path.exists(p + "/__init__.py"):
+                return self.load(name, p + "/__init__.py", p)
+            if os.path.exists(p + ".py"):
+                return self.load(name, p + ".py", "")
+            if ns == "" and os.path.exists(p):
+                ns = p
+        if ns == "":
+            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {base}.py on the module path", line)
+        # a namespace package: a directory without __init__.py
+        m = Mod(name, "", ns)
+        self.mods[name] = m
+        self.order.append(m)
+        return m
+
+    def load(self, name: str, path: str, pdir: str) -> Mod:
+        m = Mod(name, path, pdir)
+        self.mods[name] = m
+        f = open(path, "r", encoding="latin-1")
+        src = f.read()
+        f.close()
+        k = len(FILES)
+        FILES.append(path[2:] if path.startswith("./") else path)
+        m.body = Parser(Lexer(src, k * LINES + 1).run()).module()
+        self.bindings(m)
+        self.imports(m, m.body, False)
+        self.order.append(m)
+        return m
+
+    def bindings(self, m: Mod) -> None:
+        # the names m's top-level code binds (imports of user modules are added by imports())
+        for st in m.body.kids:
+            k = st.kind
+            if k == "def" or k == "class":
+                m.kinds[st.s] = "f" if k == "def" else "c"
+                for d in [st] if k == "def" else st.kids[0].kids:
+                    if d.kind == "def":
+                        decl: dict[str, bool] = {}
+                        asg: dict[str, bool] = {}
+                        globals_in(d.kids[2].kids, decl)
+                        collect(d.kids[2].kids, asg)
+                        for nm in decl:
+                            if nm in asg and nm not in m.kinds:
+                                m.kinds[nm] = "v"
+            elif k != "import":
+                names: dict[str, bool] = {}
+                collect([st], names)
+                for nm in names:
+                    m.kinds[nm] = "v"
+
+    def imports(self, m: Mod, blk: Node, infn: bool) -> None:
+        # load the user modules that the import statements in blk name, and rewrite those
+        out: list[Node] = []
+        for st in blk.kids:
+            if m.name != "" and is_main_guard(st):
+                # always false in an imported module: only its else branch is code
+                self.imports(m, st.kids[2], infn)
+                out.extend(st.kids[2].kids)
+            elif st.kind == "import":
+                self.import_stmt(m, st, infn, out)
+            else:
+                out.append(st)
+                for kid in st.kids:
+                    if kid.kind == "block":
+                        self.imports(m, kid, infn or st.kind == "def")
+        blk.kids = out
+
+    def import_stmt(self, m: Mod, st: Node, infn: bool, out: list[Node]) -> None:
+        # one import statement becomes: an import node with its builtin modules (for code
+        # generation), a uimport node with the user modules to initialize (each package before
+        # its submodules), and for every variable taken with from-import an assignment of its
+        # current value, as CPython binds it
+        line = st.line
+        keep = mk("import", st.s, line, [])
+        inits = mk("uimport", "", line, [])
+        copies: list[Node] = []
+        for a in st.kids:
+            path = a.kids[1].s
+            if st.s.startswith("from."):
+                path = self.relative(m, st.s, path, line)
+            elif builtin_module(path):
+                if a.s == "*":
+                    fail(f"'from {path} import *' is not supported", line)
+                m.kinds[a.s] = "b:" + a.kids[0].s
+                keep.kids.append(a)
+                continue
+            src = self.find(path, line)
+            self.chain(path, inits)
+            if st.s == "":
+                # import a.b.c binds a; import a.b.c as x binds x to a.b.c
+                m.kinds[a.s] = "m:" + a.kids[0].s
+            elif a.s == "*":
+                for x in self.public(src):
+                    self.take(m, src, x, x, infn, keep, inits, copies, line)
+            else:
+                tgt = a.kids[0].s
+                self.take(m, src, tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
+        if len(keep.kids) > 0:
+            out.append(keep)
+        if len(inits.kids) > 0:
+            out.append(inits)
+        out.extend(copies)
+
+    def chain(self, path: str, inits: Node) -> None:
+        # the modules import path initializes: a, a.b, a.b.c
+        i = 0
+        while i >= 0:
+            i = path.find(".", i + 1)
+            p = path[:i] if i >= 0 else path
+            inits.kids.append(mk("str", p, inits.line, []))
+
+    def relative(self, m: Mod, s: str, path: str, line: int) -> str:
+        # from .x import y in module m: the package m is in (m itself if it is one), one level
+        # up per extra dot
+        base = m.name if m.pdir != "" else m.name[: m.name.rfind(".")] if "." in m.name else ""
+        if m.name == "":
+            fail("attempted relative import with no known parent package", line)
+        for _ in range(len(s) - 5):
+            if base == "":
+                break
+            base = base[: base.rfind(".")] if "." in base else ""
+        if base == "":
+            fail("attempted relative import beyond top-level package", line)
+        return base + "." + path if path != "" else base
+
+    def public(self, src: Mod) -> list[str]:
+        # the names from src import * takes: those __all__ lists, else the names not starting with _
+        out: list[str] = []
+        for st in src.body.kids:
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
+                v = st.kids[1]
+                parts = [v]
+                if v.kind == "binop" and v.s == "+":
+                    parts = v.kids
+                for p in parts:
+                    if p.kind != "list" and p.kind != "tuple":
+                        out = []
+                        break
+                    for x in p.kids:
+                        if x.kind == "str":
+                            out.append(x.s)
+                if len(out) > 0:
+                    return out
+        for nm in src.kinds:
+            if not nm.startswith("_"):
+                out.append(nm)
+        return out
+
+    def take(self, m: Mod, src: Mod, x: str, name: str, infn: bool, keep: Node, inits: Node, copies: list[Node], line: int) -> None:
+        # from src import x as name
+        k = src.kinds.get(x, "")
+        if k == "" and src.pdir != "":
+            # a submodule of the package
+            sub = src.name + "." + x
+            self.find(sub, line)
+            inits.kids.append(mk("str", sub, line, []))
+            m.kinds[name] = "m:" + sub
+        elif k == "":
+            fail(f"cannot import name '{x}' from '{src.name}'", line)
+        elif k == "f" or k == "c":
+            m.kinds[name] = "a:" + src.q + x
+        elif k.startswith("b:"):
+            p = k[2:]
+            m.kinds[name] = k
+            keep.kids.append(mk("alias", name, line, [mk("str", p, line, []), mk("str", p[: p.find(".")] if "." in p else p, line, [])]))
+        elif k != "v":
+            m.kinds[name] = k
+        else:
+            if not infn:
+                m.kinds[name] = "v"
+            copies.append(mk("assign", "", line, [mk("name", name, line, []), mk("name", src.q + x, line, [])]))
+
+    # ---- qualification of names
+    def qname(self, m: Mod, s: str, loc: dict[str, bool]) -> str:
+        if s in loc or "$" in s:
+            return s
+        k = m.kinds.get(s, "")
+        if k == "f" or k == "c" or k == "v" or k.startswith("b:"):
+            return m.q + s
+        if k.startswith("a:"):
+            return k[2:]
+        return s
+
+    def qmod(self, m: Mod, n: Node, loc: dict[str, bool]) -> str:
+        # the module n denotes (a name bound to one, or a submodule attribute of one), or "";
+        # an attribute of a module that is not a module is rewritten to its qualified name
+        if n.kind == "name":
+            k = m.kinds.get(n.s, "") if n.s not in loc else ""
+            return k[2:] if k.startswith("m:") else ""
+        if n.kind != "attr":
+            return ""
+        base = self.qmod(m, n.kids[0], loc)
+        if base == "":
+            return ""
+        if base + "." + n.s in self.mods:
+            return base + "." + n.s
+        t = self.mods[base]
+        k = t.kinds.get(n.s, "")
+        if k.startswith("m:"):
+            return k[2:]
+        if k == "":
+            n.kind = "badattr"
+            n.s = f"module '{base}' has no attribute '{n.s}'"
+        else:
+            n.kind = "name"
+            n.s = self.qname(t, n.s, {})
+        n.kids = []
+        return ""
+
+    def qexpr(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
+        k = n.kind
+        if k == "name" or k == "attr":
+            if k == "name" and n.s == "__name__" and m.name != "" and n.s not in loc:
+                n.kind = "str"
+                n.s = m.name
+                return
+            mod = self.qmod(m, n, loc)
+            if mod != "":
+                n.kind = "badattr"
+                n.s = f"module '{mod}' cannot be used as a value"
+                n.kids = []
+            elif n.kind == "name":
+                n.s = self.qname(m, n.s, loc)
+            elif n.kind == "attr":
+                self.qexpr(m, n.kids[0], loc)
+        elif k == "listcomp":
+            # [element for target in iterable if condition]: the target's names are the comprehension's
+            self.qexpr(m, n.kids[2], loc)
+            inner = dict(loc)
+            names: list[str] = []
+            names_in(n.kids[1], names)
+            for nm in names:
+                inner[nm] = True
+            for i in range(len(n.kids)):
+                if i != 2:
+                    self.qexpr(m, n.kids[i], inner)
+        else:
+            for kid in n.kids:
+                self.qexpr(m, kid, loc)
+
+    def qann(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
+        # an annotation; a string one (a forward reference) is parsed to qualify the names in it
+        if n.kind == "str":
+            e = Parser(Lexer(n.s, n.line).run()).test()
+            n.kind = e.kind
+            n.s = e.s
+            n.kids = e.kids
+        self.qexpr(m, n, loc)
+
+    def qstmts(self, m: Mod, body: list[Node], loc: dict[str, bool], cls: bool) -> None:
+        for st in body:
+            k = st.kind
+            if k == "def":
+                if not cls:
+                    st.s = self.qname(m, st.s, loc)
+                for p in st.kids[0].kids:
+                    self.qann(m, p.kids[0], loc)
+                    self.qexpr(m, p.kids[1], loc)
+                self.qann(m, st.kids[1], loc)
+                inner: dict[str, bool] = {}
+                for p in st.kids[0].kids:
+                    inner[p.s] = True
+                local_names(st.kids[2].kids, inner)
+                decl: dict[str, bool] = {}
+                globals_in(st.kids[2].kids, decl)
+                for nm in decl:
+                    if nm in inner:
+                        del inner[nm]
+                self.qstmts(m, st.kids[2].kids, inner, False)
+            elif k == "class":
+                st.s = self.qname(m, st.s, loc)
+                for d in st.kids[1:]:
+                    root = d.s[: d.s.find(".")] if "." in d.s else d.s
+                    d.s = self.qname(m, root, loc) + d.s[len(root) :]
+                self.qstmts(m, st.kids[0].kids, loc, True)
+            elif cls and k == "annassign" and st.kids[0].kind == "name":
+                # a field: the name is the class's, the annotation and default value the module's
+                self.qann(m, st.kids[1], loc)
+                for kid in st.kids[2:]:
+                    self.qexpr(m, kid, loc)
+            elif k == "annassign":
+                self.qexpr(m, st.kids[0], loc)
+                self.qann(m, st.kids[1], loc)
+                for kid in st.kids[2:]:
+                    self.qexpr(m, kid, loc)
+            elif k == "import" or k == "global":
+                for a in st.kids:
+                    a.s = self.qname(m, a.s, {})
+            elif k != "uimport":
+                for kid in st.kids:
+                    if kid.kind == "block":
+                        self.qstmts(m, kid.kids, loc, False)
+                    else:
+                        self.qexpr(m, kid, loc)
+
+
 # ---------------------------------------------------------------- types
 # A type is a canonical string: int float bool str None file, list[T], dict[K,V],
 # tuple[A,B], or a class name. LLVM view: i64, double, i1, void, everything else ptr.
@@ -1155,7 +1546,12 @@ def tname(t: str) -> str:
     if t == "file":
         return "TextIOWrapper"
     b = t.find("[")
-    return t[:b] if b >= 0 else t
+    return t[:b] if b >= 0 else short(t)
+
+
+def short(name: str) -> str:
+    # a function's or class's own name, without its module (heapq$heappush: heappush)
+    return name[name.rfind("$") + 1 :]
 
 
 def is_const(e: Node) -> bool:
@@ -1245,6 +1641,51 @@ def fbits(text: str) -> str:
     return "0x" + hexn(sign + e, 3) + frac.upper()
 
 
+def names_in(t: Node, out: list[str]) -> None:
+    if t.kind == "name":
+        out.append(t.s)
+    elif t.kind == "tuple":
+        for k in t.kids:
+            names_in(k, out)
+
+def collect(body: list[Node], out: dict[str, bool]) -> None:
+    # Python's rule: a name assigned anywhere in a function is local to it
+    for st in body:
+        k = st.kind
+        if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "with":
+            names: list[str] = []
+            if k == "with":
+                for it in st.kids[:-1]:
+                    if len(it.kids) == 2:
+                        names_in(it.kids[1], names)
+            for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
+                names_in(st.kids[i], names)
+            for nm in names:
+                out[nm] = True
+        for kid in st.kids:
+            if kid.kind == "block":
+                collect(kid.kids, out)
+
+def local_names(body: list[Node], out: dict[str, bool]) -> None:
+    # a function's locals: the names it assigns, but not a qualified name (M$x), which an
+    # assignment to a module's attribute (M.x = ...) or a global M declares makes
+    asg: dict[str, bool] = {}
+    collect(body, asg)
+    for nm in asg:
+        if "$" not in nm:
+            out[nm] = True
+
+
+def globals_in(body: list[Node], out: dict[str, bool]) -> None:
+    for st in body:
+        if st.kind == "global":
+            for nm in st.kids:
+                out[nm.s] = True
+        for kid in st.kids:
+            if kid.kind == "block":
+                globals_in(kid.kids, out)
+
+
 class Val:
     def __init__(self, v: str, t: str):
         self.v = v
@@ -1263,6 +1704,7 @@ class FnInfo:
         self.dglob: list[str] = []  # global holding a default evaluated at def time, or ""
         self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
         self.ret = "None"
+        self.mod = ""  # the dotted name of its module ("" for the main program)
 
 
 class ClassInfo:
@@ -1275,6 +1717,7 @@ class ClassInfo:
         self.fglob: dict[str, str] = {}
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.methods: dict[str, FnInfo] = {}
+        self.mod = ""
 
 
 class Flow:
@@ -1698,7 +2141,7 @@ class Gen:
         other = mk("name", "other", line, [])
         if "__repr__" not in ci.methods:
             parts: list[Node] = []
-            lit = ci.name + "("
+            lit = short(ci.name) + "("
             for i in range(len(ci.fields)):
                 parts.append(mk("str", lit + (", " if i > 0 else "") + ci.fields[i] + "=", line, []))
                 parts.append(mk("call", "", line, [mk("name", "__pys_repr", line, []), mk("attr", ci.fields[i], line, [me])]))
@@ -1811,7 +2254,7 @@ class Gen:
         ci = self.classes[o.t]
         if name in ci.fflag:
             f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
-            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{o.t}' object has no attribute '{name}'")
+            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
         return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
@@ -1831,7 +2274,7 @@ class Gen:
     def is_global(self, name: str) -> bool:
         if name in self.ltype or name in self.compvars:
             return False
-        return self.modlevel or name in self.gdecl
+        return self.modlevel or name in self.gdecl or "$" in name
 
     def load_name(self, name: str) -> Val:
         if name in self.ltype:
@@ -1904,40 +2347,6 @@ class Gen:
             if name in self.lflag and name not in self.compvars:
                 self.emit(f"store i1 true, ptr {self.lflag[name]}")
 
-    def names_in(self, t: Node, out: list[str]) -> None:
-        if t.kind == "name":
-            out.append(t.s)
-        elif t.kind == "tuple":
-            for k in t.kids:
-                self.names_in(k, out)
-
-    def collect(self, body: list[Node], out: dict[str, bool]) -> None:
-        # Python's rule: a name assigned anywhere in a function is local to it
-        for st in body:
-            k = st.kind
-            if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "with":
-                names: list[str] = []
-                if k == "with":
-                    for it in st.kids[:-1]:
-                        if len(it.kids) == 2:
-                            self.names_in(it.kids[1], names)
-                for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
-                    self.names_in(st.kids[i], names)
-                for nm in names:
-                    out[nm] = True
-            for kid in st.kids:
-                if kid.kind == "block":
-                    self.collect(kid.kids, out)
-
-    def globals_in(self, body: list[Node], out: dict[str, bool]) -> None:
-        for st in body:
-            if st.kind == "global":
-                for nm in st.kids:
-                    out[nm.s] = True
-            for kid in st.kids:
-                if kid.kind == "block":
-                    self.globals_in(kid.kids, out)
-
     def target_type(self, n: Node, base: bool = False) -> str:
         # expected type of an assignment target (types empty [] / {} literals): a name, or a
         # chain of attributes and subscripts on one (g.groups["a"], d["x"]["y"]), whose base
@@ -1960,6 +2369,8 @@ class Gen:
 
     def assign(self, t: Node, v: Val) -> None:
         k = t.kind
+        if k == "badattr":
+            self.err(t.s)
         if k == "name":
             self.store_name(t.s, v)
         elif k == "attr" and self.dotted(t) != "":
@@ -2019,7 +2430,7 @@ class Gen:
         self.lflag = {}
         self.line = f.node.line
         if not self.modlevel:
-            self.collect(body, self.assigned)
+            local_names(body, self.assigned)
         ps: list[str] = []
         if f.cls != "":
             # callers check the receiver, so self is never None inside a method
@@ -2042,12 +2453,24 @@ class Gen:
                     else:
                         v = self.coerce(self.expr(ci.fdefault[fl], t), t)
                     self.setfield(me, self.field(me, fl), fl, v)
+        if f.ll.startswith("@init."):
+            # a module's code runs once, when the first import of it runs
+            done = f.ll + ".done"
+            self.global_var(done, "i1")
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(self.ins(f"load i1, ptr {done}"), l1, l2)
+            self.place(l1)
+            self.emit("ret void")
+            self.term = True
+            self.place(l2)
+            self.emit(f"store i1 true, ptr {done}")
         self.stmts(body)
         if not self.term:
             if f.ret == "None":
                 self.emit("ret void")
             else:
-                self.raise_("RuntimeError", self.sconst(f"{f.name}() ended without returning a value"))
+                self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
         for msg in self.cold:
             self.place(self.cold[msg])
             i = msg.find(": ")
@@ -2058,44 +2481,56 @@ class Gen:
         self.out.extend(self.body)
         self.out.append("}")
 
-    def module(self, m: Node) -> str:
-        top: list[Node] = []
-        self.scan_imports(m.kids)
-        for st in m.kids:
-            if st.kind == "class":
+    def program(self, mods: list[Mod]) -> str:
+        # the modules in the order their code may first run, the main program last
+        tops: list[list[Node]] = []
+        for m in mods:
+            self.scan_imports(m.body.kids)
+        for m in mods:
+            for st in m.body.kids:
+                if st.kind == "class":
+                    self.line = st.line
+                    if st.s in self.classes:
+                        self.err(f"redefinition of class '{st.s}' is not supported")
+                    self.classes[st.s] = ClassInfo(st.s, st)
+                    self.classes[st.s].mod = m.name
+                    if len(st.kids) > 1 and self.imported(st.kids[1].s) != "dataclasses.dataclass":
+                        self.err(f"unsupported decorator @{st.kids[1].s} (import dataclass from dataclasses)")
+        for m in mods:
+            top: list[Node] = []
+            for st in m.body.kids:
                 self.line = st.line
-                if st.s in self.classes:
-                    self.err(f"redefinition of class '{st.s}' is not supported")
-                self.classes[st.s] = ClassInfo(st.s, st)
-                if len(st.kids) > 1 and self.imported(st.kids[1].s) != "dataclasses.dataclass":
-                    self.err(f"unsupported decorator @{st.kids[1].s} (import dataclass from dataclasses)")
-        for st in m.kids:
-            self.line = st.line
-            if st.kind == "def":
-                if st.s in self.funcs or st.s in self.classes:
-                    self.err(f"redefinition of '{st.s}' is not supported")
-                self.funcs[st.s] = self.declare_fn(st, "")
-                top.append(mk("defaults", st.s, st.line, []))
-            elif st.kind == "class":
-                for d in st.kids[0].kids:
-                    if d.kind == "def":
-                        self.line = d.line
-                        if d.s in self.classes[st.s].methods:
-                            self.err(f"redefinition of method '{st.s}.{d.s}' is not supported")
-                        self.classes[st.s].methods[d.s] = self.declare_fn(d, st.s)
-                top.append(mk("cdefaults", st.s, st.line, []))
-            else:
-                top.append(st)
+                if st.kind == "def":
+                    if st.s in self.funcs or st.s in self.classes:
+                        self.err(f"redefinition of '{st.s}' is not supported")
+                    self.funcs[st.s] = self.declare_fn(st, "")
+                    self.funcs[st.s].mod = m.name
+                    top.append(mk("defaults", st.s, st.line, []))
+                elif st.kind == "class":
+                    for d in st.kids[0].kids:
+                        if d.kind == "def":
+                            self.line = d.line
+                            if d.s in self.classes[st.s].methods:
+                                self.err(f"redefinition of method '{st.s}.{d.s}' is not supported")
+                            self.classes[st.s].methods[d.s] = self.declare_fn(d, st.s)
+                            self.classes[st.s].methods[d.s].mod = m.name
+                    top.append(mk("cdefaults", st.s, st.line, []))
+                else:
+                    top.append(st)
+            tops.append(top)
         for ci in self.classes.values():
             self.declare_fields(ci)
             for f in ci.methods.values():
                 self.check_special(f)
-        self.flow_program(top)
+        for i in range(len(mods)):
+            self.flow_program(tops[i], mods[i].name)
         for nm in self.gflag:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
         self.modlevel = True
-        self.function(FnInfo("<module>", "@main.init", m, ""), top)
+        for i in range(len(mods)):
+            m = mods[i]
+            self.function(FnInfo("<module>", "@init." + m.name if m.name != "" else "@main.init", m.body, ""), tops[i])
         self.modlevel = False
         for f in self.funcs.values():
             self.function(f, f.node.kids[2].kids)
@@ -2150,20 +2585,23 @@ class Gen:
     # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
     # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;
     # the others (Node.chk) test an "is assigned" flag kept only for the variables they read.
-    def flow_program(self, top: list[Node]) -> None:
+    def flow_program(self, top: list[Node], mod: str) -> None:
+        # one module: its top-level code, functions and methods
         fns: list[FnInfo] = []
         for f in self.funcs.values():
-            fns.append(f)
+            if f.mod == mod:
+                fns.append(f)
         for ci in self.classes.values():
             for f in ci.methods.values():
-                fns.append(f)
+                if ci.mod == mod:
+                    fns.append(f)
         gl: dict[str, bool] = {}
-        self.collect(top, gl)
+        collect(top, gl)
         for f in fns:
             decl: dict[str, bool] = {}
             asg: dict[str, bool] = {}
-            self.globals_in(f.node.kids[2].kids, decl)
-            self.collect(f.node.kids[2].kids, asg)
+            globals_in(f.node.kids[2].kids, decl)
+            collect(f.node.kids[2].kids, asg)
             for nm in decl:
                 if nm in asg:
                     if nm not in gl:
@@ -2179,13 +2617,16 @@ class Gen:
         for nm in gl:
             self.mvars[nm] = True
         # def and class statements bind their names when they run: calls that may come first are checked
-        for nm in self.funcs:
-            gl[nm] = True
-        for nm in self.classes:
-            gl[nm] = True
+        for f in self.funcs.values():
+            if f.mod == mod:
+                gl[f.name] = True
+        for ci in self.classes.values():
+            if ci.mod == mod:
+                gl[ci.name] = True
         mfl = Flow(gl, {}, True)
         self.fl_stmts(mfl, top)
-        self.gflag = mfl.marks
+        for nm in mfl.marks:
+            self.gflag[nm] = True
         # functions run only from module code: globals assigned before its first call into user
         # code stay assigned while any function runs
         safe = mfl.call if mfl.called else gl
@@ -2193,8 +2634,8 @@ class Gen:
             body = f.node.kids[2].kids
             loc: dict[str, bool] = {}
             decl: dict[str, bool] = {}
-            self.collect(body, loc)
-            self.globals_in(body, decl)
+            local_names(body, loc)
+            globals_in(body, decl)
             tracked = dict(gl)
             defd: dict[str, bool] = {}
             for nm in loc:
@@ -2212,7 +2653,8 @@ class Gen:
                 else:
                     self.gflag[nm] = True
         for ci in self.classes.values():
-            self.fl_fields(ci)
+            if ci.mod == mod:
+                self.fl_fields(ci)
 
     def fl_fields(self, ci: ClassInfo) -> None:
         # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
@@ -2227,7 +2669,7 @@ class Gen:
                 fl.exposed()
         else:
             asg: dict[str, bool] = {}
-            self.collect(init.node.kids[2].kids, asg)
+            collect(init.node.kids[2].kids, asg)
             if init.params[0] not in asg:
                 # (if __init__ rebinds self, no assignment is known to reach the new object)
                 fl.me = init.params[0]
@@ -2257,8 +2699,11 @@ class Gen:
         return out
 
     def user_call(self, n: Node) -> bool:
-        # may running n call a user function, method or constructor?
+        # may running n call a user function, method or constructor? (an import of a user module
+        # runs the module's code)
         if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.funcs or n.kids[0].s in self.classes):
+            return True
+        if n.kind == "uimport":
             return True
         if n.kind == "defaults" or n.kind == "cdefaults":
             for d in self.fl_defaults(n):
@@ -2803,6 +3248,9 @@ class Gen:
         elif k == "import":
             for a in n.kids:
                 self.aliases[a.s] = a.kids[0].s
+        elif k == "uimport":
+            for x in n.kids:
+                self.emit(f"call void @init.{x.s}()")
         elif k == "def" or k == "class":
             self.err("nested functions and classes are not supported")
         elif k != "pass":
@@ -3159,6 +3607,8 @@ class Gen:
             return Val("null", "None")
         if k == "name":
             return self.read(n)
+        if k == "badattr":
+            self.err(n.s)  # a module attribute that does not exist, or a module used as a value
         if k == "binop":
             a = self.expr(n.kids[0], want)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t))
@@ -3345,7 +3795,7 @@ class Gen:
         else:
             res = self.rt("pys_list_new", "ptr", ["i64 0"])
         names: list[str] = []
-        self.names_in(n.kids[1], names)
+        names_in(n.kids[1], names)
         saved: list[str] = []
         for nm in names:
             saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
@@ -3726,6 +4176,8 @@ class Gen:
     def call(self, n: Node, want: str) -> Val:
         f = n.kids[0]
         args = n.kids[1:]
+        if f.kind == "badattr":
+            self.err(f.s)
         if f.kind == "name" and f.s not in self.ltype:
             if f.chk and f.s in self.gflag:
                 # a call that may run before the def or class statement
@@ -4293,8 +4745,9 @@ class Gen:
         if m in ms:
             r = self.call_fn(ms[m], [v], [])
         else:
-            # object.__repr__: <__main__.Name object at 0x...>
-            r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(v.t)}", f"ptr {v.v}"]), "str")
+            # object.__repr__: <__main__.Name object at 0x...>, <module.Name object at 0x...>
+            qn = shown(v.t) if "$" in v.t else "__main__." + v.t
+            r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
         e2 = self.cur
         self.br(l3)
         self.place(l3)
@@ -4311,8 +4764,8 @@ class Gen:
 
 
 # ---------------------------------------------------------------- driver
-def compile_source(src: str) -> str:
-    return Gen().module(Parser(Lexer(src, 1).run()).module())
+def compile_program(path: str, src: str, dirs: list[str]) -> str:
+    return Gen().program(Loader(dirs).program(path, src))
 
 
 def q(s: str) -> str:
@@ -4336,8 +4789,21 @@ def main() -> None:
     SRC = argv[2]
     if not os.path.exists(SRC):
         fail("file not found", 0)
+    home = os.getenv("PYSTACHY_HOME", "")
+    if home == "":
+        s = argv[0].rfind("/")
+        home = argv[0][:s] if s >= 0 else "."
+        if not os.path.exists(home + "/runtime.c"):
+            home = home + "/.."
+    # where imported modules are found: the program's directory, PYSTACHY_PATH, lib/ of the checkout
+    s = SRC.rfind("/")
+    dirs = [SRC[:s] if s > 0 else "/" if s == 0 else "."]
+    for d in os.getenv("PYSTACHY_PATH", "").split(":"):
+        if d != "":
+            dirs.append(d)
+    dirs.append(home + "/lib")
     f = open(SRC, "r", encoding="latin-1")
-    ir = compile_source(f.read())
+    ir = compile_program(SRC, f.read(), dirs)
     f.close()
     out = ""
     rest: list[str] = []
@@ -4357,12 +4823,6 @@ def main() -> None:
             f.write(ir)
             f.close()
         return
-    home = os.getenv("PYSTACHY_HOME", "")
-    if home == "":
-        s = argv[0].rfind("/")
-        home = argv[0][:s] if s >= 0 else "."
-        if not os.path.exists(home + "/runtime.c"):
-            home = home + "/.."
     rtc = home + "/runtime.c"
     if not os.path.exists(rtc):
         fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
