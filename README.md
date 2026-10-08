@@ -2,14 +2,14 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 50k-line
+and it can compile itself. The native compiler it produces reproduces its own 52k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (49998 lines of IR)
+fixed point: stage1 == stage2 == stage3 (52488 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -27,9 +27,9 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 4,200 | lexer 277 · parser 636 · types, tables and the definite-assignment pass 290 · type checker + IR generator 2,873 · driver 105 |
-| `runtime.c` | 1,735 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O |
-| `tests/` | 128 programs, 74 rejection cases, 3 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `pystachy.py` | 4,423 | lexer 309 · parser 672 · types, tables and the definite-assignment pass 314 · type checker + IR generator 2,998 · driver 111 |
+| `runtime.c` | 2,154 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O |
+| `tests/` | 192 programs, 90 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -83,9 +83,10 @@ Ouro v2 contributed 16 test programs (ported as `tests/ouro2_*.py`) and the idea
 second backend; MiniPy
 contributed checked arithmetic, strict definite assignment and its verification
 discipline: sanitizer builds, a Python-free native stage and a machine-readable report.
-Three rounds of adversarial differential testing against CPython followed (the language
-core; numbers and strings; containers, files and errors); every divergence they found is now
-fixed, rejected at compile time, or listed under *Deviations*.
+Four rounds of adversarial differential testing against CPython followed (the language
+core; numbers and strings; containers, files and errors; then a review of the result as a
+whole); every divergence they found is now fixed, rejected at compile time, or listed under
+*Deviations*.
 
 ## The language
 
@@ -140,10 +141,11 @@ their own methods.
 
 **Library.** `print` (with `sep`, `end`, `file`, `flush`), `len`, `str`, `repr`, `ascii`,
 `int`, `float`, `bool`, `ord`, `chr`, `abs`, `min`, `max`, `sum`, `sorted` (and
-`list.sort`, with `reverse=`), `list`, `dict`, `round`, `divmod`, `pow` (also modular),
-`any`, `all`, `input`; the common `str`, `list` and `dict` methods (`find`/`index`/`count`
-with start and end, `dict.pop` with a default); `open()` with CPython's modes, errors,
-`newline=` translation and positions for `"+"` modes, and files' `read`/`readline`/
+`list.sort`, with `reverse=`), `list`, `dict`, `round`, `divmod`, `pow` (also modular,
+with inverses), `any`, `all`, `input`; the common `str`, `list` and `dict` methods
+(`find`/`index`/`count` with start and end, `dict.pop` with a default); `open()` with
+CPython's modes, errors, `buffering=`, `newline=` translation and positions for `"+"`
+modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
 `sys.argv/exit/stdin/stdout/stderr/maxsize` (the streams are files), `os.system/getpid/
 getenv/remove/rmdir/path.exists`, `tempfile.mkdtemp`, and the `math` functions and
@@ -168,8 +170,11 @@ modules, `bytes` (literals are rejected; a binary mode computed at run time rais
   `ljust`/`rjust` and `write()`'s result count bytes, case mapping, the `is*()` tests and
   `split()` know only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
-  format widths, `read(n)` and `ord()` count characters. Files hold the same bytes, read as
-  UTF-8 or Latin-1.
+  format widths, `repr()`'s escapes, `read(n)` and `ord()` count characters. Files hold the
+  same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
+  when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
+  three-byte form and printed or written as it is, where CPython raises
+  `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).
@@ -186,10 +191,18 @@ modules, `bytes` (literals are rejected; a binary mode computed at run time rais
   start.
 - An import binds its names for the whole program, wherever it appears.
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
-  freed in batches and there are no finalizers. A file the program drops without closing is
-  closed by the collector, not at once as in CPython; a file used in one expression,
-  `open(p).read()`, is closed right after it, and reopening a path first closes its
-  unreachable writers.
+  freed in batches and there are no finalizers (`__del__` never runs). A file the program
+  drops without closing is closed when a collection finds it unreachable, or at exit, not at
+  once as in CPython. A file used in one expression (`open(p).read()`,
+  `print(..., file=open(p, "w"))`) is closed right after it, and opening a file that has a
+  writer open runs a collection first; but the stack scan is conservative, so a writer that a
+  function dropped a moment ago can still look reachable. Its data can then be missing when
+  the file is read back, and appends through several dropped writers can land out of order.
+- In `"+"` modes, a write after reads goes where CPython's text layer stopped reading ahead,
+  which Pystachy models in 8 KiB chunks. After `read(n)` for an `n` above that, CPython has
+  read ahead by about `n` characters instead; and when a `for` loop over the file stops
+  early, CPython 3.13 keeps its read-ahead across a write, so the next `read()` returns the
+  text from before the write.
 
 **Rejected rather than miscompiled** (CPython would run these): a function, class,
 method or import name bound twice, or a name that is both a variable and a function,
@@ -269,20 +282,26 @@ but a builtin exception.
   `PYSTACHY_GC=stats` turn collection off or print a summary at exit.
 - **Python semantics in the runtime.** Floor division and modulo, float `repr` (shortest
   round-trip digits), `round` with exact half-even rounding, Neumaier-compensated `sum`,
-  `int()`/`float()` string grammar, `str.split`, string `repr` quoting, and the
-  format-spec mini-language are implemented to match CPython's output, error messages
-  included. `sort` is a function-by-function port of CPython 3.13's timsort that makes the
+  `int()`/`float()` string grammar (with the 4,300-digit limit), `str.split`, string `repr`
+  quoting and escapes (a table of the code points `str.isprintable()` rejects), modular
+  `pow` with inverses, and the format-spec mini-language are implemented to match CPython's
+  output, error messages included. `sort` is a function-by-function port of CPython 3.13's timsort that makes the
   same `<` comparisons in the same order, which decides where NaNs end up and what an
   `__lt__` with side effects sees: `tests/sort_order.py` checks 260 generated cases (a
   one-off run over 4,200 lists found every `__lt__` call of the 2,517 object lists in
   CPython's order, and the int and float lists sorted alike).
   Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
-  the table is rebuilt, with its sizes and growth), so deletion is O(1) and a loop that
-  changes its dict sees what CPython's would. Files wrap C stdio with CPython's open()
-  rules: mode parsing, errno-based `OSError` subclasses, newline translation, `"+"` mode
-  positioning (including its 8 KiB read-ahead), and closed/readable/writable checks;
-  stdout errors (a broken pipe, a full disk) are reported with CPython's messages and
-  statuses.
+  the table is rebuilt, with its sizes and growth, and `dict(d)` merges as CPython's does),
+  so deletion is O(1) and a loop that changes its dict, `reversed(d)` included, sees what
+  CPython's would. Files wrap C stdio with CPython's open() rules: argument checks in its
+  order, errno-based `OSError` subclasses, newline translation, `"+"` mode positioning
+  (including its 8 KiB read-ahead), and closed/readable/writable checks. Writes reach the
+  OS when CPython's do: 8 KiB of pending text in front of a `st_blksize` buffer, line
+  buffering for `buffering=1` and terminals, so another handle on the file or a command run
+  by `os.system` sees what it would under CPython. Errors on stdout and in flushes and
+  closes (a broken pipe, a full disk) are reported with CPython's messages and statuses, an
+  implicit close that fails as CPython's finalizer reports it ("Exception ignored in"), and
+  Ctrl-C raises `KeyboardInterrupt`: output is flushed and the program dies by `SIGINT`.
 - **Whole-program optimization.** For `build`, the runtime is linked into each program as
   bitcode and optimized together with it, so `xs[i]` inlines to a bounds check and a
   load. clang tags the runtime with `target-cpu`/`target-features`, which makes LLVM
@@ -292,7 +311,12 @@ but a builtin exception.
   ORC JIT compilation linked against a cached, precompiled `runtime.o`. `build` favors
   throughput: the full `-O2` pipeline over program and runtime together. The driver
   works in a private `tempfile.mkdtemp()` directory; `PYSTACHY_CFLAGS` adds clang flags
-  (such as sanitizers) to the runtime and the AOT link, with a runtime cache per flag set.
+  (such as sanitizers) to the runtime and the AOT build, with a runtime cache per flag set.
+  Sanitizer flags reach only the runtime's compilation and the final link, so the runtime is
+  instrumented once; `pystachy run` then needs the sanitizer's runtime library in
+  `LD_PRELOAD` (as `make verify` does for UBSan). Run AddressSanitizer builds with
+  `ASAN_OPTIONS=detect_stack_use_after_return=0`: LLVM 18 enables that check by default,
+  and it moves address-taken locals to a "fake stack" that the collector does not scan.
 - **Bootstrap.** The compiler is written in the subset, so CPython executes it directly
   (stage 0). `make` then checks the fixed point: the stage-1 binary (built by
   CPython-hosted Pystachy) and the stage-2 binary (built by stage 1) must emit IR
@@ -311,8 +335,9 @@ strings, escapes and f-strings, a 400-case sample of the format-spec language, l
 dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, definite assignment, sorting (timsort's exact comparisons), loops that change what
 they iterate, files and the standard streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
-algorithms, a small interpreter, and 16 programs from Ouro v2. Current result:
-**336 passed, 0 failed** with both the CPython-hosted and the self-compiled compiler.
+algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
+exists, the program's stdout is `/dev/full`. Current result: **490 passed, 0 failed** with
+both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
 `build/verification.json` with each step's result, duration and counts, the toolchain
@@ -332,11 +357,6 @@ with `PYSTACHY_GC_STRESS=1` (a collection at every allocation), and the native c
 reproduces its own IR while collecting every few allocations. `.github/workflows/ci.yml`
 runs `make verify` on every push and pull request (ubuntu-24.04, LLVM 18 from apt,
 Python 3.13) and uploads the report as an artifact.
-
-## License
-
-MIT (`LICENSE`). The list sort in `runtime.c` is a port of CPython's and is used under the
-PSF License Version 2; `THIRD_PARTY_NOTICES` has its notice and the license text.
 
 ## Performance
 
@@ -374,3 +394,8 @@ CPython runs it.
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
   `set`/`frozenset` on top of the existing dict table.
+
+## License
+
+MIT (`LICENSE`). The list sort in `runtime.c` is a port of CPython's and is used under the
+PSF License Version 2; `THIRD_PARTY_NOTICES` has its notice and the license text.
