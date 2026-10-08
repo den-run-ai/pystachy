@@ -526,12 +526,15 @@ I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
 /* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
+static _Noreturn void failf(const char *f, ...);
 I pys_f2i(double d);
-static _Noreturn void badlit(const char *what, I base, Str *s) {
-  Buf b = {0}; char t[64];
+static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
+  Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
   put(&b, what, strlen(what));
   if (base >= 0) put(&b, t, snprintf(t, 64, " with base %lld", (long long)base));
-  put(&b, ": ", 2); repr_str(&b, s); put(&b, "", 1); pys_fail(b.p);
+  put(&b, ": ", 2); r = b.n; repr_str(&b, s);
+  if (base >= 0) for (I i = r; i < b.n; i += u8char(b.p + i, b.n - i, &cp)) if (k++ == 200) { b.n = i; break; }
+  put(&b, "", 1); pys_fail(b.p);
 }
 static int digitv(char c) { return c >= '0' && c <= '9' ? c - '0' : (c | 32) >= 'a' && (c | 32) <= 'z' ? (c | 32) - 'a' + 10 : 99; }
 static int aws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }   /* int()/float() strip only these */
@@ -566,31 +569,31 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
   }
   return done(&b);
 }
-I pys_int_str(Str *s, I base) {
+I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on the ASCII form, checks in its order */
   if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
   Str *t = asciinum(s);
-  const char *p = t->s, *e = t->s + t->len; I b0 = base;
+  const char *p = t->s, *e = t->s + t->len, *q; I b0 = base, nd = 0;
   while (p < e && aws(*p)) p++;
   while (e > p && aws(e[-1])) e--;
-  int neg = 0;
+  int neg = 0, octal = 0, prev = 0;            /* octal: base 0 and a leading 0, which only 0 may have */
   if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
   if (e - p >= 2 && p[0] == '0') {
     int pb = (p[1] | 32) == 'x' ? 16 : (p[1] | 32) == 'o' ? 8 : (p[1] | 32) == 'b' ? 2 : 0;
     if (pb && (base == 0 || base == pb)) { base = pb; p += 2; if (p < e && *p == '_') p++; }
   }
-  if (base == 0) {                             /* decimal: no leading zeros unless the value is 0 */
-    base = 10;
-    if (p < e && *p == '0') for (const char *q = p; q < e; q++) if (*q != '0' && *q != '_') badlit("ValueError: invalid literal for int()", b0, s);
-  }
-  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int any = 0, ovf = 0;
-  for (; p < e; p++) {
-    if (*p == '_' && any && p + 1 < e && p[1] != '_') continue;
-    int dv = digitv(*p);
-    if (dv >= base) badlit("ValueError: invalid literal for int()", b0, s);
+  if (base == 0) { base = 10; octal = p < e && *p == '0'; }
+  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int ovf = 0;
+  for (q = p; q < e && (digitv(*q) < base || (*q == '_' && q > p && prev != '_')); prev = *q++) {
+    if (*q == '_') continue;                   /* digits, with single underscores between them */
+    int dv = digitv(*q); nd++;
     if (u > (lim - dv) / base) ovf = 1; else u = u * base + dv;
-    any = 1;
   }
-  if (!any) badlit("ValueError: invalid literal for int()", b0, s);
+  while (q < e && aws(*q)) q++;                /* whitespace before an embedded NUL, where CPython's C string ends */
+  if (!nd || prev == '_' || (q < e && *q)) badlit("ValueError: invalid literal for int()", b0, s);
+  if ((base & (base - 1)) && nd > 4300)        /* CPython's limit for its quadratic conversion */
+    failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
+          "use sys.set_int_max_str_digits() to increase the limit", (long long)nd);
+  if (q < e || (octal && u)) badlit("ValueError: invalid literal for int()", b0, s);
   if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
   return neg ? (I)(0 - u) : (I)u;
 }
@@ -922,7 +925,6 @@ I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
-static _Noreturn void failf(const char *f, ...);
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
