@@ -1,0 +1,20 @@
+broken loaded
+fallback
+winonly loaded
+no winonly
+winonly loaded
+2
+pkg loaded
+bad loaded
+no pkg.bad
+fpkg init
+no fpkg
+msg built
+no noisy
+winonly loaded
+winonly loaded
+fallback fallback
+broken loaded
+fallback
+winonly loaded
+[exit 1]
