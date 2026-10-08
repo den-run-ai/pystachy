@@ -2033,6 +2033,8 @@ def targs(t: str) -> list[str]:
     out: list[str] = []
     depth = 0
     start = t.find("[") + 1
+    if start == len(t) - 1:
+        return out  # tuple[]: the empty tuple
     for i in range(start, len(t) - 1):
         c = t[i]
         if c == "[":
@@ -2217,6 +2219,8 @@ class FnInfo:
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
+        self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
+        self.varelem = ""  # its annotation (the type of each extra argument), or ""
 
 
 class Frame:
@@ -2693,7 +2697,7 @@ class Gen:
         if cls != "" and len(ps) == 0:
             self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
         for i in range(len(ps)):
-            if cls == "" and ps[i].kind == "param" and ps[i].kids[0].kind == "noann":
+            if cls == "" and ((ps[i].kind == "param" and ps[i].kids[0].kind == "noann") or ps[i].kind == "starparam"):
                 f.generic = True
         marks = d.kids[0].s.split(",")
         bad = ""
@@ -2704,8 +2708,18 @@ class Gen:
                 f.npos = len(f.params)
             if i == int(marks[0]):
                 f.posonly = len(f.params)
+            if p.kind == "starparam" and f.generic:
+                # *args: each call passes the extra positional arguments as a tuple of their types
+                f.vararg = len(f.params)
+                f.varelem = self.vtype(p.kids[0]) if p.kids[0].kind != "noann" else ""
+                f.params.append(p.s)
+                f.defaults.append(mk("noann", "", p.line, []))
+                f.dglob.append("")
+                f.dtypes.append("")
+                f.ptypes.append("")
+                continue
             if p.kind != "param":
-                bad = "*args, **kwargs are not supported"
+                bad = "**kwargs is not supported" if p.kind == "dstarparam" else "*args, **kwargs are not supported"
                 continue
             f.params.append(p.s)
             f.defaults.append(p.kids[1])
@@ -2721,6 +2735,8 @@ class Gen:
                 f.ptypes.append(self.vtype(p.kids[0]))
         if f.npos < 0:
             f.npos = len(f.params)
+        if f.vararg >= 0:
+            f.npos = f.vararg
         if len(d.kids) > 3:
             bad = f"unsupported decorator @{d.kids[3].s}" if d.kids[-1].s != "async" else "async functions are not supported"
         if bad != "" and not f.generic:
@@ -4458,12 +4474,14 @@ class Gen:
                     self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide)
                 return
         seq = self.iterable(self.expr(it, ""))
+        if seq.t == "tuple[]":
+            return  # nothing to iterate: the body never runs (and its types are unknown)
         self.for_seq(tgt, [seq], "", body, "0", hide)
         self.close_temp(it, seq)
 
     def iterable(self, v: Val) -> Val:
         # a tuple is iterated as a list of its items, which must then share one type
-        if not is_tuple(v.t):
+        if not is_tuple(v.t) or v.t == "tuple[]":
             return v
         ts = targs(v.t)
         for x in ts:
@@ -4644,6 +4662,8 @@ class Gen:
         k = n.kind
         if k == "name" and self.static_type(n) == "None":
             return 0  # a parameter whose argument is None is false
+        if k == "name" and is_tuple(self.static_type(n)):
+            return 0 if self.static_type(n) == "tuple[]" else 1  # (*args: the extra arguments)
         if k == "unary" and n.s == "not":
             r = self.static(n.kids[0])
             return 1 - r if r >= 0 else -1
@@ -4747,7 +4767,7 @@ class Gen:
         if t == "None":
             return "false"
         if is_tuple(t):
-            return "true"
+            return "false" if t == "tuple[]" else "true"
         nz = self.ins(f"icmp ne ptr {v.v}, null")
         if t in self.classes and ("__bool__" in self.classes[t].methods or "__len__" in self.classes[t].methods):
             # None is false; otherwise __bool__, else __len__() != 0
@@ -4879,8 +4899,6 @@ class Gen:
                 if v.t == "None" and i < len(ws) and ws[i] in self.classes:
                     v = self.coerce(v, ws[i])
                 vals.append(v)
-            if len(vals) == 0:
-                self.err("empty tuples are not supported")
             return self.tuple_(vals)
         if k == "listcomp":
             if n.s == "gen":
@@ -5491,11 +5509,18 @@ class Gen:
         for i in range(np):
             vals.append(self.pcoerce(pre[i], f.ptypes[i]) if i < len(pre) else Val("", ""))
         pos = len(pre)
+        extra: list[Val] = []
         for a in args:
             j = pos
             e = a
             if a.kind == "starred" or a.kind == "dstar":
                 self.err("star arguments are not supported")
+            if a.kind != "kw" and f.vararg >= 0 and j >= f.vararg:
+                extra.append(self.pcoerce(self.expr(a, f.varelem), f.varelem))
+                pos += 1
+                continue
+            if a.kind == "kw" and f.vararg >= 0 and a.s == f.params[f.vararg]:
+                self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
             if a.kind == "kw":
                 if a.s not in f.params:
                     self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
@@ -5512,6 +5537,8 @@ class Gen:
             if vals[j].t != "":
                 self.err(f"{f.name}() got multiple values for argument '{f.params[j]}'")
             vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j])
+        if f.vararg >= 0:
+            vals[f.vararg] = self.tuple_(extra)
         for j in range(np):
             if vals[j].t == "":
                 if f.defaults[j].kind == "noann":
@@ -5558,6 +5585,7 @@ class Gen:
         g.infer = f.ret == ""
         g.npos = f.npos
         g.posonly = f.posonly
+        g.vararg = f.vararg
         f.insts[key] = g
         self.making.append(f"compiling {shown(f.name)}({', '.join(ts)}) for the call at {where(self.line)}")
         fr = self.save()

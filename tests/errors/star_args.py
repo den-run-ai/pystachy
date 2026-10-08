@@ -1,3 +1,4 @@
 # error: *args, **kwargs
-def f(*args: int) -> None:
-    pass
+class A:
+    def m(self, *args: int) -> None:
+        pass
