@@ -2376,6 +2376,33 @@ def llstr(s: str) -> str:
     return "".join(out)
 
 
+def hpush(h: list[int], x: int) -> None:
+    # h is a binary min-heap (heapq's layout)
+    h.append(x)
+    i = len(h) - 1
+    while i > 0 and h[(i - 1) // 2] > x:
+        h[i] = h[(i - 1) // 2]
+        i = (i - 1) // 2
+    h[i] = x
+
+
+def hpop(h: list[int]) -> int:
+    top = h[0]
+    x = h.pop()
+    if len(h) > 0:
+        i = 0
+        while 2 * i + 1 < len(h):
+            c = 2 * i + 1
+            if c + 1 < len(h) and h[c + 1] < h[c]:
+                c += 1
+            if x <= h[c]:
+                break
+            h[i] = h[c]
+            i = c
+        h[i] = x
+    return top
+
+
 def hexn(v: int, n: int) -> str:
     s = ""
     for i in range(n):
@@ -2810,6 +2837,8 @@ class Gen:
         self.nn: dict[str, bool] = {}
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
+        self.lazyat: dict[str, int] = {}  # each lazy function's position in lazy, once it is complete
+        self.wake: list[int] = []  # a min-heap of the positions of those called and not yet compiled
         self.called: dict[str, bool] = {}
         self.gflag: dict[str, bool] = {}
         self.ocls: dict[str, int] = {}  # classes that appear inside containers: id in descriptors
@@ -4111,7 +4140,14 @@ class Gen:
                 elif f.ll not in self.lazy:
                     self.function(f, f.node.kids[2].kids)
         # generate on demand: dataclass methods that were called, and helpers for classes that
-        # appear inside containers (which can make more of both necessary)
+        # appear inside containers (which can make more of both necessary). Each pass compiles,
+        # in the order of lazy, the functions called by the time it gets to them: it takes their
+        # positions from wake (call_fn adds them), so that it costs what it compiles
+        lz = [x for x in self.lazy.values()]
+        for i in range(len(lz)):
+            self.lazyat[lz[i].ll] = i
+            if lz[i].ll in self.called:
+                hpush(self.wake, i)
         done: dict[str, bool] = {}
         helped: dict[str, bool] = {}
         while True:
@@ -4120,10 +4156,18 @@ class Gen:
                 if c not in helped:
                     helped[c] = True
                     self.obj_helpers(c)
-            for f in [x for x in self.lazy.values()]:
-                if f.ll in self.called and f.ll not in done:
-                    done[f.ll] = True
-                    self.function(f, f.node.kids[2].kids)
+            at = -1
+            later: list[int] = []
+            while len(self.wake) > 0:
+                i = hpop(self.wake)
+                if i <= at:
+                    later.append(i)  # called after the pass went by: the next pass compiles it
+                elif lz[i].ll not in done:
+                    at = i
+                    done[lz[i].ll] = True
+                    self.function(lz[i], lz[i].node.kids[2].kids)
+            for i in later:
+                hpush(self.wake, i)
             if len(done) + len(helped) == before:
                 break
         for op in ["eq", "cmp", "repr"]:
@@ -6317,6 +6361,8 @@ class Gen:
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node]) -> Val:
         if f.bad != "" and not f.generic:
             self.err(f.bad)
+        if f.ll not in self.called and f.ll in self.lazyat:
+            hpush(self.wake, self.lazyat[f.ll])
         self.called[f.ll] = True
         line = self.line
         np = len(f.params)
