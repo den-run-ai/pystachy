@@ -652,13 +652,23 @@ I pys_pow(I a, I b) {
     if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
   }
 }
-I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m): 128-bit remainders and products cannot overflow */
+I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
   if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
-  if (b < 0) pys_fail("ValueError: pow() 2nd argument cannot be negative when 3rd argument specified");
-  __int128 r = 1 % m, x = (__int128)a % m;    /* INT64_MIN % -1 traps in 64 bits */
-  for (; b; b >>= 1) { if (b & 1) r = r * x % m; x = x * x % m; }
-  I v = (I)r;
-  return v && (v < 0) != (m < 0) ? v + m : v;   /* the result has the sign of m, as in Python */
+  __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
+  if (n == 1) return 0;
+  if (b < 0) {                                 /* a negative exponent: the power of a's inverse modulo |m| */
+    __int128 p = x, q = n, s = 1, t = 0;       /* long_invmod: Euclid with floor division */
+    while (q) {
+      __int128 d = p / q - (p % q && (p < 0) != (q < 0)), u = p - d * q, w = s - d * t;
+      p = q; q = u; s = t; t = w;
+    }
+    if (p != 1) pys_fail("ValueError: base is not invertible for the given modulus");
+    x = s;
+  }
+  x %= n;
+  if (x < 0) x += n;
+  for (unsigned __int128 e = b < 0 ? -(__int128)b : b; e; e >>= 1) { if (e & 1) r = r * x % n; x = x * x % n; }
+  return (I)(m < 0 && r ? r - n : r);          /* the result has the sign of m */
 }
 I pys_shl(I a, I b) {
   if (b < 0) pys_fail("ValueError: negative shift count");
@@ -1035,6 +1045,8 @@ void pys_list_remove(List *l, I v, Str *d) {
 }
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
 void pys_list_reverse(List *l) { rev(l->a, l->len); }
+/* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
+   Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 /* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
    function by function so that it makes exactly CPython's sequence of `<` comparisons, which is
    observable (where NaNs end up, what an __lt__ with side effects sees): each ISLT(x, y) there is
