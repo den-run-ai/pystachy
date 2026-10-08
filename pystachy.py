@@ -3008,7 +3008,7 @@ class Gen:
             elif is_dict(s.t):
                 p = self.ins(f"load i64, ptr {st[k]}")
                 if mode == "reversed":
-                    j = self.rt("pys_dict_prev", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}"])
+                    j = self.rt("pys_dict_prev", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}", f"i64 {i}"])
                     nx = self.ins(f"sub i64 {j}, 1")
                 else:
                     j = self.rt("pys_dict_next", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}", f"i64 {i}"])
@@ -3991,7 +3991,8 @@ class Gen:
             pm = [self.coerce(self.as_int(x), "int").v for x in vals]
             return Val(self.rt("pys_powmod", "i64", [f"i64 {pm[0]}", f"i64 {pm[1]}", f"i64 {pm[2]}"]), "int")
         elif name == "dict" and is_dict(t):
-            return Val(self.rt("pys_dict_copy", "ptr", [f"ptr {v.v}"]), t)
+            # not d.copy(): dict(d) merges d into an empty dict, whose table can differ (runtime.c)
+            return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"]), t)
         elif name == "list" and is_dict(t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(t)[0]}]")
         elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":

@@ -1352,7 +1352,8 @@ I pys_dict_setdefault(Dict *d, I k, I v) { I e = entry(d, k); if (e >= 0) return
 void pys_dict_clear(Dict *d) { d->len = d->n = d->size = 0; d->keys = d->vals = 0; d->hs = 0; d->idx = 0; }
 /* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
    -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
-   used = len when the loop started, count = items produced so far */
+   used = len when the loop started, count = items produced so far. As in CPython 3.13.16, a
+   reversed loop also ends at a position past the entries (a rebuild made the table smaller) */
 I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
 I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
 I pys_dict_end(Dict *d) { return d->n; }
@@ -1364,10 +1365,11 @@ I pys_dict_next(Dict *d, I e, I used, I count) {
   if (count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
   return e;
 }
-I pys_dict_prev(Dict *d, I e, I used) {
+I pys_dict_prev(Dict *d, I e, I used, I count) {
   changed(d, used);
-  if (e >= d->n) e = d->n - 1;
+  if (e < 0 || e >= d->n) return -1;
   while (e >= 0 && !d->hs[e]) e--;
+  if (e >= 0 && count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
   return e;
 }
 static List *col(Dict *d, I *a) { List *l = pys_list_new(d->len); for (I e = 0; e < d->n; e++) if (d->hs[e]) l->a[l->len++] = a[e]; return l; }
@@ -1378,16 +1380,25 @@ List *pys_dict_items(Dict *d) {
   for (I e = 0; e < d->n; e++) if (d->hs[e]) { I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e]; l->a[l->len++] = (I)t; }
   return l;
 }
-Dict *pys_dict_copy(Dict *d) {                        /* dict.copy(): clone a table with few holes, else rebuild */
-  Dict *r = pys_dict_new(d->kind, 0);
-  if (!d->len) return r;
-  if (d->len < d->n * 2 / 3) { build(r, d, keysize((d->len * 3 + 1) / 2)); return r; }
-  I u = d->size * 2 / 3;                              /* the clone keeps the holes, as CPython's does */
+/* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy
+   sees: dict(d) merges d into a new empty dict, which clones a table without holes that is not
+   sparse (8 slots, or more items than USABLE_FRACTION(size / 2)) and otherwise inserts the items
+   into a table sized for them (estimate_log2_keysize); dict.copy() clones a table with at most a
+   third of holes, and otherwise merges the same way */
+static Dict *clone(Dict *d) {                         /* the same table, holes included */
+  Dict *r = pys_dict_new(d->kind, 0); I u = d->size * 2 / 3;
   r->keys = pys_alloc(u * 8); r->vals = pys_alloc(u * 8); r->hs = pys_alloc_atomic(u * 8); r->idx = pys_alloc_atomic(d->size * 8);
   memcpy(r->keys, d->keys, d->n * 8); memcpy(r->vals, d->vals, d->n * 8); memcpy(r->hs, d->hs, d->n * 8);
   memcpy(r->idx, d->idx, d->size * 8); r->len = d->len; r->n = d->n; r->size = d->size;
   return r;
 }
+Dict *pys_dict_from(Dict *d) {
+  if (d->len && d->len == d->n && (d->size == 8 || d->size / 2 * 2 / 3 < d->len)) return clone(d);
+  Dict *r = pys_dict_new(d->kind, 0);
+  if (d->len) build(r, d, keysize((d->len * 3 + 1) / 2));
+  return r;
+}
+Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? clone(d) : pys_dict_from(d); }
 
 /* ---------- formatting: f"{x:spec}" ---------- */
 /* CPython's format-spec mini-language for int (and bool), float and str:
