@@ -1462,6 +1462,7 @@ class Loader:
         m.body = Parser(Lexer(src, 1).run()).module()
         self.simplify(m, m.body)
         self.bindings(m)
+        self.annotations(m, m.body.kids, {}, False)
         self.imports(m, m.body, False)
         self.order.append(m)
         for i in range(len(self.later)):
@@ -1571,6 +1572,7 @@ class Loader:
         m.body = Parser(Lexer(src, k * LINES + 1).run()).module()
         self.simplify(m, m.body)
         self.bindings(m)
+        self.annotations(m, m.body.kids, {}, False)
         self.imports(m, m.body, False)
         self.order.append(m)
         return m
@@ -1638,6 +1640,36 @@ class Loader:
                 return
             if st.kind != "def" and st.kind != "class" and st.kind != "subclass" and refers(st, nm):
                 fail(f"name '{nm}' is used before '{nm} = {al.kids[1].s}' binds it (not supported for an alias of a function or class)", st.line)
+
+    def annotations(self, m: Mod, body: list[Node], seen: dict[str, bool], cls: bool) -> None:
+        # CPython evaluates the annotations of a def when the def runs, and those of an annotated
+        # assignment in a class body or module code when it runs (unless the module imports
+        # annotations from __future__): a name they read must be bound by then (seen: the names
+        # bound so far; "*" after a star import)
+        for st in body:
+            for a in st.kids if st.kind == "import" and st.s == "from" else []:
+                if a.kids[0].s == "__future__.annotations":
+                    return
+            if st.kind == "def":
+                for p in st.kids[0].kids + [mk("param", "", st.line, [st.kids[1]])]:
+                    self.ann_names(p.kids[0], seen, "the def statement")
+            elif (st.kind == "class" or st.kind == "subclass") and (st.kind == "class" or st.kids[1].kind != "typeparams"):
+                self.annotations(m, (st.kids[0] if st.kind == "subclass" else st).kids[0].kids, dict(seen), True)
+            elif st.kind == "annassign":
+                self.ann_names(st.kids[1], seen, "the class body" if cls else "the annotated assignment")
+            else:
+                for kid in st.kids:
+                    if kid.kind == "block":
+                        self.annotations(m, kid.kids, seen, cls)
+            binds(st, seen)
+
+    def ann_names(self, n: Node, seen: dict[str, bool], what: str) -> None:
+        # the names an annotation reads (not inside a string, a forward reference)
+        if n.kind == "name" and n.s not in seen and n.s not in PYBUILTINS and "*" not in seen:
+            why = "import it from typing" if n.s in TYPING else f"CPython evaluates this annotation when {what} runs: quote it, or import annotations from __future__"
+            fail(f"name '{n.s}' is not defined ({why})", n.line)
+        for k in n.kids if n.kind != "attr" else [n.kids[0]]:
+            self.ann_names(k, seen, what)
 
     def simplify(self, m: Mod, blk: Node) -> None:
         # what the loader decides about blk before anything else: in an imported module,
@@ -2488,7 +2520,8 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
                 collect(kid.kids, out)
 
 def binds(st: Node, out: dict[str, bool]) -> None:
-    # the names a module-level statement binds, in its blocks too: by assignment, import, def or class
+    # the names a module-level statement binds, in its blocks and except handlers too: by
+    # assignment, import, def or class
     if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
         out[st.s] = True
     elif st.kind == "import":
@@ -2497,7 +2530,7 @@ def binds(st: Node, out: dict[str, bool]) -> None:
     else:
         collect([st], out)
         for kid in st.kids:
-            for x in kid.kids if kid.kind == "block" else []:
+            for x in kid.kids if kid.kind == "block" else kid.kids[1].kids if kid.kind == "except" else []:
                 binds(x, out)
 
 
