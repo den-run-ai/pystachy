@@ -1843,22 +1843,26 @@ class Loader:
                 out.append(st)
                 inner = scope_names(st) if st.kind == "def" or st.kind == "class" else scope
                 decl: dict[str, bool] = {}
+                types: dict[str, Node] = {}
                 pos = self.pos
                 if st.kind == "def":
                     globals_in(st.kids[2].kids, decl)
+                    local_types(st.kids[2].kids, types)
                     self.pos = -1
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.simplify(m, kid, inner)
                 self.pos = pos
                 if st.kind == "def":
-                    self.dropped_locals(st, inner, decl)
+                    self.dropped_locals(st, inner, decl, types)
         blk.kids = out
 
-    def dropped_locals(self, d: Node, before: dict[str, bool], decl: dict[str, bool]) -> None:
+    def dropped_locals(self, d: Node, before: dict[str, bool], decl: dict[str, bool], types: dict[str, Node]) -> None:
         # what function d binds only in code simplify() dropped still decides its scope in CPython: a
         # global statement there holds for the whole function (it is kept), and a name bound there is
-        # a local, which a read then finds unbound (an error where d is compiled)
+        # a local that nothing binds, so a read of it raises UnboundLocalError. It is declared, with
+        # the type of a binding that was dropped (types: x: T, or x = <constant>), as x: T declares
+        # it; if none gives one, it is an error where d is compiled
         now: dict[str, bool] = {}
         globals_in(d.kids[2].kids, now)
         for nm in decl:
@@ -1866,8 +1870,10 @@ class Loader:
                 d.kids[2].kids.insert(0, mk("global", "", d.line, [mk("name", nm, d.line, [])]))
         now = scope_names(d)
         for nm in before:
-            if nm not in now and refers(d.kids[2], nm):
-                msg = f"'{nm}' is local to {d.s}() only through code that is dropped at compile time (for the platform, TYPE_CHECKING or an import that fails), so reading it is not supported"
+            if nm not in now and reads(d.kids[2], nm) and nm in types:
+                d.kids[2].kids.insert(0, mk("annassign", "", d.line, [mk("name", nm, d.line, []), types[nm]]))
+            elif nm not in now and reads(d.kids[2], nm):
+                msg = f"'{nm}' is local to {d.s}() only through code that is dropped at compile time (for the platform, TYPE_CHECKING or an import that fails), so a read of it raises UnboundLocalError; that is supported only where the dropped code annotates it or assigns it a constant"
                 d.kids[2].kids.insert(0, mk("badimport", msg, d.line, []))
 
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
@@ -3085,6 +3091,45 @@ def has_kind(n: Node, kind: str) -> bool:
         if has_kind(k, kind):
             return True
     return False
+
+
+def reads(n: Node, name: str) -> bool:
+    # does code n read name in its own scope: not as a list comprehension's own variable, nor in
+    # an annotation, which a function does not evaluate, nor in the functions and classes it defines
+    k = n.kind
+    if k == "name":
+        return n.s == name
+    if k == "def" or k == "class" or k == "subclass" or k == "lambda":
+        return False
+    if k == "listcomp":
+        names: list[str] = []
+        names_in(n.kids[1], names)
+        if name in names:
+            return reads(n.kids[2], name)
+    for i in range(len(n.kids)):
+        if not (k == "annassign" and i == 1) and reads(n.kids[i], name):
+            return True
+    return False
+
+
+def local_types(body: list[Node], out: dict[str, Node]) -> None:
+    # a type for the names a function's body binds (not in the functions and classes it defines):
+    # the annotation of one, or the type of a constant one is assigned
+    for st in body:
+        v = st.kids[-1] if st.kind == "assign" else st
+        if v.kind == "unary" and v.s == "-":
+            v = v.kids[0]
+        t = v.kind if v.kind == "int" or v.kind == "float" or v.kind == "str" else "bool" if v.kind == "True" or v.kind == "False" else ""
+        for x in st.kids[:-1] if st.kind == "assign" and t != "" else st.kids[:0]:
+            if x.kind == "name" and x.s not in out:
+                out[x.s] = mk("name", t, st.line, [])
+        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s not in out:
+            out[st.kids[0].s] = st.kids[1]
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if kid.kind == "block":
+                local_types(kid.kids, out)
+            elif kid.kind == "except":
+                local_types(kid.kids[1].kids, out)
 
 
 def refers(n: Node, name: str) -> bool:
