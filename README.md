@@ -2,14 +2,17 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 52k-line
+and it can compile itself. The native compiler it produces reproduces its own 85k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
+Programs can import their own modules and packages, and an unannotated function is a
+template, compiled for the argument types of each call, so code written without
+annotations, as most library code is, can compile.
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (52488 lines of IR)
+fixed point: stage1 == stage2 == stage3 (84906 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -27,9 +30,9 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 4,423 | lexer 309 · parser 672 · types, tables and the definite-assignment pass 314 · type checker + IR generator 2,998 · driver 111 |
-| `runtime.c` | 2,154 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O |
-| `tests/` | 192 programs, 90 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `pystachy.py` | 6,952 | lexer 324 · parser 975 · module loader 732 · types, tables and the definite-assignment pass 648 · type checker + IR generator 4,112 · driver 118 |
+| `runtime.c` | 2,580 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `tests/` | 209 programs, 126 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -97,35 +100,87 @@ Pystachy is Python with types made static and the dynamic machinery removed.
 constants), user classes, `Optional[C]` / `C | None` for class types, and `None` as a
 return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `TextIO`) work when imported from `typing`,
-and string forward references work.
+and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
 
 **Typing rules.**
-- Function parameters are annotated; a missing return annotation means `-> None`.
+- A function whose parameters are annotated has those types; a missing return annotation
+  means `-> None`. Methods' parameters must be annotated.
+- A module-level function with an unannotated parameter is a **template**: each call
+  compiles it, once per list of argument types, for those types (an annotated parameter
+  keeps its type), and its first `return` with a value decides what it returns. It is
+  compiled only when a call needs it, so what Pystachy cannot compile in it is an error only
+  then. In it, `isinstance(x, T)` (also with a tuple of types or `T | U`), `hasattr(x, "a")`
+  (the builtin types have CPython 3.13's attributes) and `x is None`, when `x`'s type decides
+  them, are constants: only the branch that runs is compiled (in `if`, `while`, `assert`,
+  `and`/`or` and conditional expressions), and nothing after a `return`. A parameter whose
+  argument is `None` reads as `None`, and outside if branches and loops may get a value of
+  another type (`if hi is None: hi = len(a)`, `if acc is None: acc = []`). A template that
+  returns objects returns `None` where it ends without a `return`, as CPython does. A
+  function with `*args` is a template too: each call arity compiles it with `args` a tuple
+  of the extra arguments' types (iterating it needs one item type; `()` is the empty
+  tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is
+  unannotated.
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
-  or the variable being assigned. `None` in a display takes the type of its neighbours.
+  or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
+  takes it from its first use that shows what the container holds: `append`, `insert`,
+  `extend`, `+=`, `xs[i] = v`, `d[k] = v`, `setdefault`, `get(k, default)` or a
+  reassignment (until then only `len()`, `bool()` and truth tests may read it; a read before
+  that use, in the function's source, is typed by it when its item expression can be).
+  `None` in a display takes the type of its neighbours.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
 - Class fields come from class-body annotations or from `self.x = ...` in `__init__`,
-  typed by annotation, parameter, literal, constructor, method or function call.
+  typed by annotation, parameter, literal, constructor, method or function call (not a call
+  of a template, whose result type is known only once it is compiled: annotate the field).
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
-`if`/`elif`/`else`, `while`, `for` over `range`, lists, strings, dicts, files, tuples of
-one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and
+`if`/`elif`/`else`, `while`, `for` (both with `else`) over `range`, lists, strings, dicts,
+files, tuples of one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
 that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
 `del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass`, docstrings, and `import`/`from` of `sys`, `os`, `os.path`, `math`,
-`tempfile`, `typing`, `dataclasses` and `__future__`.
+`class`, `@dataclass`, docstrings, `del` of a variable (later reads raise `NameError` or
+`UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
+`sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `dataclasses`, `builtins`
+and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
+(`/`) parameters.
+
+**Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` next to
+the main program, on `PYSTACHY_PATH` (directories separated by `:`), or in `lib/` beside the
+compiler. Packages (also namespace packages), submodules, `import a.b as x`, `from ... import`,
+relative imports, `from m import *` and circular imports work. A module's top-level code runs
+once, when the first import of it runs, as in CPython, and `__name__` (also `m.__name__`)
+is the module's name. A module sees its own names and the builtins, never the main
+program's: a program that defines its own `len` does not change `bisect`'s. An import in a
+function binds its names in that function only. `from m import x` of a variable copies its
+value, as CPython binds it; of a function or class it names the same one. `from m import *`
+takes the names `__all__` lists (also after `+=`, `append` and `extend`), else the public
+names bound when the module's code ends; a name a package binds itself (`from .parse import
+parse`) wins over its submodule of that name. A module-level `name = function` makes an
+alias. A global that its module's code may leave unbound (assigned in an `if`, or only after
+an import that can call back into the module) is checked where functions and other modules
+read it, raising CPython's `NameError` or `AttributeError`. What CPython decides at import
+time is decided at compile time: an imported module's `if __name__ == "__main__":` block is
+dropped, as are `if typing.TYPE_CHECKING:` blocks; `try: import _accel / except ImportError:`
+(the standard library's optional C accelerators) compiles the handler unless the module is
+found; tests of `sys.platform` against Windows and of `os.name` are decided for POSIX; and an
+import inside a function of an imported module that the program's module-level imports do
+not load is an error only where that function is compiled. A class or function of an
+imported module that Pystachy cannot compile (inheritance, unannotated methods, a `bytes` or
+`**kwargs` parameter, a field whose type cannot be inferred, ...) is an error only where the
+program uses it.
 
 **Expressions.** literals (decimal, hex, octal, binary and `_`-separated numbers; strings
 with every escape except `\N{...}`, raw and triple-quoted strings, implicit
 concatenation), f-strings with `!r`, `!s`, `!a`, `=`, nested format specs and CPython's
-complete format-spec mini-language, arithmetic with Python semantics (`//` and `%` floor,
+complete format-spec mini-language, `%` formatting with a constant format string
+(`"%-5s %05.2f" % (a, b)`: the conversions `s r a d i u x X o e E f F g G c` with their flags,
+widths and precisions, but not `%(name)s`, `*` or a precision on integers), arithmetic with Python semantics (`//` and `%` floor,
 `/` is correctly rounded true division, exact int/float comparison), bitwise ops,
 chained comparisons, `in`/`not in`, `is`/`is not` (not on numbers and bools), `and`/`or`
 returning operands, `not`, conditional expressions, keyword and default arguments, negative
@@ -143,22 +198,28 @@ their own methods.
 `int`, `float`, `bool`, `ord`, `chr`, `abs`, `min`, `max`, `sum`, `sorted` (and
 `list.sort`, with `reverse=`), `list`, `dict`, `round`, `divmod`, `pow` (also modular,
 with inverses), `any`, `all`, `input`; the common `str`, `list` and `dict` methods
-(`find`/`index`/`count` with start and end, `dict.pop` with a default); `open()` with
+(`find`/`index`/`count` with start and end, `split`/`rsplit`, `partition`/`rpartition`,
+`splitlines`, `removeprefix`/`removesuffix`, `center`/`ljust`/`rjust` with a fill character,
+`zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default); `open()` with
 CPython's modes, errors, `buffering=`, `newline=` translation and positions for `"+"`
 modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
-`sys.argv/exit/stdin/stdout/stderr/maxsize` (the streams are files), `os.system/getpid/
-getenv/remove/rmdir/path.exists`, `tempfile.mkdtemp`, and the `math` functions and
+`sys.argv/exit/stdin/stdout/stderr/maxsize/platform` (the streams are files), `os.system/getpid/
+getenv/remove/rmdir/fspath/path.exists` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
+their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors.
 
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
 feature: exception handling (`try`; `with` works for files), generator functions
 (`yield`), generator expressions other than the consumer arguments above, lambdas and
-closures, inheritance (so user exception classes), `*args`/`**kwargs` and the `*` and `/`
-parameter markers, sets, dict and multi-clause comprehensions, `for`/`while` ... `else`,
-slice steps, first-class functions (`map`, `key=`), `isinstance`/`getattr`/`eval`, user
-modules, `bytes` (literals are rejected; a binary mode computed at run time raises
-`NotImplementedError`) and binary files, complex numbers and arbitrary-precision integers.
+closures, inheritance (so user exception classes), `**kwargs` and `*args` in methods, sets, dict and
+multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
+`isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
+are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
+files, complex numbers, arbitrary-precision integers, `async`, `match` and `:=`. The parser
+accepts all of them, and the compiler rejects each where it compiles it, so an imported
+module may use them in code the program never runs.
 
 **Deviations from CPython** (the program compiles but can behave differently):
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
@@ -166,11 +227,12 @@ modules, `bytes` (literals are rejected; a binary mode computed at run time rais
   wrapping. `int ** negative int` is a `ValueError` (the result type would be dynamic;
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
-- `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`,
-  `ljust`/`rjust` and `write()`'s result count bytes, case mapping, the `is*()` tests and
-  `split()` know only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
+- `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`
+  and `write()`'s result count bytes, case mapping, the `is*()` tests and `split()` know
+  only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
-  format widths, `repr()`'s escapes, `read(n)` and `ord()` count characters. Files hold the
+  format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
+  `ord()` count characters. Files hold the
   same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
   when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
   three-byte form and printed or written as it is, where CPython raises
@@ -189,7 +251,18 @@ modules, `bytes` (literals are rejected; a binary mode computed at run time rais
   tuples holding the same NaN object compare, and sort, as if they held different ones. The
   sum of an empty `list[float]` is `0.0` (`sum(xs, 1)`: `1.0`), where CPython returns the int
   start.
-- An import binds its names for the whole program, wherever it appears.
+- An import of a builtin module binds its names for the whole program, wherever it appears
+  (an import of a Python module in a function binds its names in that function only, as in
+  CPython). A program that reads a module's attribute before the import of the module has
+  run reads its zero value instead of raising `NameError`.
+- A function declared or inferred to return a value that ends without a `return` raises
+  `RuntimeError` there, where CPython returns `None` (a template that returns objects
+  returns `None`, as CPython does).
+- In an imported module, a decorated function or class that is an error only where it is
+  used (above) does not run its decorator at import time, so a decorator's side effects
+  (registering the function) are lost. A template's code is compiled per argument types, so an error in code a program never calls is not reported, and its
+  variables keep one type, so code that rebinds one to another type (`a /= b` on ints) is
+  rejected when it is compiled.
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
   drops without closing is closed when a collection finds it unreachable, or at exit, not at
@@ -215,14 +288,22 @@ different classes, which CPython would reflect to the right operand's `__eq__`; 
 builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
 CPython would reject at run time); `range()`, `enumerate()`, `zip()` or `reversed()` nested
 inside `enumerate()`, `zip()` or `reversed()` in a `for` loop, and `zip(strict=...)`;
-f-strings that reuse their own quote inside a field (PEP 701) and `\N{...}` escapes;
+f-strings that reuse their own quote inside a field (PEP 701) and `\N{...}` escapes; a
+template whose returns have different types (or `None` and a type other than a class), or
+that calls itself before a return statement decides its type; a parameter whose argument is
+`None` given a value of another type in an if branch or loop, or bound as a `for` target; an
+alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
+than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
 `os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
 but a builtin exception.
 
 ## How it works
 
 ```
- source ──► Lexer ──► Parser ──► AST ──► Flow: definite assignment (marks reads to check)
+ source ──► Lexer ──► Parser ──► AST ──► Loader: modules, qualified names, static imports
+                                            │
+                                            ▼
+                                         Flow: definite assignment (marks reads to check)
                                             │
                                             ▼
                                Gen: type check + emit LLVM IR (one pass), text only
@@ -235,11 +316,25 @@ but a builtin exception.
   native executable                              with the precompiled runtime.o
 ```
 
+- **Modules by renaming.** The loader parses each imported module once, decides what CPython
+  would decide at import time (above), and qualifies every module-level name with its
+  module's (`heapq$heappush`: `$` cannot occur in an identifier); references through a
+  module (`heapq.heappush`, or `heappush` after `from heapq import heappush`) become that
+  name. Code generation then sees one program without module objects. A module's top-level
+  code is the function `@init.<module>`, which runs its body the first time an import calls it.
+  Line numbers carry their file (`k * 10,000,000 + line` for the k-th file), so errors anywhere
+  name the right file.
 - **One pass from AST to IR.** After a declaration pass collects classes, fields and
   function signatures, `Gen` walks each function once, inferring expression types
   bottom-up while emitting IR. An expected type (`want`) flows top-down to type empty
   literals and `None`. Types are canonical strings (`dict[str,list[int]]`), so the
   compiler needs no type objects.
+- **Templates.** A call to a template evaluates its arguments, then looks up the function
+  compiled for their types, compiling it on the spot if there is none yet: `Gen` saves its
+  state for the function it is in, compiles the template's body for the argument types (its
+  first `return` with a value fixes the return type, so a recursive call after it works), and
+  resumes. A `None` argument is not passed at all: in that instance the parameter is a
+  constant `None`. Errors in an instance name the call that compiled it.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
   of variables assigned on every path (merging `if` branches, leaving `while True` only
   through its breaks). Reads it cannot prove are marked, and only those test an "is
@@ -333,10 +428,12 @@ must be rejected with the message on its first line, and each `tests/deviations/
 print its hand-written expected output. The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
-imports, definite assignment, sorting (timsort's exact comparisons), loops that change what
-they iterate, files and the standard streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
+imports, modules and packages (`tests/mods/`, `tests/scope/`), templates, empty containers typed by their first
+use, loops with `else`, definite assignment, sorting
+(timsort's exact comparisons), loops that change what they iterate, files and the standard
+streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **490 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **560 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -382,8 +479,8 @@ million short-lived strings (`str(i)` in a loop) peak at 35 MiB instead of 155 M
 Ouro v1's bump allocator, and building and discarding fifty 2M-element lists at 50 MiB
 instead of 1.5 GiB, while running faster (0.47 s instead of 0.52 s, and 0.30 s instead of
 2.0 s). Sorting is CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the
-earlier merge sort. The native compiler translates itself to LLVM IR in 0.07 s, against
-0.35 s when CPython runs it; a full AOT build of itself, with clang -O2, takes about 7 s.
+earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, against
+0.55 s when CPython runs it; a full AOT build of itself, with clang -O2, takes about 9 s.
 
 ## Next steps
 
@@ -394,6 +491,10 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.07 s, 
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
   `set`/`frozenset` on top of the existing dict table.
+- More of the standard library: the compiler and runtime features that would let most of
+  CPython's pure-Python standard library compile unmodified (exceptions, properties, single
+  inheritance, `bytes`, functions as values, `Optional` scalars, sets), and the C modules
+  (`_weakref`, `_codecs`, `_io`, `_thread`) that most of it imports.
 
 ## License
 
