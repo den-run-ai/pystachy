@@ -1480,6 +1480,14 @@ def is_main_guard(st: Node) -> bool:
     return a.kind == "name" and a.s == "__name__" and b.kind == "str" and b.s == "__main__"
 
 
+def has_all(body: list[Node]) -> bool:
+    # does a module's top-level code assign __all__ (which from m import * then takes)
+    for st in body:
+        if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
+            return True
+    return False
+
+
 def import_error(e: Node) -> str:
     # "ImportError" or "ModuleNotFoundError" if raise e raises it, else ""
     n = e.kids[0] if e.kind == "call" else e
@@ -1618,6 +1626,9 @@ class Loader:
         # for submodules(): s is the name bound, the kids the package, the name and the copy if any
         self.taken: list[Node] = []
         self.takek: list[dict[str, str]] = []
+        # each star import of a package without __all__, with the module it is in (submodules())
+        self.stars: list[Node] = []
+        self.starm: list[Mod] = []
         self.qdef = False  # is qstmts() in a function
 
     def program(self, path: str, src: str) -> list[Mod]:
@@ -2182,7 +2193,12 @@ class Loader:
             n = self.taken[i]
             t = self.mods[n.kids[0].s]
             x = n.kids[1].s
-            if x in t.amb:
+            if n.kind == "takemid" and not (x in t.amb and not t.amb[x] and x not in t.fnglobal):
+                # (attribute x of t is the submodule only once an import of it has rebound t's own x,
+                # as for the last step, below; else CPython raises ImportError)
+                n.kids[2].kind = "badimport"
+                n.kids[2].s = self.ambiguous(t.name, x) if x in t.amb else f"import {n.kids[3].s} as {n.s}: '{t.name}.{x}' is the package's own '{x}', not its submodule (not supported: CPython raises ImportError)"
+            elif n.kind != "takemid" and x in t.amb:
                 # (import t.x as y runs the submodule's code after t's, so t's x is the submodule from
                 # then on, unless the submodule's code may run within t's or a function of t rebinds x)
                 sure = n.kind == "takesub" and not t.amb[x] and x not in t.fnglobal
@@ -2192,6 +2208,26 @@ class Loader:
                     n.kids[2].s = msg
                     n.kids[2].kids = []
                 self.takek[i][n.s] = "m:" + t.name + "." + x if sure else "x:" + msg
+        for i in range(len(self.stars)):
+            # from t import * without __all__ binds the public submodules of t that have been imported
+            # by then too: one t's own code imports for sure, but another only where its import may
+            # have run (an error where it is read)
+            t = self.mods[self.stars[i].kids[0].s]
+            m = self.starm[i]
+            for sub in self.mods:
+                x = sub[len(t.name) + 1 :]
+                if sub.startswith(t.name + ".") and "." not in x and not x.startswith("_") and x not in t.kinds:
+                    msg = f"'from {t.name} import *' binds '{x}' to the submodule '{sub}' only if an import of it has run before, and Pystachy cannot tell whether one has (not supported)"
+                    sure = False
+                    for st in t.body.kids:
+                        for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+                            sure = sure or y.s == sub
+                    if sure and m.kinds.get(x, "m:" + sub) == "m:" + sub:
+                        m.kinds[x] = "m:" + sub
+                    elif x in m.kinds:
+                        fail(msg, self.stars[i].line)
+                    else:
+                        m.kinds[x] = "x:" + msg
 
     def own_first(self, t: Mod, x: str) -> bool:
         # does package t's top-level code import its submodule x before anything in it binds x, while
@@ -2362,8 +2398,19 @@ class Loader:
                 continue
             if st.s == "" and "." in a.kids[0].s:
                 # import a.b.c as x binds x to attribute c of a.b, as from a.b import c as x does: the
-                # submodule, unless a.b binds c itself
+                # submodule, unless a.b binds c itself. It takes attribute b of a first, which must be
+                # the submodule a.b (checked by submodules() where a binds b itself)
                 tgt = a.kids[0].s
+                i = tgt.find(".")
+                while tgt.find(".", i + 1) >= 0:
+                    j = tgt.find(".", i + 1)
+                    k = self.mods[tgt[:i]].kinds.get(tgt[i + 1 : j], "")
+                    if k != "" and k != "m:" + tgt[:j]:
+                        chk = mk("pass", "", line, [])
+                        out.append(chk)
+                        self.taken.append(mk("takemid", a.s, line, [mk("str", tgt[:i], line, []), mk("str", tgt[i + 1 : j], line, []), chk, mk("str", tgt, line, [])]))
+                        self.takek.append(m.kinds)
+                    i = j
                 n = len(self.taken)
                 self.take(m, self.mods[tgt[: tgt.rfind(".")]], tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
                 if len(self.taken) > n:
@@ -2374,6 +2421,9 @@ class Loader:
             elif a.s == "*":
                 for x in self.public(src):
                     self.take(m, src, x, x, infn, keep, inits, copies, line)
+                if src.pdir != "" and not has_all(src.body.kids):
+                    self.stars.append(mk("star", "", line, [mk("str", src.name, line, [])]))
+                    self.starm.append(m)
             else:
                 tgt = a.kids[0].s
                 self.take(m, src, tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
@@ -2572,6 +2622,33 @@ class Loader:
             for kid in n.kids:
                 self.qexpr(m, kid, loc)
 
+    def qstore(self, m: Mod, t: Node, loc: dict[str, bool]) -> None:
+        # an assignment target: a package's own name that an import of its submodule may rebind
+        # (Mod.amb) cannot be assigned from another module, as which of the two it replaces is not known
+        if t.kind == "tuple" or t.kind == "list":
+            for x in t.kids:
+                self.qstore(m, x, loc)
+            return
+        b = self.modof(m, t.kids[0], loc) if t.kind == "attr" else ""
+        if b != "" and t.s in self.mods[b].amb:
+            t.kind = "badattr"
+            t.s = f"assigning '{b}.{t.s}' is not supported: the program's first import of the submodule '{b}.{t.s}' binds it too"
+            t.kids = []
+        self.qexpr(m, t, loc)
+
+    def modof(self, m: Mod, n: Node, loc: dict[str, bool]) -> str:
+        # the module n denotes, as qmod() finds it but without rewriting n, or ""
+        if n.kind == "name":
+            k = self.kind(m, n.s) if n.s not in loc else ""
+            return k[2:] if k.startswith("m:") else ""
+        base = self.modof(m, n.kids[0], loc) if n.kind == "attr" else ""
+        if base == "" or n.s in self.mods[base].amb:
+            return ""
+        k = self.mods[base].kinds.get(n.s, "")
+        if k.startswith("m:"):
+            return k[2:]
+        return base + "." + n.s if k == "" and base + "." + n.s in self.mods else ""
+
     def qann(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed
         # to qualify the names in it
@@ -2638,10 +2715,14 @@ class Loader:
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
             elif k == "annassign":
-                self.qexpr(m, st.kids[0], loc)
+                self.qstore(m, st.kids[0], loc)
                 self.qann(m, st.kids[1], loc)
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
+            elif k == "assign":
+                for kid in st.kids[:-1]:
+                    self.qstore(m, kid, loc)
+                self.qexpr(m, st.kids[-1], loc)
             elif k == "import" or k == "global":
                 for a in st.kids:
                     a.s = self.qname(m, a.s, {})
@@ -5565,7 +5646,8 @@ class Gen:
         name = n.s
         if name in self.unsupported:
             return  # a class of an imported module that is never compiled
-        if name in self.funcs or name in self.classes or name in self.aliases:
+        if name not in self.ltype and (name in self.funcs or name in self.classes or name in self.aliases):
+            # (a function's local hides the module's function, class or import of that name)
             self.err(f"del of '{name}' is not supported: only variables can be deleted")
         if not self.modlevel and self.is_global(name):
             self.err(f"del of the global '{name}' in a function is not supported")
