@@ -41,3 +41,18 @@ async def collect(it):
 
 def ok() -> str:
     return "ok"
+
+
+class Blob:
+    data: bytes = b""
+
+
+import typing as t
+
+
+def head(n: t.Optional[Node]) -> int:
+    return n.v if n is not None else -1
+
+
+def names(xs: t.List[str]) -> t.Dict[str, int]:
+    return {x: len(x) for x in xs} if False else {"n": len(xs)}

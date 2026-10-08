@@ -1493,7 +1493,7 @@ class Loader:
             p = a.kids[1].s
             if st.s.startswith("from."):
                 p = self.relative(m, st.s, p, st.line)
-            elif builtin_module(p):
+            elif builtin_module(p) or p == "typing_extensions":
                 continue
             if p not in self.mods:
                 return False
@@ -1781,6 +1781,11 @@ class Loader:
         copies: list[Node] = []
         for a in st.kids:
             path = a.kids[1].s
+            if path == "typing_extensions":
+                # the typing backport: its names are typing's (those typing has)
+                path = "typing"
+                a.kids[1].s = path
+                a.kids[0].s = "typing" + a.kids[0].s[17:]
             if st.s.startswith("from."):
                 path = self.relative(m, st.s, path, line)
             elif builtin_module(path):
@@ -3058,11 +3063,15 @@ class Gen:
                 return "file"
             if s in self.unsupported:
                 self.err(self.unsupported[s])
+        elif k == "attr" and self.typing_attr(n) == "TextIO":
+            return "file"
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
             return self.opt(self.typeof(n.kids[0]))
-        elif k == "index" and n.kids[0].kind == "name":
+        elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = n.kids[0].s
-            if base != "list" and base != "dict" and base != "tuple":
+            if n.kids[0].kind == "attr":
+                base = self.typing_attr(n.kids[0]).lower()  # typing.List[int]
+            elif base != "list" and base != "dict" and base != "tuple":
                 base = self.typing_name(base).lower()
             a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
             ts = [self.typeof(x) for x in a]
@@ -3093,7 +3102,9 @@ class Gen:
             return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
         if k == "binop" and n.s == "|" and n.kids[1].kind == "None":
             return self.ann_problem(n.kids[0], False)
-        if k == "index" and n.kids[0].kind == "name":
+        if k == "attr" and self.typing_attr(n) == "TextIO":
+            return ""
+        if k == "index" and (n.kids[0].kind == "name" or (n.kids[0].kind == "attr" and self.typing_attr(n.kids[0]) != "")):
             for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
                 r = self.ann_problem(x, False)
                 if r != "":
@@ -3107,6 +3118,15 @@ class Gen:
         if t == "None":
             self.err("None is only supported as a return type; annotate an optional object as C | None")
         return t
+
+    def typing_attr(self, n: Node) -> str:
+        # the typing name an attribute denotes (typing.Optional, t.List after import typing as t), or ""
+        p = ""
+        while n.kind == "attr":
+            p = "." + n.s + p
+            n = n.kids[0]
+        p = self.imported(n.s + p) if n.kind == "name" else ""
+        return p[7:] if p.startswith("typing.") else ""
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
@@ -3216,7 +3236,11 @@ class Gen:
         last = ""
         for st in ci.node.kids[0].kids:
             self.line = st.line
-            if st.kind == "annassign" and st.kids[0].kind == "name":
+            if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
+                # an imported module's class: an error only where the program uses it
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {self.ann_problem(st.kids[1], False)}"
+                self.add_field(ci, st.kids[0].s, "int")
+            elif st.kind == "annassign" and st.kids[0].kind == "name":
                 self.add_field(ci, st.kids[0].s, self.vtype(st.kids[1]))
                 if len(st.kids) == 3:
                     ci.fdefault[st.kids[0].s] = st.kids[2]
@@ -4523,6 +4547,13 @@ class Gen:
     def hoist_class(self, ci: ClassInfo) -> None:
         # class-body defaults are evaluated once, when the class statement runs, in body order,
         # and shared. Pystachy has no class scope: names bound earlier in the body are rejected.
+        for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
+            if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
+                why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
+                if why != "":
+                    ci.bad = f"class {shown(ci.name)} is not supported: {why}"
+        if ci.bad != "":
+            return  # an imported module's class Pystachy cannot compile: an error only where used
         bound: dict[str, bool] = {}
         init = ci.methods["__init__"]
         for st in ci.node.kids[0].kids:

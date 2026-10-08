@@ -36,6 +36,6 @@ if TYPE_CHECKING:
 print(sigs.ok(), sigs.first([3, 4]), sigs.first(["s"]))
 n = sigs.Node(1)
 n.kids.append(sigs.Node(2))
-print(n.kids[0].v, names.lazy(), names.parse())
+print(n.kids[0].v, names.lazy(), names.parse(), sigs.head(n), sigs.head(None))
 print(late.always)
 print(late.count())
