@@ -2833,6 +2833,7 @@ class Gen:
         self.late: dict[str, bool] = {}
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
+        self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
@@ -4042,6 +4043,13 @@ class Gen:
             imps: list[str] = []
             all_imports(m.body.kids, imps)
             self.deps[m.name] = " ".join(imps)
+        # the import graph's strongly connected components (see user_call)
+        num: dict[str, int] = {}
+        low: dict[str, int] = {}
+        stack: list[str] = []
+        for m in mods:
+            if m.name not in num:
+                self.scc(m.name, num, low, stack)
         # each module's functions and classes, in the order they were declared
         mfns: dict[str, list[FnInfo]] = {}
         mcls: dict[str, list[ClassInfo]] = {}
@@ -4285,17 +4293,24 @@ class Gen:
                     out.append(d)
         return out
 
-    def reaches(self, a: str, b: str, seen: dict[str, bool]) -> bool:
-        # may running module a's code import (and so run) module b
-        if a == b:
-            return True
-        if a in seen:
-            return False
-        seen[a] = True
+    def scc(self, a: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
+        # Tarjan's algorithm over the import graph (deps) from module a: the modules numbered and
+        # not yet in a component are on the stack
+        num[a] = len(num)
+        low[a] = num[a]
+        stack.append(a)
         for x in self.deps.get(a, "").split():
-            if self.reaches(x, b, seen):
-                return True
-        return False
+            if x not in num:
+                self.scc(x, num, low, stack)
+                low[a] = min(low[a], low[x])
+            elif x not in self.comp:
+                low[a] = min(low[a], num[x])
+        if low[a] == num[a]:
+            while True:
+                x = stack.pop()
+                self.comp[x] = a
+                if x == a:
+                    break
 
     def user_call(self, n: Node) -> bool:
         # may running n call a user function, method or constructor? (an import of a user module
@@ -4304,9 +4319,10 @@ class Gen:
             return True
         if n.kind == "uimport":
             # it runs a module's code, which can call this module's functions only if it imports
-            # this module (circular imports)
+            # this module (circular imports): as this module imports it, only if both are in one
+            # strongly connected component of the import graph
             for x in n.kids:
-                if self.reaches(x.s, self.flowmod, {}):
+                if self.comp[x.s] == self.comp[self.flowmod]:
                     return True
             return False
         if n.kind == "defaults" or n.kind == "cdefaults":
