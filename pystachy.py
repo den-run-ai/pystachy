@@ -4810,6 +4810,8 @@ class Gen:
             self.err(n.s)  # a module attribute that does not exist, or a module used as a value
         if k in UNSUPPORTED:
             self.err(UNSUPPORTED[k])
+        if k == "binop" and n.s == "%" and n.kids[0].kind == "str":
+            return self.percent(n.kids[0].s, n.kids[1])
         if k == "binop":
             a = self.expr(n.kids[0], want)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t))
@@ -4918,6 +4920,117 @@ class Gen:
             return acc
         self.err(f"unsupported expression '{k}'")
         return Val("", "")
+
+    def percent(self, fmt: str, rhs: Node) -> Val:
+        # "format" % args with a constant format: each conversion becomes what format() or
+        # str()/repr() of its argument gives, as CPython's printf-style formatting does
+        items: list[Val] = []
+        if rhs.kind == "tuple":
+            for x in rhs.kids:
+                items.append(self.expr(x, ""))
+        else:
+            v = self.expr(rhs, "")
+            if is_tuple(v.t):
+                for i in range(len(targs(v.t))):
+                    items.append(self.tget(v, i))
+            elif is_dict(v.t) and "%(" in fmt:
+                self.err("% formatting with a mapping (%(name)s) is not supported")
+            else:
+                items.append(v)
+        acc = Val(self.sconst(""), "str")
+        lit: list[str] = []
+        used = 0
+        i = 0
+        while i < len(fmt):
+            c = fmt[i]
+            i += 1
+            if c != "%":
+                lit.append(c)
+                continue
+            if i < len(fmt) and fmt[i] == "%":
+                lit.append("%")
+                i += 1
+                continue
+            flags = ""
+            while i < len(fmt) and fmt[i] in "-+ #0":
+                flags += fmt[i]
+                i += 1
+            width = ""
+            while i < len(fmt) and (fmt[i].isdigit() or fmt[i] == "*"):
+                width += fmt[i]
+                i += 1
+            prec = ""
+            if i < len(fmt) and fmt[i] == ".":
+                i += 1
+                prec = "."
+                while i < len(fmt) and (fmt[i].isdigit() or fmt[i] == "*"):
+                    prec += fmt[i]
+                    i += 1
+            while i < len(fmt) and fmt[i] in "hlL":
+                i += 1
+            if i >= len(fmt):
+                self.err("ValueError: incomplete format")
+            t = fmt[i]
+            i += 1
+            if "*" in width or "*" in prec:
+                self.err("% formatting with a * width or precision is not supported")
+            if t not in "sradiuxXoeEfFgGc":
+                self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
+            if used >= len(items):
+                return self.fmt_error("not enough arguments for format string")
+            v = items[used]
+            used += 1
+            if len(lit) > 0:
+                acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
+                lit = []
+            acc = self.cat(acc, self.conversion(v, flags, width, prec, t))
+        if used < len(items):
+            return self.fmt_error("not all arguments converted during string formatting")
+        if len(lit) > 0:
+            acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
+        return acc
+
+    def fmt_error(self, msg: str) -> Val:
+        self.raise_("TypeError", self.sconst(msg))
+        return Val(self.sconst(""), "str")
+
+    def cat(self, a: Val, b: Val) -> Val:
+        if a.v == self.sconst(""):
+            return b
+        return Val(self.rt("pys_str_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), "str")
+
+    def conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> Val:
+        # one %-conversion of v, as a format() spec: '-' left-aligns, '0' pads numbers with
+        # zeros after the sign, '+' and ' ' are the sign options, '#' the alternate form
+        if t == "s" or t == "r" or t == "a":
+            sv = self.to_str(v) if t == "s" else self.repr(v) if t == "r" else Val(self.rt("pys_ascii", "ptr", [f"ptr {self.repr(v).v}"]), "str")
+            if width == "" and prec == "":
+                return sv
+            return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
+        if t == "c":
+            if v.t == "str":
+                return v
+            v = self.coerce(self.as_int(v), "int")
+            cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
+            return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
+        spec = "<" if "-" in flags else ""
+        spec += "+" if "+" in flags else " " if " " in flags else ""
+        spec += "#" if "#" in flags else ""
+        spec += "0" if "0" in flags and "-" not in flags else ""
+        spec += width
+        if t == "d" or t == "i" or t == "u" or t == "x" or t == "X" or t == "o":
+            if prec != "":
+                self.err(f"%{t} with a precision is not supported")
+            if v.t == "float" and (t == "d" or t == "i" or t == "u"):
+                v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
+            v = self.as_int(v)
+            if v.t != "int":
+                self.err(f"%{t} format: a real number is required, not {tname(v.t)}")
+            return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
+        v = self.as_float(self.as_int(v))
+        if v.t != "float":
+            self.err(f"must be real number, not {tname(v.t)}")
+        return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
 
     def format_(self, v: Val, spec: Node) -> Val:
         # format(v, spec), as an f-string field computes it; spec is a str or an f-string node
