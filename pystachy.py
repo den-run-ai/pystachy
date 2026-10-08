@@ -1294,7 +1294,7 @@ class Parser:
                 # (in parentheses, an expression may continue over lines: f"""{x\n + 1}""")
                 sub = Parser(Lexer("(" + src.strip() + "\n)", line).run())
                 sub.expect("(")
-                e = sub.test()
+                e = sub.exprlist()
                 if sub.peek() != ")":
                     fail("f-string: invalid syntax", line)
                 conv = ""

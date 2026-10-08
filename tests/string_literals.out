@@ -8,4 +8,5 @@ R p=R 3.1 [  S] '\xe9' 'caf\xe9'
 F F F>5 [3.14] [    ab] a
 b
   None|None
+(6, 3.14159) w, xf = (6, 3.14159)   (6, -6)
 [exit 0]
