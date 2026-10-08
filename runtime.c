@@ -1995,8 +1995,313 @@ I pys_system(Str *c) {
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
 I pys_getpid(void) { return getpid(); }
+Str *pys_platform(void) {              /* sys.platform */
+#if defined(__linux__)
+  return cstr("linux");
+#elif defined(__APPLE__)
+  return cstr("darwin");
+#elif defined(__FreeBSD__)
+  return cstr("freebsd");
+#else
+  return cstr("unknown");
+#endif
+}
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+
+/* ---------- the time module: clocks and sleep ---------- */
+static I clock_ns(clockid_t c) { struct timespec t; clock_gettime(c, &t); return (I)t.tv_sec * 1000000000 + t.tv_nsec; }
+static double ns_secs(I ns) { return ns % 1000000000 == 0 ? (double)(ns / 1000000000) : (double)ns / 1e9; }   /* as CPython */
+double pys_time(void) { return ns_secs(clock_ns(CLOCK_REALTIME)); }
+I pys_time_ns(void) { return clock_ns(CLOCK_REALTIME); }
+double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
+I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
+double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
+I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
+  if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
+  if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
+  if (s >= 9.2e9) pys_fail("OverflowError: timestamp too large to convert to C _PyTime_t");
+  struct timespec t = {(time_t)s, (long)((s - (double)(time_t)s) * 1e9)}, r;
+  if (t.tv_nsec >= 1000000000) { t.tv_sec++; t.tv_nsec -= 1000000000; }
+  while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
+}
+void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- the errno module: the platform's error numbers ---------- */
+static const struct { const char *name; int value; } errnos[] = {
+#ifdef EPERM
+  {"EPERM", EPERM},
+#endif
+#ifdef ENOENT
+  {"ENOENT", ENOENT},
+#endif
+#ifdef ESRCH
+  {"ESRCH", ESRCH},
+#endif
+#ifdef EINTR
+  {"EINTR", EINTR},
+#endif
+#ifdef EIO
+  {"EIO", EIO},
+#endif
+#ifdef ENXIO
+  {"ENXIO", ENXIO},
+#endif
+#ifdef E2BIG
+  {"E2BIG", E2BIG},
+#endif
+#ifdef ENOEXEC
+  {"ENOEXEC", ENOEXEC},
+#endif
+#ifdef EBADF
+  {"EBADF", EBADF},
+#endif
+#ifdef ECHILD
+  {"ECHILD", ECHILD},
+#endif
+#ifdef EAGAIN
+  {"EAGAIN", EAGAIN},
+#endif
+#ifdef ENOMEM
+  {"ENOMEM", ENOMEM},
+#endif
+#ifdef EACCES
+  {"EACCES", EACCES},
+#endif
+#ifdef EFAULT
+  {"EFAULT", EFAULT},
+#endif
+#ifdef ENOTBLK
+  {"ENOTBLK", ENOTBLK},
+#endif
+#ifdef EBUSY
+  {"EBUSY", EBUSY},
+#endif
+#ifdef EEXIST
+  {"EEXIST", EEXIST},
+#endif
+#ifdef EXDEV
+  {"EXDEV", EXDEV},
+#endif
+#ifdef ENODEV
+  {"ENODEV", ENODEV},
+#endif
+#ifdef ENOTDIR
+  {"ENOTDIR", ENOTDIR},
+#endif
+#ifdef EISDIR
+  {"EISDIR", EISDIR},
+#endif
+#ifdef EINVAL
+  {"EINVAL", EINVAL},
+#endif
+#ifdef ENFILE
+  {"ENFILE", ENFILE},
+#endif
+#ifdef EMFILE
+  {"EMFILE", EMFILE},
+#endif
+#ifdef ENOTTY
+  {"ENOTTY", ENOTTY},
+#endif
+#ifdef ETXTBSY
+  {"ETXTBSY", ETXTBSY},
+#endif
+#ifdef EFBIG
+  {"EFBIG", EFBIG},
+#endif
+#ifdef ENOSPC
+  {"ENOSPC", ENOSPC},
+#endif
+#ifdef ESPIPE
+  {"ESPIPE", ESPIPE},
+#endif
+#ifdef EROFS
+  {"EROFS", EROFS},
+#endif
+#ifdef EMLINK
+  {"EMLINK", EMLINK},
+#endif
+#ifdef EPIPE
+  {"EPIPE", EPIPE},
+#endif
+#ifdef EDOM
+  {"EDOM", EDOM},
+#endif
+#ifdef ERANGE
+  {"ERANGE", ERANGE},
+#endif
+#ifdef EDEADLK
+  {"EDEADLK", EDEADLK},
+#endif
+#ifdef ENAMETOOLONG
+  {"ENAMETOOLONG", ENAMETOOLONG},
+#endif
+#ifdef ENOLCK
+  {"ENOLCK", ENOLCK},
+#endif
+#ifdef ENOSYS
+  {"ENOSYS", ENOSYS},
+#endif
+#ifdef ENOTEMPTY
+  {"ENOTEMPTY", ENOTEMPTY},
+#endif
+#ifdef ELOOP
+  {"ELOOP", ELOOP},
+#endif
+#ifdef EWOULDBLOCK
+  {"EWOULDBLOCK", EWOULDBLOCK},
+#endif
+#ifdef ENOMSG
+  {"ENOMSG", ENOMSG},
+#endif
+#ifdef EIDRM
+  {"EIDRM", EIDRM},
+#endif
+#ifdef ENOSTR
+  {"ENOSTR", ENOSTR},
+#endif
+#ifdef ENODATA
+  {"ENODATA", ENODATA},
+#endif
+#ifdef ETIME
+  {"ETIME", ETIME},
+#endif
+#ifdef ENOSR
+  {"ENOSR", ENOSR},
+#endif
+#ifdef EREMOTE
+  {"EREMOTE", EREMOTE},
+#endif
+#ifdef ENOLINK
+  {"ENOLINK", ENOLINK},
+#endif
+#ifdef EPROTO
+  {"EPROTO", EPROTO},
+#endif
+#ifdef EMULTIHOP
+  {"EMULTIHOP", EMULTIHOP},
+#endif
+#ifdef EBADMSG
+  {"EBADMSG", EBADMSG},
+#endif
+#ifdef EOVERFLOW
+  {"EOVERFLOW", EOVERFLOW},
+#endif
+#ifdef EILSEQ
+  {"EILSEQ", EILSEQ},
+#endif
+#ifdef EUSERS
+  {"EUSERS", EUSERS},
+#endif
+#ifdef ENOTSOCK
+  {"ENOTSOCK", ENOTSOCK},
+#endif
+#ifdef EDESTADDRREQ
+  {"EDESTADDRREQ", EDESTADDRREQ},
+#endif
+#ifdef EMSGSIZE
+  {"EMSGSIZE", EMSGSIZE},
+#endif
+#ifdef EPROTOTYPE
+  {"EPROTOTYPE", EPROTOTYPE},
+#endif
+#ifdef ENOPROTOOPT
+  {"ENOPROTOOPT", ENOPROTOOPT},
+#endif
+#ifdef EPROTONOSUPPORT
+  {"EPROTONOSUPPORT", EPROTONOSUPPORT},
+#endif
+#ifdef ESOCKTNOSUPPORT
+  {"ESOCKTNOSUPPORT", ESOCKTNOSUPPORT},
+#endif
+#ifdef EOPNOTSUPP
+  {"EOPNOTSUPP", EOPNOTSUPP},
+#endif
+#ifdef ENOTSUP
+  {"ENOTSUP", ENOTSUP},
+#endif
+#ifdef EPFNOSUPPORT
+  {"EPFNOSUPPORT", EPFNOSUPPORT},
+#endif
+#ifdef EAFNOSUPPORT
+  {"EAFNOSUPPORT", EAFNOSUPPORT},
+#endif
+#ifdef EADDRINUSE
+  {"EADDRINUSE", EADDRINUSE},
+#endif
+#ifdef EADDRNOTAVAIL
+  {"EADDRNOTAVAIL", EADDRNOTAVAIL},
+#endif
+#ifdef ENETDOWN
+  {"ENETDOWN", ENETDOWN},
+#endif
+#ifdef ENETUNREACH
+  {"ENETUNREACH", ENETUNREACH},
+#endif
+#ifdef ENETRESET
+  {"ENETRESET", ENETRESET},
+#endif
+#ifdef ECONNABORTED
+  {"ECONNABORTED", ECONNABORTED},
+#endif
+#ifdef ECONNRESET
+  {"ECONNRESET", ECONNRESET},
+#endif
+#ifdef ENOBUFS
+  {"ENOBUFS", ENOBUFS},
+#endif
+#ifdef EISCONN
+  {"EISCONN", EISCONN},
+#endif
+#ifdef ENOTCONN
+  {"ENOTCONN", ENOTCONN},
+#endif
+#ifdef ESHUTDOWN
+  {"ESHUTDOWN", ESHUTDOWN},
+#endif
+#ifdef ETOOMANYREFS
+  {"ETOOMANYREFS", ETOOMANYREFS},
+#endif
+#ifdef ETIMEDOUT
+  {"ETIMEDOUT", ETIMEDOUT},
+#endif
+#ifdef ECONNREFUSED
+  {"ECONNREFUSED", ECONNREFUSED},
+#endif
+#ifdef EHOSTDOWN
+  {"EHOSTDOWN", EHOSTDOWN},
+#endif
+#ifdef EHOSTUNREACH
+  {"EHOSTUNREACH", EHOSTUNREACH},
+#endif
+#ifdef EALREADY
+  {"EALREADY", EALREADY},
+#endif
+#ifdef EINPROGRESS
+  {"EINPROGRESS", EINPROGRESS},
+#endif
+#ifdef ESTALE
+  {"ESTALE", ESTALE},
+#endif
+#ifdef EDQUOT
+  {"EDQUOT", EDQUOT},
+#endif
+#ifdef ECANCELED
+  {"ECANCELED", ECANCELED},
+#endif
+#ifdef EOWNERDEAD
+  {"EOWNERDEAD", EOWNERDEAD},
+#endif
+#ifdef ENOTRECOVERABLE
+  {"ENOTRECOVERABLE", ENOTRECOVERABLE},
+#endif
+};
+I pys_errno(Str *name) {
+  for (size_t i = 0; i < sizeof errnos / sizeof errnos[0]; i++) if (strcmp(errnos[i].name, name->s) == 0) return errnos[i].value;
+  Buf b = {0}; put(&b, "AttributeError: module 'errno' has no attribute '", 49); put(&b, name->s, name->len); put(&b, "'", 2); pys_fail(b.p);
+}
 
 /* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
 static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */

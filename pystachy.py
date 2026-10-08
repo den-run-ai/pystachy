@@ -1444,6 +1444,9 @@ class Loader:
         # binds the same function or class, and is no statement at run time
         out: list[Node] = []
         for st in blk.kids:
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "attr" and st.kids[0].s == "__doc__" and st.kids[0].kids[0].kind == "name" and blk is m.body:
+                # f.__doc__ = g.__doc__: docstrings cannot be read in Pystachy, so this is dropped
+                continue
             if st.kind == "if" and self.platform(m, st.kids[0]) >= 0:
                 b = st.kids[1] if self.platform(m, st.kids[0]) == 1 else st.kids[2]
                 self.simplify(m, b)
@@ -1822,7 +1825,22 @@ CALLS: dict[str, str] = {
     "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
     "math.isfinite(float)": "pys_m_isfinite:bool", "math.isinf(float)": "pys_m_isinf:bool", "math.isnan(float)": "pys_m_isnan:bool",
     "math.log(float,float)": "pys_m_logb:float",
+    "time.time()": "pys_time:float", "time.time_ns()": "pys_time_ns:int", "time.monotonic()": "pys_monotonic:float",
+    "time.monotonic_ns()": "pys_monotonic_ns:int", "time.perf_counter()": "pys_monotonic:float",
+    "time.perf_counter_ns()": "pys_monotonic_ns:int", "time.process_time()": "pys_process_time:float",
+    "time.process_time_ns()": "pys_process_time_ns:int", "time.sleep(float)": "pys_sleep:None", "time.sleep(int)": "pys_sleep_int:None",
+    "time.sleep(bool)": "pys_sleep_int:None",
 }
+# the errno module: the platform's error numbers (runtime.c's table)
+ERRNO: dict[str, bool] = {}
+for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
+           "ENOTDIR EISDIR EINVAL ENFILE EMFILE ENOTTY ETXTBSY EFBIG ENOSPC ESPIPE EROFS EMLINK EPIPE EDOM ERANGE EDEADLK ENAMETOOLONG "
+           "ENOLCK ENOSYS ENOTEMPTY ELOOP EWOULDBLOCK ENOMSG EIDRM ENOSTR ENODATA ETIME ENOSR EREMOTE ENOLINK EPROTO EMULTIHOP EBADMSG "
+           "EOVERFLOW EILSEQ EUSERS ENOTSOCK EDESTADDRREQ EMSGSIZE EPROTOTYPE ENOPROTOOPT EPROTONOSUPPORT ESOCKTNOSUPPORT EOPNOTSUPP "
+           "ENOTSUP EPFNOSUPPORT EAFNOSUPPORT EADDRINUSE EADDRNOTAVAIL ENETDOWN ENETUNREACH ENETRESET ECONNABORTED ECONNRESET ENOBUFS "
+           "EISCONN ENOTCONN ESHUTDOWN ETOOMANYREFS ETIMEDOUT ECONNREFUSED EHOSTDOWN EHOSTUNREACH EALREADY EINPROGRESS ESTALE EDQUOT "
+           "ECANCELED EOWNERDEAD ENOTRECOVERABLE").split():
+    ERRNO[_k] = True
 # math functions raise CPython's domain and range errors (runtime.c, pys_m_*)
 for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians".split():
     CALLS[f"math.{_k}(float)"] = f"pys_m_{_k}:float"
@@ -1830,11 +1848,15 @@ for _k in "pow atan2 hypot fmod copysign".split():
     CALLS[f"math.{_k}(float,float)"] = f"pys_m_{_k}:float"
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
-for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins".split():
+for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in "sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr math.pi math.e math.inf math.tau math.nan".split():
+for _k in ("sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform math.pi math.e math.inf math.tau math.nan "
+           "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull").split():
     MODATTRS[_k] = True
+# the os module's constants on POSIX systems
+OSCONST: dict[str, str] = {"os.name": "posix", "os.sep": "/", "os.curdir": ".", "os.pardir": "..", "os.extsep": ".",
+                           "os.pathsep": ":", "os.linesep": "\n", "os.devnull": "/dev/null"}
 TYPING: dict[str, bool] = {}
 for _k in ("List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Iterable Iterator Sequence Mapping Final ClassVar NamedTuple "
            "TypeVar Generic cast IO BinaryIO AnyStr Literal Protocol TYPE_CHECKING overload NoReturn Never Self TypeAlias ParamSpec "
@@ -2095,9 +2117,36 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
             if kid.kind == "block":
                 collect(kid.kids, out)
 
+def top_imports(body: list[Node]) -> list[str]:
+    # the user modules that module-level code (body, not its functions) imports
+    out: list[str] = []
+    for st in body:
+        if st.kind == "uimport":
+            for x in st.kids:
+                out.append(x.s)
+        elif st.kind != "def" and st.kind != "class":
+            for kid in st.kids:
+                if kid.kind == "block":
+                    out.extend(top_imports(kid.kids))
+    return out
+
+
+def deleted(body: list[Node], out: dict[str, bool]) -> None:
+    # the names that del statements in body unbind (not in functions)
+    for st in body:
+        if st.kind == "del":
+            for t in st.kids:
+                if t.kind == "name":
+                    out[t.s] = True
+        if st.kind != "def" and st.kind != "class":
+            for kid in st.kids:
+                if kid.kind == "block":
+                    deleted(kid.kids, out)
+
+
 def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
-    # every value assigned to each qualified (module-level) name in body and the functions in it;
-    # a name bound any other way (for, with, +=, an annotation, unpacking) gets an "omit" node
+    # every value module-level code (body, not its functions) assigns to each name; a name bound
+    # any other way (for, with, +=, an annotation, unpacking) gets an "omit" node
     for st in body:
         k = st.kind
         if k == "assign":
@@ -2116,7 +2165,7 @@ def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
                     out[nm] = []
                 out[nm].append(mk("omit", "", st.line, []))
         for kid in st.kids:
-            if kid.kind == "block":
+            if kid.kind == "block" and st.kind != "def" and st.kind != "class":
                 none_assigns(kid.kids, out)
 
 
@@ -2303,6 +2352,8 @@ class Gen:
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
         self.noneglobals: dict[str, bool] = {}  # module globals of imported modules that are always None
+        self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
+        self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
@@ -3108,7 +3159,9 @@ class Gen:
             self.err(f"'{name}' was declared as {old}, not {t}")
 
     def store_name(self, name: str, v: Val) -> None:
-        if name in self.noneglobals and name not in self.ltype and v.t == "None":
+        if name in self.noneglobals and name not in self.ltype:
+            if v.t != "None":
+                self.err(f"'{name}' is None in its module's code: giving it a {v.t} in a function is not supported")
             return
         if self.is_global(name):
             if name not in self.gtypes:
@@ -3386,6 +3439,8 @@ class Gen:
             self.declare_fields(ci)
             for f in ci.methods.values():
                 self.check_special(f)
+        for m in mods:
+            self.deps[m.name] = " ".join(top_imports(m.body.kids))
         for i in range(len(mods)):
             self.flow_program(tops[i], mods[i].name)
         for nm in self.gflag:
@@ -3393,8 +3448,10 @@ class Gen:
                 self.global_var(f"@g.{nm}.def", "i1")
         for m in mods:
             if m.name != "":
-                # a module global that every assignment sets to None (an optional accelerator's
-                # fallback: _json = None) and that is assigned before any read is the constant None
+                # a module global that module code only sets to None (an optional accelerator's
+                # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
+                # assigned before any read is the constant None; a compiled function that gives
+                # it another value is an error
                 vals: dict[str, list[Node]] = {}
                 none_assigns(m.body.kids, vals)
                 for nm in vals:
@@ -3479,6 +3536,7 @@ class Gen:
     # the others (Node.chk) test an "is assigned" flag kept only for the variables they read.
     def flow_program(self, top: list[Node], mod: str) -> None:
         # one module: its top-level code, functions and methods
+        self.flowmod = mod
         fns: list[FnInfo] = []
         for f in self.funcs.values():
             if f.mod == mod:
@@ -3522,6 +3580,8 @@ class Gen:
         # functions run only from module code: globals assigned before its first call into user
         # code stay assigned while any function runs
         safe = mfl.call if mfl.called else gl
+        dels: dict[str, bool] = {}
+        deleted(top, dels)
         for f in fns:
             body = f.node.kids[2].kids
             loc: dict[str, bool] = {}
@@ -3533,7 +3593,7 @@ class Gen:
             for nm in loc:
                 tracked[nm] = True
             for nm in gl:
-                if nm in safe and (nm not in loc or nm in decl):
+                if nm in safe and nm not in dels and (nm not in loc or nm in decl):
                     defd[nm] = True
             for nm in f.params:
                 defd[nm] = True
@@ -3590,13 +3650,30 @@ class Gen:
                     out.append(d)
         return out
 
+    def reaches(self, a: str, b: str, seen: dict[str, bool]) -> bool:
+        # may running module a's code import (and so run) module b
+        if a == b:
+            return True
+        if a in seen:
+            return False
+        seen[a] = True
+        for x in self.deps.get(a, "").split():
+            if self.reaches(x, b, seen):
+                return True
+        return False
+
     def user_call(self, n: Node) -> bool:
         # may running n call a user function, method or constructor? (an import of a user module
         # runs the module's code)
         if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.funcs or n.kids[0].s in self.classes):
             return True
         if n.kind == "uimport":
-            return True
+            # it runs a module's code, which can call this module's functions only if it imports
+            # this module (circular imports)
+            for x in n.kids:
+                if self.reaches(x.s, self.flowmod, {}):
+                    return True
+            return False
         if n.kind == "defaults" or n.kind == "cdefaults":
             for d in self.fl_defaults(n):
                 if self.user_call(d):
@@ -3671,6 +3748,8 @@ class Gen:
         elif k == "expr" or k == "assert" or k == "del":
             for c in n.kids:
                 self.fl_expr(fl, c)
+                if k == "del" and c.kind == "name" and c.s in fl.defd:
+                    del fl.defd[c.s]  # unbound from here on
         elif k == "with":
             for it in n.kids[:-1]:
                 self.fl_expr(fl, it.kids[0])
@@ -3841,7 +3920,7 @@ class Gen:
     def known_path(self, p: str) -> bool:
         # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
         # a function builtin() handles itself
-        if p in MODULES or p in MODATTRS or p == "sys.exit":
+        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or (p.startswith("errno.") and p[6:] in ERRNO):
             return True
         for k in CALLS:
             if k.startswith(p + "(") or k.startswith(p + "."):
@@ -4172,6 +4251,9 @@ class Gen:
             self.raise_stmt(n)
         elif k == "del":
             for dt in n.kids:
+                if dt.kind == "name":
+                    self.del_name(dt)
+                    continue
                 o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
                 if is_list(o.t):
                     self.rt("pys_list_del", "void", [f"ptr {o.v}", f"i64 {self.ival(dt.kids[1]).v}"])
@@ -4235,6 +4317,22 @@ class Gen:
             self.err(UNSUPPORTED[k])
         elif k != "pass":
             self.err(f"unsupported statement '{k}'")
+
+    def del_name(self, n: Node) -> None:
+        # del x: x is unbound afterwards. Reads that may follow test its "is assigned" flag
+        # (definite assignment marks them), so clearing the flag is all it takes.
+        name = n.s
+        if name in self.unsupported:
+            return  # a class of an imported module that is never compiled
+        if name in self.funcs or name in self.classes or name in self.aliases:
+            self.err(f"del of '{name}' is not supported: only variables can be deleted")
+        if not self.modlevel and self.is_global(name):
+            self.err(f"del of the global '{name}' in a function is not supported")
+        self.read(n)  # del of a name that is not bound raises as its read does
+        if name in self.ltype and name in self.lflag:
+            self.emit(f"store i1 false, ptr {self.lflag[name]}")
+        elif name not in self.ltype and name in self.gflag:
+            self.emit(f"store i1 false, ptr @g.{name}.def")
 
     def augassign(self, n: Node) -> None:
         t = n.kids[0]
@@ -5500,6 +5598,12 @@ class Gen:
             return Val("0x7FF8000000000000", "float")
         if path == "typing.TYPE_CHECKING":
             return Val("false", "bool")
+        if path in OSCONST:
+            return Val(self.sconst(OSCONST[path]), "str")
+        if path == "sys.platform":
+            return Val(self.rt("pys_platform", "ptr", []), "str")
+        if path.startswith("errno.") and path[6:] in ERRNO:
+            return Val(self.rt("pys_errno", "i64", [f"ptr {self.sconst(path[6:])}"]), "int")
         self.err(f"unsupported module attribute {path}")
         return Val("", "")
 
@@ -5598,6 +5702,8 @@ class Gen:
                 self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
             self.exit_(vals)
             return Val("null", "None")
+        if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
+            return vals[0]  # a str path is its own file system path
         if name == "os.getenv" and len(vals) == 1:
             self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
