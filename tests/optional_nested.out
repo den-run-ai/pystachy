@@ -1,0 +1,5 @@
+helper loaded
+broken2 loaded
+fallback 2
+fallback 3
+[exit 1]
