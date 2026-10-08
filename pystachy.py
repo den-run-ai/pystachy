@@ -4342,6 +4342,9 @@ def main() -> None:
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
     rtb = home + ("/build/runtime.bc" if len(flags) == 0 else f"/build/runtime-{key:08x}.bc")
     cflags = "".join([" " + q(a) for a in flags])
+    # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
+    # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
+    ccflags = "".join([" " + q(a) for a in flags if not a.startswith("-fsanitize") and not a.startswith("-fno-sanitize")])
     llvm = os.getenv("PYSTACHY_LLVM", "")  # optional directory holding clang, opt, lli, llvm-link, llvm-as
     if llvm != "" and not llvm.endswith("/"):
         llvm = llvm + "/"
@@ -4351,6 +4354,7 @@ def main() -> None:
     tmp = tempfile.mkdtemp()
     ll = tmp + "/prog.ll"
     bc = tmp + "/prog.bc"
+    obj = tmp + "/prog.o"
     rll = tmp + "/runtime.ll"
     part = f"{rtb}.{os.getpid()}"  # renamed over the cache only once complete
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
@@ -4368,13 +4372,13 @@ def main() -> None:
         # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
         if out == "":
             out = SRC[:-3] if SRC.endswith(".py") else SRC + ".exe"
-        code = sh(f"{link} && {llvm}clang -O2 {q(bc)} -o {q(out)} -lm{cflags}")
+        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)} -lm{cflags}")
     else:
         # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
         code = sh(f"{fast} {q(ll)} -o {q(bc)} && PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
-    for p in [ll, bc, rll, part]:
+    for p in [ll, bc, obj, rll, part]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
