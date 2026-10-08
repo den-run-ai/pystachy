@@ -20,7 +20,7 @@ test-py:
 	tests/run.sh "$(PY) pystachy.py"
 
 bench: pystachy
-	bench/run.sh
+	PY="$(PY)" bench/run.sh
 
 # Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks) -> build/verification.json
 verify:
