@@ -1669,6 +1669,7 @@ class Loader:
         m = Mod(name, path, pdir)
         self.mods[name] = m
         m.body = self.parse(path)
+        del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
         m.rebound = rebound(m.body.kids)
         r: list[Node] = []
         if self.init_raise(m, m.body.kids, r) and len(r) > 0:
@@ -1681,7 +1682,7 @@ class Loader:
         return m
 
     def parse(self, path: str) -> Node:
-        # a module's file, parsed once (optional() may look at it before it is loaded)
+        # a module's file, parsed once for the looks before it is loaded (optional()) and the load
         if path in self.parsed:
             return self.parsed[path]
         f = open(path, "r", encoding="latin-1")

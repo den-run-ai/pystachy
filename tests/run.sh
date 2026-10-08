@@ -2,7 +2,8 @@
 # Differential tests. Every tests/*.py must print exactly what CPython printed
 # (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
-# tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails).
+# tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
+# tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # The cases run in PYSTACHY_JOBS workers at once (default: one per CPU); the report lists them
@@ -22,11 +23,12 @@ exec 3> /dev/full
 program() { # tests/NAME.py
   n=$(basename "$1" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
   o=1; [ -f "tests/$n.full" ] && o=3
+  mp=$PYSTACHY_PATH; [ -f "tests/$n.path" ] && mp=$(cat "tests/$n.path")
   for mode in $MODES; do
     if [ $mode = jit ]; then
-      ($PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+      (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
-      $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
+      PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
         ("$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then
