@@ -23,6 +23,8 @@ rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
 cp runtime.c "$V/home/"
 cp runtime.c "$V/ubsan-home/"
+cp -R lib "$V/home/"
+cp -R lib "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 

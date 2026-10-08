@@ -1,7 +1,16 @@
 Third-party notices
 ===================
 
-Pystachy is distributed under the MIT License (LICENSE), except for the part below.
+Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
+
+CPython's standard library modules (lib/)
+-----------------------------------------
+
+lib/bisect.py, lib/colorsys.py, lib/heapq.py, lib/operator.py, lib/stat.py, lib/this.py and
+lib/curses/ascii.py are unmodified copies of the files of the same names in CPython 3.13.16's
+Lib/ directory (lib/README.md lists their SHA-256 sums). They are part of Python and are used
+under the Python Software Foundation License Version 2, reproduced below, with the copyright
+notice below. lib/curses/__init__.py is Pystachy's own.
 
 CPython's list sort (runtime.c)
 -------------------------------
@@ -13,7 +22,8 @@ Software Foundation License Version 2, reproduced below.
 
 Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved
 
-Summary of the changes made to Python (clause 3 of the license): the functions of the sort
+Summary of the changes made to Python (clause 3 of the license): the lib/ modules are not
+changed. The functions of the sort
 (binarysort, count_run, gallop_left/gallop_right, merge_lo/merge_hi, merge_at, the
 powersort run stack) are translated from C over PyObject pointers to C over Pystachy's
 8-byte list slots. Comparisons go through Pystachy's type descriptors (or call back into the

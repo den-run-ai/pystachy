@@ -1,0 +1,21 @@
+'a' True True False False False False True True True False True False True a
+'Z' True True False False False False True True False True False False True Z
+'5' True False True False False False True True True False False False True 5
+' ' False False False True False False True False False False False True True  
+'\t' False False False True False True False False False False False True True ^I
+'\n' False False False True False True False False False False False False True ^J
+'~' False False False False True False True True False False False False True ~
+'_' False False False False True False True True False False False False True _
+'\x7f' False False False False False True False False False False False False True ^?
+'\x00' False False False False False True False False False False False False True ^@
+'\x1b' False False False False False True False False False False False False True ^[
+65 True False False False 65 1 193 A
+9 False True True False 9 9 137 ^I
+127 False False False False 127 31 255 ^?
+200 False False False True 72 8 200 !H
+32 False True False False 32 0 160  
+0 False False True False 0 0 128 ^@
+128 False False False True 0 0 128 !^@
+160 False False False True 32 0 160 ! 
+'\x01' True A LF 10 127 32 33
+[exit 0]
