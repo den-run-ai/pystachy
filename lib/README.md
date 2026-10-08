@@ -22,9 +22,12 @@ compiled. `tests/lib_*.py` checks each against CPython.
 
 `curses/__init__.py` is Pystachy's own stand-in: CPython's wraps the C extension `_curses`.
 
-The errors these modules raise are those of their pure-Python code, which can differ from the
-C accelerators CPython uses instead (`heappop([])` raises `IndexError: pop from empty list`
-here, `index out of range` from CPython's `_heapq`).
+These modules behave as their pure-Python code, which CPython replaces with C accelerators that
+differ at the edges: errors can be worded differently (`heappop([])` raises `IndexError: pop
+from empty list` here, `index out of range` from CPython's `_heapq`), keyword arguments the C
+functions reject are accepted, `bisect`'s `hi=-1` is a plain bound (`len(a)` for `_bisect`),
+`stat`'s tests read the module's constants (`_stat` has its own), and `heapify` of more than
+2,500 items calls `__lt__` in another order (`_heapq` switches to a cache-friendly loop).
 
 These files are part of Python and are used under the PSF License Version 2; see
 `THIRD_PARTY_NOTICES`. `tools/import_sweep.py` tries every module of a CPython standard library

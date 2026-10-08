@@ -6,9 +6,10 @@ and it can compile itself. The native compiler it produces reproduces its own 85
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
-Programs can import their own modules and packages, and an unannotated function is a
-template, compiled for the argument types of each call, so code written without
-annotations, as most library code is, can compile.
+Programs can import their own modules and packages, and some of CPython's own standard
+library modules compile unmodified (`lib/`): an unannotated function is a template,
+compiled for the argument types of each call. `docs/stdlib.md` evaluates which parts of the
+standard library and of popular packages compile, and what it would take to compile more.
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
@@ -32,7 +33,8 @@ needs `PYSTACHY_HOME` set to the checkout.
 |---|---:|---|
 | `pystachy.py` | 6,952 | lexer 324 · parser 975 · module loader 732 · types, tables and the definite-assignment pass 648 · type checker + IR generator 4,112 · driver 118 |
 | `runtime.c` | 2,580 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
-| `tests/` | 209 programs, 126 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
+| `tests/` | 217 programs, 126 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -173,7 +175,10 @@ import inside a function of an imported module that the program's module-level i
 not load is an error only where that function is compiled. A class or function of an
 imported module that Pystachy cannot compile (inheritance, unannotated methods, a `bytes` or
 `**kwargs` parameter, a field whose type cannot be inferred, ...) is an error only where the
-program uses it.
+program uses it. `lib/` holds unmodified
+CPython 3.13 modules that compile this way (`lib/README.md`): `bisect`, `colorsys`, `heapq`,
+`operator`, `stat`, `posixpath` and `genericpath` (the path string functions), `this` and
+`curses.ascii`.
 
 **Expressions.** literals (decimal, hex, octal, binary and `_`-separated numbers; strings
 with every escape except `\N{...}`, raw and triple-quoted strings, implicit
@@ -258,6 +263,12 @@ module may use them in code the program never runs.
 - A function declared or inferred to return a value that ends without a `return` raises
   `RuntimeError` there, where CPython returns `None` (a template that returns objects
   returns `None`, as CPython does).
+- The `lib/` modules behave as their pure-Python code, which CPython replaces with C
+  accelerators: errors can be worded differently, the functions accept keyword arguments the
+  C versions reject, `bisect`'s `hi=-1` is not `len(a)`, assigning to a `stat` constant
+  changes the `S_IS*` tests, and `heapify` of more than 2,500 items compares in another
+  order. A program file named like a module CPython imports at startup (`stat.py`,
+  `posixpath.py`) replaces it, where CPython keeps its own.
 - In an imported module, a decorated function or class that is an error only where it is
   used (above) does not run its decorator at import time, so a decorator's side effects
   (registering the function) are lost. A template's code is compiled per argument types, so an error in code a program never calls is not reported, and its
@@ -429,11 +440,11 @@ print its hand-written expected output. The programs cover arithmetic and overfl
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`), templates, empty containers typed by their first
-use, loops with `else`, definite assignment, sorting
+use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignment, sorting
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **560 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **576 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -491,10 +502,11 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
   `set`/`frozenset` on top of the existing dict table.
-- More of the standard library: the compiler and runtime features that would let most of
-  CPython's pure-Python standard library compile unmodified (exceptions, properties, single
-  inheritance, `bytes`, functions as values, `Optional` scalars, sets), and the C modules
-  (`_weakref`, `_codecs`, `_io`, `_thread`) that most of it imports.
+- More of the standard library: `docs/stdlib.md` ranks the compiler and runtime features
+  by how much of CPython's standard library and of popular packages each would let compile
+  unmodified (exceptions, properties, single inheritance, `bytes`, functions as values,
+  `Optional` scalars, sets), and the C modules (`_weakref`, `_codecs`, `_io`, `_thread`)
+  that most of the standard library imports.
 
 ## License
 
