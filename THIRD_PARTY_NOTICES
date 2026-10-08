@@ -6,8 +6,8 @@ Pystachy is distributed under the MIT License (LICENSE), except for the parts be
 CPython's standard library modules (lib/)
 -----------------------------------------
 
-lib/bisect.py, lib/colorsys.py, lib/heapq.py, lib/operator.py, lib/stat.py, lib/this.py and
-lib/curses/ascii.py are unmodified copies of the files of the same names in CPython 3.13.16's
+lib/bisect.py, lib/colorsys.py, lib/genericpath.py, lib/heapq.py, lib/operator.py,
+lib/posixpath.py, lib/stat.py, lib/this.py and lib/curses/ascii.py are unmodified copies of the files of the same names in CPython 3.13.16's
 Lib/ directory (lib/README.md lists their SHA-256 sums). They are part of Python and are used
 under the Python Software Foundation License Version 2, reproduced below, with the copyright
 notice below. lib/curses/__init__.py is Pystachy's own.
