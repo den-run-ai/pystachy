@@ -2494,6 +2494,14 @@ def uses(n: Node, seen: dict[str, str]) -> None:
         uses(k, seen)
 
 
+def name_nodes(n: Node, out: dict[str, bool]) -> None:
+    # the names of every name node in n
+    if n.kind == "name":
+        out[n.s] = True
+    for k in n.kids:
+        name_nodes(k, out)
+
+
 def has_kind(n: Node, kind: str) -> bool:
     # does n hold a node of kind (outside the functions, classes and lambdas it defines)
     if n.kind == kind:
@@ -3985,8 +3993,18 @@ class Gen:
             imps: list[str] = []
             all_imports(m.body.kids, imps)
             self.deps[m.name] = " ".join(imps)
+        # each module's functions and classes, in the order they were declared
+        mfns: dict[str, list[FnInfo]] = {}
+        mcls: dict[str, list[ClassInfo]] = {}
+        for m in mods:
+            mfns[m.name] = []
+            mcls[m.name] = []
+        for f in self.funcs.values():
+            mfns[f.mod].append(f)
+        for ci in self.classes.values():
+            mcls[ci.mod].append(ci)
         for i in range(len(mods)):
-            self.flow_program(tops[i], mods[i].name)
+            self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name])
         for nm in self.gflag:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
@@ -4090,17 +4108,15 @@ class Gen:
     # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
     # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;
     # the others (Node.chk) test an "is assigned" flag kept only for the variables they read.
-    def flow_program(self, top: list[Node], mod: str) -> None:
-        # one module: its top-level code, functions and methods
+    def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo]) -> None:
+        # one module: its top-level code, functions (mfns) and classes' methods (mcls)
         self.flowmod = mod
         fns: list[FnInfo] = []
-        for f in self.funcs.values():
-            if f.mod == mod:
-                fns.append(f)
-        for ci in self.classes.values():
+        for f in mfns:
+            fns.append(f)
+        for ci in mcls:
             for f in ci.methods.values():
-                if ci.mod == mod:
-                    fns.append(f)
+                fns.append(f)
         gl: dict[str, bool] = {}
         collect(top, gl)
         for f in fns:
@@ -4123,12 +4139,10 @@ class Gen:
         for nm in gl:
             self.mvars[nm] = True
         # def and class statements bind their names when they run: calls that may come first are checked
-        for f in self.funcs.values():
-            if f.mod == mod:
-                gl[f.name] = True
-        for ci in self.classes.values():
-            if ci.mod == mod:
-                gl[ci.name] = True
+        for f in mfns:
+            gl[f.name] = True
+        for ci in mcls:
+            gl[ci.name] = True
         mfl = Flow(gl, {}, True)
         self.fl_stmts(mfl, top)
         for nm in mfl.marks:
@@ -4156,12 +4170,17 @@ class Gen:
             decl: dict[str, bool] = {}
             local_names(body, loc)
             globals_in(body, decl)
-            tracked = dict(gl)
+            # the analysis looks up only the names the body mentions, and each name's state is
+            # independent of the others': it tracks those alone, not every global of the module
+            refs: dict[str, bool] = {}
+            for st in body:
+                name_nodes(st, refs)
+            tracked: dict[str, bool] = {}
             defd: dict[str, bool] = {}
-            for nm in loc:
-                tracked[nm] = True
-            for nm in gl:
-                if nm in safe and nm not in dels and (nm not in loc or nm in decl):
+            for nm in refs:
+                if nm in gl or nm in loc:
+                    tracked[nm] = True
+                if nm in gl and nm in safe and nm not in dels and (nm not in loc or nm in decl):
                     defd[nm] = True
             for nm in f.params:
                 defd[nm] = True
@@ -4172,9 +4191,8 @@ class Gen:
                     f.uflags[nm] = True
                 else:
                     self.gflag[nm] = True
-        for ci in self.classes.values():
-            if ci.mod == mod:
-                self.fl_fields(ci)
+        for ci in mcls:
+            self.fl_fields(ci)
 
     def fl_fields(self, ci: ClassInfo) -> None:
         # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
