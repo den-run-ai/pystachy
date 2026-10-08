@@ -2684,6 +2684,7 @@ class ClassInfo:
         self.name = name
         self.node = node
         self.fields: list[str] = []
+        self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
         self.fglob: dict[str, str] = {}
@@ -3283,6 +3284,7 @@ class Gen:
             if ci.ftypes[name] != t:
                 self.err(f"field '{name}' redeclared with a different type")
             return
+        ci.fpos[name] = len(ci.fields)
         ci.fields.append(name)
         ci.ftypes[name] = t
 
@@ -3464,7 +3466,7 @@ class Gen:
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
-        i = ci.fields.index(name)
+        i = ci.fpos[name]
         return Val(self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}"), ci.ftypes[name])
 
     def getfield(self, o: Val, p: Val, name: str) -> Val:
