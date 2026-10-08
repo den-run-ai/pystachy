@@ -1,0 +1,55 @@
+('a', ':', 'b:c') ('a:b', ':', 'c') ('abc', '', '') ('', '', 'abc')
+key  =  value = x
+name name x ab
+'ab' 'abc' 'ab' 'ab'
+'ab' 'abc' 'ab' 'ab'
+' ab' 'abc' 'ab-' '.ab'
+' ab ' 'abc*' 'ab--' '..ab'
+'  ab ' '*abc*' 'ab---' '...ab'
+'  ab  ' '*abc**' 'ab----' '....ab'
+'   ab  ' '**abc**' 'ab-----' '.....ab'
+'00042' '42'
+'-0042' '-42'
+'+0007' '+7'
+'00000' '0'
+'-0000' '-'
+'00abc' 'abc'
+'000€1' '€1'
+··é·· €€€ ééab
+'Hello World' 'Hello world' 'HELLO WORLD' False 'hello world'
+'Hello World' 'Hello world' 'hello World' False 'hello world'
+"They'Re Bill'S" "They're bill's" "THEY'RE BILL'S" False "they're bill's"
+'A1B2 C3' 'A1b2 c3' 'A1B2 C3' False 'a1b2 c3'
+'' '' '' False ''
+'123' '123' '123' False '123'
+'Ab Cd' 'Ab cd' 'aB cD' True 'ab cd'
+'Ab Cd' 'Ab cd' 'aB CD' False 'ab cd'
+'Ab' 'Ab' 'ab' False 'ab'
+True False False
+True False False
+True False False
+False False False
+True True True
+True False False
+['a', 'b', 'c', 'd'] ['a\n', 'b\r\n', 'c\r', 'd']
+[] []
+[''] ['\n']
+['a', '', 'b'] ['a\n', '\n', 'b\n']
+['x', 'y', 'z', 'w', 'v', 'u'] ['x\x0b', 'y\x0c', 'z\x1c', 'w\x1d', 'v\x1e', 'u']
+['p', 'q', 'r', 's'] ['p\u2028', 'q\u2029', 'r\x85', 's']
+['no break'] ['no break']
+'a       b       c' 'ab  c\n    d' 'xy' 'é   x' '12345678        x'
+4 ['a', 'b', '', 'c']
+2 ['a,b,', 'c']
+1 ['a,b,,c']
+3 ['a', 'b', 'c']
+2 ['  a b', 'c']
+1 ['  a b  c']
+2 ['a', 'b  c  ']
+1 ['a b  c  ']
+0 []
+1 ['']
+2 ['a', '']
+2 ['', 'a']
+x x--
+[exit 1]

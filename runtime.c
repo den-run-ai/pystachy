@@ -488,13 +488,97 @@ static Str *mapc(Str *s, int up) {
 }
 Str *pys_str_upper(Str *s) { return mapc(s, 1); }
 Str *pys_str_lower(Str *s) { return mapc(s, 0); }
-static Str *pad(Str *s, I w, int left) {
-  if (s->len >= w) return s;
-  Str *r = pys_alloc_atomic(sizeof(Str) + w + 1); r->len = w; memset(r->s, ' ', w);
-  memcpy(r->s + (left ? 0 : w - s->len), s->s, s->len); return r;
+static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
+static Str *pad(Str *s, I w, Str *fill, int how) {   /* how: 0 right, 1 left, 2 center; widths count code points */
+  if (fill && ulen(fill->s, fill->len) != 1) pys_fail("TypeError: The fill character must be exactly one character long");
+  I n = ulen(s->s, s->len), f = fill ? fill->len : 1;
+  if (n >= w) return s;
+  I gap = w - n, l = how == 1 ? 0 : how == 0 ? gap : gap / 2 + (gap & w & 1);   /* CPython's centering */
+  if (gap > (INT64_MAX - s->len) / f) oom();
+  Str *r = pys_alloc_atomic(sizeof(Str) + s->len + gap * f + 1); r->len = s->len + gap * f;
+  char *o = r->s;
+  for (I i = 0; i < l; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
+  memcpy(o, s->s, s->len); o += s->len;
+  for (I i = l; i < gap; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
+  return r;
 }
-Str *pys_str_ljust(Str *s, I w) { return pad(s, w, 1); }
-Str *pys_str_rjust(Str *s, I w) { return pad(s, w, 0); }
+Str *pys_str_ljust(Str *s, I w, Str *fill) { return pad(s, w, fill, 1); }
+Str *pys_str_rjust(Str *s, I w, Str *fill) { return pad(s, w, fill, 0); }
+Str *pys_str_center(Str *s, I w, Str *fill) { return pad(s, w, fill, 2); }
+Str *pys_str_zfill(Str *s, I w) {
+  Str *r = pad(s, w, cstr("0"), 0);
+  I z = r->len - s->len;                       /* a sign moves in front of the zeros */
+  if (z && s->len && (s->s[0] == '+' || s->s[0] == '-')) { r->s[0] = s->s[0]; r->s[z] = '0'; }
+  return r;
+}
+static void **triple(Str *a, Str *b, Str *c) { void **t = pys_alloc(24); t[0] = a; t[1] = b; t[2] = c; return t; }
+void **pys_str_partition(Str *s, Str *sep) {
+  if (!sep->len) pys_fail("ValueError: empty separator");
+  I i = find(s, sep, 0);
+  if (i < 0) return triple(s, cstr(""), cstr(""));
+  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
+}
+void **pys_str_rpartition(Str *s, Str *sep) {
+  if (!sep->len) pys_fail("ValueError: empty separator");
+  I i = pys_str_rfind(s, sep, 0, s->len);
+  if (i < 0) return triple(cstr(""), cstr(""), s);
+  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
+}
+Str *pys_str_removeprefix(Str *s, Str *p) {
+  return p->len && s->len >= p->len && !memcmp(s->s, p->s, p->len) ? pys_str(s->s + p->len, s->len - p->len) : s;
+}
+Str *pys_str_removesuffix(Str *s, Str *p) {
+  return p->len && s->len >= p->len && !memcmp(s->s + s->len - p->len, p->s, p->len) ? pys_str(s->s, s->len - p->len) : s;
+}
+static int lowc(char c) { return c >= 'a' && c <= 'z'; }
+static int upc(char c) { return c >= 'A' && c <= 'Z'; }
+Str *pys_str_swapcase(Str *s) {
+  Str *r = pys_str(s->s, s->len);
+  for (I i = 0; i < r->len; i++) if (lowc(r->s[i]) || upc(r->s[i])) r->s[i] ^= 32;
+  return r;
+}
+Str *pys_str_capitalize(Str *s) {
+  Str *r = mapc(s, 0);
+  if (r->len && lowc(r->s[0])) r->s[0] -= 32;
+  return r;
+}
+Str *pys_str_title(Str *s) {                   /* a letter after a letter is lowered, any other raised */
+  Str *r = pys_str(s->s, s->len); int prev = 0;
+  for (I i = 0; i < r->len; i++) {
+    char c = r->s[i];
+    if (prev && upc(c)) r->s[i] = c + 32;
+    if (!prev && lowc(c)) r->s[i] = c - 32;
+    prev = lowc(c) || upc(c);
+  }
+  return r;
+}
+I pys_str_istitle(Str *s) {                    /* CPython's istitle, over ASCII letters */
+  int prev = 0, any = 0;
+  for (I i = 0; i < s->len; i++) {
+    char c = s->s[i];
+    if (upc(c)) { if (prev) return 0; prev = any = 1; }
+    else if (lowc(c)) { if (!prev) return 0; prev = any = 1; }
+    else prev = 0;
+  }
+  return any;
+}
+I pys_str_isascii(Str *s) { for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] > 127) return 0; return 1; }
+I pys_str_isdecimal(Str *s) { return all(s, 0); }
+I pys_str_isnumeric(Str *s) { return all(s, 0); }
+Str *pys_str_casefold(Str *s) { return mapc(s, 0); }
+Str *pys_str_expandtabs(Str *s, I size) {
+  Buf o = {0}; I col = 0;
+  for (I i = 0; i < s->len; i++) {
+    char c = s->s[i];
+    if (c == '\t') {
+      if (size > 0) { I n = size - col % size; col += n; while (n--) put(&o, " ", 1); }
+    } else {
+      put(&o, &c, 1);
+      if (c == '\n' || c == '\r') col = 0; else col += ((unsigned char)c & 0xC0) != 0x80;
+    }
+  }
+  return done(&o);
+}
 Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
@@ -1301,7 +1385,7 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
     for (;;) {
       while (i < n && ws(s->s[i])) i++;
       if (i >= n) return l;
-      if (maxsplit-- == 0) { I j = n; while (j > i && ws(s->s[j - 1])) j--; pys_list_append(l, (I)pys_str(s->s + i, j - i)); return l; }
+      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s + i, n - i)); return l; }   /* the rest, as it is */
       I j = i; while (j < n && !ws(s->s[j])) j++;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
     }
@@ -1309,6 +1393,44 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
   if (!sep->len) pys_fail("ValueError: empty separator");
   for (I j; maxsplit-- != 0 && (j = find(s, sep, i)) >= 0; i = j + sep->len) pys_list_append(l, (I)pys_str(s->s + i, j - i));
   pys_list_append(l, (I)pys_str(s->s + i, n - i));
+  return l;
+}
+static I eol(Str *s, I i) {                    /* the length of the line break at i, 0 if none */
+  unsigned char c = s->s[i], *p = (unsigned char *)s->s + i; I left = s->len - i;
+  if (c == '\r') return left > 1 && p[1] == '\n' ? 2 : 1;
+  if (c == '\n' || c == 11 || c == 12 || (c >= 28 && c <= 30)) return 1;
+  if (c == 0xC2 && left > 1 && p[1] == 0x85) return 2;                          /* U+0085 */
+  if (c == 0xE2 && left > 2 && p[1] == 0x80 && (p[2] == 0xA8 || p[2] == 0xA9)) return 3;  /* U+2028, U+2029 */
+  return 0;
+}
+List *pys_str_splitlines(Str *s, I keep) {
+  List *l = pys_list_new(0); I i = 0, st = 0;
+  while (i < s->len) {
+    I k = eol(s, i);
+    if (!k) { i++; continue; }
+    pys_list_append(l, (I)pys_str(s->s + st, i - st + (keep ? k : 0)));
+    i += k; st = i;
+  }
+  if (st < s->len) pys_list_append(l, (I)pys_str(s->s + st, s->len - st));
+  return l;
+}
+List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; the parts stay in order */
+  List *l = pys_list_new(0); I j = s->len;
+  if (maxsplit < 0) maxsplit = INT64_MAX;
+  if (!sep) {
+    for (;;) {
+      while (j > 0 && ws(s->s[j - 1])) j--;
+      if (j <= 0) break;
+      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s, j)); break; }
+      I i = j; while (i > 0 && !ws(s->s[i - 1])) i--;
+      pys_list_append(l, (I)pys_str(s->s + i, j - i)); j = i;
+    }
+  } else {
+    if (!sep->len) pys_fail("ValueError: empty separator");
+    for (I i; maxsplit-- != 0 && (i = pys_str_rfind(s, sep, 0, j)) >= 0; j = i) pys_list_append(l, (I)pys_str(s->s + i + sep->len, j - i - sep->len));
+    pys_list_append(l, (I)pys_str(s->s, j));
+  }
+  for (I a = 0, b = l->len - 1; a < b; a++, b--) { I t = l->a[a]; l->a[a] = l->a[b]; l->a[b] = t; }
   return l;
 }
 
@@ -1435,7 +1557,6 @@ Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? clone(d
 static _Noreturn void failf(const char *f, ...) {
   char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
 }
-static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
 static I uoff(const char *p, I n, I k) {          /* byte offset of code point k */
   I i = 0;
   for (; i < n && k > 0; k--) { i++; while (i < n && ((unsigned char)p[i] & 0xC0) == 0x80) i++; }

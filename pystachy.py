@@ -1962,7 +1962,12 @@ METHODS: dict[str, str] = {
     "str.endswith": "bool:str,int=0,int=9223372036854775807", "str.find": "int:str,int=0,int=9223372036854775807", "str.rfind": "int:str,int=0,int=9223372036854775807",
     "str.index": "int:str,int=0,int=9223372036854775807", "str.rindex": "int:str,int=0,int=9223372036854775807", "str.count": "int:str,int=0,int=9223372036854775807", "str.replace": "str:str,str", "str.upper": "str:", "str.lower": "str:",
     "str.isdigit": "bool:", "str.isalpha": "bool:", "str.isalnum": "bool:", "str.isspace": "bool:",
-    "str.isupper": "bool:", "str.islower": "bool:", "str.ljust": "str:int", "str.rjust": "str:int",
+    "str.isupper": "bool:", "str.islower": "bool:", "str.ljust": "str:int,str=null", "str.rjust": "str:int,str=null",
+    "str.center": "str:int,str=null", "str.zfill": "str:int", "str.rsplit": "list[str]:str=null,int=-1",
+    "str.partition": "tuple[str,str,str]:str", "str.rpartition": "tuple[str,str,str]:str", "str.removeprefix": "str:str",
+    "str.removesuffix": "str:str", "str.swapcase": "str:", "str.capitalize": "str:", "str.title": "str:", "str.casefold": "str:",
+    "str.istitle": "bool:", "str.isascii": "bool:", "str.isdecimal": "bool:", "str.isnumeric": "bool:",
+    "str.splitlines": "list[str]:bool=0", "str.expandtabs": "str:int=8",
     "list.append": "None:*T", "list.pop": "*T:int=-1", "list.insert": "None:int,*T", "list.extend": "None:S",
     "list.index": "int:*T,#,int=0,int=9223372036854775807", "list.count": "int:*T,#", "list.remove": "None:*T,#", "list.reverse": "None:",
     "list.copy": "S:", "list.clear": "None:",
@@ -6121,7 +6126,9 @@ class Gen:
                 p = p[:e]
             slot = p.startswith("*")
             pt = subst(p[1:] if slot else p, T, K, V, o.t)
-            if i < len(args):
+            if i < len(args) and dflt == "null" and args[i].kind == "None":
+                av.append(rtt(pt) + " null")  # an explicit None: the default
+            elif i < len(args):
                 v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
                 if key == "str.join":
                     v = self.as_list(v, "join")
