@@ -2699,7 +2699,12 @@ class Flow:
         self.tracked = tracked
         self.defd = defd  # names assigned on every path to here; " dead" marks unreachable code
         self.top = top
-        self.brks: list[dict[str, bool]] = []
+        # every change to defd since the start, so that a branch is undone in the time it took
+        # (not by copying defd): the key, and whether it was in defd before
+        self.log: list[str] = []
+        self.was: list[bool] = []
+        self.brks: list[dict[str, bool]] = []  # the states at the breaks of the innermost loop (see since)
+        self.bmark = 0  # the length of the log where that loop began
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -2715,17 +2720,59 @@ class Flow:
                 if "." + f not in self.defd:
                     self.unsafe[f] = True
 
-    def join(self, other: dict[str, bool]) -> None:
-        if " dead" in other:
-            return
-        if " dead" in self.defd:
-            self.defd = dict(other)
-            return
+    def put(self, k: str) -> None:
+        if k not in self.defd:
+            self.defd[k] = True
+            self.log.append(k)
+            self.was.append(False)
+
+    def drop(self, k: str) -> None:
+        if k in self.defd:
+            del self.defd[k]
+            self.log.append(k)
+            self.was.append(True)
+
+    def undo(self, mark: int) -> None:
+        # back to the state when the log had mark entries
+        while len(self.log) > mark:
+            k = self.log.pop()
+            if self.was.pop():
+                self.defd[k] = True
+            else:
+                del self.defd[k]
+
+    def since(self, mark: int) -> dict[str, bool]:
+        # the state now, as the keys changed since the log had mark entries, each with whether
+        # it is in defd (the other keys are as they were then)
         out: dict[str, bool] = {}
-        for k in self.defd:
+        for i in range(mark, len(self.log)):
+            out[self.log[i]] = self.log[i] in self.defd
+        return out
+
+    def join(self, other: dict[str, bool], mark: int) -> None:
+        # another path reaches here, in the state since(mark) gave for it: a name stays assigned
+        # if it is on both paths (or on the one that is not dead)
+        pre: dict[str, bool] = {}
+        for i in range(mark, len(self.log)):
+            if self.log[i] not in pre:
+                pre[self.log[i]] = self.was[i]
+        # (the other path's " dead" is as it changed, else as at mark)
+        odead = other[" dead"] if " dead" in other else pre[" dead"] if " dead" in pre else " dead" in self.defd
+        if odead:
+            return
+        dead = " dead" in self.defd
+        for k in other:
+            if not other[k]:
+                self.drop(k)
+            elif dead:
+                self.put(k)
+        for k in pre:
             if k in other:
-                out[k] = True
-        self.defd = out
+                continue
+            if not pre[k]:
+                self.drop(k)
+            elif dead:
+                self.put(k)
 
 
 # ---------------------------------------------------------------- code generator
@@ -4292,55 +4339,57 @@ class Gen:
             self.fl_target(fl, n.kids[0])
         elif k == "if":
             self.fl_expr(fl, n.kids[0])
-            pre = dict(fl.defd)
+            mark = len(fl.log)
             self.fl_stmts(fl, n.kids[1].kids)
-            then = fl.defd
-            fl.defd = pre
+            then = fl.since(mark)
+            fl.undo(mark)
             self.fl_stmts(fl, n.kids[2].kids)
-            fl.join(then)
+            fl.join(then, mark)
         elif k == "while" or k == "for":
             self.fl_expr(fl, n.kids[0] if k == "while" else n.kids[1])
             dels: dict[str, bool] = {}
             deleted(n.kids[2 if k == "for" else 1].kids, dels)
             for nm in dels:
-                if nm in fl.defd:
-                    del fl.defd[nm]  # (a del in the body may run before a read in the next pass)
-            pre = dict(fl.defd)
+                fl.drop(nm)  # (a del in the body may run before a read in the next pass)
+            mark = len(fl.log)
             outer = fl.brks
+            bmark = fl.bmark
             fl.brks = []
+            fl.bmark = mark
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
             brks = fl.brks
             fl.brks = outer
-            fl.defd = dict(pre)
+            fl.bmark = bmark
+            fl.undo(mark)
             if n.kids[-1].s == "else":
                 # (after the loop only what was assigned before it is surely assigned)
                 self.fl_stmts(fl, n.kids[-1].kids)
-                fl.defd = dict(pre)
+                fl.undo(mark)
             if k == "while" and n.kids[0].kind == "True":
                 # while True is left only through break
-                fl.defd[" dead"] = True
+                fl.put(" dead")
                 for b in brks:
-                    fl.join(b)
+                    fl.join(b, mark)
         elif k == "break":
-            fl.brks.append(dict(fl.defd))
-            fl.defd[" dead"] = True
+            fl.brks.append(fl.since(fl.bmark))
+            fl.put(" dead")
         elif k == "continue" or k == "return" or k == "raise":
             for c in n.kids:
                 self.fl_expr(fl, c)
             if k == "return":
                 fl.exposed()
-            fl.defd[" dead"] = True
+            fl.put(" dead")
         elif k == "defaults" or k == "cdefaults":
             for d in self.fl_defaults(n):
                 self.fl_expr(fl, d)
-            fl.defd[n.s] = True
+            fl.put(n.s)
         elif k == "expr" or k == "assert" or k == "del":
             for c in n.kids:
                 self.fl_expr(fl, c)
-                if k == "del" and c.kind == "name" and c.s in fl.defd:
-                    del fl.defd[c.s]  # unbound from here on
+                if k == "del" and c.kind == "name":
+                    fl.drop(c.s)  # unbound from here on
         elif k == "with":
             for it in n.kids[:-1]:
                 self.fl_expr(fl, it.kids[0])
@@ -4350,9 +4399,9 @@ class Gen:
 
     def fl_target(self, fl: Flow, t: Node) -> None:
         if t.kind == "name":
-            fl.defd[t.s] = True
+            fl.put(t.s)
         elif t.kind == "attr" and fl.me != "" and t.kids[0].kind == "name" and t.kids[0].s == fl.me:
-            fl.defd["." + t.s] = True
+            fl.put("." + t.s)
         elif t.kind == "tuple":
             for k in t.kids:
                 self.fl_target(fl, k)
@@ -4374,12 +4423,12 @@ class Gen:
         elif k == "listcomp":
             # [elt for target in iter if cond]: iter is read outside, the rest with target bound
             self.fl_expr(fl, e.kids[2])
-            saved = dict(fl.defd)
+            mark = len(fl.log)
             self.fl_target(fl, e.kids[1])
             for i in range(len(e.kids)):
                 if i != 1 and i != 2:
                     self.fl_expr(fl, e.kids[i])
-            fl.defd = saved
+            fl.undo(mark)
         elif k == "call":
             c = e.kids[0]
             if c.kind == "attr":
