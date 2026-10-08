@@ -2334,6 +2334,27 @@ def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
 
 
+def same_kind(a: str, b: str) -> bool:
+    # are types a and b both lists or both dicts (a class may be named listing)
+    return (is_list(a) and is_list(b)) or (is_dict(a) and is_dict(b))
+
+
+def typestr(t: str) -> str:
+    # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict"
+    return t.replace("[?,?]", "").replace("[?]", "")
+
+
+def empty_display(e: Node) -> bool:
+    return (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0
+
+
+def empty_default(n: Node, name: str, kind: str) -> bool:
+    # is n name.setdefault(k, []) (kind "list") or name.setdefault(k, {}) (kind "dict")
+    if n.kind != "call" or len(n.kids) != 3 or n.kids[0].kind != "attr" or n.kids[0].s != "setdefault":
+        return False
+    return n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == name and n.kids[2].kind == kind and len(n.kids[2].kids) == 0
+
+
 def elem(t: str) -> str:
     return t[5:-1]
 
@@ -2877,6 +2898,12 @@ class Gen:
         self.copying = False
         self.live = False  # fills skips the loops over the empty tuple too (see unfilled)
         self.dead = False  # and found a fill there, or in a branch a static test removes
+        # a template's function returning such an empty container without a type (see retval):
+        # the locals it returns so, space-separated, by its LLVM name, and the functions whose
+        # return type of that kind a call has used, so that it can no longer change (see adopt)
+        self.qret: dict[str, str] = {}
+        self.qused: dict[str, bool] = {}
+        self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
 
     # ---- emission helpers
     def err(self, msg: str) -> None:
@@ -3107,7 +3134,7 @@ class Gen:
         if v.t == "None" and t in self.classes:
             return Val("null", t)
         hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
-        self.err(f"expected {t}, got {v.t}{hint}")
+        self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
         return v
 
     def desc(self, t: str) -> str:
@@ -3529,6 +3556,15 @@ class Gen:
             return False
         return self.modlevel or name in self.gdecl or "$" in name
 
+    def no_type(self, name: str) -> None:
+        # the error for the empty list or dict of variable name, still without a type where a use
+        # needs it (an annotation of it belongs where the container was made, see origin)
+        t = self.qtype(name)
+        src = name
+        while src in self.origin and name not in self.ltype:
+            src = self.origin[src]
+        self.err(f"cannot infer the type of '{short(name)}', an empty {'list' if is_list(t) else 'dict'} so far: annotate it{self.where_def(src)} ({short(src)}: {'list[T] = []' if is_list(t) else 'dict[K, V] = {}'})")
+
     def load_name(self, name: str) -> Val:
         if (name in self.nonevars or name in self.noneglobals) and name not in self.ltype:
             return Val("null", "None")
@@ -3538,10 +3574,7 @@ class Gen:
                 # only code these argument types leave out fills it: it is always empty here
                 self.refine(name, "list[int]" if is_list(t) else "dict[int,int]")
             elif not self.globread(name) or self.copying or "?" in self.early(name):
-                src = name
-                while src in self.origin and name not in self.ltype:
-                    src = self.origin[src]
-                self.err(f"cannot infer the type of '{name}', an empty {'list' if is_list(t) else 'dict'} so far: annotate it{self.where_def(src)} ({short(src)}: {'list[T] = []' if is_list(t) else 'dict[K, V] = {}'})")
+                self.no_type(name)
         if name in self.ltype:
             t = self.ltype[name]
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
@@ -3563,8 +3596,11 @@ class Gen:
             self.err(f"class '{name}' cannot be used as a value (class attributes are read through an instance)")
         if name in self.fglobals:
             self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
+        if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited:
+            # (see ahead)
+            self.err(f"'{short(name)}' of module {owner(name)} is read here while that module is still being imported (a circular import), when only its constants (NAME = literal) can be read: read it in a function that runs after the import")
         if name in self.mvars:
-            self.err(f"the type of '{name}' is not known yet here, before its module's code assigns it: declare it at module level{self.where_def(name)} first ({short(name)}: T)")
+            self.err(f"the type of '{short(name)}' is not known yet here, before its module's code assigns it: declare it at module level{self.where_def(name)} first ({short(name)}: T)")
         if name in self.unsupported:
             self.err(self.unsupported[name])
         if name in PYBUILTINS:
@@ -3623,8 +3659,10 @@ class Gen:
         # function called before that, a function compiled early): its first binding in that code
         # gives it its type now, if it is an annotation, or an assignment whose value can be typed
         # here (its variables have types), or of an empty container that code fills (as lookahead
-        # finds it); "" if not
-        if name in self.gtypes or name in self.busy or owner(name) not in self.inits:
+        # finds it); "" if not. Not for code of another module: that runs while the module is
+        # still being imported (a circular import), and when the global is unbound then, CPython's
+        # AttributeError says so and names the module's file
+        if name in self.gtypes or name in self.busy or owner(name) not in self.inits or owner(name) != self.curfn.mod:
             return self.gtypes.get(name, "")
         st = first_binding(self.inits[owner(name)].node.kids, name)
         if st is None:
@@ -3637,13 +3675,30 @@ class Gen:
         elif st.kind == "assign" and assigns(st, name) and (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0:
             self.new_global(name, "list[?]" if e.kind == "list" else "dict[?,?]")
             self.lookahead(name)
-        elif st.kind == "assign" and assigns(st, name) and self.typed_now(e):
+        elif st.kind == "assign" and assigns(st, name) and self.typed_now(e) and not self.calls_open(e, {}):
             t = self.dry(e)
             if t != "" and t != "None" and "?" not in t:
                 self.new_global(name, t)
         self.restore(fr)
         del self.busy[name]
         return self.gtypes.get(name, "")
+
+    def calls_open(self, n: Node, seen: dict[str, bool]) -> bool:
+        # does n call, also through the templates' functions it calls (which a call compiles), a
+        # template's function being compiled whose return type is not known yet (as the read that
+        # ahead types may be in it)
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s in self.funcs and self.funcs[n.kids[0].s].generic and n.kids[0].s not in seen:
+            f = self.funcs[n.kids[0].s]
+            seen[n.kids[0].s] = True
+            for g in f.insts.values():
+                if g.ret == "":
+                    return True
+            if self.calls_open(f.node.kids[2], seen):
+                return True
+        for k in n.kids:
+            if self.calls_open(k, seen):
+                return True
+        return False
 
     def modframe(self, mod: str, line: int) -> Frame:
         # compile in the frame of module mod's top-level code from here (at line) to restore(the
@@ -3675,7 +3730,7 @@ class Gen:
         for f in fs:
             if name in self.gtypes and "?" not in self.gtypes[name]:
                 break
-            if f.generic or f.bad != "" or f.ll in self.compiled or not self.sets(f, names):
+            if f.generic or f.bad != "" or f.ll in self.compiled or not self.sets(f, names) or not self.decides(f, names):
                 continue
             self.making.append(f"compiling {f.name if f.cls == '' else f.cls + '.' + f.name}() for the type of '{name}' at {where(self.line)}")
             fr = self.save()
@@ -3685,6 +3740,19 @@ class Gen:
             self.restore(fr)
             self.making.pop()
         return self.gtypes.get(name, "")
+
+    def decides(self, f: FnInfo, names: list[str]) -> bool:
+        # does the first fill of the containers names in function f (see fills) show what they
+        # hold, so that compiling f now can give them a type: not d[k] = [] or d.setdefault(k, {})
+        body = f.node.kids[2].kids
+        fr = self.save()
+        self.modlevel = False
+        self.enter(f, body)
+        found: list[Node] = []
+        for nm in names:
+            self.fills(body, nm, found)
+        self.restore(fr)
+        return len(found) == 0 or not empty_display(found[-1])
 
     def sets(self, f: FnInfo, names: list[str]) -> bool:
         # does function f assign one of the module globals names, or fill the container it holds
@@ -3722,6 +3790,8 @@ class Gen:
         if name in self.ltype and not glob:
             self.ltype[name] = t
             toks = self.lkk.pop(name, "")
+            if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
+                self.adopt(t)  # the function returned it: so it returns t
         else:
             self.gtypes[name] = t
             toks = self.gkk.pop(name, "")
@@ -3745,6 +3815,8 @@ class Gen:
             return ""
         t = self.qtype(name)
         e = found[-1]
+        if empty_display(e):
+            return ""  # (d[k] = [] shows nothing of what d holds)
         for x in found:
             if not self.typed_now(x):
                 return ""
@@ -3781,20 +3853,33 @@ class Gen:
     def retval(self, e: Node, want: str) -> Val:
         # the value of return e, where the function returns want ("" while a template's function
         # infers it). A template's function returns an empty container that nothing fills (see
-        # unfilled) as it is, and each call gives it the type its context expects (typed_empty)
+        # unfilled) as it is, and each call gives it the type its context expects (typed_empty),
+        # unless a use further on (in a loop, a call or another return) gives it a type (adopt)
         if e.kind == "name" and (want == "" or "?" in want) and self.unfilled(e.s):
+            self.qret[self.curfn.ll] = self.qret.get(self.curfn.ll, "") + " " + e.s
             self.allowq = True
             v = self.read(e)
             self.allowq = False
             return v
         return self.expr(e, want)
 
+    def adopt(self, t: str) -> None:
+        # the template's function being compiled, which returned an empty container without a
+        # type (see retval), returns t: the containers it returned have that type too
+        if self.curfn.ll in self.qused:
+            self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a use shows what the {tname(t)} it returns holds; annotate its return type")
+        self.ret = t
+        self.curfn.ret = t
+        for nm in self.qret[self.curfn.ll].split():
+            if "?" in self.ltype[nm]:
+                self.refine(nm, t)
+
     def typed_empty(self, v: Val, want: str) -> Val:
         # the empty list or dict a template's function returns (see retval): the type the call's
         # context expects, else list[int] or dict[int, int] (as sum() of an empty list is the int 0).
         # A new dict is made by each call, so it gets the key kind of its type here (a dict's second
         # word)
-        t = want if want[:4] == v.t[:4] and "?" not in want else "list[int]" if is_list(v.t) else "dict[int,int]"
+        t = want if same_kind(want, v.t) and "?" not in want else "list[int]" if is_list(v.t) else "dict[int,int]"
         if is_dict(t):
             self.emit(f"store i64 {1 if targs(t)[0] == 'str' else 0}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
         return Val(v.v, t)
@@ -3811,6 +3896,10 @@ class Gen:
             if (k == "assign" or k == "augassign") and st.kids[0].kind == "index" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == name and k == "assign":
                 found.append(st.kids[0].kids[1])
                 found.append(st.kids[-1])
+            elif k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "index" and empty_default(st.kids[0].kids[0], name, "dict"):
+                # name.setdefault(k, {})[k2] = v: the item is {k2: v} (see default_want)
+                found.append(st.kids[0].kids[0].kids[1])
+                found.append(mk("dict", "", st.line, [st.kids[0].kids[1], st.kids[1]]))
             elif k == "augassign" and st.kids[0].kind == "name" and st.kids[0].s == name and st.s == "+":
                 found.append(mk("omit", "", st.line, []))
                 found.append(st.kids[1])
@@ -3834,6 +3923,11 @@ class Gen:
         # name.append(v), insert(i, v), extend(xs), setdefault(k, v), get(k, v) anywhere in n
         if len(found) > 0 or n.kind == "block" or n.kind == "listcomp":
             return  # (a comprehension's names are its own)
+        if n.kind == "call" and n.kids[0].kind == "attr" and len(n.kids) == (3 if n.kids[0].s == "insert" else 2) and (n.kids[0].s == "append" or n.kids[0].s == "insert") and n.kids[-1].kind != "kw" and empty_default(n.kids[0].kids[0], name, "list"):
+            # name.setdefault(k, []).append(v): the item is [v] (see default_want)
+            found.append(n.kids[0].kids[0].kids[1])
+            found.append(mk("list", "", n.line, [n.kids[-1]]))
+            return
         if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == name:
             m = n.kids[0].s
             a = n.kids[1:]
@@ -3893,6 +3987,8 @@ class Gen:
             if a.kind == "kw":
                 self.err(f"keyword arguments to {'list' if is_list(o.t) else 'dict'}.{m}() are not supported; pass them by position")
         if is_list(o.t) and (m == "append" or m == "extend" or m == "insert") and len(args) == (2 if m == "insert" else 1):
+            if empty_display(args[-1]):
+                self.no_type(name)  # (xs.append([]) shows nothing of what xs holds)
             i = self.ival(args[0]) if m == "insert" else Val("0", "int")
             v = self.as_list(self.consume(args[-1], ""), "extend") if m == "extend" else self.expr(args[-1], "")
             if m == "extend" and not is_list(v.t):
@@ -3906,6 +4002,8 @@ class Gen:
                 self.rt("pys_list_extend", "void", [f"ptr {o.v}", f"ptr {v.v}"])
             return Val("null", "None")
         if is_dict(o.t) and (m == "setdefault" or m == "get") and len(args) == 2:
+            if empty_display(args[1]) and (want == "" or "?" in want):
+                self.no_type(name)
             k = self.expr(args[0], "")
             v = self.expr(args[1], want if "?" not in want else "")
             self.refine(name, f"dict[{k.t},{v.t}]")
@@ -3960,7 +4058,7 @@ class Gen:
                     self.err(f"cannot infer the type of '{name}'; add a type annotation")
                 self.declare(name, v.t)
             t = self.gtypes[name]
-            if "?" in t and t[:4] == v.t[:4] and "?" not in v.t:
+            if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
                 t = v.t
             self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr @g.{name}")
@@ -3978,7 +4076,7 @@ class Gen:
             if name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
-            if "?" in t and t[:4] == v.t[:4] and "?" not in v.t:
+            if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
                 t = v.t
             self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr {self.lreg[name]}")
@@ -4148,7 +4246,7 @@ class Gen:
             for i in range(len(self.body)):
                 if self.body[i] == "  ret <none>":
                     if f.ret != "None" and f.ret not in self.classes:
-                        self.err(f"{short(f.name)}() returns both None and {f.ret}, and None/Optional is only supported for class types")
+                        self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
                     self.body[i] = "  ret void" if f.ret == "None" else "  ret ptr null"
         if not self.term:
             if f.ret == "None":
@@ -4291,6 +4389,7 @@ class Gen:
         self.modlevel = True
         for i in range(len(mods)):
             self.function(self.inits[mods[i].name], tops[i])
+            self.inited[mods[i].name] = True
         self.modlevel = False
         # the functions and methods of imported modules are compiled only if the program calls
         # them, as templates are (a function compiled early, see early, is compiled already)
@@ -5054,6 +5153,8 @@ class Gen:
                 for i in range(len(vs)):
                     self.assign(t0.kids[i], vs[i])
             else:
+                if t0.kind == "index" and t0.kids[0].kind == "name" and "?" in self.qtype(t0.kids[0].s) and empty_display(val):
+                    self.no_type(t0.kids[0].s)  # (d[k] = [] shows nothing of what d holds)
                 v = self.expr(val, self.target_type(t0))
                 for i in range(len(n.kids) - 1):
                     self.assign(n.kids[i], v)
@@ -5127,7 +5228,7 @@ class Gen:
                     self.emit(f"ret {lt(v.t)} {v.v}")
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes):
-                    self.err(f"{short(self.curfn.name)}() returns both {self.ret} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
+                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
                 self.close_withs(0)
                 self.emit("ret void" if self.ret == "None" else "ret ptr null")
             elif self.ret == "None":
@@ -5141,8 +5242,10 @@ class Gen:
                 self.emit("ret void")
             else:
                 v = self.retval(n.kids[0], self.ret)
+                if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
+                    self.adopt(v.t)  # (it returned an empty container without a type before)
                 if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes):
-                    self.err(f"{short(self.curfn.name)}() returns both {self.ret} and {v.t} (each function has one return type)")
+                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret)
                 self.close_withs(0)
                 self.emit(f"ret {lt(self.ret)} {v.v}")
@@ -5743,7 +5846,7 @@ class Gen:
         if k == "None":
             return Val("null", "None")
         if k == "name":
-            if want != "" and "?" not in want and want[:4] == self.ltype.get(n.s, "")[:4] and self.unfilled(n.s):
+            if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
                 self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
             return self.read(n)
         if k == "badattr":
@@ -6621,6 +6724,7 @@ class Gen:
             self.emit(call)
             return Val("null", "None")
         if "?" in f.ret:
+            self.qused[f.ll] = True  # (a recursive call: what it returns can no longer change)
             return self.typed_empty(Val(self.ins(call), f.ret), want)
         return Val(self.ins(call), f.ret)
 
