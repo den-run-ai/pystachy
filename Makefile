@@ -29,7 +29,7 @@ dictprobe: tools/dictprobe.c runtime.c
 	$(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)clang -O2 tools/dictprobe.c -o build/dictprobe -lm
 	build/dictprobe
 
-# Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks) -> build/verification.json
+# Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks, dict probes) -> build/verification.json
 verify:
 	PY="$(PY)" tests/verify.sh
 
