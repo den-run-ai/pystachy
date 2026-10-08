@@ -1,7 +1,8 @@
 """How compile time grows with the size of the program: generated programs, timed IR generation.
 
 usage: python3 tools/scaling.py [-c LABEL=COMMAND]... [-s SHAPE,...] [-n N,...] [-r RUNS] [--ops] [--keep DIR]
-       (defaults: -c "hosted=python3 pystachy.py" -c "native=./pystachy", every shape, -n 1000,2000,4000, -r 3)
+       (defaults: the checkout's -c "hosted=python3 pystachy.py" -c "native=./pystachy", every shape,
+       -n 1000,2000,4000, -r 3)
 Each shape is a family of programs whose size grows with N:
   funcs    N small annotated functions and 10 global variables
   globals  N global variables and 10 functions
@@ -17,8 +18,9 @@ Each shape is a family of programs whose size grows with N:
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
-the compiler's source lines executed (counted with sys.monitoring) in all ("lines") and inside
-Gen.flow_program, the definite-assignment pass ("flow"): counts that do not depend on the machine.
+the compiler's source lines executed in all ("lines") and inside Gen.flow_program, the
+definite-assignment pass ("flow"): counts that do not depend on the machine (sys.monitoring
+counts them, so --ops needs Python 3.12 or later).
 A compiler that fails shows "failed", and its last line of stderr follows the table.
 --keep DIR writes the generated programs to DIR/SHAPE-N/ instead of a temporary directory.
 """
@@ -238,7 +240,8 @@ def main():
         if s not in SHAPES:
             sys.exit(f"unknown shape {s}: one of {', '.join(SHAPES)}")
     if not comps:
-        comps = [("hosted", [sys.executable, "pystachy.py"]), ("native", ["./pystachy"])]
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        comps = [("hosted", [sys.executable, os.path.join(root, "pystachy.py")]), ("native", [os.path.join(root, "pystachy")])]
     cols = []
     for label, cmd in comps:
         cols.append((label, cmd, False))
