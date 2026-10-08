@@ -697,9 +697,43 @@ double pys_m_pow(double x, double y) {
 }
 double pys_m_fmod(double x, double y) { if (isinf(x) || (y == 0 && !isnan(x))) pys_fail("ValueError: math domain error"); return fmod(x, y); }
 double pys_m_atan2(double y, double x) { return atan2(y, x); }
-double pys_m_hypot(double x, double y) { return mchk(hypot(x, y), x, y, 1); }
+/* math.hypot is CPython's vector_norm, not libm's hypot, so its last bit agrees: lossless scaling
+   by a power of two, exact squares (fma), compensated summation and a differential correction of
+   the square root; it never raises (inf on overflow) */
+typedef struct { double hi, lo; } DL;
+static DL dl_fast_sum(double a, double b) { double x = a + b; return (DL){x, (a - x) + b}; }
+static DL dl_mul(double x, double y) { double z = x * y; return (DL){z, fma(x, y, -z)}; }
+static double vnorm(double *v, int n, double max) {
+#pragma clang fp contract(off)
+  double csum = 1.0, frac1 = 0.0, frac2 = 0.0, x, h, scale; DL pr, sm; int e;
+  if (max == 0.0 || n <= 1) return max;
+  frexp(max, &e);
+  if (e < -1023) { for (int i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
+  scale = ldexp(1.0, -e);
+  for (int i = 0; i < n; i++) {
+    x = v[i] * scale; pr = dl_mul(x, x); sm = dl_fast_sum(csum, pr.hi);
+    csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
+  }
+  h = sqrt(csum - 1.0 + (frac1 + frac2));
+  pr = dl_mul(-h, h); sm = dl_fast_sum(csum, pr.hi);
+  csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
+  x = csum - 1.0 + (frac1 + frac2);
+  h += x / (2.0 * h);
+  return h / scale;
+}
+double pys_m_hypot(double x, double y) {
+  double v[2] = {fabs(x), fabs(y)}, max = 0.0;
+  for (int i = 0; i < 2; i++) if (v[i] > max) max = v[i];   /* a NaN is never the max */
+  if (isinf(max)) return max;
+  if (isnan(x) || isnan(y)) return NAN;
+  return vnorm(v, 2, max);
+}
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
-double pys_m_logb(double x, double b) { return mchk(log(x), x, 0, 0) / mchk(log(b), b, 0, 0); }
+double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 divides by zero, as in CPython */
+  double n = mchk(log(x), x, 0, 0), d = mchk(log(b), b, 0, 0);
+  if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
+  return n / d;
+}
 double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
 double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
 I pys_m_isfinite(double x) { return isfinite(x); }
