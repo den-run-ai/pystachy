@@ -13,6 +13,12 @@ SRC = "<input>"
 # the files of the program's modules: a node of FILES[k] has line k * LINES + its line in the file
 LINES = 10000000
 FILES: list[str] = []
+# how deeply source may nest: CPython's tokenizer allows 200 open brackets and 99 indentation
+# levels; past MAXNEST levels of nested expressions or elif branches (a ** or lambda counts twice)
+# Pystachy rejects the program, below the depths where CPython's parser and compiler give up, and
+# so that neither compiler runs out of stack
+MAXNEST = 5000
+TOODEEP = f"source too complex: nested more than {MAXNEST} levels deep"
 
 
 def shown(s: str) -> str:
@@ -151,6 +157,8 @@ class Lexer:
                     fail("tabs are not supported for indentation", self.line)
                 bol = False
                 if col > indents[-1]:
+                    if len(indents) == 100:
+                        fail("too many levels of indentation", self.line)
                     indents.append(col)
                     self.add("indent", "")
                 while col < indents[-1]:
@@ -183,6 +191,8 @@ class Lexer:
                 k = self.toks[-1].kind
                 if k == "(" or k == "[" or k == "{":
                     depth += 1
+                    if depth > 200:
+                        fail("too many nested parentheses", self.line)
                 elif k == ")" or k == "]" or k == "}":
                     depth -= 1
         if not bol:
@@ -373,11 +383,17 @@ class Node:
         self.line = line
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
+        self.depth = 1  # levels of nodes from this one down, as mk counted them
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
     n = Node(kind, s, line)
     n.kids = kids
+    for k in kids:
+        if k.depth >= n.depth:
+            n.depth = k.depth + 1
+    if n.depth > MAXNEST:
+        fail(TOODEEP, line)  # a chain such as a + b + ..., which the parser builds without recursing
     return n
 
 
@@ -425,6 +441,7 @@ class Parser:
         self.early = True  # only a docstring and from __future__ imports so far
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
+        self.nest = 0  # the parser's own recursion: nested expressions and elif branches
 
     def peek(self) -> str:
         return self.toks[self.p].kind
@@ -684,7 +701,9 @@ class Parser:
         self.expect(":")
         n = mk("if", "", line, [c, self.block(), mk("block", "", line, [])])
         if self.peek() == "elif":
+            self.deeper()
             n.kids[2].kids.append(self.ifstmt())
+            self.nest -= 1
         elif self.eat("else"):
             self.expect(":")
             n.kids[2] = self.block()
@@ -956,7 +975,19 @@ class Parser:
             t.kids.append(self.item() if self.peek() == "*" else self.postfix())
         return as_target(t)
 
+    def deeper(self) -> None:
+        # one more level of the parser's recursion, which the caller undoes
+        self.nest += 1
+        if self.nest > MAXNEST:
+            fail(TOODEEP, self.line())
+
     def test(self) -> Node:
+        self.deeper()
+        e = self.test1()
+        self.nest -= 1
+        return e
+
+    def test1(self) -> Node:
         line = self.line()
         if self.eat("lambda"):
             # lambda params: body (kids: the parameter names, then the body)
@@ -967,7 +998,9 @@ class Parser:
                 n.kids.append(mk("name", self.expect("id").text, line, []))
                 if self.eat("="):
                     self.test()
+            self.deeper()  # (a lambda counts as two levels, as a ** does)
             n.kids.append(self.test())
+            self.nest -= 1
             return n
         e = self.or_test()
         if self.peek() == ":=" and e.kind == "name":
@@ -998,7 +1031,10 @@ class Parser:
     def not_test(self) -> Node:
         line = self.line()
         if self.eat("not"):
-            return mk("unary", "not", line, [self.not_test()])
+            self.deeper()
+            e = self.not_test()
+            self.nest -= 1
+            return mk("unary", "not", line, [e])
         return self.comparison()
 
     def comparison(self) -> Node:
@@ -1041,12 +1077,19 @@ class Parser:
         if k == "-" or k == "+" or k == "~":
             line = self.line()
             self.p += 1
-            return mk("unary", k, line, [self.unary()])
+            self.deeper()
+            e = self.unary()
+            self.nest -= 1
+            return mk("unary", k, line, [e])
         e = self.postfix()
         if self.peek() == "**":
             line = self.line()
             self.p += 1
-            return mk("binop", "**", line, [e, self.unary()])
+            self.nest += 1  # (two levels: CPython's parser stops at half the depth of other chains)
+            self.deeper()
+            r = self.unary()
+            self.nest -= 2
+            return mk("binop", "**", line, [e, r])
         return e
 
     def postfix(self) -> Node:
@@ -1164,7 +1207,10 @@ class Parser:
                 self.p += 1
             return mk("bytes" if k == "bytes" else "ellipsis", "", line, [])
         if k == "await":
-            return mk("await", "", line, [self.unary()])
+            self.deeper()
+            e = self.unary()
+            self.nest -= 1
+            return mk("await", "", line, [e])
         if k == "yield":
             n = mk("yield", "", line, [])
             if self.eat("from"):
@@ -2116,7 +2162,8 @@ CALLS: dict[str, str] = {
     "time.monotonic_ns()": "pys_monotonic_ns:int", "time.perf_counter()": "pys_monotonic:float",
     "time.perf_counter_ns()": "pys_monotonic_ns:int", "time.process_time()": "pys_process_time:float",
     "time.process_time_ns()": "pys_process_time_ns:int", "time.sleep(float)": "pys_sleep:None", "time.sleep(int)": "pys_sleep_int:None",
-    "time.sleep(bool)": "pys_sleep_int:None",
+    "time.sleep(bool)": "pys_sleep_int:None", "sys.setrecursionlimit(int)": "pys_setrecursionlimit:None",
+    "sys.setrecursionlimit(bool)": "pys_setrecursionlimit:None", "sys.getrecursionlimit()": "pys_getrecursionlimit:int",
 }
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
@@ -6848,6 +6895,9 @@ def sh(cmd: str) -> int:
 
 def main() -> None:
     global SRC
+    # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
+    # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
+    sys.setrecursionlimit(MAXNEST * 40)
     argv = sys.argv
     if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
