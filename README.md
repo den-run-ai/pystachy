@@ -11,15 +11,19 @@ faithfully is rejected at compile time with a `file:line: error:` instead of mis
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
 fixed point: stage1 == stage2 == stage3 (49998 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
-$ ./pystachy build bench/nbody.py -o nbody  # AOT: native executable
+$ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
 $ make test                             # differential tests against CPython
 $ make verify                           # everything below, with a JSON report
 ```
 
-Requirements: LLVM/clang 18 (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`) and, for the
-first bootstrap step only, CPython 3 (tested with 3.13). Set
-`PYSTACHY_LLVM=/usr/lib/llvm-18/bin` if the tools are not on `PATH` under those names.
+Requirements: LLVM/clang 18 (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`; set
+`PYSTACHY_LLVM=/usr/lib/llvm-18/bin` if they are not on `PATH` under those names) and
+CPython 3.11 or later for the bootstrap (tested with 3.13). `make verify`, `make test-py` and
+`make bench` also run CPython, as the reference, and the UBSan step of `make verify` needs
+the UBSan runtime (Ubuntu: `libclang-rt-18-dev`). The compiler looks for `runtime.c` and
+its `build/` cache next to itself (or in its parent directory); a copy installed elsewhere
+needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
@@ -56,7 +60,9 @@ print(f"total {total(cart):.2f}", cart, stock, Item("pen", 1.5, 4) in cart)
 
 Pystachy is built on the design of **Ouro v1** (*ouroboros*), one of four self-hosting
 Python-subset compilers that were compared before this repository was started: Ouro v1
-(LLVM), Ouro v2 (WebAssembly GC) and two MiniPy compilers (C). Ouro v1 had the broadest
+(LLVM), Ouro v2 (WebAssembly GC) and two MiniPy compilers (C). None of them is published,
+so the comparison and the Ouro v1 numbers quoted below cannot be reproduced from this
+repository. Ouro v1 had the broadest
 subset, matched CPython's output most closely, compiled in linear time, ran fastest and was
 the cheapest to extend (a builtin is one table line plus one C function). The reviews also
 named its weaknesses, and Pystachy addresses them:
@@ -70,10 +76,11 @@ named its weaknesses, and Pystachy addresses them:
 | a zero `range` step loops silently | `ValueError` |
 | attribute access through `None` is undefined behaviour | `AttributeError`, CPython's `None` rules for `==`, `str()` |
 | unknown imports are silently ignored | imports are checked; aliases and `from` imports work |
-| driver writes fixed `/tmp` files via `os.system` | a private `mkdtemp` directory, removed on every path |
+| driver writes fixed `/tmp` files via `os.system` | a private `mkdtemp` directory, removed on every exit path but a `SIGTERM` to the driver |
 | type checking and emission are one class with no IR | still true: a typed IR is the main next step (below) |
 
-Ouro v2 contributed tests (`tests/ouro2_*.py`) and the idea of a second backend; MiniPy
+Ouro v2 contributed 16 test programs (ported as `tests/ouro2_*.py`) and the idea of a
+second backend; MiniPy
 contributed checked arithmetic, strict definite assignment and its verification
 discipline: sanitizer builds, a Python-free native stage and a machine-readable report.
 Three rounds of adversarial differential testing against CPython followed (the language
@@ -85,8 +92,9 @@ fixed, rejected at compile time, or listed under *Deviations*.
 Pystachy is Python with types made static and the dynamic machinery removed.
 
 **Types.** `int` (64-bit), `float` (IEEE double), `bool`, `str`, `list[T]`, `dict[K, V]`
-(keys `int` or `str`), `tuple[A, B, ...]` (up to 9 elements), user classes,
-`Optional[C]` / `C | None` for class types, and `None` as a return type. The `typing`
+(keys `int` or `str`), `tuple[A, B, ...]` (up to 9 elements, indexed by integer
+constants), user classes, `Optional[C]` / `C | None` for class types, and `None` as a
+return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `TextIO`) work when imported from `typing`,
 and string forward references work.
 
@@ -103,11 +111,12 @@ and string forward references work.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
-`if`/`elif`/`else`, `while`, `for` over `range`, lists, strings, dicts, files,
-`.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and `reversed` (also
-of a `range`), stepping each sequence as its CPython iterator does (a dict that changes size
-raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`, `del`, `assert`,
-`with open(...) as f:`, `raise` of a builtin exception (`from` allowed; it ends the program
+`if`/`elif`/`else`, `while`, `for` over `range`, lists, strings, dicts, files, tuples of
+one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and
+`reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
+that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
+`del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
+parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
 `class`, `@dataclass`, docstrings, and `import`/`from` of `sys`, `os`, `os.path`, `math`,
 `tempfile`, `typing`, `dataclasses` and `__future__`.
@@ -117,12 +126,13 @@ with every escape except `\N{...}`, raw and triple-quoted strings, implicit
 concatenation), f-strings with `!r`, `!s`, `!a`, `=`, nested format specs and CPython's
 complete format-spec mini-language, arithmetic with Python semantics (`//` and `%` floor,
 `/` is correctly rounded true division, exact int/float comparison), bitwise ops,
-chained comparisons, `in`/`not in`, `is`/`is not`, `and`/`or` returning operands,
-`not`, conditional expressions, keyword and default arguments, negative indices,
-slicing, list/dict/tuple displays, list comprehensions and generator arguments
-(`any(...)`/`all(...)` stop early), `range()`/`reversed()`/`enumerate()`/`zip()` as the
-argument of `list()`, `sorted()`, `sum()`, `min()`, `max()`, `any()`, `all()` or
-`str.join()`, `x in range(...)`, and operator overloading resolved statically:
+chained comparisons, `in`/`not in`, `is`/`is not` (not on numbers and bools), `and`/`or`
+returning operands, `not`, conditional expressions, keyword and default arguments, negative
+indices, slicing, list/dict/tuple displays, list comprehensions, generator expressions and
+`range()`/`reversed()`/`enumerate()`/`zip()` as the argument of `list()`, `sorted()`,
+`sum()`, `min()`, `max()`, `any()`, `all()`, `str.join()` or `list.extend()` (`any()` and
+`all()` stop at the deciding item, as they do over files), `x in range(...)`, and operator
+overloading resolved statically:
 `__add__` & co, the in-place forms, `__eq__`, rich comparisons with CPython's reflection
 rules (`a < b` tries `b.__gt__(a)`), `__len__`, `__bool__`, `__str__`, `__repr__` and
 `__format__`. Objects inside lists, dicts and tuples compare, sort and print through
@@ -140,11 +150,13 @@ getenv/remove/rmdir/path.exists`, `tempfile.mkdtemp`, and the `math` functions a
 constants, which raise CPython's domain and range errors.
 
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
-feature: exception handling (`try`; `with` works for files), generators, lambdas and closures,
-inheritance (so user exception classes), `*args`/`**kwargs`, sets, dict and multi-clause
-comprehensions, `for`/`while` ... `else`, slice steps, first-class functions (`map`, `key=`), `isinstance`/`getattr`/
-`eval`, user modules, `bytes` and binary files, complex numbers and arbitrary-precision
-integers.
+feature: exception handling (`try`; `with` works for files), generator functions
+(`yield`), generator expressions other than the consumer arguments above, lambdas and
+closures, inheritance (so user exception classes), `*args`/`**kwargs` and the `*` and `/`
+parameter markers, sets, dict and multi-clause comprehensions, `for`/`while` ... `else`,
+slice steps, first-class functions (`map`, `key=`), `isinstance`/`getattr`/`eval`, user
+modules, `bytes` (literals are rejected; a binary mode computed at run time raises
+`NotImplementedError`) and binary files, complex numbers and arbitrary-precision integers.
 
 **Deviations from CPython** (the program compiles but can behave differently):
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
@@ -152,15 +164,22 @@ integers.
   wrapping. `int ** negative int` is a `ValueError` (the result type would be dynamic;
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
-- `str` is a byte string holding UTF-8: `len`, indexing and `write()`'s result count
-  bytes, and `chr(i)` for `i < 256` is that byte (above, its UTF-8). ASCII behaves exactly
-  like CPython; escapes such as `\xe9` and `€` produce UTF-8, format widths, `read(n)` and
-  `ord()` count characters. Files hold the same bytes, read as UTF-8 or Latin-1.
-- `dict.keys()`, `.values()` and `.items()` return list snapshots.
+- `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`,
+  `ljust`/`rjust` and `write()`'s result count bytes, case mapping, the `is*()` tests and
+  `split()` know only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
+  ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
+  format widths, `read(n)` and `ord()` count characters. Files hold the same bytes, read as
+  UTF-8 or Latin-1.
+- `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
+  and `reversed()` of them do not notice a dict that changes size (a plain `for` over
+  `d.items()` steps the dict itself and does).
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
   "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
-  compile-time `SyntaxWarning`s are not printed. Deep recursion overflows the stack instead
-  of raising `RecursionError`.
+  compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
+  stack: it goes past CPython's limit of 1,000 calls, and where CPython raises
+  `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
+  for a tail call in an AOT build, loops forever. `==` between two cyclic dataclass objects
+  recurses like that too.
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
   tuples holding the same NaN object compare, and sort, as if they held different ones. The
   sum of an empty `list[float]` is `0.0` (`sum(xs, 1)`: `1.0`), where CPython returns the int
@@ -178,9 +197,14 @@ class or import; a class-body default that names an earlier class attribute (Pys
 has no class scope); a local read textually before its first assignment (declare it
 first: `x: int`); a module-level read of a global that only functions assign (declare it
 at module level); comparison dunders that do not return `bool`, `__str__`/`__repr__`
-that do not return `str`, methods without `self`; f-strings that reuse their own quote
-inside a field (PEP 701) and `\N{...}` escapes; `os.getenv()` without a default (its
-result would be `str` or `None`); `raise` of anything but a builtin exception.
+that do not return `str`, methods without `self`; an `==` or `!=` between objects of
+different classes, which CPython would reflect to the right operand's `__eq__`; calling a
+builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
+CPython would reject at run time); `range()`, `enumerate()`, `zip()` or `reversed()` nested
+inside `enumerate()`, `zip()` or `reversed()` in a `for` loop, and `zip(strict=...)`;
+f-strings that reuse their own quote inside a field (PEP 701) and `\N{...}` escapes;
+`os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
+but a builtin exception.
 
 ## How it works
 
@@ -249,7 +273,9 @@ result would be `str` or `None`); `raise` of anything but a builtin exception.
   format-spec mini-language are implemented to match CPython's output, error messages
   included. `sort` is a function-by-function port of CPython 3.13's timsort that makes the
   same `<` comparisons in the same order, which decides where NaNs end up and what an
-  `__lt__` with side effects sees (4,200 random lists of every shape agree call for call).
+  `__lt__` with side effects sees: `tests/sort_order.py` checks 260 generated cases (a
+  one-off run over 4,200 lists found every `__lt__` call of the 2,517 object lists in
+  CPython's order, and the int and float lists sorted alike).
   Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
   the table is rebuilt, with its sizes and growth), so deletion is O(1) and a loop that
   changes its dict sees what CPython's would. Files wrap C stdio with CPython's open()
@@ -277,7 +303,8 @@ result would be `str` or `None`); `raise` of anything but a builtin exception.
 
 `tests/run.sh` runs every `tests/*.py` twice — JIT and AOT — and compares stdout plus exit
 status with what CPython recorded in `tests/*.out` (stdin from `tests/*.in`), and the last
-stderr line with `tests/*.err` where CPython reported an error. Each `tests/errors/*.py`
+stderr line with `tests/*.err` where CPython wrote to stderr. `tests/record.sh NAME`
+records a test's expected output from CPython, the way `tests/run.sh` runs it. Each `tests/errors/*.py`
 must be rejected with the message on its first line, and each `tests/deviations/*.py` must
 print its hand-written expected output. The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
@@ -305,6 +332,11 @@ with `PYSTACHY_GC_STRESS=1` (a collection at every allocation), and the native c
 reproduces its own IR while collecting every few allocations. `.github/workflows/ci.yml`
 runs `make verify` on every push and pull request (ubuntu-24.04, LLVM 18 from apt,
 Python 3.13) and uploads the report as an artifact.
+
+## License
+
+MIT (`LICENSE`). The list sort in `runtime.c` is a port of CPython's and is used under the
+PSF License Version 2; `THIRD_PARTY_NOTICES` has its notice and the license text.
 
 ## Performance
 
