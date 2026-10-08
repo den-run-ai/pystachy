@@ -1058,7 +1058,7 @@ FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
     FUTURE[_k] = True
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
-DEFAULTS: dict[str, str] = {"input": '""', "int": "0", "float": "0.0", "str": '""', "bool": "False",
+DEFAULTS: dict[str, str] = {"int": "0", "float": "0.0", "str": '""', "bool": "False",
                             "list": "[]", "dict": "{}", "int(str)": "10", "sum(list[int])": "0",
                             "sum(list[float])": "0.0", "sum(list[bool])": "0"}
 # the builtin exceptions raise accepts; "x": special arguments, so at most one is supported;
@@ -1078,11 +1078,35 @@ for _k in ("OSError IOError EnvironmentError BlockingIOError ChildProcessError C
     EXCEPTIONS[_k] = "x"
 for _k in "UnicodeDecodeError UnicodeEncodeError UnicodeTranslateError ExceptionGroup BaseExceptionGroup".split():
     EXCEPTIONS[_k] = "-"
-# encoding= names of UTF-8 and Latin-1 (lowercase, without "-" and "_"): a str holds the file's
-# bytes either way, which is what CPython's str holds for a Latin-1 file
-UTF8: dict[str, bool] = {}
-for _k in "utf8 u8 utf latin1 latin l1 iso88591 iso8859 8859 cp819 ibm819 csisolatin1 iso885911987 isoir100".split():
-    UTF8[_k] = True
+# encoding= names of UTF-8 (1) and Latin-1 (2) as CPython's codec lookup finds them (see codec()):
+# a str holds the file's bytes either way, which is what CPython's str holds for a Latin-1 file
+CODECS: dict[str, int] = {}
+for _k in "utf8 u8 utf utf8_ucs2 utf8_ucs4 cp65001".split():
+    CODECS[_k] = 1
+for _k in "latin1 latin l1 iso8859_1 iso_8859_1 iso_8859_1_1987 iso_ir_100 iso8859 8859 cp819 ibm819 csisolatin1".split():
+    CODECS[_k] = 2
+
+
+def codec(e: str) -> int:
+    # 1 UTF-8, 2 Latin-1, 0 another (runtime.c's codec()): the name normalized (lowercase; a run of
+    # characters other than ASCII letters, digits and "." is one "_" between them) is an alias, or
+    # one with "." read as "_", or the codec's module name
+    n = ""
+    punct = False
+    for c in e:
+        if c >= "A" and c <= "Z":
+            n += "_" if punct and n != "" else ""
+            n += c.lower()
+            punct = False
+        elif (c >= "a" and c <= "z") or (c >= "0" and c <= "9") or c == ".":
+            n += "_" if punct and n != "" else ""
+            n += c
+            punct = False
+        else:
+            punct = True
+    if n.find(".") >= 0:
+        return CODECS.get(n.replace(".", "_"), 0)
+    return 1 if n == "utf_8" else 2 if n == "latin_1" else CODECS.get(n, 0)
 # the most positional arguments a builtin takes: more are a compile error (a TypeError in CPython)
 ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "chr": 1, "bool": 1, "float": 1, "list": 1,
                          "dict": 1, "str": 1, "sorted": 1, "any": 1, "all": 1, "input": 1, "int": 2, "round": 2,
@@ -3740,9 +3764,10 @@ class Gen:
         return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and not self.bound("open")
 
     def close_temp(self, n: Node, v: Val) -> None:
-        # open(p).read(): nothing else refers to the file, so CPython closes it right after its use
+        # open(p).read(): nothing else refers to the file, so CPython closes it right after its use,
+        # in its finalizer, which reports a failure and goes on
         if v.t == "file" and self.open_call(n):
-            self.rt("pys_file_close", "void", [f"ptr {v.v}"])
+            self.rt("pys_file_drop", "void", [f"ptr {v.v}"])
 
     def open_(self, args: list[Node]) -> Val:
         # open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None): text files
@@ -3768,7 +3793,7 @@ class Gen:
         if not (e.kind == "None" or (e.kind == "str" and e.s == "strict")):
             self.err("open(errors=...) is not supported: files are UTF-8, and decoding errors are not checked")
         e = given.get("encoding", mk("None", "", self.line, []))
-        if e.kind == "str" and e.s.lower().replace("-", "").replace("_", "") not in UTF8:
+        if e.kind == "str" and codec(e.s) == 0:
             self.err(f"only UTF-8 and Latin-1 files are supported, not encoding='{e.s}'")
         # every argument is evaluated in the order written, then the file is opened
         vals: dict[str, str] = {"mode": self.sconst("r"), "buffering": "-1", "encoding": "null", "newline": "null"}
@@ -3928,6 +3953,9 @@ class Gen:
         if name == "input" and len(vals) == 1 and vals[0].t != "str":
             vals[0] = self.to_str(vals[0])
             key = "input(str)"
+        if name == "input" and len(vals) == 0:
+            # no prompt: CPython writes nothing to sys.stdout (which may be closed) before reading
+            return Val(self.rt("pys_input", "ptr", ["ptr null"]), "str")
         if name == "sys.exit" or name == "exit" or name == "quit":
             if len(vals) > 1:
                 self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
@@ -4105,6 +4133,7 @@ class Gen:
         fv = ""
         flush = ""
         vals: list[Val] = []
+        temp: list[Node] = []  # file=open(...): closed after the print, as close_temp does
         for a in args:
             if a.kind != "kw":
                 vals.append(self.expr(a, ""))
@@ -4126,6 +4155,7 @@ class Gen:
                     if v.t != "file":
                         self.err(f"print(file=...) needs a file, not {v.t}")
                     fv = v.v
+                    temp.append(x)
             elif a.s == "flush":
                 flush = self.truth(self.expr(x, "bool"))
             else:
@@ -4143,6 +4173,8 @@ class Gen:
             self.rt("pys_file_flush", "void", [f"ptr {fv if fv != '' else self.rt('pys_std', 'ptr', [f'i64 {fd}'])}"])
             self.br(l2)
             self.place(l2)
+        for x in temp:
+            self.close_temp(x, Val(fv, "file"))
         return Val("null", "None")
 
     def pwrite(self, fd: str, fv: str, s: str) -> None:

@@ -95,8 +95,8 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
 {
   ok=1
   for t in clang opt lli llvm-link llvm-as; do tool $t "$PYSTACHY_LLVM" || ok=0; done
-  # clang's system linker; the driver's shell commands; tests/run.sh; the rm a test program runs
-  for t in ld sh mkdir sed mv rm test cat cmp diff head tail grep dirname basename; do tool $t || ok=0; done
+  # clang's system linker; the driver's shell commands; tests/run.sh; the rm, mkfifo and sleep test programs run
+  for t in ld sh mkdir sed mv rm test cat cmp diff head tail grep dirname basename mkfifo sleep; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi

@@ -1,0 +1,31 @@
+'utf-8' ok
+'UTF8' ok
+'U8' ok
+'utf' ok
+'Utf 8' ok
+'_utf8_' ok
+'utf--8' ok
+'utf-8 ' ok
+'utf8é' ok
+'cp65001' ok
+'UTF8-UCS2' ok
+'utf8_ucs4' ok
+'utf_8' ok
+'latin-1' ok
+'Latin1' ok
+'L1' ok
+'latin' ok
+'iso-8859-1' ok
+'ISO 8859-1' ok
+'iso8859.1' ok
+'iso_8859-1:1987' ok
+'ISO-IR-100' ok
+'8859' ok
+'IBM819' ok
+'csISOLatin1' ok
+'cp819' ok
+'iso8859' ok
+'' '' '' '' '' '' '' 
+1 1 'ab' 1 ''
+233 169 True
+[exit 0]

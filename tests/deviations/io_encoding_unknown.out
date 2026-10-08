@@ -1,0 +1,4 @@
+utf-8 ok
+UTF 8 ok
+NotImplementedError: only UTF-8 and Latin-1 files are supported, not encoding 'u-t-f-8'
+[exit 1]

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Differential tests. Every tests/*.py must print exactly what CPython printed
 # (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
-# CPython wrote to stderr, the last line (tests/*.err) must match too.
+# CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
+# tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails).
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # usage: tests/run.sh [COMPILER [MODES]]   (default: ./pystachy "jit aot"; e.g. "python3 pystachy.py")
@@ -11,14 +12,16 @@ MODES=${2:-jit aot}
 T=${TMPDIR:-/tmp}/pystachy-tests.$$
 mkdir -p "$T"
 pass=0; fail=0
+exec 3> /dev/full
 for t in tests/*.py; do
   n=$(basename "$t" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
+  o=1; [ -f "tests/$n.full" ] && o=3
   for mode in $MODES; do
     if [ $mode = jit ]; then
-      ($PYS run "$t" a1 a2 < "$in"; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+      ($PYS run "$t" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       $PYS build "$t" -o "$T/$n.exe" 2> "$T/$n.err" &&
-        ("$T/$n.exe" a1 a2 < "$in"; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
+        ("$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then
       pass=$((pass + 1)); else

@@ -6,9 +6,12 @@
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
+#include <langinfo.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <math.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio_ext.h>
@@ -102,7 +105,9 @@ static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
 
-static _Noreturn void oom(void) { fflush(stdout); fputs("MemoryError\n", stderr); exit(1); }
+static void out_flush(void);           /* stdout, before an error message (see I/O) */
+void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
+static _Noreturn void oom(void) { out_flush(); fputs("MemoryError\n", stderr); pys_finish(); exit(1); }
 static I cls(I n) {                    /* size class for n bytes plus one byte of slack */
   uint64_t r = (uint64_t)n + 1, y = r - 8;
   if (r <= 136) return r <= 16 ? 0 : (I)((r + 7) >> 3) - 2;
@@ -299,17 +304,17 @@ static void gc_init(char *sb, I **roots, I nroots) {
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
    CPython reports it, with status 120 */
-static int out_errno;
-static void out_flush(void) { if (fflush(stdout) && !out_errno) out_errno = errno; }
-void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
-_Noreturn void pys_fail(const char *m) { out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1); }
+static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
+static _Noreturn void kbint_exit(void);
+static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
+_Noreturn void pys_fail(const char *m) { if (io_intr) kbint_exit(); out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1); }
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
   fputc('\n', stderr);
+  kbint = !strcmp(kind->s, "KeyboardInterrupt");
   pys_finish();
-  if (!strcmp(kind->s, "KeyboardInterrupt")) { fflush(NULL); signal(SIGINT, SIG_DFL); raise(SIGINT); }   /* status 130 */
   exit(1);
 }
 void pys_exit(I c) { pys_finish(); exit((int)c); }
@@ -846,19 +851,22 @@ static const char *skip(const char *d) {
 }
 static double dbl(I v) { double x; memcpy(&x, &v, 8); return x; }
 static int printable(I c);
-static void repr_str(Buf *b, Str *s) {   /* CPython's unicode_repr: what is not printable as \xhh, \uhhhh or \Uhhhhhhhh */
-  char q = memchr(s->s, '\'', s->len) && !memchr(s->s, '"', s->len) ? '"' : '\'', t[12];
+static char rquote(const char *s, I n) { return memchr(s, '\'', n) && !memchr(s, '"', n) ? '"' : '\''; }
+static I resc(char *t, const char *s, I len, char q, I *n) {   /* the character at s as CPython's unicode_repr writes it
+                                                                 between quotes q, into t (12 bytes); *n: its bytes in s */
+  I c;
+  *n = u8char(s, len, &c);
+  if (c == q || c == '\\') { t[0] = '\\'; t[1] = (char)c; return 2; }
+  if (c == '\n' || c == '\r' || c == '\t') { t[0] = '\\'; t[1] = c == '\n' ? 'n' : c == '\r' ? 'r' : 't'; return 2; }
+  if (c < 32 || c == 127 || (c > 127 && !printable(c)))   /* not printable: \xhh, \uhhhh or \Uhhhhhhhh */
+    return snprintf(t, 12, c < 0x100 ? "\\x%02llx" : c < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)c);
+  memcpy(t, s, *n);
+  return *n;
+}
+static void repr_str(Buf *b, Str *s) {
+  char q = rquote(s->s, s->len), t[12];
   put(b, &q, 1);
-  for (I i = 0, n, c; i < s->len; i += n) {
-    n = u8char(s->s + i, s->len - i, &c);
-    if (c == q || c == '\\') { t[0] = '\\'; t[1] = (char)c; put(b, t, 2); }
-    else if (c == '\n') put(b, "\\n", 2);
-    else if (c == '\r') put(b, "\\r", 2);
-    else if (c == '\t') put(b, "\\t", 2);
-    else if (c < 32 || c == 127 || (c > 127 && !printable(c)))
-      put(b, t, snprintf(t, 12, c < 0x100 ? "\\x%02llx" : c < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)c));
-    else put(b, s->s + i, n);
-  }
+  for (I i = 0, n; i < s->len; i += n) put(b, t, resc(t, s->s + i, s->len - i, q, &n));
   put(b, &q, 1);
 }
 static const char *repr(Buf *b, I v, const char *d) {
@@ -1560,41 +1568,184 @@ Str *pys_format(I v, Str *desc, Str *spec) {
 }
 
 /* ---------- I/O and process ---------- */
-/* Text files as CPython's open() makes them, over C stdio: its modes and errors, newline
-   translation, and positions when a "+" file switches between reading and writing. A
-   file that becomes unreachable is closed by the collector (CPython closes it when its last
-   reference goes); the compiler closes a file used in one expression, open(p).read(),
-   right after that use. sys.stdin, sys.stdout and sys.stderr are files too. */
+/* Text files as CPython's open() makes them, over C stdio: its argument checks in its order,
+   newline translation, and positions when a "+" file switches between reading and writing.
+   Writes reach the OS when CPython's do: its TextIOWrapper keeps written text pending until
+   8 KiB have gathered (or a write of 8 KiB or more comes), then hands it to a BufferedWriter
+   of st_blksize bytes (buffering=, when above 1), which keeps a piece that fits below its
+   size and writes anything bigger at once; buffering=1, and a terminal, flush every write that
+   holds "\n" or "\r". Here the pending text has a buffer of its own and C stdio's buffer is
+   the BufferedWriter's. sys.stdout is such a file too, unless it is a terminal, which keeps C
+   stdio's line buffering. A file that becomes unreachable is closed by the collector (CPython
+   closes it when its last reference goes), the compiler closes a file used in one expression,
+   open(p).read(), right after that use, and the files still open at exit are closed in the
+   order they were opened; when such an implicit close fails, the error is reported as
+   CPython's finalizer reports it and the program goes on. sys.stdin, sys.stdout and
+   sys.stderr are files too. */
 typedef struct {
-  FILE *f; Str *name, *mode;
+  FILE *f; Str *name, *mode, *enc;   /* enc: encoding= as given, NULL when not given */
   I rd, wr, closed, nl, last, std;   /* nl: newline None 0, "" 1, "\n" 2, "\r" 3, "\r\n" 4; last: 1 wrote, 2 read */
   I rstart, rcons;                   /* where the current run of reads began; raw bytes it consumed */
+  I lat, emu, lb, pn, bn, bs, kept;  /* Latin-1; CPython's write layers emulated: line buffered, bytes pending
+                                        (in pb) and buffered (in stdio's buffer, of bs bytes); errno of a failed
+                                        write whose data CPython keeps (so writing it again fails again) */
+  char *pb, *buf; dev_t dev; ino_t ino;   /* the two buffers (malloc'd); the file that was opened */
 } File;
 static File std_in, std_out, std_err;
+static File **files;                   /* the open files, malloc'd: the collector does not see them */
+static I cfiles;
 static const char *errcls(int e) {     /* CPython's OSError subclass for an errno */
   return e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
     e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" :
     e == EPIPE ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" : "OSError";
 }
-static void wcheck(File *f) {          /* a write that failed raises, as in CPython; its data is dropped */
-  if (!ferror(f->f)) return;
-  int e = errno; char b[160];
-  __fpurge(f->f); clearerr(f->f);
-  snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
+static _Noreturn void ioerr(int e) {   /* a failed write, flush or close raises, as in CPython */
+  char b[160]; snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
 }
-void pys_finish(void) {                /* at exit: the collector's report; a failed flush of stdout is
-                                          reported as CPython does, status 120 */
+
+/* Ctrl-C. CPython's handler only notes the signal; KeyboardInterrupt is raised between two
+   bytecodes, and the program ends as for an uncaught exception, then by SIGINT. Here the handler
+   ends the program at once (stdout and the open files flushed, KeyboardInterrupt printed), which
+   is safe while no stdio call runs: no FILE is locked or half updated, and nothing allocates. If
+   the I/O layer is inside one (io_busy), the handler only notes the signal and returns; without
+   SA_RESTART a blocked read or write then returns early, and the layer ends the program through
+   the ordinary KeyboardInterrupt exit when it leaves (io_out). */
+static volatile sig_atomic_t io_busy;
+static int sigint_on;
+static void io_in(void) { io_busy++; atomic_signal_fence(memory_order_seq_cst); }
+static void io_out(void) { atomic_signal_fence(memory_order_seq_cst); if (!--io_busy && io_intr) kbint_exit(); }
+static void drain(File *f) { if (f->pn) fwrite(f->pb, 1, f->pn, f->f); fflush(f->f); }   /* all it holds, errors aside */
+static void on_sigint(int s) {
+  if (io_busy) { io_intr = 1; return; }
+  static const char k[] = "KeyboardInterrupt\n";
+  sigset_t m; sigemptyset(&m); sigaddset(&m, s);
+  signal(s, SIG_DFL); sigprocmask(SIG_UNBLOCK, &m, 0);   /* another Ctrl-C kills at once */
+  if (!std_out.closed) drain(&std_out);
+  if (write(2, k, sizeof k - 1) < 0) {}
+  for (I i = 0; i < nfiles; i++) if (files[i]->wr && !files[i]->closed) drain(files[i]);
+  raise(s); _exit(130);
+}
+static void leaving(void) { if (sigint_on) signal(SIGINT, SIG_DFL); sigint_on = 0; }
+static _Noreturn void die_sigint(void) {   /* CPython's exit_sigint: killed by SIGINT, or status 130 if it is blocked */
+  signal(SIGINT, SIG_DFL); raise(SIGINT); exit(130);
+}
+
+/* the write layers (see above): pn bytes pending in the text layer, bn in the buffered layer */
+static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or the errno of a failure; stdio then
+                                             drops the data, which CPython keeps when keep */
+  if (!fflush(f->f) && !ferror(f->f)) return 0;
+  int e = errno ? errno : EIO;
+  __fpurge(f->f); clearerr(f->f);
+  if (keep && !f->kept) f->kept = e;
+  return e;
+}
+static int bput(File *f, const char *a, I na, const char *b, I nb) {   /* BufferedWriter.write() of a then b */
+  I p = na + nb; int e;
+  if (p <= f->bs - f->bn && p < f->bs) { fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f); f->bn += p; return 0; }
+  if (f->bn && (e = osflush(f, 1))) return e;   /* what it holds is written first (and kept if that fails), */
+  fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f);
+  f->bn = p < f->bs ? p : 0;                   /* then a piece below its size is kept, a bigger one written */
+  return f->bn ? 0 : osflush(f, 0);
+}
+static int tflush(File *f) {           /* TextIOWrapper.flush(): the pending text, then the buffered layer */
+  I n = f->pn; int e;
+  f->pn = 0;
+  if ((e = bput(f, f->pb, n, "", 0)) || !f->bn) return e;
+  f->bn = 0;
+  return osflush(f, 1);
+}
+static int wput(File *f, const char *s, I n) {   /* TextIOWrapper.write() of n bytes: 0 or an errno */
+  int e, lf = f->lb && (memchr(s, '\n', n) || memchr(s, '\r', n));
+  I k = f->pn;
+  if (k + n < 8192 && !lf) { memcpy(f->pb + k, s, n); f->pn += n; return 0; }
+  f->pn = 0;                           /* 8 KiB pending, or a line: all of it goes on; a write */
+  if (n >= 8192 && k && (e = bput(f, f->pb, k, "", 0))) return e;   /* of 8 KiB goes after the rest */
+  if ((e = n >= 8192 && k ? bput(f, s, n, "", 0) : bput(f, f->pb, k, s, n)) || !lf || !f->bn) return e;
+  f->bn = 0;
+  return osflush(f, 1);
+}
+static int flush1(File *f) {           /* flush(): 0 or an errno */
+  if (f->kept) { __fpurge(f->f); f->pn = f->bn = 0; return f->kept; }   /* CPython writes the kept data first, which fails again */
+  return f->emu ? tflush(f) : osflush(f, 0);
+}
+static int shut(File *f) {             /* close(): a flush, then the file is closed even if it failed; 0 or an errno */
+  int e = flush1(f);
+  f->closed = 1; f->kept = 0;
+  if (f->std) return e;                /* sys.stdout.close(): the stream stays open underneath */
+  if (fclose(f->f) && !e) e = errno;
+  free(f->pb); f->pb = f->buf = 0;
+  return e;
+}
+
+/* an implicit close that failed: CPython's finalizer reports it and the program goes on */
+static const char *defenc(void) {      /* the encoding CPython names for a file opened without encoding=: "utf-8" in
+                                          its UTF-8 mode, which the C and POSIX locales turn on, else the locale's */
+  static char e[40];
+  if (!*e) {
+    const char *l = setlocale(LC_CTYPE, "");
+    snprintf(e, sizeof e, "%s", l && strcmp(l, "C") && strcmp(l, "POSIX") ? nl_langinfo(CODESET) : "utf-8");
+    setlocale(LC_CTYPE, "C");
+  }
+  return e;
+}
+typedef struct { char b[256]; I n; } EBuf;   /* stderr text gathered on the stack: a report may come from inside a
+                                                collection, where nothing may be allocated */
+static void eput(EBuf *o, const char *s, I n) {
+  for (I k; n > 0; s += k, n -= k) {
+    if (o->n == (I)sizeof o->b) { fwrite(o->b, 1, o->n, stderr); o->n = 0; }
+    k = (I)sizeof o->b - o->n < n ? (I)sizeof o->b - o->n : n;
+    memcpy(o->b + o->n, s, k); o->n += k;
+  }
+}
+static void erepr(EBuf *o, const char *k, const char *s, I n) {   /* k, then repr() of the string s[0, n) */
+  char q = rquote(s, n), t[12];
+  eput(o, k, strlen(k)); eput(o, &q, 1);
+  for (I i = 0, m; i < n; i += m) eput(o, t, resc(t, s + i, n - i, q, &m));
+  eput(o, &q, 1);
+}
+static void report(File *f, int e) {
+  if (io_intr) return;                 /* the error is the EINTR of a Ctrl-C, which ends the program */
+  EBuf o; char t[160]; const char *d = defenc();
+  o.n = 0;
+  erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
+  erepr(&o, " mode=", f->mode->s, f->mode->len);
+  erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  int n = snprintf(t, sizeof t, ">\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
+  eput(&o, t, n < (int)sizeof t ? n : (int)sizeof t - 1);
+  fwrite(o.b, 1, o.n, stderr);
+}
+
+static void out_flush(void) {          /* CPython's flush_io() when the program's code ends, before any traceback:
+                                          a failure is ignored, and fails again at exit if CPython kept the data */
+  leaving();
+  if (!std_out.closed) flush1(&std_out);
+}
+static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call: an uncaught KeyboardInterrupt */
+  io_intr = 0;
+  clearerr(stdout);                    /* the call it cut short failed with EINTR */
+  for (I i = 0; i < nfiles; i++) if (!files[i]->closed) clearerr(files[i]->f);
+  out_flush(); fputs("KeyboardInterrupt\n", stderr);
+  kbint = 1; pys_finish(); exit(130);
+}
+void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
+                                          out_flush), the collector's report, stdout flushed in finalization (a
+                                          failure is reported, status 120), the open files closed in the order they
+                                          were opened (a failure is reported), and an uncaught KeyboardInterrupt's
+                                          end by SIGINT */
   static int done;
   if (done++) return;
+  out_flush();
   if (gc_stats) gc_report();
-  if (!fflush(stdout) && !ferror(stdout) && !out_errno) return;
-  int e = out_errno ? out_errno : errno;
-  __fpurge(stdout); clearerr(stdout);
-  fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
-  fflush(NULL); _exit(120);
+  int bad = 0, e;
+  if (!std_out.closed && (e = flush1(&std_out))) {
+    fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
+    bad = 1;
+  }
+  for (I i = 0; i < nfiles; i++) if (!files[i]->closed && (e = shut(files[i]))) report(files[i], e);
+  nfiles = 0;
+  if (kbint) die_sigint();
+  if (bad) { fflush(NULL); _exit(120); }
 }
-static File **files;                   /* the open files, malloc'd: the collector does not see them */
-static I cfiles;
 static int gc_marked(const void *p) {
   uintptr_t w = (uintptr_t)p; Seg **m, *s;
   if (w - gc_lo >= gc_hi - gc_lo || !(m = pmap[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) return 1;
@@ -1603,16 +1754,28 @@ static int gc_marked(const void *p) {
 }
 static void files_sweep(void) {        /* after marking: close the open files nothing refers to */
   I j = 0;
+  io_in();
   for (I i = 0; i < nfiles; i++) {
-    File *f = files[i];
+    File *f = files[i]; int e;
     if (f->closed) continue;
-    if (!gc_marked(f)) { fclose(f->f); f->closed = 1; continue; }
+    if (!gc_marked(f)) { if ((e = shut(f))) report(f, e); continue; }
     files[j++] = f;
   }
   nfiles = j;
+  io_out();
 }
 static _Noreturn void oserr(const char *path);
 static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
+static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+  if (f->closed) closed_err();
+  int e = f->emu ? wput(f, s, n) : (fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  if (e) ioerr(e);
+}
+static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text, then bs bytes buffered */
+  if (!(f->pb = malloc(8192 + bs))) oom();
+  f->buf = f->pb + 8192; f->bs = bs; f->emu = 1;
+  setvbuf(f->f, f->buf, _IOFBF, bs);
+}
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
@@ -1621,24 +1784,58 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  struct stat st;
+  if (!isatty(1) && !fstat(1, &st)) setbuf1(&std_out, st.st_blksize > 1 ? st.st_blksize : 8192);
   signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal */
+  struct sigaction sa;                 /* and Ctrl-C is KeyboardInterrupt, unless SIGINT is ignored */
+  if (!sigaction(SIGINT, 0, &sa) && sa.sa_handler != SIG_IGN) {
+    memset(&sa, 0, sizeof sa); sa.sa_handler = on_sigint; sigemptyset(&sa.sa_mask);
+    sigint_on = !sigaction(SIGINT, &sa, 0);
+  }
 }
 List *pys_argv(void) { return args; }
 File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
-void pys_write(Str *s, I fd) { File *f = fd == 2 ? &std_err : &std_out; if (f->closed) closed_err(); fwrite(s->s, 1, s->len, f->f); wcheck(f); }
-void pys_flush(void) { fflush(stdout); }
-Str *pys_input(Str *prompt) {
+void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+void pys_file_flush(File *f);
+void pys_flush(void) { pys_file_flush(&std_out); }
+Str *pys_input(Str *prompt) {          /* CPython: the prompt, if given, is written to sys.stdout, which is then
+                                          flushed (a failure is ignored); then a line from sys.stdin */
   char *line = 0; size_t cap = 0;
-  pys_write(prompt, 1); fflush(stdout);
+  io_in();
+  if (prompt) put1(&std_out, prompt->s, prompt->len);
+  if (!std_out.closed && !std_out.kept) flush1(&std_out);
   if (std_in.closed) closed_err();
+  if (feof(stdin)) clearerr(stdin);    /* CPython reads again after the end (a terminal goes on after Ctrl-D) */
   ssize_t n = getline(&line, &cap, stdin);
-  if (n < 0) pys_fail("EOFError: EOF when reading a line");
+  io_out();
+  if (n < 0) { free(line); pys_fail("EOFError: EOF when reading a line"); }
   if (n && line[n - 1] == '\n') n--;
   Str *s = pys_str(line, n); free(line); return s;
 }
 static int nul(Str *s) { return memchr(s->s, 0, s->len) != 0; }
-File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {
-  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0;   /* CPython's checks, in its order */
+static int codec(Str *e) {             /* encoding= as CPython's codec lookup finds it: 1 UTF-8, 2 Latin-1, 0 another.
+                                          The name is normalized (lowercase; a run of characters other than ASCII
+                                          letters, digits and "." is one "_" between them), then it must be an alias,
+                                          or one with "." read as "_", or the codec's module name */
+  static const char *alias[2] = {" utf8 u8 utf utf8_ucs2 utf8_ucs4 cp65001 ",
+    " latin1 latin l1 iso8859_1 iso_8859_1 iso_8859_1_1987 iso_ir_100 iso8859 8859 cp819 ibm819 csisolatin1 "},
+    *module[2] = {" utf_8 ", " latin_1 "};
+  char b[48] = " "; int n = 1, punct = 0, dot = 0;
+  for (I i = 0; i < e->len; i++) {
+    unsigned char c = e->s[i];
+    if (!isalnum(c) && c != '.') { punct = 1; continue; }
+    if (n > 40) return 0;
+    if (punct && n > 1) b[n++] = '_';
+    punct = 0; dot |= c == '.'; b[n++] = (char)tolower(c);
+  }
+  b[n++] = ' '; b[n] = 0;
+  if (dot) for (char *p = b; *p; p++) if (*p == '.') *p = '_';
+  for (int k = 0; k < 2; k++) if (strstr(alias[k], b) || (!dot && !strcmp(b, module[k]))) return k + 1;
+  return 0;
+}
+File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
+  if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
   for (I i = 0; i < mode->len; i++) {
     char c = mode->s[i];
     int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
@@ -1648,45 +1845,53 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {
   if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
   if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
   if (b) pys_fail("NotImplementedError: binary mode is not supported (no bytes type)");
-  if (!buffering) pys_fail("ValueError: can't have unbuffered text I/O");
   if (nul(path)) pys_fail("ValueError: embedded null byte");
   if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
-  for (I i = 0; i < nfiles && !gc_off; i++)   /* a writer to this path that nothing refers to any more has */
-    if (files[i]->wr && !files[i]->closed && pys_str_eq(files[i]->name, path)) { collect(); break; }   /* been closed in CPython */
+  io_in();
+  struct stat st;
+  if (nfiles && !gc_off && !stat(path->s, &st))   /* a writer to this file that nothing refers to any more has */
+    for (I i = 0; i < nfiles; i++)               /* been closed by CPython: a collection closes it first */
+      if (files[i]->wr && !files[i]->closed && files[i]->dev == st.st_dev && files[i]->ino == st.st_ino) { collect(); break; }
   char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
   if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
   if (!f) oserr(path->s);
-  struct stat st;
-  if (!fstat(fileno(f), &st) && S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
-  if (a) fseek(f, 0, SEEK_END);        /* CPython starts an append file at its end */
-  if (enc) {                           /* checked once the file is open, as CPython does */
-    static const char *ok = " utf8 u8 utf latin1 latin l1 iso88591 iso8859 8859 cp819 ibm819 csisolatin1 iso885911987 isoir100 ";
-    char e[24] = " "; I n = 1;
-    for (I i = 0; i < enc->len && n < 22; i++) if (enc->s[i] != '-' && enc->s[i] != '_') e[n++] = tolower((unsigned char)enc->s[i]);
-    e[n++] = ' '; e[n] = 0;
-    if (enc->len > 20 || nul(enc) || !strstr(ok, e)) {
-      fclose(f); failf("NotImplementedError: only UTF-8 and Latin-1 files are supported, not encoding '%s'", enc->s);
-    }
-  }
+  if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
+  else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  if (!buffering) { fclose(f); pys_fail("ValueError: can't have unbuffered text I/O"); }   /* the file is created by now */
   I k = !nl ? 0 : !nl->len ? 1 : !strcmp(nl->s, "\n") ? 2 : !strcmp(nl->s, "\r") ? 3 : !strcmp(nl->s, "\r\n") ? 4 : -1;
-  if (k < 0 || (nl && nul(nl))) { fclose(f); failf("ValueError: illegal newline value: %s", nl->s); }
+  if (k < 0) { fclose(f); failf("ValueError: illegal newline value: %s", nl->s); }
+  if (enc && !(lat = codec(enc))) {      /* checked once the file is open, as CPython does */
+    fclose(f); failf("NotImplementedError: only UTF-8 and Latin-1 files are supported, not encoding '%s'", enc->s);
+  }
   File *o = pys_alloc(sizeof(File));
-  o->f = f; o->name = path; o->mode = mode; o->rd = r || plus; o->wr = !r || plus; o->nl = k;
+  o->f = f; o->name = path; o->mode = mode; o->enc = enc; o->rd = r || plus; o->wr = !r || plus; o->nl = k;
+  o->lat = lat == 2; o->dev = st.st_dev; o->ino = st.st_ino;
+  if (o->wr) {                         /* buffering=1, or -1 on a terminal: line buffered */
+    o->lb = buffering == 1 || (buffering < 0 && isatty(fileno(f)));
+    setbuf1(o, buffering > 1 ? buffering : st.st_blksize > 1 ? st.st_blksize : 8192);
+  }
+  if (a) fseek(f, 0, SEEK_END);        /* CPython starts an append file at its end */
   o->rstart = a ? ftell(f) : 0;
   if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
   files[nfiles++] = o;
+  io_out();
   return o;
 }
 static void use(File *f, int rd) {     /* check a read (rd) or write, and reposition between them */
   if (f->closed) closed_err();
   if (rd ? !f->rd : !f->wr) pys_fail(rd ? "io.UnsupportedOperation: not readable" : "io.UnsupportedOperation: not writable");
+  if (rd && feof(f->f)) clearerr(f->f);   /* CPython reads again after the end: the file may have grown */
   if (f->std || f->last == (rd ? 2 : 1)) return;
-  if (rd) {                            /* after writing: read from where the writes ended */
-    fflush(f->f); f->rstart = ftell(f->f); f->rcons = 0;
-  } else if (f->last == 2) {           /* after reading: CPython's text layer read ahead in 8 KiB chunks */
-    I end = f->rstart + (f->rcons + 8191) / 8192 * 8192, size;
+  if (rd) {                            /* after writing: what was written reaches the file, and reads start there */
+    int e = flush1(f);
+    if (e) ioerr(e);
+    f->rstart = ftell(f->f); f->rcons = 0;
+  } else if (f->last == 2) {           /* after reading: CPython's text layer read ahead in 8 KiB chunks; with */
+    I end = f->rstart + (f->rcons + 8191) / 8192 * 8192, size;   /* newline None or "", a chunk that ends in */
+    char c;                            /* "\r" pulls in the next one, to see whether "\n" follows */
+    if (f->nl < 2 && f->rcons && f->rcons % 8192 == 0 && pread(fileno(f->f), &c, 1, end - 1) == 1 && c == '\r') end += 8192;
     fseek(f->f, 0, SEEK_END); size = ftell(f->f);
     fseek(f->f, end < size ? end : size, SEEK_SET);
   }
@@ -1698,7 +1903,7 @@ static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as 
   if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
   return c;
 }
-Str *pys_file_read(File *f, I n) {     /* n < 0: to the end; else n characters */
+static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (in a Latin-1 file, n bytes) */
   use(f, 1); Buf b = {0};
   if (n < 0) {
     char t[1 << 16]; size_t k;
@@ -1711,14 +1916,15 @@ Str *pys_file_read(File *f, I n) {     /* n < 0: to the end; else n characters *
   for (I k = 0;;) {
     int c = get(f);
     if (c == EOF) break;
-    if ((c & 0xC0) != 0x80 && n >= 0 && k++ == n) { unget(f, c); break; }   /* the next character starts */
+    if ((f->lat || (c & 0xC0) != 0x80) && k++ == n) { unget(f, c); break; }   /* the next character starts */
     char ch = getnl(f, c); put(&b, &ch, 1);
   }
   return done(&b);
 }
+Str *pys_file_read(File *f, I n) { io_in(); Str *s = read1(f, n); io_out(); return s; }
 Str *pys_file_readline(File *f) {      /* a line ends as newline= says: None "\n" after translation; "" any of
                                           "\n" "\r" "\r\n"; otherwise exactly that string */
-  use(f, 1); Buf b = {0}; int c;
+  io_in(); use(f, 1); Buf b = {0}; int c;
   while ((c = get(f)) != EOF) {
     char ch = getnl(f, c); put(&b, &ch, 1);
     if (ch == '\n' && f->nl != 3 && f->nl != 4) break;
@@ -1730,6 +1936,7 @@ Str *pys_file_readline(File *f) {      /* a line ends as newline= says: None "\n
       if (f->nl == 1) break;
     }
   }
+  io_out();
   return done(&b);
 }
 List *pys_file_readlines(File *f) {
@@ -1738,19 +1945,35 @@ List *pys_file_readlines(File *f) {
   return l;
 }
 I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as that */
-  use(f, 0);
-  if (f->nl < 3) fwrite(s->s, 1, s->len, f->f);
-  else for (I i = 0; i < s->len; i++) if (s->s[i] != '\n') putc(s->s[i], f->f); else fputs(f->nl == 3 ? "\r" : "\r\n", f->f);
-  wcheck(f);
+  io_in(); use(f, 0);
+  const char *p = s->s, *q; I n = s->len;
+  if (f->nl >= 3 && memchr(p, '\n', n)) {
+    Buf b = {0};
+    for (I i = 0; i < n; i = q - p + 1) {
+      if (!(q = memchr(p + i, '\n', n - i))) q = p + n;
+      put(&b, p + i, q - p - i);
+      if (q < p + n) put(&b, "\r\n", f->nl == 3 ? 1 : 2);
+    }
+    p = b.p; n = b.n;
+  }
+  put1(f, p, n);
+  io_out();
   return s->len;
 }
 void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
-void pys_file_flush(File *f) { if (f->closed) closed_err(); fflush(f->f); wcheck(f); }
+void pys_file_flush(File *f) {
+  if (f->closed) closed_err();
+  io_in(); int e = flush1(f); io_out();
+  if (e) ioerr(e);
+}
 void pys_file_close(File *f) {
   if (f->closed) return;
-  f->closed = 1;
-  if (f->std) { fflush(f->f); return; }   /* sys.stdout.close(): the stream stays open underneath */
-  if (fclose(f->f)) { char b[160]; snprintf(b, sizeof b, "OSError: [Errno %d] %s", errno, strerror(errno)); pys_fail(b); }
+  io_in(); int e = shut(f); io_out();
+  if (e) ioerr(e);
+}
+void pys_file_drop(File *f) {          /* the compiler's close of a file used in one expression: as CPython's finalizer */
+  if (f->closed) return;
+  io_in(); int e = shut(f); if (e) report(f, e); io_out();
 }
 I pys_file_closed(File *f) { return f->closed; }
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
