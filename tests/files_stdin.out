@@ -1,0 +1,9 @@
+child
+first: one
+line: 'two\r\n'
+1 'three\n'
+2 'four\n'
+rest: 'five\nsix' False
+['a1', 'a2', 'extra'] True
+before
+[exit 0]

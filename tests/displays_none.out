@@ -1,0 +1,6 @@
+None (None, 1)
+[None, P]
+True
+{'a': None, 'b': P}
+(None, 2)
+[exit 0]

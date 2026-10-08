@@ -1,0 +1,47 @@
+# Full verification on every push and pull request: bootstrap fixed point, differential tests with
+# the CPython-hosted and native compilers, the Python-free native stage, the UBSan stage and the
+# benchmarks (see tests/verify.sh). build/verification.json is uploaded even when a step fails.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: make verify (Linux x86-64, LLVM 18, Python 3.13)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install the LLVM 18 toolchain
+        # clang-18: clang; llvm-18: opt, llvm-link, llvm-as; llvm-18-runtime: lli;
+        # libclang-rt-18-dev: the UBSan runtime for the sanitizer stage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime libclang-rt-18-dev
+          for t in clang opt lli llvm-link llvm-as; do "$PYSTACHY_LLVM/$t" --version | head -1; done
+          python3 --version
+
+      - name: make verify
+        run: make verify
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification
+          path: |
+            build/verification.json
+            build/verify/*.log
+          if-no-files-found: warn

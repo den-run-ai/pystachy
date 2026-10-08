@@ -1,0 +1,5 @@
+False False
+[(Task(prio=1, name='write'), 2), (Task(prio=1, name='read'), 1)]
+True True
+[(1, P(x=1)), (1, P(x=1))]
+[exit 0]

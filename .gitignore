@@ -1,0 +1,6 @@
+build/
+/pystachy
+__pycache__/
+*.ll
+*.bc
+.claude/

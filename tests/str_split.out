@@ -1,0 +1,4 @@
+['a', 'b,c'] ['a', 'b', 'c', 'd'] ['', '', 'a', 'b', '', 'c', '', ''] ['a,b'] ['x']
+'key' 'value = more' ['a', 'b', 'c'] ['a', 'b::c']
+['one', 'two', 'three'] one two three
+[exit 0]

@@ -1,0 +1,1 @@
+ValueError: Must have exactly one of create/read/write/append mode and at most one plus

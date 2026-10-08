@@ -1,0 +1,16 @@
+{'one': 1, 'two': 22, 'three': 3, 'four': 4} 4 1 True False -1 1
+one two three four 
+one 1 | two 22 | three 3 | four 4 | 
+['one', 'two', 'three', 'four'] [1, 22, 3, 4] [('one', 1), ('two', 22), ('three', 3), ('four', 4)]
+1 {'two': 22, 'three': 3, 'four': 4}
+{'two': 22, 'four': 4, 'x': 10} 10 10 {'two': 22, 'four': 4, 'x': 10}
+3 4 False True True
+{-35: 25, -28: 16, -21: 9, -14: 4, -7: 1, 0: 0, 7: 1, 14: 4, 21: 9, 28: 16, 35: 25} 25 0 True False
+505 999 25 False [-35, -28, -21, -14, -7]
+23416728348467685 79
+{'a': ['apple', 'avocado', 'apricot'], 'b': ['banana', 'blueberry'], 'c': ['cherry']}
+{1: 'a', 2: 'b'} {1: 1.5, 2: 2.5} {'k': [1, 2]} {'t': True}
+{'x': 15}
+{} 0 False True
+{'outer': {'inner': 1, 'inner2': 2}} 2
+[exit 0]

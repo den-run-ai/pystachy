@@ -1,0 +1,19 @@
+0 131474
+pop 'OLD pop'
+0 131474
+pop0 'OLD pop0'
+pop1 'OLD pop1'
+0 131474
+del0 'OLD del0'
+del1 'OLD del1'
+0 131474
+remove0 'OLD remove0'
+remove1 'OLD remove1'
+0 131474
+clear0 'OLD clear0'
+clear1 'OLD clear1'
+clear2 'OLD clear2'
+0 131474
+imul0 'OLD imul0'
+imul1 'OLD imul1'
+[exit 0]

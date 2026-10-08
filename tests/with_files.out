@@ -1,0 +1,6 @@
+True ['line 1', 'line 2', '']
+True True 'LINE 1\nLINE 2\n'
+line 1
+['0!', '1'] True
+2!
+[exit 0]

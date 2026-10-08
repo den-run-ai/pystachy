@@ -1,0 +1,3 @@
+Node(name='kid', parent=Node(name='root', parent=None, children=[...]), children=[])
+Node(name='root', parent=None, children=[Node(name='kid', parent=..., children=[])])
+[exit 0]

@@ -1,0 +1,5 @@
+4 103 4 4 neg zero small small
+5
+one-line if
+42
+[exit 0]
