@@ -2731,8 +2731,13 @@ class Flow:
         # (not by copying defd): the key, and whether it was in defd before
         self.log: list[str] = []
         self.was: list[bool] = []
-        self.brks: list[dict[str, bool]] = []  # the states at the breaks of the innermost loop (see since)
-        self.bmark = 0  # the length of the log where that loop began
+        # the innermost loop: the length of the log where it began and, if it is a while True
+        # (left only through break), what the states at its breaks so far have in common (see fold)
+        self.bmark = 0
+        self.btrue = False
+        self.bjoin: dict[str, bool] = {}
+        self.bany = False
+        self.bscan = -1  # the length of the log when the last break was folded (-1: an undo went below it)
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -2762,6 +2767,8 @@ class Flow:
 
     def undo(self, mark: int) -> None:
         # back to the state when the log had mark entries
+        if mark < self.bscan:
+            self.bscan = -1
         while len(self.log) > mark:
             k = self.log.pop()
             if self.was.pop():
@@ -2776,6 +2783,28 @@ class Flow:
         for i in range(mark, len(self.log)):
             out[self.log[i]] = self.log[i] in self.defd
         return out
+
+    def fold(self) -> None:
+        # a break leaves the innermost loop, a while True, in the state here: bjoin keeps what
+        # the states at its breaks have in common, as the keys changed since bmark with whether
+        # each is set (the others as at bmark). If the log still holds what it held at the last
+        # break, only the keys changed since need a look: the others are as they were there
+        whole = not self.bany or self.bscan < 0
+        out: dict[str, bool] = {} if whole else self.bjoin
+        seen: dict[str, bool] = {}
+        for i in range(self.bmark if whole else self.bscan, len(self.log)):
+            k = self.log[i]
+            if k not in seen:
+                # (was[i] is k's state at bmark, or at the last break if bjoin does not have it)
+                seen[k] = True
+                out[k] = k in self.defd and (not self.bany or (self.bjoin[k] if k in self.bjoin else self.was[i]))
+        if whole and self.bany:
+            for k in self.bjoin:
+                if k not in out:
+                    out[k] = self.bjoin[k] and k in self.defd
+        self.bjoin = out
+        self.bany = True
+        self.bscan = len(self.log)
 
     def join(self, other: dict[str, bool], mark: int) -> None:
         # another path reaches here, in the state since(mark) gave for it: a name stays assigned
@@ -4437,28 +4466,44 @@ class Gen:
             for nm in dels:
                 fl.drop(nm)  # (a del in the body may run before a read in the next pass)
             mark = len(fl.log)
-            outer = fl.brks
             bmark = fl.bmark
-            fl.brks = []
+            btrue = fl.btrue
+            bjoin = fl.bjoin
+            bany = fl.bany
+            bscan = fl.bscan
             fl.bmark = mark
+            fl.btrue = k == "while" and n.kids[0].kind == "True"
+            fl.bjoin = {}
+            fl.bany = False
+            fl.bscan = -1
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
-            brks = fl.brks
-            fl.brks = outer
+            exits = fl.bjoin
+            broke = fl.bany
             fl.bmark = bmark
+            fl.btrue = btrue
+            fl.bjoin = bjoin
+            fl.bany = bany
+            fl.bscan = bscan
             fl.undo(mark)
             if n.kids[-1].s == "else":
                 # (after the loop only what was assigned before it is surely assigned)
                 self.fl_stmts(fl, n.kids[-1].kids)
                 fl.undo(mark)
             if k == "while" and n.kids[0].kind == "True":
-                # while True is left only through break
-                fl.put(" dead")
-                for b in brks:
-                    fl.join(b, mark)
+                # while True is left only through break: in what the states at its breaks have
+                # in common
+                if not broke:
+                    fl.put(" dead")
+                for x in exits:
+                    if exits[x]:
+                        fl.put(x)
+                    else:
+                        fl.drop(x)
         elif k == "break":
-            fl.brks.append(fl.since(fl.bmark))
+            if fl.btrue and " dead" not in fl.defd:
+                fl.fold()
             fl.put(" dead")
         elif k == "continue" or k == "return" or k == "raise":
             for c in n.kids:
