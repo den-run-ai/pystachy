@@ -487,8 +487,9 @@ class Parser:
         if k == "def":
             out.append(self.funcdef())
         elif k == "class":
-            # class C(bases): a class with bases other than object is a "subclass" node (the class,
-            # then the bases), which code generation rejects where it needs the class
+            # class C(bases): a class with bases is a "subclass" node (the class, then the bases),
+            # which code generation rejects where it needs the class; the loader makes
+            # class C(object) a plain class where object is the builtin
             self.p += 1
             name = self.expect("id").text
             bases: list[Node] = []
@@ -508,7 +509,7 @@ class Parser:
                         break
             self.expect(":")
             c = mk("class", name, line, [self.scope(False)])
-            if len(bases) == 0 or (len(bases) == 1 and bases[0].kind == "name" and bases[0].s == "object"):
+            if len(bases) == 0:
                 out.append(c)
             else:
                 out.append(mk("subclass", name, line, [c] + bases))
@@ -1677,7 +1678,7 @@ class Loader:
                 out.extend(b.kids)
             else:
                 out.append(st)
-                for kid in st.kids:
+                for kid in st.kids[0].kids if st.kind == "subclass" else st.kids:
                     if kid.kind == "block":
                         self.simplify(m, kid)
         blk.kids = out
@@ -1757,7 +1758,7 @@ class Loader:
                 if st.kind == "def":
                     self.curdef = str(st.line)
                     self.fks[self.curdef] = {}
-                for kid in st.kids:
+                for kid in st.kids[0].kids if st.kind == "subclass" else st.kids:
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
                 self.curdef = saved
@@ -2010,6 +2011,12 @@ class Loader:
 
     def qstmts(self, m: Mod, body: list[Node], loc: dict[str, bool], cls: bool) -> None:
         for st in body:
+            if st.kind == "subclass" and len(st.kids) == 2 and st.kids[1].kind == "name" and st.kids[1].s == "object" and "object" not in loc:
+                ob = self.kind(m, "object")
+                if ob == "" or ob == "b:builtins.object":
+                    # class C(object) where object is the builtin: a class without bases
+                    st.kind = "class"
+                    st.kids = st.kids[0].kids
             k = st.kind
             if k == "def":
                 if not cls:
@@ -3930,6 +3937,8 @@ class Gen:
                 why = ""
                 if st.kind == "subclass":
                     why = UNSUPPORTED["subclass"] if st.kids[1].kind != "typeparams" else "generic classes (class C[T]) are not supported"
+                    if len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
+                        why += " (the module binds the name 'object', so it is not the builtin object here)"
                 elif st.kind == "class" and m.name != "":
                     why = self.class_problem(st)
                 if why != "" and m.name == "":
