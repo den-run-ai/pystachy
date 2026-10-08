@@ -2584,6 +2584,22 @@ class Gen:
         if name == "SystemExit":
             self.exit_(vals)
             return
+        if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
+            # CPython's traceback takes str(e), which is str(msg), then prints "E: " and str(msg or
+            # "<no detail available>"), the ": " even before an empty str(msg)
+            if len(vals) == 1:
+                self.to_str(vals[0])
+                l1 = self.label()
+                l2 = self.label()
+                self.cbr(self.truth(vals[0]), l1, l2)
+                self.place(l1)
+                line = self.rt("pys_str_add", "ptr", [f"ptr {self.sconst(name + ': ')}", f"ptr {self.to_str(vals[0]).v}"])
+                self.rt("pys_raise", "void", [f"ptr {line}", f"ptr {self.sconst('')}"])
+                self.emit("unreachable")
+                self.term = True
+                self.place(l2)
+            self.raise_(name, self.sconst("<no detail available>"))
+            return
         if len(vals) > 1:
             msg = self.repr(self.tuple_(vals)).v
         elif len(vals) == 1:
