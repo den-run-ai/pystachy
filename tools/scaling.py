@@ -10,11 +10,15 @@ Each shape is a family of programs whose size grows with N:
   top      N if statements in module code, each assigning a new global variable
   classes  N classes, each with an __init__ that sets two fields and a method
   modules  N imported modules, each with three functions and three globals
+  fields   one class whose __init__ sets N fields and a method that reads them all
+  calls    an imported module of N functions, each calling the one before it
+  imports  N modules, each importing the one before it (the program imports them in order)
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
 the compiler's source lines executed (counted with sys.monitoring) in all ("lines") and inside
 Gen.flow_program, the definite-assignment pass ("flow"): counts that do not depend on the machine.
+A compiler that fails shows "failed", and its last line of stderr follows the table.
 --keep DIR writes the generated programs to DIR/SHAPE-N/ instead of a temporary directory.
 """
 import json
@@ -86,7 +90,29 @@ def modules(n):
     return out
 
 
-SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules}
+def fields(n):
+    src = ["class K:", "    def __init__(self, a: int):"] + [f"        self.f{i} = a + {i}" for i in range(n)]
+    src += ["    def total(self) -> int:", "        t = 0"] + [f"        t += self.f{i}" for i in range(n)]
+    src += ["        return t", "print(K(1).total())"]
+    return {"main.py": src}
+
+
+def calls(n):
+    src = ["def f0(x: int) -> int:", "    return x"]
+    for i in range(1, n):
+        src += [f"def f{i}(x: int) -> int:", f"    return f{i - 1}(x) + 1"]
+    return {"main.py": ["import lib", f"print(lib.f{n - 1}(1))"], "lib.py": src}
+
+
+def imports(n):
+    out = {"main.py": [f"import m{i}" for i in range(n)] + [f"print(m{n - 1}.f(1))"]}
+    for i in range(n):
+        out[f"m{i}.py"] = ([f"import m{i - 1}"] if i > 0 else []) + [f"k = {i}", "def f(x: int) -> int:", "    return x + k"]
+    return out
+
+
+SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
+          "fields": fields, "calls": calls, "imports": imports}
 
 
 def write(d, files):
@@ -97,14 +123,20 @@ def write(d, files):
     return os.path.join(d, "main.py")
 
 
+def failed(p):
+    lines = p.stderr.strip().splitlines()
+    return lines[-1] if lines else f"exit status {p.returncode}"
+
+
 def timed(cmd, prog, runs):
+    # the median time in seconds, or why the compiler failed
     ts = []
     for _ in range(runs):
         t = time.perf_counter()
         p = subprocess.run(cmd + ["ir", prog, "-o", os.devnull], capture_output=True, text=True)
         ts.append(time.perf_counter() - t)
         if p.returncode != 0:
-            sys.exit(f"{' '.join(cmd)} failed on {prog}: {p.stderr.strip()}")
+            return failed(p)
     return statistics.median(ts)
 
 
@@ -115,7 +147,7 @@ def ops(cmd, prog):
         p = subprocess.run([sys.executable, os.path.abspath(__file__), "--count", f.name, script, "ir", prog, "-o", os.devnull],
                            capture_output=True, text=True)
         if p.returncode != 0:
-            sys.exit(f"counting {script} failed on {prog}: {p.stderr.strip()}")
+            return failed(p)
         return json.load(open(f.name))
 
 
@@ -206,10 +238,11 @@ def main():
     head = "| shape | N |"
     rule = "| --- | ---: |"
     for label, _, isops in cols:
-        head += f" {label} lines | flow | x |" if isops else f" {label} s | x |"
-        rule += " ---: | ---: | ---: |" if isops else " ---: | ---: |"
+        head += f" {label} lines | x | flow | x |" if isops else f" {label} s | x |"
+        rule += " ---: | ---: | ---: | ---: |" if isops else " ---: | ---: |"
     print(head)
     print(rule, flush=True)
+    errors = {}
     with tempfile.TemporaryDirectory() as tmp:
         for s in shapes:
             prev = {}
@@ -217,17 +250,20 @@ def main():
                 prog = write(os.path.join(keep or tmp, f"{s}-{n}"), SHAPES[s](n))
                 row = f"| {s} | {n} |"
                 for k, (label, cmd, isops) in enumerate(cols):
-                    if isops:
-                        c = ops(cmd, prog)
-                        grow = f"{c['flow'] / prev[k]:.1f}" if k in prev and prev[k] > 0 else ""
-                        row += f" {c['lines']} | {c['flow']} | {grow} |"
-                        prev[k] = c["flow"]
-                    else:
-                        t = timed(cmd, prog, runs)
-                        grow = f"{t / prev[k]:.1f}" if k in prev else ""
-                        row += f" {t:.3f} | {grow} |"
-                        prev[k] = t
+                    r = ops(cmd, prog) if isops else timed(cmd, prog, runs)
+                    if isinstance(r, str):
+                        errors[(label, s)] = f"{label} on {s} {n}: {r}"
+                        row += " failed | | | |" if isops else " failed | |"
+                        prev.pop(k, None)
+                        continue
+                    vals = [r["lines"], r["flow"]] if isops else [r]
+                    for j, v in enumerate(vals):
+                        grow = f"{v / prev[k][j]:.1f}" if k in prev and prev[k][j] > 0 else ""
+                        row += f" {v} | {grow} |" if isops else f" {v:.3f} | {grow} |"
+                    prev[k] = vals
                 print(row, flush=True)
+    for e in errors.values():
+        print(e)
 
 
 if __name__ == "__main__":
