@@ -213,7 +213,10 @@ class Lexer:
                     d0 = d0 >> 1
                 bits += (len(h) - 1) * (4 if base == 16 else (3 if base == 8 else 1))
             if bits > 64 or (bits == 64 and (h[1:].strip("0") != "" or int(h[0], 16) & (int(h[0], 16) - 1) != 0)):
-                fail("integer literal does not fit in 64 bits", self.line)
+                # Gen rejects the literal where it compiles it: "integer literal does not fit in 64 bits"
+                self.add("int", "99999999999999999999")
+                self.i = j
+                return
             # 2**63 is valid only negated; Gen checks that, as for decimal literals
             self.add("int", "9223372036854775808" if bits == 64 else str(int("0" + h, base)))
             self.i = j
@@ -385,7 +388,7 @@ for _k in "id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None Tr
     STARTS[_k] = True
 CMPOPS: dict[str, bool] = {"<": True, ">": True, "==": True, ">=": True, "<=": True, "!=": True, "in": True}
 AUGOPS: dict[str, bool] = {}
-for _k in "+= -= *= /= //= %= **= &= |= ^= <<= >>=".split():
+for _k in "+= -= *= /= //= %= **= &= |= ^= <<= >>= @=".split():
     AUGOPS[_k] = True
 BINOPS: list[list[str]] = [["|"], ["^"], ["&"], ["<<", ">>"], ["+", "-"], ["*", "/", "//", "%", "@"]]
 
@@ -544,14 +547,68 @@ class Parser:
                     kids.append(b)
             out.append(mk("try", "", line, kids))
         elif k == "async":
-            fail("'async' statements are not supported", line)
+            # async def, async with, async for: kept as an "async" node that code generation rejects
+            self.p += 1
+            inner: list[Node] = []
+            self.stmt(inner)
+            if inner[0].kind == "def":
+                inner[0].kids.append(mk("deco", "async", line, []))
+                out.append(inner[0])
+            else:
+                out.append(mk("async", "", line, inner))
+        elif k == "id" and self.toks[self.p].text == "match" and self.soft_match():
+            # match subject: case pattern [if guard]: ... -- kept as a "match" node (patterns skipped)
+            self.p += 1
+            n = mk("match", "", line, [self.exprlist()])
+            self.expect(":")
+            self.expect("nl")
+            self.expect("indent")
+            while not self.eat("dedent"):
+                if self.eat("nl"):
+                    continue
+                if self.toks[self.p].text != "case":
+                    fail("expected 'case'", self.line())
+                depth = 0
+                while not (depth == 0 and self.peek() == ":"):
+                    if self.peek() == "(" or self.peek() == "[" or self.peek() == "{":
+                        depth += 1
+                    elif self.peek() == ")" or self.peek() == "]" or self.peek() == "}":
+                        depth -= 1
+                    elif self.peek() == "eof":
+                        fail("expected ':'", self.line())
+                    self.p += 1
+                self.p += 1
+                n.kids.append(self.block())
+            out.append(n)
+        elif k == "id" and self.toks[self.p].text == "type" and self.ahead() == "id" and (self.toks[self.p + 2].kind == "=" or self.toks[self.p + 2].kind == "["):
+            # type X = ... (PEP 695)
+            while self.peek() != "nl" and self.peek() != "eof":
+                self.p += 1
+            self.expect("nl")
+            out.append(mk("typealias", "", line, []))
         else:
             self.simple(out)
         if self.peek() == "else" and (k == "for" or k == "while"):
-            # for/while ... else: a "loopelse" node holding the loop and the else block
+            # for/while ... else: the else block is the loop's last kid, a block with s "else"
             self.p += 1
             self.expect(":")
-            out[-1] = mk("loopelse", k, line, [out[-1], self.block()])
+            b = self.block()
+            b.s = "else"
+            out[-1].kids.append(b)
+
+    def soft_match(self) -> bool:
+        # is 'match' at the start of a statement the match keyword: the line ends with ':' and the
+        # next line starts with case
+        j = self.p + 1
+        d = 0
+        while j < len(self.toks) and self.toks[j].kind != "nl":
+            k = self.toks[j].kind
+            if k == "(" or k == "[" or k == "{":
+                d += 1
+            elif k == ")" or k == "]" or k == "}":
+                d -= 1
+            j += 1
+        return j + 2 < len(self.toks) and self.toks[j - 1].kind == ":" and self.toks[j + 1].kind == "indent" and self.toks[j + 2].text == "case" and j > self.p + 2
 
     def with_parens(self) -> bool:
         # with (a as x, b as y): parenthesized items, told from a parenthesized expression by an
@@ -789,7 +846,7 @@ class Parser:
         while self.eat(","):
             if self.peek() == "in":
                 break
-            t.kids.append(self.postfix())
+            t.kids.append(self.item() if self.peek() == "*" else self.postfix())
         return as_target(t)
 
     def test(self) -> Node:
@@ -984,6 +1041,8 @@ class Parser:
             while k == "bytes" and self.peek() == "bytes":
                 self.p += 1
             return mk("bytes" if k == "bytes" else "ellipsis", "", line, [])
+        if k == "await":
+            return mk("await", "", line, [self.unary()])
         if k == "yield":
             n = mk("yield", "", line, [])
             if self.eat("from"):
@@ -1015,7 +1074,7 @@ class Parser:
         if k == "(":
             if self.eat(")"):
                 return mk("tuple", "", line, [])
-            e = self.test()
+            e = self.item() if self.peek() != "yield" else self.atom()
             if self.peek() == "for":
                 e = self.comp(e, line)
                 e.s = "gen"
@@ -1024,13 +1083,13 @@ class Parser:
                 while self.eat(","):
                     if self.peek() == ")":
                         break
-                    e.kids.append(self.test())
+                    e.kids.append(self.item())
             self.expect(")")
             return e
         if k == "[":
             items: list[Node] = []
             if self.peek() != "]":
-                e = self.test()
+                e = self.item()
                 if self.peek() == "for":
                     e = self.comp(e, line)
                     self.expect("]")
@@ -1039,7 +1098,7 @@ class Parser:
                 while self.eat(","):
                     if self.peek() == "]":
                         break
-                    items.append(self.test())
+                    items.append(self.item())
             self.expect("]")
             return mk("list", "", line, items)
         if k == "{":
@@ -1217,6 +1276,11 @@ class Loader:
         self.dirs = dirs  # the module search path
         self.mods: dict[str, Mod] = {}
         self.order: list[Mod] = []  # every module after those its top-level code imports
+        # imports in the functions of imported modules, resolved once all module-level imports
+        # are loaded: the function may never be compiled, as CPython may never run it
+        self.later: list[Node] = []
+        self.laterm: list[Mod] = []
+        self.laterb: list[Node] = []
 
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
@@ -1227,9 +1291,42 @@ class Loader:
         self.bindings(m)
         self.imports(m, m.body, False)
         self.order.append(m)
+        for i in range(len(self.later)):
+            st = self.later[i]
+            out: list[Node] = []
+            if self.loaded(self.laterm[i], st):
+                self.import_stmt(self.laterm[i], st, True, out)
+            else:
+                for a in st.kids:
+                    p = a.kids[1].s if not st.s.startswith("from.") else self.relative(self.laterm[i], st.s, a.kids[1].s, st.line)
+                    msg = f"importing module '{p}' in a function of module '{self.laterm[i].name}' is not supported: the program's module-level code does not import it"
+                    out.append(mk("badimport", msg, st.line, []))
+                    if a.s != "*":
+                        self.laterm[i].kinds[a.s] = "x:" + msg
+            b = self.laterb[i]
+            for j in range(len(b.kids)):
+                if b.kids[j] is st:
+                    b.kids = b.kids[:j] + out + b.kids[j + 1 :]
+                    break
         for x in self.order:
             self.qstmts(x, x.body.kids, {}, False)
         return self.order
+
+    def loaded(self, m: Mod, st: Node) -> bool:
+        # are the user modules import statement st names (and from-imported submodules) loaded
+        for a in st.kids:
+            p = a.kids[1].s
+            if st.s.startswith("from."):
+                p = self.relative(m, st.s, p, st.line)
+            elif builtin_module(p):
+                continue
+            if p not in self.mods:
+                return False
+            if st.s.startswith("from") and a.s != "*":
+                x = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
+                if x not in self.mods[p].kinds and p + "." + x not in self.mods:
+                    return False
+        return True
 
     def modpath(self, name: str) -> str:
         # the file module name is loaded from: NAME/__init__.py or NAME.py, or a directory for a
@@ -1300,12 +1397,16 @@ class Loader:
     def bindings(self, m: Mod) -> None:
         # the names m's top-level code binds (imports of user modules are added by imports())
         aliases: list[Node] = []
+        akinds: list[str] = []
         for st in m.body.kids:
             k = st.kind
-            if k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name" and (m.kinds.get(st.kids[1].s, "") == "f" or m.kinds.get(st.kids[1].s, "") == "c"):
-                # name = a def or class of this module: an alias, if nothing else binds name
-                m.kinds[st.kids[0].s] = "a:" + m.q + st.kids[1].s
+            src = m.kinds.get(st.kids[1].s, "") if k == "assign" and len(st.kids) == 2 and st.kids[1].kind == "name" else ""
+            if src != "" and st.kids[0].kind == "name" and (src == "f" or src == "c" or src.startswith("a:")):
+                # name = a def or class of this module (or an alias of one): an alias, if nothing
+                # else binds name
+                m.kinds[st.kids[0].s] = src if src.startswith("a:") else "a:" + m.q + st.kids[1].s
                 aliases.append(st)
+                akinds.append(m.kinds[st.kids[0].s])
             elif k == "def" or k == "class" or k == "subclass":
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 for d in [st] if k == "def" else st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids:
@@ -1322,9 +1423,9 @@ class Loader:
                 collect([st], names)
                 for nm in names:
                     m.kinds[nm] = "v"
-        for st in aliases:
-            if m.kinds[st.kids[0].s] == "a:" + m.q + st.kids[1].s:
-                st.kind = "pass"
+        for i in range(len(aliases)):
+            if m.kinds[aliases[i].kids[0].s] == akinds[i]:
+                aliases[i].kind = "pass"
 
     def simplify(self, m: Mod, blk: Node) -> None:
         # what the loader decides about blk before anything else: in an imported module,
@@ -1334,20 +1435,28 @@ class Loader:
         # binds the same function or class, and is no statement at run time
         out: list[Node] = []
         for st in blk.kids:
-            if m.name != "" and is_main_guard(st):
+            if st.kind == "if" and self.platform(m, st.kids[0]) >= 0:
+                b = st.kids[1] if self.platform(m, st.kids[0]) == 1 else st.kids[2]
+                self.simplify(m, b)
+                out.extend(b.kids)
+            elif (m.name != "" and is_main_guard(st)) or (st.kind == "if" and ((st.kids[0].kind == "name" and st.kids[0].s == "TYPE_CHECKING") or (st.kids[0].kind == "attr" and st.kids[0].s == "TYPE_CHECKING"))):
+                # (if TYPE_CHECKING: is for type checkers only)
                 self.simplify(m, st.kids[2])
                 out.extend(st.kids[2].kids)
             elif accel_try(st):
-                found = True
+                found = ""
                 for x in st.kids[0].kids:
                     for a in x.kids:
                         p = a.kids[1].s
                         if x.s.startswith("from."):
                             p = self.relative(m, x.s, p, x.line)
-                        if not builtin_module(p) and self.modpath(p) == "":
-                            found = False
+                        if not builtin_module(p) and self.modpath(p) == "" and found == "":
+                            found = p
                 b = st.kids[1].kids[1]
-                if found:
+                if found != "" and (st.kids[1].s != "" or (len(b.kids) == 1 and b.kids[0].kind == "raise")):
+                    # the handler needs the exception, or raises: the module is required
+                    b = mk("block", "", st.line, [mk("badimport", f"module '{found}' is not supported: it is not a builtin module and there is no {found[found.rfind('.') + 1 :]}.py on the module path", st.line, [])])
+                elif found == "":
                     b = st.kids[0]
                     for h in st.kids[1:]:
                         if h.kind == "block" and h.s == "else":
@@ -1361,11 +1470,56 @@ class Loader:
                         self.simplify(m, kid)
         blk.kids = out
 
+    def platform(self, m: Mod, e: Node) -> int:
+        # tests of the platform, decided for the POSIX systems Pystachy compiles for:
+        # sys.platform == "win32" (or "cygwin", ...), sys.platform.startswith("win"), os.name == "nt",
+        # and not/and/or of those; 1, 0, or -1 if e is not such a test
+        if e.kind == "unary" and e.s == "not":
+            r = self.platform(m, e.kids[0])
+            return 1 - r if r >= 0 else -1
+        if e.kind == "boolop":
+            a = self.platform(m, e.kids[0])
+            b = self.platform(m, e.kids[1])
+            if (a == 0 or b == 0) and e.s == "and":
+                return 0
+            if (a == 1 or b == 1) and e.s == "or":
+                return 1
+            return a if a == b else -1
+        other = "win32 cygwin msys nt java emscripten wasi ios android"
+        if e.kind == "cmp" and (e.s == "==" or e.s == "!=") and e.kids[1].kind == "str" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name":
+            mod = self.builtin_alias(m, e.kids[0].kids[0].s)
+            r = -1
+            if mod == "sys" and e.kids[0].s == "platform" and e.kids[1].s in other.split():
+                r = 0
+            if mod == "os" and e.kids[0].s == "name":
+                r = 1 if e.kids[1].s == "posix" else 0
+            return r if r < 0 or e.s == "==" else 1 - r
+        if e.kind == "call" and len(e.kids) == 2 and e.kids[1].kind == "str" and e.kids[0].kind == "attr" and e.kids[0].s == "startswith":
+            pa = e.kids[0].kids[0]
+            if pa.kind == "attr" and pa.s == "platform" and pa.kids[0].kind == "name" and self.builtin_alias(m, pa.kids[0].s) == "sys":
+                if e.kids[1].s in "win win32 cygwin msys emscripten wasi java".split():
+                    return 0
+        return -1
+
+    def builtin_alias(self, m: Mod, name: str) -> str:
+        # the builtin module m binds name to at its top level (import sys, import os as _os), or ""
+        for st in m.body.kids:
+            if st.kind == "import" and st.s == "":
+                for a in st.kids:
+                    if a.s == name and builtin_module(a.kids[1].s):
+                        return a.kids[0].s
+        return ""
+
     def imports(self, m: Mod, blk: Node, infn: bool) -> None:
         # load the user modules that the import statements in blk name, and rewrite those
         out: list[Node] = []
         for st in blk.kids:
-            if st.kind == "import":
+            if st.kind == "import" and infn and m.name != "":
+                self.later.append(st)
+                self.laterm.append(m)
+                self.laterb.append(blk)
+                out.append(st)
+            elif st.kind == "import":
                 self.import_stmt(m, st, infn, out)
             else:
                 out.append(st)
@@ -1392,6 +1546,14 @@ class Loader:
                     fail(f"'from {path} import *' is not supported", line)
                 m.kinds[a.s] = "b:" + a.kids[0].s
                 keep.kids.append(a)
+                continue
+            if infn and not builtin_module(path) and self.modpath(path) == "":
+                # a module that cannot be found, imported by a function: an error only where the
+                # function is compiled, as CPython's ImportError comes only where it runs
+                msg = f"module '{path}' is not supported: it is not a builtin module and there is no {path[path.rfind('.') + 1 :]}.py on the module path"
+                out.append(mk("badimport", msg, line, []))
+                if a.s != "*":
+                    m.kinds[a.s] = "x:" + msg
                 continue
             src = self.find(path, line)
             self.chain(path, inits)
@@ -1528,6 +1690,9 @@ class Loader:
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
                 n.kids = []
+            elif n.kind == "name" and n.s not in loc and m.kinds.get(n.s, "").startswith("x:"):
+                n.kind = "badattr"
+                n.s = m.kinds[n.s][2:]
             elif n.kind == "name":
                 n.s = self.qname(m, n.s, loc)
             elif n.kind == "attr":
@@ -1656,13 +1821,19 @@ for _k in "pow atan2 hypot fmod copysign".split():
     CALLS[f"math.{_k}(float,float)"] = f"pys_m_{_k}:float"
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
-for _k in "sys os os.path math tempfile typing dataclasses __future__".split():
+for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
 for _k in "sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr math.pi math.e math.inf math.tau math.nan".split():
     MODATTRS[_k] = True
 TYPING: dict[str, bool] = {}
-for _k in "List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Iterable Iterator Sequence Mapping Final ClassVar NamedTuple TypeVar Generic cast".split():
+for _k in ("List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Iterable Iterator Sequence Mapping Final ClassVar NamedTuple "
+           "TypeVar Generic cast IO BinaryIO AnyStr Literal Protocol TYPE_CHECKING overload NoReturn Never Self TypeAlias ParamSpec "
+           "Concatenate TypeGuard Annotated Awaitable Coroutine AsyncIterator AsyncIterable Generator Type DefaultDict OrderedDict "
+           "Counter Deque ChainMap Hashable Sized Collection Container Reversible MutableMapping MutableSequence MutableSet "
+           "AbstractSet KeysView ItemsView ValuesView SupportsInt SupportsFloat SupportsIndex SupportsAbs SupportsRound TypedDict "
+           "LiteralString Required NotRequired Unpack TypeVarTuple override final get_type_hints no_type_check runtime_checkable "
+           "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString").split():
     TYPING[_k] = True
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
@@ -1688,6 +1859,22 @@ for _k in ("OSError IOError EnvironmentError BlockingIOError ChildProcessError C
     EXCEPTIONS[_k] = "x"
 for _k in "UnicodeDecodeError UnicodeEncodeError UnicodeTranslateError ExceptionGroup BaseExceptionGroup".split():
     EXCEPTIONS[_k] = "-"
+# the attributes hasattr() finds on values of the builtin types ("seq": str, list, tuple, dict), and
+# on every value; other attribute names are not decided
+HASATTR: dict[str, str] = {
+    "any": "__class__ __doc__ __eq__ __ne__ __hash__ __repr__ __str__ __init__ __new__ __format__ __reduce__ __sizeof__ __lt__ __le__ __gt__ __ge__ __getattribute__ __setattr__ __delattr__ __dir__",
+    "seq": "__getitem__ __len__ __iter__ __contains__",
+    "int": "__index__ __int__ __float__ __bool__ __add__ __sub__ __mul__ __truediv__ __floordiv__ __mod__ __pow__ __neg__ __pos__ __abs__ __and__ __or__ __xor__ __lshift__ __rshift__ __invert__ __round__ __trunc__ __floor__ __ceil__ bit_length bit_count to_bytes conjugate real imag numerator denominator",
+    "float": "__int__ __float__ __bool__ __add__ __sub__ __mul__ __truediv__ __floordiv__ __mod__ __pow__ __neg__ __pos__ __abs__ __round__ __trunc__ __floor__ __ceil__ is_integer hex conjugate real imag as_integer_ratio",
+    "str": "__add__ __mul__ __mod__ join split strip lstrip rstrip startswith endswith find rfind index rindex count replace upper lower isdigit isalpha isalnum isspace isupper islower ljust rjust format encode partition splitlines",
+    "list": "__setitem__ __delitem__ __add__ __iadd__ __mul__ __imul__ __reversed__ append pop insert extend index count remove reverse copy clear sort",
+    "tuple": "__add__ __mul__ index count",
+    "dict": "__setitem__ __delitem__ __reversed__ get pop setdefault keys values items clear copy update popitem",
+}
+NOATTR: dict[str, str] = {
+    "seq": "__index__ __int__ __float__ __call__ __enter__ __exit__ __fspath__ __next__",
+    "num": "__getitem__ __len__ __iter__ __contains__ __setitem__ __delitem__ __call__ __enter__ __exit__ __fspath__ __next__ append keys items",
+}
 # node kinds the parser accepts but code generation rejects, where it compiles them: an
 # imported module may use them in functions the program never calls
 UNSUPPORTED: dict[str, str] = {
@@ -1698,7 +1885,9 @@ UNSUPPORTED: dict[str, str] = {
     "nestedcomp": "nested comprehensions are not supported", "starred": "starred expressions (*x) are not supported",
     "dstar": "star arguments are not supported", "bytes": "bytes literals are not supported (there is no bytes type)",
     "ellipsis": "Ellipsis (...) is not supported", "complex": "complex numbers are not supported",
-    "walrus": "assignment expressions (:=) are not supported",
+    "walrus": "assignment expressions (:=) are not supported", "await": "'await' is not supported",
+    "async": "'async' statements are not supported", "match": "'match' statements are not supported",
+    "typealias": "'type' statements are not supported",
 }
 # encoding= names of UTF-8 (1) and Latin-1 (2) as CPython's codec lookup finds them (see codec()):
 # a str holds the file's bytes either way, which is what CPython's str holds for a Latin-1 file
@@ -2079,6 +2268,8 @@ class Gen:
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
+        self.elsebrk = ""  # and the label after its else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
         # what the container holds (see fill); a dict's key kind is a placeholder in the IR until then
         self.allowq = False  # the read being compiled may see such a type (len(), a truth test)
@@ -2445,7 +2636,7 @@ class Gen:
         if f.npos < 0:
             f.npos = len(f.params)
         if len(d.kids) > 3:
-            bad = f"unsupported decorator @{d.kids[3].s}"
+            bad = f"unsupported decorator @{d.kids[3].s}" if d.kids[-1].s != "async" else "async functions are not supported"
         if bad != "" and not f.generic:
             self.err(bad)
         f.bad = bad
@@ -3395,10 +3586,14 @@ class Gen:
             fl.brks = []
             if k == "for":
                 self.fl_target(fl, n.kids[0])
-            self.fl_stmts(fl, n.kids[-1].kids)
+            self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
             brks = fl.brks
             fl.brks = outer
             fl.defd = pre
+            if n.kids[-1].s == "else":
+                # (after the loop only what was assigned before it is surely assigned)
+                self.fl_stmts(fl, n.kids[-1].kids)
+                fl.defd = dict(pre)
             if k == "while" and n.kids[0].kind == "True":
                 # while True is left only through break
                 fl.defd[" dead"] = True
@@ -3578,6 +3773,8 @@ class Gen:
         elif mod == "dataclasses":
             if x != "dataclass":
                 self.err(f"dataclasses.{x} is not supported")
+        elif mod == "builtins":
+            return  # a builtin function, checked where it is called
         elif not self.known_path(tgt):
             self.err(f"cannot import name '{x}' from '{mod}' (not supported by Pystachy)")
 
@@ -3645,7 +3842,20 @@ class Gen:
         # a class that defines __eq__ without __hash__ has __hash__ = None in CPython
         return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods
 
+    def while_(self, n: Node) -> None:
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        self.place(l1)
+        self.cbr(self.cond(n.kids[0]), l2, l3)
+        self.place(l2)
+        self.loop(n.kids[1].kids, l1, l3)
+        self.br(l1)
+        self.place(l3)
+
     def loop(self, body: list[Node], cont: str, brk: str) -> None:
+        if body is self.elsekids:
+            brk = self.elsebrk  # the loop of a for/while ... else: break skips the else block
         self.loops.append(cont)
         self.loops.append(brk)
         self.wdepth.append(len(self.withs))
@@ -3804,16 +4014,23 @@ class Gen:
             self.stmts(n.kids[2].kids)
             self.branch -= 1
             self.place(l3)
+        elif (k == "while" or k == "for") and n.kids[-1].s == "else":
+            # for/while ... else: break leaves the loop past the else block
+            ek = self.elsekids
+            eb = self.elsebrk
+            self.elsekids = n.kids[2 if k == "for" else 1].kids
+            self.elsebrk = self.label()
+            lb = self.elsebrk
+            if k == "for":
+                self.for_(n, [])
+            else:
+                self.while_(n)
+            self.elsekids = ek
+            self.elsebrk = eb
+            self.stmts(n.kids[-1].kids)
+            self.place(lb)
         elif k == "while":
-            l1 = self.label()
-            l2 = self.label()
-            l3 = self.label()
-            self.place(l1)
-            self.cbr(self.cond(n.kids[0]), l2, l3)
-            self.place(l2)
-            self.loop(n.kids[1].kids, l1, l3)
-            self.br(l1)
-            self.place(l3)
+            self.while_(n)
         elif k == "for":
             self.for_(n, [])
         elif k == "return":
@@ -3928,8 +4145,8 @@ class Gen:
                 self.emit(f"call void @init.{x.s}()")
         elif k == "def" or k == "class":
             self.err("nested functions and classes are not supported")
-        elif k == "loopelse":
-            self.err(f"'{n.s} ... else' is not supported")
+        elif k == "badimport":
+            self.err(n.s)
         elif k in UNSUPPORTED:
             self.err(UNSUPPORTED[k])
         elif k != "pass":
@@ -4255,10 +4472,28 @@ class Gen:
             t = self.static_type(n.kids[0])
             r = -1 if t == "" or t in self.classes else 1 if t == "None" else 0
             return r if r < 0 or n.s == "is" else 1 - r
+        if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
+            t = self.static_type(n.kids[1])
+            return self.has(t, n.kids[2].s) if t != "" and t not in self.classes else -1
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
             t = self.static_type(n.kids[1])
             return self.isinst(t, n.kids[2]) if t != "" else -1
         return -1
+
+    def has(self, t: str, a: str) -> int:
+        # hasattr(x, a) for x of static type t: 1 or 0, -1 for an object that has a (true unless
+        # it is None); for the builtin types, the attributes in HASATTR and NOATTR are decided
+        b = "list" if is_list(t) else "dict" if is_dict(t) else "tuple" if is_tuple(t) else "int" if t == "bool" else t
+        seq = b == "str" or b == "list" or b == "dict" or b == "tuple"
+        if t in self.classes:
+            ci = self.classes[t]
+            return -1 if a in ci.methods or a in ci.ftypes else 0
+        if a in HASATTR["any"].split() or (seq and a in HASATTR["seq"].split()) or (b in HASATTR and a in HASATTR[b].split()):
+            return 1
+        if (seq and a in NOATTR["seq"].split()) or ((b == "int" or b == "float") and a in NOATTR["num"].split()) or t == "None":
+            return 0
+        self.err(f"hasattr() of '{a}' on a {tname(t)} is not supported")
+        return 0
 
     def static_type(self, n: Node) -> str:
         # the type of a variable read that cannot fail, or ""
@@ -4621,6 +4856,12 @@ class Gen:
 
     def boolop(self, n: Node, ascond: bool, want: str) -> Val:
         # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
+        c0 = n.kids[0]
+        c1 = n.kids[1]
+        if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
+            # x is y or x == y, the identity-or-equality test, on numbers: x == y (numbers have no
+            # identity here; see the deviation about NaN)
+            return Val(self.cond(c1), "bool") if ascond else self.expr(c1, want)
         st = self.static(n.kids[0])
         if st >= 0:
             # a static test on the left: its value (a bool) if it decides, else the right operand
@@ -5169,6 +5410,8 @@ class Gen:
             return Val(fbits("6.283185307179586"), "float")
         if path == "math.nan":
             return Val("0x7FF8000000000000", "float")
+        if path == "typing.TYPE_CHECKING":
+            return Val("false", "bool")
         self.err(f"unsupported module attribute {path}")
         return Val("", "")
 
@@ -5180,6 +5423,8 @@ class Gen:
         if name == "__pys_repr" or name == "__pys_str" or name == "__pys_ascii":
             # compiler-written calls (f"{x!r}", dataclass __repr__): always the builtin
             name = name[6:]
+        if name.startswith("builtins."):
+            name = name[9:]
         # builtins and module functions ("os.system"); most are one call listed in CALLS
         if name == "print":
             return self.print_(args)
@@ -5187,6 +5432,13 @@ class Gen:
             return self.open_(args)
         if name == "map" or name == "filter":
             self.err(f"{name}() is not supported; use a list comprehension")
+        if name == "hasattr" and len(args) == 2 and args[1].kind == "str":
+            # decided by the static type of the object (for an object: is it None)
+            hv = self.expr(args[0], "")
+            hy = self.has(hv.t, args[1].s)
+            if hy < 0:
+                return Val(self.ins(f"icmp ne ptr {hv.v}, null"), "bool")
+            return Val("true" if hy == 1 else "false", "bool")
         if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
             # decided by the static types, or for an object by whether it is None
             v = self.expr(args[0], "")
