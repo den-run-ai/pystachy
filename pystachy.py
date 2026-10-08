@@ -1385,6 +1385,17 @@ for _k in ("ArithmeticError AssertionError AttributeError BaseException BaseExce
     PYBUILTINS[_k] = True
 
 
+# modules built into CPython 3.13 (as Debian and Ubuntu build it, sys.builtin_module_names): a
+# file of that name on the path never replaces them, so Pystachy treats them as missing
+CBUILTIN: dict[str, bool] = {}
+for _k in ("_abc _ast _bisect _blake2 _codecs _collections _csv _datetime _elementtree _functools _heapq _imp _io _locale "
+           "_md5 _opcode _operator _pickle _posixsubprocess _random _sha1 _sha2 _sha3 _signal _socket _sre _stat "
+           "_statistics _string _struct _suggestions _symtable _sysconfig _thread _tokenize _tracemalloc _typing _warnings "
+           "_weakref array atexit binascii cmath faulthandler fcntl gc grp itertools marshal posix pwd pyexpat select "
+           "syslog unicodedata zlib").split():
+    CBUILTIN[_k] = True
+
+
 def builtin_module(path: str) -> bool:
     root = path[: path.find(".")] if "." in path else path
     return path in MODULES or root in MODULES
@@ -1496,6 +1507,8 @@ class Loader:
         # the file module name is loaded from: NAME/__init__.py or NAME.py, the first found on the
         # module path or in the parent package, else the directories of a namespace package
         # (separated by ":"); "" if there is none
+        if name in CBUILTIN:
+            return ""  # a module built into CPython: no file on the path replaces it
         dirs = self.dirs
         base = name
         dot = name.rfind(".")
@@ -1869,6 +1882,8 @@ class Loader:
         k = src.kinds.get(x, "")
         if not infn and (m.kinds.get(name, "") == "f" or m.kinds.get(name, "") == "c"):
             fail(f"'{name}' is bound both by an import and by a def or class (not supported)", line)
+        if not infn and m.kinds.get(name, "") == "v" and k != "v" and k != "":
+            fail(f"'{name}' is bound both as a variable and by an import (not supported)", line)
         if k == "" and src.pdir != "":
             # a submodule of the package
             sub = src.name + "." + x
@@ -2472,6 +2487,18 @@ def uses(n: Node, seen: dict[str, str]) -> None:
         return
     for k in n.kids:
         uses(k, seen)
+
+
+def has_kind(n: Node, kind: str) -> bool:
+    # does n hold a node of kind (outside the functions, classes and lambdas it defines)
+    if n.kind == kind:
+        return True
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+        return False
+    for k in n.kids:
+        if has_kind(k, kind):
+            return True
+    return False
 
 
 def refers(n: Node, name: str) -> bool:
@@ -3161,6 +3188,8 @@ class Gen:
             f.npos = f.vararg
         if len(d.kids) > 3:
             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
+        if bad == "" and has_kind(d.kids[2], "yield"):
+            bad = UNSUPPORTED["yield"]  # a generator function
         if bad == "" and self.lib and d.kids[1].kind != "noann":
             bad = self.ann_problem(d.kids[1], True)
         if bad != "" and not f.generic and not self.lib:
@@ -3409,6 +3438,8 @@ class Gen:
             return self.modattr(self.aliases[name])
         if name in self.funcs:
             self.err(f"function '{name}' cannot be used as a value")
+        if name in self.classes:
+            self.err(f"class '{name}' cannot be used as a value (class attributes are read through an instance)")
         if name in self.fglobals:
             self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level first ({name}: T)")
         if name in self.unsupported:

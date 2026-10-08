@@ -781,7 +781,7 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   return d > t ? -1 : d < t ? 1 : 0;
 }
 double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
-  if (a == 0 && b < 0) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
   if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
   double r = pow(a, b);
   if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
