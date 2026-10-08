@@ -1417,7 +1417,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
   int alt = 0, zneg = 0, fillset = 0;
   I fl = 1, width = 0, prec = -1;
-  if (d != 'i' && d != 'b' && d != 'f' && d != 's') {
+  if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
     return pys_repr(v, desc);
   }
@@ -1451,7 +1451,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   I pre = 0;                                   /* bytes of sign and prefix, before '=' padding */
   if (d == 's') {
     if (type != 's') failf("ValueError: Unknown format code '%c' for object of type 'str'", type);
-    if (sign) failf("ValueError: Sign not allowed in string format specifier");
+    if (sign) failf(sign == ' ' ? "ValueError: Space not allowed in string format specifier" : "ValueError: Sign not allowed in string format specifier");
     if (zneg) failf("ValueError: Negative zero coercion (z) not allowed in string format specifier");
     if (alt) failf("ValueError: Alternate form (#) not allowed in string format specifier");
     if (align == '=') failf("ValueError: '=' alignment not allowed in string format specifier");
@@ -1498,6 +1498,13 @@ Str *pys_format(I v, Str *desc, Str *spec) {
         if (memchr(t, '.', me)) { I k = me; while (t[k - 1] == '0') k--; if (t[k - 1] == '.') k--; memmove(t + k, t + me, n - me + 1); n -= me - k; }
       }
       if (!ex && !memchr(t, '.', n)) { t[n++] = '.'; t[n++] = '0'; t[n] = 0; }
+    } else if (alt && (type == 'g' || type == 'G' || type == 'n')) {
+      /* glibc's %#g drops the zeros when rounding carries into the exponent (1.e+06): choose
+         the notation from the rounded exponent, as CPython does, and keep every digit */
+      int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
+      snprintf(t, tsz, "%.*e", pr - 1, m);
+      int X = atoi(strchr(t, 'e') + 1);
+      n = X < -4 || X >= pr ? snprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : snprintf(t, tsz, "%#.*f", pr - 1 - X, m);
     } else {
       char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
       snprintf(f, 16, alt ? "%%#.%d%c" : "%%.%d%c", pr, c);
