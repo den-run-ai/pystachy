@@ -1363,6 +1363,8 @@ class Mod:
         self.fnglobal: dict[str, bool] = {}  # the names a function's global statement binds
         self.fnonly: dict[str, bool] = {}  # those its top-level code does not
         self.rebound: dict[str, bool] = {}  # the names it binds other than as os, sys, TYPE_CHECKING (rebound())
+        self.spec: dict[str, str] = {}  # and those it binds so (specials()): the module, or "" if two differ
+        self.specat: dict[str, int] = {}  # the top-level statement that first does
         self.fails = ""  # the exception its top-level code surely raises, ImportError or ModuleNotFoundError
         # a package's names that an import of the submodule of that name rebinds at a time Pystachy
         # cannot tell (Loader.submodules()); True if that may happen while its own code runs
@@ -1530,6 +1532,25 @@ def binds(body: list[Node], out: dict[str, bool], special: bool) -> None:
                 binds(kid.kids[1].kids, out, special)
 
 
+def specials(m: Mod, body: list[Node], top: int) -> None:
+    # the names module m's code (body; top: the index of the top-level statement it is in, or -1 for
+    # the top level) binds by the imports special_import() recognizes, with what they bind, "" if two
+    # differ (Mod.spec), and the top-level statement with the first that binds each for sure
+    for i in range(len(body)):
+        st = body[i]
+        for a in st.kids if st.kind == "import" else st.kids[:0]:
+            if special_import(st, a):
+                t = a.kids[0].s if st.s == "" else "typing.TYPE_CHECKING"
+                m.spec[a.s] = t if m.spec.get(a.s, t) == t else ""
+                if top < 0 and a.s not in m.specat:
+                    m.specat[a.s] = i
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if kid.kind == "block":
+                specials(m, kid.kids, i if top < 0 else top)
+            elif kid.kind == "except":
+                specials(m, kid.kids[1].kids, i if top < 0 else top)
+
+
 def rebound(body: list[Node], special: bool) -> dict[str, bool]:
     # the names a module binds (but for special, by the imports special_import() recognizes), also
     # through a function's global statement: such a name is never taken for os, sys or TYPE_CHECKING
@@ -1579,6 +1600,7 @@ class Loader:
         self.laterd: list[str] = []
         # what the imports in a function bind (for that function only), by the def's line
         self.fks: dict[str, dict[str, str]] = {}
+        self.fgl: dict[str, dict[str, bool]] = {}  # and the names its global statements declare
         self.curdef = ""  # the def whose body imports() is in
         self.fk: dict[str, str] = {}  # the bindings of the function being qualified
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
@@ -1603,7 +1625,7 @@ class Loader:
         m = Mod("", path, "")
         FILES.append(path)
         m.body = Parser(Lexer(src, 1).run()).module()
-        m.rebound = rebound(m.body.kids, False)
+        self.prescan(m)
         self.simplify(m, m.body, {})
         self.bindings(m)
         self.imports(m, m.body, False)
@@ -1622,7 +1644,7 @@ class Loader:
                         xn = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
                         msg = f"cannot import name '{xn}' from '{p}'"
                     out.append(mk("badimport", msg, st.line, []))
-                    self.bind(self.laterm[i], a.s, "x:" + msg, True)
+                    self.bind(self.laterm[i], a.s, "x:" + msg, True, st.line)
             b = self.laterb[i]
             for j in range(len(b.kids)):
                 if b.kids[j] is st:
@@ -1711,7 +1733,7 @@ class Loader:
         self.mods[name] = m
         m.body = self.parse(path)
         del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
-        m.rebound = rebound(m.body.kids, False)
+        self.prescan(m)
         r: list[Node] = []
         if self.init_raise(m, m.body.kids, r, True):
             r[0].s = "init"  # (an optional import of the module returns there instead: Gen.raise_stmt)
@@ -2008,7 +2030,7 @@ class Loader:
             return self.failc.get(name, "")
         t = Mod(name, p, p[:-12] if p.endswith("/__init__.py") else "")
         t.body = self.parse(p)
-        t.rebound = rebound(t.body.kids, False)
+        self.prescan(t)
         r: list[Node] = []
         pos = self.pos
         self.scanning[name] = True
@@ -2232,20 +2254,19 @@ class Loader:
 
     def special(self, m: Mod, name: str, scope: dict[str, bool]) -> str:
         # what name is in module m's code, where scope (the names of the function or class the code
-        # is in) does not hide it, if m binds it only by imports special_import() recognizes at its
-        # top level: a builtin module (import sys, import os as _os: "sys", "os") or
-        # "typing.TYPE_CHECKING"; else ""
-        if name in scope or name in m.rebound:
+        # is in) does not hide it, if m binds it only by imports special_import() recognizes, one of
+        # them at its top level before the code (self.pos) if that is top-level code: a builtin module
+        # (import sys, import os as _os: "sys", "os") or "typing.TYPE_CHECKING"; else ""
+        if name in scope or name in m.rebound or name not in m.specat:
             return ""
-        r = ""
-        for st in m.body.kids:
-            for a in st.kids if st.kind == "import" else st.kids[:0]:
-                if a.s == name:
-                    t = a.kids[0].s if st.s == "" else "typing.TYPE_CHECKING"
-                    if not special_import(st, a) or (r != "" and r != t):
-                        return ""
-                    r = t
-        return r
+        return m.spec[name] if self.pos < 0 or m.specat[name] < self.pos else ""
+
+    def prescan(self, m: Mod) -> None:
+        # what simplify() needs to know of m's code first: the names it binds other than by the
+        # imports special_import() recognizes (rebound()), and the names those imports bind
+        # (Mod.spec). A star import that binds such a name otherwise is an error (bind()).
+        m.rebound = rebound(m.body.kids, False)
+        specials(m, m.body.kids, -1)
 
     def imports(self, m: Mod, blk: Node, infn: bool) -> None:
         # load the user modules that the import statements in blk name, and rewrite those
@@ -2269,18 +2290,25 @@ class Loader:
                 if st.kind == "def":
                     self.curdef = str(st.line)
                     self.fks[self.curdef] = {}
+                    self.fgl[self.curdef] = {}
+                    globals_in(st.kids[2].kids, self.fgl[self.curdef])
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
                 self.curdef = saved
         blk.kids = out
 
-    def bind(self, m: Mod, name: str, k: str, infn: bool) -> None:
-        # what an import binds name to; in a function, for that function only
-        if infn:
-            self.fks[self.curdef][name] = k
-        else:
-            m.kinds[name] = k
+    def bind(self, m: Mod, name: str, k: str, infn: bool, line: int) -> None:
+        # what an import binds name to; in a function, for that function only. One binding stands for
+        # all the code, so a name that an earlier import bound to another module, function or class
+        # is an error (in a function, where it is compiled)
+        ks = self.fks[self.curdef] if infn else m.kinds
+        old = ks.get(name, k)
+        if old != k and (old.startswith("m:") or old.startswith("b:") or old.startswith("a:")) and not k.startswith("x:"):
+            k = f"x:'{name}' is bound by two imports, to different modules, functions or classes (not supported)"
+            if not infn:
+                fail(k[2:], line)
+        ks[name] = k
 
     def import_stmt(self, m: Mod, st: Node, infn: bool, out: list[Node]) -> None:
         # one import statement becomes: an import node with its builtin modules (for code
@@ -2291,6 +2319,11 @@ class Loader:
         keep = mk("import", st.s, line, [])
         inits = mk("uimport", "", line, [])
         copies: list[Node] = []
+        for a in st.kids if infn else st.kids[:0]:
+            if a.s in self.fgl.get(self.curdef, {}) and (st.s.startswith("from.") or not builtin_module(a.kids[1].s)):
+                # (CPython binds the module's global, which then names one module or another)
+                out.append(mk("badimport", f"an import of '{a.s}' in a function that declares it global is not supported", line, []))
+                return
         for a in st.kids:
             path = a.kids[1].s
             if path == "typing_extensions":
@@ -2303,7 +2336,7 @@ class Loader:
             elif builtin_module(path):
                 if a.s == "*":
                     fail(f"'from {path} import *' is not supported", line)
-                self.bind(m, a.s, "b:" + a.kids[0].s, infn)
+                self.bind(m, a.s, "b:" + a.kids[0].s, infn, line)
                 keep.kids.append(a)
                 continue
             if infn and not builtin_module(path) and self.modpath(path) == "":
@@ -2311,7 +2344,7 @@ class Loader:
                 # function is compiled, as CPython's ImportError comes only where it runs
                 msg = f"module '{path}' is not supported: it is not a builtin module and there is no {path[path.rfind('.') + 1 :]}.py on the module path"
                 out.append(mk("badimport", msg, line, []))
-                self.bind(m, a.s, "x:" + msg, infn)
+                self.bind(m, a.s, "x:" + msg, infn, line)
                 continue
             src = self.find(path, line)
             self.chain(path, inits)
@@ -2331,7 +2364,7 @@ class Loader:
                     self.taken[n].kind = "takesub"  # (this import runs the submodule's code: submodules())
             elif st.s == "":
                 # import a.b.c binds a; import a as x binds x to a
-                self.bind(m, a.s, "m:" + a.kids[0].s, infn)
+                self.bind(m, a.s, "m:" + a.kids[0].s, infn, line)
             elif a.s == "*":
                 for x in self.public(src):
                     self.take(m, src, x, x, infn, keep, inits, copies, line)
@@ -2420,17 +2453,17 @@ class Loader:
             sub = src.name + "." + x
             self.find(sub, line)
             inits.kids.append(mk("str", sub, line, []))
-            self.bind(m, name, "m:" + sub, infn)
+            self.bind(m, name, "m:" + sub, infn, line)
         elif k == "":
             fail(f"cannot import name '{x}' from '{src.name}'", line)
         elif k == "f" or k == "c":
-            self.bind(m, name, "a:" + src.q + x, infn)
+            self.bind(m, name, "a:" + src.q + x, infn, line)
         elif k.startswith("b:"):
             p = k[2:]
-            self.bind(m, name, k, infn)
+            self.bind(m, name, k, infn, line)
             keep.kids.append(mk("alias", name, line, [mk("str", p, line, []), mk("str", p[: p.find(".")] if "." in p else p, line, [])]))
         elif k != "v":
-            self.bind(m, name, k, infn)
+            self.bind(m, name, k, infn, line)
         else:
             if not infn:
                 m.kinds[name] = "v"
