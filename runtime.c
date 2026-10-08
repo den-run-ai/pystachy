@@ -965,12 +965,14 @@ typedef struct { I v; } Slot;
 void pys_list_append(List *l, I v) { if (l->len == l->cap) reserve(l, l->len + 1); AT(l, l->len++) = v; }
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
 void pys_list_set(List *l, I i, I v) { AT(l, idx(i, l->len, "IndexError: list assignment index out of range")) = v; }
+/* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
+   pointer there would keep the removed item alive (and a removed file open) */
 I pys_list_pop(List *l, I i) {
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
-  I v = l->a[i]; memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->len--; return v;
+  I v = l->a[i]; memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0; return v;
 }
-void pys_list_del(List *l, I i) { i = idx(i, l->len, "IndexError: list assignment index out of range"); memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->len--; }
+void pys_list_del(List *l, I i) { i = idx(i, l->len, "IndexError: list assignment index out of range"); memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0; }
 void pys_list_insert(List *l, I i, I v) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
@@ -982,11 +984,11 @@ List *pys_list_slice(List *l, I lo, I hi) {
   List *r = pys_list_new(hi - lo); memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
-void pys_list_clear(List *l) { l->len = 0; }
+void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); l->len = 0; }
 List *pys_list_add(List *a, List *b) { List *r = pys_list_new(a->len + b->len); pys_list_extend(r, a); pys_list_extend(r, b); return r; }
 void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
-  if (n <= 0 || !m) { l->len = 0; return; }
+  if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   reserve(l, m * n);
   for (I i = 1; i < n; i++) memcpy(l->a + i * m, l->a, m * 8);
