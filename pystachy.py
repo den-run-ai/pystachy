@@ -237,6 +237,8 @@ class Lexer:
             if p == "f" or p == "r" or p == "u" or p == "fr" or p == "rf":
                 self.string(p)
                 return
+            if p == "b" or p == "br" or p == "rb":
+                fail("bytes literals are not supported (there is no bytes type)", self.line)
         self.add(w if w in KEYWORDS else "id", w)
 
     def string(self, prefix: str) -> None:
@@ -246,26 +248,44 @@ class Lexer:
         triple = src.startswith(q + q + q, self.i)
         self.i += 3 if triple else 1
         start = self.i
-        depth = 0  # f-strings: inside a replacement field
+        # f-strings: one entry per open replacement field, the brackets open in its expression,
+        # or -1 once its format spec began (a top-level ':'), where quotes are plain text
+        fields: list[int] = []
         while True:
             if self.i >= len(src):
                 fail("unterminated string", line)
             c = src[self.i]
             if c == q and (not triple or src.startswith(q + q + q, self.i)):
-                if depth > 0 and not triple:
+                if len(fields) > 0 and fields[-1] >= 0 and not triple and self.reuses_quote(q):
                     fail("f-string: reusing the string's quote inside a replacement field (PEP 701) is not supported; use the other quote", line)
                 break
-            if "f" in prefix and (c == "{" or c == "}"):
-                if depth == 0 and src[self.i + 1 : self.i + 2] == c:
-                    self.i += 2
-                    continue
-                depth = depth + 1 if c == "{" else max(depth - 1, 0)
-            elif "f" in prefix and depth > 0 and (c == "'" or c == '"'):
-                # a string inside a field ends at its own quote
-                j = src.find(c, self.i + 1)
-                if j > 0 and src.find("\n", self.i, j) < 0:
-                    self.i = j + 1
-                    continue
+            if "f" in prefix and (len(fields) == 0 or fields[-1] < 0):
+                # literal text, or a format spec: {{ and }} are braces, { opens a field, } closes one
+                if c == "{" or c == "}":
+                    if len(fields) == 0 and src[self.i + 1 : self.i + 2] == c:
+                        self.i += 2
+                        continue
+                    if c == "{":
+                        fields.append(0)
+                    elif len(fields) > 0:
+                        fields.pop()
+            elif "f" in prefix:
+                if c == "'" or c == '"':
+                    # a string inside a field ends at its own quote
+                    j = src.find(c, self.i + 1)
+                    if j > 0 and src.find("\n", self.i, j) < 0:
+                        self.i = j + 1
+                        continue
+                elif c == "(" or c == "[" or c == "{":
+                    fields[-1] += 1
+                elif c == ")" or c == "]":
+                    fields[-1] = max(fields[-1] - 1, 0)
+                elif c == "}" and fields[-1] > 0:
+                    fields[-1] -= 1
+                elif c == "}":
+                    fields.pop()
+                elif c == ":" and fields[-1] == 0:
+                    fields[-1] = -1
             if c == "\n":
                 if not triple:
                     fail("unterminated string", line)
@@ -284,6 +304,18 @@ class Lexer:
             self.toks.append(Tok("rfstr" if "r" in prefix else "fstr", text, line))
         else:
             self.toks.append(Tok("str", text if "r" in prefix else unescape(text, line), line))
+
+    def reuses_quote(self, q: str) -> bool:
+        # f"{d["k"]}": the quote that would end the f-string inside a field starts a string that
+        # closes on this line and is followed by more of the expression; otherwise the field is unclosed
+        src = self.src
+        j = src.find(q, self.i + 1)
+        if j < 0 or src.find("\n", self.i, j) >= 0:
+            return False
+        k = j + 1
+        while k < len(src) and src[k] == " ":
+            k += 1
+        return k < len(src) and src[k] in "])}.,[!:=+*%<>"
 
     def op(self) -> None:
         for o in OPS:
@@ -333,6 +365,7 @@ class Parser:
     def __init__(self, toks: list[Tok]):
         self.toks = toks
         self.p = 0
+        self.early = True  # only a docstring and from __future__ imports so far
 
     def peek(self) -> str:
         return self.toks[self.p].kind
@@ -379,6 +412,8 @@ class Parser:
     def stmt(self, out: list[Node]) -> None:
         k = self.peek()
         line = self.line()
+        if k != "from" and k != "import" and not (k == "str" and self.p == 0):
+            self.early = False  # from __future__ imports may follow only a docstring
         if k == "def":
             out.append(self.funcdef())
         elif k == "class":
@@ -416,13 +451,18 @@ class Parser:
             # with open(p) as f, ...: kids are the items (expression [, target]) and the block
             self.p += 1
             items: list[Node] = []
-            while True:
+            paren = self.peek() == "(" and self.with_parens()
+            if paren:
+                self.p += 1
+            while not (paren and self.peek() == ")"):
                 it = mk("withitem", "", line, [self.test()])
                 if self.eat("as"):
                     it.kids.append(as_target(self.postfix()))
                 items.append(it)
                 if not self.eat(","):
                     break
+            if paren:
+                self.expect(")")
             self.expect(":")
             items.append(self.block())
             out.append(mk("with", "", line, items))
@@ -432,6 +472,27 @@ class Parser:
             self.simple(out)
         if self.peek() == "else" and (k == "for" or k == "while"):
             fail(f"'{k} ... else' is not supported", line)
+
+    def with_parens(self) -> bool:
+        # with (a as x, b as y): parenthesized items, told from a parenthesized expression by an
+        # 'as' or ',' directly inside the parentheses and a ':' right after them
+        d = 0
+        hit = False
+        j = self.p
+        while j < len(self.toks):
+            k = self.toks[j].kind
+            if k == "(" or k == "[" or k == "{":
+                d += 1
+            elif k == ")" or k == "]" or k == "}":
+                d -= 1
+                if d == 0:
+                    return hit and self.toks[j + 1].kind == ":"
+            elif d == 1 and (k == "as" or k == ","):
+                hit = True
+            elif k == "nl" or k == "eof":
+                return False
+            j += 1
+        return False
 
     def ifstmt(self) -> Node:
         line = self.line()
@@ -455,7 +516,7 @@ class Parser:
         seen: dict[str, bool] = {}
         while not self.eat(")"):
             if self.peek() == "*" or self.peek() == "**" or self.peek() == "/":
-                fail("*args, **kwargs and positional-only markers are not supported", line)
+                fail("*args, **kwargs and the * and / parameter markers are not supported", line)
             pname = self.expect("id").text
             if pname in seen:
                 fail(f"duplicate argument '{pname}' in function definition", line)
@@ -489,6 +550,11 @@ class Parser:
     def small(self) -> Node:
         line = self.line()
         k = self.peek()
+        future = k == "from" and self.toks[self.p + 1].text == "__future__"
+        if future and not self.early:
+            fail("from __future__ imports must occur at the beginning of the file", line)
+        if not future and not (k == "str" and self.p == 0):
+            self.early = False
         if k == "pass" or k == "break" or k == "continue":
             self.p += 1
             return mk(k, "", line, [])
@@ -514,7 +580,7 @@ class Parser:
             return n
         if k == "raise":
             self.p += 1
-            if self.peek() == "nl":
+            if self.peek() == "nl" or self.peek() == ";":
                 return mk("raise", "", line, [])
             n = mk("raise", "", line, [self.test()])
             if self.peek() == "from":
@@ -728,6 +794,8 @@ class Parser:
                     if not self.eat(","):
                         self.expect(")")
                         break
+                    if gen:
+                        fail("Generator expression must be parenthesized", line)
                 if gen and len(c.kids) > 2:
                     fail("Generator expression must be parenthesized", line)
                 e = c
@@ -1228,6 +1296,7 @@ class Gen:
         self.aliases: dict[str, str] = {}
         self.imports: dict[str, str] = {}
         self.fglobals: dict[str, bool] = {}
+        self.mvars: dict[str, bool] = {}  # module-level variables, also those functions assign
         self.gtypes: dict[str, str] = {}
         self.globs: list[str] = []
         self.gcroots: list[str] = []
@@ -1248,6 +1317,7 @@ class Gen:
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = "None"
+        self.retann = False
         self.cold: dict[str, str] = {}
         self.nn: dict[str, bool] = {}
         self.selfname = ""
@@ -1349,7 +1419,9 @@ class Gen:
         return name
 
     def alloca(self, t: str, name: str) -> str:
-        if t == "None" or t == "":
+        if t == "None":
+            self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+        if t == "":
             self.err(f"cannot infer the type of '{name}'; add a type annotation")
         self.n += 1
         r = f"%{name or 'h'}.{self.n}"
@@ -1488,6 +1560,13 @@ class Gen:
         self.err("unsupported type annotation")
         return ""
 
+    def vtype(self, n: Node) -> str:
+        # the annotation of a variable, parameter or field: None alone is only a return type
+        t = self.typeof(n)
+        if t == "None":
+            self.err("None is only supported as a return type; annotate an optional object as C | None")
+        return t
+
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
         # evaluated (from __future__ import annotations)
@@ -1520,7 +1599,7 @@ class Gen:
             elif p.kids[0].kind == "noann":
                 self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
             else:
-                f.ptypes.append(self.typeof(p.kids[0]))
+                f.ptypes.append(self.vtype(p.kids[0]))
         if d.kids[1].kind != "noann":
             f.ret = self.typeof(d.kids[1])
         return f
@@ -1539,7 +1618,7 @@ class Gen:
         for st in ci.node.kids[0].kids:
             self.line = st.line
             if st.kind == "annassign" and st.kids[0].kind == "name":
-                self.add_field(ci, st.kids[0].s, self.typeof(st.kids[1]))
+                self.add_field(ci, st.kids[0].s, self.vtype(st.kids[1]))
                 if len(st.kids) == 3:
                     ci.fdefault[st.kids[0].s] = st.kids[2]
                     last = st.kids[0].s
@@ -1629,7 +1708,7 @@ class Gen:
             if (k == "assign" or k == "annassign") and st.kids[0].kind == "attr" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == "self":
                 name = st.kids[0].s
                 if name not in ci.ftypes:
-                    t = self.typeof(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
+                    t = self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                     if t == "":
                         self.err(f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)")
                     self.add_field(ci, name, t)
@@ -1784,7 +1863,9 @@ class Gen:
     def store_name(self, name: str, v: Val) -> None:
         if self.is_global(name):
             if name not in self.gtypes:
-                if v.t == "None" or v.t == "":
+                if v.t == "None":
+                    self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+                if v.t == "":
                     self.err(f"cannot infer the type of '{name}'; add a type annotation")
                 self.declare(name, v.t)
             t = self.gtypes[name]
@@ -1833,15 +1914,18 @@ class Gen:
                 if kid.kind == "block":
                     self.globals_in(kid.kids, out)
 
-    def target_type(self, n: Node) -> str:
+    def target_type(self, n: Node, base: bool = False) -> str:
         # expected type of an assignment target (types empty [] / {} literals): a name, or a
-        # chain of attributes and subscripts on one (g.groups["a"], d["x"]["y"])
+        # chain of attributes and subscripts on one (g.groups["a"], d["x"]["y"]), whose base
+        # name is only read, so in a function it can be a module-level variable
         if n.kind == "name":
+            if base and n.s not in self.ltype and (n.s not in self.assigned or n.s in self.gdecl):
+                return self.gtypes.get(n.s, "")
             return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
         if n.kind == "slice":
             self.err("assignment to a slice is not supported")
         if n.kind == "attr" or n.kind == "index":
-            t = self.target_type(n.kids[0])
+            t = self.target_type(n.kids[0], True)
             if n.kind == "attr" and t in self.classes:
                 return self.classes[t].ftypes.get(n.s, "")
             if n.kind == "index" and is_list(t):
@@ -1854,6 +1938,8 @@ class Gen:
         k = t.kind
         if k == "name":
             self.store_name(t.s, v)
+        elif k == "attr" and self.dotted(t) != "":
+            self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
         elif k == "attr":
             o = self.expr(t.kids[0], "")
             self.setfield(o, self.field(o, t.s, True), t.s, v)
@@ -1901,6 +1987,7 @@ class Gen:
         self.cur = "entry"
         self.term = False
         self.ret = f.ret
+        self.retann = f.node.kind == "def" and f.node.kids[1].kind != "noann"
         self.cold = {}
         self.nn = {}
         self.selfname = ""
@@ -2065,6 +2152,8 @@ class Gen:
         for nm in self.imports:
             if nm in self.funcs or nm in self.classes:
                 self.err(f"'{nm}' is bound both by an import and by a def or class (not supported)")
+        for nm in gl:
+            self.mvars[nm] = True
         # def and class statements bind their names when they run: calls that may come first are checked
         for nm in self.funcs:
             gl[nm] = True
@@ -2513,6 +2602,16 @@ class Gen:
         elif vals[0].t == "int" or vals[0].t == "bool":
             self.rt("pys_exit", "void", [f"i64 {self.as_int(vals[0]).v}"])
         else:
+            if vals[0].t in self.classes:
+                # an object that is None at run time is status 0 too
+                l1 = self.label()
+                l2 = self.label()
+                self.cbr(self.isnull(vals[0]), l1, l2)
+                self.place(l1)
+                self.rt("pys_exit", "void", ["i64 0"])
+                self.emit("unreachable")
+                self.term = True
+                self.place(l2)
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
         self.emit("unreachable")
         self.term = True
@@ -2542,7 +2641,7 @@ class Gen:
                 for i in range(len(n.kids) - 1):
                     self.assign(n.kids[i], v)
         elif k == "annassign":
-            t = self.typeof(n.kids[1])
+            t = self.vtype(n.kids[1])
             if n.kids[0].kind == "name":
                 self.declare(n.kids[0].s, t)
             if len(n.kids) == 3:
@@ -2581,9 +2680,14 @@ class Gen:
                     self.err(f"missing return value of type {self.ret}")
                 self.close_withs(0)
                 self.emit("ret void")
+            elif self.ret == "None":
+                # return f() where f returns None
+                v = self.expr(n.kids[0], "")
+                if v.t != "None":
+                    self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
+                self.close_withs(0)
+                self.emit("ret void")
             else:
-                if self.ret == "None":
-                    self.err("returning a value from a function without a return annotation")
                 v = self.coerce(self.expr(n.kids[0], self.ret), self.ret)
                 self.close_withs(0)
                 self.emit(f"ret {lt(self.ret)} {v.v}")
@@ -2670,6 +2774,8 @@ class Gen:
         if t.kind == "name":
             cur = self.read(t)
             self.store_name(t.s, self.inplace(op, cur, n.kids[1]))
+        elif t.kind == "attr" and self.dotted(t) != "":
+            self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
         elif t.kind == "attr":
             o = self.expr(t.kids[0], "")
             p = self.field(o, t.s, False)
@@ -2739,26 +2845,31 @@ class Gen:
         tgt = n.kids[0]
         it = n.kids[1]
         body = n.kids[2].kids
-        if it.kind == "call" and it.kids[0].kind == "name" and it.kids[0].s not in self.ltype:
+        if it.kind == "call" and it.kids[0].kind == "name" and not self.bound(it.kids[0].s):
             fn = it.kids[0].s
             args = it.kids[1:]
             if fn == "range":
                 vs = self.range_args(args)
                 self.for_range(tgt, vs[0], vs[1], vs[2], body, hide)
                 return
-            if fn == "reversed" and len(args) == 1 and args[0].kind == "call" and args[0].kids[0].kind == "name" and args[0].kids[0].s == "range" and "range" not in self.ltype:
+            if fn == "reversed" and len(args) == 1 and args[0].kind == "call" and args[0].kids[0].kind == "name" and args[0].kids[0].s == "range" and not self.bound("range"):
                 self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide)
                 return
+            for a in args:
+                if self.iterator_call(a) and (fn == "enumerate" or fn == "zip" or fn == "reversed"):
+                    self.err(f"{a.kids[0].s}() cannot be nested in {fn}() here; make it a list first, list({a.kids[0].s}(...))")
+                if a.kind == "kw" and fn == "zip":
+                    self.err(f"zip({a.s}=...) is not supported")
             if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 0):
-                seqs = [self.expr(a, "") for a in args]
+                seqs = [self.iterable(self.expr(a, "")) for a in args]
                 self.for_seq(tgt, seqs, fn, body, "0", hide)
                 for i in range(len(args)):
                     self.close_temp(args[i], seqs[i])
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
-                seq = self.expr(args[0], "")
+                seq = self.iterable(self.expr(args[0], ""))
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-                self.for_seq(tgt, [seq], fn, body, self.coerce(self.expr(a1, "int"), "int").v, hide)
+                self.for_seq(tgt, [seq], fn, body, self.ival(a1).v, hide)
                 self.close_temp(args[0], seq)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
@@ -2770,9 +2881,19 @@ class Gen:
                 else:
                     self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide)
                 return
-        seq = self.expr(it, "")
+        seq = self.iterable(self.expr(it, ""))
         self.for_seq(tgt, [seq], "", body, "0", hide)
         self.close_temp(it, seq)
+
+    def iterable(self, v: Val) -> Val:
+        # a tuple is iterated as a list of its items, which must then share one type
+        if not is_tuple(v.t):
+            return v
+        ts = targs(v.t)
+        for x in ts:
+            if x != ts[0]:
+                self.err(f"cannot iterate over {v.t}: its items have different types")
+        return self.as_list(v, "iter")
 
     def ival(self, n: Node) -> Val:
         # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does)
@@ -3089,6 +3210,8 @@ class Gen:
                 self.err("empty tuples are not supported")
             return self.tuple_(vals)
         if k == "listcomp":
+            if n.s == "gen":
+                self.err("a generator expression is only supported as the argument of sum(), min(), max(), sorted(), list(), any(), all(), str.join() or list.extend()")
             return self.listcomp(n, want)
         if k == "fstr":
             acc = Val(self.sconst(""), "str")
@@ -3160,6 +3283,8 @@ class Gen:
         if is_tuple(t):
             ts = targs(t)
             i = self.expr(n.kids[1], "int")
+            if i.t == "bool" and (i.v == "true" or i.v == "false"):
+                i = Val("1" if i.v == "true" else "0", "int")
             if i.t != "int" or i.v.startswith("%"):
                 self.err("tuple index must be an integer constant")
             j = int(i.v)
@@ -3219,23 +3344,35 @@ class Gen:
         self.cbr(c, l1, l2)
         self.place(l1)
         a = self.expr(n.kids[1], want)
-        e1 = self.cur
+        # an arm that ends the program (sys.exit()) has no edge to the join, and no value
+        e1 = "" if self.term else self.cur
         self.br(l3)
         self.place(l2)
         b = self.expr(n.kids[2], want if want != "" else a.t)
-        t = b.t if a.t == "None" else a.t
-        b = self.coerce(b, t)
+        e2 = "" if self.term else self.cur
+        t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
+        phis: list[str] = []
+        if e1 != "":
+            phis.append(f"[{self.coerce(a, t).v}, %{e1}]")
+        if e2 != "":
+            phis.append(f"[{self.coerce(b, t).v}, %{e2}]")
         if t == "None":
             self.err("conditional expression has no value")
-        e2 = self.cur
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi {lt(t)} [{a.v}, %{e1}], [{b.v}, %{e2}]"), t)
+        return Val(self.ins(f"phi {lt(t)} {', '.join(phis)}"), t)
 
     def boolop(self, n: Node, ascond: bool, want: str) -> Val:
         # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
         a = Val(self.cond(n.kids[0]), "bool") if ascond else self.expr(n.kids[0], want)
+        if a.t == "None":
+            # None is false: `None and b` is None without evaluating b, `None or b` is b
+            if n.s == "or":
+                self.coerce(self.expr(n.kids[1], "None"), "None")
+            return Val("null", "None")
         c = self.truth(a)
+        if self.term:
+            self.place(self.label())
         e1 = self.cur
         l2 = self.label()
         l3 = self.label()
@@ -3244,11 +3381,14 @@ class Gen:
         else:
             self.cbr(c, l3, l2)
         self.place(l2)
-        b = Val(self.cond(n.kids[1]), "bool") if ascond else self.coerce(self.expr(n.kids[1], a.t), a.t)
-        e2 = self.cur
+        b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t)
+        # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
+        phis = [f"[{a.v}, %{e1}]"]
+        if not self.term:
+            phis.append(f"[{self.coerce(b, a.t).v}, %{self.cur}]")
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi {lt(a.t)} [{a.v}, %{e1}], [{b.v}, %{e2}]"), a.t)
+        return Val(self.ins(f"phi {lt(a.t)} {', '.join(phis)}"), a.t)
 
     def unary(self, n: Node) -> Val:
         op = n.s
@@ -3460,6 +3600,9 @@ class Gen:
         return Val(self.ins(f"phi i1 {', '.join(phis)}"), "bool")
 
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
+        if (op == "==" or op == "!=") and a.t == "file" and b.t == "file":
+            # files compare by identity, as CPython's do
+            return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
         if op == "is" or op == "is not":
             if not self.isref(a.t) or not self.isref(b.t):
                 self.err("'is' is only supported for objects and None")
@@ -3511,7 +3654,7 @@ class Gen:
                 return Val(self.ins(f"fcmp {FCMP[op]} double {a.v}, {b.v}"), "bool")
             # int against float: exact, as CPython compares them (double rounding would not be)
             iv = self.as_int(b if a.t == "float" else a)
-            if not iv.v.startswith("%") and abs(int(iv.v)) <= 9007199254740992:
+            if not iv.v.startswith("%") and -9007199254740992 <= int(iv.v) <= 9007199254740992:
                 return Val(self.ins(f"fcmp {FCMP[op]} double {self.as_float(a).v}, {self.as_float(b).v}"), "bool")
             fv = a if a.t == "float" else b
             r = self.rt("pys_cmp_if", "i64", [f"i64 {iv.v}", f"double {fv.v}"])
@@ -3558,6 +3701,8 @@ class Gen:
                 self.nn[o.v] = True
                 self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
                 return o
+            if f.s in self.mvars:
+                self.err(f"'{f.s}' is a variable, so it cannot be called")
             return self.builtin(f.s, args, want)
         if f.kind == "attr":
             path = self.dotted(f)
@@ -3571,8 +3716,12 @@ class Gen:
         self.err("only functions, classes and methods can be called")
         return Val("", "")
 
+    def bound(self, s: str) -> bool:
+        # a builtin's name that the program binds (a local, def, class or module-level variable)
+        return s in self.ltype or s in self.funcs or s in self.classes or s in self.mvars
+
     def open_call(self, n: Node) -> bool:
-        return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and "open" not in self.ltype and "open" not in self.funcs
+        return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and not self.bound("open")
 
     def close_temp(self, n: Node, v: Val) -> None:
         # open(p).read(): nothing else refers to the file, so CPython closes it right after its use
@@ -3674,7 +3823,7 @@ class Gen:
                 return self.aliases[n.s]
         elif n.kind == "attr":
             p = self.dotted(n.kids[0])
-            if p != "":
+            if p != "" and p not in MODATTRS:
                 return p + "." + n.s
         return ""
 
@@ -3713,8 +3862,12 @@ class Gen:
             return self.open_(args)
         if name == "map" or name == "filter":
             self.err(f"{name}() is not supported; use a list comprehension")
-        if (name == "any" or name == "all") and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
-            return self.listcomp(args[0], "", name)
+        if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
+            # these stop at the deciding item, as CPython's iterators do
+            g = args[0]
+            if g.kind != "listcomp":
+                g = mk("listcomp", "gen", g.line, [mk("name", "__item", g.line, []), mk("name", "__item", g.line, []), g])
+            return self.listcomp(g, "", name)
         npos = 0
         for a in args:
             if a.kind != "kw":
@@ -3732,10 +3885,18 @@ class Gen:
         fresh = False
         if npos == 1 and (name == "sorted" or name == "min" or name == "max" or name == "sum" or name == "any" or name == "all" or name == "list"):
             # these iterate their argument at once, so range(), reversed(), enumerate() and zip() may be it
-            fresh = self.iterator_call(args[0])
+            fresh = self.iterator_call(args[0]) or args[0].kind == "listcomp"
             v0 = self.consume(args[0], w)
+            if name == "any" and v0.t == "file":
+                # any(f) reads one line: lines are never empty
+                first = self.rt("pys_file_readline", "ptr", [f"ptr {v0.v}"])
+                return Val(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {first}')}, 0"), "bool")
             vals = [self.as_list(v0, name)]
             self.close_temp(args[0], v0)
+        elif name == "sum" and npos == 2 and args[0].kind == "listcomp" and args[0].s == "gen":
+            # sum(generator, start): the generator runs once start is evaluated, as in CPython
+            st = self.expr(args[1], "")
+            vals = [self.consume(args[0], ""), st]
         else:
             vals = [self.expr(a, w) for a in args if a.kind != "kw"]
         rev = "0"
@@ -3870,15 +4031,17 @@ class Gen:
         return Val(self.ins(f"load i1, ptr {res}"), "bool")
 
     def iterator_call(self, n: Node) -> bool:
-        if n.kind != "call" or n.kids[0].kind != "name" or n.kids[0].s in self.ltype or n.kids[0].s in self.funcs:
+        if n.kind != "call" or n.kids[0].kind != "name" or self.bound(n.kids[0].s):
             return False
         fn = n.kids[0].s
         return fn == "range" or fn == "reversed" or fn == "enumerate" or fn == "zip"
 
     def consume(self, n: Node, want: str) -> Val:
-        # range(), reversed(), enumerate() and zip() where their items are used at once (list(),
-        # sorted(), "".join(), ...) become a fresh list of those items, built by the for loop
-        # machinery; anywhere else they are rejected, as a list would print differently
+        # range(), reversed(), enumerate(), zip() and generator expressions where their items are
+        # used at once (list(), sorted(), "".join(), ...) become a fresh list of those items, built
+        # by the for loop machinery; anywhere else they are rejected, as a list would behave differently
+        if n.kind == "listcomp":
+            return self.listcomp(n, want)
         if not self.iterator_call(n):
             return self.expr(n, want)
         if n.kids[0].s == "range":
@@ -3900,7 +4063,7 @@ class Gen:
             for i in range(len(ts)):
                 self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.tget(v, i))])
             return Val(r, f"list[{ts[0]}]")
-        if v.t == "str" and (name == "sorted" or name == "min" or name == "max"):
+        if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
             return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         if v.t == "file":
             return Val(self.rt("pys_file_readlines", "ptr", [f"ptr {v.v}"]), "list[str]")
@@ -4026,7 +4189,12 @@ class Gen:
             slot = p.startswith("*")
             pt = subst(p[1:] if slot else p, T, K, V, o.t)
             if i < len(args):
-                v = self.coerce(self.consume(args[i], pt) if key == "str.join" else self.expr(args[i], pt), pt)
+                v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
+                if key == "str.join":
+                    v = self.as_list(v, "join")
+                if p == "int":
+                    v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+                v = self.coerce(v, pt)
                 av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
             elif dflt != "":
                 av.append(("i64 " if slot else rtt(pt) + " ") + dflt)
@@ -4147,6 +4315,8 @@ def main() -> None:
         if not os.path.exists(home + "/runtime.c"):
             home = home + "/.."
     rtc = home + "/runtime.c"
+    if not os.path.exists(rtc):
+        fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
     # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link;
     # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()

@@ -1,0 +1,4 @@
+<STDOUT> stdin W <STDOUT>
+True True True True
+True ['a1', 'a2'] 3
+[exit 0]
