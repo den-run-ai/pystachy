@@ -331,6 +331,8 @@ static Exc *exc_new(Str *kind, Str *msg, Str *args);
 static Exc *exc_raise(Str *kind, Str *msg);
 static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
+static const char *exc_name(Exc *e, int *n);
+Str *pys_exc_repr(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
@@ -1024,6 +1026,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
+  case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
   }
   return d;
 }
@@ -1080,6 +1083,10 @@ static int opv(I a, I b, const char *d, I op) {
   }
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case 'E': {
+    int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
+    failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
+  }
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -2342,15 +2349,21 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args i
   }
   return exc_new(k, s, a);
 }
+static const char *short_name(Str *k, int *n) {   /* a class's name without its module (*n: its length) */
+  const char *p = k->s + k->len;
+  while (p > k->s && p[-1] != '.') p--;  /* not memrchr: tools/dictprobe.c includes this file after <time.h> */
+  *n = (int)(k->s + k->len - p);
+  return p;
+}
+static const char *exc_name(Exc *e, int *n) { return short_name(e->obj ? XCLS(e)->disp : e->kind, n); }
 Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
 Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
   if (e->obj) return XCLS(e)->repr(e->obj);
-  Buf b = {0}; Str *k = e->kind, *m = e->msg; const char *n = k->s + k->len;
-  while (n > k->s && n[-1] != '.') n--;  /* not memrchr: tools/dictprobe.c includes this file after <time.h> */
-  put(&b, n, k->s + k->len - n);
+  Buf b = {0}; Str *m = e->msg; int n; const char *k = exc_name(e, &n);
+  put(&b, k, n);
   put(&b, "(", 1);
   if (e->args) put(&b, e->args->s, e->args->len);
-  else if (e->has_code || !strcmp(k->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
+  else if (e->has_code || !strcmp(e->kind->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
   else if (m->len) repr_str(&b, m);
   put(&b, ")", 1); return done(&b);
 }

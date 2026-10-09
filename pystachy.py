@@ -4516,6 +4516,11 @@ for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException Keyboar
     EXCBASES[_k[: _k.find(":")]] = _k[_k.find(":") + 1 :]
 
 
+def is_excname(s: str) -> bool:
+    # does s name a builtin exception class (OSError's other names too)
+    return s in EXCBASES or s == "IOError" or s == "EnvironmentError"
+
+
 def exc_derives(c: str, base: str) -> bool:
     # is exception class c base, or derived from it (EXCBASES)
     if c == base:
@@ -6097,6 +6102,8 @@ class Gen:
             if len(a) > 9:
                 self.err("tuples are limited to 9 elements")
             return "T" + str(len(a)) + "".join([self.desc(x) for x in a])
+        if t == "exc":
+            return "E"  # (repr: pys_exc_repr; equality: identity)
         if t in self.classes:
             # O<id>: the runtime calls back into pys_obj_eq/lt/repr, which dispatch on the id
             if t not in self.ocls:
@@ -6116,6 +6123,8 @@ class Gen:
             s = n.s
             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
                 return s
+            if is_excname(s):
+                return "exc"  # (a builtin exception class: any exception, not only those of the class)
             if self.typing_name(s) == "TextIO":
                 return "file"
             if s in self.unsupported:
@@ -6154,7 +6163,7 @@ class Gen:
         if k == "str":
             return ""
         if k == "name":
-            if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or self.imported(n.s) == "typing.TextIO":
+            if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or is_excname(n.s) or self.imported(n.s) == "typing.TextIO":
                 return ""
             return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
         if k == "binop" and n.s == "|" and n.kids[1].kind == "None":
@@ -6197,6 +6206,8 @@ class Gen:
         return ""
 
     def opt(self, t: str) -> str:
+        if t == "exc":
+            self.err("an exception that may be None (Exception | None) is not supported: only class types can be optional")
         if t not in self.classes:
             self.err(f"None/Optional is only supported for class types, not {t}")
         return t
@@ -8848,17 +8859,21 @@ class Gen:
             self.err(f"{name}() with more than one argument is not supported")
         return args
 
-    def exc_var(self, e: Node) -> bool:
-        # is e, the exception of a raise statement, a variable (which must hold an exception: raise
-        # e, as an except clause bound it) rather than an exception class (exc_args)
-        return e.kind == "name" and e.s not in self.classes and e.s not in self.funcs and (e.s not in EXCEPTIONS or e.s in self.ltype or e.s in self.gtypes)
+    def exc_class(self, e: Node) -> str:
+        # the class that e, the exception of a raise statement, names or calls: a builtin exception
+        # class (EXCEPTIONS) or a class of the program; "" for any other expression (a variable,
+        # a call of a function), whose value is the exception
+        c = e.kids[0] if e.kind == "call" else e
+        if c.kind != "name" or c.s in self.funcs or c.s in self.ltype or c.s in self.gtypes:
+            return ""
+        return c.s if c.s in self.classes or c.s in EXCEPTIONS else ""
 
     def cause(self, c: Node) -> None:
         # raise ... from c: c is evaluated and checked (an exception class, a call of one, an
         # exception or None), and otherwise ignored: only a traceback would show it
         if c.kind == "None":
             return
-        if self.exc_var(c):
+        if self.exc_class(c) == "":
             if self.expr(c, "").t != "exc":
                 self.err("exception causes must derive from BaseException")
             return
@@ -8882,7 +8897,7 @@ class Gen:
                 self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
             return
         e = n.kids[0]
-        if self.exc_var(e):
+        if self.exc_class(e) == "":
             v = self.expr(e, "")
             if v.t != "exc":
                 self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
@@ -9003,12 +9018,13 @@ class Gen:
 
     def exit_value(self, vals: list[Val]) -> Val:
         # SystemExit(*vals): an int or bool code is the status the program ends with if nothing
-        # catches it, None (or none) status 0; anything else is shown, with status 1
-        if len(vals) == 0 or (len(vals) == 1 and vals[0].t == "None"):
+        # catches it, None (or none) status 0; anything else is shown, with status 1. (sys.exit(None)
+        # is SystemExit(), but SystemExit(None) shows its None: str(e) "None")
+        if len(vals) == 0:
             return self.no_code()
-        if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
+        if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None"):
             s = self.to_str(vals[0]).v
-            return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v}", f"ptr {s}", f"ptr {s}"]), "exc")
+            return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
         return self.exc_value("SystemExit", vals)
 
     def throw(self, e: Val) -> None:
@@ -10400,8 +10416,8 @@ class Gen:
         return Val(self.phi(ph), "bool")
 
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
-        if (op == "==" or op == "!=") and a.t == "file" and b.t == "file":
-            # files compare by identity, as CPython's do
+        if (op == "==" or op == "!=") and a.t == b.t and (a.t == "file" or a.t == "exc"):
+            # files and exceptions compare by identity, as CPython's do
             return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
         if op == "is" or op == "is not":
             if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
@@ -10467,7 +10483,7 @@ class Gen:
         eq = op == "==" or op == "!="
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
-        if a.t == b.t and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or (eq and is_dict(a.t))):
+        if a.t == b.t and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or (eq and is_dict(a.t)) or a.t == "exc"):
             d = f"ptr {self.sconst(self.desc(a.t))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
@@ -10867,7 +10883,7 @@ class Gen:
         if name == "sys.exit" or name == "exit" or name == "quit":
             if len(vals) > 1:
                 self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
-            self.exit_(vals)
+            self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [])
             return Val("null", "None")
         if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
             return vals[0]  # a str path is its own file system path

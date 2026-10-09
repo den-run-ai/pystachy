@@ -1,0 +1,24 @@
+1
+2
+3 [ValueError("invalid literal for int() with base 10: 'x'"), ValueError("invalid literal for int() with base 10: ''"), ValueError("invalid literal for int() with base 10: 'y7'")]
+ValueError("invalid literal for int() with base 10: 'y7'") invalid literal for int() with base 10: 'y7'
+["invalid literal for int() with base 10: 'x'", "invalid literal for int() with base 10: ''", "invalid literal for int() with base 10: 'y7'"]
+invalid literal for int() with base 10: 'abc' | ValueError("invalid literal for int() with base 10: 'abc'") | invalid literal for int() with base 10: 'abc'
+invalid literal for int() with base 10: 'abc' | ValueError("invalid literal for int() with base 10: 'abc'") invalid literal for int() with base 10: 'abc'
+[KeyError('k'), IndexError('list index out of range'), OSError('disk'), ZeroDivisionError()]
+{'key': KeyError('k'), 'val': ValueError(3)}
+3 KeyError('k')
+('x', RuntimeError('boom', 2))
+True False True False True False True 0
+TypeError: '<' not supported between instances of 'ValueError' and 'ValueError'
+TypeError: '<' not supported between instances of 'ValueError' and 'ValueError'
+again: invalid literal for int() with base 10: 'x'
+again: invalid literal for int() with base 10: ''
+again: invalid literal for int() with base 10: 'y7'
+last: ValueError("invalid literal for int() with base 10: 'y7'")
+RuntimeError('lookup failed')
+chained
+SystemExit(None) 'None'
+SystemExit() ''
+list index out of range 1
+[exit 1]
