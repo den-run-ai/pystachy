@@ -2817,10 +2817,9 @@ class ClassInfo:
 
 class Flow:
     # definite assignment over one scope: which reads may find their variable unassigned
-    def __init__(self, tracked: dict[str, bool], defd: dict[str, bool], top: bool):
+    def __init__(self, tracked: dict[str, bool], defd: dict[str, bool]):
         self.tracked = tracked
         self.defd = defd  # names assigned on every path to here; " dead" marks unreachable code
-        self.top = top
         # every change to defd since the start, so that a branch is undone in the time it took
         # (not by copying defd): the key, and whether it was in defd before
         self.log: list[str] = []
@@ -4386,8 +4385,13 @@ class Gen:
             gl[f.name] = True
         for ci in mcls:
             gl[ci.name] = True
-        mfl = Flow(gl, {}, True)
-        self.fl_stmts(mfl, top)
+        mfl = Flow(gl, {})
+        for st in top:
+            # (a statement inside a compound one calls user code only if the compound one does)
+            if not mfl.called and self.user_call(st):
+                mfl.called = True
+                mfl.call = dict(mfl.defd)
+            self.fl_stmt(mfl, st)
         for nm in mfl.marks:
             self.gflag[nm] = True
         # functions run only from module code: globals assigned before its first call into user
@@ -4427,7 +4431,7 @@ class Gen:
                     defd[nm] = True
             for nm in f.params:
                 defd[nm] = True
-            fl = Flow(tracked, defd, False)
+            fl = Flow(tracked, defd)
             self.fl_stmts(fl, body)
             for nm in fl.marks:
                 if nm in loc and nm not in decl:
@@ -4441,7 +4445,7 @@ class Gen:
         # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
         # read raises AttributeError as in CPython instead of seeing 0 or null
         init = ci.methods["__init__"]
-        fl = Flow({}, {}, False)
+        fl = Flow({}, {})
         for f in ci.fdefault:
             fl.defd["." + f] = True
         fl.fields = ci.fields
@@ -4549,9 +4553,6 @@ class Gen:
 
     def fl_stmt(self, fl: Flow, n: Node) -> None:
         k = n.kind
-        if fl.top and not fl.called and self.user_call(n):
-            fl.called = True
-            fl.call = dict(fl.defd)
         if k == "assign":
             self.fl_expr(fl, n.kids[-1])
             for i in range(len(n.kids) - 1):
