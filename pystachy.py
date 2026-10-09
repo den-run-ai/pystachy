@@ -9290,14 +9290,16 @@ class Gen:
 
     def cause(self, c: Node) -> None:
         # raise ... from c: c is evaluated and checked (an exception class, a call of one, an
-        # exception or None), and otherwise ignored: only a traceback would show it
+        # exception or None: else CPython's TypeError is raised instead), and otherwise ignored:
+        # only a traceback would show it
         if c.kind == "None":
             return
         k = self.exc_class(c)
         if k == "" or k in self.classes:
             v = self.exc_value_of(c, k)
-            if v.t != "exc" and not (v.t in self.classes and self.classes[v.t].exc != ""):
-                self.err("exception causes must derive from BaseException")
+            if v.t != "exc" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
+                self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
+                self.place(self.label())  # (what follows, the raise itself, is never reached)
             return
         for a in self.exc_args(c):
             self.expr(a, "")
