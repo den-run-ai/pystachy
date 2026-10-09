@@ -169,7 +169,12 @@ def scan_ws(s: str, i: int, n: int, want: bool) -> int:
 
 
 def search(h: str, n: str, st: int, en: int) -> int:
-    # the first i from st on where n occurs in h[:en], or -1
+    # the first i from st on where n occurs in h[:en], or -1. One byte goes to memchr, as runtime.c's
+    # memmem sent it, not to seek()'s inline scan, whose exit mispredicts where the gaps between hits
+    # vary (a loop of finds over the fields of CSV lines, lines, tags). (Here, not in seek(), which
+    # in and count call for every search: a test there costs a short in 8% under the JIT)
+    if len(n) == 1:
+        return _rt.find_byte(h, _rt.byte(n, 0), st, en) if st < en else -1
     i = seek(h, n, st, en, st)
     return -2 - i if i < -1 else i
 
@@ -186,10 +191,6 @@ def seek(h: str, n: str, i: int, en: int, st: int) -> int:
     if m == 0:
         return i if i <= en else -1
     first = _rt.byte(n, 0)
-    if m == 1:
-        # one byte: memchr, as runtime.c's memmem was for it, not scan()'s inline loop, whose exit
-        # mispredicts where the gaps between hits vary (the fields of a CSV line, lines, tags)
-        return _rt.find_byte(h, first, i, en) if i < en else -1
     last = en - m  # the last place n can start
     paid = i - 64  # where the failed candidates' cost has reached: once past one, memmem
     while i <= last:
