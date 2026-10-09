@@ -300,7 +300,8 @@ reads, an in-place string builder, `memchr`, `memcmp` and `memmem`, wrapping and
 arithmetic), each a few checked LLVM instructions. The driver links it to runtime.c's bitcode
 and optimizes the two as one module (`build/runtime-py-<hash>.bc` and its `.o`) when it
 rebuilds the cached runtime, which it does when `runtime.c`, `runtime.py` or the running
-compiler is newer; programs' IR does not change. A raise in a `runtime.py` function unwinds to
+compiler is newer; programs' IR does not change (but for an `invoke` inside a `try` where a
+moved function can raise). A raise in a `runtime.py` function unwinds to
 a program's handler like one in runtime.c. `tools/rtcheck.py` runs `runtime.py` on CPython
 against CPython's own str methods, `math` and `format()`.
 [runtime-in-subset.md](runtime-in-subset.md) evaluates the approach.

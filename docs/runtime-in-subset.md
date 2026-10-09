@@ -10,7 +10,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
 
 - **Verdict: promising, as an incremental mechanism, not as a rewrite.**
   - The C runtime gets a second half, `runtime.py`, written in the subset and compiled by the compiler itself.
-  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reported all 629 corpus programs identical, and against the typed IR all 772 at `cc472e4` and all 1,074 at `5159bc6`.
+  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reported all 629 corpus programs identical, and against the typed IR all 772 at `cc472e4` and all 1,074 at `5159bc6`. Since #22's exceptions (`3c0664b`) one thing differs: a call inside a `try` of a function that this branch found can raise (R, §2.8) is an `invoke`, so that the raise reaches the handler (3 of 1,212 programs).
   - **It now sits on the typed IR** (#22). Runtime mode builds the IR's ops like the rest of the compiler, `RUNTIME` binds the keys of the functions `runtime.py` defines, and `tools/check_runtime.py` checks their types, their effects and that none reaches itself through a lowering or runtime.c (§2.8).
   - The garbage collector, the memory layouts of lists, dicts and strings, files and signals stay in C. Every system surveyed in §3 keeps some native core. The collector stays native unless the language has a compiler-checked low-level regime for it (§3, item 7), which Pystachy does not.
 - **What moved in the prototype:** 52 functions.
@@ -436,7 +436,8 @@ See §2.3: a cold runtime build takes 0.18 s more, and AOT executables grow only
 The prototype was written against `30b51d9`, before the IR existed, and has since been merged with `claude/typed-ir` (`39d8471`, #22: steps 4 to 8; then `cc472e4`). That merge is the test of the predictions this section made. An adversarial review of the merge (four reviewers, each finding checked by a skeptic) found the gaps fixed below.
 
 - **No interference with the migration.** The migration checks every step with `tools/irsame.sh`, which compares programs' IR byte for byte.
-  - The prototype changes no program's IR: on `30b51d9`, all 629 programs were identical; on the typed IR, `make irsame REF=cc472e4` reported all 772 identical, and `make irsame REF=5159bc6` reports all 1,074.
+  - The prototype changes no program's IR: on `30b51d9`, all 629 programs were identical; on the typed IR, `make irsame REF=cc472e4` reported all 772 identical, and `make irsame REF=5159bc6` all 1,074.
+  - Exceptions changed that, in one place. Since `3c0664b` a call inside a `try` is an `invoke` where its `RUNTIME` entry has R. The ten entries this branch gave R (§2.8, Findings) therefore change the IR of programs that call them inside a `try`: `make irsame REF=3c0664b` reports 3 of 1,212 programs different, the two iniconfig tests (`in`) and `tests/rt_raise_unwinds.py` (`expandtabs`). The R is right: on `3c0664b`, `expandtabs(2**40)` inside a `try` hangs in runtime.c, and with this branch the program catches CPython's `OverflowError`. For `in`, `find`, `count` and the others, R comes from overflow checks that only strings near 2**63 bytes could trip; a `!range` on lengths at the allocator's real limit would let `opt` drop them (#30).
   - Runtime-mode code paths (`rtmode`, `primitive`, `extern`, the nsw increment) run only for `runtime.py`. Its IR came out of the merge with the same 8,803 lines; only one `declare` moved.
   - But every executable holds code that `Gen` generates from `runtime.py`, and `irsame` did not compile it, so a step of the IR that changed it would have passed as identical. When both compilers have runtime mode, `irsame` now compiles `runtime.py` and `tests/errors/rtmode_*.py` with `rt`.
 - **The merge.** The predicted conflicts were the real ones: `Gen.rt`, the end of `Gen.function` and `Gen.program`, four hunks in all. They resolved as follows:
@@ -570,6 +571,16 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
 
 ### 2.11 On the typed IR: the measurements again
 
+**After the third merge** (`3c0664b`, #22's exceptions: runtime.c is built with `-fexceptions` on both sides), the same measurements against `3c0664b` gave the same picture:
+- `bench/` AOT 0.992 to 1.015 (median 1.002), JIT 0.940 to 1.054 (median 0.998, `sieve` again the outlier);
+- the self-compile 1.015 native and 0.997 under CPython, at the same peak memory (130.5 MB);
+- a cold runtime build 0.42 s more, and a warm JIT start unchanged (40 ms);
+- the cached runtime at 320 / 265 KB against 249 / 245 KB;
+- `tools/rtbench` at a median of 1.00 AOT and 0.99 JIT, with the same programs at the ends;
+- the compiler's executable 1.0% larger (1,701 against 1,684 KB), and its IR 1.9% longer (217,359 against 213,276 lines).
+
+The table and notes below are the second merge's.
+
 Measured on this branch's head after the second merge with `claude/typed-ir` (`5159bc6`) and the fixes of this round, against the compiler and C runtime of `5159bc6` itself. (The first round measured `59c4e0c` against `cc472e4` the same way, with the same results within noise.) Everything else is as in §2.4: CPU time (user + sys, from `wait4`), best of 9, the two compilers' runs alternating so that a slow spell of the machine hits both, pinned to one core, with outputs checked against CPython's.
 
 | | `5159bc6` (C runtime) | this branch | ratio |
@@ -654,7 +665,7 @@ Sources and line counts: the research notes behind this table measured each repo
 | self-recursion through a lowering | the direct case is rejected at compile time (`Gen.rt`); a cycle through runtime.c by `tools/check_runtime.py`, a step of `make verify` (§2.8) |
 | `_rt` grows into a pointer layer | the rule in §1.2: `str` and `int` operands only, one Wasm GC counterpart each |
 | performance cliffs in subset code (bounds checks, `sadd.with.overflow`) | primitives, TBAA, nsw range steps; measure every move (§2.4) |
-| merge conflicts with the typed IR and the bug fixes | no program IR changes; leaf functions only; ABI frozen (§2.8, §2.9) |
+| merge conflicts with the typed IR and the bug fixes | no program IR changes, but an `invoke` for a call that can now raise inside a `try`; leaf functions only; ABI frozen (§2.8, §2.9) |
 | loss of sanitizer coverage | the moved code is checked by construction; sanitizers still cover runtime.c, and ASan's interceptors the primitives' libc calls (§2.1) |
 
 ## 5. Recommendation and next steps
@@ -725,7 +736,7 @@ The follow-ups are filed: #31 tracks items 2 to 7, and the issues named below ho
 - **Correctness.**
   - `make` checks both fixed points.
   - `make verify` runs every step: bootstrap, the tests with both compilers, Python-free, UBSan, check-ir, runtime-table, gc-stress, benchmarks, rtcheck, rt-abi, dict-probes and scaling.
-  - `make irsame REF=30b51d9` reported 629 programs identical; on the typed IR, `make irsame REF=cc472e4` reported 772, and `make irsame REF=5159bc6` reports 1,074.
+  - `make irsame REF=30b51d9` reported 629 programs identical; on the typed IR, `make irsame REF=cc472e4` reported 772, `make irsame REF=5159bc6` 1,074, and `make irsame REF=3c0664b` 1,209 of 1,212 (§2.8).
 - **§2.11's table.** `make irsame REF=5159bc6` leaves that compiler in `build/ref`; `tools/rtbench.py build/ref/pystachy ./pystachy` gives the microbenchmarks, and a `wait4` harness over `bench/*.py` the rest.
 - **Timings.** Every program is run with the native compiler of `30b51d9` and with this branch's, AOT and JIT, best of 7 runs, with its output checked against CPython's.
   - The `bench/` table uses `bench/*.py`.

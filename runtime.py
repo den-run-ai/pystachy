@@ -4,7 +4,8 @@
 its C name with runtime.c's types (bools cross as int), and the driver links it to runtime.c's
 bitcode into the cached runtime (build/runtime-py-<hash>.bc and its .o). runtime.c keeps a
 prototype of each function moved here. Programs call these functions exactly as they call
-runtime.c's, so their IR does not change.
+runtime.c's, so their IR does not change (but for an invoke inside a try, where RUNTIME says a
+function moved here can raise and runtime.c's could not).
 
 The rules for this file: functions, imports and docstrings only (nothing runs module code); no
 classes; no bools in a pys_* signature; and a function may not use the operation it implements
