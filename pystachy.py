@@ -4585,9 +4585,16 @@ class Gen:
             fl.bwas = bwas
             fl.bnew = bnew
             if n.kids[-1].s == "else":
-                # (after the loop only what was assigned before it is surely assigned)
+                # (after the loop only what was assigned before it is surely assigned, less what
+                # the else block unbinds: the loop is left at its end or, from a break, in a state
+                # that has what was assigned before it. A while True never runs its else block)
                 self.fl_stmts(fl, n.kids[-1].kids)
-                fl.undo(mark)
+                if k == "while" and n.kids[0].kind == "True":
+                    fl.undo(mark)
+                else:
+                    st = fl.since(mark)
+                    fl.undo(mark)
+                    fl.join(st, mark)
             if k == "while" and n.kids[0].kind == "True":
                 # while True is left only through break: in what the states at its breaks have
                 # in common
