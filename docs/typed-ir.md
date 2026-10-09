@@ -54,8 +54,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - a `raise` of `SyntaxError`, `IndentationError` or `TabError` whose message is true has the
 >     whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
 >     message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
->     leaves out. Its `s` is the kind, but its operands are not (kind, message): the exception
->     lowering of §7.2 must mark such a raise (a flag in `k`) before it reads them so.
+>     leaves out. Its `s` is the kind, but its operands are not (kind, message). Such a raise
+>     exists only in a program without a try: in one with a try, a raise statement throws the
+>     exception that `pys_exc_new` and `pys_exc_detail` make (`Gen.exc_value`), so the exception
+>     lowering reads every `raise` op as (kind, message).
 >   - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
 >     (R5), so only debug information or the traceback lines of §7.7 will, and they can add it.
 >   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
@@ -65,6 +67,35 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
 >     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
 >     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
+> - Exceptions (§7.2) have landed, by table-driven unwinding rather than the error flag §7.2
+>   proposed (measured on LLVM 18: the flag cost 15 to 59 % on `fib` under a handler, and
+>   unwinding works through the runtime's C frames, also under the JIT):
+>   - `Blk.handler` names the landing block of the innermost `try` around a block in its
+>     function ("" for none: an exception leaves the function); `Gen` stamps it on each block it
+>     opens. `IFn.tries` holds a `Try` record per try statement (body, landing blocks of the
+>     except clauses and of `finally`, else, exit) for a structured backend; lowering does not
+>     read them. A check inside a try has a cold block per message and landing block (its key,
+>     `"<landing> <message>"`, is in `Ins.x`; `IFn.coldh` maps it to the landing block).
+>   - new ops: `landing` (alone in its block: it stores the exception the unwinder brings in the
+>     try's slot and goes on to the code after it, where `pys_exc_begin` takes it up), `throw e`
+>     (`pys_throw`) and `exc.match e, set` (`pys_exc_in` over the classes a clause catches, out
+>     of the closed set `EXCBASES`); an exception has the type `exc`.
+>   - once the program is built, `Gen.eh_ir` reads the effect summaries (so `Gen.effects` runs
+>     for every program with a try): in a covered block, a `raise` or `throw` becomes a branch
+>     to the code after its landing block, with the exception in the slot; a call (`rt`,
+>     `call` or `init`) whose effects have R becomes an invoke (`Ins.b` = [next, landing]) and
+>     ends its block; a landing block no invoke reaches is dropped, and a function with none
+>     left has no `personality`. The verifier then checks that only unwind edges reach a
+>     landing block, and that no call that may raise, `raise` or `throw` is left in a covered
+>     block. On the tests, 40 of the 122 landing blocks are dropped.
+>   - R includes the allocation of the exception a raise makes on its way out (a collection may
+>     run before a handler takes it), and A only allocations on the way to returning, so the
+>     table's letters did not change (`tools/check_runtime.py` derives them so).
+>   - `return`, `break` and `continue` leave through `Gen.exits` (with blocks, except clauses,
+>     finally blocks), which runs a copy of each finally block they cross, as CPython does.
+>   - whether the program has a try is decided before code generation, over all its modules
+>     (the closed world), as the with statement's unwind action needs it: a program that
+>     imports a `lib/` module with a try in a function it never calls has exceptions on too.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -447,7 +478,7 @@ The keys follow the runtime's names: `list.get` is `pys_list_get`, `dict.has` is
 - `check(bad, "Kind: text")` ends its block. Its one explicit successor is the next block, and its raising edge is implicit.
 - `IFn.cold` maps each message to a label. The label is taken at the first check with that message, which keeps today's numbering.
 - `Gen.function` places the cold blocks after the body. Each holds a `raise` and an `unreachable`, so there is still one cold block per function and message.
-- `check` names only the message, not the cold block. An exception lowering can therefore route the same check to a handler later, without changing the builder (§7.2).
+- `check` names only the message, not the cold block. An exception lowering can therefore route the same check to a handler later, without changing the builder (§7.2). (It is the builder that does, as it knows the handler: a check inside a try names its cold block by message and landing block, see the Status note.)
 
 **Where checks are emitted:**
 - **Overflow** (`iop` is `ovf` plus `check`): `+`, `-` and `*`, unary `-`, `abs`, and enumerate's start. `for_range` instead uses the overflow flag of its increment to end the loop.
@@ -1097,6 +1128,13 @@ Each optimization is a behavioural step after step 14. Each is a function over a
 5. **Attributes from effects.** `noreturn`, `memory(none)` and `nounwind` on runtime declarations.
 
 ### 7.2 Exceptions (M5, #10)
+
+> **Superseded.** Exceptions are lowered to `invoke` and landing pads, with Pystachy's own
+> personality routine (the Status note says how). Both reasons given for the flag below were
+> tested on LLVM 18 and do not hold: the unwinder goes through the runtime's C frames that call
+> compiled code back, also under the JIT (which registers the `.eh_frame` of the program and of
+> `runtime.o`), and the flag cost 15 to 59 % on `fib` under a handler. The CPython-extension mode
+> can still lower the same IR ops to the flag protocol.
 
 The README's next steps mention `invoke` and landing pads. This design proposes an error flag instead:
 - **The runtime side.** The runtime sets `pys_exc` and returns a sentinel instead of exiting.

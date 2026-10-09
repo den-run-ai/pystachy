@@ -158,13 +158,31 @@ files, tuples of one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (w
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
 that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
 `del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
-parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
-with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
+parentheses or not), `try` (below), `raise` of a builtin exception or of a caught one, a bare
+`raise` and `raise ... from ...` (if nothing catches it, it ends the program with CPython's
+message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
 `class`, `@dataclass`, docstrings, `del` of a variable (later reads raise `NameError` or
 `UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
 `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `dataclasses`, `builtins`
 and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
 (`/`) parameters.
+
+**Exceptions.** `try` with `except` clauses (a builtin exception class, a tuple of them, with
+`as NAME` or not, or a bare `except:`), `else` and `finally`, in every combination CPython
+accepts but `except*`. A clause catches its classes and those deriving from them in CPython
+3.13's hierarchy (`except LookupError` catches a `KeyError`, `except Exception` does not catch
+`SystemExit`; `IOError` is `OSError`): what a `raise` raises, and what the runtime raises, also
+in other functions and modules and in code the runtime calls back (`sort()` with a `__lt__`
+that raises leaves the list whole): a missing dict key, an index out of range, `int("x")`, a
+division by zero, `open()` of a missing file and the other `OSError` subclasses, unpacking,
+`sys.exit()` as `SystemExit`, and the checked arithmetic's `OverflowError`. The name bound by
+`as` holds the exception (print it, `str()`, `repr()` or format it, store it, `raise` it; its
+attributes such as `e.args` are not supported), and is unbound after its clause; calling a
+builtin exception class makes one too (`err = ValueError("x")`). `finally` runs on every way
+out of the statement: at its end, as an exception passes, and at `return` (whose value is
+computed first), `break` and `continue`; a `return`, `break` or `continue` in it drops the
+exception in flight. A bare `raise` re-raises the exception being handled, which every way out
+of an except clause restores, and an exception that leaves a `with` block closes its file.
 
 **Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` in the
 directory of the main program's real file (symbolic links resolved, as for CPython's
@@ -248,11 +266,10 @@ their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` funct
 constants, which raise CPython's domain and range errors.
 
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
-feature: exception handling (`try`; `with` works for files), generator functions
-(`yield`), generator expressions other than the consumer arguments above, lambdas and
-closures, inheritance (so user exception classes), `**kwargs` and `*args` in methods, sets, dict and
-multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
-`isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
+feature: generator functions (`yield`), generator expressions other than the consumer
+arguments above, lambdas and closures, inheritance (so user exception classes), `**kwargs` and
+`*args` in methods, sets, dict and multi-clause comprehensions, slice steps, first-class
+functions (`map`, `key=`), `isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
 are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
 files, complex numbers, arbitrary-precision integers, `async`, `match` and `:=`. The parser
 accepts all of them, and the compiler rejects each where it compiles it, so an imported
@@ -303,9 +320,12 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).
-- A runtime error prints only the last line of CPython's traceback (without `NameError`'s
-  "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
-  compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
+- An exception that nothing catches prints only the last line of CPython's traceback (without
+  `NameError`'s "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
+  compile-time `SyntaxWarning`s are not printed. Running out of memory (`MemoryError`), a
+  Ctrl-C (`KeyboardInterrupt`) and running out of stack (below) end the program at once: no
+  `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
+  an exception like the others). Recursion is limited only by the native
   stack: it goes past CPython's limit of 1,000 calls (`sys.setrecursionlimit()` checks its
   argument as CPython does and records it for `sys.getrecursionlimit()`, but bounds nothing),
   and where CPython raises `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
@@ -396,7 +416,8 @@ that calls itself before a return statement decides its type; a parameter whose 
 alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
 `os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
-but a builtin exception.
+but a builtin exception or a caught one; an `except` clause that names something other than
+builtin exception classes (a class of the program, a variable, `os.error`), and `except*`.
 
 ## How it works
 
@@ -453,7 +474,8 @@ but a builtin exception.
   the function it calls loads that function's non-constant default values from the global
   the statement fills when it runs, so they are still evaluated once.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
-  of variables assigned on every path (merging `if` branches, and a loop's `else` block with
+  of variables assigned on every path (merging `if` branches, a `try` statement's body with
+  its except clauses, which start from the state before it, and a loop's `else` block with
   the state before the loop, leaving `while True` only through what its breaks have in
   common). Reads it cannot prove are marked, and only those test an "is
   assigned" flag that LLVM removes again where it can; fields that `__init__` may leave
@@ -468,8 +490,25 @@ but a builtin exception.
   read from the strongly connected components of the import graph.
 - **Checked arithmetic, cheap errors.** `+`, `-` and `*` use LLVM's `*.with.overflow`
   intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
-  one cold block per function and message. `self` is marked `nonnull`, so the `None`
-  checks vanish inside methods.
+  one cold block per function and message (and `try` statement around it). `self` is marked
+  `nonnull`, so the `None` checks vanish inside methods.
+- **Exceptions by table-driven unwinding.** A program whose modules hold a `try` (decided
+  before code generation; any other keeps its code) calls `pys_eh_on` as it starts. From then
+  on the runtime's error funnels (`pys_fail`, `pys_raise`, `sys.exit`) build an exception and
+  unwind with the Itanium ABI's `_Unwind_RaiseException`, as C++ does; if nothing catches it,
+  the stack is untouched and the program ends as before. Each IR block names the landing
+  block of the innermost `try` around it in its function. Once the whole program is built, a
+  pass reads the effect summaries: a call that may raise in a covered block becomes an LLVM
+  `invoke` whose unwind edge goes to that block's `landingpad`, a `raise` there becomes a
+  branch carrying the exception (no unwinder), and a landing block that no invoke reaches is
+  dropped. Every landing pad catches everything; the code after it tests the clauses' classes
+  and throws again what none catches, and `runtime.c`'s own personality routine,
+  `pys_personality`, reads the call-site tables LLVM emits. Code that does not raise pays
+  nothing for a `try` (under the JIT, two runtime calls as it is entered); a raise in the
+  `try`'s own function costs tens of nanoseconds, one from a call one to three microseconds.
+  `finally` is compiled once for each way out, as in CPython. What a raise leaves half done in
+  the runtime (a list being sorted, a `with` block's open file) is put right by unwind actions
+  that the landing pad runs. `runtime.c` is compiled with `-fexceptions` in both tiers.
 - **SSA by delegation.** Locals live in `alloca` slots; LLVM's `mem2reg` turns them into
   SSA registers. Short-circuit operators, conditional expressions and comparison chains
   use `phi` nodes directly.
@@ -559,8 +598,9 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHECK=1`: the
 compiler then checks the IR it built before lowering it (every op is known, each block ends
 with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
-defines the numbers its lowering prints, branches go to blocks of the function, and a phi's
-predecessors branch to it). The programs cover arithmetic and overflow edges,
+defines the numbers its lowering prints, branches go to blocks of the function, a phi's
+predecessors branch to it, only unwind edges reach a landing pad, and inside a `try` no call
+that may raise is left without one). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
@@ -570,7 +610,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1009 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1040 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -668,8 +708,8 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   backends.
 - **A WebAssembly GC backend**, Ouro v2's design: the engine supplies memory management
   and tiered compilation, and the runtime can be written in the subset itself.
-- Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
-  `set`/`frozenset` on top of the existing dict table.
+- Single inheritance with vtables (and so user exception classes), and `set`/`frozenset` on top
+  of the existing dict table.
 - More of the standard library: `docs/stdlib.md` ranks the compiler and runtime features
   by how much of CPython's standard library and of popular packages each would let compile
   unmodified (exceptions, properties, single inheritance, `bytes`, functions as values,
