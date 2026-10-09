@@ -2326,16 +2326,18 @@ static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) o
   if (!m) { Str *s = pys_str_int(c); return pys_exc_exit(c, s, s); }
   Buf b = {0}; repr_str(&b, m); return exc_new(cstr("SystemExit"), m, done(&b));
 }
-static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args of its tuple and errno forms */
-  const char *c = strstr(m, ": "), *t, *q;
-  Str *s = cstr(c ? c + 2 : ""), *a = 0;
-  if (s->len > 1 && s->s[0] == '(' && s->s[s->len - 1] == ')') a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
-  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] "))) {   /* an OSError's (errno, strerror) */
-    Buf b = {0}; q = strstr(t + 2, ": ");
-    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2); repr_str(&b, pys_str(t + 2, q ? q - t - 2 : s->s + s->len - t - 2));
+static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args its message does not show */
+  const char *c = strstr(m, ": "), *t, *r;
+  Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
+  if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] "))) {   /* an OSError: (errno, strerror), */
+    Buf b = {0}; int n = atoi(s->s + 7);     /* without the filenames after strerror, which can hold ": " */
+    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);
+    r = strerror(n); t += 2;
+    repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */
     a = done(&b);
   }
-  return exc_new(pys_str(m, c ? c - m : (I)strlen(m)), s, a);
+  return exc_new(k, s, a);
 }
 Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
 Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
