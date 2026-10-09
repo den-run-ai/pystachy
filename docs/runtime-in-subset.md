@@ -2,9 +2,9 @@
 
 This document evaluates moving `runtime.c`, and the repository's other C code (`tools/dictprobe.c`), into the Pystachy subset itself. It reports on a working prototype, measures it, and compares the approach with how other compilers and runtimes (Go, Rust, Zig, LLVM, Mojo, RPython, Codon and others) write their runtimes in their own languages.
 
-It covers robustness, quality, compilation, performance, scalability, extensibility, code reuse, and the interaction with the two pieces of work in progress: the typed IR (`docs/typed-ir.md`, branch `claude/typed-ir`, #22) and the bug fixes of `claude/m0-correctness` and `claude/scalability`.
+It covers robustness, quality, compilation, performance, scalability, extensibility, code reuse, and the interaction with two pieces of work that were in progress alongside it: the typed IR (`docs/typed-ir.md`, #22) and the bug fixes of `claude/m0-correctness` (#18) and `claude/scalability` (#20).
 
-The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and was then stacked on `claude/typed-ir` (#22), merged here at `39d8471` (the IR core of steps 4 to 8), `cc472e4`, `5159bc6`, `3c0664b` (exceptions) and `5a70c49`. #22 merged into `main` at `5a70c49` (as `7455b9e`), so this branch is now based on `main`. Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
+The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and was then stacked on `claude/typed-ir` (#22), merged here at `39d8471` (the IR core of steps 4 to 8), `cc472e4`, `5159bc6`, `3c0664b` (exceptions) and `5a70c49`. #22 merged into `main` at `5a70c49` (as `7455b9e`), and #19 merged the prototype into `main` after it. Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
 
 ## Summary
 
@@ -428,7 +428,7 @@ See §2.3: a cold runtime build takes 0.18 s more, and AOT executables grow only
   - runtime.c's `pys_realpath` (added on `claude/m0-correctness`) is a 60-line C port of `posixpath.realpath`, which `lib/posixpath.py` already holds.
   - With functions as runtime code in the subset, such ports can share code with `lib/`, once the subset has what `posixpath.realpath` needs (`os.getcwd`, try/except).
 - **The typed IR's effects table.**
-  - Its `RUNTIME` table gives every runtime function its effects by hand, and `tools/check_runtime.py` is planned to check that table against runtime.c's prototypes.
+  - Its `RUNTIME` table gives every runtime function its effects by hand, and `tools/check_runtime.py` checks that table against runtime.c and `runtime.py` (§2.8).
   - For functions in `runtime.py`, the compiler can compute effects from their code, as it will for program functions (typed IR §3.7).
 
 ### 2.8 The typed IR
@@ -477,7 +477,7 @@ The prototype was written against `30b51d9`, before the IR existed, and has sinc
   - Generic helpers should move after step 13, when `rt` keys are the binding point for every operation.
   - `primitive()` is exactly an IR op set (`byte`, `str_put`, ...). After step 12 it can become `Ins` ops instead of raw ops around `rt` calls.
   - Anything that changes programs' IR should wait for step 16's re-baseline. That covers the nsw increment and a fused `ord(s[i])`.
-  - Each push of #22 is merged into this branch, with `irsame` against its head and the fixed point of `runtime.py`'s IR. The second merge (`5159bc6`) also brought #22's own effect analysis of runtime.c: the memory letters (rL wL, rD wD, rF wF) and I, from the C code's loads, stores, statics and C library calls. `check_runtime.py` now derives `runtime.py`'s letters first. runtime.c calls `pys_hash_str`, which it only declares, and that analysis would otherwise take it for an unknown C library function that writes its argument and uses state.
+  - Each push of #22 was merged into this branch, with `irsame` against its head and the fixed point of `runtime.py`'s IR. The second merge (`5159bc6`) also brought #22's own effect analysis of runtime.c: the memory letters (rL wL, rD wD, rF wF) and I, from the C code's loads, stores, statics and C library calls. `check_runtime.py` now derives `runtime.py`'s letters first. runtime.c calls `pys_hash_str`, which it only declares, and that analysis would otherwise take it for an unknown C library function that writes its argument and uses state.
 
 ### 2.9 The ongoing bug fixes
 
@@ -488,7 +488,7 @@ The prototype was written against `30b51d9`, before the IR existed, and has sinc
   - Its first version called the decoder for every byte: `wsat()`, with `uchar()` inlined into it, is too large for LLVM to inline, so `split()` on whitespace took 1.73 times #22's C, and `strip(chars)` 1.09. runtime.c's `ws()` is `always_inline` and calls its decoder, `uws()`, which is `noinline`, only for a non-ASCII byte. The loops now do the same: they test an ASCII byte themselves. `split()` takes 1.12 (the same instructions but for `byte()`'s index check, 1.5% more), `strip(chars)` 0.53, and `strip()` of short words 0.71.
 - **Conflict risk was low.** No branch after `claude/scalability` touched runtime.c. typed-ir-prep and scalability carried the same blob.
   - Of the stack's 71 non-merge commits (`main..30b51d9`), 8 touched runtime.c, mostly adding functions at the end of sections.
-  - The functions moved here were last changed on `claude/modules-and-templates` (`pad`, the split helpers) and `claude/scalability` (`hsh`). The prototype is stacked on both.
+  - The functions moved here were last changed on `claude/modules-and-templates` (`pad`, the split helpers) and `claude/scalability` (`hsh`). The prototype was built on both.
 - **Coordination.** Future fixes to a moved function go to `runtime.py`, with a regression case in `rtcheck` where CPython can serve as the reference. This applies to the sessions working from #4, #13–#17 and the M-issues.
 - **Where conflicts will come from.** The dict core (typed-IR §7.1's fused lookups, M1, M4, M7's sets) and M5's error paths, which touch every `pys_fail`. Neither is moved here.
 - **Fixes get cheaper.** The separator bug of §2.2 is one example: the fuzzer found it, the fix is three lines of Python, and `rtcheck` confirms it in a second.

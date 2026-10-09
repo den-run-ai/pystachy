@@ -219,10 +219,10 @@ unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
 make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
 compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
 
-**In progress now** (a draft pull request, not merged yet): **part of the runtime in Python**
-([#19](https://github.com/den-run-ai/pystachy/pull/19)). 52 runtime functions, among them all
-the `str` methods and the format-spec mini-language, are written in the subset and compiled by
-Pystachy itself, with no change to any program's IR and the same speed on the benchmarks.
+**New in [#19](https://github.com/den-run-ai/pystachy/pull/19): part of the runtime in Python.**
+52 runtime functions, among them all the `str` methods and the format-spec mini-language, are
+written in the subset and compiled by Pystachy itself. Programs call them as before, at the same
+speed on the benchmarks.
 Follow-ups are tracked in [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
@@ -308,9 +308,9 @@ How a test works: put a program in `tests/NAME.py`, record CPython's output with
 `tests/record.sh NAME`, and `make test` checks it under the JIT and AOT. A program that must be
 rejected goes in `tests/errors/`, with the expected message in a comment on its first line.
 Before a pull request, run `make verify`, which runs what CI runs; after a code-generator
-refactor, `make irsame REF=main` shows that no program's IR changed. The typed IR and runtime.py
-work touches the code generator and the runtime, so comment on [#22](https://github.com/den-run-ai/pystachy/pull/22) or
-[#19](https://github.com/den-run-ai/pystachy/pull/19) before starting something large there.
+refactor, `make irsame REF=main` shows that no program's IR changed. Work on the typed IR or
+`runtime.py` touches the code generator and the runtime, so open an issue (for `runtime.py`,
+comment on [#31](https://github.com/den-run-ai/pystachy/issues/31)) before starting something large there.
 
 ## License
 
