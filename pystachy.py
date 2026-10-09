@@ -4766,7 +4766,7 @@ RUNTIME: dict[str, str] = {
     "str.center": "str:S,int,str|R A|", "str.zfill": "str:S,int|R A|", "str.partition": "tuple[str,str,str]:S,str|R A|",
     "str.rpartition": "tuple[str,str,str]:S,str|R A|", "str.removeprefix": "str:S,str|A|", "str.removesuffix": "str:S,str|A|",
     "str.expandtabs": "str:S,int|A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
-    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|",
+    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|", "pct_char": "str:str|R|",
     # numbers
     "floordiv": "int:int,int|R|", "mod": "int:int,int|R|", "pow": "int:int,int|R|", "powmod": "int:int,int,int|R|",
     "shl": "int:int,int|R|", "shr": "int:int,int|R|", "idiv": "float:int,int|R|", "fdiv": "float:float,float|R|",
@@ -10658,10 +10658,15 @@ class Gen:
                 return sv
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
+            # one character, or an int in range(0x110000) (OverflowError), which chr() makes it
             if v.t == "str":
-                return v
-            v = self.coerce(self.as_int(v), "int")
-            cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
+                cv = Val(self.rt("pys_pct_char", "ptr", [f"ptr {v.v}"]), "str")
+            else:
+                v = self.as_int(v)
+                if v.t != "int":
+                    self.err(f"%c requires an int or a str, not {tname(v.t)}")
+                self.guard(self.ins(f"icmp ugt i64 {v.v}, 1114111"), "OverflowError: %c arg not in range(0x110000)")
+                cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
         spec = "<" if "-" in flags else ""
         spec += "+" if "+" in flags else " " if " " in flags else ""
