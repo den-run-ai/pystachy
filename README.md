@@ -193,9 +193,10 @@ calling a builtin exception class makes too (`err = ValueError("x")`), is a valu
 type, which `Exception`, `BaseException` or any builtin exception class names in annotations
 (`errors: list[Exception]`; `OSError(errno, strerror[, filename])` is CPython's `[Errno n]
 strerror` of the subclass the errno names, and `ImportError(msg, name=..., path=...)` takes
-its keywords, as do `AttributeError`'s and `NameError`'s): print it, `str()`, `repr()` or format it, store it, compare it
-(by identity: an exception that raised an object of an exception class is that object, so
-`e is x` after `raise x`), `raise` it, test it with `isinstance()` or `type(e).__name__`; its
+its keywords, as do `AttributeError`'s and `NameError`'s): print it, `str()`, `repr()` or
+format it, store it, compare it (by identity: an exception that raised an object of an
+exception class is that object, so `e is x` after `raise x`), `raise` it, test it with
+`isinstance()` or `type(e).__name__`; its
 attributes such as `e.args` are not supported. `raise ... from` a cause that is not an
 exception raises CPython's `TypeError`. `finally` runs on every way out of the statement: at
 its end, as an exception passes, and at `return` (whose value is computed first), `break` and
@@ -207,9 +208,10 @@ module whose code raises is not imported: the name its import binds is unbound, 
 import runs its code again.
 
 **Exception classes.** A class whose one base is a builtin exception class (also
-`builtins.ValueError`, `os.error`), or an exception class of the program, is an exception class: fields, `__init__`, `__str__`, `__repr__`, other
-methods, class-body fields with or without defaults and docstrings, as for any class. Its
-objects keep the positional arguments of the call that makes them, as CPython's `args`, for
+`builtins.ValueError`, `os.error`), or an exception class of the program, is an exception
+class: fields, `__init__`, `__str__`, `__repr__`, other methods, class-body fields with or
+without defaults and docstrings, as for any class. Its objects keep the positional arguments of
+the call that makes them, as CPython's `args`, for
 `str()` (`''`, `str(arg)` or the tuple's repr; a `KeyError`'s repr of its argument) and
 `repr()` (`E('a', 2)`), and `super().__init__(...)` sets them again; without an `__init__` of
 its own or of a base, a class takes any positional arguments. A subclass has its base's
@@ -259,9 +261,10 @@ An optional import, `try: <imports> / except ImportError:` (the standard library
 C accelerators), runs its imports in order until one fails: its module is not found, its
 module's code surely raises `ImportError` at its top level (`if sys.platform != "win32":
 raise ImportError(...)`), or a from-import names what its module neither binds nor has as a
-submodule (of a builtin module, what Pystachy's lacks). The imports before it run their code and bind their names, a failing module's
-code runs up to its raise, and then the handler runs; a module that failed is not imported,
-so a later import runs its code again. Another `try` around imports (with `finally`, or clauses
+submodule (of a builtin module, what Pystachy's lacks). The imports before it run their code
+and bind their names, a failing module's code runs up to its raise, and then the handler
+runs; a module that failed is not imported, so a later import runs its code again. Another
+`try` around imports (with `finally`, or clauses
 naming other classes) imports its modules as any import does: a module that is not found is an
 error. An import inside a function of an imported module
 that the program's module-level imports do not load is an error only where that function is
