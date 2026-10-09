@@ -10,7 +10,7 @@ The prototype is stacked on `claude/typed-ir-prep` (commit `30b51d9`). Unless a 
 
 - **Verdict: promising, as an incremental mechanism, not as a rewrite.**
   - The C runtime gets a second half, `runtime.py`, written in the subset and compiled by the compiler itself.
-  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reports all 615 corpus programs identical.
+  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reports all 629 corpus programs identical.
   - The garbage collector, the memory layouts of lists, dicts and strings, files and signals stay in C. Every system surveyed in §3 keeps some native core. The collector stays native unless the language has a compiler-checked low-level regime for it (§3, item 7), which Pystachy does not.
 - **What moved in the prototype:** 52 functions.
   - 47 of runtime.c's functions:
@@ -20,22 +20,22 @@ The prototype is stacked on `claude/typed-ir-prep` (commit `30b51d9`). Unless a 
     - the two dict hash functions, from `hsh()`, which runtime.c's dict code calls on every lookup;
     - the format-spec mini-language, in 3 functions, from `pys_format()`. runtime.c keeps a 7-line dispatcher and the `snprintf` calls that write a float's digits.
 
-  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 777 (1,034 with comments). The compiler gains 236 lines net (+249/−13).
+  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 790 (1,048 with comments). The compiler gains 236 lines net (+249/−13).
 - **How.** `pystachy rt runtime.py` compiles the file in a *runtime mode*:
   - functions named `pys_*` are defined under their C names, with runtime.c's types;
   - `def f(...) -> T: ...` declares a C function;
-  - `import _rt` gives 16 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`, wrapping and unsigned arithmetic (§1.2).
+  - `import _rt` gives 17 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`/`memmem`, wrapping and unsigned arithmetic (§1.2).
 
   The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py.bc` and its `.o`), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
 - **Performance: at parity on whole programs, within 10% on most moved functions** (§2.4).
-  - The eight programs of `bench/` execute 0.997 to 1.004 times the C runtime's instructions (callgrind), and the compiler compiles itself with 1.0% more.
-  - Wall-clock timings on this shared 4-core VM vary by about ±5%. `bench/sieve`, whose machine code is byte-identical under both runtimes, measured from 0.95 to 1.06.
+  - The eight programs of `bench/` take 0.99 to 1.01 times the C runtime's CPU time AOT, and 0.96 to 1.05 JIT. They execute 0.997 to 1.003 times its instructions (callgrind). The compiler compiles itself in the same time (0.999), with 1.2% more instructions.
   - The first measurement found `words` and `dictkeys` 10% and 5% slower, all of it in `join` and `split`. Both were fixed (§2.4.2).
-  - Microbenchmarks of the moved functions are in §2.4.2. A `find` that `memchr` speeds up 20-fold is the best case; `strip` on short words, at about 1.2, is among the worst.
+  - The 22 microbenchmarks of the moved functions (§2.4.2) have a median of 1.06 AOT and 1.02 JIT. A `find` that `memchr` speeds up 16-fold is the best case. Phrase replacement in English-like text and `math.comb`, at about 1.2, are the worst.
+  - An adversarial performance review found substring search O(n·m) at first, up to 263 times slower with long needles. It is now linear, at runtime.c's speed. Nothing it measured on the final code is 2 times slower (§2.10).
   - Without the primitives, the same code is 3 to about 20 times slower (§2.4.3).
   - Programs that use format specs get 6% to 17% larger executables (§2.3).
 - **What it buys.**
-  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 261,000 cases in about one second, with no compilation.
+  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 264,000 cases in about one second, with no compilation.
     - When the format code moved, rtcheck's new format fuzzer found that runtime.c gave the wrong error message for a repeated `,` or `_`.
     - A compiled differential review of the moved format code found no regression in about 210,000 cases. It did find that runtime.c cut format error messages at 511 bytes and at a NUL, and read the presentation type as a byte.
     - All three are fixed in `runtime.py`, with tests recorded from CPython (§2.2).
@@ -127,7 +127,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
   - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython. The claims audit of this document found the `PATH` case missing; it is fixed.
   - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
   - Regenerating the IR on every run would be exact, but costs 18 ms of a 34 ms JIT start.
-- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): 8,607 lines.
+- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): 8,786 lines.
   - The Python-free stage of `make verify` rebuilds the runtime, `runtime.py` included, with the native compiler alone, and compares that IR too.
 - **Compile cost.** The native compiler emits `runtime.py`'s IR in 18 ms; under CPython it takes 0.23 s. This cost is paid only when the cache is rebuilt.
 - **dictprobe.** `tools/dictprobe.c` includes runtime.c to count probes, and runtime.c's hash functions now live in `runtime.py`. So `make dictprobe` and the `dict-probes` step link it with `runtime.py`'s IR.
@@ -260,39 +260,41 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 | | `30b51d9` (C runtime) | prototype |
 |---|---:|---:|
 | `make verify`'s bootstrap step (both fixed points for the prototype) | — | 24.6 s |
-| cold runtime build (`build/runtime*.bc` and `.o`), plus hello world | 1.87 s | 2.15 s |
+| cold runtime build (`build/runtime*.bc` and `.o`), plus hello world | 2.08 s | 2.26 s |
 | `runtime.py` to IR | — | 18 ms native, 0.23 s under CPython |
 | hello world, JIT, warm cache | 34.1 ms | 33.7 ms |
 | AOT build of `bench/words.py` | 0.409 s | 0.426 s |
-| compiler compiling `30b51d9`'s `pystachy.py` to IR | 0.167 s | 0.172 s |
-| cached runtime bitcode / `.o` | 202 KB / 201 KB | 252 KB / 210 KB |
+| compiler compiling `30b51d9`'s `pystachy.py` to IR (CPU time) | 0.172 s | 0.172 s |
+| cached runtime bitcode / `.o` | 202 KB / 201 KB | 256 KB / 212 KB |
 | AOT executables: hello world, `fib`, `sieve`, `words` | 24,008 to 62,624 B | the same (±0.1%) |
-| AOT executables that use format specs: `dictkeys`, `nbody`, `dictlookup`, `spectral` | 49,672 to 75,048 B | +6%, +16%, +16%, +17% |
-| native compiler | 1,007,040 B | 1,040,400 B |
+| AOT executables that use format specs: `dictkeys`, `mandel`, `nbody`, `dictlookup`, `spectral` | 28,664 to 75,048 B | +6%, +15%, +16%, +16%, +17% |
+| native compiler | 1,007,040 B | 1,065,056 B |
 
-- A cold runtime build costs 0.28 s more: `runtime.py`'s IR, `llvm-link`, and one `opt -O2` over the linked module. A warm cache costs nothing: the JIT tier's startup is unchanged.
-- The cached bitcode grows by 25% because it holds `runtime.py`'s code before `--only-needed` linking. The JIT tier's `runtime.o` grows by 4%.
-- AOT executables that format numbers grow by about 8 KB. `runtime.py`'s `fmt()` with its checks and error paths is larger than runtime.c's `pys_format` was. The others do not grow.
-- The native compiler grows by 3%, which is its own new code (runtime mode, primitives, driver).
+- A cold runtime build costs 0.18 s more: `runtime.py`'s IR, `llvm-link`, and one `opt -O2` over the linked module. A warm cache costs nothing: the JIT tier's startup is unchanged.
+- The cached bitcode grows by 27% because it holds `runtime.py`'s code before `--only-needed` linking. The JIT tier's `runtime.o` grows by 5%.
+- AOT executables that format numbers grow by 4 to 8 KB. `runtime.py`'s `fmt()` with its checks and error paths is larger than runtime.c's `pys_format` was. The others do not grow.
+- The native compiler grows by 6%, which is its own new code (runtime mode and its checks, primitives, driver).
 - **New coupling.** The runtime now depends on the compiler that builds it. CPython's compiler, stage 1 and stage 2 must agree on `runtime.py`'s IR, and `make` checks that they do. The rule "a newer compiler rebuilds the cache" makes the first run after a rebuild of the compiler slower, by about 2 s for clang, `runtime.py` and `opt`.
 
 ### 2.4 Performance
 
-All timings: best of 5 to 11 runs, AOT (`pystachy build`) and JIT (`pystachy run`, compilation included). "C" is the compiler and runtime of `30b51d9`; "subset" is the prototype. Outputs are checked against CPython on every run.
+All timings: CPU time (user plus system) of the measured process, best of 7, pinned to one core; AOT (`pystachy build`) and JIT (`pystachy run`, compilation included). On this shared 4-core VM wall-clock times vary by about ±5%, and CPU time much less. "C" is the compiler and runtime of `30b51d9`; "subset" is the prototype. Outputs are checked against CPython on every run.
 
 #### 2.4.1 Workloads
 
 | benchmark | AOT C | AOT subset | ratio | JIT C | JIT subset | ratio |
 |---|---:|---:|---:|---:|---:|---:|
-| fib | 0.033 | 0.033 | 1.00 | 0.071 | 0.068 | 0.96 |
-| mandel | 0.036 | 0.035 | 0.99 | 0.082 | 0.074 | 0.90 |
-| nbody | 0.030 | 0.030 | 1.00 | 0.084 | 0.084 | 1.00 |
-| spectral | 0.014 | 0.014 | 1.00 | 0.133 | 0.133 | 1.00 |
-| sieve | 0.123 | 0.117 | 0.95 | 0.183 | 0.193 | 1.05 |
-| words | 0.047 | 0.051 | 1.08 | 0.097 | 0.099 | 1.02 |
-| dictkeys | 0.154 | 0.162 | 1.05 | 0.243 | 0.241 | 0.99 |
-| dictlookup | 0.352 | 0.361 | 1.02 | 0.421 | 0.423 | 1.01 |
-| the compiler compiling `30b51d9`'s `pystachy.py` to IR | 0.167 | 0.172 | 1.03 | | | |
+| fib | 0.033 | 0.033 | 1.00 | 0.069 | 0.068 | 1.00 |
+| mandel | 0.036 | 0.036 | 1.01 | 0.075 | 0.074 | 0.98 |
+| nbody | 0.030 | 0.030 | 1.00 | 0.085 | 0.082 | 0.96 |
+| spectral | 0.014 | 0.015 | 1.01 | 0.132 | 0.131 | 0.99 |
+| sieve | 0.122 | 0.122 | 1.00 | 0.182 | 0.190 | 1.05 |
+| words | 0.048 | 0.048 | 1.00 | 0.091 | 0.091 | 1.00 |
+| dictkeys | 0.155 | 0.155 | 1.00 | 0.239 | 0.243 | 1.02 |
+| dictlookup | 0.370 | 0.368 | 0.99 | 0.438 | 0.439 | 1.00 |
+| the compiler compiling `30b51d9`'s `pystachy.py` to IR | 0.172 | 0.172 | 1.00 | | | |
+
+Instruction counts (callgrind, AOT) agree: 0.997 to 1.003 for the eight programs, and 1.012 for the compiler.
 
 The compiler is the largest string-handling program available, and both compilers emit the same 4 MB of IR. A callgrind profile of it (against the non-inlined `runtime.o`) shows where its time goes:
 - `str ==` through the generic `pys_eq`: 31.5% of instructions;
@@ -310,29 +312,36 @@ So the moved methods are a real part of its work, and the biggest item, `==`, is
 
 | microbenchmark (`tools/rtbench/`) | AOT C | AOT subset | ratio | JIT ratio |
 |---|---:|---:|---:|---:|
-| `t.find(w, i % 7)`, 200 KB text, word absent | 0.043 | 0.002 | 0.05 | 0.46 |
-| `count("ab")`, `count("a")`, dense matches | 0.137 | 0.149 | 1.09 | 1.13 |
-| `"mm" in w`, short words | 0.089 | 0.104 | 1.17 | 1.10 |
-| `w.startswith("prefix")`, short words | 0.052 | 0.059 | 1.13 | 1.08 |
-| `w.isdigit()` | 0.099 | 0.103 | 1.04 | 0.94 |
-| `w.strip()`, short words | 0.032 | 0.038 | 1.18 | 1.01 |
-| `split()`, 200 KB | 0.031 | 0.035 | 1.13 | 1.10 |
-| `split(",")`, 140 KB | 0.037 | 0.037 | 0.99 | 1.02 |
-| `replace("at", "og")`, 115 KB | 0.029 | 0.029 | 1.01 | 1.07 |
-| `upper()` + `lower()`, 120 KB | 0.031 | 0.035 | 1.12 | 0.99 |
-| `",".join(10,000 parts)` | 0.014 | 0.019 | 1.32 | 1.06 |
-| `zfill`, `ljust`, `center` | 0.098 | 0.092 | 0.94 | 0.93 |
-| `math.gcd` | 0.203 | 0.203 | 1.00 | 1.00 |
-| `math.comb`, `factorial`, `isqrt` | 0.022 | 0.027 | 1.23 | 1.05 |
-| f-strings with int, float and str specs | 0.463 | 0.476 | 1.03 | 1.05 |
-| **median** | | | **1.09** | **1.05** |
+| `find_long`: `t.find(w, i % 7)`, 200 KB text, word absent | 0.044 | 0.003 | 0.06 | 0.46 |
+| `pad_zfill`: `zfill`, `ljust` with `*`, `center` | 0.097 | 0.075 | 0.77 | 0.84 |
+| `splitlines_long`: 10,000 lines of 1 KB | 0.185 | 0.158 | 0.85 | 0.89 |
+| `split_sep`: `split(",")`, 140 KB | 0.037 | 0.035 | 0.94 | 0.96 |
+| `join_many`: `",".join(10,000 parts)` | 0.015 | 0.015 | 0.98 | 0.99 |
+| `find_worst`: a 200,001-byte needle that almost matches, in 2 MB | 0.474 | 0.475 | 1.00 | 1.00 |
+| `math_gcd` | 0.204 | 0.204 | 1.00 | 0.99 |
+| `fmt_mix`: f-strings with int, float and str specs | 0.460 | 0.463 | 1.01 | 1.06 |
+| `find_dense`: a 20-byte needle in text that matches its first 19 bytes every 19 bytes; `rfind` | 0.119 | 0.121 | 1.02 | 1.05 |
+| `replace`: `replace("at", "og")`, 115 KB | 0.029 | 0.030 | 1.03 | 1.05 |
+| `isdigit_short` | 0.099 | 0.103 | 1.03 | 0.92 |
+| `split_ws`: `split()`, 200 KB | 0.031 | 0.034 | 1.09 | 1.03 |
+| `strip_chars`: `strip` with a 95-byte set, 4 MB | 0.161 | 0.178 | 1.10 | 1.08 |
+| `in_short`: `"mm" in w`, short words | 0.089 | 0.099 | 1.11 | 1.08 |
+| `upper_lower`: `upper()` and `lower()`, 120 KB | 0.031 | 0.035 | 1.11 | 0.98 |
+| `swapcase`: `swapcase()` and `capitalize()`, 1 MB | 0.312 | 0.350 | 1.12 | 0.92 |
+| `startswith_short` | 0.052 | 0.059 | 1.13 | 1.05 |
+| `ljust_tiny`: `ljust(8)` of short words | 0.052 | 0.060 | 1.15 | 0.74 |
+| `count_ab`: `count("ab")`, `count("a")`, dense matches | 0.137 | 0.158 | 1.16 | 1.08 |
+| `strip_short`: `strip()`, short words | 0.032 | 0.038 | 1.17 | 1.06 |
+| `math_comb`: `comb`, `factorial`, `isqrt` | 0.023 | 0.028 | 1.22 | 1.05 |
+| `replace_text`: phrases in 1 MB of English-like text | 0.056 | 0.069 | 1.23 | 1.13 |
+| **median** | | | **1.06** | **1.02** |
 
-- **Where the subset wins.** `find` with a rare first byte runs 20 times faster. `search()` looks for the needle's first byte with `memchr` (AVX2 in glibc). runtime.c called glibc's `memmem`, which for short needles runs a scalar byte loop; it uses Two-Way only for needles over 256 bytes. This is a best case. With dense matches (`count_ab`), an inline 16-byte scan before `memchr` keeps the cost close to `memmem`'s.
+- **Where the subset wins.** `find` with a rare first byte runs 16 times faster. `search()` looks for the needle's first byte with `memchr` (AVX2 in glibc). runtime.c called glibc's `memmem`. For needles of 3 to 256 bytes that is a scalar loop over 2-byte hashes with a 256-entry shift table, which it clears on every call; above 256 bytes it uses Two-Way. This is a best case. With dense matches (`count_ab`), an inline 16-byte scan before `memchr` keeps the cost close to `memmem`'s. Padding writes its fill with stores that LLVM turns into `memset`, where runtime.c called `memcpy` once per fill character.
 - **Where it loses.**
-  - `join` (1.32) pays five bounds checks and a `memmove` per part, where C has an unchecked `memcpy`.
-  - `strip` (1.18) tests the `null` default for each byte.
-  - `comb` (1.23) executes 20% fewer instructions than runtime.c's but is slower: runtime.c's `comb` and `isqrt` were inlined into the benchmark's loop, and `runtime.py`'s are not.
-  - All three are small, local fixes.
+  - `replace_text` (1.23) and `count_ab` (1.16) pay a call and a bounds-checked compare per candidate, where `memmem` stays in one loop.
+  - `strip` on short words (1.17) and `startswith` (1.13) are short calls, where runtime.c's versions inlined into the program's loop and `runtime.py`'s do not.
+  - `comb` (1.22) executes 20% fewer instructions than runtime.c's but is slower, for the same reason: runtime.c's `comb` and `isqrt` were inlined into the benchmark's loop.
+  - All of these are small, local fixes or questions of inlining thresholds.
 
 #### 2.4.3 What the primitives are worth
 
@@ -360,7 +369,7 @@ Without primitives, the subset can only read a byte as `ord(s[i])` and build a s
 
 #### 2.4.4 Build cost and size
 
-See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not grow.
+See §2.3: a cold runtime build takes 0.18 s more, and AOT executables grow only where they format with specs.
 
 ### 2.5 Scalability
 
@@ -373,7 +382,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
   - typed IR §7.1: `dict.find`, `entry_val`, `entry_set`.
 
   Today all of that would be C. Most of it is semantic code of the kind moved here: parsing, formatting, string algorithms, dispatch with CPython's error messages.
-- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 8,607 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
+- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 8,786 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
 - **The C core stays small and stable.** The collector, memory layouts and I/O changed least on the stack: 93% of the stack's runtime.c additions were new functions appended at the end of a section.
 
 ### 2.6 Extensibility
@@ -381,7 +390,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 - **Adding a builtin.** It takes a function in `runtime.py` and one line in `CALLS` or `METHODS`. Before, it took a function in runtime.c and that same line.
 - **Who can write it.** Contributors write Python, with the subset's checks. They can test it on CPython before compiling anything.
 - **Expressiveness.**
-  - Everything in §1.6's "moved" column was expressible with the 16 primitives.
+  - Everything in §1.6's "moved" column was expressible with the 17 primitives.
   - Code that needs raw memory (the collector, list and dict tables) or generic slots (the descriptor-driven `eq`/`repr`/sort) is not. That needs either templates (typed IR §7.3) or a pointer layer, which §6 argues against for now.
   - Classes are not allowed in `runtime.py` yet. A class kept in a container would need the program's `pys_obj_*` dispatch.
 - **Templates (#2)** already make generic functions possible, but their instance names are not stable, so a template cannot be a C export today.
@@ -403,7 +412,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 ### 2.8 The typed IR
 
 - **No interference with the migration.** The migration checks every step with `tools/irsame.sh`, which compares programs' IR byte for byte.
-  - `irsame` never sees the runtime, and the prototype changes no program's IR: all 615 programs are identical.
+  - `irsame` never sees the runtime, and the prototype changes no program's IR: all 629 programs are identical.
   - Runtime-mode code paths (`rtmode`, `primitive`, `extern`, the nsw increment) run only for `runtime.py`.
 - **Conflicts.**
   - The prototype edits `Gen.rt`, `Gen.function`, `Gen.declare_fn`, `Gen.program`, `Gen.builtin` (where `_rt.` calls go to `primitive()`), `for_range` and the driver. The IR steps rewrite all of these.
@@ -467,6 +476,16 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   | each `make` makes the cache stale | `tests/run.sh`'s workers each rebuilt it at once | `tests/run.sh` builds it first |
 
   Two gaps are left, with their fixes in §5. First, a cycle through runtime.c is not detected. If `pys_format_str` formatted with a nested spec, it would call runtime.c's `pys_format`, which calls `pys_format_str`, and the program would hang. Second, an edit to a source during a cache rebuild can leave a stale cache. runtime.c has had that second gap since the cache existed.
+- **Worst cases.** The performance reviewer timed about 60 adversarial programs against runtime.c: CPU time, pinned to one core, AOT and JIT. On the version it started from, substring search was O(n·m), up to 263 times slower with a 100 KB needle, and `strip(chars)` 11 times; the first table's fixes brought both back to runtime.c's time. On the final search code it found four more, fixed here (AOT ratios):
+
+  | case | before | after | cause |
+  |---|---:|---:|---|
+  | `replace` with a 1,001-byte separator; with phrases, in English-like text | 1.67; 1.89 | 0.88; 1.21 | it searched twice, to count and to copy |
+  | `swapcase()`, 1 MB | 1.86 | 1.04 | two 64-bit range tests per byte, which vectorize badly without AVX |
+  | `splitlines()` on 1 KB lines | 1.77 | 0.86 | a call to `eol()` per byte |
+  | `ljust(8)` of short words | 2.2 | 1.19 | runtime.c's small `pad` inlined into the program; the subset's called `fillrun` |
+
+  What remains is under 2×. `count("</span>")` in HTML-like text takes 1.7–1.9 times as long: a candidate every 9 bytes, each too short to reach the cutover. A million 2-byte matches in `replace` take 1.3 times; `math.comb` near the 64-bit limit 1.33, `isqrt` 1.24, and very short `find` and `count` calls 1.2–1.3, where runtime.c's functions were inlined into the program. In the other direction, `count("abc")` with dense matches takes 0.42 (glibc's `memmem` clears its table on every call), long `ljust` and `center` 0.13–0.26, `expandtabs` 0.32–0.56, and f-strings with huge widths 0.35.
 - **Improvements over runtime.c that the review found.** These are the format fixes of §2.2: message truncation, a NUL in the spec, and presentation types read as code points.
 - **Shared deviations it found and left as they are.**
   - A format width above 10**8 is rejected.
@@ -575,7 +594,7 @@ Sources and line counts: the research notes behind this table measured each repo
 | file | change |
 |---|---|
 | `pystachy.py` | +249/−13 lines:<br>• runtime mode (`rtmode`, exported and external functions and their checks, `RTL` and `primitive()`, nsw range steps);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
-| `runtime.py` | new, 1,034 lines (777 of code) |
+| `runtime.py` | new, 1,048 lines (790 of code) |
 | `runtime.c` | −328 lines of code. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`. |
 | `tools/rt_cpython/_rt.py`, `tools/rtcheck.py` | CPython's primitives and the differential fuzzer |
 | `tools/rtabi.py` | the ABI check across `runtime.py`, runtime.c and the corpus |
@@ -591,7 +610,7 @@ Sources and line counts: the research notes behind this table measured each repo
 - **Correctness.**
   - `make` checks both fixed points.
   - `make verify` runs every step: bootstrap, the tests with both compilers, Python-free, UBSan, check-ir, gc-stress, benchmarks, rtcheck, rt-abi, dict-probes and scaling.
-  - `make irsame REF=30b51d9` reports 615 programs identical.
+  - `make irsame REF=30b51d9` reports 629 programs identical.
 - **Timings.** Every program is run with the native compiler of `30b51d9` and with this branch's, AOT and JIT, best of 7 runs, with its output checked against CPython's.
   - The `bench/` table uses `bench/*.py`.
   - The microbenchmarks are `tools/rtbench/*.py`. `make ref REF=30b51d9 && python3 tools/rtbench.py build/ref/pystachy ./pystachy` reruns the table of §2.4.2 for any pair of compilers.
