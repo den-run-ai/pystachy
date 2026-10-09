@@ -328,6 +328,7 @@ static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to 
 static _Noreturn void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
 static Exc *exc_new(Str *kind, Str *msg, Str *args);
+static Exc *exc_raise(Str *kind, Str *msg);
 static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
 static void unwind_push(void (*fn)(void *), void *arg);
@@ -338,7 +339,7 @@ _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Ki
   out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1);
 }
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
-  if (xthrow) xthrow(exc_new(kind, msg, 0));
+  if (xthrow) xthrow(exc_raise(kind, msg));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
@@ -2255,13 +2256,17 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    What compiled code raises. The funnels raise what they always ended the program with:
    pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg (kind() when it
    is empty), pys_exit(c) for sys.exit(c) of an int c, pys_exit_msg(m) for one of a str m.
+   The kind is a class's bare name; pys_raise takes Gen's "SyntaxError: x" line as kind too.
    Anything else is pys_throw of an Exc that pys_exc_new(kind, str(e), args) makes, args being
    what repr(e) shows in its parentheses ("" for no argument, "5", "'a', 'b'"): ValueError(5),
    KeyError('a', 'b'), ValueError(''). A SystemExit whose code is None, a bool or an int is
    pys_exc_exit(status, str(code), repr(code)), so that nothing catching it ends the program
    with that status and no output: pys_exc_exit(0, "", "") for sys.exit() and sys.exit(None)
    (str(e) "", repr SystemExit()), (1, "True", "True") for sys.exit(True). Another code is
-   pys_exc_new("SystemExit", str(code), args): str(code) and status 1. A user exception
+   pys_exc_new("SystemExit", str(code), args): str(code) and status 1. The traceback shows
+   a SyntaxError, IndentationError or TabError as "kind: " + str(msg or "<no detail
+   available>"), msg being its first argument (None without): pys_exc_detail(e, that text)
+   gives an Exc that line, while str(e) stays str(msg) ("None" without). A user exception
    object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end
    the program as the builtin one its code makes.
    What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
@@ -2290,6 +2295,7 @@ struct Exc {                           /* GC-allocated, 16-byte aligned (exc_all
   void *obj;                           /* the user exception object, or NULL */
   I code, has_code;                    /* SystemExit: its status (has_code 0: msg is a code's str, status 1) */
   Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
+  Str *detail;                         /* uncaught: "kind: detail", even when empty; NULL: msg (pys_exc_detail) */
 };
 _Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
 #define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
@@ -2308,6 +2314,13 @@ Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { return exc_new(kind, msg, arg
 Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
 Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
   Exc *e = exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
+}
+Exc *pys_exc_detail(Exc *e, Str *d) { e->detail = d; return e; }   /* the SyntaxError family's (above) */
+static Exc *exc_raise(Str *kind, Str *msg) {   /* pys_raise's; a kind "SyntaxError: x" (Gen's) is split */
+  const char *c = msg->len ? 0 : strstr(kind->s, ": ");
+  if (!c) return exc_new(kind, msg, 0);
+  msg = cstr(c + 2);
+  return pys_exc_detail(exc_new(pys_str(kind->s, c - kind->s), msg, 0), msg);
 }
 static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) of a str: status 1 */
   if (!m) { Str *s = pys_str_int(c); return pys_exc_exit(c, s, s); }
@@ -2368,7 +2381,7 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
 static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
   Str *k = e->obj ? XCLS(e)->disp : e->kind;
   fwrite(k->s, 1, k->len, stderr);
-  if (m->len) { fputs(": ", stderr); fwrite(m->s, 1, m->len, stderr); }
+  if (m->len || e->detail) { fputs(": ", stderr); fwrite(m->s, 1, m->len, stderr); }
   fputc('\n', stderr);
   kbint = !e->obj && !strcmp(k->s, "KeyboardInterrupt");
   pys_finish();
@@ -2384,7 +2397,7 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
     out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
   }
   out_flush();
-  exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->msg);
+  exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg);
 }
 static _Noreturn void throw_(Exc *e) {
   xr.cur = e;
