@@ -10,6 +10,7 @@
 #include <locale.h>
 #include <stdarg.h>
 #include <math.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -116,6 +117,7 @@ static Thrower *xthrow;                /* where the funnels send what they raise
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
+static jmp_buf *xbegin;                /* pys_exc_begin running unwind actions: a raise of one comes back there */
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
@@ -2282,7 +2284,9 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
    which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
    and the unwind actions registered since the try's mark run, the latest first, each popped
-   before it runs, so one that raises takes over with its own exception. A with statement's
+   before it runs. One that raises takes over with its own exception: the landing handles that
+   one instead (a longjmp back to pys_exc_begin, past runtime frames only), as the exception an
+   __exit__ raises replaces the one in flight inside the try statement. A with statement's
    file is closed as its __exit__ would close it (a close that fails raises instead), a list
    being sorted gets its items back (list.sort), and an object whose generated __repr__ was
    running leaves the repr guard. The frames between are gone by then, so what an action
@@ -2399,11 +2403,15 @@ void pys_unwind_file(File *f) { unwind_push(close_with, f); }   /* with open(...
 static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
 I pys_try_mark(void) { return nunw; }
 Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the raise left, handle the Exc */
-  Exc *e = ue;
+  Exc *volatile e = ue;
+  jmp_buf jb, *up = xbegin;
+  if (setjmp(jb)) e = xr.cur;          /* an action raised: as an __exit__'s, its exception replaces e, here */
   xr.cur = e; io_busy = 0;
   atomic_signal_fence(memory_order_seq_cst);
   if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
+  xbegin = &jb;
   unwind_to(mark);
+  xbegin = up;
   xr.handled = e;
   return e;
 }
@@ -2430,6 +2438,7 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
 }
 static _Noreturn void throw_(Exc *e) {
   xr.cur = e;
+  if (xbegin) longjmp(*xbegin, 1);     /* raised by an unwind action that a landing runs (pys_exc_begin) */
   if (eh) {
     e->ue.exception_class = PYS_EXC;
     _Unwind_RaiseException(&e->ue);    /* comes back only if nothing catches e: the stack is as it was */
