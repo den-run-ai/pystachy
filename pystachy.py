@@ -4968,7 +4968,7 @@ class Frame:
         self.selfname = ""
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
-        self.nonevars: dict[str, bool] = {}
+        self.nonevars: dict[str, int] = {}
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
@@ -5075,7 +5075,9 @@ class Gen:
         self.term = False
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
-        self.nonevars: dict[str, bool] = {}  # parameters of a template's function whose argument is None
+        # parameters of a template's function whose argument is None: 0, or the line that gives one
+        # a value of another type (see assign, static_type)
+        self.nonevars: dict[str, int] = {}
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
@@ -5111,7 +5113,8 @@ class Gen:
         self.copying = False
         self.live = False  # fills skips the loops over the empty tuple too (see unfilled)
         self.dead = False  # and found a fill there, or in a branch a static test removes
-        self.whole = False  # static() for fills: only from facts that hold in the whole function
+        self.whole = 0  # static() for the if at this line that fills searches, -1 for none_end
+        self.unsure = False  # and a type not known yet left the test undecided (see static_type)
         # a template's function returning such an empty container without a type (see retval):
         # the locals it returns so, space-separated, by its LLVM name, and the functions whose
         # return type of that kind a call has used, so that it can no longer change (see adopt)
@@ -6106,15 +6109,28 @@ class Gen:
             self.type_reads(n)
         return self.static(n)
 
-    def static_whole(self, n: Node) -> int:
-        # static_now(n) for code that compiles later, where the facts of the code being compiled
-        # may no longer hold (see static_type)
+    def static_whole(self, n: Node, line: int) -> int:
+        # static_now(n) for the test of the if at line, in code that compiles later (see fills):
+        # with the facts that hold there (see static_type)
         if self.modlevel:
             self.type_reads(n)
-        self.whole = True
+        here = self.line
+        self.whole = line
+        self.line = line
+        self.unsure = False
         s = self.static(n)
-        self.whole = False
+        self.whole = 0
+        self.line = here
         return s
+
+    def none_end(self, p: str) -> int:
+        # the line of the first statement, in the blocks that may run, that binds parameter p,
+        # whose argument is None (a large number if none does): p is None before it
+        w = self.whole
+        self.whole = -1  # (a test of a None parameter may go either way)
+        st = self.first_binding(self.curfn.node.kids[2].kids, p)
+        self.whole = w
+        return st.line if st is not None else 1 << 40
 
     def type_reads(self, n: Node) -> None:
         if n.kind == "name":
@@ -6173,7 +6189,11 @@ class Gen:
         found: list[Node] = []
         for nm in names:
             first: list[Node] = []
+            self.live = True  # (a fill in a loop over the empty tuple only if no code that runs fills it)
             self.fills(body, nm, first)
+            self.live = False
+            if len(first) == 0:
+                self.fills(body, nm, first)
             if len(first) > 0 and (len(found) == 0 or first[0].line < found[0].line):
                 found = first
         if len(found) == 0:
@@ -6270,11 +6290,14 @@ class Gen:
             elif k == "augassign" and st.kids[0].kind == "name" and st.kids[0].s == name and st.s == "+":
                 found.append(mk("omit", "", st.line, []))
                 found.append(st.kids[1])
-            elif k == "if" and self.static_whole(st.kids[0]) >= 0:
-                # a test that facts true in the whole function decide: only the branch that runs
-                s = self.static_whole(st.kids[0])
+            elif k == "if" and self.static_whole(st.kids[0], st.line) >= 0:
+                # a test that the types decide there: only the branch that runs
+                s = self.static_whole(st.kids[0], st.line)
                 self.dead = self.dead or shows_items(st.kids[2 if s == 1 else 1], name)
                 self.fills(st.kids[1 if s == 1 else 2].kids, name, found)
+            elif k == "if" and self.unsure and shows_items(st, name):
+                # a test that types not known yet may decide: which branch runs is not known
+                found.append(mk("lambda", "", st.line, []))  # (which no look-ahead compiles)
             elif k == "for" and self.live and st.kids[1].kind == "name" and self.qtype(st.kids[1].s) == "tuple[]":
                 # a loop over the empty tuple (*args without extra arguments): only its else block runs
                 self.dead = self.dead or shows_items(st.kids[2], name)
@@ -6451,7 +6474,7 @@ class Gen:
                     return
                 if self.branch > 0:
                     self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
-                del self.nonevars[name]
+                self.nonevars[name] = self.line
             if name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
@@ -6587,7 +6610,7 @@ class Gen:
             t = f.ptypes[i]
             if t == "None":
                 # an argument that is None: the parameter is not passed, and reads of it are None
-                self.nonevars[f.params[i]] = True
+                self.nonevars[f.params[i]] = 0
                 continue
             ps.append(f"{lt(t)}{' nonnull' if i == 0 and f.cls != '' else ''} %a{i}")
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
@@ -8098,10 +8121,10 @@ class Gen:
             r = -1 if t == "" or t in self.classes else 1 if t == "None" else 0
             return r if r < 0 or n.s == "is" else 1 - r
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
-            t = self.static_type(n.kids[1])
+            t = self.static_type(n.kids[1], True)
             return max(self.has(t, n.kids[2].s), -1) if t != "" else -1
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
-            t = self.static_type(n.kids[1])
+            t = self.static_type(n.kids[1], True)
             return self.isinst(t, n.kids[2]) if t != "" else -1
         return -1
 
@@ -8126,12 +8149,19 @@ class Gen:
         self.err(f"hasattr() of '{a}' on a {tname(t)} is not supported")
         return 0
 
-    def static_type(self, n: Node) -> str:
-        # the type of a variable read that cannot fail, or ""
+    def static_type(self, n: Node, typed: bool = False) -> str:
+        # the type of a variable read that cannot fail, or "" (typed: in isinstance or hasattr)
         if n.kind != "name" or n.chk:
             return ""
-        if self.whole and n.s in self.assigned and n.s in self.curfn.params and self.curfn.ptypes[self.curfn.params.index(n.s)] == "None":
-            return ""  # (a parameter whose argument is None, but only until the function assigns it)
+        if self.whole != 0 and n.s in self.nonevars:
+            # for fills, the parameter at the line of the if: None up to the line that binds it,
+            # and then of a type known only once that line is compiled
+            if self.whole > 0 and self.whole <= (self.nonevars[n.s] if n.s in self.ltype else self.none_end(n.s)):
+                return "None"
+            self.unsure = self.unsure or n.s not in self.ltype
+            return self.ltype.get(n.s, "") if self.whole > 0 else ""
+        if self.whole > 0 and typed and self.unbound_local(n.s) and n.s not in self.compvars:
+            self.unsure = True  # (a local bound further on, whose type decides isinstance and hasattr)
         if (n.s in self.nonevars or n.s in self.noneglobals) and n.s not in self.ltype:
             return "None"
         if n.s in self.ltype:
