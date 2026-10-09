@@ -5338,7 +5338,6 @@ class Frame:
         self.lct: list[str] = []
         self.ret = ""
         self.retann = False
-        self.cold: dict[str, str] = {}
         self.nn: dict[str, bool] = {}
         self.selfname = ""
         self.uflags: dict[str, bool] = {}
@@ -5514,8 +5513,9 @@ class Gen:
         self.consts: list[str] = []
         self.strs: dict[str, str] = {}
         self.strvals: list[str] = []  # the text of each @s.N
-        self.decls: dict[str, str] = {}
-        self.rtfns: dict[str, RtFn] = {}  # the runtime functions declared, by RUNTIME key
+        # the runtime functions declared, by RUNTIME key, in the order of their first use (which
+        # the program's declare lines keep)
+        self.rtfns: dict[str, RtFn] = {}
         self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but rt, call and init
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
@@ -5534,7 +5534,6 @@ class Gen:
         self.lct: list[str] = []
         self.ret = "None"
         self.retann = False
-        self.cold: dict[str, str] = {}
         self.nn: dict[str, bool] = {}
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
@@ -5622,7 +5621,6 @@ class Gen:
         fr.lct = self.lct
         fr.ret = self.ret
         fr.retann = self.retann
-        fr.cold = self.cold
         fr.nn = self.nn
         fr.selfname = self.selfname
         fr.uflags = self.uflags
@@ -5654,7 +5652,6 @@ class Gen:
         self.lct = fr.lct
         self.ret = fr.ret
         self.retann = fr.retann
-        self.cold = fr.cold
         self.nn = fr.nn
         self.selfname = fr.selfname
         self.uflags = fr.uflags
@@ -5790,7 +5787,6 @@ class Gen:
         k = RTSYM[name]
         if k not in self.rtfns:
             self.rtfns[k] = RtFn(k)
-        self.decls[name] = self.rtfns[k].decl
         return k
 
     def hole(self, kind: str) -> Ins:
@@ -5815,8 +5811,8 @@ class Gen:
 
     def guard(self, bad: str, msg: str) -> None:
         # if bad, jump to a block (one per function and message) that raises msg ("Kind: text")
-        if msg not in self.cold:
-            self.cold[msg] = self.label()
+        if msg not in self.fn.cold:
+            self.fn.cold[msg] = self.label()
         l = self.label()
         i = Ins("check", "", msg)
         i.a = [Val(bad, "bool")]
@@ -7128,7 +7124,6 @@ class Gen:
         self.term = False
         self.ret = f.ret
         self.retann = f.node.kind == "def" and f.node.kids[1].kind != "noann"
-        self.cold = self.fn.cold
         self.nn = {}
         self.selfname = ""
         self.uflags = f.uflags
@@ -7202,7 +7197,7 @@ class Gen:
         if not self.term:
             if f.ret == "None" or (f.infer and f.ret in self.classes):
                 self.ret_(Val("null", f.ret))  # (a template's function that ends without a return: None)
-                if len(self.cold) > 0:
+                if len(self.fn.cold) > 0:
                     # the jump to the first cold block that follows is a block of its own, which
                     # LLVM starts after a terminator, without a label
                     self.blk = Blk("")
@@ -7210,8 +7205,8 @@ class Gen:
                     self.term = False
             else:
                 self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
-        for msg in self.cold:
-            self.place(self.cold[msg])
+        for msg in self.fn.cold:
+            self.place(self.fn.cold[msg])
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
         self.fn.ps = ps
@@ -7314,8 +7309,8 @@ class Gen:
                     self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
                 if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
                     self.bad_ir(fn, b, "a phi after other ops")
-                if i.op == "rt" and i.s not in RUNTIME:
-                    self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}")
+                if i.op == "rt" and i.s not in self.rtfns:
+                    self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
                 if len(i.r) != self.nums(i):
                     self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {self.nums(i)}")
                 if i.op == "raw":
@@ -7351,7 +7346,7 @@ class Gen:
         if i.op == "phi" or i.op == "select":
             return 1
         if i.op == "rt":
-            return 0 if rtsig(i.s)[0] == "None" else 1
+            return 0 if self.rtfns[i.s].sig[0] == "None" else 1
         if i.op == "call":
             return 0 if i.t == "None" else 1
         return 0
@@ -7618,7 +7613,8 @@ class Gen:
         hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
         hdr.extend(self.consts)
         hdr.extend(self.out)
-        hdr.extend(self.decls.values())
+        for k in self.rtfns:
+            hdr.append(self.rtfns[k].decl)
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals
         hdr.append(runtime_decl("init"))

@@ -33,7 +33,9 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
 >     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
 >     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
->     descriptor) against runtime.c's call graph;
+>     descriptor) against runtime.c's call graph; `Gen.rtfns` holds one `RtFn` (symbol, signature,
+>     LLVM types, declare line, effects) per runtime function declared, in the order of first use,
+>     and replaces R2's `decls`: the header prints their declare lines;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
 >     a list comprehension's result list is a hole too, which `listcomp` fills with the list type
 >     once it knows the element type (a list hole lowers as it was built, so this changes no output);
