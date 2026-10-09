@@ -171,7 +171,8 @@ and `__future__`, and of Python modules (below), with keyword-only (`*`) and pos
 (`/`) parameters.
 
 **Exceptions.** `try` with `except` clauses (an exception class, a tuple of them, with `as
-NAME` or not, or a bare `except:`; `builtins.ValueError` and `os.error` too), `else` and
+NAME` or not, or a bare `except:`; `builtins.ValueError` and `os.error` too, and `A or B` of
+classes, which is `A`), `else` and
 `finally`, in every combination CPython accepts but `except*`. A clause catches its classes
 and those deriving from them, in CPython 3.13's hierarchy and the program's (`except
 LookupError` catches a `KeyError`, `except Exception`

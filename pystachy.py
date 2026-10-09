@@ -9023,6 +9023,7 @@ class Gen:
         hasfin = False
         for k in n.kids[1:]:
             if k.kind == "except":
+                k.kids[0] = self.clause_or(k.kids[0])
                 hs.append(k)
             elif k.s == "else":
                 orelse = k.kids
@@ -9132,6 +9133,20 @@ class Gen:
         if live:
             self.place(done)
             self.stmts(fin)
+
+    def clause_or(self, t: Node) -> Node:
+        # except A or B: the class that the clause's expression gives where each operand names an
+        # exception class (a class is true: A for or, B for and), as CPython evaluates it
+        todo = [t]
+        while len(todo) > 0:
+            c = todo.pop()
+            if c.kind == "boolop":
+                todo += c.kids
+            elif not self.exc_classes(c):
+                return t
+        while t.kind == "boolop":
+            t = t.kids[0] if t.s == "or" else t.kids[1]
+        return t
 
     def catches(self, h: Node) -> str:
         # the classes except clause h catches: "" for every one (a bare except, BaseException), else
