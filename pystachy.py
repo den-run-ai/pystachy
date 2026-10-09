@@ -3716,8 +3716,10 @@ class Loader:
             return f"type '{e.kids[0].s}' is not subscriptable"
         have = len(e.kids[1].kids) if k == "index" and e.kids[1].kind == "tuple" else 1
         want = {"typing.Optional": 1, "typing.List": 1, "typing.Dict": 2}.get(ts[0], have) if k == "index" else have
+        if want != have and ts[0] == "typing.Optional":
+            return "typing.Optional requires a single type"  # (CPython adds the arguments' reprs)
         if want != have:
-            return f"too {'many' if have > want else 'few'} arguments for {ts[0]}; actual {have}, expected {want}"
+            return f"Too {'many' if have > want else 'few'} arguments for {ts[0]}; actual {have}, expected {want}"
         if k == "binop" and "" not in ts and not ts[0].startswith("typing.") and not ts[1].startswith("typing.") and ("str" in ts or (ts[0] == "NoneType" and ts[1] == "NoneType")):
             return f"unsupported operand type(s) for |: '{ts[0]}' and '{ts[1]}'"
         return ""

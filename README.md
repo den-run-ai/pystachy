@@ -13,7 +13,7 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (137919 lines of IR)
+fixed point: stage1 == stage2 == stage3 (137941 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -32,10 +32,10 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 10,820 | lexer 611 · parser 1,672 · scopes (CPython's symbol-table errors) 639 · module loader 1,878 · types, tables and the definite-assignment pass 833 · type checker + IR generator 5,000 · driver 132 |
+| `pystachy.py` | 10,822 | lexer 611 · parser 1,672 · scopes (CPython's symbol-table errors) 639 · module loader 1,880 · types, tables and the definite-assignment pass 833 · type checker + IR generator 5,000 · driver 132 |
 | `runtime.c` | 2,657 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 287 programs, 410 rejection cases, 9 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 287 programs, 411 rejection cases, 9 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -634,7 +634,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1140 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1141 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
