@@ -105,7 +105,8 @@ constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[
 collapse as `typing`'s do: `Union[T, T, None]`, and `Union[T]` is `T`)
 for a class type or for `str`, `int`, `float`, `bool`, `list`, `dict` and `tuple` (wherever a
 type goes, inside containers too), and `None` as a return type. The `typing`
-spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
+spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`, and `Self` in a class's methods
+and fields, which is that class) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
 `collections.abc` imports as `typing` does (also `from collections import abc`), and
 `Mapping[K, V]` and `MutableMapping[K, V]` (from either) are `dict[K, V]`, `Sequence[T]` and

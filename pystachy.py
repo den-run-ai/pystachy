@@ -5692,6 +5692,7 @@ class Flow:
 class Gen:
     def __init__(self):
         self.classes: dict[str, ClassInfo] = {}
+        self.selfcls = ""  # the class whose method or fields are being declared: what typing.Self is
         self.funcs: dict[str, FnInfo] = {}
         self.aliases: dict[str, str] = {}
         self.imports: dict[str, str] = {}
@@ -6263,12 +6264,16 @@ class Gen:
                 return s
             if self.typing_name(s) == "TextIO":
                 return "file"
+            if self.typing_name(s) == "Self":
+                return self.self_type()
             if s in self.unsupported:
                 self.err(self.unsupported[s])
             if s in self.typevars:
                 self.err(f"TypeVar '{short(s)}'{TYPEVAR}")
         elif k == "attr" and self.typing_attr(n) == "TextIO":
             return "file"
+        elif k == "attr" and self.typing_attr(n) == "Self":
+            return self.self_type()
         elif k == "binop" and n.s == "|" and self.has_path(n):
             return self.path_union(self.union_members(n, []))
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
@@ -6316,6 +6321,13 @@ class Gen:
             self.err(PATHLIKE)
         self.err("unsupported type annotation")
         return ""
+
+    def self_type(self) -> str:
+        # typing.Self: the class of the method or field it annotates (there is no inheritance)
+        c = self.selfcls if self.selfcls != "" else self.curfn.cls
+        if c == "":
+            self.err("typing.Self is only supported in a class, for its methods and fields")
+        return c
 
     def pathlike(self, n: Node) -> bool:
         # is annotation n os.PathLike or os.PathLike[T]
@@ -8358,7 +8370,9 @@ class Gen:
                             if d.s in self.classes[st.s].methods:
                                 self.err(f"redefinition of method '{st.s}.{d.s}' is not supported")
                             self.lib = m.name != ""
+                            self.selfcls = st.s
                             self.classes[st.s].methods[d.s] = self.declare_fn(d, st.s)
+                            self.selfcls = ""
                             self.lib = False
                             self.classes[st.s].methods[d.s].mod = m.name
                     top.append(mk("cdefaults", st.s, st.line, []))
@@ -8366,7 +8380,9 @@ class Gen:
                     top.append(st)
             tops.append(top)
         for ci in self.classes.values():
+            self.selfcls = ci.name
             self.declare_fields(ci)
+            self.selfcls = ""
             for f in ci.methods.values():
                 self.check_special(f)
         for m in mods:
