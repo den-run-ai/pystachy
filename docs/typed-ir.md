@@ -1,6 +1,6 @@
 # A typed IR for Pystachy
 
-This document designs the typed intermediate representation that the README names as the main next step. Issue #4 §4 asks for the same thing: "a small typed IR separating lexical resolution, type checking, effects, and backend lowering". The issue also asks to "preserve the existing useful LLVM/mem2reg delegation" and says "a large framework is not required".
+This document designs the typed intermediate representation that the README named as the main next step when it was written. Issue #4 §4 asks for the same thing: "a small typed IR separating lexical resolution, type checking, effects, and backend lowering". The issue also asks to "preserve the existing useful LLVM/mem2reg delegation" and says "a large framework is not required".
 
 ## Status
 
