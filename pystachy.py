@@ -6848,8 +6848,22 @@ class Gen:
                     self.err(f"Non-default namedtuple field {st.kids[0].s} cannot follow default field {last}")
                 elif last != "" and self.is_dc(ci.name) and not ci.kwonly:
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
+            elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and self.is_dc(ci.name):
+                self.err(f"a class attribute without an annotation ({st.kids[0].s} = ...), which is no field of a {'NamedTuple' if ci.name in self.nts else 'dataclass'}, is not supported: annotate it")
+            elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
+                # x = v: a class attribute, typed by v as a field is (and from here on read as x: T = v)
+                t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
+                if t == "" and ci.mod == "":
+                    self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
+                if t == "":
+                    ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: cannot infer the type of class attribute '{st.kids[0].s}'"
+                    t = "int"
+                self.add_field(ci, st.kids[0].s, t)
+                ci.fdefault[st.kids[0].s] = st.kids[1]
+                st.kind = "annassign"
+                st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
-                self.err("a class body may only contain annotated fields and methods")
+                self.err("a class body may only contain fields, methods and a docstring")
         if ci.name in self.nts:
             self.nt_class(ci)
         if self.is_dc(ci.name):
@@ -8329,7 +8343,7 @@ class Gen:
                         return f"method {b.s}() takes *args or **kwargs"
                     if (i > 0 or static) and ps[i].kids[0].kind == "noann":
                         return f"parameter '{ps[i].s}' of method {b.s}() has no type annotation"
-            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and b.kids[0].kind == "str"):
+            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and not (b.kind == "assign" and len(b.kids) == 2 and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and b.kids[0].kind == "str"):
                 return "its body holds statements other than fields, methods and a docstring"
         return ""
 

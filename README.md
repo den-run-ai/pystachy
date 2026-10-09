@@ -226,7 +226,9 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   dataclass's.
 - `C.x` reads the class attribute that a class-body default binds (instances read it until
   they assign `x`), also a `Final` one. `C.x = v` (also `cls.x += 1` in a class method) assigns
-  it, which `C.x` and the objects that have not assigned `x` then read.
+  it, which `C.x` and the objects that have not assigned `x` then read. A class-body `x = v`
+  without an annotation is `x: T = v`, `T` given by `v` as for a field (but in a dataclass or
+  NamedTuple, where it would be no field).
 - A method decorated with `@staticmethod` or `@classmethod` is called through its class
   (`C.m(...)`) or through an object (`o.m(...)`, `self.m(...)`, which only checks that `o` is
   not `None`). There is no inheritance, so a class method's `cls` is always its own class:
@@ -481,8 +483,9 @@ that do not return `str`, a `__len__` that returns neither an `int` nor a `bool`
 method's `cls` used as a value or assigned, `@staticmethod` or `@classmethod` on a special
 method, a method of objects called through its class (`C.m(o)`), and decorators other than
 these, `@dataclass` and `@overload`; `@dataclass` arguments other than `kw_only` (`frozen=`,
-`order=`, ...), and `dataclasses.field()` and `KW_ONLY`; an assignment through its class
-to a dataclass's or NamedTuple's class attribute, or to one its class body does not bind; an `__iter__` that is a generator, or
+`order=`, ...), and `dataclasses.field()` and `KW_ONLY`; a class attribute without an
+annotation in a dataclass or NamedTuple, and an assignment through its class to a dataclass's or
+NamedTuple's class attribute, or to one its class body does not bind; an `__iter__` that is a generator, or
 that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
 `__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
 non-iterator of type 'list'`; and `iter(d.keys())`, `values()` or `items()`, whose iterator
