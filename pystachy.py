@@ -11508,7 +11508,7 @@ class Gen:
                 self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
                 return o
             if f.s in self.mvars:
-                self.err(f"'{f.s}' is a variable, so it cannot be called")
+                self.not_callable(f.s, self.gtypes.get(f.s, ""))
             if f.s in self.unsupported:
                 self.err(self.unsupported[f.s])
             return self.builtin(f.s, args, want)
@@ -11527,8 +11527,19 @@ class Gen:
             if f.s != "close":
                 self.close_temp(f.kids[0], o)
             return r
+        if f.kind == "name":
+            self.not_callable(f.s, self.ltype[f.s])
         self.err("only functions, classes and methods can be called")
         return Val("", "")
+
+    def not_callable(self, name: str, t: str) -> None:
+        # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
+        # unless it has __call__; a builtin's name bound as a variable is rejected as such
+        if short(name) in PYBUILTINS or t == "":
+            self.err(f"'{name}' is a variable, so it cannot be called")
+        if t in self.classes and "__call__" in self.classes[t].methods:
+            self.err(f"calling an object ({short(t)}.__call__) is not supported")
+        self.err(f"'{tname(unopt(t))}' object is not callable")
 
     def bound(self, s: str) -> bool:
         # a builtin's name that the program binds (a local, def, class or module-level variable)
