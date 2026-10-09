@@ -9017,6 +9017,8 @@ class Gen:
         for c in t.kids if t.kind == "tuple" else [t] if t.kind != "omit" else t.kids:
             if c.kind != "name" or c.s in self.ltype or c.s in self.gtypes or c.s in self.funcs or c.s in self.assigned:
                 self.err("an except clause needs exception classes: a name, or a tuple of names")
+            if c.s in self.unsupported:
+                self.err(self.unsupported[c.s])
             if c.s in self.classes and self.classes[c.s].exc == "":
                 self.err("catching classes that do not inherit from BaseException is not allowed")
             if c.s in self.classes:
@@ -9332,6 +9334,8 @@ class Gen:
         # class-body defaults, then given to the __init__ of c or of the nearest base that has
         # one; without one, the class takes any positional arguments
         ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
         line = self.line
         init = ci.methods["__init__"] if "__init__" in ci.methods else None
         vals: list[Val] = []
@@ -10969,10 +10973,10 @@ class Gen:
             if f.s in self.aliases and f.s not in self.gtypes:
                 return self.builtin(self.aliases[f.s], args, want)
             if f.s in self.classes:
-                if self.classes[f.s].bad != "":
-                    self.err(self.classes[f.s].bad)
                 if self.classes[f.s].exc != "":
                     return self.exc_object(f.s, args)
+                if self.classes[f.s].bad != "":
+                    self.err(self.classes[f.s].bad)
                 size = f"ptrtoint (ptr getelementptr (%C.{f.s}, ptr null, i32 1) to i64)"
                 o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), f.s)
                 self.nn[o.v] = True
