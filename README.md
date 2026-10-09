@@ -206,23 +206,22 @@ Parts of M4 and M5 land in #22. Open findings from earlier differential testing 
 tracked in [#13](https://github.com/den-run-ai/pystachy/issues/13) to
 [#17](https://github.com/den-run-ai/pystachy/issues/17).
 
-**In progress now** (draft pull requests, not merged yet):
+**New in [#22](https://github.com/den-run-ai/pystachy/pull/22): a typed IR** (its
+[design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
+a small typed layer between type checking and LLVM, built step by step so that every step
+emits byte-identical output (`make irsame` checks it). On top of it: exceptions
+(`try`/`except`/`else`/`finally`, `raise`, exception classes of the program) by table-driven
+unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
+`float | None` and `bool | None`, `NamedTuple`, tuple dict keys, `@classmethod`,
+`@staticmethod`, `__getitem__` and friends, and the first IR optimizations (fused dict lookups
+make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
+compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
 
-- **A typed IR** ([#22](https://github.com/den-run-ai/pystachy/pull/22); its
-  [design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
-  a small typed layer between type checking and LLVM, built step by step so that every step
-  emits byte-identical output (`make irsame` checks it). On top of it: exceptions
-  (`try`/`except`/`else`/`finally`, `raise`, exception classes of the program) by table-driven
-  unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
-  `float | None` and `bool | None`, `NamedTuple`, tuple dict keys, `@classmethod`,
-  `@staticmethod`, `__getitem__` and friends, and the first IR optimizations (fused dict lookups
-  make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
-  compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
-- **Part of the runtime in Python** ([#19](https://github.com/den-run-ai/pystachy/pull/19)): 52
-  runtime functions, among them all the `str` methods and the format-spec mini-language, are
-  written in the subset and compiled by Pystachy itself, with no change to any program's IR and
-  the same performance. Follow-ups are tracked in
-  [#31](https://github.com/den-run-ai/pystachy/issues/31).
+**In progress now** (a draft pull request, not merged yet): **part of the runtime in Python**
+([#19](https://github.com/den-run-ai/pystachy/pull/19)). 52 runtime functions, among them all
+the `str` methods and the format-spec mini-language, are written in the subset and compiled by
+Pystachy itself, with no change to any program's IR and the same performance. Follow-ups are
+tracked in [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
 CPython-extension mode, like mypyc, so that compiled code can use real PyPI packages?
