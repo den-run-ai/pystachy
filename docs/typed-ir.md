@@ -16,6 +16,13 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   (also a `make verify` step) and the `tests/ir/` probes, with bug B's probe in `tests/ir/pending/`.
 > - #17's cases 2 and 4 (§9, question 4) now compile.
 > - Bugs A to F of §1.3 are fixed in their own commits (wf/defects), outside the IR steps.
+> - Optional values, NamedTuples and tuple keys (wf/types) are merged into the IR, and extend
+>   §3.2's types: `opt[T]` is T | None for `str`, `list`, `dict` and `tuple` (a class type still
+>   includes None), and a dict's keys may be tuples of `int`, `bool`, `str` and `str | None` items,
+>   whose descriptor is the dict's key kind (`rt dict.new`'s first operand, and a dict hole's when
+>   it is lowered). A local first assigned None has the type `opt[None]` until another value
+>   types it, and its `slot` op keeps it. A lookup by a key that may be None joins two container
+>   slots in a `phi` of the pseudo-type `%slot`, which `lt()` spells `i64`.
 >
 > - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
 >   on the corpus). Where they differ from the text below:
