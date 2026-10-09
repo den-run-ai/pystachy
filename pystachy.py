@@ -8325,8 +8325,9 @@ class Gen:
         elif k == "global":
             for nm in n.kids:
                 self.gdecl[nm.s] = True
-        elif k == "assert" and self.static(n.kids[0]) == 0:
-            # an assertion that cannot hold (assert x is not None, x None): code after it never runs
+        elif k == "assert" and (self.static(n.kids[0]) == 0 or n.kids[0].kind == "False"):
+            # an assertion that cannot hold (assert x is not None with x None, assert False): code
+            # after it never runs
             self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
             self.term = True
         elif k == "assert" and self.static(n.kids[0]) == 1:

@@ -175,13 +175,13 @@ and string forward references work (also inside `list["Node"]`), as does `typing
   narrows it, in the body of `if x is not None:`, `if x:` and `while x is not None:` (and
   the `elif` and `else` blocks of the tests that show it), in the right operand of
   `x is not None and`, in the arms of a conditional expression, after `if x is None: return`
-  (or `raise`, `continue`, `break`, `sys.exit()`), after `assert x is not None`, after
-  `x = <a T>`, and after a loop where it holds at each way out (its test is false, which
-  never happens for `while True:`, or a `break`; after a loop with an `else` block: the end
-  of that block, or a `break`), until a value that may be `None` is assigned to it (in a
-  loop's body: anywhere in it). A comprehension's variables are its own, and do not change
-  what is narrowed outside it. Module globals and fields are not narrowed, as a call may
-  change them: copy one to a local, and test that.
+  (or `raise`, `continue`, `break`, `sys.exit()`, `assert False`), after
+  `assert x is not None`, after `x = <a T>`, and after a loop where it holds at each way out
+  (its test is false, which never happens for `while True:`, or a `break`; after a loop with
+  an `else` block: the end of that block, or a `break`), until a value that may be `None` is
+  assigned to it (in a loop's body: anywhere in it). A comprehension's variables are its own,
+  and do not change what is narrowed outside it. Module globals and fields are not narrowed,
+  as a call may change them: copy one to a local, and test that.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.

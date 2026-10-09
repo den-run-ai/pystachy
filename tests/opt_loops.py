@@ -55,3 +55,12 @@ print(until(None), until("q"), first(["a", "b"], None), first([], "c"))
 print(found(["a", "b"], "b"), found(["a"], "z"))
 print(counted("x"), counted(None))
 drop("p", [None, "r"])
+
+
+def asserted(x: str | None) -> str:
+    if x is None:
+        assert False, "nope"
+    return need(x)
+
+
+print(asserted("z"))
