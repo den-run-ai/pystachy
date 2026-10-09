@@ -4682,6 +4682,17 @@ def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
     return r
 
 
+def nones(e: Node) -> bool:
+    # is e a list display of None items, or a dict display of constant keys and None values
+    for i in range(len(e.kids)):
+        x = e.kids[i]
+        if (e.kind == "list" or i % 2 == 1) and x.kind != "None":
+            return False
+        if e.kind == "dict" and i % 2 == 0 and x.kind != "str" and x.kind != "int":
+            return False
+    return True
+
+
 def same_kind(a: str, b: str) -> bool:
     # are types a and b both lists or both dicts (a class may be named listing)
     return (is_list(a) and is_list(b)) or (is_dict(a) and is_dict(b))
@@ -5366,6 +5377,8 @@ class Gen:
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # a local of an optional type exists: narrows has something to look for
         self.building: dict[str, bool] = {}  # the functions being compiled
+        self.wide: dict[str, bool] = {}  # optional values read from a global or a field (function + register), which no test narrows
+        self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -5677,6 +5690,8 @@ class Gen:
             return "s"
         if is_opt(t) and t != NONEVAR:
             return "?" + self.desc(unopt(t))  # None or the value
+        if t == "None":
+            return "?s"  # (always None: a tuple's item)
         if is_list(t):
             return "L" + self.desc(elem(t))
         if is_dict(t):
@@ -5819,6 +5834,36 @@ class Gen:
             j = self.join(unopt(a), unopt(b))
             return self.optional(j) if j != "" else ""
         return ""
+
+    def wider(self, a: str, b: str) -> str:
+        # the type of values of types a and b as they are, where they differ only in what may be
+        # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
+        # containers made of both; "" if there is none
+        if a == b:
+            return a
+        if "?" in a or "?" in b:
+            return ""
+        if a == "None" or b == "None":
+            return self.optional(b if a == "None" else a)
+        if is_opt(a) or is_opt(b):
+            w = self.wider(unopt(a), unopt(b))
+            return self.optional(w) if w != "" else ""
+        if is_list(a) and is_list(b):
+            w = self.wider(elem(a), elem(b))
+            return f"list[{w}]" if w != "" else ""
+        if is_dict(a) and is_dict(b) and targs(a)[0] == targs(b)[0]:
+            w = self.wider(targs(a)[1], targs(b)[1])
+            return f"dict[{targs(a)[0]},{w}]" if w != "" else ""
+        if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+            return ""
+        bs = targs(b)
+        ws: list[str] = []
+        for x in targs(a):
+            w = self.wider(x, bs[len(ws)])
+            if w == "":
+                return ""
+            ws.append(w)
+        return f"tuple[{','.join(ws)}]"
 
     def widens(self, a: str, b: str) -> bool:
         # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
@@ -8422,6 +8467,8 @@ class Gen:
                 self.none_operands(op, cur, b, "+=")
                 cur = Val(cur.v, unopt(cur.t))
                 b = Val(b.v, unopt(b.t))
+            if is_list(b.t) and b.t != cur.t and self.wider(b.t, cur.t) == cur.t:
+                b = Val(b.v, cur.t)  # (as extend: the items are copied)
             self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(b, cur.t).v}"])
             return cur
         if is_list(unopt(cur.t)) and op == "*":
@@ -9046,6 +9093,9 @@ class Gen:
                 items.append(v)
             if not given and is_opt(jt):
                 et = jt  # None among strings (or T | None among T): T | None
+            if given and n is self.soft:
+                for v in items:
+                    et = self.wider(et, v.t) or et  # (an operand of ==: as its items are)
             if et == "" or et == "None":
                 self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
             items = [self.coerce(v, et) for v in items]
@@ -9071,6 +9121,9 @@ class Gen:
                 vs.append(b)
             if not given and is_opt(jt):
                 kv[1] = jt  # None among strings (or T | None among T): T | None
+            if given and n is self.soft:
+                for b in vs:
+                    kv[1] = self.wider(kv[1], b.t) or kv[1]
             if kv[0] == "" or kv[1] == "":
                 self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
             vs = [self.coerce(x, kv[1]) for x in vs]
@@ -9630,6 +9683,8 @@ class Gen:
         seq = a.t == "str" or is_list(a.t)
         if op == "+" and seq and a.t == b.t:
             return Val(self.rt("pys_str_add" if a.t == "str" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), a.t)
+        if op == "+" and is_list(a.t) and is_list(b.t) and self.wider(a.t, b.t) != "":
+            return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), self.wider(a.t, b.t))  # (a new list)
         if op == "*" and seq and b.t == "int":
             return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
         if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t)):
@@ -9639,12 +9694,15 @@ class Gen:
 
     def compare(self, n: Node) -> Val:
         ops = n.s.split(",")
-        if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and len(n.kids[0].kids) == 0:
-            # [] == xs, {} in ds: an empty display takes its type from the other side
+        if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and (len(n.kids[0].kids) == 0 or nones(n.kids[0])):
+            # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
+            # from the other side (it has nothing to evaluate first)
             b = self.expr(n.kids[1], "")
             w = b.t
             if ops[0] == "in" or ops[0] == "not in":
                 w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+            if len(n.kids[0].kids) > 0:
+                self.soft = n.kids[0]
             return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
         # (x is None reads a local that only None was assigned to so far, see none_type)
         self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
@@ -9658,7 +9716,11 @@ class Gen:
             hit = self.rt("pys_range_has", "i64", [f"i64 {self.as_int(a).v}", f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
             return Val(self.ins(f"icmp {'ne' if ops[0] == 'in' else 'eq'} i64 {hit}, 0"), "bool")
         if len(ops) == 1:
-            return self.cmp2(ops[0], a, self.expr(n.kids[1], a.t))
+            w = a.t
+            if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "list" and (is_list(a.t) or is_dict(a.t)):
+                w = f"list[{a.t}]"  # (xs in [[1], [2]]: a list of such)
+            self.soft = n.kids[1]  # (a display there may hold what may be None where a holds none)
+            return self.cmp2(ops[0], a, self.expr(n.kids[1], w))
         l3 = self.label()
         phis: list[str] = []
         r = a
@@ -9694,6 +9756,8 @@ class Gen:
             b = self.unwrap(b, "TypeError: argument of type 'NoneType' is not iterable")
         if (op == "in" or op == "not in") and b.t == "str":
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
+        if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and self.optional(elem(b.t)) == "" and elem(b.t) not in self.classes)):
+            return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict, and no number
         if (op == "in" or op == "not in") and is_dict(b.t) and is_opt(a.t) and unopt(a.t) == targs(b.t)[0]:
             # None is no key of the dict
             nn = self.ins(f"icmp ne ptr {a.v}, null")
@@ -9737,6 +9801,8 @@ class Gen:
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
                 et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
+                if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "":
+                    et = self.optional(elem(b.t))
                 s = self.to_slot(self.coerce(a, et))
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et))}"])
                 r = self.ins(f"add i64 {r}, 1")
@@ -9763,11 +9829,10 @@ class Gen:
         eq = op == "==" or op == "!="
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
-        ct = a.t
-        if a.t != b.t and unopt(a.t) == unopt(b.t):
-            ct = "opt[" + unopt(a.t) + "]"  # T and T | None: None == None, None == x is False, and None < x raises
+        # T and T | None (also as items): None == None, None == x is False, and None < x raises
+        ct = self.wider(a.t, b.t)
         u = unopt(ct)
-        if unopt(a.t) == unopt(b.t) and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u))):
+        if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u))):
             d = f"ptr {self.sconst(self.desc(ct))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
@@ -9781,7 +9846,7 @@ class Gen:
 
     def comparable(self, t: str, u: str) -> bool:
         # can t == u be true at all? (otherwise CPython just answers False)
-        if t == u or (self.isnum(t) and self.isnum(u)) or unopt(t) == unopt(u):
+        if t == u or (self.isnum(t) and self.isnum(u)) or self.wider(t, u) != "":
             return True
         return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
@@ -10489,9 +10554,9 @@ class Gen:
                     nones.append(v.v)
                     nmsg.append(self.none_arg(m, i + 1))
                     v = Val(v.v, pt)
-                elif is_opt(v.t) and slot and p == "*T" and unopt(v.t) == T and base == "list" and m != "append" and m != "insert":
-                    pt = v.t  # xs.index(None): found where xs holds None, as == finds it
-                    dt = v.t
+                elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and base == "list" and m != "append" and m != "insert" and self.optional(T) != "":
+                    pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
+                    dt = pt
                 v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
                 av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
             elif dflt != "":
