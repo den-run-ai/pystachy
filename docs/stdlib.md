@@ -3,8 +3,10 @@
 An evaluation of how much of CPython's standard library, of PyPy's pure-Python modules and of
 popular PyPI packages Pystachy can compile and run, what the minimal compiler and runtime
 changes for that were, and what it would take to compile more. Measured in October 2026 with
-CPython 3.13.16, PyPy 3.11 (`py3.11` branch, October 2026) and LLVM 18, on this repository's
-`claude/stdlib-modules` branch.
+CPython 3.13.16, PyPy 3.11 (`py3.11` branch, October 2026) and LLVM 18, on the
+`claude/stdlib-modules` branch, merged in [#3](https://github.com/den-run-ai/pystachy/pull/3). Later
+work may have moved the numbers; [issue #5](https://github.com/den-run-ai/pystachy/issues/5) turns
+§6 into a roadmap of milestones.
 
 ## Summary
 
