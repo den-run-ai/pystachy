@@ -10,7 +10,8 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
 
 - **Verdict: promising, as an incremental mechanism, not as a rewrite.**
   - The C runtime gets a second half, `runtime.py`, written in the subset and compiled by the compiler itself.
-  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reports all 629 corpus programs identical.
+  - Functions move into it one at a time, keeping their C names and types. Programs call them exactly as before, so **no program's IR changes**: `make irsame` against `30b51d9` reported all 629 corpus programs identical, and against the typed IR (`cc472e4`) all 772.
+  - **It now sits on the typed IR** (#22). Runtime mode builds the IR's ops like the rest of the compiler, `RUNTIME` binds the keys of the functions `runtime.py` defines, and `tools/check_runtime.py` checks their types, their effects and that none reaches itself through a lowering or runtime.c (§2.8).
   - The garbage collector, the memory layouts of lists, dicts and strings, files and signals stay in C. Every system surveyed in §3 keeps some native core. The collector stays native unless the language has a compiler-checked low-level regime for it (§3, item 7), which Pystachy does not.
 - **What moved in the prototype:** 52 functions.
   - 47 of runtime.c's functions:
@@ -20,7 +21,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
     - the two dict hash functions, from `hsh()`, which runtime.c's dict code calls on every lookup;
     - the format-spec mini-language, in 3 functions, from `pys_format()`. runtime.c keeps a 7-line dispatcher and the `snprintf` calls that write a float's digits.
 
-  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 862 (1,153 with comments). The compiler gains 236 lines net (+249/−13).
+  runtime.c lost 328 lines of code in the move (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 1,161 lines with comments. Against the typed IR, the compiler gains 298 lines net (+324/−26).
 - **How.** `pystachy rt runtime.py` compiles the file in a *runtime mode*:
   - functions named `pys_*` are defined under their C names, with runtime.c's types;
   - `def f(...) -> T: ...` declares a C function;
@@ -34,22 +35,23 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
   - An adversarial performance review found substring search O(n·m) at first, up to 263 times slower with long needles. It is now linear, at runtime.c's speed. Nothing it measured on the final code is 2 times slower, and its slowest case, `count("</span>")` in HTML-like text at 1.7 to 1.9, now takes 1.07 times runtime.c's time (§2.10).
   - Without the primitives, the same code is 3 to about 20 times slower (§2.4.3).
   - Programs that use format specs get 6% to 17% larger executables (§2.3).
+  - **On the typed IR** (§2.11), against its own C runtime: `bench/` at 0.99 to 1.01 AOT and 0.98 to 1.05 JIT; the compiler compiles itself in the same time and peak memory (1.006); a cold runtime build costs 0.34 s more; a warm JIT start is unchanged.
 - **What it buys.**
   - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 275,000 cases in about one second, with no compilation.
     - When the format code moved, rtcheck's new format fuzzer found that runtime.c gave the wrong error message for a repeated `,` or `_`.
     - A compiled differential review of the moved format code found no regression in about 210,000 cases. It did find that runtime.c cut format error messages at 511 bytes and at a NUL, and read the presentation type as a byte.
     - All three are fixed in `runtime.py`, with tests recorded from CPython (§2.2). So is a hang: runtime.c's `expandtabs` grew memory without bound for a huge tab size (§2.1).
-  - **Five more pre-existing bugs**, outside the moved code, turned up during the evaluation and are reproduced in §2.2:
-    - undefined behaviour in integer division;
-    - a stale length in list `==`;
-    - two lax UTF-8 decoders, since fixed;
-    - class ids that overflow their three digits, since fixed in runtime.c.
+  - **Five more pre-existing bugs**, outside the moved code, turned up during the evaluation. All five are now fixed, each with a test recorded from CPython (§2.2):
+    - undefined behaviour in integer division (`clz(0)`);
+    - a stale length in list `==`, with two more stale reads that an audit found in `list.remove` and `min()`/`max()`;
+    - two lax UTF-8 decoders, and a lead byte above 0xF4 that the strict one accepted;
+    - class ids that overflow their three digits.
   - **Safety by default.** Ported code gets checked arithmetic and checked indexing. Two of the three integer overflows fixed in commit `452f29c` are in moved functions; in the subset both would have failed loudly instead of computing a wrong value. The moved code no longer uses fixed-size buffers: one of them, the format code's, did truncate messages.
   - **The roadmap's runtime code in Python.** The open issues imply about 9k to 18k lines of new runtime code, 3.5 to 7 times today's runtime.c (§2.5). Under the current architecture all of it would be C.
   - **Reuse.** The planned WebAssembly GC backend needs a runtime written in the subset (`docs/typed-ir.md` §7.3), and the typed IR's effects table can be inferred from it.
 - **What it costs.**
   - A small private dialect (`_rt`) that must stay small and lowerable to every backend.
-  - Sanitizers (UBSan, ASan) no longer instrument the moved code; the subset's own checks replace them.
+  - Sanitizers (UBSan, ASan) no longer instrument the moved code; the subset's own checks replace them (#23).
   - The runtime is now compiler output: a code generation bug can miscompile it. The bootstrap fixed point now covers `runtime.py`'s IR, and `rtcheck` tests it independently of the compiler.
   - The code is longer: 2.4 times the lines and 1.4 times the characters of the C it replaces.
 - **Sequencing.** Keep the runtime ABI frozen while the typed IR's steps 4 to 15 run. Leaf functions can move now, because the move does not change programs' IR. Generic helpers (`pys_eq`, `pys_repr`, the sort) should move after typed-IR step 13, as templates.
@@ -538,10 +540,38 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
 
   It raised two points, both handled. First, nothing checks the builder rule of §1.2. The CPython twin of `str_done` returned a copy, so `rtcheck` could not see a write after `str_done`. The twin now empties the builder, and `rtcheck` still passes. A `buf` type for builders would make the rule a compile-time check (§5). Second, sanitizers do not instrument `runtime.py`'s code (§2.1).
 - **Improvements over runtime.c that the review found.** These are the format fixes of §2.2 (message truncation, a NUL in the spec, and presentation types read as code points), and `expandtabs` with a huge tab size, on which runtime.c hung (§2.1).
-- **Shared deviations it found and left as they are.**
+- **Shared deviations it found and left as they are.** The README now lists both:
   - A format width above 10**8 is rejected.
-  - `"%c" % 233` writes one byte.
-  - `strip()` with non-ASCII chars, and `replace("", x)`, work byte by byte. This is the byte-string model, but the README lists only `split()`.
+  - `strip()` with non-ASCII chars, and `replace("", x)`, work byte by byte. This is the byte-string model.
+
+  A third, `"%c" % 233` writing one byte, was fixed on the base (`typed-ir-prep`) before the merge: it now writes the character's UTF-8, as CPython does.
+
+### 2.11 On the typed IR: the measurements again
+
+Measured on `59c4e0c`, this branch's head after the merge with `claude/typed-ir` (`cc472e4`) and the fixes of this round, against the compiler and C runtime of `cc472e4` itself. Everything else is as in §2.4: CPU time (user + sys, from `wait4`), best of 7, pinned to one core, with outputs checked against CPython's.
+
+| | `cc472e4` (C runtime) | this branch | ratio |
+|---|---:|---:|---:|
+| `bench/`, 8 programs, AOT | | | 0.989–1.007 (median 0.994) |
+| `bench/`, JIT | | | 0.984–1.052 (median 1.001) |
+| `bench/`, peak RSS | | | within 0.3% |
+| the compiler compiling `pystachy.py`, native | 0.263 s, 90.8 MB | 0.264 s, 91.0 MB | 1.006 |
+| the same under CPython | 1.58 s, 130.5 MB | 1.59 s, 131.2 MB | 1.002 |
+| a cold runtime build and the first run | 1.89 s | 2.23 s | +0.34 s |
+| a warm JIT start (`print`) | 37 ms | 37 ms | 1.00 |
+| cached runtime bitcode / `.o` | 203 / 202 KB | 266 / 217 KB | +31% / +7% |
+| `runtime.py`'s compile, native / CPython | | 18 ms / 0.20 s | |
+| `tools/rtbench`, 23 programs, AOT (wall time) | | | median 1.00, 0.05–1.41 |
+| `tools/rtbench`, JIT | | | median 0.99, 0.48–1.10 |
+
+- **No regression on whole programs.** The typed IR changes nothing in this comparison: both compilers emit the same IR for every program (`make irsame REF=cc472e4`: 772 identical), so the difference is the runtime alone.
+- **Executables.** Programs that format with specs are 4 to 12 KB larger (`dictlookup` 53.8 → 66.3 KB); the others do not grow.
+- **The slowest microbenchmarks.**
+  - `isdigit_short` at 1.41 AOT (1.00 JIT). It executes 3.5% fewer instructions than with runtime.c. The inner loop is the same machine code as without this round's `!range` on lengths (§2.8), which gives 1.00; only the placement of the outer loop's `n += 1` moved. It is a layout effect on this one loop, which the `!range` also gives in the other direction: `in_short` 0.89, `startswith_short` 0.88 and `splitlines_long` 0.83 against the build without it.
+  - `ljust_tiny` 1.20 and `strip_short` 1.19: short calls, which runtime.c's functions were inlined into and `runtime.py`'s are not (#30).
+  - `count_html`, at 1.7–1.9 before this round, takes 1.07.
+- **The compiler's own cost.** This branch's compiler is 298 lines longer than the typed IR's, and its own IR 3,908 lines (2.7%) longer: 150,790 against 146,882. Its native executable grows from 1,169 to 1,239 KB (6%). Compiling the same source, the two take the same time (1.006, within noise).
+
 
 ## 3. How other compilers and runtimes do it
 
@@ -608,25 +638,29 @@ Sources and line counts: the research notes behind this table measured each repo
    - `runtime.py`, runtime mode, `_rt`, external declarations, the cache rule, the fixed point, `rtcheck`, `rtabi` and `rtbench`.
    - The 52 functions moved here.
    - On the typed IR: `RUNTIME` keys bound to `runtime.py` functions, and `check_runtime.py`'s checks of them: signatures, effects, and no recursion through runtime.c (§2.8).
+The follow-ups are filed: #31 tracks items 2 to 7, and the issues named below hold the details.
+
 2. **Next leaf moves, independent of the typed IR.**
    - `int()` and `float()` parsing. They need wrapping arithmetic; the digit tables would use a `str` as a table.
-   - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which the lax character counts of §2.2 should use too; `pys_str_list`; `str(int)`.
+   - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which the lax character counts of §2.2 should use too (#29); `pys_str_list`; `str(int)`.
    - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`, `dict.update`/`popitem`/`fromkeys` over the C dict API. Write them in `runtime.py` from the start.
 3. **Small language and compiler work that runtime code needs.**
-   - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule.
-   - A `buf` type for `str_new`'s result: only `str_put` and `copy` write to it, only `str_done` turns it into a `str`, and nothing uses it after that. The builder rule of §1.2 then becomes a compile-time check, at no run-time cost.
-   - Debug builds for memory safety. Instrument `runtime.py`'s IR with ASan when the flags ask for it, and add an allocator option that gives each object its own `calloc` block. Add a collector option that poisons dead memory. The GC review built all three in about 30 lines.
+   - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule, and a test of the cache rules (#24).
+   - A `buf` type for `str_new`'s result, and a nullable `str` for omitted arguments (#25): only `str_put` and `copy` write to it, only `str_done` turns it into a `str`, and nothing uses it after that. The builder rule of §1.2 then becomes a compile-time check, at no run-time cost.
+   - Debug builds for memory safety (#23). Instrument `runtime.py`'s IR with ASan when the flags ask for it, and add an allocator option that gives each object its own `calloc` block. Add a collector option that poisons dead memory. The GC review built all three in about 30 lines.
    - Allow classes in runtime mode, as long as none ends up in a container.
    - Accept module-level constants, which need an init hook and roots: the ABI notes count 8 functions that want static tables.
    - Unchecked list access proven by the typed IR's bounds hoisting (§7.1 there). Then timsort can move without the 5× penalty.
 4. **After typed-IR step 13.**
    - `rt` keys are the binding point of every operation (`RUNTIME` already binds keys to `runtime.py` functions).
    - The generic helpers (`pys_eq`, `pys_repr`, `list.find`, `minmax`, sort) become templates instantiated per type, without descriptors or `pys_obj_*` callbacks.
-5. **At the typed IR's re-baseline (step 16).**
+5. **At the typed IR's re-baseline (step 16)** (#26).
    - Apply the nsw range step to programs.
    - Fuse `ord(s[i])` into a byte read for programs too.
-6. **With the Wasm GC backend.** Lower `_rt` to Wasm GC array ops and reuse `runtime.py`. Only runtime.c's core needs a Wasm counterpart, and the engine supplies the collector.
-7. **Stay in C.** The collector, `Str`/`List`/`Dict` memory, files, signals, `errno`, time, float digits (`snprintf`/`strtod`) and the libm wrappers. Revisit the collector only together with precise roots for frames the compiler generates (RPython's shadow stack is the precedent), which C cannot provide.
+   - TBAA and `!range` on programs' str lengths; object helpers only where descriptors use them; a letter for class ids of 1000 and up.
+6. **With the typed IR's exceptions** (#27). `runtime.py`'s frames must be unwindable: no `nounwind` inferred from runtime.c's `pys_raise`, and a test that catches an exception raised in `runtime.py`.
+7. **With the Wasm GC backend.** Lower `_rt` to Wasm GC array ops and reuse `runtime.py`. Only runtime.c's core needs a Wasm counterpart, and the engine supplies the collector.
+8. **Stay in C.** The collector, `Str`/`List`/`Dict` memory, files, signals, `errno`, time, float digits (`snprintf`/`strtod`) and the libm wrappers. Revisit the collector only together with precise roots for frames the compiler generates (RPython's shadow stack is the precedent), which C cannot provide.
 
 **`tools/dictprobe.c`** stays C. It is a white-box test that includes runtime.c to count the slots its dict code visits, and it now links `runtime.py`'s IR for the hash functions. It could become a subset program once the dict table itself moves, with a probe counter in `runtime.py`.
 
@@ -645,24 +679,27 @@ Sources and line counts: the research notes behind this table measured each repo
 
 | file | change |
 |---|---|
-| `pystachy.py` | +249/−13 lines:<br>• runtime mode (`rtmode`, exported and external functions and their checks, `RTL` and `primitive()`, nsw range steps);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
-| `runtime.py` | new, 1,153 lines (862 of code) |
-| `runtime.c` | −328 lines of code. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`. |
+| `pystachy.py` | +324/−26 lines against the typed IR (`cc472e4`):<br>• runtime mode (`rtmode`, exported and external functions and their checks against `RUNTIME`, `rt_subset`, `RTL` and `primitive()`, nsw range steps, TBAA and `!range` on lengths);<br>• `RUNTIME` entries for the primitives' calls, and R on ten entries (§2.8);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
+| `runtime.py` | new, 1,161 lines |
+| `runtime.c` | +122/−446 lines against the typed IR. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`, and carries the five fixes of §2.2. |
+| `tools/check_runtime.py`, `tools/check_ir.sh`, `tools/irsame.sh` | the typed IR's checks, extended to `runtime.py` (§2.8) |
 | `tools/rt_cpython/_rt.py`, `tools/rtcheck.py` | CPython's primitives and the differential fuzzer |
 | `tools/rtabi.py` | the ABI check across `runtime.py`, runtime.c and the corpus |
 | `tools/rtbench.py`, `tools/rtbench/` | the microbenchmarks of §2.4.2, for any two compilers |
 | `Makefile`, `tests/verify.sh`, `tests/run.sh` | the runtime fixed point, the Python-free check, the `rtcheck` and `rt-abi` steps, dictprobe's link; `run.sh` compiles `tests/errors/rtmode_*.py` as runtime code |
 | `tools/dictprobe.c` | its usage note: the build links `runtime.py`'s IR |
 | `README.md` | `runtime.py` in the file table, the pipeline, the bootstrap and the verification steps |
-| `tests/rt_format_{comma_twice,underscore_twice,long_spec,nul_spec,type_code}.py`, `tests/rt_ljust_huge.py`, `tests/rt_expandtabs_huge.py`, `tests/rt_search_{dense,stretch}.py`, `tests/rt_comb_isqrt_edges.py`, `tests/errors/rtmode_*.py` | the format fixes' regression tests, `ljust`'s and `expandtabs`'s, the search and `comb`/`isqrt` changes of §2.10, and runtime mode's rejections (eight cases) |
+| `tests/rt_format_{comma_twice,underscore_twice,long_spec,nul_spec,type_code}.py`, `tests/rt_ljust_huge.py`, `tests/rt_expandtabs_huge.py`, `tests/rt_search_{dense,stretch}.py`, `tests/rt_comb_isqrt_edges.py`, `tests/errors/rtmode_*.py` | the format fixes' regression tests, `ljust`'s and `expandtabs`'s, the search and `comb`/`isqrt` changes of §2.10, and runtime mode's rejections (ten cases) |
+| `tests/idiv_zero_big.py`, `tests/list_eq_mutated.py`, `tests/list_search_mutated.py`, `tests/dict_repr_mutated.py`, `tests/rt_utf8_strict.py`, `tests/rt_int_overlong.py`, `tests/rt_ord_lead_f8.py`, `tests/class_ids_wide.py` | the five fixes of §2.2 |
 | `docs/runtime-inventory.tsv` | the per-function inventory behind §1.7 |
 
 ## Appendix B: reproducing the measurements
 
 - **Correctness.**
   - `make` checks both fixed points.
-  - `make verify` runs every step: bootstrap, the tests with both compilers, Python-free, UBSan, check-ir, gc-stress, benchmarks, rtcheck, rt-abi, dict-probes and scaling.
-  - `make irsame REF=30b51d9` reports 629 programs identical.
+  - `make verify` runs every step: bootstrap, the tests with both compilers, Python-free, UBSan, check-ir, runtime-table, gc-stress, benchmarks, rtcheck, rt-abi, dict-probes and scaling.
+  - `make irsame REF=30b51d9` reported 629 programs identical; on the typed IR, `make irsame REF=cc472e4` reports 772.
+- **§2.11's table.** `make irsame REF=cc472e4` leaves that compiler in `build/ref`; `tools/rtbench.py build/ref/pystachy ./pystachy` gives the microbenchmarks, and a `wait4` harness over `bench/*.py` the rest.
 - **Timings.** Every program is run with the native compiler of `30b51d9` and with this branch's, AOT and JIT, best of 7 runs, with its output checked against CPython's.
   - The `bench/` table uses `bench/*.py`.
   - The microbenchmarks are `tools/rtbench/*.py`. `make ref REF=30b51d9 && python3 tools/rtbench.py build/ref/pystachy ./pystachy` reruns the table of §2.4.2 for any pair of compilers.
