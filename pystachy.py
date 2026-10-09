@@ -4749,7 +4749,7 @@ RUNTIME: dict[str, str] = {
     "eh_on": "None:|I|", "try_mark": "int:|I|", "exc.handled": "exc:|I|", "exc.restore": "None:exc|I|",
     "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
-    "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
+    "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|",
     "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
     "personality": "%i32:%i32,%i32,int,%ptr,%ptr||",
@@ -10905,10 +10905,32 @@ class Gen:
         self.place(l3)
         return Val(self.phi(ph), "bool")
 
+    def exc_id(self, v: Val) -> Val:
+        # what an exception is, for is and ==: the object of an exception class it raises, if it
+        # raises one (each raise of it makes an exception of its own), else itself
+        return Val(self.rt("pys_exc_id", "ptr", [f"ptr {v.v}"]), "exc") if v.t == "exc" else v
+
+    def exc_eq(self, t: str) -> None:
+        # == compares exceptions (of type t, or inside t) by identity: not where an exception
+        # class defines __eq__ or __ne__, which CPython calls for one that an exception may be
+        if "E" in self.desc(t):
+            for c in self.classes.values():
+                if c.exc != "" and ("__eq__" in c.methods or "__ne__" in c.methods):
+                    m = "__eq__" if "__eq__" in c.methods else "__ne__"
+                    self.err(f"== between exceptions (of type {typestr(t)}) is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
+
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
-        if (op == "==" or op == "!=") and a.t == b.t and (a.t == "file" or a.t == "exc"):
-            # files and exceptions compare by identity, as CPython's do
+        if (op == "==" or op == "!=") and a.t == b.t and a.t == "file":
+            # files compare by identity, as CPython's do
             return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+        xa = a.t == "exc" or (a.t in self.classes and self.classes[a.t].exc != "")
+        xb = b.t == "exc" or (b.t in self.classes and self.classes[b.t].exc != "")
+        if xa and xb and (a.t != b.t or a.t == "exc") and (op == "==" or op == "!=" or op == "is" or op == "is not"):
+            # exceptions, builtin or objects of exception classes of different classes: by identity
+            # (an exception class's object is an exception of its own that each raise of it makes)
+            if op == "==" or op == "!=":
+                self.exc_eq("exc")
+            return Val(self.ins(f"icmp {'eq' if op == '==' or op == 'is' else 'ne'} ptr {self.exc_id(a).v}, {self.exc_id(b).v}"), "bool")
         if op == "is" or op == "is not":
             if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
                 # a number or bool is never None
@@ -10948,6 +10970,7 @@ class Gen:
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
                 s = self.to_slot(self.coerce(a, elem(b.t)))
+                self.exc_eq(elem(b.t))
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(elem(b.t)))}"])
                 r = self.ins(f"add i64 {r}, 1")
             elif is_dict(b.t):
@@ -10974,6 +10997,7 @@ class Gen:
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
         if a.t == b.t and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or (eq and is_dict(a.t)) or a.t == "exc"):
+            self.exc_eq(a.t)
             d = f"ptr {self.sconst(self.desc(a.t))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
@@ -11659,6 +11683,7 @@ class Gen:
             if p == "":
                 continue
             if p == "#":
+                self.exc_eq(T)
                 av.append(f"ptr {self.sconst(self.desc(T))}")
                 continue
             dflt = ""

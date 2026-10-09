@@ -335,6 +335,7 @@ static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
 static const char *exc_name(Exc *e, int *n);
 Str *pys_exc_repr(Exc *e);
+void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
@@ -1060,6 +1061,7 @@ static int eqv(I a, I b, const char *d) {
     return 1;
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
+  case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
   return a == b;
 }
@@ -2389,6 +2391,7 @@ I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1
   return 0;
 }
 void *pys_exc_obj(Exc *e) { return e->obj; }
+void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
 Exc *pys_exc_handled(void) { return xr.handled; }
 void pys_exc_restore(Exc *e) { xr.handled = e; }
 static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
