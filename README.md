@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 85k-line
+and it can compile itself. The native compiler it produces reproduces its own 94k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -12,7 +12,7 @@ annotations, as most library code is, can compile.
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (84906 lines of IR)
+fixed point: stage1 == stage2 == stage3 (93966 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -30,9 +30,9 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 6,952 | lexer 324 · parser 975 · module loader 732 · types, tables and the definite-assignment pass 648 · type checker + IR generator 4,112 · driver 118 |
+| `pystachy.py` | 7,430 | lexer 324 · parser 977 · module loader 921 · types, tables and the definite-assignment pass 687 · type checker + IR generator 4,360 · driver 118 |
 | `runtime.c` | 2,580 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
-| `tests/` | 209 programs, 126 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 218 programs, 167 rejection cases, 9 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -173,7 +173,20 @@ import inside a function of an imported module that the program's module-level i
 not load is an error only where that function is compiled. A class or function of an
 imported module that Pystachy cannot compile (inheritance, unannotated methods, a `bytes` or
 `**kwargs` parameter, a field whose type cannot be inferred, ...) is an error only where the
-program uses it.
+program uses it, but its `def` or `class` statement still runs where the module's code
+reaches it, as in CPython. Pystachy evaluates there the default values it can compile, and
+the parts it can compile of the others (the items of a display). What it leaves uncompiled
+(decorators, default values, bases, a class body) must run no code of the program: it may
+read names, compute with literals and builtin values (`2 ** 31 - 1`, `TABLE.get(k)`,
+`sorted(xs, key=len)`, `math.sqrt(2.0)`, `typing.Optional[int]`), bind and delete names in a
+class body, use `if`, and apply `staticmethod`, `classmethod`, `property`, `@dataclass`,
+`typing`'s `overload`, `final`, `override`, `no_type_check` and `runtime_checkable`, and
+`object.__new__`. A variable or function of the module that such code reads and that may
+still be unbound raises CPython's `NameError` when the statement runs. An annotation that
+CPython evaluates (in every module, unless annotations are imported from `__future__`) must
+be a type: classes, `typing`'s names, subscripts of those and of the builtin generics, `|` of
+them, and literals, reading only names that are surely bound by then. `class C(object)` is a
+class without bases only where `object` is surely still the builtin when the statement runs.
 
 **Expressions.** literals (decimal, hex, octal, binary and `_`-separated numbers; strings
 with every escape except `\N{...}`, raw and triple-quoted strings, implicit
@@ -229,7 +242,8 @@ module may use them in code the program never runs.
   fractional power (CPython returns a complex).
 - `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`
   and `write()`'s result count bytes, case mapping, the `is*()` tests and `split()` know
-  only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
+  only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8; `"%c" % i` is the character's
+  UTF-8 for every `i`).
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
   `ord()` count characters. Files hold the
@@ -258,9 +272,12 @@ module may use them in code the program never runs.
 - A function declared or inferred to return a value that ends without a `return` raises
   `RuntimeError` there, where CPython returns `None` (a template that returns objects
   returns `None`, as CPython does).
-- In an imported module, a decorated function or class that is an error only where it is
-  used (above) does not run its decorator at import time, so a decorator's side effects
-  (registering the function) are lost. A template's code is compiled per argument types, so an error in code a program never calls is not reported, and its
+- A class of an imported module that Pystachy leaves uncompiled (above) is not created when
+  the module is imported, so the errors CPython raises while creating it are not reported:
+  `typing`'s checks of `NamedTuple`, `TypedDict`, `Protocol` and `Generic` classes, `__slots__`
+  conflicts, `@dataclass`'s field order and mutable defaults, a base that is not a class or
+  cannot be subscripted, and an exception that a builtin operation in its body raises. A
+  template's code is compiled per argument types, so an error in code a program never calls is not reported, and its
   variables keep one type, so code that rebinds one to another type (`a /= b` on ints) is
   rejected when it is compiled.
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
@@ -280,7 +297,7 @@ module may use them in code the program never runs.
 **Rejected rather than miscompiled** (CPython would run these): a function, class,
 method or import name bound twice, or a name that is both a variable and a function,
 class or import; a class-body default that names an earlier class attribute (Pystachy
-has no class scope); a local read textually before its first assignment (declare it
+has no class scope), also one named like a builtin or `__name__`, also in an imported module; a local read textually before its first assignment (declare it
 first: `x: int`); a module-level read of a global that only functions assign (declare it
 at module level); comparison dunders that do not return `bool`, `__str__`/`__repr__`
 that do not return `str`, methods without `self`; an `==` or `!=` between objects of
@@ -294,8 +311,19 @@ that calls itself before a return statement decides its type; a parameter whose 
 `None` given a value of another type in an if branch or loop, or bound as a `for` target; an
 alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
-`os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
-but a builtin exception.
+`os.getenv()` without a default (its result would be `str` or `None`); in an imported module,
+uncompiled code (above) that may run code of the program when its `def` or `class` statement
+runs (a call of a function or class; a callable of the program given to a builtin, such as
+`sorted(xs, key=C.m)`; any other decorator; a metaclass; a base that defines
+`__init_subclass__` or `__class_getitem__`; a value that may hold objects of the program's
+classes used as a class attribute, set item, dict key, operand or argument; a read of a class
+attribute that may be such an object; an assignment to an attribute or item; a comprehension,
+or a class-body statement other than an assignment, `del`, `if`, `def`, `class` or a
+docstring), a name such code reads that is not bound by then or that an import or class binds
+only on some path, a decorator that is not a dotted name or a call of one (PEP 614), an
+evaluated annotation that is not a type as above, a class attribute whose class defines
+`__set_name__`, and `class C(object)` or a builtin decorator where the module may have
+rebound the name by then; `raise` of anything but a builtin exception.
 
 ## How it works
 
@@ -342,7 +370,9 @@ but a builtin exception.
   unassigned get a hidden flag in the object. Globals read in functions are safe when
   module code assigned them before its first call into user code, and calls to a
   function before its `def` has run raise `NameError`. The compiler itself needs none of
-  these checks.
+  these checks. The same pass marks what an imported module's `def` and `class` statements
+  read in code that Pystachy leaves uncompiled, and those reads are checked where the
+  statement runs.
 - **Checked arithmetic, cheap errors.** `+`, `-` and `*` use LLVM's `*.with.overflow`
   intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
   one cold block per function and message. `self` is marked `nonnull`, so the `None`
@@ -433,7 +463,7 @@ use, loops with `else`, definite assignment, sorting
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **560 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **621 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
