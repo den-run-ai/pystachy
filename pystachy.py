@@ -2882,10 +2882,11 @@ class Flow:
 
     def since(self, mark: int) -> dict[str, bool]:
         # the state now, as the keys changed since the log had mark entries, each with whether
-        # it is in defd (the other keys are as they were then)
+        # it is in defd (the other keys are as they were then), and " dead" in any case
         out: dict[str, bool] = {}
         for i in range(mark, len(self.log)):
             out[self.log[i]] = self.log[i] in self.defd
+        out[" dead"] = " dead" in self.defd
         return out
 
     def fold(self) -> None:
@@ -2905,27 +2906,43 @@ class Flow:
     def join(self, other: dict[str, bool], mark: int) -> None:
         # another path reaches here, in the state since(mark) gave for it: a name stays assigned
         # if it is on both paths (or on the one that is not dead)
+        if other[" dead"]:
+            return
+        if " dead" in self.defd:
+            # only the other path goes on: the state at mark, changed as it changed it
+            self.undo(mark)
+            for k in other:
+                if other[k]:
+                    self.put(k)
+                else:
+                    self.drop(k)
+            return
         pre: dict[str, bool] = {}
         for i in range(mark, len(self.log)):
             if self.log[i] not in pre:
                 pre[self.log[i]] = self.was[i]
-        # (the other path's " dead" is as it changed, else as at mark)
-        odead = other[" dead"] if " dead" in other else pre[" dead"] if " dead" in pre else " dead" in self.defd
-        if odead:
-            return
-        dead = " dead" in self.defd
+        end = len(self.log)
         for k in other:
             if not other[k]:
                 self.drop(k)
-            elif dead:
-                self.put(k)
         for k in pre:
-            if k in other:
-                continue
-            if not pre[k]:
+            if not pre[k] and k not in other:
                 self.drop(k)
-            elif dead:
-                self.put(k)
+        # the log since mark keeps one entry for each key not in its state at mark: the changes
+        # that cancel out (a key assigned on this path alone) are not looked at again by the
+        # joins of the enclosing ifs (an elif chain would cost its length times its last branch)
+        for i in range(end, len(self.log)):
+            if self.log[i] not in pre:
+                pre[self.log[i]] = self.was[i]
+        n = mark
+        for k in pre:
+            if (k in self.defd) != pre[k]:
+                self.log[n] = k
+                self.was[n] = pre[k]
+                n += 1
+        while len(self.log) > n:
+            self.log.pop()
+            self.was.pop()
 
 
 # ---------------------------------------------------------------- code generator
