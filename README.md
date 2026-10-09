@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 121k-line
+and it can compile itself. The native compiler it produces reproduces its own 124k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -13,7 +13,7 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (121464 lines of IR)
+fixed point: stage1 == stage2 == stage3 (124163 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -32,10 +32,10 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 9,800 | lexer 611 · parser 1,621 · scopes (CPython's symbol-table errors) 501 · module loader 1,493 · types, tables and the definite-assignment pass 756 · type checker + IR generator 4,636 · driver 132 |
-| `runtime.c` | 2,647 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `pystachy.py` | 10,128 | lexer 611 · parser 1,658 · scopes (CPython's symbol-table errors) 544 · module loader 1,513 · types, tables and the definite-assignment pass 886 · type checker + IR generator 4,734 · driver 132 |
+| `runtime.c` | 2,665 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 263 programs, 313 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 270 programs, 320 rejection cases, 10 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -256,7 +256,10 @@ multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
 are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
 files, complex numbers, arbitrary-precision integers, `async`, `match` and `:=`. The parser
 accepts all of them, and the compiler rejects each where it compiles it, so an imported
-module may use them in code the program never runs. Misusing them as CPython forbids (an
+module may use them in code the program never runs. As in CPython, more than 21 statically
+nested blocks in a module, class or function (loops, `with` items, `try` statements and their
+handlers, list, set and dict comprehensions, and the body of a generator or coroutine) are a
+`SyntaxError: too many statically nested blocks`, even in code that never runs. Misusing them as CPython forbids (an
 `await` outside an async def, a `nonlocal` without a binding, `yield` in a comprehension,
 `:=` outside brackets) is a syntax error wherever it is (below).
 
@@ -336,11 +339,11 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   module whose code raises `ImportError` at its top level keeps the globals that code set
   before the raise, where CPython discards the half-run module; a later import runs the
   code again over them.
-- A global read while its module is still being imported (a circular import), before the
-  module's code assigns it, raises `AttributeError: module 'm' has no attribute 'x'`, and
-  `from m import x` of a global that m declares (`x: int`) but has not assigned yet raises
-  the same; CPython 3.13 raises `ImportError` naming the module's file, or says the module is
-  partially initialized.
+- Reading `m.x`, or `from m import x`, while `m`'s code is still running (a circular import)
+  and has not bound `x`, and `from m import x` of a global that m declares (`x: int`) but has
+  not assigned yet, raise `AttributeError: module 'm' has no attribute 'x'`; CPython 3.13 says
+  the module is partially initialized and names its file (an `ImportError` for the
+  from-import).
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
   drops without closing is closed when a collection finds it unreachable, or at exit, not at
@@ -450,13 +453,19 @@ but a builtin exception.
   the function it calls loads that function's non-constant default values from the global
   the statement fills when it runs, so they are still evaluated once.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
-  of variables assigned on every path (merging `if` branches, leaving `while True` only
-  through its breaks). Reads it cannot prove are marked, and only those test an "is
+  of variables assigned on every path (merging `if` branches, and a loop's `else` block with
+  the state before the loop, leaving `while True` only through what its breaks have in
+  common). Reads it cannot prove are marked, and only those test an "is
   assigned" flag that LLVM removes again where it can; fields that `__init__` may leave
   unassigned get a hidden flag in the object. Globals read in functions are safe when
   module code assigned them before its first call into user code, and calls to a
   function before its `def` has run raise `NameError`. The compiler itself needs none of
-  these checks.
+  these checks. The pass costs what the code contains: a function is analysed over the names
+  its body mentions, not over every global of its module; a branch is undone from a log of
+  the changes it made rather than by copying the set, and an `if` leaves in that log only the
+  names whose state it changed, so the `if`s around it (an `elif` chain) do not look at the
+  rest again. Whether an import may run the importing module again (a circular import) is
+  read from the strongly connected components of the import graph.
 - **Checked arithmetic, cheap errors.** `+`, `-` and `*` use LLVM's `*.with.overflow`
   intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
   one cold block per function and message. `self` is marked `nonnull`, so the `None`
@@ -502,7 +511,12 @@ but a builtin exception.
   Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
   the table is rebuilt, with its sizes and growth, and `dict(d)` merges as CPython's does),
   so deletion is O(1) and a loop that changes its dict, `reversed(d)` included, sees what
-  CPython's would. Files wrap C stdio with CPython's open() rules: argument checks in its
+  CPython's would. The index follows CPython's probe sequence (each step mixes in five more
+  bits of the hash), over a hash that costs one multiply: one round of SplitMix64's mixer
+  for an int, FNV-1a with the high half folded into the low for a str. Keys that differ only
+  in their high bits (`i << 46`, which used to form one cluster) probe as random keys do; the
+  price is about 2 ns per lookup in tables larger than the cache, whose second slot is in
+  another cache line. Files wrap C stdio with CPython's open() rules: argument checks in its
   order, errno-based `OSError` subclasses, newline translation, `"+"` mode positioning
   (including its 8 KiB read-ahead), and closed/readable/writable checks. Writes reach the
   OS when CPython's do: 8 KiB of pending text in front of a `st_blksize` buffer, line
@@ -544,7 +558,7 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
 in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
-dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
+dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
 loader decides at import time (`tests/loader/`), a program run through a symbolic link
 (`tests/linked/`), CPython's syntax errors and nesting limits, templates, empty containers typed by their first
@@ -552,7 +566,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **984 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1009 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -569,7 +583,16 @@ versions, platform, git commit and a timestamp:
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
-- **benchmarks** — output equal to CPython's, with timings.
+- **benchmarks** — output equal to CPython's, with timings;
+- **dict-probes** — `tools/dictprobe.c` counts the table slots that dict insertions and
+  lookups visit for twelve key patterns that defeat a weak hash or probe sequence (`i << 46`,
+  spaced ints, str keys sharing a long prefix or suffix, ...) and every shift `i << s`, with
+  sequential keys as the control, at 4k to 30k keys, and fails above 3 slots per lookup: the
+  counts are the same on every machine, so no timing is compared with a threshold;
+- **scaling** — `tools/scaling.py --check` compiles generated programs of 500 and 1,000
+  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
+  comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
+  items its builtin calls copy or scan, must grow no faster than the programs.
 
 `tools/syntax_sweep.py` compares the syntax errors `pystachy check` reports with CPython's
 `compile()`: over CPython 3.13's standard library and the installed packages (5,701 files)
