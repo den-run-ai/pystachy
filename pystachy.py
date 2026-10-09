@@ -6301,8 +6301,15 @@ class Gen:
                 return f"tuple[{','.join(ts)}]"  # (tuple[()] is the empty tuple's)
             if base == "optional" and len(ts) == 1:
                 return self.opt(ts[0])
-            if base == "union" and len(ts) == 2 and (ts[0] == "None" or ts[1] == "None"):
-                return self.opt(ts[0] if ts[1] == "None" else ts[1])  # Union[T, None]
+            if base == "union":
+                us: list[str] = []  # (Union[int, int, None] is Optional[int], as typing collapses it)
+                for x in ts:
+                    if x not in us:
+                        us.append(x)
+                if len(us) == 1:
+                    return us[0]  # Union[T]
+                if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
+                    return self.opt(us[0] if us[1] == "None" else us[1])  # Union[T, None]
         if self.typing_ref(n) == "Final":
             self.err("a bare Final needs a value to give its type (x: Final = v), outside class bodies; write Final[T]")
         if self.pathlike(n):

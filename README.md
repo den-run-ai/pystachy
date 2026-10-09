@@ -101,7 +101,8 @@ Pystachy is Python with types made static and the dynamic machinery removed.
 **Types.** `int` (64-bit), `float` (IEEE double), `bool`, `str`, `list[T]`, `dict[K, V]`
 (keys `int`, `str`, or tuples of `int`, `bool`, `str`, `str | None` and such tuples),
 `tuple[A, B, ...]` (up to 9 elements, indexed by integer
-constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[T, None]`)
+constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[T, None]`, whose repeated members
+collapse as `typing`'s do: `Union[T, T, None]`, and `Union[T]` is `T`)
 for a class type or for `str`, `int`, `float`, `bool`, `list`, `dict` and `tuple` (wherever a
 type goes, inside containers too), and `None` as a return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
