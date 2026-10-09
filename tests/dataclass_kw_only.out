@@ -1,0 +1,2 @@
+D(a=1, b=2, c='x') D(a=0, b=3, c='y') True E(x=5)
+[exit 0]

@@ -708,6 +708,21 @@ def as_target(n: Node) -> Node:
     return n
 
 
+def dc_args(d: Node) -> str:
+    # the arguments of a @dataclass(...) decorator d: "kw" for kw_only=True, "" for none (or
+    # kw_only=False), "!" and the error for any other
+    r = ""
+    if len(d.kids) > 0 and d.kids[0].kind != "call":
+        return "!@dataclass(...) with arguments is not supported"
+    for a in d.kids[0].kids[1:] if len(d.kids) > 0 else []:
+        if a.kind != "kw" or a.s != "kw_only":
+            return "!@dataclass(" + (a.s + "=..." if a.kind == "kw" else "...") + ") is not supported: of its arguments, only kw_only= is"
+        if a.kids[0].kind != "True" and a.kids[0].kind != "False":
+            return "!@dataclass(kw_only=...) needs True or False"
+        r = "kw" if a.kids[0].kind == "True" else ""
+    return r
+
+
 def name_targets(t: Node) -> bool:
     # whether the targets of an assignment are only names, which no store to another can change
     if t.kind == "tuple":
@@ -5557,6 +5572,7 @@ class ClassInfo:
         self.methods: dict[str, FnInfo] = {}
         self.mod = ""
         self.bad = ""  # why a class of an imported module cannot be compiled: an error where it is used
+        self.kwonly = False  # @dataclass(kw_only=True): its __init__ takes the fields by keyword only
 
 
 class Flow:
@@ -6827,7 +6843,7 @@ class Gen:
                     last = st.kids[0].s
                 elif last != "" and ci.name in self.nts:
                     self.err(f"Non-default namedtuple field {st.kids[0].s} cannot follow default field {last}")
-                elif last != "" and self.is_dc(ci.name):
+                elif last != "" and self.is_dc(ci.name) and not ci.kwonly:
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
                 self.err("a class body may only contain annotated fields and methods")
@@ -6849,6 +6865,8 @@ class Gen:
         f.defaults.append(noann)
         f.dglob.append("")
         if self.is_dc(ci.name):
+            if ci.kwonly:
+                f.npos = 1  # (self, and the fields by keyword)
             for fl in ci.fields:
                 f.params.append(fl)
                 f.ptypes.append(ci.ftypes[fl])
@@ -8281,7 +8299,7 @@ class Gen:
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
         # annotated parameters, and its body may hold only fields, methods and a docstring
-        if len(st.kids) > 2 or (len(st.kids) > 1 and (len(st.kids[1].kids) > 0 or self.imported(st.kids[1].s) != "dataclasses.dataclass")):
+        if len(st.kids) > 2 or (len(st.kids) > 1 and (dc_args(st.kids[1]).startswith("!") or self.imported(st.kids[1].s) != "dataclasses.dataclass")):
             return f"its decorator @{st.kids[1].s} is not supported"
         for b in st.kids[0].kids:
             if b.kind == "def":
@@ -8343,8 +8361,9 @@ class Gen:
                         self.err(f"redefinition of class '{st.s}' is not supported")
                     self.classes[st.s] = ClassInfo(st.s, st)
                     self.classes[st.s].mod = m.name
-                    if len(st.kids) > 1 and self.imported(st.kids[1].s) == "dataclasses.dataclass" and len(st.kids[1].kids) > 0:
-                        self.err("@dataclass(...) with arguments is not supported")
+                    if len(st.kids) > 1 and self.imported(st.kids[1].s) == "dataclasses.dataclass" and dc_args(st.kids[1]).startswith("!"):
+                        self.err(dc_args(st.kids[1])[1:])
+                    self.classes[st.s].kwonly = len(st.kids) > 1 and dc_args(st.kids[1]) == "kw"
                     if len(st.kids) > 1 and self.imported(st.kids[1].s) != "dataclasses.dataclass":
                         self.err(f"unsupported decorator @{st.kids[1].s}" + (" (import dataclass from dataclasses)" if st.kids[1].s == "dataclass" else ""))
                     if len(st.kids) > 2:

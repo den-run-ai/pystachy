@@ -242,7 +242,7 @@ that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`,
 `del` of a list item, a dict key or an object's item, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass`, `class P(NamedTuple)`, `@staticmethod`, `@classmethod`, docstrings, `del` of a variable (later reads raise `NameError` or
+`class`, `@dataclass` (also `@dataclass(kw_only=True)`), `class P(NamedTuple)`, `@staticmethod`, `@classmethod`, docstrings, `del` of a variable (later reads raise `NameError` or
 `UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
 `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `collections.abc`,
 `dataclasses`, `builtins` and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
@@ -479,7 +479,8 @@ does not fit and the context gives no type (`xs: list[str] = collect()` gives on
 that do not return `str`, a `__len__` that returns neither an `int` nor a `bool`, methods without `self` (or a class method without `cls`); a class
 method's `cls` used as a value or assigned, `@staticmethod` or `@classmethod` on a special
 method, a method of objects called through its class (`C.m(o)`), and decorators other than
-these, `@dataclass` and `@overload`; an `__iter__` that is a generator, or
+these, `@dataclass` and `@overload`; `@dataclass` arguments other than `kw_only` (`frozen=`,
+`order=`, ...), and `dataclasses.field()` and `KW_ONLY`; an `__iter__` that is a generator, or
 that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
 `__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
 non-iterator of type 'list'`; and `iter(d.keys())`, `values()` or `items()`, whose iterator
