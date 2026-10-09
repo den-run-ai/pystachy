@@ -2340,10 +2340,10 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args i
   const char *c = strstr(m, ": "), *t, *r;
   Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
   if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
-  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] "))) {   /* an OSError: (errno, strerror), */
-    Buf b = {0}; int n = atoi(s->s + 7);     /* without the filenames after strerror, which can hold ": " */
-    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);
-    r = strerror(n); t += 2;
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(atoi(s->s + 7)))) {
+    Buf b = {0}; int n = atoi(s->s + 7);     /* an OSError, of n's class (a ValueError can show a repr like it): */
+    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);   /* (errno, strerror), without the filenames after */
+    r = strerror(n); t += 2;                             /* strerror, which can hold ": " */
     repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */
     a = done(&b);
   }
