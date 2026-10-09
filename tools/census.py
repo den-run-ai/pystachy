@@ -13,7 +13,9 @@ import json
 import os
 import sys
 
-SUPPORTED_MODULES = {"sys", "os", "os.path", "math", "tempfile", "typing", "dataclasses", "__future__"}
+# pystachy.py's MODULES, and typing_extensions, which the compiler reads as typing
+SUPPORTED_MODULES = {"sys", "os", "os.path", "math", "tempfile", "typing", "dataclasses", "__future__", "builtins", "time",
+                     "errno", "typing_extensions"}
 DYN = {"isinstance", "issubclass", "type", "getattr", "setattr", "hasattr", "delattr", "callable", "id", "hash",
        "vars", "dir", "globals", "locals", "eval", "exec", "compile", "super", "iter", "next", "object", "__import__",
        "memoryview", "bytearray", "bytes", "property", "staticmethod", "classmethod", "frozenset", "set", "map",
@@ -249,8 +251,9 @@ def scan_fn(mod, fn, cls, funcs):
     if a.posonlyargs:
         u.add("posonly_marker")
     plist = a.posonlyargs + a.args + a.kwonlyargs
-    if cls and plist:
-        plist = plist[1:]
+    static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in fn.decorator_list)
+    if cls and plist and not static:
+        plist = plist[1:]  # self or cls: a static method has neither
     if any(p.annotation is None for p in plist):
         u.add("unannotated")
     if none_default(a):
