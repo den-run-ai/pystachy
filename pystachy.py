@@ -11152,11 +11152,18 @@ class Gen:
         a = self.expr(n.kids[0], "")
         self.nonecmp = False
         if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
-            # x in range(...): arithmetic, as CPython's range.__contains__ does for ints
+            # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
+            # None that is None equals no item
+            nn = ""
+            if is_sopt(a.t) and unopt(a.t) != "float":
+                nn = self.ins(f"icmp ne ptr {a.v}, null")
+                a = Val(self.optint(a, "0"), "int")
             if a.t != "int" and a.t != "bool":
-                self.err(f"'in range(...)' needs an int, not {a.t}")
+                self.err(f"'in range(...)' needs an int, not {typestr(a.t)}")
             vs = self.range_args(n.kids[1].kids[1:])
             hit = self.rt("pys_range_has", "i64", [f"i64 {self.as_int(a).v}", f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
+            if nn != "":
+                hit = self.select(nn, Val(hit, "int"), Val("0", "int"))
             return Val(self.ins(f"icmp {'ne' if ops[0] == 'in' else 'eq'} i64 {hit}, 0"), "bool")
         if len(ops) == 1:
             w = a.t
