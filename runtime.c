@@ -357,6 +357,15 @@ I pys_ord(Str *s) {                    /* a byte, or one UTF-8 encoded character
   for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);   /* the length in characters */
   char b[96]; snprintf(b, 96, "TypeError: ord() expected a character, but string of length %lld found", (long long)n); pys_fail(b);
 }
+Str *pys_fmt_chr(I c) {                /* "%c" % c: chr(c), with printf-style formatting's error */
+  if (c < 0 || c > 0x10FFFF) pys_fail("OverflowError: %c arg not in range(0x110000)");
+  return pys_chr(c);
+}
+Str *pys_fmt_char(Str *s) {            /* "%c" % s: s must be one character */
+  I cp;
+  if (!s->len || u8char(s->s, s->len, &cp) != s->len) pys_fail("TypeError: %c requires int or char");
+  return s;
+}
 Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
   Buf b = {0}; char t[16];
   for (I i = 0; i < r->len;) {

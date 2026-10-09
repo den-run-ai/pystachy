@@ -4696,7 +4696,7 @@ RUNTIME: dict[str, str] = {
     "str.center": "str:S,int,str|R A|", "str.zfill": "str:S,int|R A|", "str.partition": "tuple[str,str,str]:S,str|R A|",
     "str.rpartition": "tuple[str,str,str]:S,str|R A|", "str.removeprefix": "str:S,str|A|", "str.removesuffix": "str:S,str|A|",
     "str.expandtabs": "str:S,int|A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
-    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|",
+    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|", "fmt.chr": "str:int|R A|", "fmt.char": "str:str|R|",
     # numbers
     "floordiv": "int:int,int|R|", "mod": "int:int,int|R|", "pow": "int:int,int|R|", "powmod": "int:int,int,int|R|",
     "shl": "int:int,int|R|", "shr": "int:int,int|R|", "idiv": "float:int,int|R|", "fdiv": "float:float,float|R|",
@@ -10529,9 +10529,13 @@ class Gen:
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
             if unopt(v.t) == "str":
-                return self.unwrap(v, "TypeError: %c requires int or char")
+                v = self.unwrap(v, "TypeError: %c requires int or char")
+                cv = Val(self.rt("pys_fmt_char", "ptr", [f"ptr {v.v}"]), "str")
+                return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
+            if v.t != "int" and v.t != "bool":
+                self.err("%c requires int or char")
             v = self.coerce(self.as_int(v), "int")
-            cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
+            cv = Val(self.rt("pys_fmt_chr", "ptr", [f"i64 {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
         spec = "<" if "-" in flags else ""
         spec += "+" if "+" in flags else " " if " " in flags else ""
