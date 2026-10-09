@@ -5541,7 +5541,9 @@ class Flow:
         self.bany = False  # a break was folded
         self.bwas: dict[str, bool] = {}  # the keys changed in the loop: whether each was in defd where it began
         self.bnew: dict[str, bool] = {}  # the keys changed since the last break (or since the loop began)
-        self.unb: list[str] = []  # the names the except clauses inside the innermost loop bind: a break unbinds them
+        # the names the except clauses inside the innermost loop bind, and those the finally blocks
+        # around them there may delete: a break unbinds them
+        self.unb: list[str] = []
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -8445,6 +8447,7 @@ class Gen:
             deleted(fin, fdels)
             for nm in fdels:
                 fl.drop(nm)
+                fl.unb.append(nm)  # (a break out of the statement runs the finally block first)
             mark = len(fl.log)
             bdels: dict[str, bool] = {}
             deleted(n.kids[0].kids, bdels)
@@ -8465,6 +8468,8 @@ class Gen:
                     fl.unb.pop()
                     fl.drop(h.s)
                 fl.join(st, mark)
+            for nm in fdels:
+                fl.unb.pop()
             if hasfin:
                 st = fl.since(mark)
                 fl.undo(mark)
