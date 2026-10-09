@@ -79,7 +79,8 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - new ops: `landing` (alone in its block: it stores the exception the unwinder brings in the
 >     try's slot and goes on to the code after it, where `pys_exc_begin` takes it up), `throw e`
 >     (`pys_throw`) and `exc.match e, set` (`pys_exc_in` over the classes a clause catches, out
->     of the closed set `EXCBASES`); an exception has the type `exc`.
+>     of the closed set `EXCBASES` and the program's exception classes); an exception has the
+>     type `exc`, which the builtin exception classes name in annotations too (descriptor `E`).
 >   - once the program is built, `Gen.eh_ir` reads the effect summaries (so `Gen.effects` runs
 >     for every program with a try): in a covered block, a `raise` or `throw` becomes a branch
 >     to the code after its landing block, with the exception in the slot; a call (`rt`,
@@ -96,6 +97,17 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - whether the program has a try is decided before code generation, over all its modules
 >     (the closed world), as the with statement's unwind action needs it: a program that
 >     imports a `lib/` module with a try in a function it never calls has exceptions on too.
+>   - exception classes (one base: a builtin exception class or another exception class) need
+>     no op of their own. An object begins with hidden fields (`EXCFIELDS`: its `ExcClass`,
+>     what it keeps of its args, a `SystemExit`'s code), then its base's fields and flags, so a
+>     method is compiled once, for the class that defines it, and inherited as it is
+>     (`Gen.inherit`); only `__init__`, `__str__` and `__repr__` may be defined again. The
+>     `ExcClass` constant and its `str`, `repr` and `exit` functions (`@x.*`) are generated, as
+>     `obj_helpers` are, for the classes whose objects the program makes; `str()` and `repr()`
+>     of an exception object are `rt` ops through it (`exc.ostr`, `exc.orepr`), and `exc.str`,
+>     `exc.repr` and those have U, as they may run the class's `__str__`. A raise of an object
+>     is a `throw` of the exception `exc.user` makes of it, and `except E as e` binds the
+>     object `exc.obj` gives back.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
