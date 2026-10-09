@@ -4,7 +4,7 @@ This document evaluates moving `runtime.c`, and the repository's other C code (`
 
 It covers robustness, quality, compilation, performance, scalability, extensibility, code reuse, and the interaction with the two pieces of work in progress: the typed IR (`docs/typed-ir.md`, branch `claude/typed-ir`, #22) and the bug fixes of `claude/m0-correctness` and `claude/scalability`.
 
-The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now stacked on `claude/typed-ir` (#22), merged at `39d8471` (the IR core of steps 4 to 8), `cc472e4`, `5159bc6` and `3c0664b` (exceptions). Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
+The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and was then stacked on `claude/typed-ir` (#22), merged here at `39d8471` (the IR core of steps 4 to 8), `cc472e4`, `5159bc6`, `3c0664b` (exceptions) and `5a70c49`. #22 merged into `main` at `5a70c49` (as `7455b9e`), so this branch is now based on `main`. Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
 
 ## Summary
 
