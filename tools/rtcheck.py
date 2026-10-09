@@ -265,6 +265,39 @@ def fuzz_search():
         m = R.choice([-1, -1, 3])
         same("split", outcome(rt.pys_str_split, h, n, m), outcome(h.split, n, m), (h, n, m))
         same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
+    # dense failing candidates first, so memmem takes over at once for a stretch of d bytes
+    # (reach()): an occurrence at each place around its end, alone or d bytes after another, at
+    # the end of the text or not
+    for n in ["</p>", "</span>", "</"]:
+        d = 16 * len(n) + 256
+        for head in ["<x" * 3, "<" * 40]:
+            for p in range(d - 40, d + 10):
+                for h in [head + "y" * p + n, head + "y" * 5 + n + "y" * p + n + "<y" * 3, head + "y" * p + n + "y" * 9 + n]:
+                    same("find", outcome(rt.pys_str_find, h, n, 0, len(h)), outcome(h.find, n), (h, n))
+                    same("count", outcome(rt.pys_str_count, h, n, 0, len(h)), outcome(h.count, n), (h, n))
+                    same("split", outcome(rt.pys_str_split, h, n, -1), outcome(h.split, n), (h, n))
+                    same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
+    # longer text: runs of dense failing candidates and of sparse ones, so memmem's stretches (300
+    # bytes and more) end at random places, often around an occurrence, and the candidates are
+    # counted again; runs of a byte and single ones, for count's two ways with one byte
+    for _ in range(N // 40):
+        n = R.choice(["</p>", "</", "<p>x", "</table-of-contents>", "<", "y"])
+        parts = []
+        for _ in range(R.randrange(1, 6)):
+            parts.append(R.choice(["<x", "<p", "<", "</", "y"]) * R.randrange(60))
+            parts.append(R.choice(["y", "z", "yz<"]) * R.randrange(400))
+            parts.append(R.choice([n, n, n[:-1], "<"]))
+        h = "".join(parts)
+        st, en = R.choice([0, 0, R.randrange(300)]), R.choice([len(h), len(h), R.randrange(len(h) + 1)])
+        for name, mine, ref in [
+            ("find", rt.pys_str_find, lambda: h.find(n, st, en)),
+            ("count", rt.pys_str_count, lambda: h.count(n, st, en)),
+        ]:
+            same(name, outcome(mine, h, n, st, en), outcome(ref), (h, n, st, en))
+        same("contains", outcome(rt.pys_str_contains, h, n), outcome(lambda: int(n in h)), (h, n))
+        m = R.choice([-1, -1, 5])
+        same("split", outcome(rt.pys_str_split, h, n, m), outcome(h.split, n, m), (h, n, m))
+        same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
 
 
 fuzz_str()

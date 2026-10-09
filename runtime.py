@@ -162,43 +162,77 @@ def scan_ws(s: str, i: int, n: int, want: bool) -> int:
 
 def search(h: str, n: str, st: int, en: int) -> int:
     # the first i from st on where n occurs in h[:en], or -1
-    i = seek(h, n, st, en)
+    i = seek(h, n, st, en, st)
     return -2 - i if i < -1 else i
 
 
-def seek(h: str, n: str, st: int, en: int) -> int:
-    # search(), but -2 - i where memmem found i: the next occurrence of n's first byte (scan),
-    # checked. A failed candidate costs about what memmem spends on 32 bytes, and up to len(n)
-    # comparisons, so once failed candidates have cost more than the bytes passed (and 64), the rest
-    # goes to memmem, which is linear and skips ahead: the work stays below about twice the text's
-    # length (Go's strings.Index makes a similar cutover). A first byte as common as each "<" of
-    # HTML for "</span>" thus goes to memmem soon, as runtime.c did, and a rare one stays with
-    # memchr, which is much faster there. The -2 - i tells a loop over the occurrences to stay with
-    # memmem (again())
+def seek(h: str, n: str, i: int, en: int, st: int) -> int:
+    # search() from i, but -2 - k where memmem found k, in a loop over the occurrences that began
+    # at st (again()). The next occurrence of n's first byte (scan), checked. A failed candidate
+    # costs toll(len(n)) bytes of memmem's work; once failed candidates have cost more than the
+    # bytes passed (and 64), memmem takes over for a stretch (stretch()), which is linear: the work
+    # stays below about twice the text's length (Go's strings.Index makes a similar cutover). A
+    # first byte as common as each "<" of HTML for "</span>" thus goes to memmem soon, as runtime.c
+    # did, and a rare one stays with memchr, which is much faster there
     m = len(n)
     if m == 0:
-        return st if st <= en else -1
+        return i if i <= en else -1
     first = _rt.byte(n, 0)
     last = en - m  # the last place n can start
-    i = st
-    work = 0
+    paid = i - 64  # where the failed candidates' cost has reached: once past one, memmem
     while i <= last:
         k = scan(h, first, i, last + 1)
         if k < 0 or match(h, k, n):
             return k
-        work += m + 32
-        if work > k - st + 64:
-            k = _rt.find_sub(h, n, k + 1, en)
-            return -2 - k if k >= 0 else -1
+        paid += toll(m)
         i = k + 1
+        if paid > k:
+            i = stretch(h, n, i, en, st)
+            if i < 0:
+                return i
+            paid = i - 64
     return -1
 
 
-def again(h: str, n: str, st: int, en: int, dense: bool) -> int:
-    # the next seek() of a loop over the occurrences of n, or memmem once one found them dense
+def toll(m: int) -> int:
+    # the cost of a failed candidate for a needle of m bytes, in bytes of memmem's work: memmem
+    # skips about m - 1 bytes a step, and a candidate's scan, call and check cost about as much as
+    # its steps over 12 times that, in instructions and in time; it covers the up to m comparisons
+    # too. (Wrapping, as m is a str's length, far below 2**59: LLVM computes toll() and reach() at
+    # the start of every search, where overflow tests would cost each call.)
+    return _rt.wrap_mul(_rt.wrap_sub(m, 1), 12)
+
+
+def reach(i: int, st: int, m: int) -> int:
+    # where a stretch of memmem from i ends, for a needle of m bytes: as far again as from st, but
+    # at least 16 * m + 256 bytes on, as each stretch costs memmem a setup and seek() a candidate,
+    # which can take m bytes each
+    d = _rt.wrap_add(_rt.wrap_mul(m, 16), 256)
+    return i + (i - st if i - st > d else d)
+
+
+def stretch(h: str, n: str, i: int, en: int, st: int) -> int:
+    # memmem from i to reach(): -2 - k where it found k, else -1 at the end, or where seek() counts
+    # the candidates again. A loop over the occurrences goes on from each one memmem found, so a
+    # dense text sees few such restarts, and a few tags before long paragraphs do not keep the
+    # paragraphs from memchr
+    m = len(n)
+    stop = reach(i, st, m)
+    if stop > en - m:
+        k = _rt.find_sub(h, n, i, en)
+        return -2 - k if k >= 0 else -1
+    k = _rt.find_sub(h, n, i, stop + m - 1)
+    return -2 - k if k >= 0 else stop
+
+
+def again(h: str, n: str, i: int, en: int, st: int, dense: bool) -> int:
+    # the next seek() of a loop over the occurrences of n that began at st: a stretch of memmem
+    # first where memmem found the last one (dense)
     if dense:
-        return _rt.find_sub(h, n, st, en)
-    return seek(h, n, st, en) if en - st >= len(n) else -1
+        i = stretch(h, n, i, en, st)
+        if i < 0:
+            return i
+    return seek(h, n, i, en, st)
 
 
 def rsearch(h: str, n: str, st: int, en: int) -> int:
@@ -248,37 +282,60 @@ def pys_str_count(h: str, n: str, st: int, en: int) -> int:
     first = _rt.byte(n, 0)
     c = 0
     if m == 1:
-        # memchr from each occurrence to the next: an inline scan would mispredict its exit at each
+        # memchr from each occurrence to the next, 16 occurrences at a time, but an inline scan
+        # (scan()) for the next 16 where those came within 4 bytes of each other on average: a call
+        # for each is slow where they are that dense, and an inline scan mispredicts its exit at
+        # each "<" of HTML
         k = _rt.find_byte(h, first, st, en)
+        dense = False
         while k >= 0:
-            c += 1
-            k = _rt.find_byte(h, first, k + 1, en)
+            j = k
+            t = c + 16
+            if dense:
+                while k >= 0 and c < t:
+                    c += 1
+                    k = scan(h, first, k + 1, en)
+            else:
+                while k >= 0 and c < t:
+                    c += 1
+                    k = _rt.find_byte(h, first, k + 1, en)
+            dense = k - j < 64
         return c
     # seek()'s loop, counting, without a call per occurrence
     last = en - m
     i = st
-    work = 0
     while i <= last:
-        k = scan(h, first, i, last + 1)
-        if k < 0:
-            break
-        if match(h, k, n):
+        paid = i - 64
+        while True:
+            if i > last:
+                return c
+            k = scan(h, first, i, last + 1)
+            if k < 0:
+                return c
+            if match(h, k, n):
+                c += 1
+                i = k + m
+            else:
+                paid += toll(m)
+                i = k + 1
+                if paid > k:
+                    break
+        # stretch()'s memmem, from each occurrence it finds, then the candidates again
+        while True:
+            stop = reach(i, st, m)
+            k = _rt.find_sub(h, n, i, en if stop > last else stop + m - 1)
+            if k < 0:
+                break
             c += 1
             i = k + m
-        else:
-            work += m + 32
-            if work > k - st + 64:
-                k = _rt.find_sub(h, n, k + 1, en)
-                while k >= 0:
-                    c += 1
-                    k = _rt.find_sub(h, n, k + m, en)
-                break
-            i = k + 1
+        if stop > last:
+            return c
+        i = stop
     return c
 
 
 def pys_str_contains(h: str, n: str) -> int:
-    return 1 if len(n) <= len(h) and seek(h, n, 0, len(h)) != -1 else 0
+    return 1 if len(n) <= len(h) and seek(h, n, 0, len(h), 0) != -1 else 0
 
 
 def tail(s: str, p: str, st: int, en: int, end: bool) -> int:
@@ -314,11 +371,11 @@ def pys_str_replace(s: str, a: str, b: str) -> str:
     dense = False
     j = 0
     while True:
-        j = again(s, a, j, n, dense)
+        j = again(s, a, j, n, 0, dense)
         if j == -1:
             break
-        if j < -1:
-            dense = True
+        dense = j < -1
+        if dense:
             j = -2 - j
         pos.append(j)
         j += len(a)
@@ -724,9 +781,9 @@ def pys_str_split(s: str, sep: str, maxsplit: int) -> list[str]:
         if c >= 0:
             j = _rt.find_byte(s, c, i, n)  # one byte: memchr, no search setup per part
         else:
-            j = again(s, sep, i, n, dense)
-            if j < -1:
-                dense = True
+            j = again(s, sep, i, n, 0, dense)
+            dense = j < -1
+            if dense:
                 j = -2 - j
         if j < 0:
             break
