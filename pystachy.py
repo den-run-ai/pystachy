@@ -1043,7 +1043,8 @@ class Parser:
             out.append(mk("with", "", line, items))
         elif k == "try":
             # kids: the body, one "except" node (s: the name bound, kids: type or omit, block) per
-            # handler, then the else and finally blocks (blocks with s "else" and "finally")
+            # handler, then the else and finally blocks (blocks with s "else" and "finally"); s is
+            # "*" if its handlers are except* clauses
             self.p += 1
             self.colon()
             kids = [self.block()]
@@ -1089,7 +1090,7 @@ class Parser:
                     kids.append(b)
             if self.peek() == "except" or self.peek() == "else" or self.peek() == "finally":
                 self.invalid(self.line())  # (a clause out of order)
-            out.append(mk("try", "", line, kids))
+            out.append(mk("try", "*" if kind == "except*" else "", line, kids))
         elif k == "async":
             # async def, async with, async for: kept as an "async" node that code generation rejects
             self.p += 1
@@ -4513,6 +4514,18 @@ for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException Keyboar
            "ResourceWarning:Warning RuntimeWarning:Warning SyntaxWarning:Warning UnicodeWarning:Warning UserWarning:Warning "
            "io.UnsupportedOperation:OSError,ValueError").split():
     EXCBASES[_k[: _k.find(":")]] = _k[_k.find(":") + 1 :]
+
+
+def exc_derives(c: str, base: str) -> bool:
+    # is exception class c base, or derived from it (EXCBASES)
+    if c == base:
+        return True
+    for b in EXCBASES[c].split(","):
+        if b != "" and exc_derives(b, base):
+            return True
+    return False
+
+
 # the attributes hasattr() finds on values of the builtin types ("seq": str, list, tuple, dict), and
 # on every value; other attribute names are not decided
 HASATTR: dict[str, str] = {
@@ -4544,7 +4557,7 @@ PURE: list[str] = "print str repr len bool sum sorted list tuple min max any all
 # node kinds the parser accepts but code generation rejects, where it compiles them: an
 # imported module may use them in functions the program never calls
 UNSUPPORTED: dict[str, str] = {
-    "try": "'try' statements are not supported", "nonlocal": "'nonlocal' is not supported",
+    "nonlocal": "'nonlocal' is not supported",
     "subclass": "class inheritance is not supported", "lambda": "lambda is not supported",
     "yield": "'yield' is not supported (there are no generator functions)", "set": "set literals are not supported",
     "setcomp": "set literals are not supported", "dictcomp": "dict comprehensions are not supported",
@@ -4626,6 +4639,7 @@ METHODS: dict[str, str] = {
 IROPS: dict[str, str] = {
     "raw": "rL rD wD rO wO rG wG", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
+    "landing": "T", "throw": "T R N", "exc.match": "",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
 LLNOTRAW: dict[str, bool] = {}
@@ -4720,6 +4734,13 @@ RUNTIME: dict[str, str] = {
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
+    # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
+    # closes with-files (which may raise) and gives a list being sorted its items back
+    "eh_on": "None:|I|", "try_mark": "int:|I|", "exc.handled": "exc:|I|", "exc.restore": "None:exc|I|",
+    "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc||", "exc.repr": "str:exc|A|",
+    "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
+    "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
+    "personality": "%i32:%i32,%i32,int,%ptr,%ptr||",
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|I rF wF|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
@@ -4824,6 +4845,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "file":
         return "TextIOWrapper"
+    if t == "exc":
+        return "BaseException"
     b = t.find("[")
     return t[:b] if b >= 0 else short(t)
 
@@ -5022,6 +5045,17 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
         for nm in names:
             count[nm] = count.get(nm, 0) + 1
     return count
+
+
+def has_try(body: list[Node]) -> bool:
+    # does body hold a try statement, also in the functions and classes it defines
+    for st in body:
+        if st.kind == "try":
+            return True
+        for kid in st.kids:
+            if kid.kind == "block" and has_try(kid.kids):
+                return True
+    return False
 
 
 def name_nodes(n: Node, out: dict[str, bool]) -> None:
@@ -5352,6 +5386,9 @@ class Blk:
     def __init__(self, label: str):
         self.label = label  # "entry", "L<n>", or "" for one LLVM starts after a terminator
         self.code: list[Ins] = []
+        # where an exception raised here goes: the landing block of the innermost try statement
+        # of its function around it, or "" (it leaves the function)
+        self.handler = ""
 
 
 class Loop:
@@ -5368,6 +5405,16 @@ class Loop:
         self.stop = Val("", "")  # a range loop's stop, evaluated once
 
 
+class Try:
+    # the shape of one try statement, for structured backends; lowering needs only Blk.handler
+    def __init__(self, body: str):
+        self.body = body  # the block where its body starts
+        self.landing = ""  # the landing block of its except clauses ("" without them)
+        self.final = ""  # the landing block of its finally block ("" without one)
+        self.orelse = ""  # the block where its else block starts ("" without one)
+        self.exit = ""  # where the normal path goes on: the copy of its finally block starts there
+
+
 class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
@@ -5379,12 +5426,32 @@ class IFn:
         # message "Kind: text" -> the label of the block that raises it: one per function and
         # message, numbered at the first check of it, and placed after the function's code
         self.cold: dict[str, str] = {}
+        # inside a try statement, a message's key is "<landing> <message>", and its cold block raises
+        # the message to that landing block: the key -> the landing block
+        self.coldh: dict[str, str] = {}
+        self.tries: list[Try] = []
+        self.pads = False  # whether it keeps landing pads (once the exception passes have run)
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
+
+
+class Exit:
+    # what leaving a block through break, continue or return first does (Gen.exits)
+    def __init__(self, kind: str, v: str, handler: str):
+        # "with": close the file v; "handler": restore v as the exception being handled (and unbind
+        # name); "finally": run body, as where its try statement is: in nloops loops and nexcs
+        # except clauses. It runs under handler, the landing block around the construct
+        self.kind = kind
+        self.v = v
+        self.handler = handler
+        self.name = ""
+        self.body: list[Node] = []
+        self.nloops = 0
+        self.nexcs = 0
 
 
 class Frame:
@@ -5398,8 +5465,10 @@ class Frame:
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
         self.loops: list[Loop] = []
-        self.withs: list[str] = []
+        self.exits: list[Exit] = []
         self.wdepth: list[int] = []
+        self.handler = ""
+        self.excs: list[Val] = []
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = ""
@@ -5451,6 +5520,7 @@ class Flow:
         self.bany = False  # a break was folded
         self.bwas: dict[str, bool] = {}  # the keys changed in the loop: whether each was in defd where it began
         self.bnew: dict[str, bool] = {}  # the keys changed since the last break (or since the loop began)
+        self.unb: list[str] = []  # the names the except clauses inside the innermost loop bind: a break unbinds them
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -5594,8 +5664,11 @@ class Gen:
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
         self.loops: list[Loop] = []  # the loops the code being compiled is in, innermost last
-        self.withs: list[str] = []  # files of the enclosing with blocks, closed when the code leaves them
-        self.wdepth: list[int] = []  # len(withs) when each enclosing loop began
+        self.exits: list[Exit] = []  # what break, continue and return must do on their way out, innermost last
+        self.wdepth: list[int] = []  # len(exits) when each enclosing loop began
+        self.handler = ""  # the landing block of the innermost try statement around the code, or ""
+        self.excs: list[Val] = []  # the exceptions being handled by the except clauses around it (bare raise)
+        self.eh = False  # the program has a try statement (closed world): exceptions are on (pys_eh_on)
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = "None"
@@ -5681,8 +5754,10 @@ class Gen:
         fr.assigned = self.assigned
         fr.compvars = self.compvars
         fr.loops = self.loops
-        fr.withs = self.withs
+        fr.exits = self.exits
         fr.wdepth = self.wdepth
+        fr.handler = self.handler
+        fr.excs = self.excs
         fr.lcs = self.lcs
         fr.lct = self.lct
         fr.ret = self.ret
@@ -5712,8 +5787,10 @@ class Gen:
         self.assigned = fr.assigned
         self.compvars = fr.compvars
         self.loops = fr.loops
-        self.withs = fr.withs
+        self.exits = fr.exits
         self.wdepth = fr.wdepth
+        self.handler = fr.handler
+        self.excs = fr.excs
         self.lcs = fr.lcs
         self.lct = fr.lct
         self.ret = fr.ret
@@ -5767,6 +5844,7 @@ class Gen:
         if not self.term:
             self.jump(l)
         self.blk = Blk(l)
+        self.blk.handler = self.handler
         self.fn.blocks.append(self.blk)
         self.cur = l
         self.term = False
@@ -5876,11 +5954,17 @@ class Gen:
         return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
 
     def guard(self, bad: str, msg: str) -> None:
-        # if bad, jump to a block (one per function and message) that raises msg ("Kind: text")
-        if msg not in self.fn.cold:
-            self.fn.cold[msg] = self.label()
+        # if bad, jump to a block (one per function and message) that raises msg ("Kind: text"); in a
+        # try statement, one per function, message and landing block (whose key the check holds in x)
+        key = msg if self.handler == "" else f"{self.handler} {msg}"
+        if key not in self.fn.cold:
+            self.fn.cold[key] = self.label()
+            if self.handler != "":
+                self.fn.coldh[key] = self.handler
         l = self.label()
         i = Ins("check", "", msg)
+        if self.handler != "":
+            i.x = key
         i.a = [Val(bad, "bool")]
         i.b = [l]
         self.add(i)
@@ -6373,6 +6457,8 @@ class Gen:
         return ""
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
+        if o.t == "exc":
+            self.err(f"the attributes of an exception (e.{name}) are not supported; str(e) and repr(e) are")
         if o.t not in self.classes:
             base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else o.t
             if base + "." + name in METHODS:
@@ -7190,8 +7276,10 @@ class Gen:
         self.assigned = {}
         self.compvars = {}
         self.loops = []
-        self.withs = []
+        self.exits = []
         self.wdepth = []
+        self.handler = ""
+        self.excs = []
         self.n = 0
         self.cur = "entry"
         self.term = False
@@ -7277,8 +7365,12 @@ class Gen:
                     self.term = False
             else:
                 self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
-        for msg in self.fn.cold:
-            self.place(self.fn.cold[msg])
+        for key in self.fn.cold:
+            self.place(self.fn.cold[key])
+            msg = key
+            if key in self.fn.coldh:
+                self.blk.handler = self.fn.coldh[key]
+                msg = key[len(self.fn.coldh[key]) + 1 :]
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
         self.fn.n = self.n
@@ -7290,7 +7382,7 @@ class Gen:
         f = fn.f
         # a method's receiver is never None (callers check it)
         ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and f.cls != '' else ''} %a{j}" for j in fn.ps]
-        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
+        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}){' personality ptr @pys_personality' if fn.pads else ''} {{")
         o.append("entry:")
         for i in fn.slots:
             if i.k == 1:
@@ -7317,7 +7409,7 @@ class Gen:
         elif op == "cbr":
             o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
         elif op == "check":
-            o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.s]}, label %{i.b[0]}")
+            o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.x if i.x != '' else i.s]}, label %{i.b[0]}")
         elif op == "phi":
             o.append(f"  %t{i.r[0]} = phi {lt(i.t)} {', '.join([f'[{i.a[j].v}, %{i.b[j]}]' for j in range(len(i.a))])}")
         elif op == "ovf":
@@ -7346,15 +7438,31 @@ class Gen:
                 # the key kind of a dict created empty: what its first use showed (0 if nothing did)
                 h = self.holes[i.k]
                 vs[0] = f"i64 {1 if h != '' and targs(h)[0] == 'str' else 0}"
-            c = f"call {ll[0]} @{f.sym}({', '.join(vs)})"
+            c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
             o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
         elif op == "call":
-            c = f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})"
+            c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
             o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
         elif op == "init":
-            o.append(f"  call void @init.{i.s}()")
+            o.append("  " + self.invoke(f"call void @init.{i.s}()", i))
+        elif op == "landing":
+            r = i.r
+            o.append(f"  %t{r[0]} = landingpad {{ ptr, i32 }} catch ptr null")
+            o.append(f"  %t{r[1]} = extractvalue {{ ptr, i32 }} %t{r[0]}, 0")
+            o.append(f"  store ptr %t{r[1]}, ptr {i.a[0].v}")
+            o.append(f"  br label %{i.b[0]}")
+        elif op == "throw":
+            o.append(f"  call void @pys_throw(ptr {i.a[0].v})")
+            o.append("  unreachable")
+        elif op == "exc.match":
+            o.append(f"  %t{i.r[0]} = call i64 @pys_exc_in(ptr {i.a[0].v}, ptr {i.a[1].v})")
+            o.append(f"  %t{i.r[1]} = icmp ne i64 %t{i.r[0]}, 0")
         else:
             fail(f"internal error: no lowering for IR op {op}", 0)
+
+    def invoke(self, c: str, i: Ins) -> str:
+        # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])
+        return c if len(i.b) == 0 else f"invoke{c[4:]} to label %{i.b[0]} unwind label %{i.b[1]}"
 
     # ---- the IR's check (PYSTACHY_IRCHECK=1) and its effect summaries, once the program is built
     def verify(self, fn: IFn) -> None:
@@ -7363,8 +7471,15 @@ class Gen:
         # effects are known), no phi and no terminator, and call and init ops call compiled
         # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
         # starts its block, and its predecessors branch there; each op holds exactly the numbers
-        # its lowering prints (Ins.r), and no number or label is above IFn.n
+        # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
+        # passes of eh_ir have run): a landing op is alone in its block, which only the unwind
+        # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
+        # try statement covers, no call that may raise is left a call, nor a raise or throw
         at: dict[str, int] = {}
+        lands: dict[str, bool] = {}
+        for b in fn.blocks:
+            if len(b.code) > 0 and b.code[0].op == "landing":
+                lands[b.label] = True
         for i in fn.slots:
             if i.op != "slot" or len(i.r) != 1:
                 self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
@@ -7384,8 +7499,18 @@ class Gen:
                 i = b.code[j]
                 if i.op not in IROPS:
                     self.bad_ir(fn, b, f"unknown op {i.op}")
-                if ("T" in IROPS[i.op]) != (j == len(b.code) - 1):
+                inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "init")
+                if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):
                     self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
+                if i.op == "landing" and j > 0:
+                    self.bad_ir(fn, b, "a landing op after other ops")
+                if inv and i.b[1] not in lands:
+                    self.bad_ir(fn, b, f"an invoke whose unwind edge goes to {i.b[1]}, which is no landing block")
+                for l in i.b[:1] if inv else i.b if i.op != "phi" else i.b[:0]:
+                    if l in lands:
+                        self.bad_ir(fn, b, f"a branch to the landing block {l}, which only unwind edges may reach")
+                if b.handler != "" and (i.op == "raise" or i.op == "throw" or (not inv and (i.op == "rt" or i.op == "call" or i.op == "init") and self.opfx(i) & FXBIT["R"] != 0)):
+                    self.bad_ir(fn, b, f"{i.op} {i.s} may raise, in a block {b.handler} covers, but goes to no landing block")
                 if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
                     self.bad_ir(fn, b, "a phi after other ops")
                 if i.op == "rt" and i.s not in self.rtfns:
@@ -7408,7 +7533,8 @@ class Gen:
                 if i.op != "phi":
                     out.extend(i.b)
                 if i.op == "check":
-                    out.append(fn.cold[i.s] if i.s in fn.cold else f"(none for {i.s})")
+                    ck = i.x if i.x != "" else i.s
+                    out.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
             if len(b.code) == 0:
                 self.bad_ir(fn, b, "no terminator")
             for l in out:
@@ -7426,6 +7552,8 @@ class Gen:
         # how many numbers op i defines (%tN): what its lowering prints
         if i.op == "ovf":
             return 3
+        if i.op == "landing" or i.op == "exc.match":
+            return 2
         if i.op == "phi" or i.op == "select":
             return 1
         if i.op == "rt":
@@ -7479,6 +7607,76 @@ class Gen:
             return FXALL if f.q and "O" in i.x else f.fx
         return self.opfxs[i.op]
 
+    def eh_ir(self, fn: IFn) -> None:
+        # fn has try statements: its blocks' exception edges (Blk.handler) become LLVM's, once the
+        # effect summaries say which calls may raise. A raise or throw that a landing block covers
+        # branches to the code after it (a raise's exception made as pys_raise makes it: no Syntax-
+        # Error line kind is left in a program that has a try, see raise_stmt), with the exception
+        # in its try's slot, as the landing op stores it: no unwinder, which takes a microsecond. A
+        # call a landing block covers that may raise (R) is an invoke whose unwind edge goes there,
+        # and ends its block (a phi after it names the last part as its predecessor). A landing
+        # block no invoke goes to is dropped (its try's code after it may still be reached from a
+        # raise), and a function left without one has no personality
+        lands: dict[str, Ins] = {}
+        for b in fn.blocks:
+            if len(b.code) > 0 and b.code[0].op == "landing":
+                lands[b.label] = b.code[0]
+        used: dict[str, bool] = {}
+        ren: dict[str, str] = {}
+        blocks: list[Blk] = []
+        raises = FXBIT["R"]
+        for b in fn.blocks:
+            if b.handler == "":
+                blocks.append(b)
+                continue
+            code = b.code
+            t = code[-1]
+            if t.op == "raise" or t.op == "throw":
+                lp = lands[b.handler]
+                code = code[: len(code) - 1]
+                ex = t.a[0].v
+                if t.op == "raise":
+                    fn.n += 1
+                    i = Ins("rt", "exc", "exc.new")
+                    i.a = [t.a[0], t.a[1], Val("null", "str")]
+                    i.r = [fn.n]
+                    self.runtime("pys_exc_new")
+                    code.append(i)
+                    ex = f"%t{fn.n}"
+                code.append(Ins("raw", "", f"store ptr {ex}, ptr {lp.a[0].v}"))
+                br = Ins("br", "", "")
+                br.b = [lp.b[0]]
+                code.append(br)
+            cur = b
+            cur.code = []
+            for j in range(len(code)):
+                i = code[j]
+                cur.code.append(i)
+                if j < len(code) - 1 and (i.op == "rt" or i.op == "call" or i.op == "init") and self.opfx(i) & raises != 0:
+                    fn.n += 1
+                    i.b = [f"L{fn.n}", b.handler]
+                    used[b.handler] = True
+                    blocks.append(cur)
+                    cur = Blk(i.b[0])
+                    cur.handler = b.handler
+            blocks.append(cur)
+            if cur is not b:
+                ren[b.label] = cur.label
+        fn.blocks = []
+        for b in blocks:
+            if b.label in lands and b.label not in used:
+                continue
+            fn.blocks.append(b)
+            for i in b.code:
+                if i.op != "phi":
+                    break
+                for j in range(len(i.b)):
+                    if i.b[j] in ren:
+                        i.b[j] = ren[i.b[j]]
+        fn.pads = len(used) > 0
+        if fn.pads:
+            self.runtime("pys_personality")
+
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
         # annotated parameters, and its body may hold only fields, methods and a docstring
@@ -7505,6 +7703,7 @@ class Gen:
         tops: list[list[Node]] = []
         for m in mods:
             self.scan_imports(m.body.kids)
+            self.eh = self.eh or has_try(m.body.kids)
         for m in mods:
             for st in m.body.kids:
                 self.line = st.line
@@ -7674,13 +7873,17 @@ class Gen:
             fail("internal error: an op changed the lists all ops start with", 0)
         chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
         dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        if self.eh or chk or dump:
+            # the exception passes read the effect summaries (which calls may raise); without
+            # them, the IR check computes them, so that the tests run effects, and PYSTACHY_IRFX=1
+            # prints them (tests/ir/*.fx pin them)
+            self.effects()
+        for fn in self.fns if self.eh else self.fns[:0]:
+            if len(fn.tries) > 0:
+                self.eh_ir(fn)
         if chk:
             for fn in self.fns:
                 self.verify(fn)
-        if chk or dump:
-            # no pass reads the effect summaries yet: the IR check computes them, so that the
-            # tests run effects, and PYSTACHY_IRFX=1 prints them (tests/ir/*.fx pin them)
-            self.effects()
         if dump:
             for fn in self.fns:
                 print(f"{fn.f.ll}: {fxs(fn.fx)}", file=sys.stderr)
@@ -7711,9 +7914,13 @@ class Gen:
         hdr.append(runtime_decl("init"))
         hdr.append(runtime_decl("finish"))
         hdr.append(runtime_decl("frameaddress"))
+        if self.eh:
+            hdr.append(runtime_decl("eh_on"))
         hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
         hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
         hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
+        if self.eh:
+            hdr.append("  call void @pys_eh_on()")  # (from now on, the runtime raises exceptions)
         hdr.append("  call void @main.init()")
         hdr.append("  call void @pys_finish()")
         hdr.append("  ret i32 0")
@@ -7958,11 +8165,13 @@ class Gen:
             bany = fl.bany
             bwas = fl.bwas
             bnew = fl.bnew
+            unb = fl.unb
             fl.btrue = k == "while" and n.kids[0].kind == "True"
             fl.bjoin = {}
             fl.bany = False
             fl.bwas = {}
             fl.bnew = {}
+            fl.unb = []
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
@@ -7975,6 +8184,7 @@ class Gen:
             fl.bany = bany
             fl.bwas = bwas
             fl.bnew = bnew
+            fl.unb = unb
             if n.kids[-1].s == "else":
                 # (after the loop only what was assigned before it is surely assigned, less what
                 # the else block unbinds: the loop is left at its end or, from a break, in a state
@@ -7997,6 +8207,8 @@ class Gen:
                     else:
                         fl.drop(x)
         elif k == "break":
+            for nm in fl.unb:
+                fl.drop(nm)
             if fl.btrue and " dead" not in fl.defd:
                 fl.fold()
             fl.put(" dead")
@@ -8021,6 +8233,61 @@ class Gen:
                 if len(it.kids) == 2:
                     self.fl_target(fl, it.kids[1])
             self.fl_stmts(fl, n.kids[-1].kids)
+        elif k == "try":
+            # an except clause starts from the state before the statement less what the body may
+            # have unbound, the else block goes on from the body, and the statement ends in the
+            # join of those that end, then the finally block. A copy of that runs as an exception,
+            # a break or a return leaves too: it is looked at once more, from the state before the
+            # statement less everything the statement may unbind (which a break that runs it may
+            # have left too, so what it unbinds is unbound from the start)
+            orelse: list[Node] = []
+            fin: list[Node] = []
+            hasfin = False
+            for b in n.kids[1:]:
+                if b.kind == "block" and b.s == "else":
+                    orelse = b.kids
+                elif b.kind == "block":
+                    fin = b.kids
+                    hasfin = True
+            fdels: dict[str, bool] = {}
+            deleted(fin, fdels)
+            for nm in fdels:
+                fl.drop(nm)
+            mark = len(fl.log)
+            bdels: dict[str, bool] = {}
+            deleted(n.kids[0].kids, bdels)
+            self.fl_stmts(fl, n.kids[0].kids)
+            self.fl_stmts(fl, orelse)
+            for h in n.kids[1:]:
+                if h.kind != "except":
+                    continue
+                st = fl.since(mark)
+                fl.undo(mark)
+                for nm in bdels:
+                    fl.drop(nm)
+                if h.s != "":
+                    fl.put(h.s)
+                    fl.unb.append(h.s)
+                self.fl_stmts(fl, h.kids[1].kids)
+                if h.s != "":
+                    fl.unb.pop()
+                    fl.drop(h.s)
+                fl.join(st, mark)
+            if hasfin:
+                st = fl.since(mark)
+                fl.undo(mark)
+                dels: dict[str, bool] = {}
+                deleted([n], dels)
+                for nm in dels:
+                    fl.drop(nm)
+                self.fl_stmts(fl, fin)
+                fl.undo(mark)
+                for nm in st:
+                    if st[nm]:
+                        fl.put(nm)
+                    else:
+                        fl.drop(nm)
+                self.fl_stmts(fl, fin)
 
     def fl_target(self, fl: Flow, t: Node) -> None:
         if t.kind == "name":
@@ -8344,17 +8611,216 @@ class Gen:
         if body is self.elsekids:
             lp.exit = self.elsebrk  # the loop of a for/while ... else: break skips the else block
         self.loops.append(lp)
-        self.wdepth.append(len(self.withs))
+        self.wdepth.append(len(self.exits))
         self.branch += 1
         self.stmts(body)
         self.branch -= 1
         self.wdepth.pop()
         self.loops.pop()
 
-    def close_withs(self, depth: int) -> None:
-        # leaving with blocks (break, continue, return): their files close, innermost first
-        for i in range(len(self.withs) - 1, depth - 1, -1):
-            self.rt("pys_file_close", "void", [f"ptr {self.withs[i]}"])
+    def leave(self, depth: int) -> bool:
+        # leaving the code inside exits[depth:] (break, continue, return, the end of a with block):
+        # what each exit requires, innermost first, each in a block that the landing block around
+        # its construct covers. A with block's file closes (its unwind action forgotten first); an
+        # except clause restores the exception being handled before it, and unbinds its name; a
+        # finally block runs as where its try statement is: in its loops, within the exits
+        # outside it (where its own break or return goes). True if one of those took the way out
+        # over (its own return, break, continue or raise), so that the caller's is not compiled
+        here = self.handler
+        ended = False
+        for i in range(len(self.exits) - 1, depth - 1, -1):
+            if ended:
+                break
+            x = self.exits[i]
+            self.handler = x.handler
+            if self.blk.handler != x.handler:
+                self.place(self.label())
+            if x.kind == "with":
+                if self.eh:
+                    self.rt("pys_unwind_pop", "void", [])
+                self.rt("pys_file_close", "void", [f"ptr {x.v}"])
+            elif x.kind == "handler":
+                self.rt("pys_exc_restore", "void", [f"ptr {x.v}"])
+                self.unbind(x.name)
+            else:
+                exits = self.exits
+                loops = self.loops
+                wdepth = self.wdepth
+                excs = self.excs
+                self.exits = exits[:i]
+                self.loops = loops[: x.nloops]
+                self.wdepth = wdepth[: x.nloops]
+                self.excs = excs[: x.nexcs]
+                t0 = self.term
+                self.branch += 1
+                self.stmts(x.body)
+                self.branch -= 1
+                ended = self.term and not t0
+                self.exits = exits
+                self.loops = loops
+                self.wdepth = wdepth
+                self.excs = excs
+        self.handler = here
+        return ended
+
+    def try_(self, n: Node) -> None:
+        # try: B / except C1 as e: H1 / ... / else: L / finally: F. An exception raised in B goes to
+        # the landing block of the except clauses (hE), one raised in a clause or L to that of F
+        # (hF): from a call that may raise through the unwinder (an invoke), from a raise of this
+        # function directly (see eh_ir). hE tests the clauses in order (exc.match) and throws again
+        # what none catches; hF runs a copy of F and throws again. B and L, and each clause that
+        # ends, go on to one copy of F; a break, continue or return out of the statement runs one
+        # of its own (see leave), as CPython compiles F once for each way out
+        if n.s == "*":
+            self.err("'except*' is not supported")
+        hs: list[Node] = []
+        orelse: list[Node] = []
+        fin: list[Node] = []
+        hasfin = False
+        for k in n.kids[1:]:
+            if k.kind == "except":
+                hs.append(k)
+            elif k.s == "else":
+                orelse = k.kids
+            else:
+                fin = k.kids
+                hasfin = True
+        sets = [self.catches(h) for h in hs]
+        self.line = n.line
+        # the try notes the depth of the unwind actions (pys_exc_begin runs those added since) and
+        # the exception being handled, which every way out of its clauses restores
+        mark = Val(self.rt("pys_try_mark", "i64", []), "int")
+        old = self.rt("pys_exc_handled", "ptr", [])
+        slot = self.alloca("exc", "")
+        outer = self.handler
+        he = self.label() if len(hs) > 0 else ""
+        hf = self.label() if hasfin else ""
+        done = self.label()
+        tr = Try(self.label())
+        tr.landing = he
+        tr.final = hf
+        tr.exit = done
+        self.fn.tries.append(tr)
+        self.branch += 1
+        if hasfin:
+            x = Exit("finally", "", outer)
+            x.body = fin
+            x.nloops = len(self.loops)
+            x.nexcs = len(self.excs)
+            self.exits.append(x)
+        self.handler = he if he != "" else hf
+        self.place(tr.body)
+        self.stmts(n.kids[0].kids)
+        self.handler = hf if hasfin else outer
+        if len(orelse) > 0 and not (self.term and self.curfn.inst):
+            tr.orelse = self.label()
+            self.place(tr.orelse)
+            self.stmts(orelse)
+        live = not self.term  # (does any path go on to done)
+        self.br(done)
+        if he != "":
+            e = self.landing(he, slot, mark)
+            nxt = ""
+            for j in range(len(hs)):
+                h = hs[j]
+                self.line = h.line
+                if sets[j] != "":
+                    l = self.label()
+                    nxt = self.label()
+                    self.cbr(self.exc_match(e, sets[j]), l, nxt)
+                    self.place(l)
+                if h.s != "":
+                    self.store_name(h.s, e)
+                x = Exit("handler", old, self.handler)
+                x.name = h.s
+                self.exits.append(x)
+                self.excs.append(e)
+                self.stmts(h.kids[1].kids)
+                self.excs.pop()
+                self.exits.pop()
+                if not self.term:
+                    self.rt("pys_exc_restore", "void", [f"ptr {old}"])
+                    self.unbind(h.s)
+                    live = True
+                    self.br(done)
+                if sets[j] == "":
+                    nxt = ""
+                    break  # (it catches everything: the clauses after it never run)
+                self.place(nxt)
+            if nxt != "":
+                self.throw(e)
+        if hasfin:
+            self.exits.pop()
+            self.handler = outer
+            e = self.landing(hf, slot, mark)
+            self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
+            self.excs.append(e)
+            self.stmts(fin)
+            self.excs.pop()
+            self.exits.pop()
+            if not self.term:
+                self.throw(e)
+        self.handler = outer
+        self.branch -= 1
+        if live:
+            self.place(done)
+            self.stmts(fin)
+
+    def catches(self, h: Node) -> str:
+        # the classes except clause h catches: "" for every one (a bare except, BaseException), else
+        # "\1A\1B\1" (pys_exc_in): the builtin exception classes deriving from those it names
+        t = h.kids[0]
+        self.line = h.line
+        names: list[str] = []
+        for c in t.kids if t.kind == "tuple" else [t] if t.kind != "omit" else t.kids:
+            if c.kind != "name" or c.s in self.ltype or c.s in self.gtypes or c.s in self.funcs or c.s in self.assigned:
+                self.err("an except clause needs builtin exception classes: a name, or a tuple of names")
+            if c.s in self.classes:
+                self.err(f"catching '{short(c.s)}' is not supported: only the builtin exceptions can be caught (there is no inheritance)")
+            x = "OSError" if c.s == "IOError" or c.s == "EnvironmentError" else c.s
+            if x not in EXCBASES:
+                self.err(f"name '{short(c.s)}' is not defined" if c.s not in PYBUILTINS else "catching classes that do not inherit from BaseException is not allowed")
+            names.append(x)
+        if len(names) == 0 or "BaseException" in names:
+            return ""
+        out: list[str] = []
+        for k in EXCBASES:
+            for b in names:
+                if exc_derives(k, b):
+                    out.append(k)
+                    break
+        return "\x01" + "\x01".join(out) + "\x01"
+
+    def landing(self, l: str, slot: str, mark: Val) -> Val:
+        # landing block l of a try statement, where an exception comes through the unwinder: its
+        # landing op stores the exception in slot, as a raise in this function that goes there does
+        # (see eh_ir), and both go on to the code after it, which takes the exception up: the
+        # unwind actions since the try's mark run, and it becomes the exception being handled
+        j = self.label()
+        self.place(l)
+        i = Ins("landing", "exc", "")
+        i.a = [Val(slot, "%addr")]
+        i.b = [j]
+        self.put(i, 2)
+        self.term = True
+        self.place(j)
+        x = self.ins(f"load ptr, ptr {slot}")
+        return Val(self.rt("pys_exc_begin", "ptr", [f"ptr {x}", f"i64 {mark.v}"]), "exc")
+
+    def exc_match(self, e: Val, names: str) -> str:
+        # does exception e belong to the classes names ("\1A\1B\1")
+        i = Ins("exc.match", "bool", "")
+        i.a = [e, Val(self.sconst(names), "str")]
+        self.runtime("pys_exc_in")
+        self.put(i, 2)
+        return f"%t{i.r[1]}"
+
+    def unbind(self, name: str) -> None:
+        # the end of except ... as name: name is unbound, as after del name (but nothing is read)
+        if name in self.ltype and name in self.lflag:
+            self.emit(f"store i1 false, ptr {self.lflag[name]}")
+        elif name != "" and name not in self.ltype and name in self.gflag:
+            self.emit(f"store i1 false, ptr @g.{name}.def")
 
     def exc_args(self, e: Node) -> list[Node]:
         # the arguments of raise E / raise E(args), checking that E is a builtin exception
@@ -8381,19 +8847,53 @@ class Gen:
             self.err(f"{name}() with more than one argument is not supported")
         return args
 
+    def exc_var(self, e: Node) -> bool:
+        # is e, the exception of a raise statement, a variable (which must hold an exception: raise
+        # e, as an except clause bound it) rather than an exception class (exc_args)
+        return e.kind == "name" and e.s not in self.classes and e.s not in self.funcs and (e.s not in EXCEPTIONS or e.s in self.ltype or e.s in self.gtypes)
+
+    def cause(self, c: Node) -> None:
+        # raise ... from c: c is evaluated and checked (an exception class, a call of one, an
+        # exception or None), and otherwise ignored: only a traceback would show it
+        if c.kind == "None":
+            return
+        if self.exc_var(c):
+            if self.expr(c, "").t != "exc":
+                self.err("exception causes must derive from BaseException")
+            return
+        for a in self.exc_args(c):
+            self.expr(a, "")
+
     def raise_stmt(self, n: Node) -> None:
         # raise E(args) [from C]: CPython's last traceback line, "E: str(arg)" (KeyError: repr(arg);
-        # several arguments: their tuple's repr); SystemExit ends the program like sys.exit
+        # several arguments: their tuple's repr); SystemExit ends the program like sys.exit. In a
+        # program that has a try, it throws the exception CPython makes (exc_value), which the
+        # program ends with as before if nothing catches it
         if len(n.kids) == 0:
-            self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
+            # a bare raise: the exception the except clause around it handles, or else the one
+            # being handled where it runs (in a function an except clause calls)
+            if len(self.excs) > 0:
+                self.throw(self.excs[-1])
+            elif self.eh:
+                self.rt("pys_reraise", "void", [])
+                self.unreachable()
+            else:
+                self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
             return
         e = n.kids[0]
+        if self.exc_var(e):
+            v = self.expr(e, "")
+            if v.t != "exc":
+                self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
+            if len(n.kids) > 1:
+                self.cause(n.kids[1])
+            self.throw(v)
+            return
         args = self.exc_args(e)
         name = e.kids[0].s if e.kind == "call" else e.s
         vals = [self.expr(a, "") for a in args]
-        if len(n.kids) > 1 and n.kids[1].kind != "None":
-            for a in self.exc_args(n.kids[1]):
-                self.expr(a, "")
+        if len(n.kids) > 1:
+            self.cause(n.kids[1])
         if n.s == "init":
             # a module's raise of ImportError at its top level (Loader.init_raise()): under an optional
             # import (a "guard" in a uimport) the module returns, not imported, so that the importer's
@@ -8409,6 +8909,9 @@ class Gen:
             self.place(l2)
         if name == "SystemExit":
             self.exit_(vals)
+            return
+        if self.eh:
+            self.throw(self.exc_value("OSError" if name == "IOError" or name == "EnvironmentError" else name, vals))
             return
         if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
             # CPython's traceback takes str(e), which is str(msg), then prints "E: " and str(msg or
@@ -8433,9 +8936,43 @@ class Gen:
             msg = self.sconst("")
         self.raise_("OSError" if name == "IOError" or name == "EnvironmentError" else name, msg)
 
+    def exc_value(self, name: str, vals: list[Val]) -> Val:
+        # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
+        # shows between its parentheses (null: the repr of str(e), as for one str argument)
+        args = "null"
+        detail = ""
+        if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
+            # str(e) is str(msg) ("None" without), but its traceback shows "E: " and str(msg or
+            # "<no detail available>")
+            msg = self.to_str(vals[0]).v if len(vals) == 1 else self.sconst("None")
+            no = Val(self.sconst("<no detail available>"), "str")
+            detail = self.select(self.truth(vals[0]), Val(msg, "str"), no) if len(vals) == 1 else no.v
+            if len(vals) == 0:
+                args = self.sconst("")
+            elif vals[0].t != "str":
+                args = self.repr(vals[0]).v
+        elif len(vals) > 1:
+            msg = self.repr(self.tuple_(vals)).v
+            args = self.rt("pys_str_slice", "ptr", [f"ptr {msg}", "i64 1", "i64 -1"])
+        elif len(vals) == 1:
+            msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
+            if vals[0].t != "str" and name != "KeyError":
+                args = self.repr(vals[0]).v  # (a KeyError's message is its argument's repr already)
+        else:
+            msg = self.sconst("")
+        e = self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {msg}", f"ptr {args}"])
+        if detail != "":
+            e = self.rt("pys_exc_detail", "ptr", [f"ptr {e}", f"ptr {detail}"])
+        return Val(e, "exc")
+
     def exit_(self, vals: list[Val]) -> None:
         # sys.exit(code) and raise SystemExit(code): None is status 0, an int is the status, and
-        # anything else is printed to stderr with status 1
+        # anything else is printed to stderr with status 1. In a program that has a try, a code
+        # whose str() the runtime would not show as CPython's (None, a bool, several arguments)
+        # is thrown as the exception exit_value makes
+        if self.eh and (len(vals) != 1 or vals[0].t == "None" or vals[0].t == "bool"):
+            self.throw(self.exit_value(vals))
+            return
         if len(vals) > 1:
             self.rt("pys_exit_msg", "void", [f"ptr {self.repr(self.tuple_(vals)).v}"])
         elif len(vals) == 0 or vals[0].t == "None":
@@ -8449,11 +8986,37 @@ class Gen:
                 l2 = self.label()
                 self.cbr(self.isnull(vals[0]), l1, l2)
                 self.place(l1)
-                self.rt("pys_exit", "void", ["i64 0"])
-                self.unreachable()
+                if self.eh:
+                    self.throw(self.no_code())
+                else:
+                    self.rt("pys_exit", "void", ["i64 0"])
+                    self.unreachable()
                 self.place(l2)
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
         self.unreachable()
+
+    def no_code(self) -> Val:
+        # SystemExit(None): status 0, str(e) ""
+        e = self.sconst("")
+        return Val(self.rt("pys_exc_exit", "ptr", ["i64 0", f"ptr {e}", f"ptr {e}"]), "exc")
+
+    def exit_value(self, vals: list[Val]) -> Val:
+        # SystemExit(*vals): an int or bool code is the status the program ends with if nothing
+        # catches it, None (or none) status 0; anything else is shown, with status 1
+        if len(vals) == 0 or (len(vals) == 1 and vals[0].t == "None"):
+            return self.no_code()
+        if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
+            s = self.to_str(vals[0]).v
+            return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v}", f"ptr {s}", f"ptr {s}"]), "exc")
+        return self.exc_value("SystemExit", vals)
+
+    def throw(self, e: Val) -> None:
+        # raise exception e: to the landing block around, or out of the function (pys_throw)
+        i = Ins("throw", "", "")
+        i.a = [e]
+        self.runtime("pys_throw")
+        self.add(i)
+        self.term = True
 
     def raise_(self, name: str, msg: str, kind: str = "") -> None:
         # raise exception name: the error line is "<kind>: <msg>", where kind is name unless given
@@ -8558,18 +9121,20 @@ class Gen:
                 # the first return of a template's function with a value decides what the function
                 # returns; a return of None before it is lowered from what that decided
                 v = self.retval(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
-                self.close_withs(0)
-                if v.t == "None":
-                    self.add(Ins("ret.none", "", ""))
-                else:
+                if v.t != "None":
                     self.ret = v.t
                     self.curfn.ret = v.t
+                if self.leave(0):
+                    pass  # (a finally block returned instead)
+                elif v.t == "None":
+                    self.add(Ins("ret.none", "", ""))
+                else:
                     self.ret_(v)
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes):
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
-                self.close_withs(0)
-                self.ret_(Val("null", self.ret))
+                if not self.leave(0):
+                    self.ret_(Val("null", self.ret))
             elif self.ret == "None":
                 # return f() where f returns None
                 v = self.expr(n.kids[0], "")
@@ -8577,8 +9142,8 @@ class Gen:
                     self.err(f"{short(self.curfn.name)}() returns both None and {v.t}, and None/Optional is only supported for class types")
                 if v.t != "None":
                     self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
-                self.close_withs(0)
-                self.ret_(Val("null", "None"))
+                if not self.leave(0):
+                    self.ret_(Val("null", "None"))
             else:
                 v = self.retval(n.kids[0], self.ret)
                 if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
@@ -8586,13 +9151,13 @@ class Gen:
                 if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes):
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret)
-                self.close_withs(0)
-                self.ret_(Val(v.v, self.ret))
+                if not self.leave(0):  # (the value first: a finally block runs after it is computed)
+                    self.ret_(Val(v.v, self.ret))
             self.term = True
         elif k == "break" or k == "continue":
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
-            self.close_withs(self.wdepth[-1])
+            self.leave(self.wdepth[-1])
             self.br(self.loops[-1].exit if k == "break" else self.loops[-1].step)
         elif k == "global":
             for nm in n.kids:
@@ -8612,6 +9177,8 @@ class Gen:
             self.place(l2)
         elif k == "raise":
             self.raise_stmt(n)
+        elif k == "try":
+            self.try_(n)
         elif k == "del":
             for dt in n.kids:
                 if dt.kind == "name":
@@ -8627,19 +9194,24 @@ class Gen:
                     self.err("only 'del list[i]' and 'del dict[key]' are supported")
         elif k == "with":
             # with open(p) as f: the file closes when the block is left, at its end or through
-            # break, continue or return (an error ends the program, and exit flushes every file)
-            n0 = len(self.withs)
+            # break, continue or return. In a program that has a try, an exception that leaves
+            # the block closes it too: it is an unwind action while the block runs (a landing pad
+            # runs it, and so does an exception that nothing catches); in another, an error ends
+            # the program, and exit flushes every file
+            n0 = len(self.exits)
             for it in n.kids[:-1]:
                 v = self.expr(it.kids[0], "")
                 if v.t != "file":
                     self.err(f"'with' is supported for files only (with open(...) as f:), not {v.t}")
+                if self.eh:
+                    self.rt("pys_unwind_file", "void", [f"ptr {v.v}"])
                 if len(it.kids) == 2:
                     self.assign(it.kids[1], v)
-                self.withs.append(v.v)
+                self.exits.append(Exit("with", v.v, self.handler))
             self.stmts(n.kids[-1].kids)
             if not self.term:
-                self.close_withs(n0)
-            self.withs = self.withs[:n0]
+                self.leave(n0)
+            self.exits = self.exits[:n0]
         elif k == "anyall":
             hit = self.label()
             go = self.label()
@@ -9450,7 +10022,7 @@ class Gen:
             if not empty and spec.kind == "str":
                 self.err("unsupported format string passed to NoneType.__format__")
             return self.to_str(v)
-        if v.t in self.classes or v.t == "file":
+        if v.t in self.classes or v.t == "file" or v.t == "exc":
             if spec.kind == "str":
                 self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
             # a computed spec: str(v) when it turns out empty, TypeError otherwise
@@ -9944,6 +10516,12 @@ class Gen:
                 self.err(f"'{f.s}' is a variable, so it cannot be called")
             if f.s in self.unsupported:
                 self.err(self.unsupported[f.s])
+            if f.s in EXCEPTIONS and EXCEPTIONS[f.s] != "-":
+                # an exception made, not raised (raise e raises it)
+                vals = [self.expr(a, "") for a in self.exc_args(n)]
+                if f.s == "SystemExit":
+                    return self.exit_value(vals)
+                return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
             return self.builtin(f.s, args, want)
         if f.kind == "attr":
             path = self.dotted(f)
@@ -10611,6 +11189,8 @@ class Gen:
             return Val(self.sconst("None"), "str")
         if t in self.classes:
             return self.obj_str(v, "__str__")
+        if t == "exc":
+            return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
         return self.repr(v)
 
     def obj_str(self, v: Val, m: str) -> Val:
@@ -10648,6 +11228,8 @@ class Gen:
             return Val(self.sconst("None"), "str")
         if v.t == "file":
             self.err(f"cannot convert {v.t} to str")
+        if v.t == "exc":
+            return Val(self.rt("pys_exc_repr", "ptr", [f"ptr {v.v}"]), "str")
         return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t))}"]), "str")
 
 

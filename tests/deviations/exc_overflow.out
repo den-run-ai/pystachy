@@ -1,0 +1,5 @@
+1000000000000
+caught: integer result does not fit in 64 bits
+finally runs first
+OverflowError: integer result does not fit in 64 bits
+[exit 1]

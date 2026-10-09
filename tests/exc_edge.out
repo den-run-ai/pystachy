@@ -1,0 +1,7 @@
+['body 0', 'finally caught 0', 'inner finally 0', 'finally 1', 'inner finally 1']
+1 one
+2 one
+'x' is no number, file closed: False
+1 a
+template raised: list index out of range
+[exit 0]
