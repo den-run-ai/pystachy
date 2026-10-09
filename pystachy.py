@@ -4518,6 +4518,9 @@ for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException Keyboar
 
 # the hidden fields an exception class's objects begin with (see Gen.declare_fields), with their types
 EXCFIELDS = "cls:str str:str args:str code:int hc:bool"
+# the attributes of builtin exception classes that their str(), repr() or exit status read: an
+# exception class's field of that name would be theirs (not supported)
+EXCATTRS: dict[str, str] = {"BaseException": "args", "SystemExit": "code", "OSError": "errno strerror filename filename2", "ImportError": "msg"}
 
 
 def is_excname(s: str) -> bool:
@@ -6325,7 +6328,20 @@ class Gen:
             f.ret = ""
         return f
 
+    def exc_attr(self, ci: ClassInfo, name: str) -> None:
+        # a field name of class ci that is an attribute of its builtin exception class (EXCATTRS): an
+        # error (for an imported module's class, where the program uses it)
+        for b in EXCATTRS:
+            if ci.exc != "" and name in EXCATTRS[b].split() and exc_derives(ci.exc, b):
+                use = "its exit status" if b == "SystemExit" else "its str() and repr()" if b == "BaseException" else "its str()"
+                why = f"a field '{name}' of exception class {short(ci.name)} is not supported: it would be {b}'s own attribute {name}, which decides {use}"
+                if ci.mod == "":
+                    self.err(why)
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+
     def add_field(self, ci: ClassInfo, name: str, t: str) -> None:
+        if name not in ci.ftypes:
+            self.exc_attr(ci, name)
         if name in ci.ftypes:
             if ci.ftypes[name] != t:
                 self.err(f"field '{name}' redeclared with a different type")
@@ -6451,6 +6467,7 @@ class Gen:
             if (k == "assign" or k == "annassign") and st.kids[0].kind == "attr" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == "self":
                 name = st.kids[0].s
                 if name not in ci.ftypes:
+                    self.exc_attr(ci, name)
                     why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
                     t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                     if t == "" and why == "":
