@@ -202,9 +202,11 @@ def spec():
         parts.append("." + str(R.choice([0, 1, 3, 10, 17])))
     if R.randrange(2) == 0:
         parts.append(R.choice("bcdoxXneEfFgGs%a"))
+    elif R.randrange(8) == 0:
+        parts.append(R.choice(["\x00", " ", "\t", "é", "𝄞", "\x7f"]))  # types CPython escapes or rejects
     s = "".join(parts)
     if R.randrange(40) == 0:
-        s = s + R.choice(["x", "1", ".", ",,", "_,"])  # malformed
+        s = s + R.choice(["x", "1", ".", ",,", "_,", "a" * 600 + "x", "<\x005"])  # malformed, long, NUL inside
     return s
 
 

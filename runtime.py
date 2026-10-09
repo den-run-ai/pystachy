@@ -135,6 +135,23 @@ def match(h: str, i: int, n: str) -> bool:
     return True
 
 
+def scan(s: str, c: int, i: int, n: int) -> int:
+    # the first k in [i, n) where byte k of s is c, or -1. (Scans are range loops, which step
+    # with an nsw add, so LLVM can drop byte()'s index check; a while loop's += is checked.)
+    for k in range(i, n):
+        if _rt.byte(s, k) == c:
+            return k
+    return -1
+
+
+def scan_ws(s: str, i: int, n: int, want: bool) -> int:
+    # the first k in [i, n) where ws(byte k) is want, or n
+    for k in range(i, n):
+        if ws(_rt.byte(s, k)) == want:
+            return k
+    return n
+
+
 def search(h: str, n: str, st: int, en: int) -> int:
     # the first i from st on where n occurs in h[:en], or -1: the next occurrence of n's first
     # byte, looked for inline over 16 bytes (dense matches) and then with memchr (sparse ones)
@@ -146,17 +163,16 @@ def search(h: str, n: str, st: int, en: int) -> int:
     i = st
     while i <= last:
         stop = i + 16 if i + 16 <= last else last + 1
-        while i < stop and _rt.byte(h, i) != first:
-            i += 1
-        if i == stop:
-            if i > last:
+        k = scan(h, first, i, stop)
+        if k < 0:
+            if stop > last:
                 return -1
-            i = _rt.find_byte(h, first, i, last + 1)
-            if i < 0:
+            k = _rt.find_byte(h, first, stop, last + 1)
+            if k < 0:
                 return -1
-        if match(h, i, n):
-            return i
-        i += 1
+        if match(h, k, n):
+            return k
+        i = k + 1
     return -1
 
 
@@ -471,6 +487,19 @@ def ulen(s: str) -> int:
     return k
 
 
+def fillrun(r: str, at: int, fill: str, count: int) -> None:
+    # count copies of fill into r from byte at: one copy, then copies of what is there, doubling
+    total = count * len(fill)
+    if total <= 0:
+        return
+    _rt.copy(r, at, fill, 0, len(fill))
+    done = len(fill)
+    while done < total:
+        k = done if done <= total - done else total - done
+        _rt.copy(r, at + done, r, at, k)
+        done += k
+
+
 def pad(s: str, w: int, fill: str, how: int) -> str:
     # how: 0 right, 1 left, 2 center; widths count characters; fill is null for a space
     if not _rt.null(fill) and ulen(fill) != 1:
@@ -484,15 +513,9 @@ def pad(s: str, w: int, fill: str, how: int) -> str:
     if gap > (9223372036854775807 - len(s)) // len(f):
         raise MemoryError
     r = _rt.str_new(len(s) + gap * len(f))
-    at = 0
-    for i in range(gap):
-        if i == left:
-            _rt.copy(r, at, s, 0, len(s))
-            at += len(s)
-        _rt.copy(r, at, f, 0, len(f))
-        at += len(f)
-    if left == gap:
-        _rt.copy(r, at, s, 0, len(s))
+    fillrun(r, 0, f, left)
+    _rt.copy(r, left * len(f), s, 0, len(s))
+    fillrun(r, left * len(f) + len(s), f, gap - left)
     return _rt.str_done(r)
 
 
@@ -516,8 +539,7 @@ def pys_str_zfill(s: str, w: int) -> str:
     if z > 9223372036854775807 - len(s):
         raise MemoryError
     r = _rt.str_new(len(s) + z)
-    for i in range(z):
-        _rt.str_put(r, i, 48)
+    fillrun(r, 0, "0", z)
     _rt.copy(r, z, s, 0, len(s))
     if len(s) > 0 and (_rt.byte(s, 0) == 43 or _rt.byte(s, 0) == 45):
         # a sign moves in front of the zeros
@@ -586,16 +608,25 @@ def pys_str_expandtabs(s: str, size: int) -> str:
 
 
 def pys_str_join(sep: str, l: list[str]) -> str:
+    # iterating (no index checks), and a separator of one byte stored as a byte
+    m = len(sep)
     n = 0
-    for i in range(len(l)):
-        n += len(l[i]) + (len(sep) if i > 0 else 0)
+    for x in l:
+        n += len(x)
+    if len(l) > 1:
+        n += m * (len(l) - 1)
     r = _rt.str_new(n)
     at = 0
-    for i in range(len(l)):
-        if i > 0:
-            _rt.copy(r, at, sep, 0, len(sep))
-            at += len(sep)
-        x = l[i]
+    c = _rt.byte(sep, 0) if m == 1 else -1
+    first = True
+    for x in l:
+        if not first and m > 0:
+            if c >= 0:
+                _rt.str_put(r, at, c)
+            else:
+                _rt.copy(r, at, sep, 0, m)
+            at += m
+        first = False
         _rt.copy(r, at, x, 0, len(x))
         at += len(x)
     return _rt.str_done(r)
@@ -609,23 +640,24 @@ def pys_str_split(s: str, sep: str, maxsplit: int) -> list[str]:
     left = maxsplit if maxsplit >= 0 else 9223372036854775807
     if _rt.null(sep):
         while True:
-            while i < n and ws(_rt.byte(s, i)):
-                i += 1
+            i = scan_ws(s, i, n, False)
             if i >= n:
                 return out
             if left == 0:
                 out.append(s[i:])  # the rest, as it is
                 return out
             left -= 1
-            j = i
-            while j < n and not ws(_rt.byte(s, j)):
-                j += 1
+            j = scan_ws(s, i, n, True)
             out.append(s[i:j])
             i = j
     if len(sep) == 0:
         raise ValueError("empty separator")
+    c = _rt.byte(sep, 0) if len(sep) == 1 else -1
     while left != 0:
-        j = search(s, sep, i, n) if n - i >= len(sep) else -1
+        if c >= 0:
+            j = _rt.find_byte(s, c, i, n)  # one byte: memchr, no search setup per part
+        else:
+            j = search(s, sep, i, n) if n - i >= len(sep) else -1
         if j < 0:
             break
         left -= 1
@@ -760,6 +792,38 @@ def among(c: int, cs: str) -> bool:
     return c == 0 or _rt.find_byte(cs, c, 0, len(cs)) >= 0
 
 
+def ucode(s: str, i: int) -> int:
+    # the code point that starts at byte i (a lone or truncated sequence gives what it has)
+    c = _rt.byte(s, i)
+    if c < 192:
+        return c
+    n = 1 if c < 224 else 2 if c < 240 else 3
+    v = c & (63 >> n)
+    for k in range(1, n + 1):
+        if i + k < len(s):
+            v = (v << 6) | (_rt.byte(s, i + k) & 63)
+    return v
+
+
+def tych(c: int) -> str:
+    # a presentation type in a message, as CPython writes it: '\\x%x' outside 33..127
+    if c > 32 and c < 128:
+        return chr(c)
+    h = ""
+    q = c
+    while True:
+        h = "0123456789abcdef"[q % 16] + h
+        q = q // 16
+        if q == 0:
+            break
+    return "\\x" + h
+
+
+def known(c: int, cs: str) -> bool:
+    # whether code point c is one of the ASCII codes cs
+    return c > 0 and c < 128 and _rt.find_byte(cs, c, 0, len(cs)) >= 0
+
+
 def tyname(kind: int) -> str:
     return "int" if kind == 0 else "bool" if kind == 1 else "float" if kind == 2 else "str"
 
@@ -858,20 +922,22 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
             p += 1
             if prec > 100000000:
                 raise ValueError("Too many decimal digits in format string")
-    if n - p > 1:
+    if n - p > 1 and ulen(spec[p:]) > 1:
         raise ValueError(f"Invalid format specifier '{spec}' for object of type '{tyname(kind)}'")
-    ty = _rt.byte(spec, p) if p < n else 0
-    if ty == 0 and kind == 3:
+    ty = ucode(spec, p) if p < n else -1  # -1: no type; an explicit NUL is 0
+    if ty < 0 and kind == 3:
         ty = 115
-    if ty == 0 and kind != 2:
+    if ty < 0 and kind != 2:
         ty = 100
-    if sep != 0 and not among(ty, "defgEFG%") and not (sep == 95 and ty != 0 and among(ty, "boxX")):
-        raise ValueError(f"Cannot specify '{chr(sep)}' with '{chr(ty)}'.")
+    if kind == 2 and ty < 0:
+        ty = 0  # a float's default type is NUL, as in CPython
+    if sep != 0 and ty != 0 and not known(ty, "defgEFG%") and not (sep == 95 and known(ty, "boxX")):
+        raise ValueError(f"Cannot specify '{chr(sep)}' with '{tych(ty)}'.")
     body = ""
     pre = 0  # bytes of sign and prefix, before '=' padding
     if kind == 3:
         if ty != 115:
-            raise ValueError(f"Unknown format code '{chr(ty)}' for object of type 'str'")
+            raise ValueError(f"Unknown format code '{tych(ty)}' for object of type 'str'")
         if sign != 0:
             raise ValueError("Space not allowed in string format specifier" if sign == 32 else "Sign not allowed in string format specifier")
         if zneg:
@@ -881,7 +947,7 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
         if align == 61:
             raise ValueError("'=' alignment not allowed in string format specifier")
         body = sv[: uoff(sv, prec)] if prec >= 0 else sv
-    elif kind <= 1 and ty != 0 and among(ty, "bcdoxXn"):
+    elif kind <= 1 and known(ty, "bcdoxXn"):
         if prec >= 0:
             raise ValueError("Precision not allowed in integer format specifier")
         if zneg:
@@ -918,8 +984,8 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
     else:
         # a float, or an int with a float type
         x = fv if kind == 2 else float(iv)
-        if ty != 0 and not among(ty, "eEfFgGn%"):
-            raise ValueError(f"Unknown format code '{chr(ty)}' for object of type '{tyname(kind)}'")
+        if (ty != 0 or kind != 2) and not known(ty, "eEfFgGn%"):
+            raise ValueError(f"Unknown format code '{tych(ty)}' for object of type '{tyname(kind)}'")
         neg = math.copysign(1.0, x) < 0.0 and not math.isnan(x)
         m = -x if neg else x
         t = pys_fmt_float(m, ty, prec, 1 if alt else 0)
@@ -938,10 +1004,18 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
     if ln >= width:
         return body
     gap = width - ln
-    if align == 61:
-        return body[:pre] + fill * gap + body[pre:]
+    f = len(fill)
+    if gap > (9223372036854775807 - len(body)) // f:
+        raise MemoryError
+    # the result is built in place, with '=' padding after the sign and prefix (pre)
     left = 0 if align == 60 else gap // 2 if align == 94 else gap
-    return fill * left + body + fill * (gap - left)
+    hd = pre if align == 61 else 0
+    r = _rt.str_new(len(body) + gap * f)
+    _rt.copy(r, 0, body, 0, hd)
+    fillrun(r, hd, fill, left)
+    _rt.copy(r, hd + left * f, body, hd, len(body) - hd)
+    fillrun(r, left * f + len(body), fill, gap - left)
+    return _rt.str_done(r)
 
 
 def pys_format_str(s: str, spec: str) -> str:
