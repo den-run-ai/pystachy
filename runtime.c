@@ -1837,7 +1837,7 @@ static const char *errcls(int e) {     /* CPython's OSError subclass for an errn
     e == EAGAIN || e == EALREADY || e == EINPROGRESS ? "BlockingIOError" : e == ESRCH ? "ProcessLookupError" :
     e == ETIMEDOUT ? "TimeoutError" : "OSError";
 }
-static const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
+static inline __attribute__((always_inline)) const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
   snprintf(b, 160, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); return b;
 }
 static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
