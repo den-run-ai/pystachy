@@ -9030,6 +9030,8 @@ class Gen:
             if x not in EXCBASES:
                 self.err(f"name '{short(c.s)}' is not defined" if c.s not in PYBUILTINS else "catching classes that do not inherit from BaseException is not allowed")
             names.append(x)
+        if t.kind == "tuple" and len(names) == 0:
+            return "\x01\x01"  # (an empty tuple catches nothing)
         if len(names) == 0 or "BaseException" in names:
             return ""
         out: list[str] = []
@@ -9050,7 +9052,7 @@ class Gen:
         # that every class it names derives from (the name is the exception's object), else exc
         t = h.kids[0]
         cs = t.kids if t.kind == "tuple" else [t]
-        c = cs[0].s if t.kind != "omit" else ""
+        c = cs[0].s if t.kind != "omit" and len(cs) > 0 else ""
         while c in self.classes:
             ok = True
             for x in cs:
