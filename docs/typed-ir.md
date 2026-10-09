@@ -46,9 +46,11 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     its one terminator.
 >   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
 >     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
->     stayed empty. Raw ops, most of the IR, so need none. With that, the native self-compile's
->     live heap at its last collection is 40.8 MiB (17.0 before the IR), and its time 1.15 to
->     1.2 times what it was.
+>     stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
+>     function's IR (blocks, slots, loops, cold blocks) once it is lowered, keeping its summary.
+>     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
+>     before the IR; 40.8 while the IR was kept to the end), its peak 77.2 MiB (71.6), and its
+>     time 1.15 to 1.2 times what it was.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
