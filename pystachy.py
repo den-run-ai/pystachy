@@ -4801,17 +4801,17 @@ def optimizations() -> dict[str, bool]:
 def rawfx(s: str, fa: dict[str, bool]) -> int:
     # the effects (FX bits) of a raw op, whose LLVM text s loads, stores or computes: a load or a
     # store of a slot (%name.N, an alloca, which is never address-taken) has none, of a global
-    # (@name) rG or wG, of an object's field or flag (an address in fa, Gen.fields) rO or wO; one
+    # (@name) rG or wG, of an object's field or flag (an address in fa, IFn.fa) rO or wO; one
     # through another address may read (RAWR) or write (RAWW) a list or a dict
     st = s.startswith("store ")
-    if not st and " = load " not in s:
+    if not st and not s.startswith("load ", s.find(" = ") + 3):
         return 0
-    a = s[s.rfind(" ") + 1 :]  # the address, the last word of "load T, ptr A" and "store T V, ptr A"
-    if a.startswith("@"):
+    a = s.rfind(" ") + 1  # where the address is: the last word of "load T, ptr A" and "store T V, ptr A"
+    if s.startswith("@", a):
         return FXBIT["wG"] if st else FXBIT["rG"]
-    if "." in a:
+    if s.find(".", a) >= 0:
         return 0  # (a temporary, %tN, has no dot)
-    if a in fa:
+    if len(fa) > 0 and s[a:] in fa:
         return FXBIT["wO"] if st else FXBIT["rO"]
     return RAWW if st else RAWR
 
@@ -5326,7 +5326,9 @@ class Ins:
         # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
         # exception a raise raises; ovf's operator + - *
         self.s = s
-        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1)
+        # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1), the
+        # number of the value a raw op defines (%tN; 0: none)
+        self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
         # is U when it holds a class (O<id>)
         self.x = ""
@@ -5377,6 +5379,7 @@ class IFn:
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
+        self.fa: dict[str, bool] = {}  # the values that are addresses of an object's field or flag (Gen.fgep)
 
 
 class Frame:
@@ -5752,7 +5755,9 @@ class Gen:
 
     def ins(self, s: str) -> str:
         r = self.tmp()
-        self.emit(f"{r} = {s}")
+        i = Ins("raw", "", f"{r} = {s}")
+        i.k = self.n
+        self.add(i)
         return r
 
     def place(self, l: str) -> None:
@@ -6375,14 +6380,19 @@ class Gen:
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
-        i = ci.fpos[name]
-        return Val(self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}"), ci.ftypes[name])
+        return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
+
+    def fgep(self, o: Val, i: int) -> str:
+        # the address of field or flag i of object o (IFn.fa holds it, for rawfx)
+        r = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}")
+        self.fn.fa[r] = True
+        return r
 
     def getfield(self, o: Val, p: Val, name: str) -> Val:
         # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
         ci = self.classes[o.t]
         if name in ci.fflag:
-            f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
+            f = self.fgep(o, ci.fflag[name])
             self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
         return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
 
@@ -6390,7 +6400,7 @@ class Gen:
         self.emit(f"store {lt(p.t)} {self.coerce(v, p.t).v}, ptr {p.v}")
         ci = self.classes[o.t]
         if name in ci.fflag:
-            self.emit(f"store i1 true, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
+            self.emit(f"store i1 true, ptr {self.fgep(o, ci.fflag[name])}")
 
     # ---- variables
     def global_var(self, g: str, ty: str) -> None:
@@ -7439,17 +7449,16 @@ class Gen:
         for fn in self.fns:
             m = 0
             cs: list[int] = []
-            fa = self.fields(fn)
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "raw":
-                        m |= rawfx(i.s, fa)
+                        m |= rawfx(i.s, fn.fa)
                     elif i.op == "call" and i.s in self.fll:
                         cs.append(self.fll[i.s])
                     elif i.op == "init" and "@init." + i.s in self.fll:
                         cs.append(self.fll["@init." + i.s])
                     else:
-                        m |= self.opfx(i, fa)
+                        m |= self.opfx(i, fn.fa)
             fn.fx = m & ~FXBIT["N"]
             calls.append(cs)
         more = True
@@ -7463,17 +7472,8 @@ class Gen:
                     self.fns[j].fx = m
                     more = True
 
-    def fields(self, fn: IFn) -> dict[str, bool]:
-        # the values of fn that are addresses of an object's field or flag (getelementptr %C.<class>)
-        fa: dict[str, bool] = {}
-        for b in fn.blocks:
-            for i in b.code:
-                if i.op == "raw" and " = getelementptr %C." in i.s:
-                    fa[i.s[: i.s.find(" = ")]] = True
-        return fa
-
     def opfx(self, i: Ins, fa: dict[str, bool]) -> int:
-        # the effects of op i (FX bits) of a function whose field addresses are fa (fields): a
+        # the effects of op i (FX bits) of a function whose field addresses are fa (IFn.fa): a
         # call's and an init's are its callee's summary (IFn.fx: every letter until effects has
         # computed it, and if the callee is not compiled), a raw op's what its text does (rawfx)
         if i.op == "call" or i.op == "init":
@@ -7515,11 +7515,16 @@ class Gen:
         # list.load, which lowers to an inline load. The path goes only to blocks that one
         # branch leads to, so that no other path (from a handler, say) reaches the read. How
         # many reads it rewrote
+        some = False
+        for lp in fn.loops:
+            for s in lp.seqs:
+                some = some or is_list(s.t)
+        if not some:
+            return 0
         at: dict[str, int] = {}
         for j in range(len(fn.blocks)):
             at[fn.blocks[j].label] = j
         np = self.preds(fn)
-        fa = self.fields(fn)
         bad = FXBIT["wL"] | FXBIT["U"]
         n = 0
         for lp in fn.loops:
@@ -7540,7 +7545,7 @@ class Gen:
                             fn.n += 3
                             n += 1
                             break
-                        if self.opfx(i, fa) & bad != 0:
+                        if self.opfx(i, fn.fa) & bad != 0:
                             break
                         if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and np[i.b[0]] == 1:
                             l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
@@ -7768,6 +7773,7 @@ class Gen:
             fn.slots = []
             fn.loops = []
             fn.cold = {}
+            fn.fa = {}
         for op in ["eq", "cmp", "repr"]:
             self.dispatch(op)
         hdr: list[str] = ["; generated by pystachy"]
@@ -10285,7 +10291,7 @@ class Gen:
                 l2 = self.label()
                 self.cbr("true" if hv.v in self.nn else self.ins(f"icmp ne ptr {hv.v}, null"), l1, l2)
                 self.place(l1)
-                fv = self.ins(f"load i1, ptr {self.ins(f'getelementptr %C.{hv.t}, ptr {hv.v}, i32 0, i32 {self.classes[hv.t].fflag[args[1].s]}')}")
+                fv = self.ins(f"load i1, ptr {self.fgep(hv, self.classes[hv.t].fflag[args[1].s])}")
                 e1 = self.cur
                 self.br(l2)
                 self.place(l2)
