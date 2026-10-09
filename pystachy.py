@@ -487,9 +487,8 @@ class Parser:
         if k == "def":
             out.append(self.funcdef())
         elif k == "class":
-            # class C(bases): a class with bases is a "subclass" node (the class, then the bases),
-            # which code generation rejects where it needs the class; the loader makes
-            # class C(object) a plain class where object is the builtin
+            # class C(bases): a "subclass" node (the class, then the bases), which code generation
+            # rejects where it needs the class (class C(object): see Loader.deftime)
             self.p += 1
             name = self.expect("id").text
             bases: list[Node] = []
@@ -961,8 +960,7 @@ class Parser:
     def test(self) -> Node:
         line = self.line()
         if self.eat("lambda"):
-            # lambda params: body (kids: the parameter names, then the body; s is "=" if a
-            # parameter has a default value)
+            # lambda params: body (kids: the parameter names, then the body; s: "=" if one has a default)
             n = mk("lambda", "", line, [])
             while not self.eat(":"):
                 if self.eat("*") or self.eat("**") or self.eat("/") or self.eat(","):
@@ -1388,8 +1386,12 @@ for _k in ("ArithmeticError AssertionError AttributeError BaseException BaseExce
            "sorted staticmethod str sum super tuple type vars zip").split():
     PYBUILTINS[_k] = True
 MODNAMES: dict[str, bool] = {}  # and the names CPython binds in every module
-for _k in "__name__ __debug__ __file__ __doc__ __spec__ __loader__ __package__ __builtins__ __cached__".split():
+for _k in "__name__ __debug__ __file__ __doc__ __spec__ __loader__ __package__ __builtins__ __cached__ __import__ __build_class__".split():
     MODNAMES[_k] = True
+# what an annotation that CPython evaluates may hold (Loader.not_type): these nodes, '|' of the
+# first five, subscripts of the first two
+ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred"]
+GENERICS: list[str] = ["list", "dict", "tuple", "set", "frozenset", "type"]
 
 
 # modules built into CPython 3.13 (as Debian and Ubuntu build it, sys.builtin_module_names): a
@@ -1459,7 +1461,7 @@ class Loader:
         self.curdef = ""  # the def whose body imports() is in
         self.fk: dict[str, str] = {}  # the bindings of the function being qualified
         self.lazyann = False  # the module deftime() walks imports annotations from __future__
-        self.called = False  # and its code may have called a function by now
+        self.called = 0  # and its code may have called a function by now (1), or imported a module (2)
         self.dm = Mod("", "", "")  # (that module)
         self.bdecos: dict[int, bool] = {}  # the decorators, by line, that surely name a builtin
 
@@ -1496,9 +1498,11 @@ class Loader:
             self.late_aliases(x)
         for x in self.order:
             self.lazyann = False
-            self.called = False
+            self.called = 0
             self.dm = x
-            self.deftime(x, x.body.kids, [{}, {}, {}, {}], "")
+            env: list[dict[str, bool]] = [{}, {}, {}, {}]  # (a package binds __path__, annotations __annotations__)
+            mark((["__path__"] if x.pdir != "" else []) + (["__annotations__"] if has_kind(x.body, "annassign") else []), env[0], env[1], [])
+            self.deftime(x, x.body.kids, env, "", [], True)
         for x in self.order:
             self.qstmts(x, x.body.kids, {}, False)
         return self.order
@@ -1652,22 +1656,27 @@ class Loader:
             if st.kind != "def" and st.kind != "class" and st.kind != "subclass" and refers(st, nm):
                 fail(f"name '{nm}' is used before '{nm} = {al.kids[1].s}' binds it (not supported for an alias of a function or class)", st.line)
 
-    def deftime(self, m: Mod, body: list[Node], env: list[dict[str, bool]], cls: str) -> None:
-        # CPython evaluates a def statement's decorators, defaults and annotations, and a class
-        # statement's decorators and bases, and runs its body, also for what the program never
-        # uses: what they read must be bound then. env: the names surely bound so far, those bound
-        # on some path, then a class body's own (in class body cls). An annotation (unless imported
-        # from __future__) needs surely bound names; the rest, in an imported module, may also read
-        # its variables and functions that may be unbound, checked as they run (Gen.effect, read)
+    def deftime(self, m: Mod, body: list[Node], env: list[dict[str, bool]], cls: str, added: list[str], top: bool) -> None:
+        # CPython evaluates a def statement's decorators, defaults and annotations, a class
+        # statement's decorators and bases, and runs its body, used or not: what they read must be
+        # bound then. env: the names surely bound so far, those bound on some path, then a class
+        # body's own (in class body cls). An annotation (unless imported from __future__) needs
+        # surely bound names; the rest, in an imported module, may read its variables and functions
+        # that may be unbound (checked as they run: Gen.effect, read). added: the names body binds
+        # that were not surely bound, unbound after a block (not top) but what both if branches bind
         mod = f"when module '{m.name}' is imported" if m.name != "" else ""
+        sure = env[2] if cls != "" else env[0]
+        maybe = env[3] if cls != "" else env[1]
         for st in body:
             k = st.kind
-            if not self.called and (calls(st, m) or (m.name != "" and has_kind(st, "uimport"))):
-                # (a function's global statement may bind names from the first call on; an import
-                # may call back into an imported module, not into the main program)
-                for nm in m.fnglobal:
-                    env[1][nm] = True
-                self.called = True
+            imp = top and cls == "" and m.name != "" and self.called < 2 and has_kind(st, "uimport")
+            if imp or (top and cls == "" and self.called == 0 and calls(st, m)):
+                # (from a first call on, a function's global statement may bind names; from a first
+                # import, a module that imports this one may also assign its builtin names: m.object = 5)
+                for nm in m.kinds:
+                    if nm in m.fnglobal or (imp and nm in PYBUILTINS):
+                        env[1][nm] = True
+                self.called = 2 if imp else 1
             for a in st.kids if k == "import" else []:
                 self.lazyann = self.lazyann or a.kids[0].s == "__future__.annotations"
             if k == "subclass" and len(st.kids) == 2 and st.kids[1].kind == "name" and st.kids[1].s == "object" and "object" not in env[1] and "object" not in env[3]:
@@ -1676,9 +1685,6 @@ class Loader:
                 st.kids = st.kids[0].kids
                 k = "class"
             c = st.kids[0] if k == "subclass" else st
-            inner: dict[str, bool] = {"__module__": True, "__qualname__": True}  # (and a generic class's type parameters)
-            for t in st.kids[1].s.split() if k == "subclass" and st.kids[1].kind == "typeparams" else []:
-                inner[t] = True
             for x in c.kids[3:] if k == "def" else c.kids[1:] if k == "class" or k == "subclass" else []:
                 if x.s.startswith("?"):
                     fail("unsupported decorator: only a dotted name or a call of one is supported (PEP 614)", x.line)
@@ -1687,32 +1693,59 @@ class Loader:
                     self.bdecos[x.line] = True  # (the builtin, whatever the module binds later: qdeco)
                 if mod != "" and x.s != "async":
                     self.reads(x.kids[0] if len(x.kids) > 0 else mk("name", root, x.line, []), env, f"CPython evaluates decorator @{x.s} {mod}", False)
+            names: list[str] = []
             if k == "def":
                 for p in st.kids[0].kids + [mk("param", "", st.line, [st.kids[1], mk("noann", "", st.line, [])])]:
                     self.ann(p.kids[0], env, "the def statement")
                     if mod != "":
                         self.reads(p.kids[1], env, f"CPython evaluates this default value {mod}", False)
             elif k == "class" or k == "subclass":
+                inner: dict[str, bool] = {"__module__": True, "__qualname__": True}  # (and a generic class's type parameters)
+                mark((st.kids[1].s if k == "subclass" and st.kids[1].kind == "typeparams" else "").split() + (["__annotations__"] if has_kind(c.kids[0], "annassign") else []), inner, {}, [])
                 for b in st.kids[1:] if mod != "" and k == "subclass" else []:
                     self.reads(b, [env[0], env[1], inner, inner], f"CPython evaluates the bases of class {st.s} {mod}", False)
-                self.deftime(m, c.kids[0].kids, [env[0], env[1], inner, dict(inner)], st.s)
+                self.deftime(m, c.kids[0].kids, [env[0], env[1], inner, dict(inner)], st.s, [], True)
             elif k == "annassign":
                 self.ann(st.kids[1], env, "the class body" if cls != "" else "the annotated assignment")
-            for i in range(len(st.kids) if cls != "" and k != "def" and k != "global" and k != "nonlocal" else 0):
-                # (a class body's other statements: what they read, not the names they bind)
-                e = st.kids[i]
-                target = ((k == "assign" or k == "pass") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0)
-                if e.kind == "block" or e.kind == "except":
-                    self.deftime(m, e.kids if e.kind == "block" else e.kids[1].kids, [env[0], env[1], dict(env[2]), env[3]], cls)
-                elif mod != "" and not (target and (e.kind == "name" or e.kind == "tuple")) and not (k == "annassign" and i == 1):
-                    self.reads(e.kids[0] if e.kind == "withitem" else e, env, f"CPython runs this statement of the body of class {cls} {mod}", False)
-            settle([st], env[2] if cls != "" else env[0], env[3] if cls != "" else env[1])
-            dels: dict[str, bool] = {}
-            deleted([st], dels)
-            for nm in dels:
-                env[2 if cls != "" else 0].pop(nm, False)
-                if k == "del":
-                    env[3 if cls != "" else 1].pop(nm, False)  # (surely unbound)
+            first: dict[str, bool] = {}
+            for i in range(len(st.kids) if k != "def" and k != "class" and k != "subclass" else 0):
+                x = st.kids[i]
+                tgt: list[str] = [x.s] if x.kind == "except" and x.s != "" else []
+                if x.kind == "block" or x.kind == "except":
+                    # (a for's, with's or except's name is bound in its block; after an if, what both bind)
+                    if k == "for" and i == 2:
+                        names_in(st.kids[0], tgt)
+                    for w in st.kids if k == "with" else []:
+                        if w.kind == "withitem" and len(w.kids) == 2:
+                            names_in(w.kids[1], tgt)
+                    inside: list[str] = []
+                    mark(tgt, sure, maybe, inside)
+                    self.deftime(m, x.kids if x.kind == "block" else x.kids[1].kids, env, cls, inside, False)
+                    for nm in inside:
+                        sure.pop(nm, False)
+                        if k == "if" and i == 1:
+                            first[nm] = True
+                        elif k == "if" and nm in first:
+                            names.append(nm)
+                elif (k == "annassign" and i == 1) or k == "global" or k == "nonlocal":
+                    continue
+                elif ((k == "assign" or k == "pass") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0):
+                    names_in(x, names if k != "for" and (k != "annassign" or len(st.kids) == 3) else tgt)  # (an alias is a "pass")
+                elif k == "import":
+                    names.extend([x.s] if x.kids[0].s != "builtins." + x.s else [])  # (from builtins import len rebinds nothing)
+                elif k == "del":
+                    names_in(x, tgt)
+                    for nm in tgt:
+                        sure.pop(nm, False)
+                        if top:
+                            maybe.pop(nm, False)  # (surely unbound)
+                else:
+                    if k == "augassign" and i == 0:
+                        names_in(x, names)
+                    if cls != "" and mod != "":
+                        # (what a class body's other statements read)
+                        self.reads(x.kids[0] if x.kind == "withitem" else x, env, f"CPython runs this statement of the body of class {cls} {mod}", False)
+            mark(names + (st.s.split() if k == "def" or k == "class" or k == "subclass" or k == "uimport" else []), sure, maybe, added)
 
     def ann(self, n: Node, env: list[dict[str, bool]], where: str) -> None:
         # an annotation, which CPython evaluates when where runs (a string is a forward reference)
@@ -1724,20 +1757,41 @@ class Loader:
         # those of a lambda's body or of a comprehension's own scope
         k = e.kind
         nm = e.s
-        if ann and (k == "call" or k == "lambda" or k == "listcomp" or k == "nestedcomp" or k == "asynccomp"):
-            fail(f"{'a call' if k == 'call' else 'a lambda or comprehension'} in an annotation is not supported ({what})", e.line)
-        if k == "noann" and len(e.kids) > 0:
-            # an annotation that mentions the def's type parameters (see Parser.funcdef)
-            tps = dict(env[2])
-            for t in nm.split():
-                tps[t] = True
-            self.reads(e.kids[0], [env[0], env[1], tps, env[3]], what, ann)
+        if ann and self.not_type(e):
+            fail(f"an annotation that is not a type is not supported: only classes, typing's names, their subscripts and '|' of them ({what})", e.line)
+        tps: list[str] = []
+        mark(nm.split() if k == "noann" else [], env[2], {}, tps)  # (the def's type parameters: Parser.funcdef)
         if k == "name" and "$" not in nm and nm not in env[0] and nm not in env[2] and nm not in PYBUILTINS and nm not in MODNAMES:
             maybe = nm in env[1] or nm in env[3]
-            if ann or not maybe or (self.dm.kinds.get(nm, "") != "v" and self.dm.kinds.get(nm, "") != "f"):
+            if ann or (self.dm.kinds.get(nm, "") != "v" and self.dm.kinds.get(nm, "") != "f"):
                 fail(f"name '{nm}' {'may be unbound, which is not supported' if maybe else 'is not defined'} ({'import it from typing' if ann and nm in TYPING else what})", e.line)
-        for kid in e.kids[2:3] if k == "listcomp" or k == "nestedcomp" or k == "asynccomp" else [] if k == "lambda" or k == "noann" else e.kids:
+        for kid in e.kids[2:3] if k == "listcomp" or k == "nestedcomp" or k == "asynccomp" else [] if k == "lambda" else e.kids:
             self.reads(kid, env, what, ann)
+        for t in tps:
+            env[2].pop(t, False)
+
+    def not_type(self, e: Node) -> bool:
+        # may annotation node e run code of the program, or raise, when CPython evaluates it: a
+        # variable, a call, an operator but '|' of types, a subscript of what is not typing's or a
+        # builtin generic
+        k = e.kind
+        b = e.kids[0] if k == "index" or k == "binop" or k == "unary" else e
+        if k == "binop":
+            return e.s != "|" or b.kind not in ANNKINDS[:5] or e.kids[1].kind not in ANNKINDS[:5]
+        if k == "unary":
+            return e.s != "-" or (b.kind != "int" and b.kind != "float")  # (Literal[-1])
+        if k == "index" and (b.kind not in ANNKINDS[:2] or self.kind_of(b) == "f" or self.kind_of(b) == "c" or self.kind_of(b).startswith("a:")):
+            return True
+        if k == "attr" and self.kind_of(b.kids[0]).startswith("b:") and not self.kind_of(b.kids[0]).startswith("b:typing"):
+            return True  # (a builtin module may lack the attribute)
+        return k not in ANNKINDS or self.kind_of(b) == "v" or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)
+
+    def kind_of(self, e: Node) -> str:
+        # what a name, or an attribute of a user module (a.b), is bound to in module dm, or ""
+        if e.kind == "name":
+            return self.dm.kinds.get(e.s, "")
+        b = self.kind_of(e.kids[0]) if e.kind == "attr" else ""
+        return self.mods[b[2:]].kinds.get(e.s, "") if b.startswith("m:") and b[2:] in self.mods else ""
 
     def simplify(self, m: Mod, blk: Node) -> None:
         # what the loader decides about blk before anything else: in an imported module,
@@ -1893,6 +1947,8 @@ class Loader:
             if st.s.startswith("from."):
                 path = self.relative(m, st.s, path, line)
             elif builtin_module(path):
+                if not infn and m.kinds.get(a.s, "") == "v":
+                    fail(f"'{a.s}' is bound both as a variable and as a function, class or import (not supported)", line)
                 if a.s == "*":
                     fail(f"'from {path} import *' is not supported", line)
                 self.bind(m, a.s, "b:" + a.kids[0].s, infn)
@@ -2120,7 +2176,8 @@ class Loader:
         # a decorator: the first name of its dotted name (unless it surely names a builtin
         # there: deftime), and the arguments of a call
         root = d.s[: d.s.find(".")] if "." in d.s else d.s
-        d.s = (root if d.line in self.bdecos else self.qname(m, root, loc)) + d.s[len(root) :]
+        alias = root not in loc and self.kind(m, root).startswith("a:")  # (shown as written: m$root)
+        d.s = (root if d.line in self.bdecos else m.q + root if alias else self.qname(m, root, loc)) + d.s[len(root) :]
         for c in d.kids:
             for a in c.kids[1:]:
                 self.qexpr(m, a, loc)
@@ -2173,7 +2230,7 @@ class Loader:
                 st.s = self.qname(m, st.s, loc)
                 for d in st.kids[1:]:
                     self.qdeco(m, d, loc)
-                self.qstmts(m, st.kids[0].kids, dict(loc), True)
+                self.qstmts(m, st.kids[0].kids, {} if cls else dict(loc), True)  # (class scopes do not nest)
                 if cls:
                     loc[short(st.s)] = True
             elif cls and k == "assign":
@@ -2366,7 +2423,7 @@ for _k in "int float str bytes complex None True False ellipsis noann omit".spli
 PURE: dict[str, bool] = {}
 for _k in ("abs all any ascii bin bool bytes callable chr complex dict divmod enumerate filter float format frozenset hash hex "
            "int isinstance issubclass iter len list map max min object oct ord pow range repr reversed round set slice sorted "
-           "str sum tuple zip __pys_repr __pys_str __pys_ascii").split():
+           "str sum tuple zip __pys_repr __pys_str __pys_ascii typing.cast os.getcwd os.getenv os.environ.get").split():
     PURE[_k] = True
 # encoding= names of UTF-8 (1) and Latin-1 (2) as CPython's codec lookup finds them (see codec()):
 # a str holds the file's bytes either way, which is what CPython's str holds for a Latin-1 file
@@ -2464,12 +2521,6 @@ def short(name: str) -> str:
     return name[name.rfind("$") + 1 :]
 
 
-def deco_shown(d: Node) -> str:
-    # a decorator's dotted name as the source spells it (deco, not the qualified m$deco)
-    root = d.s[: d.s.find(".")] if "." in d.s else d.s
-    return short(root) + d.s[len(root) :]
-
-
 def is_const(e: Node) -> bool:
     # literals: re-evaluating them on every call is indistinguishable from evaluating once
     k = e.kind
@@ -2562,7 +2613,7 @@ def fbits(text: str) -> str:
 def names_in(t: Node, out: list[str]) -> None:
     if t.kind == "name":
         out.append(t.s)
-    elif t.kind == "tuple":
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
         for k in t.kids:
             names_in(k, out)
 
@@ -2584,37 +2635,13 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
             if kid.kind == "block":
                 collect(kid.kids, out)
 
-def settle(body: list[Node], sure: dict[str, bool], maybe: dict[str, bool]) -> None:
-    # module-level or class-body statements body run: sure gets the names they surely bind (in
-    # both branches of an if too, not in a loop, with or try), maybe those they may bind: by
-    # assignment, import (as the loader rewrote it; from builtins import len rebinds nothing), def,
-    # class or alias (a "pass" with the assignment's kids). Each statement is walked once.
-    for st in body:
-        k = st.kind
-        a: dict[str, bool] = {}
-        b: dict[str, bool] = {}
-        names: list[str] = []
-        if k == "if":
-            settle(st.kids[1].kids, a, maybe)
-            settle(st.kids[2].kids, b, maybe)
-            for nm in a:
-                if nm in b:
-                    sure[nm] = True
-        elif k == "def" or k == "class" or k == "subclass" or k == "uimport":
-            names.extend(st.s.split())
-        for x in st.kids if k != "if" and k != "def" and k != "class" and k != "subclass" else []:
-            if x.kind == "block" or x.kind == "except":
-                settle(x.kids if x.kind == "block" else x.kids[1].kids, a, maybe)
-            elif (x.kind == "withitem" and len(x.kids) == 2) or (k == "for" and x is st.kids[0]):
-                names_in(x.kids[1] if x.kind == "withitem" else x, names)
-            elif k == "import" and x.kids[0].s != "builtins." + x.s:
-                names.append(x.s)
-            elif (not (x is st.kids[-1]) and (k == "assign" or (k == "pass" and len(st.kids) == 2))) or (x is st.kids[0] and ((k == "annassign" and len(st.kids) == 3) or k == "augassign")):
-                names_in(x, names)
-        for nm in names:
-            maybe[nm] = True
-            if k != "for" and k != "with":
-                sure[nm] = True
+def mark(names: list[str], sure: dict[str, bool], maybe: dict[str, bool], added: list[str]) -> None:
+    # names are bound: added gets those that were not surely bound
+    for nm in names:
+        maybe[nm] = True
+        if nm not in sure:
+            sure[nm] = True
+            added.append(nm)
 
 
 def calls(n: Node, m: Mod) -> bool:
@@ -2630,7 +2657,7 @@ def calls(n: Node, m: Mod) -> bool:
 
 
 def top_bindings(body: list[Node]) -> dict[str, int]:
-    # how many module-level statements bind each name (imports aside)
+    # how many module-level statements bind each name
     count: dict[str, int] = {}
     for st in body:
         names: dict[str, bool] = {}
@@ -2638,6 +2665,8 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
             names[st.s] = True
         elif st.kind != "import":
             collect([st], names)
+        for a in st.kids if st.kind == "import" else []:
+            names[a.s] = True
         for nm in names:
             count[nm] = count.get(nm, 0) + 1
     return count
@@ -3359,10 +3388,9 @@ class Gen:
         deco = ""
         for x in d.kids[3:]:
             if x.s != "async" and deco == "":
-                deco = deco_shown(x)
+                deco = short(x.s)
         if deco != "" and not self.lib:
-            # (CPython applies a decorator when the def runs, called or not; in an imported
-            # module, only decorators that do nothing then wait for a call: decorators())
+            # (CPython applies a decorator when the def runs, called or not: see decorators())
             self.err(f"unsupported decorator @{deco}")
         if cls != "" and len(ps) == 0:
             self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
@@ -4108,7 +4136,7 @@ class Gen:
         # why a class of an imported module cannot be declared, or "": its methods need
         # annotated parameters, and its body may hold only fields, methods and a docstring
         if len(st.kids) > 2 or (len(st.kids) > 1 and (len(st.kids[1].kids) > 0 or self.imported(st.kids[1].s) != "dataclasses.dataclass")):
-            return f"its decorator @{deco_shown(st.kids[1])} is not supported"
+            return f"its decorator @{short(st.kids[1].s)} is not supported"
         for b in st.kids[0].kids:
             if b.kind == "def":
                 ps = b.kids[0].kids
@@ -4125,13 +4153,10 @@ class Gen:
                 return "its body holds statements other than fields, methods and a docstring"
         return ""
 
-    # ---- definition time. CPython runs an imported module's def and class statements when the
-    # module's code runs, used or not. Pystachy compiles the default values and class bodies it
-    # supports there, leaves the rest until a use needs it and applies no decorator: right where
-    # what it leaves out runs no code of the program, else an error. What that code reads must be
-    # bound then (Loader.deftime; a variable that may be unbound is checked as it runs). A class
-    # left out is not created, and what builtin operations raise there is not reported (a
-    # documented deviation).
+    # ---- definition time. CPython runs an imported module's def and class statements when its
+    # code runs, used or not. Pystachy compiles the defaults and class bodies it supports there and
+    # leaves the rest out, which must run no code of the program, and applies no decorator. What
+    # that code reads must be bound (Loader.deftime; a variable that may not be is checked here).
     def eager(self, e: str, why: str, does: str) -> None:
         # e: what the code Pystachy leaves out (for the reason why) may run when CPython does that
         if e != "":
@@ -4146,16 +4171,18 @@ class Gen:
             self.line = x.line
             root = x.s.split(".")[0]
             key = self.imported(x.s) if "$" in root else x.s if root in PYBUILTINS else ""
+            key = key[9:] if key.startswith("builtins.") else key
             if short(root) in local:
                 key = "property" if local[short(root)] == "p" and x.s[len(root) :] in [".setter", ".getter", ".deleter"] else ""
             ok = x.s == "async" or (("f" if d.kind == "def" else "c") in INERT_DECOS.get(key, "") and (not inst or ("o" in INERT_DECOS[key] and "__setattr__" not in self.body_names(d))))
             inst = inst or key == "object.__new__"
-            e = f"the module has bound the name '{short(root)}' before" if "$" in root and short(root) in PYBUILTINS else ""
-            for a in x.kids[0].kids[1:] if len(x.kids) > 0 else []:
+            e = f"'{short(root)}' may not be the builtin then" if "$" in root and short(root) in PYBUILTINS and key == "" else ""
+            e = e if e != "" or len(x.kids) == 0 or key == "dataclasses.dataclass" else f"it calls {short(x.s)}()"
+            for a in x.kids[0].kids[1:] if len(x.kids) > 0 and key == "dataclasses.dataclass" else []:
                 # (@dataclass(...) tests the truth of each option)
                 e = e if e != "" else self.effect(a.kids[0], {}, 1) if a.kind == "kw" else "it takes no positional argument"
             if not ok or e != "":
-                self.err(f"unsupported decorator @{deco_shown(x)}: CPython applies it when module '{self.curfn.mod}' is imported" + (f", and {e}" if e != "" else ""))
+                self.err(f"unsupported decorator @{short(x.s)}: CPython applies it when module '{self.curfn.mod}' is imported" + (f", and {e}" if e != "" else ""))
         return key
 
     def class_effect(self, st: Node, why: str) -> None:
@@ -4166,18 +4193,14 @@ class Gen:
         self.decorators(c, c.kids[1:], {})
         for b in st.kids[1:] if st.kind == "subclass" else []:
             self.line = b.line
-            x = b.kids[0] if b.kind == "index" else b
-            e = ""
-            if b.kind == "kw":
-                e = "it passes a metaclass" if b.s == "metaclass" else self.effect(b.kids[0], {}, 2)
-            elif x.kind == "name" and x.s in self.hooks:
+            x = b.kids[0] if b.kind == "index" or b.kind == "kw" else b
+            p = self.path_of(x)
+            e = "it passes a metaclass" if b.kind == "kw" and b.s == "metaclass" else "" if b.kind == "typeparams" else self.effect(x, {}, 2 if b.kind == "kw" else 0)
+            if e == "" and b.kind != "kw" and x.kind == "name" and x.s in self.hooks:
                 h = self.chooks.get(st.line, self.hooks[x.s])  # (a nested class: its base's latest)
                 e = f"it calls {h}()" if h != "" else ""
-            elif b.kind != "typeparams" and not ("$" not in x.s and x.s in PYBUILTINS) and self.imported(self.path_of(x)) == "":
-                # (not a builtin class or typing's: a variable may hold an object whose
-                # __mro_entries__ CPython calls)
-                e = self.effect(x, {}, 1)
-                e = e if e != "" else f"'{short(x.s)}' may not be a class"
+            elif e == "" and b.kind != "kw" and b.kind != "typeparams" and not ("$" not in p and p in PYBUILTINS) and self.imported(p) == "":
+                e = f"its base '{short(p)}' may not be a class"  # (its __mro_entries__ may run)
             self.eager(e if e != "" or b.kind != "index" else self.effect(b.kids[1], {}, 2), why, does)
         self.body_effect(c.kids[0].kids, {}, why, f"runs this statement of the body of class {short(c.s)}")
 
@@ -4199,14 +4222,18 @@ class Gen:
                 self.body_effect(b.kids[1].kids, local, why, does)
                 self.body_effect(b.kids[2].kids, local, why, does)
             elif k == "assign" or k == "annassign" or k == "augassign" or k == "expr":
-                # (CPython calls a class attribute's __set_name__)
-                e = self.effect(b.kids[0], local, 2) if k == "augassign" else ""
-                if e == "" and (k != "annassign" or len(b.kids) == 3):
-                    e = self.effect(b.kids[-1], local, 2 if k == "augassign" else 0 if k == "expr" else 1)
+                # (CPython calls a class attribute's __set_name__, each unpacked one's too)
+                ts: list[str] = []
+                u = 0 if k == "expr" else 2 if k == "augassign" else 1
                 for t in b.kids[:-1] if k == "assign" else b.kids[:1] if k == "augassign" or len(b.kids) == 3 else []:
-                    for x in t.kids if t.kind == "tuple" else [t]:
-                        e = e if e != "" or x.kind == "name" else "it assigns to an attribute or item, which may run code"
-                        local[x.s] = ""
+                    u = 2 if t.kind == "tuple" or t.kind == "list" else u
+                    e = e if e != "" or not (has_kind(t, "attr") or has_kind(t, "index") or has_kind(t, "slice")) else "it assigns to an attribute or item, which may run code"
+                    names_in(t, ts)
+                e = e if e != "" or k != "augassign" else self.effect(b.kids[0], local, 2)
+                if e == "" and (k != "annassign" or len(b.kids) == 3):
+                    e = self.effect(b.kids[-1], local, u)
+                for nm in ts:
+                    local[nm] = ""
                 self.eager(e, why, does)
             elif k == "del":
                 for t in b.kids:
@@ -4214,7 +4241,8 @@ class Gen:
                     local.pop(t.s, "")
                 self.eager(e, why, does)
             elif k != "pass":
-                self.eager(f"Pystachy does not check what a '{k}' statement there runs", why, does)
+                k = "import" if k.endswith("import") else k
+                self.eager(f"Pystachy does not check what {'an' if k[0] in 'aeiou' else 'a'} '{k}' statement there runs", why, does)
 
     def body_names(self, c: Node) -> dict[str, bool]:
         # the names class statement c's body binds, by assignment or def
@@ -4252,65 +4280,93 @@ class Gen:
 
     def objects(self, t: str, use: int) -> bool:
         # may a value of type t be an object of one of the program's classes (use 2: or hold one)
-        return len([x for x in t.replace("[", ",").replace("]", ",").split(",") if x in self.classes and (use == 2 or x == t)]) > 0
+        return len([x for x in t.replace("[", ",").replace("]", ",").split(",") if x in self.classes and (use >= 2 or x == t)]) > 0
+
+    def pure(self, q: str) -> bool:
+        # does a call of q, a builtin or a builtin module's function given builtin values, run no
+        # code of the program and change nothing (or is q a builtin module's value)
+        i = self.imported(q)
+        return ("$" not in q and q in PURE) or i in PURE or i in MODATTRS or i.startswith("math.") or i.startswith("os.path.")
 
     def effect(self, e: Node, local: dict[str, str], use: int) -> str:
         # what evaluating e, which Pystachy leaves out, may run of the program's code ("" if
         # nothing): it may read names (checked here if they may be unbound, as in read()) and apply
         # builtin operations to values of builtin types. use: then CPython 0 stores the value, 1 may
         # call its methods (an operand, an argument, a truth test, a class attribute's
-        # __set_name__), 2 its items' too (a set item, a dict key). local: the class body's names
+        # __set_name__), 2 its items' too (a set item, a dict key), 3 may call it too (an argument
+        # of a builtin function). local: the class body's names
         k = e.kind
         p = self.path_of(e) if k == "name" or k == "attr" else ""
-        if k in INERT or is_const(e) or self.imported(p) != "" or (k == "lambda" and e.s == "") or (k == "badattr" and e.s.endswith("cannot be used as a value")):
+        q = self.imported(p)
+        if use == 3 and (k == "lambda" or (q != "" and not self.pure(p))):
+            return f"it passes {short(p) if p != '' else 'a lambda'} to a function that may call it"
+        if k in INERT or is_const(e) or q != "" or (k == "lambda" and e.s == "") or (k == "badattr" and e.s.endswith("cannot be used as a value")):
             return ""
         if k == "name":
             if (e.chk or self.foreign(e.s)) and e.s in self.gflag:
                 self.flagged[e.s] = True
                 self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{e.s}.def')}, true"), self.unbound(e.s))
             t = self.gtypes.get(e.s, "")
+            if use == 3 and (e.s in self.funcs or e.s in self.hooks or ("$" not in e.s and (e.s in local or (e.s in PYBUILTINS and e.s not in PURE)))):
+                return f"it passes {short(e.s)} to a function that may call it"
             if use == 0 or "$" not in e.s or e.s in self.funcs or e.s in self.hooks or e.s in self.noneglobals or (t != "" and not self.objects(t, use)):
                 return ""
             return f"'{short(e.s)}' may be an object of one of the program's classes, whose methods CPython calls then"
         if k == "attr" and e.kids[0].kind == "name" and (e.kids[0].s in self.hooks or ("$" not in e.kids[0].s and e.kids[0].s in local)):
-            # (a class's attribute: a method, or a field of a class Pystachy compiles, or what?)
+            # (a class's attribute: a method, or a field of a class Pystachy compiles, or what? A
+            # field's class may define __get__, which reading it calls)
             ci = self.classes[e.kids[0].s] if e.kids[0].s in self.classes else ClassInfo("", e)
-            if use == 0 or e.s in ci.methods or (e.s in ci.ftypes and not self.objects(ci.ftypes[e.s], use)):
+            t = ci.ftypes.get(e.s, "")
+            if use < 3 and (e.s in ci.methods or ((t != "" or use == 0) and not self.objects(t, use if use > 0 else 1))):
                 return self.effect(e.kids[0], local, 0)
-            return f"'{short(e.kids[0].s)}.{e.s}' may be an object of one of the program's classes, whose methods CPython calls then"
+            return f"it passes {short(p)} to a function that may call it" if use == 3 else f"'{short(p)}' may be an object of one of the program's classes, whose methods CPython calls then"
         if k == "call":
             f = e.kids[0]
             q = self.path_of(f)
             wrap = "$" not in q and (q == "classmethod" or q == "staticmethod" or q == "property")
-            # (a method of an immutable builtin value)
-            method = f.kind == "attr" and (f.kids[0].kind == "str" or f.kids[0].kind == "int" or f.kids[0].kind == "float" or (f.kids[0].kind == "name" and self.gtypes.get(f.kids[0].s, "") in ["str", "int", "float", "bool"]))
-            if not wrap and not method and not ("$" not in q and q in PURE):
+            # (a method of a builtin value that only reads it)
+            rt = f.kids[0].kind if f.kind == "attr" and f.kids[0].kind in ["str", "int", "float"] else self.gtypes.get(self.path_of(f.kids[0]), "") if f.kind == "attr" else ""
+            method = rt in ["str", "int", "float", "bool"] or (rt.split("[")[0] in ["list", "dict", "tuple"] and f.s in ["get", "keys", "values", "items", "copy", "count", "index"] and not self.objects(rt, 2))
+            if not wrap and not method and not self.pure(q):
                 return f"it calls {short(q)}()" if q != "" else "it calls a function"
-            r = self.effect(f, local, 1) if method else ""
+            r = self.effect(f.kids[0], local, 1) if method else ""
             for a in e.kids[1:]:
-                v = a.kids[0] if a.kind == "kw" else a
-                if r == "" and not wrap and (v.kind == "lambda" or (v.kind == "name" and (v.s in self.funcs or v.s in self.hooks or ("$" not in v.s and (v.s in local or (v.s in PYBUILTINS and v.s not in PURE)))))):
-                    r = f"it passes {short(v.s) if v.kind == 'name' else 'a lambda'} to {f.s if method else short(q)}(), which may call it"
-                r = r if r != "" else self.effect(v, local, 0 if wrap else 2)
+                r = r if r != "" else self.effect(a.kids[0] if a.kind == "kw" else a, local, 0 if wrap else 3)
             return r
         if (k == "index" or k == "slice") and e.kids[0].kind == "name" and self.hooks.get(e.kids[0].s, "") != "":
             return f"it calls {self.hooks[e.kids[0].s]}()"
         if k == "lambda" or k == "badattr":
             return e.s if k == "badattr" else "Pystachy does not check the default values of its lambda"
-        if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict"]:
-            return f"Pystachy does not check what {'a comprehension' if k.endswith('comp') else 'a ' + k + ' expression'} there runs"
+        if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict", "starred", "dstar"]:
+            return f"Pystachy does not check what {'a comprehension' if k.endswith('comp') else 'an assignment expression' if k == 'walrus' else 'a ' + k + ' expression'} there runs"
         for i in range(len(e.kids)):
             # (an operand or set item: 2; a truth test or an attribute's object: 1; the container
-            # indexed: its items too if the item is used; a tuple's, list's or dict's item: if theirs are)
+            # indexed: its items too if the item is used, called if it is; a tuple's, list's or
+            # dict's item, an if-else's or boolop's value: as the whole, unpacked: its items too)
             u = 2 if k != "attr" else 1
-            if k == "boolop" or k == "ifexp" or ((k == "index" or k == "slice") and i == 0):
-                u = (1 if i == 0 else use) if k == "ifexp" else 2 if use == 2 or (k != "boolop" and use == 1) else 1
+            if k == "ifexp" or k == "boolop":
+                u = 1 if k == "ifexp" and i == 0 else use if k == "ifexp" or use > 1 else 1
+            elif (k == "index" or k == "slice") and i == 0:
+                u = 3 if use == 3 else 1 if use == 0 else 2
             elif k == "tuple" or k == "list" or (k == "dict" and i % 2 == 1):
-                u = 2 if use == 2 else 0
+                u = use if use > 1 else 0
+            elif k == "starred" or k == "dstar":
+                u = use if use > 2 else 2
             r = self.effect(e.kids[i], local, u)
             if r != "":
                 return r
         return ""
+
+    def partly(self, e: Node, use: int) -> str:
+        # (part of) a default value Pystachy cannot compile, used as effect() says: CPython evaluates
+        # it, Pystachy the items of displays it can compile; what the rest may run (effect)
+        if self.default_problem(e, "") == "":
+            t = self.expr(e, "").t if not is_const(e) else ""
+            return "an item may be an object of one of the program's classes, whose methods CPython calls then" if use > 0 and self.objects(t, use) else ""
+        r = ""
+        for i in range(len(e.kids) if e.kind in ["tuple", "list", "set", "dict"] else 0):
+            r = r if r != "" else self.partly(e.kids[i], 2 if e.kind == "set" or (e.kind == "dict" and i % 2 == 0) else use)
+        return r if e.kind in ["tuple", "list", "set", "dict"] else self.effect(e, {}, use)
 
     def program(self, mods: list[Mod]) -> str:
         # the modules in the order their code may first run, the main program last
@@ -4919,7 +4975,7 @@ class Gen:
                 if bad != "":
                     # a function of an imported module: the default is an error only where a call
                     # needs it, if evaluating it when the def runs does nothing
-                    self.eager(self.effect(d, {}, 0), bad, "evaluates this default value")
+                    self.eager(self.partly(d, 0), bad, "evaluates this default value")
                     f.dglob[j] = "!" + bad
                     continue
                 v = self.expr(d, t)
@@ -6041,16 +6097,11 @@ class Gen:
                 return sv
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
-            # one character, from a str of length 1 or a code point; a precision and the flags
-            # other than '-' change nothing
-            if v.t == "str":
-                cv = Val(self.rt("pys_pct_char", "ptr", [f"ptr {v.v}"]), "str")
-            else:
-                v = self.as_int(v)
-                if v.t != "int":
-                    self.err("%c requires int or char")
-                self.guard(self.ins(f"icmp ugt i64 {v.v}, 1114111"), "OverflowError: %c arg not in range(0x110000)")
-                cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
+            # one character, of a str or a code point (a precision, flags but '-' change nothing)
+            v = v if v.t == "str" else self.as_int(v)
+            if v.t != "str" and v.t != "int":
+                self.err("%c requires int or char")
+            cv = Val(self.rt("pys_pct_char" if v.t == "str" else "pys_pct_chr", "ptr", [f"{lt(v.t)} {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
         spec = "<" if "-" in flags else ""
         spec += "+" if "+" in flags else " " if " " in flags else ""

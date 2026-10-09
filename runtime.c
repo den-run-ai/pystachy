@@ -362,6 +362,11 @@ Str *pys_pct_char(Str *s) {            /* "%c" % s: s must be one character, as 
   if (!s->len || u8char(s->s, s->len, &cp) != s->len) pys_fail("TypeError: %c requires int or char");
   return s;
 }
+Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded also below 256 (unlike chr()) */
+  if (c < 0 || c > 0x10FFFF) pys_fail("OverflowError: %c arg not in range(0x110000)");
+  char b[4];
+  return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
+}
 Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
   Buf b = {0}; char t[16];
   for (I i = 0; i < r->len;) {
