@@ -17,6 +17,32 @@ This is the preparation step, and none of it is implemented yet. Function names 
 > - #17's cases 2 and 4 (§9, question 4) now compile.
 > - Bugs A to F of §1.3 are fixed in their own commits (wf/defects), outside the IR steps.
 >
+> - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
+>   on the corpus). Where they differ from the text below:
+>   - the op table is `IROPS`, since the lexer's `OPS` holds Python's operators; `raise` has the
+>     letters T R N, and the effect letters are listed in `FX`;
+>   - `rt()` builds `rt` ops, whose operands are typed as their `RUNTIME` entry spells them (`S`,
+>     `*T`, `#`, ...) and whose `Ins.x` holds the descriptor text of a `#` parameter; `call_fn`
+>     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
+>     store or arithmetic, never a call, and the verifier checks that, so effect summaries are
+>     exact in R, A, U and I. `IFn.fx` holds each function's summary, computed by `Gen.effects`
+>     once the program is built (`Gen.opfx` gives one op's letters, `fxs` spells them), and
+>     `IFn.n` the last number its builder gave, for passes that add values or blocks;
+>   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
+>     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
+>     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
+>     coverage and the R, A, U and N letters against runtime.c's call graph;
+>   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
+>   - `anyall` records a `seq` `Loop` too;
+>   - the jump to the first cold block that follows the `ret` a function falls into is a block
+>     without a label (LLVM starts one after a terminator), so that each block still ends with
+>     its one terminator.
+>   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
+>     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
+>     stayed empty. Raw ops, most of the IR, so need none. With that, the native self-compile's
+>     live heap at its last collection is 40.8 MiB (17.0 before the IR), and its time 1.15 to
+>     1.2 times what it was.
+>
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
 > this design was chosen.

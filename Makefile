@@ -63,7 +63,11 @@ ref:
 check-ir: pystachy
 	tools/check_ir.sh ./pystachy $(FILES)
 
+# the compiler's RUNTIME table must agree with runtime.c (tools/check_runtime.py)
+check-runtime:
+	$(PY) tools/check_runtime.py
+
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir clean
+.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir check-runtime clean

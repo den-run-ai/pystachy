@@ -4587,13 +4587,108 @@ METHODS: dict[str, str] = {
     "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:",
     "float.hex": "str:", "float.is_integer": "bool:",
 }
-# the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7): T ends a block, R may
-# raise, N never returns, U may run user code (and so has every effect); an rt op has its runtime
-# function's (RUNTIME); a raw op, LLVM text, may do anything
+# the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7, and FX below): T ends
+# a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
+# summary (IFn.fx); a raw op is LLVM text that loads, stores or computes (never a call)
 IROPS: dict[str, str] = {
-    "raw": "U", "slot": "", "rt": "*", "br": "T", "cbr": "T", "check": "T R", "ret": "T", "ret.none": "T",
-    "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
+    "raw": "rL rD wD rO wO rG wG", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
+    "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
 }
+# Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
+# returns; A allocates (a collection may run, and running out of memory ends the program); U may
+# run user code, and so has every other letter (U?: when the static type, the descriptor of a #
+# parameter, holds a class); I does I/O, or uses the process or global runtime state; rL wL,
+# rD wD, rO wO, rG wG, rF wF read or write lists, dicts, objects' fields and flags, globals and
+# their flags, files. Strings and tuples are immutable, slots are never address-taken, and dict
+# keys are int or str (no user code): they need no letter. N is a property of one op: an effect
+# summary (IFn.fx) leaves it out.
+FX: list[str] = "R N A U I rL wL rD wD rO wO rG wG rF wF".split()
+FXBIT: dict[str, int] = {}
+for _j in range(len(FX)):
+    FXBIT[FX[_j]] = 1 << _j
+# the runtime functions the compiler declares: "result:params|effects|symbol", with types as the
+# compiler spells them and S the receiver, T K V its element, key and value types, *X a value
+# in an 8-byte slot (i64 in the LLVM binding), # the descriptor of the static type the operation
+# works on (Ins.x), %X an LLVM type X that has no spelling (%ovf: {i64, i1}). "" as symbol means
+# pys_<key, with . as _>. rt() checks each call against its entry, tools/check_runtime.py checks
+# the entries against runtime.c (their LLVM types, and the effects its call graph shows)
+RUNTIME: dict[str, str] = {
+    # lists
+    "list.new": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
+    "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
+    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
+    "list.copy": "S:S|A rL|", "list.clear": "None:S|wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
+    "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL U?|",
+    "list.index": "int:S,*T,#,int,int|R A rL U?|", "list.count": "int:S,*T,#|rL U?|", "list.remove": "None:S,*T,#|R rL wL U?|",
+    "list.sort_r": "None:S,#,bool|R A rL wL U?|", "list.minmax": "*T:S,#,bool|R rL U?|",
+    "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
+    "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
+    "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
+    # dicts (a KeyError's message is the repr of an int or str key: no user code)
+    "dict.new": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD|", "dict.getitem": "*V:S,*K|R A rD|",
+    "dict.get": "*V:S,*K,*V|rD|", "dict.set": "None:S,*K,*V|A rD wD|", "dict.pop": "*V:S,*K|R A rD wD|",
+    "dict.pop_default": "*V:S,*K,*V|R A rD wD|", "dict.setdefault": "*V:S,*K,*V|A rD wD|", "dict.clear": "None:S|wD|",
+    "dict.copy": "S:S|A rD|", "dict.from": "S:S|A rD|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
+    "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
+    "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
+    # strings
+    "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
+    "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|A|", "str.strip": "str:S,str|A|",
+    "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int||",
+    "str.endswith": "bool:S,str,int,int||", "str.find": "int:S,str,int,int||", "str.rfind": "int:S,str,int,int||",
+    "str.count": "int:S,str,int,int||", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
+    "str.replace": "str:S,str,str|A|", "str.upper": "str:S|A|", "str.lower": "str:S|A|", "str.swapcase": "str:S|A|",
+    "str.capitalize": "str:S|A|", "str.title": "str:S|A|", "str.casefold": "str:S|A|", "str.isdigit": "bool:S||",
+    "str.isalpha": "bool:S||", "str.isalnum": "bool:S||", "str.isspace": "bool:S||", "str.isupper": "bool:S||",
+    "str.islower": "bool:S||", "str.istitle": "bool:S||", "str.isascii": "bool:S||", "str.isdecimal": "bool:S||",
+    "str.isnumeric": "bool:S||", "str.ljust": "str:S,int,str|R A|", "str.rjust": "str:S,int,str|R A|",
+    "str.center": "str:S,int,str|R A|", "str.zfill": "str:S,int|R A|", "str.partition": "tuple[str,str,str]:S,str|R A|",
+    "str.rpartition": "tuple[str,str,str]:S,str|R A|", "str.removeprefix": "str:S,str|A|", "str.removesuffix": "str:S,str|A|",
+    "str.expandtabs": "str:S,int|A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
+    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|",
+    # numbers
+    "floordiv": "int:int,int|R|", "mod": "int:int,int|R|", "pow": "int:int,int|R|", "powmod": "int:int,int,int|R|",
+    "shl": "int:int,int|R|", "shr": "int:int,int|R|", "idiv": "float:int,int|R|", "fdiv": "float:float,float|R|",
+    "ffloordiv": "float:float,float|R|", "fmod": "float:float,float|R|", "fpow": "float:float,float|R|", "cmp_if": "int:int,float||",
+    "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "floor": "int:float|R|",
+    "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
+    "float.is_integer": "bool:float||", "fabs": "float:float||fabs",
+    "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
+    "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
+    "m.sqrt": "float:float|R|", "m.sin": "float:float|R|", "m.cos": "float:float|R|", "m.tan": "float:float|R|",
+    "m.asin": "float:float|R|", "m.acos": "float:float|R|", "m.atan": "float:float|R|", "m.sinh": "float:float|R|",
+    "m.cosh": "float:float|R|", "m.tanh": "float:float|R|", "m.exp": "float:float|R|", "m.log": "float:float|R|",
+    "m.log2": "float:float|R|", "m.log10": "float:float|R|", "m.fabs": "float:float|R|", "m.log1p": "float:float|R|",
+    "m.expm1": "float:float|R|", "m.exp2": "float:float|R|", "m.cbrt": "float:float|R|", "m.degrees": "float:float||",
+    "m.radians": "float:float||", "m.pow": "float:float,float|R|", "m.atan2": "float:float,float||",
+    "m.hypot": "float:float,float||", "m.fmod": "float:float,float|R|", "m.copysign": "float:float,float||",
+    "m.logb": "float:float,float|R|", "m.trunc": "int:float|R|", "m.gcd": "int:int,int|R|", "m.lcm": "int:int,int|R|",
+    "m.isqrt": "int:int|R|", "m.factorial": "int:int|R|", "m.comb": "int:int,int|R|", "m.perm": "int:int,int|R|",
+    "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||",
+    # any type, by its descriptor
+    "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A rL rD U?|",
+    "format": "str:*T,#,str|R A rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "unpack_check": "None:int,int|R|",
+    # errors and the process
+    "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "realpath": "str:str|R A I|", "getenv": "str:str,str|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
+    "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
+    "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
+    "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
+    # files and the standard streams
+    "write": "None:str,int|R I|", "input": "str:str|R A I|", "open": "file:str,str,str,str,int|R A I|", "std": "file:int||",
+    "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
+    "file.write": "int:S,str|R A I rF wF|", "file.writelines": "None:S,list[str]|R A I rL rF wF|",
+    "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
+    "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|",
+}
+RTSYM: dict[str, str] = {}  # LLVM symbol -> RUNTIME key
+for _k in RUNTIME:
+    _s = RUNTIME[_k][RUNTIME[_k].rfind("|") + 1 :]
+    RTSYM[_s if _s != "" else "pys_" + _k.replace(".", "_")] = _k
 
 
 def lt(t: str) -> str:
@@ -4610,6 +4705,55 @@ def lt(t: str) -> str:
 
 def rtt(t: str) -> str:
     return "i64" if t == "bool" else lt(t)
+
+
+def rtll(t: str) -> str:
+    # the LLVM type of a type of a RUNTIME signature
+    if t.startswith("*"):
+        return "i64"
+    if t == "S" or t == "#":
+        return "ptr"
+    if t == "%ovf":
+        return "{i64, i1}"
+    if t.startswith("%"):
+        return t[1:]
+    return rtt(t)
+
+
+def rtsig(k: str) -> list[str]:
+    # the result and parameter types of runtime function k, as RUNTIME spells them
+    e = RUNTIME[k]
+    c = e.find(":")
+    ps = [e[:c]]
+    for p in e[c + 1 : e.find("|")].split(","):
+        if p != "":
+            ps.append(p)
+    return ps
+
+
+def rtsym(k: str) -> str:
+    s = RUNTIME[k][RUNTIME[k].rfind("|") + 1 :]
+    return s if s != "" else "pys_" + k.replace(".", "_")
+
+
+def runtime_decl(k: str) -> str:
+    ps = rtsig(k)
+    return f"declare {rtll(ps[0])} @{rtsym(k)}({', '.join([rtll(p) for p in ps[1:]])})"
+
+
+def fxmask(letters: str) -> int:
+    # effect letters (FX) as bits; U has every other letter, N none (it is no summary's)
+    m = 0
+    for x in letters.split():
+        if x == "U":
+            return (1 << len(FX)) - 1 - FXBIT["N"]
+        m |= FXBIT[x]
+    return m
+
+
+def fxs(m: int) -> str:
+    # bits of effect letters as letters
+    return " ".join([x for x in FX if m & FXBIT[x] != 0])
 
 
 def tname(t: str) -> str:
@@ -5093,24 +5237,35 @@ class FnInfo:
 # whose fields mean what the op says (docs/typed-ir.md 3.4). Until all of Gen builds ops, most
 # are "raw": one line of LLVM text. Once the whole program is built, lowering prints the LLVM
 # text of each IFn (lower).
+# The lists an op starts with: shared, and never changed (Gen.program checks it). An op that has
+# numbers, operands or labels gets lists of its own (most ops are raw and have none of them).
+NONUMS: list[int] = []
+NOVALS: list[Val] = []
+NOLABELS: list[str] = []
+
+
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
         self.op = op  # a key of IROPS
-        self.t = t  # its result type ("" if it defines no value), or a slot's type
-        # text immediate: for "raw", one line of LLVM text; a slot's name; a runtime operation; a
-        # check's message "Kind: text"; the exception a raise raises; ovf's operator + - *
+        self.t = t  # its result type ("" if it defines no value; an rt op's as RUNTIME spells it), a slot's type
+        # text immediate: for "raw", one line of LLVM text; a slot's name; an rt op's RUNTIME key; the
+        # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
+        # exception a raise raises; ovf's operator + - *
         self.s = s
-        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes)
-        self.r: list[int] = []  # the numbers of the values it defines, given when it was built
-        self.a: list[Val] = []  # operands, in evaluation order
-        self.b: list[str] = []  # labels: the successors of br, cbr and check; a phi's predecessors
+        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1)
+        # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
+        # is U when it holds a class (O<id>)
+        self.x = ""
+        self.r: list[int] = NONUMS  # the numbers of the values it defines, given when it was built
+        self.a: list[Val] = NOVALS  # operands, in evaluation order (an rt op's typed as RUNTIME spells its parameters)
+        self.b: list[str] = NOLABELS  # labels: the successors of br, cbr and check; a phi's predecessors
 
 
 class Blk:
     # one basic block, which becomes one LLVM block
     def __init__(self, label: str):
-        self.label = label  # "entry" or "L<n>"
+        self.label = label  # "entry", "L<n>", or "" for one LLVM starts after a terminator
         self.code: list[Ins] = []
 
 
@@ -5139,6 +5294,10 @@ class IFn:
         # message "Kind: text" -> the label of the block that raises it: one per function and
         # message, numbered at the first check of it, and placed after the function's code
         self.cold: dict[str, str] = {}
+        self.fx = 0  # its effect summary (FX bits), once the whole program is built (Gen.effects)
+        # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
+        # adds values or blocks numbers them after it
+        self.n = 0
 
 
 class Frame:
@@ -5333,9 +5492,22 @@ class Gen:
         self.gcroots: list[str] = []
         self.consts: list[str] = []
         self.strs: dict[str, str] = {}
+        self.strvals: list[str] = []  # the text of each @s.N
         self.decls: dict[str, str] = {}
+        # the runtime functions declared, by RUNTIME key: their types as RUNTIME spells them and
+        # as LLVM types (result first), their declare lines and their symbols
+        self.rtsigs: dict[str, list[str]] = {}
+        self.rtlls: dict[str, list[str]] = {}
+        self.rtdecls: dict[str, str] = {}
+        self.rtsyms: dict[str, str] = {}
+        self.rtfx: dict[str, int] = {}  # and their effects (FX bits), but U?
+        self.rtq: dict[str, bool] = {}  # whether they have U?
+        self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but rt, call and init
+        for op in IROPS:
+            self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
+        self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}
@@ -5389,7 +5561,7 @@ class Gen:
         self.allowq = False  # the read being compiled may see such a type (len(), a truth test)
         self.lkk: dict[str, str] = {}  # a local's holes, space-separated
         self.gkk: dict[str, str] = {}  # a global's
-        self.holes: list[str] = []  # each hole's type, "" until a use shows it
+        self.holes: list[str] = [""]  # each hole's type, "" until a use shows it (0: no hole)
         self.twins: dict[str, str] = {}  # globals that hold the same empty container (X = Y at module level): one type
         self.origin: dict[str, str] = {}  # X -> Y for those, where an annotation of the container belongs
         # code compiled before module code assigns what it reads (a template's function called
@@ -5503,7 +5675,7 @@ class Gen:
     def put(self, i: Ins, k: int) -> None:
         # add i, which defines k values, numbered as k separate instructions would have been
         self.n += 1
-        i.r.append(self.n)
+        i.r = [self.n]
         self.add(i)
         for _ in range(k - 1):
             self.n += 1
@@ -5524,7 +5696,7 @@ class Gen:
 
     def jump(self, l: str) -> None:
         i = Ins("br", "", "")
-        i.b.append(l)
+        i.b = [l]
         self.blk.code.append(i)
 
     def br(self, l: str) -> None:
@@ -5534,9 +5706,8 @@ class Gen:
 
     def cbr(self, c: str, a: str, b: str) -> None:
         i = Ins("cbr", "", "")
-        i.a.append(Val(c, "bool"))
-        i.b.append(a)
-        i.b.append(b)
+        i.a = [Val(c, "bool")]
+        i.b = [a, b]
         self.add(i)
         self.term = True
 
@@ -5544,7 +5715,7 @@ class Gen:
         # return v (of type None: return nothing)
         i = Ins("ret", "", "")
         if v.t != "None":
-            i.a.append(v)
+            i.a = [v]
         self.add(i)
         self.term = True
 
@@ -5554,6 +5725,9 @@ class Gen:
 
     def incoming(self, ph: Ins, v: str, l: str) -> None:
         # the value v of phi ph when control comes from block l
+        if len(ph.b) == 0:
+            ph.a = []
+            ph.b = []
         ph.a.append(Val(v, ph.t))
         ph.b.append(l)
 
@@ -5564,45 +5738,67 @@ class Gen:
     def select(self, c: str, x: Val, y: Val) -> str:
         # c ? x : y, where x and y have the same type
         i = Ins("select", x.t, "")
-        i.a.append(Val(c, "bool"))
-        i.a.append(x)
-        i.a.append(y)
+        i.a = [Val(c, "bool"), x, y]
         self.put(i, 1)
         return f"%t{i.r[0]}"
 
     def rt(self, name: str, ret: str, args: list[str]) -> str:
-        tys: list[str] = []
-        for a in args:
-            tys.append(a[: a.find(" ")])
-        self.decl(name, ret, tys)
-        call = f"call {ret} @{name}({', '.join(args)})"
+        # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
+        # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says
+        k = self.runtime(name)
+        ts = self.rtsigs[k]
+        ll = self.rtlls[k]
+        ok = ret == ll[0] and len(args) == len(ll) - 1
+        i = Ins("rt", ts[0], k)
+        i.a = []
+        for j in range(len(args) if ok else 0):
+            sp = args[j].find(" ")
+            ok = ok and args[j][:sp] == ll[j + 1]
+            v = args[j][sp + 1 :]
+            i.a.append(Val(v, ts[j + 1]))
+            if ts[j + 1] == "#" and v.startswith("@s."):
+                i.x = self.strvals[int(v[3:])]
+        if not ok:
+            fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {self.rtdecls[k]}", 0)
         if ret == "void":
-            self.emit(call)
+            self.add(i)
             return ""
-        return self.ins(call)
+        self.put(i, 1)
+        return f"%t{i.r[0]}"
 
-    def decl(self, name: str, ret: str, tys: list[str]) -> None:
-        self.decls[name] = f"declare {ret} @{name}({', '.join(tys)})"
+    def runtime(self, name: str) -> str:
+        # declare runtime function name (its LLVM symbol) from its RUNTIME entry; its key
+        if name not in RTSYM:
+            fail(f"internal error: no RUNTIME entry for {name}", 0)
+        k = RTSYM[name]
+        if k not in self.rtsigs:
+            self.rtsigs[k] = rtsig(k)
+            self.rtlls[k] = [rtll(p) for p in self.rtsigs[k]]
+            self.rtdecls[k] = runtime_decl(k)
+            self.rtsyms[k] = name
+            fx = RUNTIME[k][RUNTIME[k].find("|") + 1 : RUNTIME[k].rfind("|")]
+            self.rtfx[k] = fxmask(fx.replace("U?", ""))
+            self.rtq[k] = "U?" in fx
+        self.decls[name] = self.rtdecls[k]
+        return k
 
     def hole(self, kind: str) -> Ins:
         # a new list or dict (kind) whose type a later use decides: the op holds a new hole
         i = Ins("rt", f"{kind}[?]" if kind == "list" else "dict[?,?]", f"{kind}.new")
+        i.a = [Val("0", "int")]  # (a dict's key kind: the hole's, when it is lowered)
+        if kind == "dict":
+            i.a.append(Val("0", "int"))
         i.k = len(self.holes)
         self.holes.append("")
-        if kind == "list":
-            self.decl("pys_list_new", "ptr", ["i64"])
-        else:
-            self.decl("pys_dict_new", "ptr", ["i64", "i64"])
+        self.runtime(f"pys_{kind}_new")
         self.put(i, 1)
         return i
 
     def checked(self, op: str, a: str, b: str) -> list[str]:
         # [result, overflowed] of 64-bit a op b (op: + - *), from llvm.s<op>.with.overflow.i64
-        f = f"llvm.{CHECKED[op]}.with.overflow.i64"
-        self.decls[f] = f"declare {{i64, i1}} @{f}(i64, i64)"
+        self.runtime(f"llvm.{CHECKED[op]}.with.overflow.i64")
         i = Ins("ovf", "int", op)
-        i.a.append(Val(a, "int"))
-        i.a.append(Val(b, "int"))
+        i.a = [Val(a, "int"), Val(b, "int")]
         self.put(i, 3)  # (the call's {i64, i1}, then the two extractvalues)
         return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
 
@@ -5612,8 +5808,8 @@ class Gen:
             self.cold[msg] = self.label()
         l = self.label()
         i = Ins("check", "", msg)
-        i.a.append(Val(bad, "bool"))
-        i.b.append(l)
+        i.a = [Val(bad, "bool")]
+        i.b = [l]
         self.add(i)
         self.term = True
         self.place(l)
@@ -5634,6 +5830,7 @@ class Gen:
             return self.strs[s]
         name = f"@s.{len(self.strs)}"
         self.strs[s] = name
+        self.strvals.append(s)
         n = len(s) + 1
         self.consts.append(f'{name} = private unnamed_addr constant {{i64, [{n} x i8]}} {{i64 {n - 1}, [{n} x i8] c"{llstr(s)}\\00"}}, align 8')
         return name
@@ -5646,7 +5843,7 @@ class Gen:
         self.n += 1
         r = f"%{name or 'h'}.{self.n}"
         i = Ins("slot", t, name)
-        i.r.append(self.n)
+        i.r = [self.n]
         self.fn.slots.append(i)
         if name != "":
             self.ltype[name] = t
@@ -5656,7 +5853,7 @@ class Gen:
                 self.lflag[name] = f"%{name}.def.{self.n}"
                 i = Ins("slot", "bool", name)
                 i.k = 1
-                i.r.append(self.n)
+                i.r = [self.n]
                 self.fn.slots.append(i)
         return r
 
@@ -7007,6 +7204,7 @@ class Gen:
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
         self.fn.ps = ps
+        self.fn.n = self.n
         self.fns.append(self.fn)
 
     # ---- lowering: an IFn as LLVM text
@@ -7028,46 +7226,6 @@ class Gen:
             for i in b.code:
                 self.lower_ins(fn, i)
         o.append("}")
-
-    def verify(self, fn: IFn) -> None:
-        # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS; every block ends with its
-        # one terminator; branches go to blocks of fn; a phi starts its block, and its
-        # predecessors are blocks that branch there
-        at: dict[str, int] = {}
-        for j in range(len(fn.blocks)):
-            if fn.blocks[j].label in at:
-                self.bad_ir(fn, fn.blocks[j], "a second block of that name")
-            at[fn.blocks[j].label] = j
-        succ: list[list[str]] = []
-        for b in fn.blocks:
-            out: list[str] = []
-            for j in range(len(b.code)):
-                i = b.code[j]
-                if i.op not in IROPS:
-                    self.bad_ir(fn, b, f"unknown op {i.op}")
-                if ("T" in IROPS[i.op]) != (j == len(b.code) - 1):
-                    self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
-                if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
-                    self.bad_ir(fn, b, "a phi after other ops")
-                if i.op != "phi":
-                    out.extend(i.b)
-                if i.op == "check":
-                    out.append(fn.cold[i.s] if i.s in fn.cold else f"(none for {i.s})")
-            if len(b.code) == 0:
-                self.bad_ir(fn, b, "no terminator")
-            for l in out:
-                if l not in at or l == "entry":
-                    self.bad_ir(fn, b, f"a branch to {l}, which is no block of it")
-            succ.append(out)
-        for b in fn.blocks:
-            for i in b.code:
-                if i.op == "phi":
-                    for l in i.b:
-                        if l not in at or b.label not in succ[at[l]]:
-                            self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
-
-    def bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
-        fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)
 
     def lower_ins(self, fn: IFn, i: Ins) -> None:
         op = i.op
@@ -7100,14 +7258,111 @@ class Gen:
             o.append("  unreachable")
         elif op == "unreachable":
             o.append("  unreachable")
-        elif op == "rt" and i.s == "list.new":
-            o.append(f"  %t{i.r[0]} = call ptr @pys_list_new(i64 0)")
-        elif op == "rt" and i.s == "dict.new":
-            # the key kind of a dict created empty: what its first use showed (0 if nothing did)
-            h = self.holes[i.k]
-            o.append(f"  %t{i.r[0]} = call ptr @pys_dict_new(i64 {1 if h != '' and targs(h)[0] == 'str' else 0}, i64 0)")
+        elif op == "rt":
+            ll = self.rtlls[i.s]
+            vs = [ll[j + 1] + " " + i.a[j].v for j in range(len(i.a))]
+            if i.k > 0 and i.s == "dict.new":
+                # the key kind of a dict created empty: what its first use showed (0 if nothing did)
+                h = self.holes[i.k]
+                vs[0] = f"i64 {1 if h != '' and targs(h)[0] == 'str' else 0}"
+            c = f"call {ll[0]} @{self.rtsyms[i.s]}({', '.join(vs)})"
+            o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+        elif op == "call":
+            c = f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})"
+            o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
+        elif op == "init":
+            o.append(f"  call void @init.{i.s}()")
         else:
             fail(f"internal error: no lowering for IR op {op}", 0)
+
+    # ---- the IR's check (PYSTACHY_IRCHECK=1) and its effect summaries, once the program is built
+    def verify(self, fn: IFn) -> None:
+        # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
+        # no raw op calls (calls are rt, call and init ops, whose effects are known), and call and
+        # init ops call compiled functions; every block ends with its one terminator; branches go
+        # to blocks of fn; a phi starts its block, and its predecessors branch there
+        at: dict[str, int] = {}
+        for j in range(len(fn.blocks)):
+            if fn.blocks[j].label in at:
+                self.bad_ir(fn, fn.blocks[j], "a second block of that name")
+            at[fn.blocks[j].label] = j
+        succ: list[list[str]] = []
+        for b in fn.blocks:
+            out: list[str] = []
+            for j in range(len(b.code)):
+                i = b.code[j]
+                if i.op not in IROPS:
+                    self.bad_ir(fn, b, f"unknown op {i.op}")
+                if ("T" in IROPS[i.op]) != (j == len(b.code) - 1):
+                    self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
+                if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
+                    self.bad_ir(fn, b, "a phi after other ops")
+                if i.op == "rt" and i.s not in RUNTIME:
+                    self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}")
+                if i.op == "raw" and (i.s.startswith("call ") or "= call " in i.s):
+                    self.bad_ir(fn, b, f"a call as LLVM text: {i.s}")
+                if (i.op == "call" and i.s not in self.fll) or (i.op == "init" and "@init." + i.s not in self.fll):
+                    self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
+                if i.op != "phi":
+                    out.extend(i.b)
+                if i.op == "check":
+                    out.append(fn.cold[i.s] if i.s in fn.cold else f"(none for {i.s})")
+            if len(b.code) == 0:
+                self.bad_ir(fn, b, "no terminator")
+            for l in out:
+                if l not in at or l == "entry":
+                    self.bad_ir(fn, b, f"a branch to {l}, which is no block of it")
+            succ.append(out)
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "phi":
+                    for l in i.b:
+                        if l not in at or b.label not in succ[at[l]]:
+                            self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+
+    def bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
+        fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)
+
+    def effects(self) -> None:
+        # each function's effect summary (IFn.fx): the letters of its ops, where a call or an init
+        # counts with its callee's summary; a fixpoint over the call graph, from no letters
+        calls: list[list[int]] = []
+        raw = self.opfxs["raw"]
+        for fn in self.fns:
+            m = 0
+            cs: list[int] = []
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "raw":
+                        m |= raw
+                    elif i.op == "call" and i.s in self.fll:
+                        cs.append(self.fll[i.s])
+                    elif i.op == "init" and "@init." + i.s in self.fll:
+                        cs.append(self.fll["@init." + i.s])
+                    else:
+                        m |= self.opfx(i)
+            fn.fx = m & ~FXBIT["N"]
+            calls.append(cs)
+        more = True
+        while more:
+            more = False
+            for j in range(len(self.fns)):
+                m = self.fns[j].fx
+                for x in calls[j]:
+                    m |= self.fns[x].fx
+                if m != self.fns[j].fx:
+                    self.fns[j].fx = m
+                    more = True
+
+    def opfx(self, i: Ins) -> int:
+        # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx,
+        # once effects has computed it), and every letter if the callee is not compiled
+        if i.op == "call" or i.op == "init":
+            c = i.s if i.op == "call" else "@init." + i.s
+            return self.fns[self.fll[c]].fx if c in self.fll else fxmask("U")
+        if i.op == "rt":
+            return fxmask("U") if self.rtq[i.s] and "O" in i.x else self.rtfx[i.s]
+        return self.opfxs[i.op]
 
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
@@ -7298,9 +7553,14 @@ class Gen:
             if len(done) + len(helped) == before:
                 break
         # the whole program is built: its functions are printed in the order they were completed
+        for j in range(len(self.fns)):
+            self.fll[self.fns[j].f.ll] = j
+        if len(NONUMS) + len(NOVALS) + len(NOLABELS) > 0:
+            fail("internal error: an op changed the lists all ops start with", 0)
         if os.getenv("PYSTACHY_IRCHECK", "") == "1":
             for fn in self.fns:
                 self.verify(fn)
+        self.effects()
         for fn in self.fns:
             self.lower(fn)
         for op in ["eq", "cmp", "repr"]:
@@ -7319,9 +7579,9 @@ class Gen:
         hdr.extend(self.decls.values())
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals
-        hdr.append("declare void @pys_init(i32, ptr, ptr, ptr, i64)")
-        hdr.append("declare void @pys_finish()")
-        hdr.append("declare ptr @llvm.frameaddress.p0(i32)")
+        hdr.append(runtime_decl("init"))
+        hdr.append(runtime_decl("finish"))
+        hdr.append(runtime_decl("frameaddress"))
         hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
         hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
         hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
@@ -8068,9 +8328,8 @@ class Gen:
     def raise_(self, name: str, msg: str, kind: str = "") -> None:
         # raise exception name: the error line is "<kind>: <msg>", where kind is name unless given
         i = Ins("raise", "", name)
-        i.a.append(Val(kind if kind != "" else self.sconst(name), "str"))
-        i.a.append(Val(msg, "str"))
-        self.decl("pys_raise", "void", ["ptr", "ptr"])
+        i.a = [Val(kind if kind != "" else self.sconst(name), "str"), Val(msg, "str")]
+        self.runtime("pys_raise")
         self.add(i)
         self.term = True
 
@@ -8285,10 +8544,10 @@ class Gen:
                 if x.kind == "guard":
                     # an optional import of a module whose code raises ImportError: it returns there
                     self.emit(f"store i1 true, ptr @init.{x.s}.guard")
-                    self.emit(f"call void @init.{x.s}()")
+                    self.add(Ins("init", "", x.s))
                     self.emit(f"store i1 false, ptr @init.{x.s}.guard")
                 else:
-                    self.emit(f"call void @init.{x.s}()")
+                    self.add(Ins("init", "", x.s))
         elif k == "def" or k == "class":
             self.err("nested functions and classes are not supported")
         elif k == "badimport":
@@ -9699,16 +9958,18 @@ class Gen:
         self.line = line
         if f.generic:
             f = self.instance(f, [v.t for v in vals])
-        call = f"call {lt(f.ret)} {f.ll}({', '.join([lt(v.t) + ' ' + v.v for v in vals if v.t != 'None'])})"
+        c = Ins("call", f.ret, f.ll)
+        c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
         if f.ret == "None":
-            self.emit(call)
+            self.add(c)
             return Val("null", "None")
         if f.ll in self.guessed and f.ll != self.curfn.ll:
             self.guessed[self.curfn.ll] = self.guessed[f.ll]  # (what it returns may hold a guess)
+        self.put(c, 1)
         if "?" in f.ret:
             self.qused[f.ll] = True  # (a recursive call: what it returns can no longer change)
-            return self.typed_empty(Val(self.ins(call), f.ret), want, f)
-        return Val(self.ins(call), f.ret)
+            return self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
+        return Val(f"%t{c.r[0]}", f.ret)
 
     def instance(self, f: FnInfo, ts: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first

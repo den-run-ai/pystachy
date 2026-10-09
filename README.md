@@ -83,7 +83,7 @@ named its weaknesses, and Pystachy addresses them:
 | attribute access through `None` is undefined behaviour | `AttributeError`, CPython's `None` rules for `==`, `str()` |
 | unknown imports are silently ignored | imports are checked; aliases and `from` imports work |
 | driver writes fixed `/tmp` files via `os.system` | a private `mkdtemp` directory, removed on every exit path but a `SIGTERM` to the driver |
-| type checking and emission are one class with no IR | still true: a typed IR is the main next step (below) |
+| type checking and emission are one class with no IR | in progress: `Gen` builds an IR of blocks and ops per function, lowered to LLVM text once the program is built; part of it is still LLVM text (below) |
 
 Ouro v2 contributed 16 test programs (ported as `tests/ouro2_*.py`) and the idea of a
 second backend; MiniPy
@@ -584,6 +584,11 @@ versions, platform, git commit and a timestamp:
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
 - **check-ir** — `llvm-as` accepts the IR of every program of the corpus below;
+- **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
+  `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
+  entry's declaration has the types clang compiles the function to, every runtime function
+  the compiler names has an entry, and an entry's effect letters include what the function's
+  C call graph shows (it may raise, allocate, call user code, or never return);
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
@@ -646,9 +651,15 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
 
 ## Next steps
 
-- **A typed intermediate representation.** Type checking and IR emission still happen in
-  one pass over the AST. A small typed IR between them would allow language-level
-  optimizations (redundant dict lookups, bounds-check hoisting) and further backends.
+- **A typed intermediate representation** (`docs/typed-ir.md`). Its first steps have
+  landed: `Gen`'s one walk over the AST builds an `IFn` per compiled function, blocks of
+  instructions whose control flow, checks, calls, runtime calls and empty-container holes are
+  ops, and the LLVM text is printed from them once the whole program is built
+  (`PYSTACHY_IRCHECK=1` checks the IR first). A `RUNTIME` table gives every runtime function
+  its signature and effects, from which each function gets an effect summary. Loads, stores
+  and arithmetic are still LLVM text; converting them, then a second lowering, would allow
+  language-level optimizations (redundant dict lookups, bounds-check hoisting) and further
+  backends.
 - **A WebAssembly GC backend**, Ouro v2's design: the engine supplies memory management
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and

@@ -13,6 +13,8 @@
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
 #   check-ir       tools/check_ir.sh: llvm-as accepts the IR of every program of the corpus (the tests,
 #                  the benchmarks, the tests/ir probes and the compiler itself)
+#   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c (types,
+#                  coverage, and the effects its call graph shows)
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
@@ -147,6 +149,11 @@ step ubsan $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"ji
 L=$V/check-ir.log; s=$(now); r=fail
 tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
 step check-ir $r "$s" "$L" "$(sed -n 's/^llvm-as accepts the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
+
+# ---- runtime-table: the runtime functions the compiler declares, as runtime.c defines them
+L=$V/runtime-table.log; s=$(now); r=fail
+$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
+step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, "entries": \1/p' "$L")"
 
 # ---- gc-stress: collections far more often than the collector would run them
 L=$V/gc-stress.log; s=$(now); r=fail
