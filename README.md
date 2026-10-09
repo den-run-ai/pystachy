@@ -208,9 +208,12 @@ imports `annotations` from `__future__`.
   list[str]`; `+` of the two makes a `list[str | None]`, which `extend()` and `+=` also
   take a `list[str]` into); `join()` and `writelines()` check each `str | None` item. A key
   that may be `None` is in no dict: `in` is `False`, `get()` and `pop()` give their default,
-  and `d[k]` raises `KeyError: None`; so is a tuple whose item may be `None` where the dict's
+  and `d[k]`, `d.pop(k)`, `del d[k]` and `d[k] op= v` raise `KeyError: None` (`d[k] op= v`
+  stores `k` only where `d[k]` has found it, so `k` needs no narrowing there, where `d[k] = v`
+  needs it); so is a tuple whose item may be `None` where the dict's
   keys hold a `str` (a `None` item of a tuple key that nothing else types is a `str | None`),
-  and a `bool` looks up the `int` key it equals (`d[True, 2]`); `None in xs` and
+  and a `bool` looks up, pops and deletes the `int` key it equals (`d[True, 2]`), and a
+  `KeyError` names it as CPython's does (`KeyError: (True, 2)`); `None in xs` and
   `xs.count(None)` look for it in a list. Where CPython would pass the `None` on (an
   assignment to a `T` variable or field, a `T` argument of a user function or of a list
   method, a return from a function declared to return a `T`), the value must be known not to
@@ -586,7 +589,9 @@ an `int` item is no box; a tuple's items are copied into boxes, so `(1, 2) == t`
 (`divmod()`, `sum()` of a `list[int | None]`); dict key types that may be `None`, and tuple
 keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
-keeps the `bool`, which prints as `True`); `typing.ClassVar`, `os.PathLike` other than in a
+keeps the `bool`, which prints as `True`), also as a dict key or a tuple key's item where the
+keys hold an `int` (`d[True] = v`, `d[True] += v`, `setdefault()`, a display: CPython keeps a
+key it adds as the `bool`; a lookup, `pop()` and `del` take it); `typing.ClassVar`, `os.PathLike` other than in a
 union with `str`, a `TypeVar` named other than by a module-level function's parameters and
 return (in a method, a field, a variable's annotation, or as a value), a `TypeVar`'s
 constraints and a bound other than a string, a bare `Final` without a value or in a class
@@ -838,7 +843,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1606 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1620 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes

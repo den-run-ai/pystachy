@@ -1,0 +1,12 @@
+@main.init: pys_dict_new pys_dict_set pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_alloc pys_alloc pys_dict_new pys_dict_set pys_dict_set pys_dict_new pys_dict_set pys_dict_new pys_dict_set pys_box pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write
+@f.get: pys_dict_find pys_repr pys_raise pys_dict_val
+@f.tested: pys_dict_has pys_dict_find pys_repr pys_raise pys_dict_val
+@f.pop: pys_dict_find pys_repr pys_raise pys_dict_pop
+@f.drop: pys_alloc pys_dict_find pys_repr pys_raise pys_dict_pop
+@f.bump: pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.bumpn: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.drop_opt: pys_dict_pop pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

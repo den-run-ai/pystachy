@@ -5643,6 +5643,20 @@ def lookable(a: str, b: str) -> bool:
     return True
 
 
+def bool_for_int(a: str, b: str) -> bool:
+    # does a key of type a hold a bool where the dict's keys, of type b, hold an int: the key it
+    # finds is that int, but CPython's KeyError names the key as it is (KeyError: True, not 1),
+    # and CPython keeps a key it adds as it is, a bool (Gen.bool_find, Gen.store_key)
+    if a == "bool":
+        return b == "int"
+    if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+        return False
+    for i in range(len(targs(a))):
+        if bool_for_int(targs(a)[i], targs(b)[i]):
+            return True
+    return False
+
+
 def none_items(t: str) -> str:
     # a tuple key type with str | None for its None items (a key's None says no more of the type)
     if t == "None":
@@ -8808,7 +8822,7 @@ class Gen:
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", f"i64 {s}"])
             elif is_dict(unopt(o.t)):
                 kv = targs(unopt(o.t))
-                key = self.to_slot(self.coerce(self.expr(t.kids[1], kv[0]), kv[0]))
+                key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
                 o = self.unwrap(o, nosub)
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))])
             elif o.t in self.classes:
@@ -11017,9 +11031,16 @@ class Gen:
                     ix = self.ival(dt.kids[1])
                     self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
                 elif is_dict(unopt(o.t)):
+                    # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
+                    # KeyError: None (nonekey), and a bool deletes the int key it equals
                     kt = targs(unopt(o.t))[0]
-                    key = self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))
-                    self.rt("pys_dict_pop", "i64", [f"ptr {self.unwrap(o, nodel).v}", "i64 " + key])
+                    kval = self.expr(dt.kids[1], kt)
+                    kx = self.dkey(kval, kt)
+                    key = self.to_slot(kx)
+                    o = self.unwrap(o, nodel)
+                    if bool_for_int(kval.t, kt):
+                        self.bool_find(o.v, kval, key)
+                    self.nonekey(kx, "", "pys_dict_pop", [f"ptr {o.v}", "i64 " + key])
                 elif o.t in self.classes:
                     # del o[k]: o.__delitem__(k)
                     ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -11173,9 +11194,21 @@ class Gen:
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
             elif is_dict(unopt(o.t)):
+                # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
+                # so a key that may be None raises KeyError: None, past which it is a key of d's
+                # type; a bool where the keys are ints is rejected as any store of one is
+                # (store_key), since CPython adds it as a bool where the right operand deletes k
                 kv = targs(unopt(o.t))
-                key = self.to_slot(self.coerce(self.expr(t.kids[1], kv[0]), kv[0]))
+                kval = self.expr(t.kids[1], kv[0])
+                if bool_for_int(kval.t, kv[0]):
+                    self.store_key(kval, kv[0])  # (rejected)
+                kx = self.dkey(kval, kv[0])
+                key = "" if is_sopt(kx.t) else self.to_slot(kx)
                 o = self.unwrap(o, sub)
+                if is_opt(kx.t):
+                    self.guard(self.ins(f"icmp eq ptr {kx.v}, null"), "KeyError: None")
+                    if is_sopt(kx.t):
+                        key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
                 cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)])
@@ -11947,7 +11980,7 @@ class Gen:
                 kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
             if not kgiven and is_tuple(kj):
                 kv[0] = none_items(kj)
-            ks = [self.coerce(x, kv[0]) for x in ks]
+            ks = [self.store_key(x, kv[0]) for x in ks]
             if given and soft:
                 for b in vs:
                     kv[1] = self.wider(kv[1], b.t) or kv[1]
@@ -12348,8 +12381,12 @@ class Gen:
             return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(t))
         if is_dict(t):
             kv = targs(t)
-            kx = self.dkey(self.expr(n.kids[1], kv[0]), kv[0])
+            kval = self.expr(n.kids[1], kv[0])
+            kx = self.dkey(kval, kv[0])
             o = self.unwrap(o, sub)
+            if bool_for_int(kval.t, kv[0]):
+                key = self.to_slot(kx)
+                return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1])
             return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"]), kv[1])
         if is_tuple(t) or t in self.nts:
             ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
@@ -13942,6 +13979,7 @@ class Gen:
         nmsg: list[str] = []
         dt = T  # the item type the # descriptor describes
         kx = Val("", "")  # a dict's key that may be None (see nonekey)
+        bk = Val("", "")  # d.pop(k) of a bool where the keys are ints (bool_find)
         numx = Val("", "")  # xs.index(x), count(x) or remove(x) of a number x of another type
         numok = "true"  # (whether an item can equal it, see numkey)
         i = 0
@@ -13984,7 +14022,11 @@ class Gen:
                     kx = v
                     pt = v.t
                 elif base == "dict" and i == 0 and (m == "get" or m == "pop"):
+                    if m == "pop" and bool_for_int(v.t, K):
+                        bk = v
                     v = self.dkey(v, K)
+                elif key == "dict.setdefault" and i == 0 and bool_for_int(v.t, K):
+                    self.store_key(v, K)  # (rejected)
                 elif key == "dict.get" and i == 1 and self.optdefault(v, V) != V:
                     pt = self.optdefault(v, V)  # d.get(k, default) with a default that may be None: V | None
                     optget = True
@@ -14026,6 +14068,8 @@ class Gen:
         if numx.t != "" and m == "index":
             fn = "pys_list_index_as"  # (its ValueError names x, not the item)
             av = av + ["i64 " + self.to_slot(Val(numok, "bool")), "i64 " + self.to_slot(numx), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
+        if bk.t != "":
+            self.bool_find(o.v, bk, av[1][4:])
         if kx.t != "":
             res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av)
         else:
@@ -14059,6 +14103,29 @@ class Gen:
             return self.as_int(k)  # (True is the key 1)
         if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
             return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+        return self.coerce(k, kt)
+
+    def bool_find(self, d: str, k: Val, key: str) -> str:
+        # the entry of key k in dict d (key: k's slot as a key of d's type), where k holds a bool
+        # and d's keys an int (bool_for_int): one that d does not hold raises CPython's KeyError
+        # here, naming k as it is (KeyError: True), where the runtime's lookup would name the key
+        # as the int it equals (KeyError: 1)
+        e = self.rt("pys_dict_find", "i64", [f"ptr {d}", f"i64 {key}"])
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(self.ins(f"icmp slt i64 {e}, 0"), l1, l2)
+        self.place(l1)
+        self.raise_("KeyError", self.repr(k).v)
+        self.place(l2)
+        return e
+
+    def store_key(self, k: Val, kt: str) -> Val:
+        # k as a key stored into a dict whose keys have type kt (d[k] = v, d[k] op= v, a display,
+        # setdefault): a bool is rejected where the keys hold an int, as it is where an int is
+        # stored, since CPython keeps a key it adds as it is, which prints as True, not 1 (it
+        # looks up, pops and deletes the int key it equals: dkey)
+        if bool_for_int(k.t, kt):
+            self.err(f"a {typestr(k.t)} key is stored into a dict with {typestr(kt)} keys, where CPython keeps a key it adds as the bool it is (True, not 1): convert the bool with int()")
         return self.coerce(k, kt)
 
     def nonekey(self, k: Val, none: str, fn: str, av: list[str]) -> str:

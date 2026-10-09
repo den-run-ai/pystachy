@@ -152,6 +152,19 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     them against CPython (each dunder, and each runtime call that runs one, moving every entry
 >     between a key's test and its update). A has whose test is an `and`'s value (a `phi`:
 >     `if d is not None and k in d`) is not fused, as on the old base.
+>   - A `bool` key among `int` keys (also as a tuple key's item: `bool_for_int`) finds the `int`
+>     key it equals, but CPython's `KeyError` names the key as it is (`KeyError: True`), where
+>     the runtime's names it by the dict's key descriptor (`KeyError: 1`). So `d[b]`, `d.pop(b)`
+>     and `del d[b]` of such a key are a `dict.find` and, where it misses, a `raise` of
+>     `KeyError` with the key's `repr` (`Gen.bool_find`), then a `dict.val` of the entry (a
+>     `dict.pop` for the other two): no runtime entry changes. dictfuse fuses only has, getitem
+>     and set, so it leaves those ops be (a `b in d` before `d[b]` stays a has: the two look the
+>     key up twice, where they shared one lookup before). A store of such a key is rejected
+>     (`Gen.store_key`), since CPython keeps a key it adds as the `bool`. `d[k] op= v`
+>     of a key that may be `None` is a check of `None` (`KeyError: None`), then the getitem and
+>     the set of the key it holds, which dictfuse fuses as any other. Only
+>     `tests/bool_int_key.py` and `tests/tuplekey_none.py` of the corpus change; the
+>     self-compile does not. `tests/ir/bool_keys.py` pins both paths.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
