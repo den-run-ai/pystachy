@@ -4732,7 +4732,7 @@ RUNTIME: dict[str, str] = {
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|", "path_join": "str:str,str|A|",
     "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
@@ -8980,7 +8980,7 @@ class Gen:
     def known_path(self, p: str) -> bool:
         # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
         # a function builtin() handles itself
-        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
+        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or p == "os.path.join" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
             return True
         for k in CALLS:
             if k.startswith(p + "(") or k.startswith(p + "."):
@@ -10617,10 +10617,11 @@ class Gen:
         return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
 
     def format_(self, v: Val, spec: Node) -> Val:
-        # format(v, spec), as an f-string field computes it; spec is a str or an f-string node
+        # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
+        # format()'s argument
         empty = spec.kind == "str" and spec.s == ""
         if v.t in self.classes and "__format__" in self.classes[v.t].methods:
-            sv = self.expr(spec, "str")
+            sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
             if v.v not in self.nn:
                 # None's own __format__ accepts only an empty spec
                 self.guard(self.ins(f"icmp eq ptr {v.v}, null"), "TypeError: unsupported format string passed to NoneType.__format__")
@@ -10633,18 +10634,18 @@ class Gen:
             # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
             if spec.kind == "str" and unopt(v.t) != "str" and not is_sopt(v.t):
                 self.err(f"unsupported format string passed to {tname(unopt(v.t))}.__format__")
-            sv = self.expr(spec, "str")
+            sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
             return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t))}", f"ptr {sv.v}"]), "str")
         if v.t in self.classes or v.t == "file":
             if spec.kind == "str":
                 self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
             # a computed spec: str(v) when it turns out empty, TypeError otherwise
-            sv = self.expr(spec, "str")
+            sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
             self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), f"TypeError: unsupported format string passed to {tname(v.t)}.__format__")
             return self.to_str(v)
         if spec.kind == "str" and not self.isnum(v.t) and v.t != "str":
             self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
-        sv = self.expr(spec, "str")
+        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         d = self.sconst(self.desc(v.t))
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
 
@@ -11787,6 +11788,17 @@ class Gen:
             return self.open_(args)
         if name == "map" or name == "filter":
             self.err(f"{name}() is not supported; use a list comprehension")
+        if name == "format" and 1 <= len(args) <= 2 and len([a for a in args if a.kind == "kw"]) == 0:
+            # format(v, spec): what the f-string field {v:spec} gives, v.__format__(spec)
+            return self.format_(self.expr(args[0], ""), args[1] if len(args) == 2 else mk("str", "", self.line, []))
+        if name == "os.path.join" and len(args) >= 1 and len([a for a in args if a.kind == "kw"]) == 0:
+            # posixpath.join: each part after the first is appended with a "/" between them, unless
+            # it is absolute (it replaces the path so far) or the path so far is empty or ends in "/"
+            pv = self.coerce(self.expr(args[0], "str"), "str", "argument 1 of os.path.join()")
+            for k in range(1, len(args)):
+                b = self.coerce(self.expr(args[k], "str"), "str", f"argument {k + 1} of os.path.join()")
+                pv = Val(self.rt("pys_path_join", "ptr", [f"ptr {pv.v}", f"ptr {b.v}"]), "str")
+            return pv
         if name == "hasattr" and len(args) == 2 and args[1].kind == "str":
             # decided by the static type of the object (for an object: is it None)
             hv = self.expr(args[0], "")

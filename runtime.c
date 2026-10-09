@@ -2260,6 +2260,13 @@ Str *pys_platform(void) {              /* sys.platform */
 #endif
 }
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
+Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
+  if ((b->len && b->s[0] == '/') || !a->len) return b;
+  if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
+  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 2);
+  s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
+  return s;
+}
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
 
 /* ---------- the time module: clocks and sleep ---------- */
