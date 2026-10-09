@@ -7025,6 +7025,8 @@ class Gen:
                 continue
             ps.append(f"{lt(t)}{' nonnull' if i == 0 and f.cls != '' else ''} %a{i}")
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
+            if f.params[i] in self.lflag:
+                self.emit(f"store i1 true, ptr {self.lflag[f.params[i]]}")  # (a parameter that del unbinds)
         if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
             # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
             ci = self.classes[f.cls]
@@ -7388,12 +7390,16 @@ class Gen:
                     tracked[nm] = True
                 if nm in gl and nm in safe and nm not in dels and (nm not in loc or nm in decl):
                     defd[nm] = True
+            fdels: dict[str, bool] = {}
+            deleted(body, fdels)
             for nm in f.params:
                 defd[nm] = True
+                if nm in fdels:
+                    tracked[nm] = True  # (a parameter that del unbinds)
             fl = Flow(tracked, defd)
             self.fl_stmts(fl, body)
             for nm in fl.marks:
-                if nm in loc and nm not in decl:
+                if (nm in loc or nm in fdels) and nm not in decl:
                     f.uflags[nm] = True
                 else:
                     self.gflag[nm] = True
