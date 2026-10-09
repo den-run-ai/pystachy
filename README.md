@@ -137,7 +137,9 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   function with `*args` is a template too: each call arity compiles it with `args` a tuple
   of the extra arguments' types (iterating it needs one item type; `()` is the empty
   tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is
-  unannotated. In a template's function, an empty list or dict that nothing fills where the
+  unannotated, as are a module-level function's parameters and return that mention a
+  module-level `T = TypeVar("T")` (from `typing` or `typing_extensions`; a method's may not).
+  In a template's function, an empty list or dict that nothing fills where the
   argument types let code run (a loop over the empty tuple of `*args`, a branch an
   `isinstance` test removes) may be returned before anything shows its type: the first use
   of it further on that does (a call it is passed to, a store, another `return` of a list or
@@ -474,11 +476,13 @@ makes it return `T | None`); `int | None`, `float | None` and `bool | None` (the
 boxing), dict key types that may be `None`, and tuple keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
 keeps the `bool`, which prints as `True`); `typing.ClassVar`, `os.PathLike` other than in a
-union with `str`, a bare `Final` without a value or in a class body, an `@overload` stub that
-the `def` implementing it does not follow in its block (also one after that `def`: CPython
-keeps the stub, whose calls raise `NotImplementedError`), a stub's default other than a
-constant, and a name in a stub's annotation that nothing binds; typing's names in a
-function's local variable annotations that are not imported (CPython never evaluates
+union with `str`, a `TypeVar` named other than by a module-level function's parameters and
+return (in a method, a field, a variable's annotation, or as a value), a `TypeVar`'s
+constraints and a bound other than a string, a bare `Final` without a value or in a class
+body, an `@overload` stub that the `def` implementing it does not follow in its block (also
+one after that `def`: CPython keeps the stub, whose calls raise `NotImplementedError`), a
+stub's default other than a constant, and a name in a stub's annotation that nothing binds;
+typing's names in a function's local variable annotations that are not imported (CPython never evaluates
 those); `from <builtin module> import *`; a NamedTuple without fields, assigned a field
 outside its `__init__`, whose class defines `__getitem__` or `__iter__`, compared or added
 through its own operator method with another type, given to `hasattr()` of a name it does

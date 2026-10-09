@@ -4476,6 +4476,7 @@ for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hasha
            "MutableSequence ByteString Buffer").split():
     ABCS[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
+TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
@@ -5764,6 +5765,7 @@ class Gen:
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
         self.nts: dict[str, bool] = {}  # the typing.NamedTuple classes: a dataclass whose fields cannot be assigned (see nt_class)
+        self.typevars: list[str] = []  # module globals bound to typing.TypeVar(...), which only annotations may name
 
     # ---- emission helpers
     def err(self, msg: str) -> None:
@@ -6170,6 +6172,8 @@ class Gen:
                 return "file"
             if s in self.unsupported:
                 self.err(self.unsupported[s])
+            if s in self.typevars:
+                self.err(f"TypeVar '{short(s)}'{TYPEVAR}")
         elif k == "attr" and self.typing_attr(n) == "TextIO":
             return "file"
         elif k == "binop" and n.s == "|" and self.has_path(n):
@@ -6256,6 +6260,35 @@ class Gen:
             self.err(PATHLIKE)
         return "opt[str]" if none else "str"
 
+    def typevar_def(self, st: Node) -> bool:
+        # is st T = TypeVar("T") (typing's or typing_extensions'): T is then a name only annotations use
+        if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or st.kids[1].kind != "call":
+            return False
+        c = st.kids[1]
+        if self.imported_ref(c.kids[0]) != "typing.TypeVar":
+            return False
+        self.line = st.line
+        if len(c.kids) < 2 or c.kids[1].kind != "str":
+            self.err("TypeVar() needs the type variable's name, a string, as its first argument")
+        for a in c.kids[2:]:
+            if a.kind != "kw" or not is_const(a.kids[0]):
+                self.err("a TypeVar's constraints, and a bound other than a string, are not supported")
+        return True
+
+    def typevar_in(self, anns: list[Node]) -> str:
+        # the first TypeVar annotations anns mention (also in a string), or ""
+        if len(self.typevars) == 0:
+            return ""
+        for a in anns:
+            if a.kind == "str":
+                a = self.parse_expr(a.s)
+            if a.kind == "name" and a.s in self.typevars:
+                return a.s
+            r = self.typevar_in(a.kids)
+            if r != "":
+                return r
+        return ""
+
     def ann_problem(self, n: Node, ret: bool) -> str:
         # why typeof(n) would fail, as far as its form shows ("" for a string, a forward
         # reference, which is checked where it is used)
@@ -6269,6 +6302,8 @@ class Gen:
         if k == "name":
             if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or self.imported(n.s) == "typing.TextIO":
                 return ""
+            if n.s in self.typevars:
+                return f"TypeVar '{short(n.s)}'{TYPEVAR}"
             return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
         if k == "binop" and n.s == "|" and self.has_path(n):
             for x in self.union_members(n, []):
@@ -6513,6 +6548,18 @@ class Gen:
             self.err(f"unsupported decorator @{deco}")
         if cls != "" and len(ps) == 0:
             self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
+        tv = self.typevar_in([p.kids[0] for p in ps if p.kind == "param"] + [d.kids[1]])
+        if tv != "" and cls == "":
+            # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
+            # def f[T](x: T) (a template)
+            for p in ps:
+                if p.kind == "param" and self.typevar_in([p.kids[0]]) != "":
+                    p.kids[0] = mk("noann", "", d.line, [])
+            if self.typevar_in([d.kids[1]]) != "":
+                d.kids[1] = mk("noann", "", d.line, [])
+        tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: a method is not a template (a module-level function whose parameters mention a TypeVar is, compiled for each call's argument types)"
+        if tv != "" and cls != "" and not self.lib:
+            self.err(tvbad)
         for i in range(len(ps)):
             if cls == "" and ((ps[i].kind == "param" and ps[i].kids[0].kind == "noann") or ps[i].kind == "starparam"):
                 f.generic = True
@@ -6565,6 +6612,8 @@ class Gen:
             bad = UNSUPPORTED["yield"]  # a generator function
         if bad == "" and self.lib and d.kids[1].kind != "noann":
             bad = self.ann_problem(d.kids[1], True)
+        if tv != "" and cls != "":
+            bad = tvbad  # (an imported module's: an error only where it is used)
         if bad != "" and not f.generic and not self.lib:
             self.err(bad)
         f.bad = bad
@@ -6905,6 +6954,8 @@ class Gen:
             self.err(self.unsupported[name])
         if name in PYBUILTINS:
             self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
+        if name in self.typevars:
+            self.err(f"TypeVar '{short(name)}' cannot be used as a value (only annotations may name it)")
         self.err(f"name '{short(name)}' is not defined")
         return Val("", "")
 
@@ -8052,6 +8103,9 @@ class Gen:
                 if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
                     m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
                     self.nts[st.s] = True
+                elif self.typevar_def(st):
+                    self.typevars.append(st.kids[0].s)
+                    m.body.kids[i] = mk("pass", "", st.line, [])
         for m in mods:
             for st in m.body.kids:
                 self.line = st.line
