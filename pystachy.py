@@ -5089,10 +5089,10 @@ class FnInfo:
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
-        self.op = op  # "raw" "slot" ...
+        self.op = op  # "raw" "slot" "rt" "ret.none" ...
         self.t = t  # its result type ("" if it defines no value), or a slot's type
-        self.s = s  # text immediate: for "raw", one line of LLVM text; a slot's name
-        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag)
+        self.s = s  # text immediate: for "raw", one line of LLVM text; a slot's name; a runtime operation
+        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes)
         self.r: list[int] = []  # the numbers of the values it defines, given when it was built
 
 
@@ -5355,12 +5355,12 @@ class Gen:
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
-        # what the container holds (see fill); a dict's key kind is a placeholder in the IR until then
+        # what the container holds (see fill). The op that makes one holds a hole, which gets that
+        # type (lowering prints a dict's key kind from it)
         self.allowq = False  # the read being compiled may see such a type (len(), a truth test)
-        self.lkk: dict[str, str] = {}  # a local's placeholders, space-separated
+        self.lkk: dict[str, str] = {}  # a local's holes, space-separated
         self.gkk: dict[str, str] = {}  # a global's
-        self.keykind: dict[str, str] = {}  # placeholder -> 1 (str keys) or 0 (int keys)
-        self.nkeys = 0
+        self.holes: list[str] = []  # each hole's type, "" until a use shows it
         self.twins: dict[str, str] = {}  # globals that hold the same empty container (X = Y at module level): one type
         self.origin: dict[str, str] = {}  # X -> Y for those, where an annotation of the container belongs
         # code compiled before module code assigns what it reads (a template's function called
@@ -5506,12 +5506,27 @@ class Gen:
         tys: list[str] = []
         for a in args:
             tys.append(a[: a.find(" ")])
-        self.decls[name] = f"declare {ret} @{name}({', '.join(tys)})"
+        self.decl(name, ret, tys)
         call = f"call {ret} @{name}({', '.join(args)})"
         if ret == "void":
             self.emit(call)
             return ""
         return self.ins(call)
+
+    def decl(self, name: str, ret: str, tys: list[str]) -> None:
+        self.decls[name] = f"declare {ret} @{name}({', '.join(tys)})"
+
+    def hole(self, kind: str) -> Ins:
+        # a new list or dict (kind) whose type a later use decides: the op holds a new hole
+        i = Ins("rt", f"{kind}[?]" if kind == "list" else "dict[?,?]", f"{kind}.new")
+        i.k = len(self.holes)
+        self.holes.append("")
+        if kind == "list":
+            self.decl("pys_list_new", "ptr", ["i64"])
+        else:
+            self.decl("pys_dict_new", "ptr", ["i64", "i64"])
+        self.put(i, 1)
+        return i
 
     def checked(self, op: str, a: str, b: str) -> list[str]:
         # [result, overflowed] of llvm.<op>.with.overflow.i64
@@ -6401,15 +6416,12 @@ class Gen:
     def empty(self, kind: str, name: str) -> Val:
         # [] or {} assigned to a variable without a type: the first use that shows what it holds
         # gives the variable its type (fill, refine); until then only len() and truth tests read it
-        if kind == "list":
-            return Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[?]")
-        self.nkeys += 1
-        tok = f"<keys{self.nkeys}>"
+        i = self.hole(kind)
         if self.is_global(name):
-            self.gkk[name] = self.gkk.get(name, "") + " " + tok
+            self.gkk[name] = self.gkk.get(name, "") + f" {i.k}"
         else:
-            self.lkk[name] = self.lkk.get(name, "") + " " + tok
-        return Val(self.rt("pys_dict_new", "ptr", [f"i64 {tok}", "i64 0"]), "dict[?,?]")
+            self.lkk[name] = self.lkk.get(name, "") + f" {i.k}"
+        return Val(f"%t{i.r[0]}", i.t)
 
     def refine(self, name: str, t: str, glob: bool = False) -> None:
         # the variable holding an empty list or dict gets the type its first use shows (the module
@@ -6428,11 +6440,10 @@ class Gen:
             for tw in self.twins.get(name, "").split():
                 if "?" in self.gtypes[tw]:
                     self.refine(tw, t, True)
-        if is_dict(t):
-            if targs(t)[0] != "int" and targs(t)[0] != "str":
-                self.err("dict keys must be int or str")
-            for tok in toks.split():
-                self.keykind[tok] = "1" if targs(t)[0] == "str" else "0"
+        if is_dict(t) and targs(t)[0] != "int" and targs(t)[0] != "str":
+            self.err("dict keys must be int or str")
+        for h in toks.split():
+            self.holes[int(h)] = t
 
     def lookahead(self, name: str, ahead: bool = False) -> str:
         # an empty list or dict read before the code that fills it: the first use in this
@@ -6901,10 +6912,8 @@ class Gen:
             # its returns of None, before it was known what it returns: None for an object
             for b in self.fn.blocks:
                 for x in b.code:
-                    if x.op == "raw" and x.s == "ret <none>":
-                        if f.ret != "None" and f.ret not in self.classes:
-                            self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
-                        x.s = "ret void" if f.ret == "None" else "ret ptr null"
+                    if x.op == "ret.none" and f.ret != "None" and f.ret not in self.classes:
+                        self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
         if not self.term:
             if f.ret == "None":
                 self.emit("ret void")
@@ -6936,14 +6945,24 @@ class Gen:
             if b.label != "entry":
                 o.append(b.label + ":")
             for i in b.code:
-                self.lower_ins(i)
+                self.lower_ins(fn, i)
         o.append("}")
 
-    def lower_ins(self, i: Ins) -> None:
-        if i.op == "raw":
-            self.out.append("  " + i.s)
+    def lower_ins(self, fn: IFn, i: Ins) -> None:
+        op = i.op
+        o = self.out
+        if op == "raw":
+            o.append("  " + i.s)
+        elif op == "ret.none":
+            o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
+        elif op == "rt" and i.s == "list.new":
+            o.append(f"  %t{i.r[0]} = call ptr @pys_list_new(i64 0)")
+        elif op == "rt" and i.s == "dict.new":
+            # the key kind of a dict created empty: what its first use showed (0 if nothing did)
+            h = self.holes[i.k]
+            o.append(f"  %t{i.r[0]} = call ptr @pys_dict_new(i64 {1 if h != '' and targs(h)[0] == 'str' else 0}, i64 0)")
         else:
-            fail(f"internal error: no lowering for IR op {i.op}", 0)
+            fail(f"internal error: no lowering for IR op {op}", 0)
 
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
@@ -7138,14 +7157,6 @@ class Gen:
             self.lower(fn)
         for op in ["eq", "cmp", "repr"]:
             self.dispatch(op)
-        for i in range(len(self.out)):
-            # the key kind of each dict created empty: what its first use showed (0 if nothing did)
-            ln = self.out[i]
-            while ln.find("<keys") >= 0:
-                a = ln.find("<keys")
-                b = ln.find(">", a)
-                ln = ln[:a] + self.keykind.get(ln[a : b + 1], "0") + ln[b + 1 :]
-            self.out[i] = ln
         hdr: list[str] = ["; generated by pystachy"]
         for ci in self.classes.values():
             ts = [lt(ci.ftypes[x]) for x in ci.fields]
@@ -8006,11 +8017,11 @@ class Gen:
                 self.err("'return' outside function")
             if self.ret == "":
                 # the first return of a template's function with a value decides what the function
-                # returns; a return of None before it is a placeholder, decided at the end
+                # returns; a return of None before it is lowered from what that decided
                 v = self.retval(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
                 self.close_withs(0)
                 if v.t == "None":
-                    self.emit("ret <none>")
+                    self.add(Ins("ret.none", "", ""))
                 else:
                     self.ret = v.t
                     self.curfn.ret = v.t
@@ -8946,7 +8957,8 @@ class Gen:
             res = self.alloca("bool", "")
             self.emit(f"store i1 {'false' if mode == 'any' else 'true'}, ptr {res}")
         else:
-            res = self.rt("pys_list_new", "ptr", ["i64 0"])
+            h = self.hole("list")
+            res = f"%t{h.r[0]}"
         names: list[str] = []
         names_in(n.kids[1], names)
         saved: list[str] = []
@@ -8977,6 +8989,7 @@ class Gen:
             return Val(self.ins(f"load i1, ptr {res}"), "bool")
         if et == "":
             self.err("cannot infer the element type of this comprehension")
+        self.holes[h.k] = f"list[{et}]"
         return Val(res, f"list[{et}]")
 
     def ifexp(self, n: Node, want: str) -> Val:
