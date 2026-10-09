@@ -5081,11 +5081,41 @@ class FnInfo:
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
 
 
+# ---------------------------------------------------------------- the IR
+# Gen builds one IFn per compiled function: blocks of instructions (Ins), each an op string
+# whose fields mean what the op says (docs/typed-ir.md 3.4). Until all of Gen builds ops, most
+# are "raw": one line of LLVM text. Lowering prints the LLVM text of an IFn (lower).
+class Ins:
+    # one instruction: op decides which fields mean something
+    def __init__(self, op: str, t: str, s: str):
+        self.op = op  # "raw" "slot" ...
+        self.t = t  # its result type ("" if it defines no value), or a slot's type
+        self.s = s  # text immediate: for "raw", one line of LLVM text; a slot's name
+        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag)
+        self.r: list[int] = []  # the numbers of the values it defines, given when it was built
+
+
+class Blk:
+    # one basic block, which becomes one LLVM block
+    def __init__(self, label: str):
+        self.label = label  # "entry" or "L<n>"
+        self.code: list[Ins] = []
+
+
+class IFn:
+    # one compiled function: a function, a method, a module's code, a helper or a template's function
+    def __init__(self, f: FnInfo):
+        self.f = f  # f.ret is final once the IFn is complete
+        self.ps: list[str] = []  # its parameters, as LLVM text (None-typed ones are not passed)
+        self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
+        self.blocks: list[Blk] = [Blk("entry")]
+
+
 class Frame:
     # the code generator's state for one function, saved while it compiles another
-    def __init__(self, curfn: FnInfo):
-        self.body: list[str] = []
-        self.allocas: list[str] = []
+    def __init__(self, curfn: FnInfo, fn: IFn, blk: Blk):
+        self.fn = fn
+        self.blk = blk
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}
@@ -5275,8 +5305,6 @@ class Gen:
         self.strs: dict[str, str] = {}
         self.decls: dict[str, str] = {}
         self.out: list[str] = []
-        self.body: list[str] = []
-        self.allocas: list[str] = []
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}
@@ -5307,6 +5335,8 @@ class Gen:
         self.term = False
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
+        self.fn = IFn(self.curfn)  # the function being built
+        self.blk: Blk = self.fn.blocks[0]  # and its block that code goes to
         self.nonevars: dict[str, bool] = {}  # parameters of a template's function whose argument is None
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -5362,9 +5392,7 @@ class Gen:
         fail(msg, self.line)
 
     def save(self) -> Frame:
-        fr = Frame(self.curfn)
-        fr.body = self.body
-        fr.allocas = self.allocas
+        fr = Frame(self.curfn, self.fn, self.blk)
         fr.ltype = self.ltype
         fr.lreg = self.lreg
         fr.gdecl = self.gdecl
@@ -5395,8 +5423,8 @@ class Gen:
 
     def restore(self, fr: Frame) -> None:
         self.curfn = fr.curfn
-        self.body = fr.body
-        self.allocas = fr.allocas
+        self.fn = fr.fn
+        self.blk = fr.blk
         self.ltype = fr.ltype
         self.lreg = fr.lreg
         self.gdecl = fr.gdecl
@@ -5433,9 +5461,22 @@ class Gen:
         return f"L{self.n}"
 
     def emit(self, s: str) -> None:
+        self.add(Ins("raw", "", s))
+
+    def add(self, i: Ins) -> None:
+        # code after a terminator (dead code) goes to a block of its own
         if self.term:
             self.place(self.label())
-        self.body.append("  " + s)
+        self.blk.code.append(i)
+
+    def put(self, i: Ins, k: int) -> None:
+        # add i, which defines k values, numbered as k separate instructions would have been
+        self.n += 1
+        i.r.append(self.n)
+        self.add(i)
+        for _ in range(k - 1):
+            self.n += 1
+            i.r.append(self.n)
 
     def ins(self, s: str) -> str:
         r = self.tmp()
@@ -5444,14 +5485,15 @@ class Gen:
 
     def place(self, l: str) -> None:
         if not self.term:
-            self.body.append(f"  br label %{l}")
-        self.body.append(l + ":")
+            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
+        self.blk = Blk(l)
+        self.fn.blocks.append(self.blk)
         self.cur = l
         self.term = False
 
     def br(self, l: str) -> None:
         if not self.term:
-            self.body.append(f"  br label %{l}")
+            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
             self.term = True
 
     def cbr(self, c: str, a: str, b: str) -> None:
@@ -5511,16 +5553,19 @@ class Gen:
             self.err(f"cannot infer the type of '{name}'; add a type annotation")
         self.n += 1
         r = f"%{name or 'h'}.{self.n}"
-        self.allocas.append(f"  {r} = alloca {lt(t)}")
-        self.allocas.append(f"  store {lt(t)} zeroinitializer, ptr {r}")
+        i = Ins("slot", t, name)
+        i.r.append(self.n)
+        self.fn.slots.append(i)
         if name != "":
             self.ltype[name] = t
             self.lreg[name] = r
             if name in self.uflags and name not in self.compvars:
                 # "is assigned" flag for a local that some read may find unassigned
                 self.lflag[name] = f"%{name}.def.{self.n}"
-                self.allocas.append(f"  {self.lflag[name]} = alloca i1")
-                self.allocas.append(f"  store i1 false, ptr {self.lflag[name]}")
+                i = Ins("slot", "bool", name)
+                i.k = 1
+                i.r.append(self.n)
+                self.fn.slots.append(i)
         return r
 
     # ---- value conversions
@@ -6570,13 +6615,16 @@ class Gen:
         return True
 
     def dry(self, e: Node) -> str:
-        # the type of e, compiled into code that is dropped
-        body = self.body
+        # the type of e, compiled into blocks that are dropped
+        blk = self.blk
+        blocks = self.fn.blocks
         cur = self.cur
         term = self.term
-        self.body = []
+        self.blk = Blk("")
+        self.fn.blocks = []
         t = self.expr(e, "").t
-        self.body = body
+        self.blk = blk
+        self.fn.blocks = blocks
         self.cur = cur
         self.term = term
         return t
@@ -6766,8 +6814,8 @@ class Gen:
     # ---- functions and the module
     def enter(self, f: FnInfo, body: list[Node]) -> None:
         # the code generator's state at the start of function f, whose statements are body
-        self.body = []
-        self.allocas = []
+        self.fn = IFn(f)
+        self.blk = self.fn.blocks[0]
         self.ltype = {}
         self.lreg = {}
         self.gdecl = {}
@@ -6849,11 +6897,12 @@ class Gen:
             f.ret = "None"  # a template's function without a return statement that has a value
         if f.infer:
             # its returns of None, before it was known what it returns: None for an object
-            for i in range(len(self.body)):
-                if self.body[i] == "  ret <none>":
-                    if f.ret != "None" and f.ret not in self.classes:
-                        self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
-                    self.body[i] = "  ret void" if f.ret == "None" else "  ret ptr null"
+            for b in self.fn.blocks:
+                for x in b.code:
+                    if x.op == "raw" and x.s == "ret <none>":
+                        if f.ret != "None" and f.ret not in self.classes:
+                            self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
+                        x.s = "ret void" if f.ret == "None" else "ret ptr null"
         if not self.term:
             if f.ret == "None":
                 self.emit("ret void")
@@ -6865,11 +6914,34 @@ class Gen:
             self.place(self.cold[msg])
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
-        self.out.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
-        self.out.append("entry:")
-        self.out.extend(self.allocas)
-        self.out.extend(self.body)
-        self.out.append("}")
+        self.fn.ps = ps
+        self.lower(self.fn)
+
+    # ---- lowering: an IFn as LLVM text
+    def lower(self, fn: IFn) -> None:
+        o = self.out
+        o.append(f"define internal {lt(fn.f.ret)} {fn.f.ll}({', '.join(fn.ps)}) {{")
+        o.append("entry:")
+        for i in fn.slots:
+            if i.k == 1:
+                o.append(f"  %{i.s}.def.{i.r[0]} = alloca i1")
+                o.append(f"  store i1 false, ptr %{i.s}.def.{i.r[0]}")
+            else:
+                r = f"%{i.s or 'h'}.{i.r[0]}"
+                o.append(f"  {r} = alloca {lt(i.t)}")
+                o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
+        for b in fn.blocks:
+            if b.label != "entry":
+                o.append(b.label + ":")
+            for i in b.code:
+                self.lower_ins(i)
+        o.append("}")
+
+    def lower_ins(self, i: Ins) -> None:
+        if i.op == "raw":
+            self.out.append("  " + i.s)
+        else:
+            fail(f"internal error: no lowering for IR op {i.op}", 0)
 
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
