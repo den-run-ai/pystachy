@@ -2036,6 +2036,10 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
   if (a0 && argc) { args->a[0] = (I)cstr(a0); unsetenv("PYSTACHY_ARGV0"); }
+  if (a0) {                            /* and lli's crash handlers, which print lli's stack, are dropped: the */
+    int sig[] = {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT};   /* program dies by the signal, as when built */
+    for (int i = 0; i < 5; i++) signal(sig[i], SIG_DFL);
+  }
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
@@ -2236,6 +2240,16 @@ Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r"
 I pys_system(Str *c) {
   if (nul(c)) pys_fail("ValueError: embedded null byte");
   return system(c->s);                 /* like CPython, without flushing stdout first */
+}
+_Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process becomes path's program (its buffered output is
+                                            lost, as CPython's); the runtime's SIGINT handler is not inherited */
+  if (nul(path)) pys_fail("ValueError: execv: embedded null character in path");
+  if (!args->len) pys_fail("ValueError: execv() arg 2 must not be empty");
+  if (!((Str *)args->a[0])->len) pys_fail("ValueError: execv() arg 2 first element cannot be empty");
+  char **v = pys_alloc((args->len + 1) * sizeof *v);
+  for (I i = 0; i < args->len; i++) { if (nul((Str *)args->a[i])) pys_fail("ValueError: embedded null byte"); v[i] = ((Str *)args->a[i])->s; }
+  execv(path->s, v);
+  ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
 static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
