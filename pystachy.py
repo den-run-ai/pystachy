@@ -10724,7 +10724,8 @@ class Gen:
             if j < 0:
                 j += len(ts)
             if j < 0 or j >= len(ts):
-                self.err("tuple index out of range")
+                # (rather than CPython's IndexError where it runs: the item would have no type)
+                self.err(f"tuple index out of range: {i.v} for a tuple of {len(ts)} item{'s' if len(ts) != 1 else ''} (a constant index is checked at compile time)")
             return self.tget(o, j)
         self.err(f"'{t}' object is not subscriptable")
         return o
