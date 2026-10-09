@@ -11947,8 +11947,11 @@ class Gen:
             self.notnone(v, "TypeError: 'NoneType' object is not iterable")
             v = self.ntup(v, True)
         if v.t in self.classes:
-            return self.obj_iter(v, "TypeError: can only join an iterable" if name == "join" else "TypeError: 'NoneType' object is not iterable",
-                                 "can only join an iterable" if name == "join" else f"'{tname(v.t)}' object is not iterable")
+            items = self.obj_iter(v, "TypeError: can only join an iterable" if name == "join" else "TypeError: 'NoneType' object is not iterable",
+                                  "can only join an iterable" if name == "join" else f"'{tname(v.t)}' object is not iterable")
+            if (name == "list" or name == "sorted" or name == "extend") and "__len__" in self.classes[v.t].methods:
+                self.objlen(v)  # (a length hint: CPython's list() calls __len__ once __iter__ has run)
+            return items
         if is_dict(v.t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
         if is_tuple(v.t):

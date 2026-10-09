@@ -314,7 +314,8 @@ o` looks for `x` among the items `__iter__` steps through. An `__iter__` annotat
 Iterator[T]` (or `Iterable[T]`) that returns `iter(xs)` of a list, a tuple, a `str` or another
 such object steps through `xs` as a list's iterator does, wherever the object is iterated:
 `for` loops, comprehensions, unpacking, `enumerate()`, `zip()`, `list()`, `sorted()`, `min()`,
-`max()`, `sum()`, `any()`, `all()`, `str.join()` and `list.extend()`. A method the operation
+`max()`, `sum()`, `any()`, `all()`, `str.join()` and `list.extend()`; `list()`, `sorted()` and
+`list.extend()` then call its `__len__`, if it has one, as CPython's length hint. A method the operation
 needs and the class does not define is an error with CPython's message (`'C' object is not
 subscriptable`), and an object that is `None` raises CPython's error when it runs.
 
