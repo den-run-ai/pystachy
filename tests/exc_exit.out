@@ -1,0 +1,11 @@
+finally of leave 4
+caught SystemExit(4) [4]
+no code SystemExit() []
+message SystemExit('message') [message]
+bool SystemExit(True) [True]
+two SystemExit(1, 2) [(1, 2)]
+not an Exception 5
+start
+finally of leave 3
+last finally
+[exit 3]

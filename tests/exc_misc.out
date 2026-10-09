@@ -1,0 +1,18 @@
+skipped: negative balance for bob
+ann 5
+refused: cy cannot withdraw 5
+comprehension: invalid literal for int() with base 10: 'three'
+EOFError EOFError('EOF when reading a line')
+closed: I/O operation on closed file.
+deleted: name 'v' is not defined
+raised KeyboardInterrupt caught KeyboardInterrupt()
+IndexError clause
+LookupError clause KeyError('k')
+LookupError clause LookupError('l')
+Exception clause ValueError('v')
+left the loop: no more
+finally 1
+finally 2
+finally 3
+total 3
+[exit 0]

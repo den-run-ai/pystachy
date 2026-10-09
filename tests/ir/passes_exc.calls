@@ -1,0 +1,11 @@
+@main.init: pys_dict_new pys_dict_set pys_dict_new pys_dict_new pys_dict_set pys_dict_new pys_dict_set pys_list_new pys_list_append pys_list_append pys_list_append pys_list_new pys_list_append pys_list_append pys_str_int pys_write pys_write pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@f.in_body: pys_try_mark pys_exc_handled pys_dict_find pys_dict_val pys_dict_entry_set pys_exc_begin pys_exc_in pys_write pys_write pys_exc_restore pys_throw pys_exc_new
+@f.missing: pys_try_mark pys_exc_handled pys_dict_getitem pys_exc_begin pys_exc_in pys_dict_set pys_exc_restore pys_throw pys_dict_set pys_raise
+@f.resumed: pys_dict_has pys_try_mark pys_exc_handled pys_int_str pys_exc_begin pys_exc_in pys_dict_pop pys_exc_restore pys_throw pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.in_clause: pys_try_mark pys_exc_handled pys_int_str pys_exc_begin pys_exc_in pys_dict_find pys_dict_val pys_exc_restore pys_exc_restore pys_throw
+@f.total: pys_try_mark pys_exc_handled pys_floordiv pys_exc_begin pys_exc_in pys_list_pop pys_exc_restore pys_throw pys_exc_new
+@f.total_in_clause: pys_try_mark pys_exc_handled pys_int_str pys_exc_begin pys_exc_in pys_exc_restore pys_throw pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_eh_on pys_finish

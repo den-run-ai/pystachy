@@ -8,10 +8,10 @@
 # rejects: each failure is listed with the first lines of its message. A tests/ir/NAME.py with a
 # NAME.fx is compiled with PYSTACHY_IRFX=1, which prints each function's effect summary: they must be
 # the ones NAME.fx lists. One with a NAME.calls must call the runtime functions it lists: for each
-# function its IR defines, the pys_ functions it calls, in the order of its text. Both are compiled
-# with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The programs run from
-# the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit status 0 only if every
-# program compiled and passed its checks.
+# function its IR defines, the pys_ functions it calls or invokes, in the order of its text. Both
+# are compiled with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The
+# programs run from the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit
+# status 0 only if every program compiled and passed its checks.
 # usage: tools/check_ir.sh [COMPILER [FILE...]]   (default: ./pystachy and the corpus; make check-ir,
 #        or make check-ir FILES=tests/ir/pending/NAME.py for a probe outside the corpus)
 cd "$(dirname "$0")/.." || exit 1
@@ -33,9 +33,10 @@ trap 'rm -rf "$T"' EXIT
 trap 'exit 130' INT TERM
 
 # calls IR: each function IR defines, and the runtime functions (pys_*) it calls in the order of its text
+# (an invoke, inside a try, as a call)
 calls() {
   awk '/^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f); c = "" }
-    /^  .*call [^@]*@pys_/ { s = $0; sub(/^.*call [^@]*@/, "", s); sub(/\(.*/, "", s); c = c " " s }
+    /^  .*(call|invoke) [^@]*@pys_/ { s = $0; sub(/^.*(call|invoke) [^@]*@/, "", s); sub(/\(.*/, "", s); c = c " " s }
     /^}/ && f != "" { print f ":" c; f = "" }' "$1"
 }
 # check FILE DIR: DIR/result is ok, skip (does not compile), internal (an internal error, such as the

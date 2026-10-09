@@ -1,0 +1,9 @@
+own ValueError: ValueError('mine')
+builtin: invalid literal for int() with base 10: 'x'
+sub 6 leaky 3 True False sub 2 leaky 1 None
+{'a': Leaky(1), 'b': Sub(2)}
+again: sub 10 leaky 5
+Sub(6) leaky 6
+generic 8 no
+mixed: Leaky(1) Leaky
+[exit 1]

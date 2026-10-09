@@ -1,0 +1,7 @@
+NameError: name 'Unready' is not defined
+fine
+no exception
+NameError: name 'Unready' is not defined
+key
+caught Unready('u')
+[exit 0]

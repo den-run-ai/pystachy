@@ -1,0 +1,20 @@
+KeyError 'zz' KeyError('zz')
+IndexError list index out of range IndexError('list index out of range')
+LookupError list index out of range IndexError('list index out of range')
+ValueError invalid literal for int() with base 10: 'x12' ValueError("invalid literal for int() with base 10: 'x12'")
+ZeroDivisionError integer division or modulo by zero ZeroDivisionError('integer division or modulo by zero')
+ArithmeticError float division by zero ZeroDivisionError('float division by zero')
+OverflowError math range error OverflowError('math range error')
+OverflowError (34, 'Numerical result out of range') OverflowError(34, 'Numerical result out of range')
+FileNotFoundError [Errno 2] No such file or directory: '/nonexistent/dir/file.txt' FileNotFoundError(2, 'No such file or directory')
+OSError [Errno 2] No such file or directory: '/nonexistent/x' FileNotFoundError(2, 'No such file or directory')
+unpack too many values to unpack (expected 2)
+str.index substring not found
+chr chr() arg not in range(0x110000) ValueError('chr() arg not in range(0x110000)')
+remove list.remove(x): x not in list
+pop KeyError('nope')
+pop empty pop from empty list
+BaseException ValueError("invalid literal for int() with base 10: '8.5'")
+bare except
+end
+[exit 0]

@@ -1,0 +1,12 @@
+index: substring not found
+index in a function: substring not found
+comb: n must be a non-negative integer
+isqrt: isqrt() argument must be nonnegative
+format: Unknown format code 'q' for object of type 'int'
+center: The fill character must be exactly one character long
+split: empty separator
+rindex: substring not found
+expandtabs: OverflowError
+loop: 2000
+finally ran
+[exit 1]

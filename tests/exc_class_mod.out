@@ -1,0 +1,14 @@
+mods: init mods
+mods.shapes: init mods.shapes
+checked: b
+1 -1
+wrote b
+full: full at 2 Full('store full', 2) 2
+store error: Readonly('d')
+caught by module attribute: no key 'zz'
+either: no key 'q' Missing("no key 'q'")
+readonly: e Readonly('e')
+gone: no key 'old' Gone('old') old
+TypeError: exceptions must derive from BaseException
+TypeError: '<' not supported between instances of 'Gone' and 'Gone'
+[exit 1]

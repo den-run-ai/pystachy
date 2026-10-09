@@ -1,4 +1,4 @@
 circ.first: start
 circ.second: start
-AttributeError: module 'circ.first' has no attribute 'x'
-[exit 1]
+ImportError False True
+[exit 0]

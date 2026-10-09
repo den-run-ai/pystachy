@@ -2,173 +2,33 @@
 
 This document designs the typed intermediate representation that the README names as the main next step. Issue #4 §4 asks for the same thing: "a small typed IR separating lexical resolution, type checking, effects, and backend lowering". The issue also asks to "preserve the existing useful LLVM/mem2reg delegation" and says "a large framework is not required".
 
-This is the preparation step, and none of it is implemented yet. Function names refer to `pystachy.py` at commit `bd4cd6a` (6,952 lines). Counts and timings were measured on that commit in October 2026, with LLVM 18.
+## Status
 
-> **Status.** This design was written against commit `bd4cd6a`, and its counts (lines, calls,
-> programs) are that commit's. The PRs it ships with have since changed some of what §1 describes:
-> - #4 §1 B and C are fixed: the loader recognizes `os`, `sys` and `TYPE_CHECKING` only where no
->   local binding hides them (`special()`), so §1.2 item 7's first point no longer holds.
-> - The O(F × G) cost of `flow_program` (#4 §2) is gone: Flow works over the names each function
->   mentions, with an undo log.
-> - A `Symtable` pass now mirrors CPython's symbol table on every parsed module (#15). It is the
->   natural starting point for the resolver track of §6.4.
-> - Step 0's tooling has landed: `tools/irsame.sh` (`make irsame REF=<commit>`), `make check-ir`
->   (also a `make verify` step) and the `tests/ir/` probes.
-> - #17's cases 2 and 4 (§9, question 4) now compile.
-> - Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
->   program is now a compile-time error asking to annotate the field.
-> - Optional values, NamedTuples and tuple keys (wf/types) are merged into the IR, and extend
->   §3.2's types: `opt[T]` is T | None for `str`, `list`, `dict` and `tuple` (a class type still
->   includes None), and a dict's keys may be tuples of `int`, `bool`, `str` and `str | None` items,
->   whose descriptor is the dict's key kind (`rt dict.new`'s first operand, and a dict hole's when
->   it is lowered). A local first assigned None has the type `opt[None]` until another value
->   types it, and its `slot` op keeps it. A lookup by a key that may be None joins two container
->   slots in a `phi` of the pseudo-type `%slot`, which `lt()` spells `i64`.
-> - `opt[T]` is also T | None for `int`, `float` and `bool`: a pointer to an immutable box of the
->   value (`rt box`, runtime.c's `pys_box`; descriptors `?i`, `?f` and `?b`). Boxing and reading a
->   box are code, so a value that reaches a `phi` as the other type is converted at the end of
->   the block it comes from, before that block's terminator (`Gen.convert_in`), and a template's
->   function that turns out to return `int | None` gives each `ret` built before a box there.
->
-> - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
->   on the corpus). Where they differ from the text below:
->   - the op table is `IROPS`, since the lexer's `OPS` holds Python's operators; `raise` has the
->     letters T R N, and the effect letters are listed in `FX`;
->   - `rt()` builds `rt` ops, whose operands are typed as their `RUNTIME` entry spells them (`S`,
->     `*T`, `#`, ...) and whose `Ins.x` holds the descriptor text of a `#` parameter; `call_fn`
->     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
->     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
->     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
->     U and I. A raw op's letters are what its text shows (`rawfx`): none for a slot's load or
->     store (an alloca is never address-taken), rG or wG for a global's, rO or wO for an object's
->     field or flag (an address from `getelementptr %C.<class>`, `Gen.fields`), and rL rD rO or
->     wL wD wO through any other address (a list's or a dict's header, or a new tuple's items,
->     which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
->     computes it, once the program is built (`Gen.opfx` gives one op's letters). The passes of
->     §7.1 read the summaries, and so do `PYSTACHY_IRCHECK=1` and `PYSTACHY_IRFX=1`, which
->     prints them (`fxs` spells them) as the passes left them: `tests/ir/effects.fx` lists those of the `effects.py` probe, and
->     `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
->     add values or blocks; the verifier checks that no number or label is above it;
->   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
->     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
->     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
->     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
->     descriptor) against runtime.c's call graph, rL wL, rD wD and rF wF against the loads and
->     stores through a list, dict or file parameter (clang -O1, following addresses through
->     loads, getelementptr, phis, locals and callees' parameters), and I against the runtime's
->     mutable statics and the C library functions it calls, outside the end of the program and
->     the allocator (so an entry whose letters are at most R, which `canon` merges, reads
->     nothing but its arguments); `Gen.rtfns` holds one `RtFn` (symbol, signature,
->     LLVM types, declare line, effects) per runtime function declared, in the order of first use,
->     and replaces R2's `decls`: the header prints their declare lines;
->   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
->     a list comprehension's result list is a hole too, which `listcomp` fills with the list type
->     once it knows the element type (a list hole lowers as it was built, so this changes no output);
->   - `anyall` records a `seq` `Loop` too;
->   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
->     compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
->     internal error as on an IR that `llvm-as` rejects, and on a program that does not compile;
->   - the jump to the first cold block that follows the `ret` a function falls into is a block
->     without a label (LLVM starts one after a terminator), so that each block still ends with
->     its one terminator.
->   - `IFn.ps` holds the indices of the parameters passed, and lowering spells the `define` line
->     from them (`ptr nonnull %a0` for a method's receiver).
->   - a `raise` of `SyntaxError`, `IndentationError` or `TabError` whose message is true has the
->     whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
->     message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
->     leaves out. Its `s` is the kind, but its operands are not (kind, message): the exception
->     lowering of §7.2 must mark such a raise (a flag in `k`) before it reads them so.
->   - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
->     (R5), so only debug information or the traceback lines of §7.7 will, and they can add it.
->   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
->     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
->     stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
->     function's IR (blocks, slots, loops, cold blocks) once it is lowered, keeping its summary.
->     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
->     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
->     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
->
-> - The optimizations of §7.1 are passes over each `IFn` (`OPTS`), which `Gen.program` runs once
->   the effect summaries are computed, before lowering; `PYSTACHY_OPT=-name` turns one off for a
->   differential run (comma-separated; `-all` turns off every one), and the tests pass with each
->   off. `tools/check_ir.sh` checks a `tests/ir/NAME.calls`, the runtime functions each function
->   of the probe calls, as lowered with every pass on.
->   - `listget` (item 1): `for_seq` and `anyall` record in `Loop.tests` the block that each
->     sequence's test leads to, and in `Loop.idx` the index of the item read there. From that
->     block, the pass follows the one path through blocks that a single branch leads to (so that
->     no other path, from a handler either, joins it) to the `list.get` of the list at that
->     index, and stops at an op with wL or U. It makes the read a `list.load` op (letters rL),
->     which lowers to the inline load of `l->a[i]` (three more numbers, from `IFn.n`). Every
->     loop over a list qualifies: 376 of the 1,823 `pys_list_get` calls of the self-compile,
->     and 262 more in 88 other programs of the corpus. `tests/ir/listget.py` pins it.
->   - `dictfuse` (item 2): a `dict.has` or a `dict.getitem` finds a key's entry, which a later
->     `dict.getitem` or `dict.set` of the same dict and key reuses where the key is known to be
->     there: after a getitem, or on the branch where the has's test is true (the pass reads the
->     raw `icmp ne`/`eq i64 %r, 0` of its result, and an `xor i1 %c, true` of that). A forward
->     pass over the blocks in order keeps the lookups (`Lookup`) that hold at the end of each
->     block; the blocks that branch to a block meet by intersection, a later one (a loop's back
->     edge) brings none, and an op with wD or U, or a set that reuses no entry, ends them all
->     (a reused entry's set moves no entry, as `pys_dict_set` overwrites). `Gen.canon` (with
->     `Values`) finds equal dicts and keys: a raw load reads what the last store or load of the
->     same slot, global or field wrote or read, on the path back through blocks that one branch
->     leads to (fields of different classes or indices never alias); a raw computation, and an
->     `rt` op that only computes (no letter but R), equals the first of the same text with
->     canonical operands. The has becomes `dict.find` (the entry or -1; the has's number is then
->     the raw `add %e, 1`), a reused getitem `dict.entry` (the entry, or CPython's KeyError) and
->     `dict.val`, and the ops that reuse an entry `dict.val` (the loops' `pys_dict_val`, which
->     serves as §7.1's `dict.entry_val`) and `dict.entry_set`. In the self-compile it rewrites
->     73 of the 496 `pys_dict_has` calls, 91 of the 327 `pys_dict_getitem` and 2 of the 766
->     `pys_dict_set`; in 7 other programs of the corpus, 14 has, 32 getitem and 21 set.
->     `tests/ir/dictfuse.py` pins it, and where it does not apply: `if k not in d: d[k] = []`
->     before `d[k].append(x)` (the set inserts, so no entry is known after the join), and a
->     call that may change a dict. `d[k] = d.get(k, 0) + 1` (bench/words.py) is not fused.
->     Its work is bounded: `canon` recurses once for each value of the chain it follows, so a
->     value it reaches `CANON_DEPTH` (1,000) calls deep is its own canonical value (4,000 lines of
->     `k = k ^ 1 ^ ... ^ 10` overflowed the native compiler's stack; the self-compile's deepest
->     chain is 18). `reaching` walks back over at most `REACH` (256) ops, so that a load it does
->     not find is its own (85 in the self-compile; the first loads of 12,000 globals, each after
->     the last, took 4.3 s); the next load of the same address finds that one. At most `LOOKUPS`
->     (32) lookups hold at once, the oldest giving way (the self-compile holds at most 7), and a
->     block's state is dropped once the last block it branches to has read it: 12,000 reads of
->     other keys in one function took 5.9 s and 3.6 GB. `tools/scaling.py` has the shapes
->     (`chain`, `gdicts`, `lookups`).
->   - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
->     field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
->     passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with
->     `PYSTACHY_OPT=-all`, under callgrind).
->   - Merged with the typed IR's optional values, NamedTuples, tuple keys and class protocol,
->     the passes run unchanged over what those compile to: a tuple key is a value like an int or
->     a str (its hash and `==` run no user code, so the dict entries stay without U), a
->     NamedTuple's fields are an object's (rO wO), a boxed number is read through a pointer, and
->     a container dunder (`__contains__`, `__getitem__`, `__iter__`, `__len__`) is a `call` with
->     its callee's summary, never a dict or list op. The types work's repr can reach
->     `pys_repr_enter`, so the entries whose error message holds the repr of a key or a value
->     (`dict.getitem`, `dict.entry`, `dict.pop`, `dict.pop_default`, `dict.popbox`, `list.index`,
->     `list.index_as`) have I. In the self-compile of the merge, listget rewrites 504 of the
->     2,446 `pys_list_get` calls, and dictfuse 80 of the 728 `pys_dict_has`, 117 of the 444
->     `pys_dict_getitem` and 3 of the 873 `pys_dict_set`. `tests/ir/passes_types.py` pins the
->     rewrites on those values, and where a dunder's summary ends a lookup;
->     `tests/opt_dictfuse_protocol.py`, `opt_dictfuse_types.py` and `opt_listget_types.py` run
->     them against CPython (each dunder, and each runtime call that runs one, moving every entry
->     between a key's test and its update). A has whose test is an `and`'s value (a `phi`:
->     `if d is not None and k in d`) is not fused, as on the old base.
->   - A `bool` key among `int` keys (also as a tuple key's item: `bool_for_int`) finds the `int`
->     key it equals, but CPython's `KeyError` names the key as it is (`KeyError: True`), where
->     the runtime's names it by the dict's key descriptor (`KeyError: 1`). So `d[b]`, `d.pop(b)`
->     and `del d[b]` of such a key are a `dict.find` and, where it misses, a `raise` of
->     `KeyError` with the key's `repr` (`Gen.bool_find`), then a `dict.val` of the entry (a
->     `dict.pop` for the other two): no runtime entry changes. dictfuse fuses only has, getitem
->     and set, so it leaves those ops be (a `b in d` before `d[b]` stays a has: the two look the
->     key up twice, where they shared one lookup before). A store of such a key is rejected
->     (`Gen.store_key`), since CPython keeps a key it adds as the `bool`. `d[k] op= v`
->     of a key that may be `None` is a check of `None` (`KeyError: None`), then the getitem and
->     the set of the key it holds, which dictfuse fuses as any other. Only
->     `tests/bool_int_key.py` and `tests/tuplekey_none.py` of the corpus change; the
->     self-compile does not. `tests/ir/bool_keys.py` pins both paths.
->
-> `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
-> `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
-> this design was chosen.
+The design below was written against commit `bd4cd6a` (6,952 lines of `pystachy.py`), and the
+counts, timings and function names of §1 to §6 are that commit's: they describe where the work
+started. #22 implements it as far as this list goes.
+
+- **The IR steps.** Steps 5, 6, 7 and 8 of §6.2, then step 4, and the `call` and `init` ops of
+  step 14. Each landed as its own commit, byte-identical on the corpus by §6.1's oracle (616
+  programs then; 743 after the merge of the base it moved onto). On identical source, the native
+  self-compile executes 1.054 times the instructions of the compiler before the IR (1.07 times its
+  wall time), under the 1.3× gate. Each function's IR is dropped once it is lowered, so the native
+  compiler's heap peak grows by about 10% (78 against 71 MiB), not the 2× of the prototype.
+- **Exceptions (§7.2):** `try`/`except`/`else`/`finally`, `raise`, exception classes and catchable
+  runtime errors, lowered by table-driven unwinding. This answers §9's first question. Programs
+  without a `try` keep their IR byte for byte.
+- **Optional values (§7.6):** `T | None` for `str`, `list`, `dict` and `tuple`, and boxed
+  `int | None`, `float | None` and `bool | None`, with CPython's errors on `None` and mypy's
+  narrowing. A class type still includes None (§9, question 7).
+- **Two optimizations of §7.1:** unchecked list reads in sequence loops (`listget`) and dict lookup
+  fusion (`dictfuse`), which the effect summaries make sound.
+- **Not yet:** steps 1 to 3, 9 to 13, 15 and 16. Loads, stores and arithmetic are still `raw` ops
+  holding LLVM text (about 58,000 in the self-compile when the IR steps landed), so no second
+  backend can be written yet, and the re-baseline of step 16 has not started.
+
+Appendix B records the prior art and the measurements behind the exception and `None` designs.
+Appendix C lists, step by step and feature by feature, where the code departs from the text
+below.
 
 ## Summary
 
@@ -547,7 +407,7 @@ The keys follow the runtime's names: `list.get` is `pys_list_get`, `dict.has` is
 - `check(bad, "Kind: text")` ends its block. Its one explicit successor is the next block, and its raising edge is implicit.
 - `IFn.cold` maps each message to a label. The label is taken at the first check with that message, which keeps today's numbering.
 - `Gen.function` places the cold blocks after the body. Each holds a `raise` and an `unreachable`, so there is still one cold block per function and message.
-- `check` names only the message, not the cold block. An exception lowering can therefore route the same check to a handler later, without changing the builder (§7.2).
+- `check` names only the message, not the cold block. An exception lowering can therefore route the same check to a handler later, without changing the builder (§7.2). (It is the builder that does, as it knows the handler: a check inside a try names its cold block by message and landing block: Appendix C.)
 
 **Where checks are emitted:**
 - **Overflow** (`iop` is `ovf` plus `check`): `+`, `-` and `*`, unary `-`, `abs`, and enumerate's start. `for_range` instead uses the overflow flag of its increment to end the loop.
@@ -593,7 +453,7 @@ RUNTIME: dict[str, str] = {
 | R | May raise. Today a raise prints its message, flushes stdout and exits (closing the open files). |
 | N | Never returns. |
 | A | Allocates; a collection may run. A collection also closes the open files that nothing refers to any more, flushing them and reporting a failed close on stderr. That is not I, rF or wF: when a dropped file is closed is unspecified (README), and any change to the program's allocations moves it. |
-| U | May run user code: a direct call, a dunder, or a callback from the runtime through `pys_obj_eq/cmp/repr`. U implies every other letter. `U?` means U when the static type contains a class. |
+| U | May run user code: a direct call, a dunder, or a callback from the runtime through `pys_obj_eq/cmp/repr`. U implies every other letter. `U?` means U when the static type contains a class, or an exception (`exc`) in a program that makes objects of exception classes, whose `__str__` and `__repr__` it may hold. |
 | I | I/O, the process, or global runtime state (`pys_repr_enter`/`leave`). |
 | rL / wL | Reads / writes lists, contents or length. |
 | rD / wD | Reads / writes dicts. |
@@ -1202,21 +1062,53 @@ Each optimization is a behavioural step after step 14. Each is a function over a
 
 ### 7.2 Exceptions (M5, #10)
 
-The README's next steps mention `invoke` and landing pads. This design proposes an error flag instead:
-- **The runtime side.** The runtime sets `pys_exc` and returns a sentinel instead of exiting.
-- **The compiled-code side.** Compiled code tests the flag after an R op only where something can catch the exception:
-  - inside a `try` region;
-  - at calls in functions that sit, through the call graph, under a handler. The effect summaries compute these.
-- **Changes to the IR.**
-  - `check`, `raise`, R-effect `rt` ops and `call` change only in their lowering.
-  - Cold blocks are pooled per handler and message.
-  - The passes of §7.1 leave out a check's raising edge (`Gen.preds`: its cold block ends the program). Once an R op or a check can lead to a handler, that edge counts: `dictfuse` must meet, at the handler, the lookups that hold at the raising op (not at the end of its block), and `listget`'s path from a loop's test must not be joined by it.
-  - `with` becomes a cleanup region.
-  - `accel_try`'s import fallback (#4 §1 D and E) becomes a real handler around `init` calls.
+This section first proposed an error flag tested after each raising op under a handler. Before
+M5 started, the three ways to lower exceptions were measured on this repository's LLVM 18 and
+glibc (Appendix B.2): a setjmp/longjmp handler chain, the flag, and table-driven unwinding. The
+flag cost 15 to 59% on `bench/fib.py` under a handler and needed every runtime error site and every
+C path that calls compiled code back to propagate an error. The handler chain cost a `_setjmp`
+per `try`, kept LLVM from inlining functions with a `try`, and needed volatile locals, as LLVM
+18's `mem2reg` ignores `returns_twice`. Unwinding costs nothing until something raises, and both
+reasons given for the flag turned out not to hold: the unwinder goes through the runtime's C
+frames that call compiled code back, also under the JIT, which registers the `.eh_frame` of the
+program and of `runtime.o`. So exceptions landed as table-driven unwinding:
 
-The reasons for the flag:
-- **Callbacks through C.** The C runtime calls user code back from timsort (`__lt__`) and from `pys_eq`/`pys_repr` (through `pys_obj_*`). Landing pads would have to unwind through those C frames.
-- **One protocol for both modes.** The CPython-extension mode needs exactly the flag protocol (NULL or -1, plus `PyErr`).
+- **The runtime.** A program with a `try` calls `pys_eh_on()` when it starts. From then on the
+  raise funnels (`pys_fail`, `pys_raise`, `sys.exit`, `pys_throw`) make an `Exc`, which begins with
+  the unwinder's `_Unwind_Exception` header, and unwind in one phase (`_Unwind_ForcedUnwind`):
+  every landing pad Pystachy emits catches everything, so the first one found is the handler, and
+  `pys_personality`, about 80 lines of C with its DWARF decoding, enters it. With no landing pad on
+  the stack, the stack is left as it was and the raise ends the program as it always did. Without
+  `pys_eh_on()`, every raise ends the program at once, as before. runtime.c is compiled with
+  `-fexceptions` in both tiers. What a raise leaves half done in the runtime (a list being sorted,
+  a `with` statement's file, the repr guard, the I/O busy count) is put right by unwind actions that
+  the landing pad runs first.
+- **The IR.** `Blk.handler` names the landing block that covers a block. New ops: `landing`,
+  `throw` and `exc.match`, which tests an exception against the closed set of classes a clause
+  catches. `Try` records keep each statement's shape for a structured backend. One pass, once the
+  effect summaries are known, gives a covered block's ops their exception edges:
+  - a call whose summary has R becomes an `invoke`;
+  - a `raise` or `throw` covered in its own function becomes a branch to the handler, with no
+    unwinder;
+  - a landing block that no invoke reaches is dropped, and a function with none left has no
+    personality (40 of the tests' 122 landing blocks).
+  
+  `listget` and `dictfuse` count the exception edges as predecessors. The verifier checks that
+  only unwind edges reach a landing block, and that no op that may raise is left in a covered
+  block without one.
+- **Statements.** `finally` is copied to each exit that crosses it (fall-through, `return`, `break`,
+  `continue`, exception), as CPython 3.9+, Kotlin and Nuitka do. A `finally` block that holds
+  another `finally` is compiled once, with a selector slot, because nested copies grew as 3^depth.
+- **Exception classes.** Single inheritance from a builtin exception or another exception class.
+  Objects begin with hidden fields: the class's `ExcClass`, its args, and a `SystemExit`'s code.
+  `str()`, `repr()` and the uncaught-exception line go through the `ExcClass`, so a subclass's
+  `__str__` and `__repr__` are used.
+- **Cost.** A raise caught by its caller costs about 0.9 µs AOT: 500,000 `KeyError`s take 0.44 s
+  AOT and 0.54 s JIT, where CPython takes 0.11 s. A raise caught in its own function is a branch.
+  Code that does not raise pays nothing, a `try` included.
+- **Next.** Non-raising runtime variants where the handler is local (`try: v = d[k]` /
+  `except KeyError:`), as Appendix B.2 suggests. A CPython-extension lowering (§7.4) can lower
+  the same ops to the error protocol of the C API.
 
 ### 7.3 A WebAssembly GC backend
 
@@ -1245,6 +1137,15 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 - The IR does not change. It needs steps 3 (declarations as data) and 14 (`call`) first.
 
 ### 7.6 Dynamic values (M4, #9)
+
+> **Landed in part (#22).** `T | None` for `str`, `list`, `dict` and `tuple` is the same pointer,
+> null being None (the type `opt[T]`), and `int | None`, `float | None` and `bool | None` are a
+> pointer to an immutable box (`rt box`). `Gen` narrows names as mypy does (`is None` tests,
+> truthiness, early exits, `assert`, `and`/`or`), and checks a value that may be None where only a T
+> works, with CPython's error. The narrowing is not yet IR ops: Appendix B.3 recommends `isnone`,
+> `nonnull` and `narrow` ops with a pass that deletes dominated checks, which would also give
+> WasmGC its `ref null` types. A class type still means "C or None". Unions of unrelated types and
+> `Any` are not started.
 
 - **New type forms:** `C|None` and scalar optionals (`int|None`), and later a tagged dynamic value.
 - **New ops:** box, tag test and unbox, each with R for CPython's `TypeError`.
@@ -1286,6 +1187,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 ## 9. Open questions
 
 1. **Exceptions protocol.** Is the error flag (§7.2) the right replacement for the README's `invoke`/landing-pad plan? This should be decided before M5 starts, because it decides whether `check` lowers to a branch or to a flag test.
+   **Answered in #22:** no. Measured, table-driven unwinding costs nothing until a raise, works through the runtime's C frames and under the JIT, and keeps the flag for a CPython-extension lowering (§7.2, Appendix B.2).
 2. **When to re-baseline.** Should step 16 come right after step 15, or wait until a second backend needs it? Waiting keeps the byte-identical oracle longer. Doing it early stops `dry`'s leaks and the counting in `put()` from spreading into new code.
 3. **Speculative instances.** Template instances and `called` marks made only inside `dry` are compiled and emitted although nothing calls them. Pruning them by the reachability of lowered calls changes output. Should it be part of the re-baseline?
 4. **Late reads of holes.** #17's case 2 reads a global dict before the function that fills it has been compiled. Its case 4 builds a list that nothing fills. Some operations do not depend on the element type at elaboration time: `print`, `repr`, `len`, truth, `return`. These could take a hole-typed value and leave the descriptor to lowering, once all holes are resolved. Is that sound for every reader, and what type should a hole that nothing fills get?
@@ -1293,6 +1195,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
    Measured at `7fce954` on the native self-compile: lowering a function when it completes (unless one of its dict holes is still open) and dropping its IR there leaves the output identical, takes the instructions executed from 1,704M to 1,645M (the reference compiler's: 1,541M), the heap peak from 78.2 to 72.3 MiB and the collector's time from about 40 to 35.5 ms, while the wall time stays within noise (1.08 to 1.09 times the reference's). It would need each function's own letters and callees kept for the summaries, and a pass that needs the summaries of callees compiled after their caller, such as the error tests of §7.2, could not run on that caller. Lowering stays at the end while the 1.3× gate holds.
 6. **Flow per instance.** Should Flow run per template instance on the IR, after folding, so that a branch the instance never compiles no longer forces a check?
 7. **Nullability in the type.** When does `C` stop meaning "C or None"? WasmGC wants `(ref $C)` versus `(ref null $C)` in signatures, and M4 needs `C|None`. Is a per-value fact enough until then?
+   **In part (#22):** `opt[T]` puts None in the type for `str`, `list`, `dict`, `tuple` and the boxed scalars (§7.6); a class type still includes None.
 8. **Structure for Wasm.** Are the reducible CFG and the `Loop` records enough for structured control flow, or should `if` and `with` regions be recorded too?
 9. **Recoverable elaboration.** What is the smallest design for it, given that the subset has no exceptions, and given that continuing after an error could make the compiler itself fail on a malformed type?
 10. **Interning.** Should op names and types become ints? Only if profiles of the native compiler show the string compares.
@@ -1323,3 +1226,381 @@ construct is converted; `Loop` records and integer hole ids; fine-grained effect
 backend-neutral vocabulary of §3.8 as the end state, with a lint against LLVM text as its exit
 criterion; error-flag exceptions and recoverable elaboration recorded as decisions; and the
 scope builder and binder as a parallel track.
+
+## Appendix B. Prior art and the measurements behind the exception and None designs
+
+This part records what other compilers do about the three things the IR must make room for: exceptions, `None` in pointer types and, later, generators. Six surveys read primary sources (language documentation, compiler sources, papers) in October 2026. Figures marked *measured* come from small experiments on a 4-core VM with LLVM/clang 18.1.3 and glibc 2.39, best of 5 to 12 runs. They give orders of magnitude, not exact costs.
+
+### B.1 Prior art
+
+| system | IR shape | exceptions / None | what Pystachy takes from it |
+|---|---|---|---|
+| [Swift SIL](https://raw.githubusercontent.com/swiftlang/swift/main/docs/SIL/SIL.md) | Typed SSA CFG with block arguments instead of phis. One data structure in two stages, `raw` and `canonical`; mandatory passes rewrite the raw-only ops. | A throwing call is the terminator `try_apply ..., normal bb1, error bb2`, and the error arrives as `bb2`'s argument ([Instructions.md](https://raw.githubusercontent.com/swiftlang/swift/main/docs/SIL/Instructions.md)). A function has at most one `throw`. IRGen loads an error slot after the call and branches if it is not null ([IRGenSIL.cpp](https://raw.githubusercontent.com/swiftlang/swift/main/lib/IRGen/IRGenSIL.cpp)). `Optional` is an enum; `switch_enum` binds the payload on the `some` edge, and a class optional is one pointer with null for none ([TypeLayout.rst](https://raw.githubusercontent.com/swiftlang/swift/main/docs/ABI/TypeLayout.rst)). | A stage flag on one IR, with a verifier that rejects Python-level ops before printing. A handler stack in `Gen`, saved and restored around each `try` body (SILGen's `ThrowDest`). One raise epilog per function. |
+| [Rust MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html) | Blocks of statements plus one terminator; types on locals; one `Body` through the phases `Built`, `Analysis` and `Runtime`, each more restricted. | No try regions. Each terminator that may unwind has `unwind: UnwindAction`: `Continue`, `Unreachable`, `Terminate` or `Cleanup(bb)` ([syntax.rs](https://raw.githubusercontent.com/rust-lang/rust/master/compiler/rustc_middle/src/mir/syntax.rs)). Codegen picks `invoke` or `call` per site ([block.rs](https://raw.githubusercontent.com/rust-lang/rust/master/compiler/rustc_codegen_ssa/src/mir/block.rs)). `Option<&T>` is guaranteed pointer-sized with null for `None` ([std::option](https://doc.rust-lang.org/std/option/index.html)). | An exception action on each instruction instead of a region. Phases with a verifier each. Not its cleanup-block rules: a Python handler may return, loop or swallow the exception. |
+| [Zig AIR](https://codeberg.org/ziglang/zig/raw/branch/master/src/Air.zig) | Untyped ZIR per file; Sema makes typed AIR per function. Flat `{tag, data}` records plus an `extra` array. Structured bodies (`block`, `loop`, `cond_br`). Per-backend rewrites in [Legalize.zig](https://codeberg.org/ziglang/zig/raw/branch/master/src/Air/Legalize.zig). | Error unions. `try` is "load the error, compare with 0, cold branch" on LLVM and `i32.eqz; br_if` on Wasm. `?*T` is pointer-sized with null at 0. [Sema](https://codeberg.org/ziglang/zig/raw/branch/master/src/Sema.zig) expands a safe unwrap into `is_non_null`, a safety check and `optional_payload`, which emits no code. | The Optional ops: a test, a checked unwrap built from the test plus a guard, and an unchecked unwrap. Flat records, which suit a subset without inheritance. Checked ops kept high-level and expanded per backend. |
+| [mypyc](https://raw.githubusercontent.com/python/mypy/master/mypyc/ir/ops.py) | Register machine over a CFG, not SSA. C-level ops, built lowering-first. An `RType` on every value. | Each op has an `error_kind`, each block an `error_handler`. A pass splits blocks after may-raise ops and adds the branch ([exceptions.py](https://raw.githubusercontent.com/python/mypy/master/mypyc/transform/exceptions.py)). `try` pushes and pops handlers; `finally` uses `old_exc` and `ret_reg`; `break` or `continue` through `finally` is unimplemented ([statement.py](https://raw.githubusercontent.com/python/mypy/master/mypyc/irbuild/statement.py)). `Optional[str]` is a `PyObject*` holding `Py_None`, because NULL is the error value. | Handlers as a block attribute; checks placed by a late pass. A per-handler slot for the exception being handled, restored on every exit. Not NULL as the error value, which conflicts with null meaning `None`, and not the `finally` gap. |
+| [Cinder HIR](https://raw.githubusercontent.com/facebookincubator/cinderx/main/cinderx/Jit/hir/hir.h) | CFG built by abstract interpretation of bytecode, then SSA. Types form a bitset lattice with `OptT = T\|Nullptr`. Stated goal: lower "into C or LLVM IR mechanically". | `CheckField`, `CheckVar` and `CheckExc` produce a value and "transfer control to the exception handler for the block". `RefineType` narrows on the success edge. [simplify.cpp](https://raw.githubusercontent.com/facebookincubator/cinderx/main/cinderx/Jit/hir/simplify.cpp) deletes a check whose operand type cannot be null. Handlers run in the interpreter after a deopt. Its `Nullptr` is C NULL, not `None`. | Nullability as a bit of the IR type. Checks as ops with an output. Check removal by type. Not the deopt: Pystachy has no interpreter to fall back to. |
+| [LPython ASR](https://raw.githubusercontent.com/lfortran/lfortran/main/src/libasr/ASR.asdl) | Typed semantic tree in ASDL, shared with LFortran. ASR-to-ASR passes, a [verifier](https://raw.githubusercontent.com/lfortran/lfortran/main/src/libasr/asr_verify.cpp), and backends for LLVM, C, C++, Wasm and x86 from the same tree. | No try node. `raise` becomes `ErrorStop`, which ends the program ([python_ast_to_asr.cpp](https://raw.githubusercontent.com/lcompilers/lpython/main/src/lpython/semantics/python_ast_to_asr.cpp)), as in Pystachy today. No `None` type. | A verifier after every pass. Kept structure lets a Wasm backend work without a structurizer. The warning: an IR built without a handler model never got one, so the exception action goes in now. |
+| [Codon IR](https://docs.exaloop.io/developers/ir/) | Hierarchical, fully typed IR between AST and LLVM: `Flow` nodes (`SeriesFlow`, `WhileFlow`, `TryCatchFlow`) holding `Instr`s. | `TryCatchFlow {body, catches, else, finally}`, lowered to `invoke`/`landingpad` with its own personality ([exc.cpp](https://raw.githubusercontent.com/exaloop/codon/develop/codon/runtime/exc.cpp)). `finally` is one copy plus a state byte (`NOT_THROWN`, `RETURN`, `BREAK`, ...) and a switch ([llvisitor.cpp](https://raw.githubusercontent.com/exaloop/codon/develop/codon/cir/llvm/llvisitor.cpp)). `Optional` over a reference is the bare pointer; over a value, `{i1, T}`. | The Python-level shape of a `try` (clauses, `as` variable, `else`, `finally`). Break, continue and return through `finally`. Its `isinstance` walks a parent list; Pystachy uses id ranges instead (RPython, below). |
+| [MLIR](https://mlir.llvm.org/docs/LangRef/) / [Mojo](https://mojolang.org/docs/manual/errors) | Ops with typed operands, successors and nested regions; block arguments; dialects at several levels, lowered step by step ([paper](https://arxiv.org/abs/2002.11054)). Mojo uses region control flow with `break`/`continue` ([slides](https://llvm.org/devmtg/2024-10/slides/techtalk/Weiwei-What-We-Learned-Building-Mojo-OptimizationPipeline.pdf)). ClangIR keeps `try` as a region until a flattening pass ([CIROps.td](https://raw.githubusercontent.com/llvm/llvm-project/main/clang/include/clang/CIR/Dialect/IR/CIROps.td)). | Core MLIR has no exception model; its LLVM dialect mirrors `invoke`. After flattening, ClangIR's `cir.try_call` has normal and unwind successors. Mojo returns errors as "alternate return values", costing "as low as returning and checking an extra `Bool`". | A legality level per op, checked as [`applyFullConversion`](https://mlir.llvm.org/docs/DialectConversion/) does. Structure kept until the backend that needs it: the paper calls raising a CFG back to regions fragile. ClangIR's order: `try` as structure while building, explicit edges after a pass, the ABI last. |
+| [Cranelift](https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/cranelift/docs/ir.md) | SSA with block parameters and machine-level types. Entities are `u32` indexes into per-function tables. A detailed [verifier](https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/cranelift/codegen/src/verifier/mod.rs). | `try_call` is a terminator with a normal block and a table of handler blocks, which are ordinary blocks. Wasmtime's libcalls for `throw` set a pending exception and return a sentinel ([cfallin](https://cfallin.org/blog/2025/11/06/exceptions/)). | Integer ids in parallel lists, which fit the subset and save memory. The verifier's checklist. Exceptional edges as explicit successors, but with no values on them: Python locals live in slots. |
+| [Julia](https://docs.julialang.org/en/v1/devdocs/ssair/) | Flat typed SSA statement vector with a CFG. Per-statement flags such as `IR_FLAG_NOTHROW` ([optimize.jl](https://raw.githubusercontent.com/JuliaLang/julia/master/Compiler/src/optimize.jl)). `invoke` names the resolved method. | Region markers (`enter`, a setjmp, and `leave`), not terminator calls, because "every call ... throws". Values live into a handler go through `Upsilon`/`PhiC`. `PiNode` narrows a value and emits no code. | NOTHROW flags to skip checks after ops that cannot raise. `PiNode`-style unchecked narrowing. Struct-of-arrays storage. Not implicit edges with `Upsilon`/`PhiC`: slots make explicit edges cheap. |
+| WebAssembly [EH](https://raw.githubusercontent.com/WebAssembly/exception-handling/main/proposals/exception-handling/Exceptions.md) / [GC](https://raw.githubusercontent.com/WebAssembly/gc/main/proposals/gc/MVP.md) | Structured control flow only. GC structs and arrays with at most one supertype. `(ref $t)` versus `(ref null $t)`. Both are in [Wasm 3.0](https://webassembly.org/news/2025-09-17-wasm-3.0/). | `try_table` with `catch`/`catch_all_ref` clauses, `throw`, `throw_ref`; no `finally`. Catch clauses "do not catch traps", and `struct.get` traps on null. `br_on_null` passes the operand on as non-null ([function references](https://raw.githubusercontent.com/WebAssembly/function-references/main/proposals/function-references/Overview.md)). | Nullability in the IR type maps to `ref null`. Every error Python can observe is an explicit check, never a trap. One tag carrying the exception object; `except C` by `ref.test`/`br_on_cast`. `try` kept recoverable as a region. |
+| [MicroPython nlr](https://raw.githubusercontent.com/micropython/micropython/master/py/nlr.h) | Bytecode VM in C. Handler records `nlr_buf_t` chained on the C stack; on x86-64 an asm `nlr_push` saves 8 registers. | The exception rides in `nlr_buf_t.ret_val`. Locals the handler reads are `volatile` ([vm.c](https://raw.githubusercontent.com/micropython/micropython/master/py/vm.c)). The conservative GC scans the C stack and the saved registers. Jump callbacks clean up C state. | Evidence that a conservative-GC Python runtime in C can unwind through C frames. The warning that C state live across a raise needs cleanup under any scheme. Not the mechanism (below). |
+| [Lua 5.4](https://raw.githubusercontent.com/lua/lua/v5.4/ldo.c) | Register VM in C. `lua_longjmp` records chained from `L->errorJmp`. | `LUAI_TRY` is `_setjmp`, or C++ `try` when built as C++. `luaD_throw` long-jumps with an int status; the error value stays on the Lua stack. With no handler: the panic function, then `abort()`. | A few `_Noreturn` funnels whose last step is the only thing that changes. If setjmp is ever used, `_setjmp`, which skips the signal mask: 2.6 ns per `try` against 115 ns for `sigsetjmp(b,1)` (measured). |
+
+Also read, with one lesson each:
+- **Go.** `NilCheck` returns the checked pointer, and `nilcheckelim` deletes dominated repeats ([nilcheck.go](https://raw.githubusercontent.com/golang/go/release-branch.go1.24/src/cmd/compile/internal/ssa/nilcheck.go)). Its [Wasm port](https://raw.githubusercontent.com/golang/go/release-branch.go1.24/src/cmd/compile/internal/wasm/ssa.go) has no structure to work from: it pays with a `br_table` dispatcher per function and a flag test after every call.
+- **Kotlin.** One typed IR feeds the JVM, JS, Wasm and Native backends. `finally` is copied to every exit, plus one synthetic catch-all that runs it and re-raises ([FinallyBlocksLowering.kt](https://raw.githubusercontent.com/JetBrains/kotlin/master/compiler/ir/backend.common/src/org/jetbrains/kotlin/backend/common/lower/FinallyBlocksLowering.kt)). The Wasm backend merges all `catch` clauses into one type switch ([TryCatchCanonicalization.kt](https://raw.githubusercontent.com/JetBrains/kotlin/master/compiler/ir/backend.wasm/src/org/jetbrains/kotlin/backend/wasm/lower/TryCatchCanonicalization.kt)). Kotlin/Native turns a `throw` with a local handler into a jump ([IrToBitcode.kt](https://raw.githubusercontent.com/JetBrains/kotlin/master/kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/IrToBitcode.kt)).
+- **RPython.** One global pending-exception record, a test after every op that can raise ([exceptiontransform.py](https://raw.githubusercontent.com/pypy/pypy/main/rpython/translator/exceptiontransform.py)), and class tests by preorder id ranges, so `except LookupError` is one range compare ([rclass.py](https://raw.githubusercontent.com/pypy/pypy/main/rpython/rtyper/rclass.py)).
+- **Numba.** Types in side tables, a status code plus out-parameter on every function ([callconv.py](https://raw.githubusercontent.com/numba/numba/main/numba/core/callconv.py)), and in a `try` one exception test at the end of each block, so ops after a failed one run on garbage ([interpreter.py](https://raw.githubusercontent.com/numba/numba/main/numba/core/interpreter.py)). All three are to avoid.
+- **Nuitka.** One try node with a handler per exit (exception, break, continue, return); a user `finally` is copied into each ([TryCodes.py](https://raw.githubusercontent.com/Nuitka/Nuitka/develop/nuitka/code_generation/TryCodes.py)).
+- **CPython 3.11+.** `SETUP_FINALLY`/`POP_BLOCK` pseudo-ops in the compiler's IR become a side table at assembly, so code that does not raise pays nothing ([exception_handling.md](https://raw.githubusercontent.com/python/cpython/main/InternalDocs/exception_handling.md)).
+- **OCaml.** Its trap frames are nearly free because its calling convention has no callee-saved registers ([proc.ml](https://raw.githubusercontent.com/ocaml/ocaml/trunk/asmcomp/amd64/proc.ml)). C-ABI code from LLVM has them, so a handler chain is not as cheap for Pystachy.
+
+### B.2 Exceptions: three lowering strategies
+
+Today a failed check in compiled code branches to one cold block per function and message, which prints CPython's last traceback line and exits. Inside the runtime, 94 calls of `pys_fail`, plus `pys_raise`, `failf`, `keyerr`, `oserr` and the other `_Noreturn` funnels, do the same. Whatever lowering is chosen, a program without `try` must keep its IR and its speed.
+
+| | table-driven unwinding | setjmp/longjmp handler chain | error returns / pending flag |
+|---|---|---|---|
+| used by | C++ (Itanium ABI), Rust panics, Codon, CPython 3.11 bytecode | MicroPython, Lua, LLVM SjLj, Julia `enter` | Swift, Zig, Go, Rust `Result`, Mojo, mypyc, RPython, Numba |
+| LLVM shape | `invoke` + `landingpad` + personality routine | `_setjmp` at each `try`, `longjmp` to raise | `load`, `icmp`, `br` after each may-raise call |
+| cost when nothing raises | none: an `invoke` in a hot loop ran as fast as a `call`, 0.55 ns per iteration (measured) | 2.6 ns per `try` entry with `_setjmp`, 115 ns with `sigsetjmp(b,1)`; a `try` in a tiny loop 2.9 ns against 0.55 (measured) | a branch after every call under a handler: `bench/fib.py` +15 % (`swifterror` register), +26 % (global flag), +59 % (sentinel, then flag) (measured) |
+| cost of a raise | 1.0 µs at depth 1, 2.4 µs at 10, 15 µs at 100 (measured) | about 12 ns at depth 1 to 10 (measured) | one return per frame |
+| runtime change | the funnels end in `_Unwind_RaiseException`; their callers stay as they are | the funnels end in `longjmp` | every error site and every C caller must return and propagate |
+| Wasm | the LLVM text does not carry over; the IR maps to `try_table` | no equivalent; [Emscripten](https://emscripten.org/docs/porting/setjmp-longjmp.html) builds it on Wasm EH | plain branches, on any engine |
+
+**Constraints.**
+- **`returns_twice` and volatile locals.** Non-`volatile` locals changed between `setjmp` and `longjmp` are unspecified afterwards ([setjmp(3)](https://man7.org/linux/man-pages/man3/setjmp.3.html)). LLVM 18's [mem2reg](https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/Transforms/Utils/PromoteMemoryToRegister.cpp) and SROA have no `returns_twice` check: `x=1; if _setjmp()==0 { x=2; longjmp } else return x` returned 2 unoptimised and 1 after `mem2reg` (measured). The JIT tier runs `mem2reg`, so every local written in a `try` and read in a handler, a `finally` or after the `try` would need volatile loads and stores. That is a hand-written copy of LLVM's [SjLjEHPrepare](https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/CodeGen/SjLjEHPrepare.cpp). The [inliner](https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/Analysis/InlineCost.cpp) also refuses to inline a function that calls setjmp into its callers ("exposes returns twice"), and the AOT tier lives on inlining.
+- **The GC.** The in-flight exception must be a root under every scheme. `mark_roots()` scans the C stack, the registered globals, `ch1` and `args`, not every static, so a new `pys_exc_cur` must be added there. Otherwise a `finally` that allocates could free the exception being raised. The unwinder's `_Unwind_Exception` header stays outside the GC heap. Allocations abandoned by a raise are harmless.
+- **C state crossed by a raise.** `pys_list_sort_r` empties the list while user `__lt__` calls run, and `io_in`/`io_out` keep an `io_busy` count. Both must be restored when a raise passes through them, under every scheme: MicroPython uses jump callbacks; with `-fexceptions`, `__attribute__((cleanup))` runs during unwinding.
+- **The JIT.** `lli` uses ORC with JITLink on x86-64 ELF, and LLVM 18's [LLJIT](https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/ExecutionEngine/Orc/LLJIT.cpp) adds an `EHFrameRegistrationPlugin`, which registers the `.eh_frame` of the program and of `-extra-object` files. Unwinding worked under `lli -extra-object=runtime.o` after the JIT tier's passes, through a C frame that called back into compiled code (measured). The plugin API may change after LLVM 18.
+- **The AOT build.** clang marks every C function `nounwind` unless given `-fexceptions`, and a `nounwind` function that unwinds is undefined behaviour ([LangRef](https://llvm.org/docs/LangRef.html)). After `llvm-link` and `-O2`, no `invoke` was left and the exception went uncaught. With `runtime.c` built `-fexceptions`, the 8 benchmarks ran within noise, `.text` kept its size and `.eh_frame` grew by 48 to 80 bytes (measured). A runtime built without unwind tables makes `_Unwind_RaiseException` return `_URC_END_OF_STACK`.
+- **`finally` and `with`.** LLVM forbids an exception escaping a `cleanup` pad ([ExceptionHandling](https://llvm.org/docs/ExceptionHandling.html)), and Python cleanup code can raise or `return` ([PEP 343](https://peps.python.org/pep-0343/)'s `__exit__` included). So `finally`, `with` and `except ...: raise` become a catch-all pad (`catch ptr null`) plus an explicit re-raise, never `cleanup` and `resume`. The [two-phase unwinder](https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html) finds a handler before it runs any pad, so a program with a `try` gets a catch-all in `@main`: its `finally` blocks then run before the uncaught-exception line, as in CPython (measured).
+- **Wasm.** LLVM itself lowers Wasm EH through a different, funclet-based IR ([WasmEHPrepare](https://llvm.org/doxygen/WasmEHPrepare_8cpp_source.html)), so `invoke` text is no route to Wasm. A WasmGC backend lowers Pystachy's own IR, whose exception edges stay neutral.
+
+**Recommendation.**
+1. **In the IR, an action per instruction, not a region.** Every op that may raise carries `exc`: `abort` (today's print-and-exit), `propagate` (MIR's `Continue`) or `handler(bb)` (MIR's `Cleanup(bb)`, SIL's error successor). `Gen` keeps a handler stack, saved around each `try` body, and stamps its top on each op. Stage 0 uses `abort` everywhere, so the printed IR stays byte-identical. A `Try` record keeps the region for a Wasm emitter. New ops: `raise`, a handler entry that yields the exception, and `exc.match e, C`.
+2. **A local raise is a branch.** A `raise` or `check` whose handler is in the same function becomes a `br` that carries the exception object, without the runtime, as in Kotlin/Native. Cold blocks are pooled per message and handler, not per message.
+3. **Across calls, LLVM unwinds.** A may-raise call whose action is `handler(bb)` becomes an `invoke`. Every other call stays a `call`, so a program without `try` emits today's IR. The funnels build the exception, store it in the rooted static and call `_Unwind_RaiseException`. If that returns `_URC_END_OF_STACK`, the ABI guarantees the stack is untouched, and the funnel prints the same line and exits with the same status as today. The 94 `pys_fail` sites do not change. The personality routine is about 50 lines of C in `runtime.c`, modelled on [Rust's](https://raw.githubusercontent.com/rust-lang/rust/master/library/std/src/sys/personality/gcc.rs). It must decode every DWARF pointer encoding, not only the two the experiment met. `runtime.c` is built with `-fexceptions` in both tiers, and `PYSTACHY_CFLAGS` that strip unwind tables are rejected.
+4. **`except` and `finally`.** Each `try` has one handler block that runs a chain of `exc.match` tests and re-raises when none matches. `exc.match` is a preorder class-id range test. `else` is the normal successor, reached after the handler is popped. The exception being handled lives in a per-handler slot restored on every exit, which makes bare `raise` work. `finally` is copied at every exit that crosses it (fall-through, `return`, `break`, `continue`), plus one catch-all copy that re-raises, like Kotlin's lowering and Go's [open-coded defers](https://github.com/golang/proposal/blob/master/design/34481-opencoded-defers.md). `Gen` re-walks the `finally` AST at each exit. In a program with no handler, `with open()` keeps today's code.
+5. **Fast paths where the handler is local.** A raise costs about a microsecond, so `try: v = d[k]` / `except KeyError:` and `try: n = int(s)` / `except ValueError:` should call non-raising runtime variants that return a status. This is mypyc's `error_kind`, used only where a handler exists.
+6. **Wasm GC.** The same IR lowers `Try` records to `try_table`, `throw` and `throw_ref`, with one tag whose payload is the exception object. An engine without EH gets the flag lowering instead.
+7. **Rejected.** Handler chains: the per-`try` cost, volatile locals, no inlining, no Wasm form, and a `jmp_buf` in a C frame would not survive a generator's `yield`. Error returns between compiled functions: the `fib` costs above hit every call under a handler, and one `try` around `main()` puts the whole program under one. Every runtime error site and every C path that calls back into compiled code (timsort, `pys_obj_*`) would also have to return.
+
+§7.2 proposed the flag, and three surveys leaned that way (Swift's error slot, RPython's `exc_data`, Mojo). Their main reasons were that landing pads must unwind through C frames that call back into compiled code and need frame registration under the JIT. Both were tested on LLVM 18 and work, and the flag's cost was measured. The IR itself does not depend on the choice.
+
+### B.3 None and optional pointers
+
+**Representation.** Compilers that make nullable references native use null for "none" when the payload is a pointer that is never null:
+- Rust guarantees that `Option<&T>` and `Option<Box<T>>` have the pointer's size and ABI, with `None` all zeros ([Nomicon](https://doc.rust-lang.org/nomicon/ffi.html)).
+- Swift stores none in an "extra inhabitant" of the payload, and null is always one for a class reference.
+- Zig's `?*T` is pointer-sized with null at address 0 ([language reference](https://ziglang.org/documentation/master/)); Codon's `Optional` over a reference type is the bare pointer.
+- WasmGC types every reference as `(ref $t)` or `(ref null $t)`.
+- mypyc is the exception: `Optional[str]` is a `PyObject*` holding `Py_None`, because NULL is its error value ([rtypes.py](https://raw.githubusercontent.com/python/mypy/master/mypyc/ir/rtypes.py)).
+
+For Pystachy, `T | None` with `T` a `str`, `list`, `dict`, `tuple`, file or class is the same 8-byte pointer, with null for `None`. Null then means `None` and nothing else. Unbound locals and fields keep their "is assigned" flags, and no function may report an exception by returning null, since a `-> str | None` function returns null for `None`. Scalars have no spare bit pattern: `int | None`, if it comes, is an `{i1, i64}` pair (Swift's `IntOrInfinity` example, Codon, Numba), boxed in container slots, never a reserved integer. The runtime's type descriptors need a nullable marker (such as `?s` in a `list[str | None]`) so that `repr`, `==` and ordering see a null slot as `None`.
+
+**In the type, not on the value.** Today `C | None` collapses into `C`, and `Val.nn` marks values known not to be `None`. That bit does not follow a value through a `phi` or a copy. Cinder and WasmGC put nullability in the type. A canonical type string `T|None`, distinct from `T`, keeps `str`, `list` and `dict` values provably non-null.
+
+**Three ops.**
+- `isnone x` gives a `bool`.
+- `nonnull x, "<message>"` gives `T`. It is checked, may raise, and returns the checked value, so later uses depend on it. Models: Go's `NilCheck`, Cinder's `CheckField`, Zig's expanded safe unwrap. LLVM: today's `icmp eq ptr %x, null` and a branch to the cold block. Wasm: `br_on_null` to a raising block, never `ref.as_non_null`, whose trap no `except` can catch.
+- `narrow x` gives `T`. It is unchecked, emits no code, and sits where the not-`None` edge of an `isnone` branch arrives. Models: Julia's `PiNode`, Cinder's `RefineType`, the payload argument of Swift's `switch_enum`, the result of Wasm's `br_on_null`.
+
+**Narrowing.**
+- **Only stable names.** Kotlin smart-casts only values nothing else can change: `val`s and local `var`s that no lambda captures, never `var` properties ([spec](https://kotlinlang.org/spec/type-inference.html), [null safety](https://kotlinlang.org/docs/null-safety.html)). Pystachy has no closures and no `nonlocal`, so every local and parameter is stable. Fields and globals are not, since any call may change them. mypy narrows `self.x` and `x[0]` anyway and forgets only on assignment ([binder.py](https://raw.githubusercontent.com/python/mypy/master/mypy/binder.py)). Where Pystachy follows mypy to type a field, it still emits a checked `nonnull`.
+- **Forms.** `is None`, `is not None`, `== None`, `isinstance`, `assert`, early `return`/`raise`/`break`/`continue`, `while x is not None`, `and`/`or` and conditional expressions. Truthiness narrows only the true branch: the false branch may hold `""` ([TypeScript](https://www.typescriptlang.org/docs/handbook/2/narrowing.html)). Facts live in frames merged at joins and are replaced on assignment; stores are checked against the declared type.
+- **Handlers.** The state at a handler's entry is the join over every point of the `try` body that can raise (mypy's `try_frame`).
+- **Delete, never move.** IBM's Java JIT moves null checks to remove more of them ([Kawahito et al.](https://research.ibm.com/publications/effective-null-pointer-check-elimination-utilizing-hardware-trap--1)). Pystachy's messages and raise points must match CPython's, so its pass only deletes a check that a dominating `nonnull` or not-`None` edge makes redundant, then drops each `nonnull` whose operand type is non-null. LLVM does little of this in the JIT tier: `simplifycfg` drops a repeated test only when the block's single predecessor made it (`getDomPredecessorCondition` in [ValueTracking.cpp](https://raw.githubusercontent.com/llvm/llvm-project/main/llvm/lib/Analysis/ValueTracking.cpp)), and [EarlyCSE](https://raw.githubusercontent.com/llvm/llvm-project/main/llvm/lib/Transforms/Scalar/EarlyCSE.cpp) runs only in the AOT `-O2` pipeline.
+- **Tell LLVM.** Only `self` is `nonnull` today. `nonnull noundef` on every non-null pointer parameter and return helps both tiers. It must never go on a `T|None` value or on a field that may be unassigned: a null there is poison.
+
+**What CPython raises.** From CPython 3.13.16, with the format strings in [abstract.c](https://raw.githubusercontent.com/python/cpython/3.13/Objects/abstract.c), [object.c](https://raw.githubusercontent.com/python/cpython/3.13/Objects/object.c), [unicodeobject.c](https://raw.githubusercontent.com/python/cpython/3.13/Objects/unicodeobject.c) and [call.c](https://raw.githubusercontent.com/python/cpython/3.13/Objects/call.c):
+
+| with `x = None` | CPython 3.13 |
+|---|---|
+| `x.strip()` | `AttributeError: 'NoneType' object has no attribute 'strip'` |
+| `x.foo = 1` | `AttributeError: 'NoneType' object has no attribute 'foo' and no __dict__ for setting new attributes` (3.12: no suffix) |
+| `len(x)` | `TypeError: object of type 'NoneType' has no len()` |
+| `x + 'a'` | `TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'` |
+| `'a' + x` | `TypeError: can only concatenate str (not "NoneType") to str` |
+| `x[0]` | `TypeError: 'NoneType' object is not subscriptable` |
+| `x[0] = 1` / `del x[0]` | `TypeError: 'NoneType' object does not support item assignment` / `item deletion` |
+| `for y in x`, `list(x)` | `TypeError: 'NoneType' object is not iterable` |
+| `'a' in x` | `TypeError: argument of type 'NoneType' is not iterable` (3.14: `is not a container or iterable`) |
+| `x in 'a'` | `TypeError: 'in <string>' requires string as left operand, not NoneType` |
+| `x < 'a'` | `TypeError: '<' not supported between instances of 'NoneType' and 'str'` (operands in source order) |
+| `x()` | `TypeError: 'NoneType' object is not callable` |
+| `-x` | `TypeError: bad operand type for unary -: 'NoneType'` |
+| `int(x)` | `TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'` |
+| `','.join(['a', x])` | `TypeError: sequence item 1: expected str instance, NoneType found` |
+| `f'{x:>5}'` | `TypeError: unsupported format string passed to NoneType.__format__` |
+| `'a'.startswith(x)` | `TypeError: startswith first arg must be str or a tuple of str, not NoneType` |
+
+`x == 'a'` is `False`, `str(x)` is `'None'`, `'a'.split(x)` splits on whitespace, and `{}[x]` raises `KeyError: None`. Two consequences:
+- A `nonnull` belongs to its use site. Each carries its own message, and a binary operator's message depends on the other operand's type and on which side `None` is.
+- It sits where CPython raises. Attribute and method checks come before the arguments are evaluated: `x.strip(f())` never calls `f`. `+`, `[]`, `in` and `<` check after both operands: `x + f()` and `x[f()]` call `f` first. Parameters that accept `None` (`str.split`, `str.strip`) need no check.
+
+### B.4 Generators later
+
+Generators are not in the prototype, but two choices made now decide whether they stay cheap to add.
+- **LLVM coroutines work, but the frame is LLVM's.** With switched-resume [coroutines](https://llvm.org/docs/Coroutines.html), a generator is a function marked `presplitcoroutine` whose `yield`s are `llvm.coro.suspend`. On LLVM 18.1.3 the JIT tier's pipeline fails on them (`Cannot select: intrinsic %llvm.coro.begin`). Prefixing it with `coro-cond(coro-early,cgscc(coro-split),coro-cleanup,globaldce)` works, and is a no-op in a module without coroutines ([CoroConditionalWrapper.cpp](https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/Transforms/Coroutines/CoroConditionalWrapper.cpp)); `clang -O2` already handles them (measured). The frame holds only the values live across a suspend, in a layout LLVM picks, so it must come from `pys_alloc`, which is scanned. That layout and the outlined resume functions are of no use to a WasmGC backend, which needs a typed frame struct.
+- **A transform in Pystachy's IR ports.** Rust's MIR has a `Yield { value, resume, drop }` terminator ([syntax.rs](https://raw.githubusercontent.com/rust-lang/rust/master/compiler/rustc_middle/src/mir/syntax.rs)). A later pass turns each into "set the state, return", adds an entry block that switches on the state, and moves the locals live across a suspend into a frame struct, with reserved states for unresumed, returned and poisoned. The same pass in Pystachy's IR could produce an LLVM struct or a WasmGC struct.
+
+What the IR must keep possible:
+- Locals stay typed slots, so a pass can move the ones live across a `yield` into a frame object.
+- `yield` is a terminator with a resume successor. It splits blocks as a may-raise call does.
+- Exception handling keeps no state in the C stack across a suspend. Per-instruction actions and unwind tables qualify; a `jmp_buf` in the generator's C frame would not survive a `yield` inside a `try`.
+- `Loop` and `Try` records survive lowering, so a Wasm emitter can build the resume dispatch from blocks rather than a per-function dispatcher, as Go's Wasm port must.
+- The end of iteration is a status that the `for` loop tests, as Numba's `RETCODE_STOPIT` is, not a raised `StopIteration`.
+
+## Appendix C. Where the implementation departs from the design
+
+The design was written against commit `bd4cd6a`, and its counts (lines, calls, programs) are
+that commit's. What has changed since, and where the code departs from the text:
+- #4 §1 B and C are fixed: the loader recognizes `os`, `sys` and `TYPE_CHECKING` only where no
+  local binding hides them (`special()`), so §1.2 item 7's first point no longer holds.
+- The O(F × G) cost of `flow_program` (#4 §2) is gone: Flow works over the names each function
+  mentions, with an undo log.
+- A `Symtable` pass now mirrors CPython's symbol table on every parsed module (#15). It is the
+  natural starting point for the resolver track of §6.4.
+- Step 0's tooling has landed: `tools/irsame.sh` (`make irsame REF=<commit>`), `make check-ir`
+  (also a `make verify` step) and the `tests/ir/` probes.
+- #17's cases 2 and 4 (§9, question 4) now compile.
+- Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
+  program is now a compile-time error asking to annotate the field.
+- Optional values, NamedTuples and tuple keys (wf/types) are merged into the IR, and extend
+  §3.2's types: `opt[T]` is T | None for `str`, `list`, `dict` and `tuple` (a class type still
+  includes None), and a dict's keys may be tuples of `int`, `bool`, `str` and `str | None` items,
+  whose descriptor is the dict's key kind (`rt dict.new`'s first operand, and a dict hole's when
+  it is lowered). A local first assigned None has the type `opt[None]` until another value
+  types it, and its `slot` op keeps it. A lookup by a key that may be None joins two container
+  slots in a `phi` of the pseudo-type `%slot`, which `lt()` spells `i64`.
+- `opt[T]` is also T | None for `int`, `float` and `bool`: a pointer to an immutable box of the
+  value (`rt box`, runtime.c's `pys_box`; descriptors `?i`, `?f` and `?b`). Boxing and reading a
+  box are code, so a value that reaches a `phi` as the other type is converted at the end of
+  the block it comes from, before that block's terminator (`Gen.convert_in`), and a template's
+  function that turns out to return `int | None` gives each `ret` built before a box there.
+
+- Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
+  on the corpus). Where they differ from the text below:
+  - the op table is `IROPS`, since the lexer's `OPS` holds Python's operators; `raise` has the
+    letters T R N, and the effect letters are listed in `FX`;
+  - `rt()` builds `rt` ops, whose operands are typed as their `RUNTIME` entry spells them (`S`,
+    `*T`, `#`, ...) and whose `Ins.x` holds the descriptor text of a `#` parameter; `call_fn`
+    and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
+    store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
+    that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
+    U and I. A raw op's letters are what its text shows (`rawfx`): none for a slot's load or
+    store (an alloca is never address-taken), rG or wG for a global's, rO or wO for an object's
+    field or flag (an address from `getelementptr %C.<class>`, `Gen.fields`), and rL rD rO or
+    wL wD wO through any other address (a list's or a dict's header, or a new tuple's items,
+    which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
+    computes it, once the program is built (`Gen.opfx` gives one op's letters). The passes of
+    §7.1 read the summaries, and so do `PYSTACHY_IRCHECK=1` and `PYSTACHY_IRFX=1`, which
+    prints them (`fxs` spells them) as the passes left them: `tests/ir/effects.fx` lists those of the `effects.py` probe, and
+    `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
+    add values or blocks; the verifier checks that no number or label is above it;
+  - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
+    `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
+    `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
+    coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
+    descriptor) against runtime.c's call graph, rL wL, rD wD and rF wF against the loads and
+    stores through a list, dict or file parameter (clang -O1, following addresses through
+    loads, getelementptr, phis, locals and callees' parameters), and I against the runtime's
+    mutable statics and the C library functions it calls, outside the end of the program and
+    the allocator (so an entry whose letters are at most R, which `canon` merges, reads
+    nothing but its arguments); `Gen.rtfns` holds one `RtFn` (symbol, signature,
+    LLVM types, declare line, effects) per runtime function declared, in the order of first use,
+    and replaces R2's `decls`: the header prints their declare lines;
+  - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
+    a list comprehension's result list is a hole too, which `listcomp` fills with the list type
+    once it knows the element type (a list hole lowers as it was built, so this changes no output);
+  - `anyall` records a `seq` `Loop` too;
+  - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
+    compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
+    internal error as on an IR that `llvm-as` rejects, and on a program that does not compile;
+  - the jump to the first cold block that follows the `ret` a function falls into is a block
+    without a label (LLVM starts one after a terminator), so that each block still ends with
+    its one terminator.
+  - `IFn.ps` holds the indices of the parameters passed, and lowering spells the `define` line
+    from them (`ptr nonnull %a0` for a method's receiver).
+  - a `raise` of `SyntaxError`, `IndentationError` or `TabError` whose message is true has the
+    whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
+    message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
+    leaves out. Its `s` is the kind, but its operands are not (kind, message). Such a raise
+    exists only in a program without a try: in one with a try, a raise statement throws the
+    exception that `pys_exc_new` and `pys_exc_detail` make (`Gen.exc_value`), so the exception
+    lowering reads every `raise` op as (kind, message).
+  - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
+    (R5), so only debug information or the traceback lines of §7.7 will, and they can add it.
+  - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
+    its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
+    stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
+    function's IR (blocks, slots, loops, cold blocks) once it is lowered, keeping its summary.
+    With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
+    before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
+    reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
+- Exceptions (§7.2) have landed, by table-driven unwinding rather than the error flag §7.2
+  proposed (measured on LLVM 18: the flag cost 15 to 59 % on `fib` under a handler, and
+  unwinding works through the runtime's C frames, also under the JIT):
+  - `Blk.handler` names the landing block of the innermost `try` around a block in its
+    function ("" for none: an exception leaves the function); `Gen` stamps it on each block it
+    opens. `IFn.tries` holds a `Try` record per try statement (body, landing blocks of the
+    except clauses and of `finally`, else, exit) for a structured backend; lowering does not
+    read them. A check inside a try has a cold block per message and landing block (its key,
+    `"<landing> <message>"`, is in `Ins.x`; `IFn.coldh` maps it to the landing block).
+  - new ops: `landing` (alone in its block: it stores the exception the unwinder brings in the
+    try's slot and goes on to the code after it, where `pys_exc_begin` takes it up), `throw e`
+    (`pys_throw`) and `exc.match e, set` (`pys_exc_in` over the classes a clause catches, out
+    of the closed set `EXCBASES` and the program's exception classes); an exception has the
+    type `exc`, which the builtin exception classes name in annotations too (descriptor `E`).
+  - once the program is built, `Gen.eh_ir` reads the effect summaries (so `Gen.effects` runs
+    for every program with a try): in a covered block, a `raise` or `throw` becomes a branch
+    to the code after its landing block, with the exception in the slot; a call (`rt`,
+    `call` or `init`) whose effects have R becomes an invoke (`Ins.b` = [next, landing]) and
+    ends its block; a landing block no invoke reaches is dropped, and a function with none
+    left has no `personality`. The verifier then checks that only unwind edges reach a
+    landing block, and that no call that may raise, `raise` or `throw` is left in a covered
+    block. On the tests, 40 of the 122 landing blocks are dropped.
+  - R includes the allocation of the exception a raise makes on its way out (a collection may
+    run before a handler takes it), and A only allocations on the way to returning, so the
+    table's letters did not change (`tools/check_runtime.py` derives them so).
+  - `return`, `break` and `continue` leave through `Gen.exits` (with blocks, except clauses,
+    finally blocks), which runs a copy of each finally block they cross, as CPython does. A
+    finally block that holds a try statement with a finally block of its own is compiled once
+    instead, after the rest of its statement: each way out (the end, the exception, each
+    `return`, `break` or `continue`) stores its index in an i64 slot (`Exit.sel`) and jumps to
+    it, and a chain of compares at its end goes on to that way's continuation (`Exit.conts`);
+    a return's value goes through a slot of its own. Copies of copies grew as 3^depth: 9.4 MB
+    of LLVM IR at depth 8, which LLVM's passes took 25 s over; it is now linear.
+  - landing blocks that no try statement writes: an except clause whose name may be read
+    after it has one around its body, which unbinds the name and throws again (CPython's
+    clause has a finally block for it); and in a program with a try, a module's code
+    (`@init.<module>`) has one around everything after its done test, which clears the done
+    flag and throws again, so that a later import runs the code again (a `Try` record in
+    `IFn.tries` with only a landing block; the clause's is not recorded apart from its try
+    statement's).
+  - whether the program has a try is decided before code generation, over all its modules
+    (the closed world), as the with statement's unwind action needs it: a program that
+    imports a `lib/` module with a try in a function it never calls has exceptions on too.
+  - exception classes (one base: a builtin exception class or another exception class) need
+    no op of their own. An object begins with hidden fields (`EXCFIELDS`: its `ExcClass`,
+    what it keeps of its args, a `SystemExit`'s code), then its base's fields and flags, so a
+    method is compiled once, for the class that defines it, and inherited as it is
+    (`Gen.inherit`); only `__init__`, `__str__` and `__repr__` may be defined again. The
+    `ExcClass` constant and its `str`, `repr` and `exit` functions (`@x.*`) are generated, as
+    `obj_helpers` are, for the classes whose objects the program makes; `str()` and `repr()`
+    of an exception object are `rt` ops through it (`exc.ostr`, `exc.orepr`), and `exc.str`,
+    `exc.repr` and those have U, as they may run the class's `__str__`. A raise of an object
+    is a `throw` of the exception `exc.user` makes of it, and `except E as e` binds the
+    object `exc.obj` gives back.
+
+- The optimizations of §7.1 are passes over each `IFn` (`OPTS`), which `Gen.program` runs once
+  the effect summaries are computed, before `eh_ir` and lowering (so that a rewritten op that
+  may raise, a `dict.entry` say, becomes an invoke as any other); `PYSTACHY_OPT=-name` turns one off for a
+  differential run (comma-separated; `-all` turns off every one), and the tests pass with each
+  off. `tools/check_ir.sh` checks a `tests/ir/NAME.calls`, the runtime functions each function
+  of the probe calls, as lowered with every pass on.
+  - `listget` (item 1): `for_seq` and `anyall` record in `Loop.tests` the block that each
+    sequence's test leads to, and in `Loop.idx` the index of the item read there. From that
+    block, the pass follows the one path through blocks that a single branch leads to (so that
+    no other path, from a handler either, joins it) to the `list.get` of the list at that
+    index, and stops at an op with wL or U. It makes the read a `list.load` op (letters rL),
+    which lowers to the inline load of `l->a[i]` (three more numbers, from `IFn.n`). Every
+    loop over a list qualifies: 376 of the 1,823 `pys_list_get` calls of the self-compile,
+    and 262 more in 88 other programs of the corpus. `tests/ir/listget.py` pins it.
+  - `dictfuse` (item 2): a `dict.has` or a `dict.getitem` finds a key's entry, which a later
+    `dict.getitem` or `dict.set` of the same dict and key reuses where the key is known to be
+    there: after a getitem, or on the branch where the has's test is true (the pass reads the
+    raw `icmp ne`/`eq i64 %r, 0` of its result, and an `xor i1 %c, true` of that). A forward
+    pass over the blocks in order keeps the lookups (`Lookup`) that hold at the end of each
+    block; the blocks that branch to a block meet by intersection, a later one (a loop's back
+    edge) brings none, and an op with wD or U, or a set that reuses no entry, ends them all
+    (a reused entry's set moves no entry, as `pys_dict_set` overwrites). `Gen.canon` (with
+    `Values`) finds equal dicts and keys: a raw load reads what the last store or load of the
+    same slot, global or field wrote or read, on the path back through blocks that one branch
+    leads to (fields of different classes or indices never alias); a raw computation, and an
+    `rt` op that only computes (no letter but R), equals the first of the same text with
+    canonical operands. The has becomes `dict.find` (the entry or -1; the has's number is then
+    the raw `add %e, 1`), a reused getitem `dict.entry` (the entry, or CPython's KeyError) and
+    `dict.val`, and the ops that reuse an entry `dict.val` (the loops' `pys_dict_val`, which
+    serves as §7.1's `dict.entry_val`) and `dict.entry_set`. In the self-compile it rewrites
+    73 of the 496 `pys_dict_has` calls, 91 of the 327 `pys_dict_getitem` and 2 of the 766
+    `pys_dict_set`; in 7 other programs of the corpus, 14 has, 32 getitem and 21 set.
+    `tests/ir/dictfuse.py` pins it, and where it does not apply: `if k not in d: d[k] = []`
+    before `d[k].append(x)` (the set inserts, so no entry is known after the join), and a
+    call that may change a dict. `d[k] = d.get(k, 0) + 1` (bench/words.py) is not fused.
+    Its work is bounded: `canon` recurses once for each value of the chain it follows, so a
+    value it reaches `CANON_DEPTH` (1,000) calls deep is its own canonical value (4,000 lines of
+    `k = k ^ 1 ^ ... ^ 10` overflowed the native compiler's stack; the self-compile's deepest
+    chain is 18). `reaching` walks back over at most `REACH` (256) ops, so that a load it does
+    not find is its own (85 in the self-compile; the first loads of 12,000 globals, each after
+    the last, took 4.3 s); the next load of the same address finds that one. At most `LOOKUPS`
+    (32) lookups hold at once, the oldest giving way (the self-compile holds at most 7), and a
+    block's state is dropped once the last block it branches to has read it: 12,000 reads of
+    other keys in one function took 5.9 s and 3.6 GB. `tools/scaling.py` has the shapes
+    (`chain`, `gdicts`, `lookups`).
+  - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
+    field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
+    passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with
+    `PYSTACHY_OPT=-all`, under callgrind).
+  - Merged with the typed IR's optional values, NamedTuples, tuple keys and class protocol,
+    the passes run unchanged over what those compile to: a tuple key is a value like an int or
+    a str (its hash and `==` run no user code, so the dict entries stay without U), a
+    NamedTuple's fields are an object's (rO wO), a boxed number is read through a pointer, and
+    a container dunder (`__contains__`, `__getitem__`, `__iter__`, `__len__`) is a `call` with
+    its callee's summary, never a dict or list op. The types work's repr can reach
+    `pys_repr_enter`, so the entries whose error message holds the repr of a key or a value
+    (`dict.getitem`, `dict.entry`, `dict.pop`, `dict.pop_default`, `dict.popbox`, `list.index`,
+    `list.index_as`) have I. In the self-compile of the merge, listget rewrites 504 of the
+    2,446 `pys_list_get` calls, and dictfuse 80 of the 728 `pys_dict_has`, 117 of the 444
+    `pys_dict_getitem` and 3 of the 873 `pys_dict_set`. `tests/ir/passes_types.py` pins the
+    rewrites on those values, and where a dunder's summary ends a lookup;
+    `tests/opt_dictfuse_protocol.py`, `opt_dictfuse_types.py` and `opt_listget_types.py` run
+    them against CPython (each dunder, and each runtime call that runs one, moving every entry
+    between a key's test and its update). A has whose test is an `and`'s value (a `phi`:
+    `if d is not None and k in d`) is not fused, as on the old base.
+  - A `bool` key among `int` keys (also as a tuple key's item: `bool_for_int`) finds the `int`
+    key it equals, but CPython's `KeyError` names the key as it is (`KeyError: True`), where
+    the runtime's names it by the dict's key descriptor (`KeyError: 1`). So `d[b]`, `d.pop(b)`
+    and `del d[b]` of such a key are a `dict.find` and, where it misses, a `raise` of
+    `KeyError` with the key's `repr` (`Gen.bool_find`), then a `dict.val` of the entry (a
+    `dict.pop` for the other two): no runtime entry changes. dictfuse fuses only has, getitem
+    and set, so it leaves those ops be (a `b in d` before `d[b]` stays a has: the two look the
+    key up twice, where they shared one lookup before). A store of such a key is rejected
+    (`Gen.store_key`), since CPython keeps a key it adds as the `bool`. `d[k] op= v`
+    of a key that may be `None` is a check of `None` (`KeyError: None`), then the getitem and
+    the set of the key it holds, which dictfuse fuses as any other. Only
+    `tests/bool_int_key.py` and `tests/tuplekey_none.py` of the corpus change; the
+    self-compile does not. `tests/ir/bool_keys.py` pins both paths.
+  - Exception edges (the exceptions above): the passes run before `eh_ir`, where a block that
+    a try statement covers still names its landing block in `Blk.handler`, and `Gen.preds`
+    counts that unwind edge: every covered block is a predecessor of its landing block (a
+    check's raising edge stays out: its cold block, covered too, is such a predecessor). A
+    rewritten op that may raise (`dict.entry`) then becomes an invoke as any other. `dictfuse`
+    starts a landing block with no lookup, which is less than the meet, at the landing, of what
+    holds at each op that may raise there: what holds at the end of a covered block is not (a
+    getitem that raised KeyError ends its block knowing its key is in the dict, so a handler's
+    `d[k] = 0` would have reused an entry that is not there). The handler's code then knows
+    only its own lookups, and so does the code after its try statement, where its end joins.
+    `canon`'s walk back from a load (`Gen.reaching`) stops at a landing block too: a covered
+    block is its predecessor where one of its ops raised, not from its end, so a store after
+    that op (`k = "b"` after `int(s)` in the try body) is not what the handler's load of `k`
+    reads. Walking on, the handler's `k in d` and a later `d["b"]` had been fused (one
+    lookup of `"a"`, then `d["b"]` read from its entry: a wrong value, or past the entries
+    of another dict); `tests/opt_exc_canon.py` runs those shapes (locals, globals, a dict
+    rebound in the try body, a finally block's exceptional copy, nested tries, loops).
+    `listget` follows only branches to blocks that one branch leads to, never a landing op's,
+    so a handler's path joins its own only where paths meet: after the try statement or at a
+    loop's test, which the next pass runs again. Run after `eh_ir`, both went wrong:
+    `dict.entry` inserted before an invoke lost its unwind edge, and the KeyError case above
+    reached the handler's set through the invoke's edge. `tests/ir/passes_exc.py` pins what
+    they rewrite in a try body, in a clause and after a try statement, and
+    `tests/opt_exc_dictfuse.py` and `opt_exc_listget.py` run handlers that change the dict or
+    shorten the list between a lookup and its reuse, or a loop's test and its read.
+
+`docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
+`list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
+this design was chosen.

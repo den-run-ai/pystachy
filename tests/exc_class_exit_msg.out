@@ -1,0 +1,3 @@
+caught: caught Stop('caught')
+cleanup
+[exit 1]

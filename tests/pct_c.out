@@ -1,0 +1,11 @@
+TypeError %c requires int or char
+TypeError %c requires int or char
+'é' '  é|é  |'
+'x' '  x|x  |'
+'A' '  A'
+'\U0010ffff' '  \U0010ffff'
+OverflowError %c arg not in range(0x110000)
+OverflowError %c arg not in range(0x110000)
+OverflowError %c arg not in range(0x110000)
+'  B|x  |' '\x01'
+[exit 1]

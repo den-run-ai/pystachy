@@ -12,6 +12,7 @@
 #include <math.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio_ext.h>
@@ -20,12 +21,14 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <unwind.h>
 
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
 typedef struct { I len, cap; I *a; } List;
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
+typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
@@ -104,6 +107,16 @@ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges 
 static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
+static struct { Exc *cur, *handled, *shown, *pend; } xr;   /* the exception raised last, the one being handled,
+                                     the uncaught one whose str() is being shown, the one a with-file's close
+                                     raised while unwinding (see exceptions) */
+static int eh;                         /* the program has a try: stored by pys_eh_on alone (see exceptions) */
+typedef void Thrower(Exc *);
+static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
+                                          or until an uncaught exception object is reported */
+typedef struct { void (*fn)(void *); void *arg; } Unwind;
+static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
+static I nunw, cunw;
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
@@ -150,6 +163,10 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
+  if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
+    scan((const W *)&xr, (const W *)(&xr + 1));
+    if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
+  }
 }
 __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
   I n = s->bump, sz = s->size;
@@ -303,23 +320,54 @@ static void gc_init(char *sb, I **roots, I nroots) {
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
-   CPython reports it, with status 120 */
+   CPython reports it, with status 120. In a program that has a try (pys_eh_on) they are
+   raised instead, and end the program the same way if nothing catches them (see exceptions).
+   They reach that code only through xthrow, which nothing but pys_eh_on and the report of an
+   uncaught exception stores: a program without try links neither, so LLVM folds xthrow to
+   NULL and keeps none of it, and the funnels compile to the code they had before. */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
 static _Noreturn void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
-_Noreturn void pys_fail(const char *m) { if (io_intr) kbint_exit(); out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1); }
+static Exc *exc_new(Str *kind, Str *msg, Str *args);
+static Exc *exc_raise(Str *kind, Str *msg);
+static Exc *exc_line(const char *m);
+static Exc *exc_exit(I c, Str *msg);
+static const char *exc_name(Exc *e, int *n);
+Str *pys_exc_repr(Exc *e);
+void *pys_exc_id(Exc *e);
+static void unwind_push(void (*fn)(void *), void *arg);
+static void unwind_pop(void);
+static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="backslashreplace" (CPython's
+                                             sys.stderr) writes a surrogate, held in its three-byte form, as \udcff */
+  I i = 0, j = 0;
+  for (; i + 2 < n; i++)
+    if ((unsigned char)s[i] == 0xED && ((unsigned char)s[i + 1] & 0xE0) == 0xA0 && ((unsigned char)s[i + 2] & 0xC0) == 0x80) {
+      char t[8];
+      fwrite(s + j, 1, i - j, stderr);
+      fwrite(t, 1, snprintf(t, sizeof t, "\\u%04x", 0xD000 | (s[i + 1] & 0x3F) << 6 | (s[i + 2] & 0x3F)), stderr);
+      j = i + 3; i += 2;
+    }
+  fwrite(s + j, 1, n - j, stderr);
+}
+_Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
+  if (io_intr) kbint_exit();
+  if (xthrow) xthrow(exc_line(m));
+  out_flush(); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
+}
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
+  if (xthrow) xthrow(exc_raise(kind, msg));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
-  if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
+  if (msg->len) { fputs(": ", stderr); ewrite(msg->s, msg->len); }
   fputc('\n', stderr);
   kbint = !strcmp(kind->s, "KeyboardInterrupt");
   pys_finish();
   exit(1);
 }
-_Noreturn void pys_exit(I c) { pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
+_Noreturn void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
-  out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
+  if (xthrow) xthrow(exc_exit(0, msg));
+  out_flush(); ewrite(msg->s, msg->len); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
 __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
@@ -663,6 +711,35 @@ static double mchk(double r, double x, double y, int ovf) {
 #define M1(f, ovf) double pys_m_##f(double x) { return mchk(f(x), x, 0, ovf); }
 M1(sqrt, 0) M1(sin, 0) M1(cos, 0) M1(tan, 0) M1(asin, 0) M1(acos, 0) M1(atan, 0) M1(sinh, 1) M1(cosh, 1) M1(tanh, 0)
 M1(exp, 1) M1(log, 0) M1(log2, 0) M1(log10, 0) M1(fabs, 0) M1(log1p, 0) M1(expm1, 1) M1(exp2, 1) M1(cbrt, 0)
+M1(asinh, 0) M1(acosh, 0) M1(atanh, 0) M1(erf, 0) M1(erfc, 0)
+double pys_m_ldexp(double x, I i) {   /* CPython's: an exponent beyond int's range is clamped */
+  if (x == 0 || !isfinite(x)) return x;
+  double r = ldexp(x, i > 0x7FFFFFFF ? 0x7FFFFFFF : i < -0x7FFFFFFF ? -0x7FFFFFFF : (int)i);
+  if (isinf(r)) pys_fail("OverflowError: math range error");
+  return r;
+}
+void **pys_m_frexp(double x) {        /* (m, e), a tuple of a float and an int */
+  int e = 0; double m = isnan(x) || isinf(x) || x == 0 ? x : frexp(x, &e);
+  I *t = pys_alloc(16); memcpy(t, &m, 8); t[1] = e; return (void **)t;
+}
+void **pys_m_modf(double x) {         /* (fractional part, integral part); an infinity's is (+-0.0, x), as in CPython */
+  double i, f = isinf(x) ? copysign(0.0, x) : isnan(x) ? x : modf(x, &i);
+  if (isinf(x) || isnan(x)) i = x;
+  I *t = pys_alloc(16); memcpy(t, &f, 8); memcpy(t + 1, &i, 8); return (void **)t;
+}
+double pys_m_nextafter(double x, double y) { return nextafter(x, y); }
+double pys_m_remainder(double x, double y) { return mchk(remainder(x, y), x, y, 0); }
+double pys_m_fma(double x, double y, double z) {   /* x * y + z, rounded once */
+  double r = fma(x, y, z);
+  if (isnan(r) && !isnan(x) && !isnan(y) && !isnan(z)) pys_fail("ValueError: invalid operation in fma");
+  if (isinf(r) && isfinite(x) && isfinite(y) && isfinite(z)) pys_fail("OverflowError: overflow in fma");
+  return r;
+}
+double pys_m_ulp(double x) {          /* the distance from |x| to the next float away from zero (or below the largest) */
+  if (isnan(x) || isinf(x)) return fabs(x);
+  double a = fabs(x), b = nextafter(a, INFINITY);
+  return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
+}
 double pys_m_pow(double x, double y) {
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
@@ -773,7 +850,7 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<id> object
    of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
    has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
-   ?<e> None (null) or a value of <e> */
+   ?<e> None (null) or a value of <e>; E an exception (an Exc) */
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
@@ -787,12 +864,15 @@ Str *pys_default_repr(Str *cls, void *p) {
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
 }
 static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
+static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
-  if (nbusy == cbusy) { cbusy = cbusy * 2 + 8; busy = realloc(busy, cbusy * sizeof(void *)); if (!busy) pys_fail("MemoryError"); }
-  busy[nbusy++] = p; return 1;
+  if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
+  busy[nbusy++] = p;
+  if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
+  return 1;
 }
-void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
+void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 /* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
    box of its value's 8 bytes (a bool's 0 or 1), and None is null */
 void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
@@ -857,6 +937,7 @@ static const char *repr(Buf *b, I v, const char *d) {
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
   case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
+  case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
   }
   return d;
 }
@@ -891,6 +972,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
+  case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
   return a == b;
 }
@@ -921,6 +1003,10 @@ static int opv(I a, I b, const char *d, I op) {
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
+  case 'E': {
+    int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
+    failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
+  }
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -1028,10 +1114,18 @@ void pys_list_reverse(List *l) { rev(l->a, l->len); }
    comparisons as opv. As in CPython (ob_item NULL, allocated -1), the list looks empty while it is
    sorted, and growing it from __lt__ makes the sort fail afterwards. Items can exist only in the
    merge buffer when a comparison runs the collector: the buffer is scanned memory, and it and the
-   item array stay in volatile fields of the MergeState (MS) on the stack. Speed: the common item
-   types compare inline, and binary insertion and the one-at-a-time merging of ints and floats use
-   selects, as random data makes their branches unpredictable (merging strings or objects keeps
-   the branches, which let the CPU fetch their data early). */
+   item array stay in volatile fields of the MergeState (MS) on the stack. A comparison that
+   raises into a try leaves the list with all its items, in the order reached, as in CPython: an
+   unwind action (sort_undo) copies back the items that are only in the merge buffer, from where
+   the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
+   reversal and gives the list its array back. What it needs is in a record on the heap (Undo),
+   so that it can run when the sort's frame is gone, and the merges find it in a static (keep_u),
+   not in the MS: a program without try (eh 0) keeps the sort it had, instruction for
+   instruction. In one with a try, the notes (3 stores a comparison) cost a sort of objects a
+   few percent. Speed: the common item types compare inline, and binary insertion and the
+   one-at-a-time merging of ints and floats use selects, as random data makes their branches
+   unpredictable (merging strings or objects keeps the branches, which let the CPU fetch their
+   data early). */
 #define MIN_GALLOP 7
 typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
 typedef struct {
@@ -1039,6 +1133,14 @@ typedef struct {
   I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
   I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
 } MS;
+typedef struct Undo {                               /* for sort_undo: the list, its item array, length, */
+  List *l; I *a, n, cap; int rev;                   /* capacity and reverse=; KEEP notes fs[:fn], the */
+  I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back; */
+  struct Undo *outer;                               /* keep_u when the sort began */
+} Undo;
+static Undo *keep_u;                                /* the Undo of the sort running (a comparison may sort */
+                                                    /* another list), NULL if it needs none; set only when eh */
+#define KEEP(dst, src, k) do { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } while (0)
 static I sorting[1];                                /* the items of a list while it is being sorted */
 enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
 static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
@@ -1093,79 +1195,96 @@ static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geo
   if (need > ms->nt) { ms->nt = need > 2 * ms->nt ? need : 2 * ms->nt; ms->t = pys_alloc(ms->nt * 8); }
   return ms->t;
 }
-static void merge_lo(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */
-  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;
-  *d++ = *pb++;
-  if (--nb == 0) goto done;
-  if (na == 1) goto copyb;
-  for (;;) {
-    I ac = 0, bc = 0, w;                            /* times a and b won in a row */
-    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */
-      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;
-      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;
-    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */
-    else for (;;) {                                 /* the others by branches */
-      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }
-      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }
-    }
-    if (!nb) goto done;
-    if (na == 1) goto copyb;
-    mg++;
-    do {                                            /* galloping */
-      mg -= mg > 1; ms->min_gallop = mg;
-      ac = k = gallop(ms, *pb, pa, na, 0, 1);
-      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }
-      *d++ = *pb++;
-      if (--nb == 0) goto done;
-      bc = k = gallop(ms, *pa, pb, nb, 0, 0);
-      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }
-      *d++ = *pa++;
-      if (--na == 1) goto copyb;
-    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
-    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */
-  }
-done:
-  if (na) memcpy(d, pa, na * 8);
-  return;
-copyb:                                              /* the last of a goes after the rest of b */
-  memmove(d, pb, nb * 8); d[nb] = *pa;
+/* The merges, written once (MERGES) and compiled twice: merge_lo and merge_hi, where NOTE notes
+   nothing, are those merge_at calls for a sort that needs no Undo, the code they had before;
+   merge_lo_k and merge_hi_k, where NOTE is KEEP, those it calls (by merge_keep) when eh and
+   keep_u: a program without try does not keep them */
+#define MERGES(SFX, NOTE) \
+static void merge_lo##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */ \
+  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;                                   \
+  *d++ = *pb++;                                                                                                         \
+  if (--nb == 0) goto done;                                                                                             \
+  if (na == 1) goto copyb;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                            /* times a and b won in a row */                                    \
+    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */                        \
+      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;                                                                           \
+      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;                                   \
+    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */                 \
+    else for (;;) {                                 /* the others by branches */                                        \
+      NOTE(d, pa, na);                                                                                                  \
+      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }                               \
+      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!nb) goto done;                                                                                                 \
+    if (na == 1) goto copyb;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                            /* galloping */                                                     \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d, pa, na);                                                                                                  \
+      ac = k = gallop(ms, *pb, pa, na, 0, 1);                                                                           \
+      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }           \
+      *d++ = *pb++;                                                                                                     \
+      if (--nb == 0) goto done;                                                                                         \
+      NOTE(d, pa, na);                                                                                                  \
+      bc = k = gallop(ms, *pa, pb, nb, 0, 0);                                                                           \
+      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }                                 \
+      *d++ = *pa++;                                                                                                     \
+      if (--na == 1) goto copyb;                                                                                        \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */                               \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (na) memcpy(d, pa, na * 8);                                                                                        \
+  return;                                                                                                               \
+copyb:                                              /* the last of a goes after the rest of b */                        \
+  memmove(d, pb, nb * 8); d[nb] = *pa;                                                                                  \
+}                                                                                                                       \
+static void merge_hi##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */ \
+  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;                 \
+  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */          \
+  if (--na == 0) goto done;                                                                                             \
+  if (nb == 1) goto copya;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                                                                                                \
+    if (ms->kind == INT || ms->kind == FLOAT) do {                                                                      \
+      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];                                                               \
+      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;                                   \
+    } while (na && nb > 1 && ac < mg && bc < mg);                                                                       \
+    else for (;;) {                                                                                                     \
+      NOTE(d - nb, t, nb);                                                                                              \
+      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }                         \
+      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!na) goto done;                                                                                                 \
+    if (nb == 1) goto copya;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                                                                                                \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d - nb, t, nb);                                                                                              \
+      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);                                                               \
+      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }                                 \
+      *--d = *--pb;                                                                                                     \
+      if (--nb == 1) goto copya;                                                                                        \
+      NOTE(d - nb, t, nb);                                                                                              \
+      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);                                                               \
+      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }           \
+      *--d = *--pa;                                                                                                     \
+      if (--na == 0) goto done;                                                                                         \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                                                                                              \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (nb) memcpy(d - nb, t, nb * 8);                                                                                    \
+  return;                                                                                                               \
+copya:                                              /* the first of b goes before the rest of a */                      \
+  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];                                                            \
 }
-static void merge_hi(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */
-  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;
-  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */
-  if (--na == 0) goto done;
-  if (nb == 1) goto copya;
-  for (;;) {
-    I ac = 0, bc = 0, w;
-    if (ms->kind == INT || ms->kind == FLOAT) do {
-      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];
-      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;
-    } while (na && nb > 1 && ac < mg && bc < mg);
-    else for (;;) {
-      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }
-      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }
-    }
-    if (!na) goto done;
-    if (nb == 1) goto copya;
-    mg++;
-    do {
-      mg -= mg > 1; ms->min_gallop = mg;
-      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);
-      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }
-      *--d = *--pb;
-      if (--nb == 1) goto copya;
-      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);
-      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }
-      *--d = *--pa;
-      if (--na == 0) goto done;
-    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
-    ms->min_gallop = ++mg;
-  }
-done:
-  if (nb) memcpy(d - nb, t, nb * 8);
-  return;
-copya:                                              /* the first of b goes before the rest of a */
-  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];
+#define NOTHING(dst, src, k)
+MERGES(, NOTHING)
+MERGES(_k, KEEP)
+static __attribute__((noinline)) void merge_keep(MS *ms, I *a, I na, I *b, I nb) {
+  if (na <= nb) merge_lo_k(ms, a, na, b, nb); else merge_hi_k(ms, a, na, b, nb);
 }
 static void merge_at(MS *ms, int i) {               /* merge pending runs i and i+1 */
   Run *p = ms->p;
@@ -1176,7 +1295,8 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
-  if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
+  if (eh && keep_u) { merge_keep(ms, a, na, b, nb); keep_u->fn = 0; }   /* every item is in the array again */
+  else if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
   if (!ms->np) return;
@@ -1190,10 +1310,24 @@ static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs
   while (ms->np > 1 && ms->p[ms->np - 2].power > power) merge_at(ms, ms->np - 2);
   ms->p[ms->np - 1].power = power;
 }
+static void sort_undo(void *p) {
+  Undo *u = p;
+  if (u->fn) memcpy(u->fd, u->fs, u->fn * 8);
+  if (u->rev) rev(u->a, u->n);
+  u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
+  keep_u = u->outer;
+}
 void pys_list_sort_r(List *l, Str *d, I reverse) {
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
            .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+  Undo *u = 0, *outer = keep_u;
+  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
+    u = pys_alloc(sizeof(Undo));
+    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0; u->outer = outer;
+    unwind_push(sort_undo, u);
+  }
+  if (eh) keep_u = u;
   l->len = l->cap = 0; l->a = sorting;
   if (n > 1) {
     if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
@@ -1212,7 +1346,11 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     }
     if (reverse) rev(a, n);
   }
-  if (l->a != sorting) pys_fail("ValueError: list modified during sort");
+  if (eh) { keep_u = outer; if (u) unwind_pop(); }
+  if (l->a != sorting) {                            /* items added meanwhile are dropped, as in CPython */
+    if (eh) { l->len = n; l->cap = cap; l->a = a; }
+    pys_fail("ValueError: list modified during sort");
+  }
   l->len = n; l->cap = cap; l->a = a;
 }
 void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
@@ -1512,14 +1650,18 @@ typedef struct {
 static File std_in, std_out, std_err;
 static File **files;                   /* the open files, malloc'd: the collector does not see them */
 static I cfiles;
-static const char *errcls(int e) {     /* CPython's OSError subclass for an errno */
+static const char *errcls(int e) {     /* CPython's OSError subclass for an errno (EWOULDBLOCK is EAGAIN) */
   return e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
     e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" :
-    e == EPIPE ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" : "OSError";
+    e == EPIPE || e == ESHUTDOWN ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" :
+    e == ECONNABORTED ? "ConnectionAbortedError" : e == ECONNREFUSED ? "ConnectionRefusedError" : e == ECHILD ? "ChildProcessError" :
+    e == EAGAIN || e == EALREADY || e == EINPROGRESS ? "BlockingIOError" : e == ESRCH ? "ProcessLookupError" :
+    e == ETIMEDOUT ? "TimeoutError" : "OSError";
 }
-static _Noreturn void ioerr(int e) {   /* a failed write, flush or close raises, as in CPython */
-  char b[160]; snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
+static inline __attribute__((always_inline)) const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
+  snprintf(b, 160, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); return b;
 }
+static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
 
 /* Ctrl-C. CPython's handler only notes the signal; KeyboardInterrupt is raised between two
    bytecodes, and the program ends as for an uncaught exception, then by SIGINT. Here the handler
@@ -1686,7 +1828,7 @@ static _Noreturn void oserr(const char *path);
 static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
 static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
   if (f->closed) closed_err();
-  int e = f->emu ? wput(f, s, n) : (fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
   if (e) ioerr(e);
 }
 static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text, then bs bytes buffered */
@@ -1699,6 +1841,10 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
   if (a0 && argc) { args->a[0] = (I)cstr(a0); unsetenv("PYSTACHY_ARGV0"); }
+  if (a0) {                            /* and lli's crash handlers, which print lli's stack, are dropped: the */
+    int sig[] = {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT};   /* program dies by the signal, as when built */
+    for (int i = 0; i < 5; i++) signal(sig[i], SIG_DFL);
+  }
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
@@ -1905,6 +2051,16 @@ I pys_system(Str *c) {
   if (nul(c)) pys_fail("ValueError: embedded null byte");
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
+_Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process becomes path's program (its buffered output is
+                                            lost, as CPython's); the runtime's SIGINT handler is not inherited */
+  if (nul(path)) pys_fail("ValueError: execv: embedded null character in path");
+  if (!args->len) pys_fail("ValueError: execv() arg 2 must not be empty");
+  if (!((Str *)args->a[0])->len) pys_fail("ValueError: execv() arg 2 first element cannot be empty");
+  char **v = pys_alloc((args->len + 1) * sizeof *v);
+  for (I i = 0; i < args->len; i++) { if (nul((Str *)args->a[i])) pys_fail("ValueError: embedded null byte"); v[i] = ((Str *)args->a[i])->s; }
+  execv(path->s, v);
+  ioerr(errno);
+}
 I pys_getpid(void) { return getpid(); }
 static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
 void pys_setrecursionlimit(I n) {
@@ -1933,6 +2089,326 @@ Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.joi
   return s;
 }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+
+/* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
+   A program that has a try calls pys_eh_on when it starts. From then on a raise (pys_fail,
+   pys_raise, sys.exit, pys_throw) makes an Exc, which begins with the unwinder's header,
+   notes it (a root of the collector) and calls _Unwind_ForcedUnwind, which asks
+   pys_personality, the personality routine of every compiled function with landing pads,
+   whether the call that frame is in is covered by one; frames without (the runtime's, and
+   compiled code outside a try) are passed over. If one is, control goes to it. Every landing
+   pad catches everything, so the first one found is the handler: one phase finds and enters
+   it, where _Unwind_RaiseException would walk the frames twice (a search phase, then this),
+   which made each raise from a call cost about twice as much (CFI interpreting dominates). The
+   unwinding is virtual until a landing pad is entered: if none is, the stack is as it was, and
+   the raise ends the program as it
+   always did: CPython's last traceback line and exit status, a SystemExit's status or
+   message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
+   ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
+   CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
+   not raise pays nothing, a try included, but for list.sort of objects, whose merges note where
+   their items are (a few percent; see list.sort); a raise costs about a microsecond. A program
+   without try keeps none of this: the funnels reach it through xthrow, and what else tests
+   eh (the unwind actions below) folds away, as only pys_eh_on stores either. It links
+   pys_throw and the report only when it raises a user exception object.
+   Compiled code's side. A function with landing pads names `personality ptr @pys_personality`;
+   a call in a try that may raise is an invoke whose unwind label is a landing pad,
+   `landingpad { ptr, i32 } catch ptr null`: every pad catches everything, and the code tests
+   the exception with pys_exc_in and throws again what it does not handle. A try notes
+   pys_try_mark() and pys_exc_handled() as it starts; its landing pad first calls
+   pys_exc_begin(the pad's pointer, the mark), which returns the Exc (a throw to a landing of
+   the same function may instead branch to it with the Exc itself, the same address). The
+   exception being handled (a bare raise's, CPython's exc_info) is a global: pys_exc_begin sets
+   it, and every way out of a handler restores the one its try noted (pys_exc_restore).
+   What compiled code raises. The funnels raise what they always ended the program with:
+   pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg known not to be
+   empty and for kind() (msg empty), pys_exit(c) for sys.exit(c) of an int c (not a bool),
+   pys_exit_msg(m) for sys.exit(m) of a str m. The kind is a class's bare name, but for one the
+   runtime raises, io.UnsupportedOperation (reading a file open for writing, writing one open
+   for reading), whose bases are OSError and ValueError: the names an except clause of either,
+   of Exception or of BaseException matches (pys_exc_in) include it. pys_raise takes Gen's
+   "SyntaxError: x" line as kind too. Anything else is pys_throw of an Exc that pys_exc_new(kind,
+   str(e), args) makes, args being what repr(e) shows in its parentheses ("" for no argument,
+   "5", "'a', 'b'"): ValueError(5), KeyError('a', 'b') (str "('a', 'b')"), KeyError('a') (str
+   "'a'"), ValueError('') (str ""). A SystemExit whose code is None, a bool or an int is
+   pys_exc_exit(status, str(code), repr(code)), so that nothing catching it ends the program
+   with that status and no output: pys_exc_exit(0, "", "") for sys.exit(), sys.exit(None) and
+   raise SystemExit (str(e) "", repr SystemExit()), (0, "None", "None") for SystemExit(None),
+   (1, "True", "True") for sys.exit(True). Another code is pys_exc_new("SystemExit", str(code),
+   args): str(code) and status 1. sys.exit(t) of a tuple t (not raise SystemExit(t)) takes t's
+   items as the args: sys.exit(()) is sys.exit(), sys.exit((3,)) is sys.exit(3). The traceback
+   shows a SyntaxError, IndentationError or TabError as "kind: " + str(msg or "<no detail
+   available>"), msg being its first argument (None without): pys_exc_detail(e, that text)
+   gives an Exc that line, while str(e) stays str(msg) ("None" without). A user exception
+   object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end the
+   program as the builtin one its code makes. Its line is "disp: str(e)", where str(e) without
+   a __str__ is its builtin base's: of KeyError, repr(arg) for one argument; of OSError and its
+   subclasses, "[Errno a] b" for two (3 to 5 add filenames to str(e) and drop them from args:
+   reject them); an ExcClass cannot give the SyntaxError family's line: reject such classes.
+   What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
+   which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
+   and the unwind actions registered since the try's mark run, the latest first, each popped
+   before it runs. A with statement's file is closed as its __exit__ would close it, a list
+   being sorted gets its items back (list.sort), and an object whose generated __repr__ was
+   running leaves the repr guard. The frames between are gone by then, so what an action
+   needs is on the heap. When nothing catches a raise, every action runs before the report.
+   No action raises: a with-file whose close fails notes its OSError, and once the actions
+   have run, it takes the place of the exception (the last such one, as the outermost
+   __exit__'s would), which pys_exc_begin returns to the try (CPython's __exit__ runs in the
+   try's body) or the report shows. An action compiled code registers (pys_unwind_push) must
+   not raise either: a landing pad calls pys_exc_begin, and what it raised would leave the pad
+   past its try.
+   The rest raises before it changes anything (list and dict operations; open() closes the
+   file it opened first), builds new objects that become garbage (strings, containers,
+   formatting) or never raises (the collector and its closing of unreachable files).
+   Not catchable: an allocation that fails (oom), a Ctrl-C (kbint_exit), a stack overflow. */
+typedef struct ExcClass {              /* a user exception class: compiled code emits one constant each */
+  Str *kind;                           /* unique name, which pys_exc_in matches */
+  Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
+  Str *(*str)(void *obj), *(*repr)(void *obj);
+  Exc *(*exit)(void *obj);             /* a class deriving from SystemExit: the builtin SystemExit (pys_exc_exit,
+                                          pys_exc_new) its object's code ends the program as; else NULL */
+} ExcClass;
+struct Exc {                           /* GC-allocated, 16-byte aligned (exc_alloc); a user object's first */
+  struct _Unwind_Exception ue;         /* field points to its ExcClass. First: the unwinder's header */
+  Str *kind;                           /* "KeyError", or the user class's ExcClass->kind */
+  Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
+  void *obj;                           /* the user exception object, or NULL */
+  I code, has_code;                    /* SystemExit: its status (has_code 0: msg is a code's str, status 1) */
+  Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
+  Str *detail;                         /* uncaught: "kind: detail", even when empty; NULL: msg (pys_exc_detail) */
+};
+_Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
+#define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
+#define XCLS(e) (*(ExcClass **)(e)->obj)
+static _Noreturn void throw_(Exc *e);
+static Thrower *hide(Thrower *f) {     /* f, stored where the funnels find it: were its value seen, LLVM */
+  __asm__("" : "+r"(f));               /* would call throw_ directly there, and every program would link it */
+  return f;
+}
+void pys_eh_on(void) { eh = 1; xthrow = hide(throw_); }
+static Exc *exc_alloc(void) {          /* at a slot's first 16-byte boundary (an interior pointer keeps the slot) */
+  return (Exc *)(((uintptr_t)pys_alloc(sizeof(Exc) + 15) + 15) & ~(uintptr_t)15);
+}
+static Exc *exc_new(Str *kind, Str *msg, Str *args) { Exc *e = exc_alloc(); e->kind = kind; e->msg = msg; e->args = args; return e; }
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { return exc_new(kind, msg, args); }
+Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
+Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
+  Exc *e = exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
+}
+Exc *pys_exc_detail(Exc *e, Str *d) { e->detail = d; return e; }   /* the SyntaxError family's (above) */
+static Exc *exc_raise(Str *kind, Str *msg) {   /* pys_raise's; a kind "SyntaxError: x" (Gen's) is split */
+  const char *c = msg->len ? 0 : strstr(kind->s, ": ");
+  if (!c) return exc_new(kind, msg, 0);
+  msg = pys_str(c + 2, kind->s + kind->len - (c + 2));   /* all of it: str(msg) may hold a NUL */
+  return pys_exc_detail(exc_new(pys_str(kind->s, c - kind->s), msg, 0), msg);
+}
+static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) of a str: status 1 */
+  if (!m) { Str *s = pys_str_int(c); return pys_exc_exit(c, s, s); }
+  Buf b = {0}; repr_str(&b, m); return exc_new(cstr("SystemExit"), m, done(&b));
+}
+static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args its message does not show */
+  const char *c = strstr(m, ": "), *t, *r;
+  Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
+  if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(atoi(s->s + 7)))) {
+    Buf b = {0}; int n = atoi(s->s + 7);     /* an OSError, of n's class (a ValueError can show a repr like it): */
+    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);   /* (errno, strerror), without the filenames after */
+    r = strerror(n); t += 2;                             /* strerror, which can hold ": " */
+    repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */
+    a = done(&b);
+  }
+  return exc_new(k, s, a);
+}
+static const char *short_name(Str *k, int *n) {   /* a class's name without its module (*n: its length) */
+  const char *p = k->s + k->len;
+  while (p > k->s && p[-1] != '.') p--;  /* not memrchr: tools/dictprobe.c includes this file after <time.h> */
+  *n = (int)(k->s + k->len - p);
+  return p;
+}
+static const char *exc_name(Exc *e, int *n) { return short_name(e->obj ? XCLS(e)->disp : e->kind, n); }
+Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
+Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
+  if (e->obj) return XCLS(e)->repr(e->obj);
+  Buf b = {0}; Str *m = e->msg; int n; const char *k = exc_name(e, &n);
+  put(&b, k, n);
+  put(&b, "(", 1);
+  if (e->args) put(&b, e->args->s, e->args->len);
+  else if (e->has_code || !strcmp(e->kind->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
+  else if (m->len) repr_str(&b, m);
+  put(&b, ")", 1); return done(&b);
+}
+Str *pys_exc_ostr(void *obj) { return (*(ExcClass **)obj)->str(obj); }    /* str(e) of a user exception object */
+Str *pys_exc_orepr(void *obj) { return (*(ExcClass **)obj)->repr(obj); }  /* and repr(e) */
+Str *pys_exc_errcls(I e) { return cstr(e < 0 || e > 0x7FFFFFFF ? "OSError" : errcls((int)e)); }   /* OSError(e, text)'s class */
+Str *pys_exc_name(Exc *e) { int n; const char *k = exc_name(e, &n); return pys_str(k, n); }   /* type(e).__name__ */
+Str *pys_exc_cls(void *obj) {          /* and of a user exception object, which may be None */
+  int n; const char *k = obj ? short_name((*(ExcClass **)obj)->disp, &n) : "NoneType";
+  return obj ? pys_str(k, n) : cstr(k);
+}
+Str *pys_exc_brepr(void *obj, Str *args) {   /* BaseException.__repr__ of one: its class's name, then (args) */
+  Buf b = {0}; int n; const char *k = short_name((*(ExcClass **)obj)->disp, &n);
+  put(&b, k, n); put(&b, "(", 1); put(&b, args->s, args->len); put(&b, ")", 1); return done(&b);
+}
+I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1B\1" */
+  Str *k = e->kind;
+  for (const char *p = names->s, *end = p + names->len; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
+    if (!memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) return 1;
+  return 0;
+}
+void *pys_exc_obj(Exc *e) { return e->obj; }
+void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
+Exc *pys_exc_handled(void) { return xr.handled; }
+void pys_exc_restore(Exc *e) { xr.handled = e; }
+static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
+  if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
+  unw[nunw++] = (Unwind){fn, arg};
+}
+static void unwind_pop(void) { nunw--; }   /* the frame is left another way: forget the latest action */
+void pys_unwind_push(void (*fn)(void *), void *arg) { unwind_push(fn, arg); }
+void pys_unwind_pop(void) { unwind_pop(); }
+static void close_with(void *p) {      /* __exit__ of a with-file: a close that fails replaces the exception */
+  File *f = p; char b[160];
+  if (f->closed) return;
+  io_in(); int e = shut(f); io_out();
+  if (e) xr.pend = exc_line(ioerr_line(b, e));
+}
+void pys_unwind_file(File *f) { unwind_push(close_with, f); }   /* with open(...) as f */
+static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
+I pys_try_mark(void) { return nunw; }
+Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the raise left, handle the Exc */
+  Exc *e = ue;
+  xr.cur = e; io_busy = 0;
+  atomic_signal_fence(memory_order_seq_cst);
+  if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
+  unwind_to(mark);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }   /* a close that failed: the try handles its OSError */
+  xr.handled = e;
+  return e;
+}
+static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
+  Str *k = e->obj ? XCLS(e)->disp : e->kind;
+  fwrite(k->s, 1, k->len, stderr);
+  if (m->len || e->detail) { fputs(": ", stderr); ewrite(m->s, m->len); }
+  fputc('\n', stderr);
+  kbint = !e->obj && !strcmp(k->s, "KeyboardInterrupt");
+  pys_finish();
+  exit(1);
+}
+static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+  if (e->obj) {                        /* compiled code runs: what it raises and nothing catches ends in throw_ */
+    xr.shown = e; xthrow = hide(throw_);
+    if (XCLS(e)->exit) e = XCLS(e)->exit(e->obj);   /* SystemExit's subclasses end the program as it does */
+  }
+  if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
+    if (e->has_code) { pys_finish(); exit((int)e->code); }
+    out_flush(); ewrite(e->msg->s, e->msg->len); fputc('\n', stderr); pys_finish(); exit(1);
+  }
+  out_flush();
+  exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg);
+}
+static _Unwind_Reason_Code stop_none(int v, _Unwind_Action a, _Unwind_Exception_Class c, struct _Unwind_Exception *ue,
+                                     struct _Unwind_Context *ctx, void *arg) {   /* the forced unwind goes on to the end */
+  (void)v; (void)a; (void)c; (void)ue; (void)ctx; (void)arg;
+  return _URC_NO_REASON;
+}
+static _Noreturn void throw_(Exc *e) {
+  xr.cur = e;
+  if (eh) {
+    e->ue.exception_class = PYS_EXC;
+    _Unwind_ForcedUnwind(&e->ue, stop_none, 0);   /* comes back only if nothing catches e: the stack is as it was */
+  }
+  unwind_to(0);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }
+  if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
+  uncaught(e);
+}
+_Noreturn void pys_throw(Exc *e) { throw_(e); }
+_Noreturn void pys_reraise(void) {     /* a bare raise */
+  if (!xr.handled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
+  throw_(xr.handled);
+}
+/* The personality routine. The LSDA (.gcc_except_table) of a function is a header (where the
+   landing pads' offsets start, the type table, the call-site encoding), a call-site table
+   (start, length, landing pad, action) sorted by start, and action records (a type filter,
+   the next record). Its numbers are DWARF pointer encodings: a format (enc & 15) and how
+   to apply it (enc & 0x70; 0x80: through a pointer). Pystachy's pads catch everything
+   (`catch ptr null`, a null type); a cleanup pad would work too. Another language's
+   exceptions, and forced unwinding, go past compiled frames untouched. */
+static const uint8_t *dw_val(const uint8_t *p, int enc, uint64_t *v) {   /* a number in format enc & 15 */
+  uint64_t r = 0; unsigned s = 0; uint8_t b;
+  switch (enc & 15) {
+  case 0: case 4: case 12: memcpy(&r, p, 8); p += 8; break;   /* absptr, udata8, sdata8 */
+  case 2: { uint16_t x; memcpy(&x, p, 2); r = x; p += 2; break; }
+  case 3: { uint32_t x; memcpy(&x, p, 4); r = x; p += 4; break; }
+  case 10: { int16_t x; memcpy(&x, p, 2); r = (uint64_t)(int64_t)x; p += 2; break; }
+  case 11: { int32_t x; memcpy(&x, p, 4); r = (uint64_t)(int64_t)x; p += 4; break; }
+  case 1: case 9:                      /* uleb128, sleb128 */
+    do { b = *p++; if (s < 64) r |= (uint64_t)(b & 127) << s; s += 7; } while (b & 128);
+    if ((enc & 15) == 9 && s < 64 && b & 64) r |= ~(uint64_t)0 << s;
+    break;
+  default: return 0;
+  }
+  *v = r; return p;
+}
+static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *ctx, uint64_t *v) {   /* a pointer */
+  uint64_t base = 0;
+  switch (enc & 0x70) {
+  case 0x00: break;                                       /* absptr */
+  case 0x10: base = (uintptr_t)p; break;                  /* pcrel: from where it is stored */
+  case 0x20: base = _Unwind_GetTextRelBase(ctx); break;   /* textrel */
+  case 0x30: base = _Unwind_GetDataRelBase(ctx); break;   /* datarel */
+  case 0x40: base = _Unwind_GetRegionStart(ctx); break;   /* funcrel */
+  case 0x50: p = (const uint8_t *)(((uintptr_t)p + 7) & ~(uintptr_t)7); break;   /* aligned */
+  default: return 0;
+  }
+  if (!(p = dw_val(p, enc, v))) return 0;
+  if (*v) { *v += base; if (enc & 0x80) memcpy(v, (const void *)(uintptr_t)*v, 8); }   /* indirect; 0 stays null */
+  return p;
+}
+_Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind_Exception_Class cls,
+                                    struct _Unwind_Exception *ue, struct _Unwind_Context *ctx) {
+  const uint8_t *p = _Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+  uint64_t start = _Unwind_GetRegionStart(ctx), lpbase = start, n, cs, len, lp, act;
+  int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
+  _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
+  if (version != 1) return bad;
+  if (cls != PYS_EXC || !p) return _URC_CONTINUE_UNWIND;   /* (another forced unwind: thread cancellation) */
+  uint64_t ip = _Unwind_GetIPInfo(ctx, &before) - !before;   /* in the call instruction, not after it */
+  int lpenc = *p++;
+  if (lpenc != 0xff && !(p = dw_ptr(p, lpenc, ctx, &lpbase))) return bad;
+  if ((ttenc = *p++) != 0xff) { if (!(p = dw_val(p, 1, &n))) return bad; tt = p + n; }
+  csenc = *p++;
+  if (!(p = dw_val(p, 1, &n))) return bad;
+  for (at = p + n; p < at;) {          /* at: the action records, after the call sites */
+    if (!(p = dw_val(p, csenc, &cs)) || !(p = dw_val(p, csenc, &len)) || !(p = dw_val(p, csenc, &lp)) || !(p = dw_val(p, 1, &act)))
+      return bad;
+    if (ip < start + cs) break;        /* sorted: nothing covers ip */
+    if (ip >= start + cs + len) continue;
+    if (!lp) return _URC_CONTINUE_UNWIND;   /* a call that may raise, without a landing pad */
+    uint64_t sel = 0, cleanup = !act, f, next, ti;
+    for (const uint8_t *a = at + act - 1, *d; act;) {   /* catch clauses (filter > 0), cleanup (0) */
+      if (!(a = dw_val(a, 9, &f))) return bad;
+      d = a;
+      if (!(a = dw_val(a, 9, &next))) return bad;
+      if ((int64_t)f > 0) {            /* the filter-th type before tt: null catches everything */
+        int k = ttenc & 15, sz = k == 2 || k == 10 ? 2 : k == 3 || k == 11 ? 4 : k == 0 || k == 4 || k == 12 ? 8 : 0;
+        if (!tt || !sz || !dw_ptr(tt - f * sz, ttenc, ctx, &ti)) return bad;
+        if (!ti) { sel = f; break; }
+      } else if (!f) cleanup = 1;
+      if (!next) break;
+      a = d + next;
+    }
+    if (search) return sel ? _URC_HANDLER_FOUND : _URC_CONTINUE_UNWIND;
+    int hf = (actions & (_UA_HANDLER_FRAME | _UA_FORCE_UNWIND)) != 0;   /* (pys_throw's forced unwind: a catch is the handler) */
+    if (hf ? !sel : !cleanup) return _URC_CONTINUE_UNWIND;
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(0), (uintptr_t)ue);
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(1), hf ? sel : 0);
+    _Unwind_SetIP(ctx, lpbase + lp);
+    return _URC_INSTALL_CONTEXT;
+  }
+  return _URC_CONTINUE_UNWIND;         /* no entry: a call that cannot raise */
+}
 
 /* ---------- the time module: clocks and sleep ---------- */
 static I clock_ns(clockid_t c) { struct timespec t; clock_gettime(c, &t); return (I)t.tv_sec * 1000000000 + t.tv_nsec; }

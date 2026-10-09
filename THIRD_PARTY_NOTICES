@@ -12,6 +12,14 @@ Lib/ directory (lib/README.md lists their SHA-256 sums). They are part of Python
 under the Python Software Foundation License Version 2, reproduced below, with the copyright
 notice below. lib/curses/__init__.py is Pystachy's own.
 
+iniconfig (ports/iniconfig/)
+----------------------------
+
+ports/iniconfig/__init__.py, _parse.py and exceptions.py are iniconfig 2.3.1's modules, edited
+where ports/iniconfig/PORT.md lists (each edit is marked "Pystachy port:"). iniconfig is used
+under the MIT License, whose text and copyright notice ("Copyright (c) 2010 - 2023 Holger Krekel
+and others") are in ports/iniconfig/LICENSE.
+
 CPython's list sort (runtime.c)
 -------------------------------
 

@@ -1,0 +1,6 @@
+A('a') A('b')
+ValueError A('a')
+B('b') b
+C('c') C
+D('d') True
+[exit 1]

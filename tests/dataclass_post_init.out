@@ -1,0 +1,4 @@
+P(raw='abc', n=3) P(raw='de', n=2)
+caught negative
+DC(x=3) Own(a=8)
+[exit 1]

@@ -1,0 +1,40 @@
+try 3
+finally 3
+6
+0 -4
+x set to 5
+1
+body finally
+escaped dropped
+inner finally 11
+outer finally 11
+nested 0 11
+inner finally 11
+caught KeyError(1) 11
+outer finally 111
+nested 1 111
+inner finally 11
+outer finally 11
+nested 2 1
+inner finally 11
+outer finally 11
+nested 3 11
+body 0
+finally 0
+finally 1
+body 2
+finally 2
+finally 3
+after for
+w finally 1
+even 2
+w finally 2
+w finally 3
+even 4
+w finally 4
+w finally 5
+after while 5
+1
+[0, 2]
+try else finally | except finally
+[exit 0]

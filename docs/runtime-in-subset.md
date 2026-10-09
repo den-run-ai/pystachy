@@ -4,7 +4,7 @@ This document evaluates moving `runtime.c`, and the repository's other C code (`
 
 It covers robustness, quality, compilation, performance, scalability, extensibility, code reuse, and the interaction with the two pieces of work in progress: the typed IR (`docs/typed-ir.md`, branch `claude/typed-ir`, #22) and the bug fixes of `claude/m0-correctness` and `claude/scalability`.
 
-The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now stacked on `claude/typed-ir` (#22), merged at `39d8471` (the IR core of steps 4 to 8), `cc472e4` and `5159bc6`. Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
+The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now stacked on `claude/typed-ir` (#22), merged at `39d8471` (the IR core of steps 4 to 8), `cc472e4`, `5159bc6` and `3c0664b` (exceptions). Runtime mode builds the typed IR's ops like the rest of the compiler, and `RUNTIME` binds the functions that `runtime.py` defines (§2.8). Unless a section says otherwise, measurements were made against `30b51d9`'s C runtime; §2.11 repeats them on the typed IR. All were made on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13, as the README's are.
 
 ## Summary
 
@@ -27,7 +27,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
   - `def f(...) -> T: ...` declares a C function;
   - `import _rt` gives 17 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`/`memmem`, wrapping and unsigned arithmetic (§1.2).
 
-  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py.bc` and its `.o`), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
+  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py-<hash>.bc` and its `.o`; the hash is of the C flags, `-fexceptions` among them), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
 - **Performance: at parity on whole programs, within 10% on most moved functions** (§2.4).
   - The eight programs of `bench/` take 0.99 to 1.01 times the C runtime's CPU time AOT, and 0.96 to 1.05 JIT. They execute 0.997 to 1.003 times its instructions (callgrind). The compiler compiles itself in the same time (0.999), with 1.2% more instructions.
   - The first measurement found `words` and `dictkeys` 10% and 5% slower, all of it in `join` and `split`. Both were fixed (§2.4.2).
@@ -124,13 +124,13 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 
 ### 1.4 Building, caching and the bootstrap
 
-- **The cached runtime.** When the driver rebuilds `build/runtime-py.bc`, it does the following:
-  - it compiles `runtime.c` with clang as before;
+- **The cached runtime.** When the driver rebuilds `build/runtime-py-<hash>.bc`, it does the following:
+  - it compiles `runtime.c` with clang as before, with `-fexceptions` (so that a raise unwinds through the runtime's frames, §2.8);
   - it compiles `runtime.py` in-process, with the compiler that is running;
   - it links the two with `llvm-link` and optimizes the result once with `opt -O2`. LLVM then inlines runtime.c's helpers into `runtime.py`'s code, and the reverse: `hsh()` gets `pys_hash_int` inlined.
   - Each step is a separate command whose status counts. A pipe would let a failed `llvm-link` leave an empty module in the cache.
 
-  `build/runtime-py.o`, the JIT tier's precompiled runtime, is built from that bitcode, so the JIT tier gets the cross-language inlining too. The name says `runtime-py`: a compiler from before `runtime.py`, run with the same home, keeps its runtime.c-only cache apart. The driver stops at once when `runtime.py` is missing.
+  Its `.o`, the JIT tier's precompiled runtime, is built from that bitcode, so the JIT tier gets the cross-language inlining too. The name says `runtime-py`: a compiler from before `runtime.py`, run with the same home, keeps its runtime.c-only cache apart. The driver stops at once when `runtime.py` is missing.
 - **When the cache is rebuilt.** The cache is rebuilt when `runtime.c`, `runtime.py` or the running compiler is newer than it.
   - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython. The claims audit of this document found the `PATH` case missing; it is fixed.
   - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
@@ -462,10 +462,10 @@ The prototype was written against `30b51d9`, before the IR existed, and has sinc
 - **What to keep frozen.** The runtime ABI, as `docs/typed-ir.md` §2 asks. A `RUNTIME` entry whose function moves to `runtime.py` keeps its key and its types; only its effects are rechecked.
 - **Synergies, in order of value.**
   1. **Exceptions (§7.2 there).** The error-flag design was chosen partly because "the C runtime calls user code back from timsort and from `pys_eq`/`pys_repr` … landing pads would have to unwind through those C frames". Callbacks from `runtime.py` code have no C frames. Once the generic helpers move, landing pads become an option again.
-     - #22 now plans table-driven unwinding: `invoke`, `landingpad` and a personality routine in runtime.c.
-     - `runtime.py`'s raises go through the same `pys_raise`. So a program's `try` around `s.index(x)` must unwind through a `runtime.py` frame and its callers.
-     - Today those frames cannot be unwound. runtime.c is compiled without `-fexceptions`, so its `pys_raise` is `noreturn nounwind`. `opt -O2` over the linked runtime then infers `nounwind` for most of `runtime.py`'s functions (`pys_str_upper`, `pys_str_isdigit`), and none of them carries `uwtable`.
-     - The exceptions work has to change both, and needs a test that catches an exception raised inside `runtime.py`.
+     - #22 has since landed table-driven unwinding: `invoke`, `landingpad` and a personality routine in runtime.c, which is compiled with `-fexceptions`. This branch's third merge (`3c0664b`) brought it in.
+     - `runtime.py`'s raises go through the same `pys_raise`, so a program's `try` around `s.index(x)` unwinds through a `runtime.py` frame and its callers.
+     - Before that merge, those frames could not be unwound. runtime.c was compiled without `-fexceptions`, so its `pys_raise` was `noreturn nounwind`, and `opt -O2` over the linked runtime inferred `nounwind` for most of `runtime.py`'s functions. The driver now builds runtime.c with `-fexceptions` before linking `runtime.py` to it: `opt` marks only the functions that cannot raise `nounwind` (the `is*()` tests and the hash functions), and LLVM emits unwind tables for the rest.
+     - `tests/rt_raise_unwinds.py` catches the exceptions of `index`, `rindex`, `split`, `center`, `expandtabs`, `math.comb`, `math.isqrt` and the format code, inside and outside functions, JIT and AOT. `check_runtime.py` rejects a `runtime.py` function with R that the linked runtime marks `nounwind`: built without `-fexceptions`, 26 would be. This closes #27.
   2. **Generic helpers as templates.** `pys_eq`, `pys_repr`, `pys_list_find`, `minmax` and the sort interpret a type descriptor at run time and call back through `pys_obj_*`. As `runtime.py` templates, they would be instantiated per type:
      - the `U?` effect becomes exact;
      - the descriptor-and-callback ABI goes away;
@@ -685,7 +685,7 @@ The follow-ups are filed: #31 tracks items 2 to 7, and the issues named below ho
    - Apply the nsw range step to programs.
    - Fuse `ord(s[i])` into a byte read for programs too.
    - TBAA and `!range` on programs' str lengths; object helpers only where descriptors use them; a letter for class ids of 1000 and up.
-6. **With the typed IR's exceptions** (#27). `runtime.py`'s frames must be unwindable: no `nounwind` inferred from runtime.c's `pys_raise`, and a test that catches an exception raised in `runtime.py`.
+6. **With the typed IR's exceptions** (#27): done in the third merge (§2.8). `runtime.py`'s frames unwind, `tests/rt_raise_unwinds.py` catches exceptions raised in them, and `check_runtime.py` keeps them from turning `nounwind`.
 7. **With the Wasm GC backend.** Lower `_rt` to Wasm GC array ops and reuse `runtime.py`. Only runtime.c's core needs a Wasm counterpart, and the engine supplies the collector.
 8. **Stay in C.** The collector, `Str`/`List`/`Dict` memory, files, signals, `errno`, time, float digits (`snprintf`/`strtod`) and the libm wrappers. Revisit the collector only together with precise roots for frames the compiler generates (RPython's shadow stack is the precedent), which C cannot provide.
 
