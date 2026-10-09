@@ -8,11 +8,14 @@
      miss     per lookup of N keys that are absent
      deleted  per lookup of each key after every other one was deleted (the holes stay)
      longest  the most slots that one of those lookups visited
-   It checks the values, the insertion order and the deletions on the way. The counts depend on
-   nothing but the runtime, so they are the same on every machine, and the run fails if a pattern
-   averages more than LIMIT slots per lookup: a hash that behaved randomly would average at most
-   1.5 per miss and 2 per lookup after the deletions, at the fullest table (a third of the slots
-   in use). The times (nanoseconds per insertion or hit, best of three) are for information only.
+   A last row sweeps the shifts, keys i << s and -(i << s) for every s up to 56 (8000 keys, fewer
+   where 2N of them do not fit in 63 bits), and shows each column's worst: a cheap hash can
+   spread i << 46 and still cluster at another shift. It checks the values, the insertion order
+   and the deletions on the way. The counts depend on nothing but the runtime, so they are the
+   same on every machine, and the run fails if a pattern averages more than LIMIT slots per
+   lookup: a hash that behaved randomly would average at most 1.5 per miss and 2 per lookup
+   after the deletions, at the fullest table (a third of the slots in use). The times
+   (nanoseconds per insertion or hit, best of three) are for information only.
    usage: make dictprobe   (clang -O2 tools/dictprobe.c -o build/dictprobe -lm; build/dictprobe [N...]) */
 #include <time.h>
 static long long probes;
@@ -25,13 +28,17 @@ I pys_obj_cmp(I c, I op, I a, I b) { (void)c; (void)op; return a < b ? -1 : a > 
 Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<object>"); }
 
 static const char *pats[] = {"i", "-i", "i << 46", "i << 32", "i * 1000", "(i // 128) << 32 | i % 128",
-  "random", "f\"k{i}\"", "f\"{i:08}\"", "\"x\" * 64 + str(i)", "str(i) + \"x\" * 64", "letter case of i's bits"};
-#define NPAT (I)(sizeof pats / sizeof *pats)
+  "random", "f\"k{i}\"", "f\"{i:08}\"", "\"x\" * 64 + str(i)", "str(i) + \"x\" * 64", "letter case of i's bits",
+  "i << s, -(i << s): s <= 56"};
+#define NPAT (I)(sizeof pats / sizeof *pats - 1)   /* the last one is the sweep's */
 #define MAXN 65536                     /* 2N keys i << 46 fit in 63 bits */
 static List *keys;                     /* the collector's roots */
 static Dict *dict;
 static I *roots[] = {(I *)&keys, (I *)&dict};
 static long long longest;
+static int shift, sign;                /* the sweep's keys: sign * (i << shift) */
+static double worst;                   /* the highest average, and how many are above LIMIT */
+static I fails;
 
 #define X64 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 static I key(I p, I i) {               /* key i of pattern p; the 2N keys of a pattern are distinct */
@@ -49,6 +56,7 @@ static I key(I p, I i) {               /* key i of pattern p; the 2N keys of a p
   case 8: return (I)pys_str(b, snprintf(b, sizeof b, "%08lld", (long long)i));
   case 9: return (I)pys_str(b, snprintf(b, sizeof b, "%s%lld", X64, (long long)i));
   case 10: return (I)pys_str(b, snprintf(b, sizeof b, "%lld%s", (long long)i, X64));
+  case 12: return sign * (i << shift);
   default: for (int j = 0; j < 20; j++) b[j] = (char)('a' + j - (i >> j & 1) * 32);   /* "aBcD..." */
     return (I)pys_str(b, 20);
   }
@@ -63,7 +71,7 @@ static _Noreturn void bad(I p, I n, const char *what) { fprintf(stderr, "dictpro
 static double run(I p, I n, long long c[4]) {  /* c: slots visited by insert, hit, miss, deleted */
   double t = 1e9;
   for (int r = 0; r < 3; r++) {
-    dict = pys_dict_new(p >= 7, 0);
+    dict = pys_dict_new(p >= 7 && p < NPAT, 0);
     probes = 0; double t0 = now();
     for (I i = 0; i < n; i++) pys_dict_set(dict, keys->a[i], i);
     c[0] = probes; probes = 0;
@@ -84,10 +92,15 @@ static double run(I p, I n, long long c[4]) {  /* c: slots visited by insert, hi
   if (j != n + 1) bad(p, n, "survivors lost");
   return t / (2 * n) * 1e9;
 }
+static void tally(long long c[4], I n) {   /* the limit applies to hits, misses and lookups after deletions */
+  for (int m = 1; m < 4; m++) {
+    if ((double)c[m] / n > worst) worst = (double)c[m] / n;
+    if ((double)c[m] / n > LIMIT) fails++;
+  }
+}
 int main(int argc, char **argv) {
   gc_init(__builtin_frame_address(0), roots, 2);
-  I ns[8] = {4000, 8000, 16000, 30000}, nn = 4, fails = 0;
-  double worst = 0;
+  I ns[8] = {4000, 8000, 16000, 30000}, nn = 4;
   if (argc > 1) for (nn = 0; nn + 1 < argc && nn < 8; nn++) ns[nn] = atoll(argv[nn + 1]) & ~(I)1;
   for (I k = 0; k < nn; k++) if (ns[k] < 2 || ns[k] > MAXN) { fprintf(stderr, "usage: dictprobe [N...]   (2 <= N <= %d)\n", MAXN); return 2; }
   for (int r = 0; r < 100; r++) {      /* the heap grows to its working size before the timings */
@@ -104,11 +117,21 @@ int main(int argc, char **argv) {
       double t = run(p, n, c);
       printf("%-28s %6lld %7.2f %6.2f %6.2f %8.2f %8lld %6.1f\n", pats[p], (long long)n, (double)c[0] / n,
              (double)c[1] / n, (double)c[2] / n, (double)c[3] / n, longest, t);
-      for (int m = 1; m < 4; m++) {
-        if ((double)c[m] / n > worst) worst = (double)c[m] / n;
-        if ((double)c[m] / n > LIMIT) fails++;
-      }
+      tally(c, n);
     }
+  double w[4] = {0}, t = 0; long long most = 0; int np = 0;
+  for (shift = 0; shift <= 56; shift++)
+    for (sign = 1; sign >= -1; sign -= 2, np++) {
+      I n = shift < 50 ? 8000 : (I)1 << (62 - shift); long long c[4];
+      keys = pys_list_new(2 * n);
+      for (I i = 0; i < 2 * n; i++) keys->a[keys->len++] = key(NPAT, i);
+      longest = 0;
+      t += run(NPAT, n, c);
+      if (longest > most) most = longest;
+      for (int m = 0; m < 4; m++) if ((double)c[m] / n > w[m]) w[m] = (double)c[m] / n;
+      tally(c, n);
+    }
+  printf("%-28s %6d %7.2f %6.2f %6.2f %8.2f %8lld %6.1f\n", pats[NPAT], 8000, w[0], w[1], w[2], w[3], most, t / np);
   printf("worst average: %.2f slots per lookup (limit %.1f)\n", worst, LIMIT);
   if (fails) fprintf(stderr, "dictprobe: %lld averages above %.1f slots per lookup\n", (long long)fails, LIMIT);
   return fails != 0;
