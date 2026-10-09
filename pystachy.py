@@ -4517,6 +4517,8 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# what those return (for None itself, which always raises)
+NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
 # builtins whose own code (not CALLS) takes a str, list, dict or tuple
 OPTCALLS: list[str] = "sorted list dict min max sum any all".split()
 # builtins that keep no reference to their arguments
@@ -10284,6 +10286,10 @@ class Gen:
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
         for i in range(len(vals)):
+            if vals[i].t == "None" and name in NONERET and len(vals) == 1:
+                # None itself (a template's parameter whose argument is None): CPython's error
+                self.raise_("TypeError", self.sconst(NONEARG[name]))
+                return Val("0" if NONERET[name] == "int" else "false" if NONERET[name] == "bool" else fbits("0.0"), NONERET[name])
             if not is_opt(vals[i].t):
                 continue
             bad = NONEARG[name] if name in NONEARG else ""

@@ -451,8 +451,9 @@ show, and an empty list that `append(None)` fills first (annotate them); a modul
 first assigned `None` whose other values in module code cannot be typed where it is first
 assigned (`for w in ws: last = w`), or that only functions or other modules give another
 value (annotate it at module level: `last: str | None = None`); in a template's function, a
-use of a parameter whose argument is `None` as a value (`len(xs)`, `s.upper()`), also in a
-branch that does not run for that call; a parameter whose argument is
+use of a parameter whose argument is `None` as a value (`s.upper()`, `xs[0]`; `len()`,
+`int()`, `float()` and `ord()` of it raise CPython's error when they run), also in a branch
+that does not run for that call; a parameter whose argument is
 `None` given a value of another type in an if branch or loop, or bound as a `for` target; an
 alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
