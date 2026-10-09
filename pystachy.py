@@ -2731,13 +2731,13 @@ class Flow:
         # (not by copying defd): the key, and whether it was in defd before
         self.log: list[str] = []
         self.was: list[bool] = []
-        # the innermost loop: the length of the log where it began and, if it is a while True
-        # (left only through break), what the states at its breaks so far have in common (see fold)
-        self.bmark = 0
+        # the innermost loop, if it is a while True (left only through break): what the states at
+        # its breaks so far have in common (see fold)
         self.btrue = False
-        self.bjoin: dict[str, bool] = {}
-        self.bany = False
-        self.bscan = -1  # the length of the log when the last break was folded (-1: an undo went below it)
+        self.bjoin: dict[str, bool] = {}  # the keys whose common state is not their state where the loop began: that state
+        self.bany = False  # a break was folded
+        self.bwas: dict[str, bool] = {}  # the keys changed in the loop: whether each was in defd where it began
+        self.bnew: dict[str, bool] = {}  # the keys changed since the last break (or since the loop began)
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -2755,22 +2755,32 @@ class Flow:
 
     def put(self, k: str) -> None:
         if k not in self.defd:
+            if self.btrue:
+                self.touch(k, False)
             self.defd[k] = True
             self.log.append(k)
             self.was.append(False)
 
     def drop(self, k: str) -> None:
         if k in self.defd:
+            if self.btrue:
+                self.touch(k, True)
             del self.defd[k]
             self.log.append(k)
             self.was.append(True)
 
+    def touch(self, k: str, was: bool) -> None:
+        # k changes in a while True loop: the next break looks at it (see fold)
+        if k not in self.bwas:
+            self.bwas[k] = was
+        self.bnew[k] = True
+
     def undo(self, mark: int) -> None:
         # back to the state when the log had mark entries
-        if mark < self.bscan:
-            self.bscan = -1
         while len(self.log) > mark:
             k = self.log.pop()
+            if self.btrue:
+                self.bnew[k] = True
             if self.was.pop():
                 self.defd[k] = True
             else:
@@ -2786,25 +2796,17 @@ class Flow:
 
     def fold(self) -> None:
         # a break leaves the innermost loop, a while True, in the state here: bjoin keeps what
-        # the states at its breaks have in common, as the keys changed since bmark with whether
-        # each is set (the others as at bmark). If the log still holds what it held at the last
-        # break, only the keys changed since need a look: the others are as they were there
-        whole = not self.bany or self.bscan < 0
-        out: dict[str, bool] = {} if whole else self.bjoin
-        seen: dict[str, bool] = {}
-        for i in range(self.bmark if whole else self.bscan, len(self.log)):
-            k = self.log[i]
-            if k not in seen:
-                # (was[i] is k's state at bmark, or at the last break if bjoin does not have it)
-                seen[k] = True
-                out[k] = k in self.defd and (not self.bany or (self.bjoin[k] if k in self.bjoin else self.was[i]))
-        if whole and self.bany:
-            for k in self.bjoin:
-                if k not in out:
-                    out[k] = self.bjoin[k] and k in self.defd
-        self.bjoin = out
+        # the states at its breaks have in common, for the keys where that is not their state
+        # where the loop began. Only the keys changed since the last break need a look: the
+        # others are as they were there, so what they have in common stays
+        for k in self.bnew:
+            v = k in self.defd and (not self.bany or (self.bjoin[k] if k in self.bjoin else self.bwas[k]))
+            if v != self.bwas[k]:
+                self.bjoin[k] = v
+            elif k in self.bjoin:
+                del self.bjoin[k]
+        self.bnew = {}
         self.bany = True
-        self.bscan = len(self.log)
 
     def join(self, other: dict[str, bool], mark: int) -> None:
         # another path reaches here, in the state since(mark) gave for it: a name stays assigned
@@ -4466,27 +4468,28 @@ class Gen:
             for nm in dels:
                 fl.drop(nm)  # (a del in the body may run before a read in the next pass)
             mark = len(fl.log)
-            bmark = fl.bmark
             btrue = fl.btrue
             bjoin = fl.bjoin
             bany = fl.bany
-            bscan = fl.bscan
-            fl.bmark = mark
+            bwas = fl.bwas
+            bnew = fl.bnew
             fl.btrue = k == "while" and n.kids[0].kind == "True"
             fl.bjoin = {}
             fl.bany = False
-            fl.bscan = -1
+            fl.bwas = {}
+            fl.bnew = {}
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
             exits = fl.bjoin
             broke = fl.bany
-            fl.bmark = bmark
+            # (undone before the enclosing loop's fields are back: to that loop, the body changed nothing)
+            fl.undo(mark)
             fl.btrue = btrue
             fl.bjoin = bjoin
             fl.bany = bany
-            fl.bscan = bscan
-            fl.undo(mark)
+            fl.bwas = bwas
+            fl.bnew = bnew
             if n.kids[-1].s == "else":
                 # (after the loop only what was assigned before it is surely assigned)
                 self.fl_stmts(fl, n.kids[-1].kids)

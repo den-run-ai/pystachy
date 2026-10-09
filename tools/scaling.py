@@ -15,6 +15,8 @@ Each shape is a family of programs whose size grows with N:
   calls    an imported module of N functions, each calling the one before it
   imports  N modules, each importing the one before it (the program imports them in order)
   breaks   one while True loop of N breaks, each after an assignment to a new variable
+  exits    one while True loop of N ifs, each breaking after an assignment to a new variable,
+           with another new variable assigned before each if
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
@@ -122,8 +124,16 @@ def breaks(n):
     return {"main.py": src}
 
 
+def exits(n):
+    src = ["def big(x: int) -> int:", "    while True:"]
+    for i in range(n):
+        src += [f"        w{i} = x", f"        if x == {i}:", f"            v{i} = w{i}", "            break"]
+    src += ["        x += 1", "    return x", f"print(big({n // 2}))"]
+    return {"main.py": src}
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
-          "fields": fields, "calls": calls, "imports": imports, "breaks": breaks}
+          "fields": fields, "calls": calls, "imports": imports, "breaks": breaks, "exits": exits}
 
 
 def write(d, files):
