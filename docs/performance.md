@@ -76,10 +76,12 @@ CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the earlie
 
 The native compiler translates its own 16,000 lines to LLVM IR in about 0.45 s of CPU time,
 against 2.6 s when CPython runs it, and a full AOT build of itself, with clang -O2, takes about
-17 s of CPU (before the typed IR and exceptions, its 11,000 lines took 0.2 s, 1.3 s and 11 s on
-the same machine); CPython's syntax checks and the definition-time checks of imported modules
-cost about a quarter more time per source line than the compiler of 7,000 lines did (0.09 s and
-7.5 s).
+17 s of CPU. Before the typed IR and exceptions, its 11,000 lines took 0.2 s, 1.3 s and 11 s on
+the same machine, and the compiler of 7,000 lines took 0.09 s to translate itself and 7.5 s to
+build. Per source line, translation to LLVM IR has grown from about 13 µs (7,000 lines) to
+18 µs (11,000 lines, which added CPython's syntax checks and the definition-time checks of
+imported modules) and 28 µs now, with the typed IR built, optimized and lowered as steps of
+their own; the clang build stays near 1 ms per line.
 
 Compile time grows linearly with the program: `tools/scaling.py` generates programs that grow in
 one dimension at a time (functions, globals, classes, modules, fields, call and import chains,
