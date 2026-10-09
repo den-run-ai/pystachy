@@ -29,9 +29,14 @@ bench: pystachy
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
-dictprobe: tools/dictprobe.c runtime.c
+# (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those)
+LLVMBIN = $(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)
+dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
-	$(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)clang -O2 tools/dictprobe.c -o build/dictprobe -lm
+	./pystachy rt runtime.py -o build/dictprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
+	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
+	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe
 
 # Full verification (bootstrap, both compilers, Python-free stage, UBSan, GC stress, IR check, benchmarks, dict probes,

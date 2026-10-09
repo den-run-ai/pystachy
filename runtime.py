@@ -700,3 +700,23 @@ def pys_str_splitlines(s: str, keep: int) -> list[str]:
     if st < len(s):
         out.append(s[st:])
     return out
+
+
+# ---------- dict hashing ----------
+# The dicts themselves stay in runtime.c (their tables are raw int32 and uint64 arrays), which
+# calls these on every lookup; LLVM inlines them there, since the two are one module once
+# linked. The arithmetic wraps, as C's unsigned arithmetic does, and the shifts are logical.
+
+
+def pys_hash_str(s: str) -> int:
+    # FNV-1a over the bytes, with the high bits folded into the low ones that pick a slot
+    h = 1469598103934665603
+    for i in range(len(s)):
+        h = _rt.wrap_mul(h ^ _rt.byte(s, i), 1099511628211)
+    return h ^ _rt.lshr(h, 29)
+
+
+def pys_hash_int(k: int) -> int:
+    # a round of SplitMix64's mixer (0xBF58476D1CE4E5B9 is -4658895280553007687 as a 64-bit int)
+    h = _rt.wrap_mul(k ^ _rt.lshr(k, 30), -4658895280553007687)
+    return h ^ _rt.lshr(h, 31)

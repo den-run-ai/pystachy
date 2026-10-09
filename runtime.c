@@ -1223,16 +1223,10 @@ List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s
 #ifndef DICT_PROBE
 #define DICT_PROBE()
 #endif
+I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
+I pys_hash_int(I k);
 static uint64_t hsh(Dict *d, I k) {
-  uint64_t h = (uint64_t)k;
-  if (d->kind) {
-    Str *s = (Str *)k; h = 1469598103934665603ULL;
-    for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
-    h ^= h >> 29;
-  } else {
-    h = (h ^ h >> 30) * 0xBF58476D1CE4E5B9ULL;
-    h ^= h >> 31;
-  }
+  uint64_t h = (uint64_t)(d->kind ? pys_hash_str((Str *)k) : pys_hash_int(k));
   return h ? h : 1;                                  /* 0 marks a hole */
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */

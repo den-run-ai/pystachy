@@ -1,4 +1,5 @@
-"""Differential fuzzing of runtime.py on CPython, against CPython's own str methods and math.
+"""Differential fuzzing of runtime.py on CPython, against CPython's own str methods and math
+(and the dict hash functions against the formulas runtime.c used, on unsigned 64-bit ints).
 
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
@@ -143,7 +144,33 @@ def fuzz_math():
                 same(name, outcome(mine, *args), want, args)
 
 
+M64 = (1 << 64) - 1
+
+
+def fnv(s):
+    # the dict hash of runtime.c before it moved: FNV-1a, then h ^ h >> 29, over unsigned 64 bits
+    h = 1469598103934665603
+    for c in s.encode("latin-1"):
+        h = ((h ^ c) * 1099511628211) & M64
+    return h ^ h >> 29
+
+
+def mix(k):
+    h = k & M64
+    h = ((h ^ h >> 30) * 0xBF58476D1CE4E5B9) & M64
+    return h ^ h >> 31
+
+
+def fuzz_hash():
+    for _ in range(N):
+        k = R.choice([num(), R.randrange(-(1 << 63), 1 << 63)])
+        same("hash_int", rt.pys_hash_int(k) & M64, mix(k), (k,))
+        s = b(text(WIDE + ASCII, 10))
+        same("hash_str", rt.pys_hash_str(s) & M64, fnv(s), (s,))
+
+
 fuzz_str()
 fuzz_math()
+fuzz_hash()
 print(f"{cases} cases, {fails} failed")
 sys.exit(1 if fails else 0)

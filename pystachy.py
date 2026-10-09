@@ -10242,16 +10242,18 @@ def main() -> None:
     f.write(ir)
     f.close()
     msg = ""
-    # runtime.py, the runtime's part written in the subset, is compiled by this compiler and linked
-    # to runtime.c's bitcode; the cache is rebuilt when runtime.c, runtime.py or pystachy.py is newer
+    # runtime.py, the runtime's part written in the subset, is compiled by the compiler that runs
+    # and linked to runtime.c's bitcode. The cache is rebuilt when runtime.c, runtime.py or that
+    # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
+    # compile runtime.py differently, and the bootstrap checks that its stages do not
     rtpy = home + "/runtime.py"
     rpl = tmp + "/rtpy.ll"
     rcb = tmp + "/runtime-c.bc"
     fresh = f"test {q(rtb)} -nt {q(rtc)}"
     if os.path.exists(rtpy):
         fresh = fresh + f" && test {q(rtb)} -nt {q(rtpy)}"
-    if os.path.exists(home + "/pystachy.py"):
-        fresh = fresh + f" && test {q(rtb)} -nt {q(home + '/pystachy.py')}"
+        if os.path.exists(argv[0]):
+            fresh = fresh + f" && test {q(rtb)} -nt {q(argv[0])}"
     code = sh(f"mkdir -p {q(home + '/build')} && {fresh}")
     if code != 0:
         code = sh(f"{llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(rcb if os.path.exists(rtpy) else part)}")
