@@ -10549,7 +10549,7 @@ class Gen:
                 v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
             v = self.as_int(v)
             if v.t != "int":
-                self.err(f"%{t} format: a real number is required, not {tname(v.t)}")
+                self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}")
             return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
         v = self.as_float(self.as_int(v))
         if v.t != "float":
