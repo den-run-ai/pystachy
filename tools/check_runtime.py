@@ -33,16 +33,17 @@ disagrees with its entry is an internal error. This tool checks the table itself
 A function that runtime.py defines instead (docs/runtime-in-subset.md) is checked from the IR the
 compiler builds for runtime.py, in this process:
   - signatures: its definition has the entry's types (runtime.c may only declare it, with them);
-    the compiler also checks the subset types, which LLVM's do not tell apart;
+    the compiler also checks the subset types, which LLVM's do not tell apart (and keeps a
+    function that RUNTIME does not name to int, float, str and None, which LLVM's do);
   - effects: R if it may raise in the runtime the driver builds (runtime.py linked with runtime.c
     and optimized with opt -O2): a raise statement, or a raise it reaches there that opt could not
-    remove, but those of the subset's index, divisor, shift and conversion checks (BUG_ONLY), which fire only on a bug
-    of runtime.py, as runtime.c's unchecked indexing would misbehave; an overflow check counts,
-    as CPython raises OverflowError for a result too long too (replace, join), and a MemoryError
-    is A. A if it allocates, U if it runs user code, I if it does I/O: through the runtime
-    functions it calls (their entries, or runtime.c's call graph for a function runtime.py
-    declares). runtime.c's functions that call runtime.py's (hsh calls pys_hash_str) get those
-    letters too;
+    remove, but those of the subset's index, divisor, shift and conversion checks (BUG_ONLY),
+    which fire only on a bug of runtime.py, as runtime.c's unchecked indexing would misbehave; an
+    overflow check counts, as CPython raises OverflowError for a result too long too (replace,
+    join), and a MemoryError is A. A if it allocates, U if it runs user code, I if it does I/O or
+    uses state: through the runtime functions it calls (their entries, or runtime.c's call graph
+    for a function runtime.py declares, and the letters of runtime.py's functions that one calls).
+    runtime.c's functions that call runtime.py's (hsh calls pys_hash_str) get those letters too;
   - recursion: no function of runtime.py reaches itself through an operation's lowering (an rt op)
     or through runtime.c. The compiler rejects an operation that lowers to the function it is in;
     a cycle through a helper (helper -> math.gcd -> pys_m_gcd -> helper) or through runtime.c

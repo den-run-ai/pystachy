@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 150k-line
+and it can compile itself. The native compiler it produces reproduces its own 190k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -13,8 +13,8 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (150790 lines of IR)
-fixed point: runtime.py's IR, rt1 == rt2 == rt3 (9453 lines)
+fixed point: stage1 == stage2 == stage3 (189716 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (10393 lines)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -33,11 +33,11 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 12,007 | lexer 611 · parser 1,690 · scopes (CPython's symbol-table errors) 685 · module loader 1,886 · types, tables and the definite-assignment pass 1,022 · the IR 247 · type checker + IR generator 5,614 · driver 198 |
-| `runtime.c` | 2,351 | garbage collector, string, list and dict memory, timsort, dict tables, generic repr/compare, float digits, files and I/O, clocks |
-| `runtime.py` | 1,161 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing (`docs/runtime-in-subset.md`) |
+| `pystachy.py` | 14,672 | lexer 611 · parser 1,720 · scopes (CPython's symbol-table errors) 685 · module loader 1,915 · types, tables and the definite-assignment pass 1,260 · the IR 296 · type checker + IR generator 7,933 · driver 198 |
+| `runtime.c` | 2,444 | garbage collector, string, list and dict memory, timsort, dict tables, generic repr/compare, float digits, files and I/O, clocks |
+| `runtime.py` | 1,276 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing (`docs/runtime-in-subset.md`) |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 313 programs, 431 rejection cases, 11 deviation cases, 7 IR probes | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 461 programs, 577 rejection cases, 14 deviation cases, 11 IR probes | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -862,7 +862,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1621 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1669 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
