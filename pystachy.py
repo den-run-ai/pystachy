@@ -5060,11 +5060,12 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
 
 
 def has_try(body: list[Node]) -> bool:
-    # does body hold a try statement, also in the functions and classes it defines
+    # does body hold a try statement, also in the functions and classes it defines (a class with
+    # bases is a subclass node whose first kid is the class)
     for st in body:
         if st.kind == "try":
             return True
-        for kid in st.kids:
+        for kid in st.kids if st.kind != "subclass" else st.kids[0].kids:
             if kid.kind == "block" and has_try(kid.kids):
                 return True
     return False
