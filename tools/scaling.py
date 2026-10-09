@@ -1,6 +1,6 @@
 """How compile time grows with the size of the program: generated programs, timed IR generation.
 
-usage: python3 tools/scaling.py [-c LABEL=COMMAND]... [-s SHAPE,...] [-n N,...] [-r RUNS] [--ops] [--keep DIR]
+usage: python3 tools/scaling.py [-c LABEL=COMMAND]... [-s SHAPE,...] [-n N,...] [-r RUNS] [--ops] [--check] [--keep DIR]
        (defaults: the checkout's -c "hosted=python3 pystachy.py" -c "native=./pystachy", every shape,
        -n 1000,2000,4000, -r 3)
 Each shape is a family of programs whose size grows with N:
@@ -24,6 +24,8 @@ the compiler's source lines executed in all ("lines") and inside Gen.flow_progra
 definite-assignment pass ("flow"): counts that do not depend on the machine (sys.monitoring
 counts them, so --ops needs Python 3.12 or later).
 A compiler that fails shows "failed", and its last line of stderr follows the table.
+--check makes the exit status 1 if a compiler fails, or if a count of --ops grows more than 1.1
+times as fast as N (a superlinear pass): tests/verify.sh runs it on N = 500 and 1000.
 --keep DIR writes the generated programs to DIR/SHAPE-N/ instead of a temporary directory.
 """
 import json
@@ -221,12 +223,16 @@ def main():
     argv = sys.argv[1:]
     if argv[:1] == ["--count"]:
         return count(argv[1], argv[2], argv[3:])
-    comps, shapes, sizes, runs, want_ops, keep = [], list(SHAPES), [1000, 2000, 4000], 3, False, ""
+    comps, shapes, sizes, runs, want_ops, check, keep = [], list(SHAPES), [1000, 2000, 4000], 3, False, False, ""
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == "--ops":
             want_ops = True
+            i += 1
+            continue
+        if a == "--check":
+            check = True
             i += 1
             continue
         if i + 1 >= len(argv):
@@ -265,9 +271,11 @@ def main():
     print(head)
     print(rule, flush=True)
     errors = {}
+    fast = []
     with tempfile.TemporaryDirectory() as tmp:
         for s in shapes:
             prev = {}
+            prevn = 0
             for n in sizes:
                 prog = write(os.path.join(keep or tmp, f"{s}-{n}"), SHAPES[s](n))
                 row = f"| {s} | {n} |"
@@ -282,10 +290,17 @@ def main():
                     for j, v in enumerate(vals):
                         grow = f"{v / prev[k][j]:.1f}" if k in prev and prev[k][j] > 0 else ""
                         row += f" {v} | {grow} |" if isops else f" {v:.3f} | {grow} |"
+                        if isops and grow and v / prev[k][j] > 1.1 * n / prevn:
+                            fast.append(f"{label} on {s}: {['lines', 'flow'][j]} grew {grow} times from N = {prevn} to {n}")
                     prev[k] = vals
+                prevn = n
                 print(row, flush=True)
     for e in errors.values():
         print(e)
+    for e in fast:
+        print(e)
+    if check and (errors or fast):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

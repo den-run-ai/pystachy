@@ -12,6 +12,9 @@
 #                  compiler built that way reproduces the IR, and every test passes AOT-built with it
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
+#                  functions, globals, classes, modules, chained imports, breaks, ...), and the lines the
+#                  CPython-hosted compiler executes grow no faster than the programs
 # usage: tests/verify.sh   (make verify)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
@@ -149,6 +152,11 @@ for b in bench/*.py; do
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
+
+# ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
+L=$V/scaling.log; s=$(now); r=fail
+$PY tools/scaling.py --check --ops -n 500,1000 -r 1 -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step scaling $r "$s" "$L" ', "sizes": [500, 1000]'
 
 # ---- report
 ver() { "$@" 2>&1 | head -1; }
