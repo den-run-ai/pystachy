@@ -1,0 +1,364 @@
+--- a/pystachy.py	2026-10-08 21:48:28.606300412 +0000
++++ b/pystachy.py	2026-10-08 21:44:30.911799759 +0000
+@@ -2637,11 +2637,37 @@
+         self.varelem = ""  # its annotation (the type of each extra argument), or ""
+ 
+ 
++class Ins:
++    # one instruction of the IR: op names the operation, s holds LLVM text for "raw"
++    def __init__(self, op: str, t: str, s: str):
++        self.op = op
++        self.t = t
++        self.s = s
++        self.r: list[int] = []  # the numbers of the values it defines, given when it was built
++        self.a: list[Val] = []  # operands
++        self.b: list[str] = []  # labels it branches to
++
++
++class Blk:
++    def __init__(self, label: str):
++        self.label = label
++        self.code: list[Ins] = []
++
++
++class IFn:
++    # one function in the IR: its entry-block slots and its blocks, lowered to text at the end
++    def __init__(self, f: FnInfo):
++        self.f = f
++        self.ps: list[str] = []
++        self.slots: list[str] = []
++        self.blocks: list[Blk] = [Blk("entry")]
++
++
+ class Frame:
+     # the code generator's state for one function, saved while it compiles another
+     def __init__(self, curfn: FnInfo):
+-        self.body: list[str] = []
+-        self.allocas: list[str] = []
++        self.fn = IFn(curfn)
++        self.blk = Blk("")
+         self.ltype: dict[str, str] = {}
+         self.lreg: dict[str, str] = {}
+         self.gdecl: dict[str, bool] = {}
+@@ -2736,8 +2762,9 @@
+         self.strs: dict[str, str] = {}
+         self.decls: dict[str, str] = {}
+         self.out: list[str] = []
+-        self.body: list[str] = []
+-        self.allocas: list[str] = []
++        self.fns: list[IFn] = []  # the functions compiled, in the order they were finished
++        self.fn = IFn(FnInfo("<module>", "@main.init", mk("block", "", 0, []), ""))
++        self.blk: Blk = self.fn.blocks[0]
+         self.ltype: dict[str, str] = {}
+         self.lreg: dict[str, str] = {}
+         self.gdecl: dict[str, bool] = {}
+@@ -2799,8 +2826,8 @@
+ 
+     def save(self) -> Frame:
+         fr = Frame(self.curfn)
+-        fr.body = self.body
+-        fr.allocas = self.allocas
++        fr.fn = self.fn
++        fr.blk = self.blk
+         fr.ltype = self.ltype
+         fr.lreg = self.lreg
+         fr.gdecl = self.gdecl
+@@ -2831,8 +2858,8 @@
+ 
+     def restore(self, fr: Frame) -> None:
+         self.curfn = fr.curfn
+-        self.body = fr.body
+-        self.allocas = fr.allocas
++        self.fn = fr.fn
++        self.blk = fr.blk
+         self.ltype = fr.ltype
+         self.lreg = fr.lreg
+         self.gdecl = fr.gdecl
+@@ -2869,9 +2896,12 @@
+         return f"L{self.n}"
+ 
+     def emit(self, s: str) -> None:
++        self.add(Ins("raw", "", s))
++
++    def add(self, i: Ins) -> None:
+         if self.term:
+             self.place(self.label())
+-        self.body.append("  " + s)
++        self.blk.code.append(i)
+ 
+     def ins(self, s: str) -> str:
+         r = self.tmp()
+@@ -2880,14 +2910,15 @@
+ 
+     def place(self, l: str) -> None:
+         if not self.term:
+-            self.body.append(f"  br label %{l}")
+-        self.body.append(l + ":")
++            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
++        self.blk = Blk(l)
++        self.fn.blocks.append(self.blk)
+         self.cur = l
+         self.term = False
+ 
+     def br(self, l: str) -> None:
+         if not self.term:
+-            self.body.append(f"  br label %{l}")
++            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
+             self.term = True
+ 
+     def cbr(self, c: str, a: str, b: str) -> None:
+@@ -2909,15 +2940,40 @@
+         # [result, overflowed] of llvm.<op>.with.overflow.i64
+         f = f"llvm.{op}.with.overflow.i64"
+         self.decls[f] = f"declare {{i64, i1}} @{f}(i64, i64)"
+-        r = self.ins(f"call {{i64, i1}} @{f}(i64 {a}, i64 {b})")
+-        return [self.ins(f"extractvalue {{i64, i1}} {r}, 0"), self.ins(f"extractvalue {{i64, i1}} {r}, 1")]
++        i = Ins("ovf", "int", op)
++        i.a.append(Val(a, "int"))
++        i.a.append(Val(b, "int"))
++        self.put(i, 3)
++        return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
++
++    def put(self, i: Ins, k: int) -> None:
++        # add i, which defines k values, numbered as k separate instructions were before
++        self.n += 1
++        i.r.append(self.n)
++        self.add(i)
++        for _ in range(k - 1):
++            self.n += 1
++            i.r.append(self.n)
++
++    def list_get(self, o: Val, ix: Val, t: str) -> Val:
++        self.decls["pys_list_get"] = "declare i64 @pys_list_get(ptr, i64)"
++        i = Ins("list_get", t, "")
++        i.a.append(o)
++        i.a.append(ix)
++        self.put(i, 1 if t == "int" else 2)
++        return Val(f"%t{i.r[-1]}", t)
+ 
+     def guard(self, bad: str, msg: str) -> None:
+         # if bad, jump to a block (one per function and message) that raises msg ("Kind: text")
+         if msg not in self.cold:
+             self.cold[msg] = self.label()
+         l = self.label()
+-        self.cbr(bad, self.cold[msg], l)
++        i = Ins("check", "", msg)
++        i.a.append(Val(bad, "bool"))
++        i.b.append(self.cold[msg])
++        i.b.append(l)
++        self.add(i)
++        self.term = True
+         self.place(l)
+ 
+     def iop(self, op: str, a: str, b: str) -> str:
+@@ -2947,16 +3003,16 @@
+             self.err(f"cannot infer the type of '{name}'; add a type annotation")
+         self.n += 1
+         r = f"%{name or 'h'}.{self.n}"
+-        self.allocas.append(f"  {r} = alloca {lt(t)}")
+-        self.allocas.append(f"  store {lt(t)} zeroinitializer, ptr {r}")
++        self.fn.slots.append(f"  {r} = alloca {lt(t)}")
++        self.fn.slots.append(f"  store {lt(t)} zeroinitializer, ptr {r}")
+         if name != "":
+             self.ltype[name] = t
+             self.lreg[name] = r
+             if name in self.uflags and name not in self.compvars:
+                 # "is assigned" flag for a local that some read may find unassigned
+                 self.lflag[name] = f"%{name}.def.{self.n}"
+-                self.allocas.append(f"  {self.lflag[name]} = alloca i1")
+-                self.allocas.append(f"  store i1 false, ptr {self.lflag[name]}")
++                self.fn.slots.append(f"  {self.lflag[name]} = alloca i1")
++                self.fn.slots.append(f"  store i1 false, ptr {self.lflag[name]}")
+         return r
+ 
+     # ---- value conversions
+@@ -3514,7 +3570,12 @@
+             self.gkk[name] = self.gkk.get(name, "") + " " + tok
+         else:
+             self.lkk[name] = self.lkk.get(name, "") + " " + tok
+-        return Val(self.rt("pys_dict_new", "ptr", [f"i64 {tok}", "i64 0"]), "dict[?,?]")
++        self.decls["pys_dict_new"] = "declare ptr @pys_dict_new(i64, i64)"
++        r = self.tmp()
++        i = Ins("dict_new?", "dict[?,?]", tok)
++        i.r.append(int(r[2:]))
++        self.add(i)
++        return Val(r, "dict[?,?]")
+ 
+     def refine(self, name: str, t: str) -> None:
+         # the variable holding an empty list or dict gets the type its first use shows
+@@ -3628,12 +3689,15 @@
+ 
+     def dry(self, e: Node) -> str:
+         # the type of e, compiled into code that is dropped
+-        body = self.body
++        blk = self.blk
++        blocks = self.fn.blocks
+         cur = self.cur
+         term = self.term
+-        self.body = []
++        self.blk = Blk("")
++        self.fn.blocks = []
+         t = self.expr(e, "").t
+-        self.body = body
++        self.blk = blk
++        self.fn.blocks = blocks
+         self.cur = cur
+         self.term = term
+         return t
+@@ -3788,7 +3852,7 @@
+                 if v.t == "str":
+                     self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
+                 else:
+-                    self.assign(t.kids[i], self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
++                    self.assign(t.kids[i], self.list_get(v, Val(str(i), "int"), elem(v.t)))
+         elif k == "tuple":
+             if not is_tuple(v.t) or len(targs(v.t)) != len(t.kids):
+                 self.err(f"cannot unpack {v.t} into {len(t.kids)} targets")
+@@ -3803,8 +3867,8 @@
+             self.err(self.classes[f.cls].bad)
+         if f.bad != "" and not f.generic:
+             self.err(f.bad)
+-        self.body = []
+-        self.allocas = []
++        self.fn = IFn(f)
++        self.blk = self.fn.blocks[0]
+         self.ltype = {}
+         self.lreg = {}
+         self.gdecl = {}
+@@ -3876,11 +3940,10 @@
+             f.ret = "None"  # a template's function without a return statement that has a value
+         if f.infer:
+             # its returns of None, before it was known what it returns: None for an object
+-            for i in range(len(self.body)):
+-                if self.body[i] == "  ret <none>":
+-                    if f.ret != "None" and f.ret not in self.classes:
++            for b in self.fn.blocks:
++                for x in b.code:
++                    if x.op == "ret?" and f.ret != "None" and f.ret not in self.classes:
+                         self.err(f"{short(f.name)}() returns both None and {f.ret}, and None/Optional is only supported for class types")
+-                    self.body[i] = "  ret void" if f.ret == "None" else "  ret ptr null"
+         if not self.term:
+             if f.ret == "None":
+                 self.emit("ret void")
+@@ -3892,12 +3955,54 @@
+             self.place(self.cold[msg])
+             i = msg.find(": ")
+             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
+-        self.out.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
++        self.fn.ps = ps
++        self.fns.append(self.fn)
++
++    # ---- lowering: the IR of each function to LLVM text
++    def lower(self, fn: IFn) -> None:
++        f = fn.f
++        self.out.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(fn.ps)}) {{")
+         self.out.append("entry:")
+-        self.out.extend(self.allocas)
+-        self.out.extend(self.body)
++        self.out.extend(fn.slots)
++        for b in fn.blocks:
++            if b.label != "entry":
++                self.out.append(b.label + ":")
++            for i in b.code:
++                self.lower_ins(fn, i)
+         self.out.append("}")
+ 
++    def lower_ins(self, fn: IFn, i: Ins) -> None:
++        op = i.op
++        o = self.out
++        if op == "raw":
++            o.append("  " + i.s)
++        elif op == "ret?":
++            o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
++        elif op == "dict_new?":
++            o.append(f"  %t{i.r[0]} = call ptr @pys_dict_new(i64 {self.keykind.get(i.s, '0')}, i64 0)")
++        elif op == "check":
++            o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
++        elif op == "ovf":
++            r = i.r
++            o.append(f"  %t{r[0]} = call {{i64, i1}} @llvm.{i.s}.with.overflow.i64(i64 {i.a[0].v}, i64 {i.a[1].v})")
++            o.append(f"  %t{r[1]} = extractvalue {{i64, i1}} %t{r[0]}, 0")
++            o.append(f"  %t{r[2]} = extractvalue {{i64, i1}} %t{r[0]}, 1")
++        elif op == "list_get":
++            r = i.r
++            o.append(f"  %t{r[0]} = call i64 @pys_list_get(ptr {i.a[0].v}, i64 {i.a[1].v})")
++            if len(r) > 1:
++                o.append(f"  %t{r[1]} = {self.unslot(f'%t{r[0]}', i.t)}")
++        else:
++            self.err(f"internal error: no lowering for IR op {op}")
++
++    def unslot(self, s: str, t: str) -> str:
++        # an 8-byte container slot as a value of type t (not int)
++        if t == "float":
++            return f"bitcast i64 {s} to double"
++        if t == "bool":
++            return f"trunc i64 {s} to i1"
++        return f"inttoptr i64 {s} to ptr"
++
+     def class_problem(self, st: Node) -> str:
+         # why a class of an imported module cannot be declared, or "": its methods need
+         # annotated parameters, and its body may hold only fields, methods and a docstring
+@@ -4051,16 +4156,10 @@
+                     self.function(f, f.node.kids[2].kids)
+             if len(done) + len(helped) == before:
+                 break
++        for fn in self.fns:
++            self.lower(fn)
+         for op in ["eq", "cmp", "repr"]:
+             self.dispatch(op)
+-        for i in range(len(self.out)):
+-            # the key kind of each dict created empty: what its first use showed (0 if nothing did)
+-            ln = self.out[i]
+-            while ln.find("<keys") >= 0:
+-                a = ln.find("<keys")
+-                b = ln.find(">", a)
+-                ln = ln[:a] + self.keykind.get(ln[a : b + 1], "0") + ln[b + 1 :]
+-            self.out[i] = ln
+         hdr: list[str] = ["; generated by pystachy"]
+         for ci in self.classes.values():
+             ts = [lt(ci.ftypes[x]) for x in ci.fields]
+@@ -4794,7 +4893,7 @@
+                 v = self.expr(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
+                 self.close_withs(0)
+                 if v.t == "None":
+-                    self.emit("ret <none>")
++                    self.add(Ins("ret?", "", ""))
+                 else:
+                     self.ret = v.t
+                     self.curfn.ret = v.t
+@@ -4960,7 +5059,7 @@
+             if is_list(o.t):
+                 et = elem(o.t)
+                 i = self.ival(t.kids[1])
+-                cur = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), et)
++                cur = self.list_get(o, i, et)
+                 r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
+                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
+             elif is_dict(o.t):
+@@ -5215,7 +5314,7 @@
+             s = seqs[k]
+             j = at[k]
+             if is_list(s.t):
+-                vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
++                vals.append(self.list_get(s, Val(str(j), "int"), elem(s.t)))
+             elif s.t == "str":
+                 vals.append(Val(self.rt("pys_str_get", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str"))
+             elif s.t == "file":
+@@ -5691,7 +5790,7 @@
+             i = self.ival(n.kids[1])
+             if t == "str":
+                 return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
+-            return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(t))
++            return self.list_get(o, i, elem(t))
+         if is_dict(t):
+             kv = targs(t)
+             key = self.to_slot(self.coerce(self.expr(n.kids[1], kv[0]), kv[0]))
+@@ -6580,7 +6679,7 @@
+         i = self.ins(f"load i64, ptr {ctr}")
+         self.cbr(self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {v.v}')}"), lb, le)
+         self.place(lb)
+-        c = self.truth(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
++        c = self.truth(self.list_get(v, Val(str(i), "int"), elem(v.t)))
+         if name == "any":
+             self.cbr(c, hit, ls)
+         else:
