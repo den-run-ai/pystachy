@@ -472,9 +472,9 @@ RUNTIME: dict[str, str] = {
 
 | letter | meaning |
 |---|---|
-| R | May raise. Today a raise prints its message, flushes stdout and exits. |
+| R | May raise. Today a raise prints its message, flushes stdout and exits (closing the open files). |
 | N | Never returns. |
-| A | Allocates; a collection may run. |
+| A | Allocates; a collection may run. A collection also closes the open files that nothing refers to any more, flushing them and reporting a failed close on stderr. That is not I, rF or wF: when a dropped file is closed is unspecified (README), and any change to the program's allocations moves it. |
 | U | May run user code: a direct call, a dunder, or a callback from the runtime through `pys_obj_eq/cmp/repr`. U implies every other letter. `U?` means U when the static type contains a class. |
 | I | I/O, the process, or global runtime state (`pys_repr_enter`/`leave`). |
 | rL / wL | Reads / writes lists, contents or length. |
