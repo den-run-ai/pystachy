@@ -719,8 +719,14 @@ million short-lived strings (`str(i)` in a loop) peak at 35 MiB instead of 155 M
 Ouro v1's bump allocator, and building and discarding fifty 2M-element lists at 50 MiB
 instead of 1.5 GiB, while running faster (0.47 s instead of 0.52 s, and 0.30 s instead of
 2.0 s). Sorting is CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the
-earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, against
-0.55 s when CPython runs it; a full AOT build of itself, with clang -O2, takes about 9 s.
+earlier merge sort. The native compiler translates its own 11,000 lines to LLVM IR in about 0.2 s of CPU
+time, against 1.4 s when CPython runs it, and a full AOT build of itself, with clang -O2,
+takes about 12 s of CPU; CPython's syntax checks and the definition-time checks of imported
+modules cost about a quarter more time per source line than the compiler of 7,000 lines
+did (0.09 s and 7.5 s). Compile time grows linearly with the program: `tools/scaling.py`
+generates programs that grow in one dimension at a time (functions, globals, classes,
+modules, fields, call and import chains, `elif` chains, comprehensions), and `make verify`
+fails if what the CPython-hosted compiler executes grows faster than the program.
 
 ## Next steps
 
