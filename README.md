@@ -147,26 +147,41 @@ and string forward references work (also inside `list["Node"]`), as does `typing
   `Y = X` at module level) of such a container, the two names hold one container, typed by
   the first use of either. `None` in a display takes the type of its neighbours.
 - Optional values: a `T | None` is a `T`'s pointer, and `None` is null (a class type includes
-  `None` already). A local first assigned `None` is `T | None` for the first other value its
-  function assigns it in its source (also by unpacking) whose type is known where the local is
-  read (until then only comparisons with `None` may read it); so is module code's global for
-  the values module code assigns it. `x if c else None`, `x or None`, a template that returns
+  `None` already). A local first assigned `None` is `T | None` for the first other value
+  assigned to it, typed where it is assigned (also by unpacking); a read before that, in the
+  order the code is compiled, takes the type of the first such value in the function's source
+  whose type is known there, or else the type expected where it is read (a return, an
+  argument, an item), and a local that only `None` is ever assigned to reads as `None` (until
+  then only comparisons with `None` may read it). So is module code's global for the values
+  module code assigns it, where they can be typed at its first assignment. `x if c else
+  None` (also nested: `x if c else y if d else None`), `x or None`, a template that returns
   `None` and a `T` (in either order) and a display that holds `None` among `T` items give
-  `T | None`, and `d.get(k)` and `os.getenv(name)` without a default return `V | None` and
-  `str | None`. A `T` or `None` goes where a `T | None` is expected (a tuple item by item).
-  Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`, `<`, unpacking,
-  a builtin's argument) the value is checked when it runs, and `None` raises CPython's error;
-  `==`, `is`, truth tests, `str()`, `repr()`, f-strings and `%` treat `None` as CPython
-  does, and so do the repr, comparisons and sorting of containers of optional items. Where
-  CPython would pass the `None` on (an assignment to a `T` variable or field, a `T` argument
-  of a user function or of a list method, a return from a function declared to return a
-  `T`), the value must be known not to be `None`: a local or parameter is, as mypy narrows
-  it, in the body of `if x is not None:`, `if x:` and `while x is not None:` (and the `elif`
-  and `else` blocks of the tests that show it), in the right operand of `x is not None and`,
-  in the arms of a conditional expression, after `if x is None: return` (or `raise`,
-  `continue`, `break`, `sys.exit()`), after `assert x is not None` and after `x = <a T>`,
-  until a value that may be `None` is assigned to it (in a loop's body: anywhere in it).
-  Module globals and fields are not narrowed, as a call may change them.
+  `T | None`; `None or x` is `x`. `d.get(k)` and `os.getenv(name)` without a default return
+  `V | None` and `str | None`, and so do `d.get(k, d)` and `d.pop(k, d)` with a default `d`
+  that may be `None`. A `T` or `None` goes where a `T | None` is expected (a tuple item by
+  item). Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`, `<`,
+  unpacking, a builtin's argument) the value is checked when it runs, and `None` raises
+  CPython's error; `==`, `is`, truth tests, `str()`, `repr()`, f-strings, `%` (a
+  `tuple | None` is its items or one `None`), `print()`'s `sep` and `end`, and `sys.exit()`
+  treat `None` as CPython does, and so do the repr, comparisons and sorting of containers
+  of optional items, also against containers of `T` items (`list[str | None] ==
+  list[str]`; `+` of the two makes a `list[str | None]`, which `extend()` and `+=` also
+  take a `list[str]` into); `join()` and `writelines()` check each `str | None` item. A key
+  that may be `None` is in no dict: `in` is `False`, `get()` and `pop()` give their default,
+  and `d[k]` raises `KeyError: None`; `None in xs` and `xs.count(None)` look for it in a
+  list. Where CPython would pass the `None` on (an assignment to a `T` variable or field, a
+  `T` argument of a user function or of a list method, a return from a function declared to
+  return a `T`), the value must be known not to be `None`: a local or parameter is, as mypy
+  narrows it, in the body of `if x is not None:`, `if x:` and `while x is not None:` (and
+  the `elif` and `else` blocks of the tests that show it), in the right operand of
+  `x is not None and`, in the arms of a conditional expression, after `if x is None: return`
+  (or `raise`, `continue`, `break`, `sys.exit()`), after `assert x is not None`, after
+  `x = <a T>`, and after a loop where it holds at each way out (its test is false, which
+  never happens for `while True:`, or a `break`; after a loop with an `else` block: the end
+  of that block, or a `break`), until a value that may be `None` is assigned to it (in a
+  loop's body: anywhere in it). A comprehension's variables are its own, and do not change
+  what is narrowed outside it. Module globals and fields are not narrowed, as a call may
+  change them: copy one to a local, and test that.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
@@ -418,15 +433,26 @@ read of a function's local that only code dropped at compile time binds; a name 
 binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
 with `from pkg import util` or in the package's functions, when which of the two it is
 depends on when the submodule is first imported; a
-template whose returns have different types (or `None` and an `int`, `float` or `bool`), or
-that calls itself before a return statement decides its type (or before a return of `None`
-makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
-boxing), and dict keys that may be `None`; a value that may be `None` where CPython would
-pass it on and that is not narrowed (above), and an argument that may be `None` of a builtin
-function other than `len()`, `int()`, `float()`, `ord()`, `dict()`, `os.system()`,
-`os.path.exists()` and those that take `None`; a read that needs the type of a local that
-only `None` has been assigned so far, where no other value assigned to it can be typed yet
-(annotate it: `x: T | None = None`); a parameter whose argument is
+template whose returns have different types (or `None` and an `int`, `float` or `bool`, or
+`None` and an empty `[]` or `{}` that it does not fill), or that calls itself before a return
+statement decides its type (or, after a return of a `T`, before a return of `None` makes it
+return `T | None`); `int | None`, `float | None` and `bool | None` (they would need boxing),
+and dict key types that may be `None`; a value that may be `None` where CPython would pass it
+on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed or assigned where a
+`list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the container could then be
+given a `None` that its other references do not expect), and an argument that may be `None`
+of a builtin function other than `len()`, `int()`, `float()`, `ord()`, `dict()`, `sum()`,
+`os.system()`, `os.path.exists()` and those that take `None`; a read that needs the type of
+a local that only `None` has been assigned so far, where no other value assigned to it can
+be typed yet and the context expects none (annotate it: `x: T | None = None`); an empty
+`[]` or `{}` assigned to a local first assigned `None`, a list display of only `None` items
+(`[None] * n`) or a dict display of only `None` values whose type only later code would
+show, and an empty list that `append(None)` fills first (annotate them); a module global
+first assigned `None` whose other values in module code cannot be typed where it is first
+assigned (`for w in ws: last = w`), or that only functions or other modules give another
+value (annotate it at module level: `last: str | None = None`); in a template's function, a
+use of a parameter whose argument is `None` as a value (`len(xs)`, `s.upper()`), also in a
+branch that does not run for that call; a parameter whose argument is
 `None` given a value of another type in an if branch or loop, or bound as a `for` target; an
 alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
@@ -477,7 +503,7 @@ than by `+=`, `append` and `extend`, for `import *`; `del` of another module's a
   compiled: the set of optional locals known not to be `None` grows with the tests of an
   `if`, `while`, `assert`, `and`/`or` or conditional expression for the code they guard,
   an `if` keeps what holds at the end of each branch that goes on, and a loop drops what
-  its body binds.
+  its body binds, then keeps what holds at each of its exits (each `break` records it).
 - **Templates.** A call to a template evaluates its arguments, then looks up the function
   compiled for their types, compiling it on the spot if there is none yet: `Gen` saves its
   state for the function it is in, compiles the template's body for the argument types (its
