@@ -4721,7 +4721,7 @@ def local_types(body: list[Node], out: dict[str, Node]) -> None:
     for st in body:
         v = st.kids[-1] if st.kind == "assign" else st
         if v.kind == "unary" and v.s == "-":
-            v = v.kids[0]
+            v = mk("int", "", v.line, []) if v.kids[0].kind == "True" or v.kids[0].kind == "False" else v.kids[0]  # (-True is -1)
         t = v.kind if v.kind == "int" or v.kind == "float" or v.kind == "str" else "bool" if v.kind == "True" or v.kind == "False" else ""
         for x in st.kids[:-1] if st.kind == "assign" and t != "" else st.kids[:0]:
             if x.kind == "name" and x.s not in out:
