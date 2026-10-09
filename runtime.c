@@ -1377,7 +1377,10 @@ List *pys_range_list(I a, I b, I s) {
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
 Str *pys_str_join(Str *sep, List *l) {
   I n = 0;
-  for (I i = 0; i < l->len; i++) n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) failf("TypeError: sequence item %lld: expected str instance, NoneType found", (long long)i);   /* a str | None item */
+    n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  }
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
   for (I i = 0; i < l->len; i++) {
     Str *s = (Str *)l->a[i];
@@ -2123,7 +2126,12 @@ I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as t
   io_out();
   return s->len;
 }
-void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
+void pys_file_writelines(File *f, List *l) {
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) pys_fail("TypeError: write() argument must be str, not None");   /* a str | None item */
+    pys_file_write(f, (Str *)l->a[i]);
+  }
+}
 void pys_file_flush(File *f) {
   if (f->closed) closed_err();
   io_in(); int e = flush1(f); io_out();

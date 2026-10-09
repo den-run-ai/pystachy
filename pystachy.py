@@ -4517,6 +4517,8 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# builtins whose own code (not CALLS) takes a str, list, dict or tuple
+OPTCALLS: list[str] = "sorted list dict min max sum any all".split()
 # builtins that keep no reference to their arguments
 PURE: list[str] = "print str repr len bool sum sorted list tuple min max any all enumerate reversed zip isinstance hash".split()
 
@@ -9372,9 +9374,9 @@ class Gen:
             return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(t))
         if is_dict(t):
             kv = targs(t)
-            key = self.to_slot(self.coerce(self.expr(n.kids[1], kv[0]), kv[0]))
+            kx = self.dkey(self.expr(n.kids[1], kv[0]), kv[0])
             o = self.unwrap(o, sub)
-            return self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
+            return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"]), kv[1])
         if is_tuple(t):
             ts = targs(t)
             i = self.expr(n.kids[1], "int")
@@ -10230,9 +10232,19 @@ class Gen:
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
         for i in range(len(vals)):
-            if is_opt(vals[i].t) and name in NONEARG:
-                vals[i] = self.unwrap(vals[i], "TypeError: " + NONEARG[name])
-            elif is_opt(vals[i].t) and name not in OPTARG:
+            if not is_opt(vals[i].t):
+                continue
+            bad = NONEARG[name] if name in NONEARG else ""
+            if name == "int" and len(vals) == 2:
+                bad = "int() can't convert non-string with explicit base"
+            elif name == "sum" and i == 0:
+                bad = "'NoneType' object is not iterable"
+            if bad != "":
+                vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
+            elif name not in OPTARG:
+                if f"{name}({','.join([unopt(v.t) for v in vals])})" not in CALLS and name not in OPTCALLS:
+                    # (not for the value it holds either)
+                    self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
                 self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
         key = f"{name}({','.join([v.t for v in vals])})"
         if key in DEFAULTS:
@@ -10435,7 +10447,11 @@ class Gen:
             x = a.kids[0]
             if a.s == "sep" or a.s == "end":
                 if x.kind != "None":
-                    sv = self.coerce(self.expr(x, "str"), "str").v
+                    v = self.expr(x, "str")
+                    if is_opt(v.t):
+                        # None is the default
+                        v = Val(self.ins(f"select i1 {self.isnull(v)}, ptr {sep if a.s == 'sep' else end}, ptr {v.v}"), "str")
+                    sv = self.coerce(v, "str").v
                     if a.s == "sep":
                         sep = sv
                     else:
@@ -10494,9 +10510,12 @@ class Gen:
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
         if is_dict(o.t) and m == "pop" and len(args) == 2:
             kv = targs(o.t)
-            k = self.to_slot(self.coerce(self.expr(args[0], kv[0]), kv[0]))
-            dv = self.to_slot(self.coerce(self.expr(args[1], kv[1]), kv[1]))
-            return self.from_slot(self.rt("pys_dict_pop_default", "i64", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), kv[1])
+            kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
+            k = self.to_slot(kx)
+            d = self.expr(args[1], kv[1])
+            vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
+            dv = self.to_slot(self.coerce(d, vt))
+            return self.from_slot(self.nonekey(kx, dv, "pys_dict_pop_default", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), vt)
         base = o.t
         T = ""
         K = ""
@@ -10524,6 +10543,7 @@ class Gen:
         nones: list[str] = []  # optional str arguments: None raises (nmsg) once all are evaluated
         nmsg: list[str] = []
         dt = T  # the item type the # descriptor describes
+        kx = Val("", "")  # a dict's key that may be None (see nonekey)
         i = 0
         for p in spec[c + 1 :].split(","):
             if p == "":
@@ -10542,12 +10562,22 @@ class Gen:
                 av.append(rtt(pt) + " null")  # an explicit None: the default
             elif i < len(args):
                 v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
-                if is_opt(v.t) and (key == "str.join" or key == "list.extend"):
+                if is_opt(v.t) and (key == "str.join" or key == "list.extend" or key == "file.writelines"):
                     v = self.unwrap(v, "TypeError: can only join an iterable" if key == "str.join" else "TypeError: 'NoneType' object is not iterable")
                 if key == "str.join":
                     v = self.as_list(v, "join")
+                if (key == "str.join" or key == "file.writelines") and v.t == "list[opt[str]]":
+                    v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
+                if key == "list.extend" and is_list(v.t) and v.t != pt and self.wider(v.t, pt) == pt:
+                    v = Val(v.v, pt)  # (its items are copied: list[str] extends a list[str | None])
                 if p == "int":
                     v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+                if base == "dict" and i == 0 and is_opt(v.t) and unopt(v.t) == K and (m == "get" or m == "pop"):
+                    kx = v
+                    pt = v.t
+                elif key == "dict.get" and i == 1 and self.optdefault(v, V) != V:
+                    pt = self.optdefault(v, V)  # d.get(k, default) with a default that may be None: V | None
+                    optget = True
                 if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":
                     v = Val(v.v, pt)  # None is the default
                 elif is_opt(v.t) and not slot and unopt(v.t) == pt == "str":
@@ -10573,10 +10603,47 @@ class Gen:
         rtype = subst(r[1:] if slot else r, T, K, V, o.t)
         if optget:
             rtype = self.optional(V)
-        res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
+        if kx.t != "":
+            res = self.nonekey(kx, av[2][4:] if m == "get" else "", f"pys_{base}_{m}", av)
+        else:
+            res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
         if slot:
             return self.from_slot(res, rtype)
         return self.rres(res, rtype)
+
+    def optdefault(self, d: Val, t: str) -> str:
+        # the type of d.get(k, d) and d.pop(k, d) for values of type t: t | None for a default
+        # that may be None
+        if (d.t == "None" or (is_opt(d.t) and unopt(d.t) == t)) and t not in self.classes and self.optional(t) != "":
+            return self.optional(t)
+        return t
+
+    def dkey(self, k: Val, kt: str) -> Val:
+        # a key for a dict whose keys have type kt: one that may be None stays optional (see nonekey)
+        if is_opt(k.t) and unopt(k.t) == kt:
+            return k
+        return self.coerce(k, kt)
+
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str]) -> str:
+        # the slot fn(av) returns, a dict lookup of key k; a key that is None is in no dict: the
+        # result is then the slot none, or with none "" KeyError: None
+        if not is_opt(k.t):
+            return self.rt(fn, "i64", av)
+        if none == "":
+            self.guard(self.ins(f"icmp eq ptr {k.v}, null"), "KeyError: None")
+            return self.rt(fn, "i64", av)
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {k.v}, null"), l1, l2)
+        self.place(l2)
+        r = self.rt(fn, "i64", av)
+        e2 = self.cur
+        self.br(l3)
+        self.place(l1)
+        self.br(l3)
+        self.place(l3)
+        return self.ins(f"phi i64 [{none}, %{l1}], [{r}, %{e2}]")
 
     def none_arg(self, m: str, k: int) -> str:
         # what str method m (or file.write) raises for None as its argument k
