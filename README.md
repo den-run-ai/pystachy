@@ -392,7 +392,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   statement that raised, as CPython does).
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made
   (their `__str__` and `__repr__` run then), where CPython computes them from `args` each time:
-  an argument changed afterwards (a list) is not seen.
+  an argument changed afterwards (a list) is not seen, and an argument whose `__str__` or
+  `__repr__` raises makes the call of the exception class (`raise KeyError(obj)`) raise that
+  exception instead, so that an `except KeyError` does not run.
 - A function declared or inferred to return a value that ends without a `return` raises
   `RuntimeError` there, where CPython returns `None` (a template that returns objects
   returns `None`, as CPython does).
@@ -435,7 +437,11 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
 
 **Rejected rather than miscompiled** (CPython would run these): a call whose arguments do not
 fit the function's parameters (CPython raises `TypeError` where it runs; also `raise E` of an
-exception class whose `__init__` needs arguments); a function, class,
+exception class whose `__init__` needs arguments); a read of a name that nothing binds, and an
+attribute, operation or format spec that the static types rule out (`unicode`, `obj.missing`,
+`1 + "a"`, `f"{obj:>6}"` of an object without `__format__`), where CPython raises `NameError`,
+`AttributeError` or `TypeError` as it runs, also in a `try` whose clause catches it (a feature
+test such as `try: unicode / except NameError:`); a function, class,
 method or import name bound twice, or a name that is both a variable and a function,
 class or import; a class-body default that names an earlier class attribute (Pystachy
 has no class scope); a local read textually before its first assignment (declare it
@@ -483,20 +489,29 @@ than by `+=`, `append` and `extend`, for `import *`; `del` of another module's a
 but an exception; an `except` clause that names something other than exception classes (a
 variable), and `except*`; `except ... as x` in a function where `x` is a global (the end of
 the clause deletes it, as `del` would), and at a module's top level where `x` is a global of
-another type that a function reads (the function would not see the exception); `==` between exceptions where an exception class
-defines `__eq__` or `__ne__` (`is` works), but for objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
-an object of an exception class may be), and an object of an exception class where a
-builtin exception is expected (`list[Exception]`: annotate it with the class or a base of
-the program); an exception class with two bases, one deriving from `SyntaxError` and its
-subclasses or an exception group, a decorated one, one defining again a method of its base
+another type that a function reads (the function would not see the exception); `==` between
+exceptions where an exception class defines `__eq__` or `__ne__` (`is` works), but between
+objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
+an object of an exception class may be); an object of an exception class where a builtin
+exception is expected (`list[Exception]`: annotate it with the class or a base of the
+program), objects of exception classes with no base in common in the program in one list, and
+a builtin exception where an object of an exception class is expected (`except Exception as e:
+log(e)` where `log` takes an `E`: catch it as `except E as e`); an exception class with two
+bases, one deriving from `SyntaxError` and its subclasses, from `UnicodeDecodeError`,
+`UnicodeEncodeError` or `UnicodeTranslateError`, or from an exception group, a decorated one,
+one defining again a method of its base
 other than `__init__`, `__str__` and `__repr__` (methods are not dispatched on the object's
 class), a field its base declares, or one that would be its builtin base's own attribute
 (`args`, `code` of `SystemExit`, `errno`, `strerror`, `filename` and `filename2` of `OSError`,
 `msg` of `ImportError`), or one that the builtin base's `__init__` sets where it may run after
 the class's code assigns the field (`value` of `StopIteration`, `name` and `obj` of
 `AttributeError`, `name` of `NameError`, `name` and `path` of `ImportError`: assign it after
-`super().__init__(...)`); reading those attributes where the class has no such field, a call `x.__init__(...)` on an object of a class that a class deriving
-from it defines `__init__` again for, `Base.method(self, ...)` naming a base other than the
+`super().__init__(...)`); reading those attributes where the class has no such field
+(`self.args`, `S(5).value`), `BaseException`'s methods other than `__str__` and `__repr__`
+(`e.add_note()`, `e.with_traceback()`), a field of a class deriving from a value's class read
+after `isinstance()` tested the value (`isinstance()` does not change the type of a value), a
+call `x.__init__(...)` on an object of a class that a class deriving from it defines
+`__init__` again for, `Base.method(self, ...)` naming a base other than the
 class's own, one whose `__init__` may leave a field of the base
 unassigned where the base's code reads it (call `super().__init__()` first), keyword
 arguments where no class of its line has an `__init__`, more than three arguments for one
