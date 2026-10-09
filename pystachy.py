@@ -5440,6 +5440,9 @@ class FnInfo:
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+        # a template's function: the parameters whose arguments are objects known not to be None
+        # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
+        self.nnp: dict[str, bool] = {}
 
 
 def takes_self(f: FnInfo) -> bool:
@@ -10152,15 +10155,21 @@ class Gen:
             return self.static(n.kids[1])
         if k == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[1].kind == "None":
             t = self.static_type(n.kids[0])
-            r = -1 if t == "" or t in self.classes or is_opt(t) else 1 if t == "None" else 0
+            r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[0])) or is_opt(t) else 1 if t == "None" else 0
             return r if r < 0 or n.s == "is" else 1 - r
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
             t = self.static_type(n.kids[1])
-            return max(self.has(t, n.kids[2].s), -1) if t != "" else -1
+            h = self.has(t, n.kids[2].s) if t != "" else -1
+            return 1 if h == -1 and self.knownobj(n.kids[1]) else max(h, -1)
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
             t = self.static_type(n.kids[1])
-            return self.isinst(t, n.kids[2]) if t != "" else -1
+            r = self.isinst(t, n.kids[2]) if t != "" else -1
+            return 1 if r < 0 and self.knownobj(n.kids[1]) and self.only_class(t, n.kids[2]) else r
         return -1
+
+    def knownobj(self, n: Node) -> bool:
+        # is n a template's parameter whose argument is an object known not to be None (see nnp)
+        return n.kind == "name" and n.s in self.curfn.nnp and self.static_type(n) in self.classes
 
     def has(self, t: str, a: str) -> int:
         # hasattr(x, a) for x of static type t: 1 or 0; for an object's own attribute -1 (true
@@ -11823,7 +11832,11 @@ class Gen:
                     vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
         self.line = line
         if f.generic:
-            f = self.instance(f, [v.t for v in vals])
+            nnp: list[str] = []
+            for j in range(np):
+                if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
+                    nnp.append(f.params[j])
+            f = self.instance(f, [v.t for v in vals], nnp)
         c = Ins("call", f.ret, f.ll)
         c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
         if f.ret == "None":
@@ -11893,11 +11906,29 @@ class Gen:
                     names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
                 self.err(f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}")
 
-    def instance(self, f: FnInfo, ts: list[str]) -> FnInfo:
+    def dispatches(self, f: FnInfo, p: str) -> bool:
+        # does template f test its parameter p with isinstance(p, ...), hasattr(p, ...) or p is
+        # (not) None, and never assign it: then an object known not to be None decides the tests
+        asg: dict[str, bool] = {}
+        local_names(f.node.kids[2].kids, asg)
+        return p not in asg and self.tests(f.node.kids[2].kids, p)
+
+    def tests(self, ns: list[Node], p: str) -> bool:
+        # (see dispatches)
+        for n in ns:
+            if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s == "isinstance" or n.kids[0].s == "hasattr") and len(n.kids) == 3 and n.kids[1].kind == "name" and n.kids[1].s == p:
+                return True
+            if n.kind == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[0].kind == "name" and n.kids[0].s == p and n.kids[1].kind == "None":
+                return True
+            if self.tests(n.kids, p):
+                return True
+        return False
+
+    def instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first
         # needed, in the middle of the function that calls it: its first return statement
-        # decides what it returns
-        key = ",".join(ts)
+        # decides what it returns; nnp: the parameters whose objects are known not to be None
+        key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
         if key in f.insts:
             g = f.insts[key]
             if g.ret == "":
@@ -11923,8 +11954,12 @@ class Gen:
         g.npos = f.npos
         g.posonly = f.posonly
         g.vararg = f.vararg
+        for x in nnp:
+            g.nnp[x] = True
         f.insts[key] = g
-        self.making.append(f"compiling {shown(f.name)}({', '.join(ts)}) for the call at {where(self.line)}")
+        maybe = [f.params[j] for j in range(len(ts)) if ts[j] in self.classes and f.params[j] not in g.nnp and self.dispatches(f, f.params[j])]
+        why = f", where {' and '.join(maybe)} may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time" if len(maybe) > 0 else ""
+        self.making.append(f"compiling {shown(f.name)}({', '.join(ts)}) for the call at {where(self.line)}{why}")
         fr = self.save()
         self.modlevel = False
         self.lenient = False

@@ -130,7 +130,8 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   compiled only when a call needs it, so what Pystachy cannot compile in it is an error only
   then. In it, `isinstance(x, T)` (also with a tuple of types or `T | U`), `hasattr(x, "a")`
   (the builtin types have CPython 3.13's attributes) and `x is None`, when `x`'s type decides
-  them, are constants: only the branch that runs is compiled (in `if`, `while`, `assert`,
+  them (for an object, which may be `None`, when its argument is known not to be: a new object
+  or `self`), are constants: only the branch that runs is compiled (in `if`, `while`, `assert`,
   `and`/`or` and conditional expressions), and nothing after a `return`. A parameter whose
   argument is `None` reads as `None`, and outside if branches and loops may get a value of
   another type (`if hi is None: hi = len(a)`, `if acc is None: acc = []`). A template that
