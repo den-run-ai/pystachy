@@ -59,7 +59,8 @@ ref:
 	  echo $$c > build/ref/commit; \
 	fi
 
-# llvm-as must accept the IR of every corpus program that compiles, or of FILES (tools/check_ir.sh)
+# the IR check (PYSTACHY_IRCHECK=1) and llvm-as must accept the IR of every corpus program that compiles,
+# or of FILES (tools/check_ir.sh)
 check-ir: pystachy
 	tools/check_ir.sh ./pystachy $(FILES)
 

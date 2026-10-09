@@ -34,6 +34,9 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     coverage and the R, A, U and N letters against runtime.c's call graph;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
 >   - `anyall` records a `seq` `Loop` too;
+>   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
+>     compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
+>     internal error as on an IR that `llvm-as` rejects;
 >   - the jump to the first cold block that follows the `ret` a function falls into is a block
 >     without a label (LLVM starts one after a terminator), so that each block still ends with
 >     its one terminator.

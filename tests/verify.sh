@@ -11,8 +11,9 @@
 #   ubsan          PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
 #                  compiler built that way reproduces the IR, and every test passes AOT-built with it
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
-#   check-ir       tools/check_ir.sh: llvm-as accepts the IR of every program of the corpus (the tests,
-#                  the benchmarks, the tests/ir probes and the compiler itself)
+#   check-ir       tools/check_ir.sh: the compiler's IR check (PYSTACHY_IRCHECK=1) and llvm-as accept the
+#                  IR of every program of the corpus (the tests, the benchmarks, the tests/ir probes and
+#                  the compiler itself)
 #   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c (types,
 #                  coverage, and the effects its call graph shows)
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
@@ -145,10 +146,10 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
 x=$(tests "$V/ubsan-aot.log" "$V/ubsan-jit.log") && [ $built = 1 ] && r=pass
 step ubsan $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll")$x"
 
-# ---- check-ir: the IR of every program of the corpus is valid LLVM
+# ---- check-ir: the IR of every program of the corpus passes the IR check and is valid LLVM
 L=$V/check-ir.log; s=$(now); r=fail
 tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
-step check-ir $r "$s" "$L" "$(sed -n 's/^llvm-as accepts the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
+step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
 
 # ---- runtime-table: the runtime functions the compiler declares, as runtime.c defines them
 L=$V/runtime-table.log; s=$(now); r=fail

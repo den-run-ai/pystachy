@@ -583,7 +583,8 @@ versions, platform, git commit and a timestamp:
   and itself, reproduces the IR and passes the tests;
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
-- **check-ir** — `llvm-as` accepts the IR of every program of the corpus below;
+- **check-ir** — the compiler's IR check (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept the IR
+  of every program of the corpus below;
 - **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
   `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
   entry's declaration has the types clang compiles the function to, every runtime function
@@ -608,8 +609,9 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 `bench/*.py` and `tests/ir/*.py`) and must emit the same IR byte for byte, and for each
 `tests/errors/*.py` the same messages and exit status. `make irsame REF=<commit>` (default
 `HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
-`./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` runs
-`llvm-as` on the IR of every program of the corpus. `tests/ir/*.py` probe code-generation
+`./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
+every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; an internal
+error fails it as a rejected IR does. `tests/ir/*.py` probe code-generation
 paths the other programs never take (dead code after `return`, templates instantiated during
 a look-ahead, nested templates, guards repeated in one function): these two tools compile
 them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
