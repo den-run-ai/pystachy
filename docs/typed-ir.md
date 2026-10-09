@@ -13,9 +13,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 > - A `Symtable` pass now mirrors CPython's symbol table on every parsed module (#15). It is the
 >   natural starting point for the resolver track of §6.4.
 > - Step 0's tooling has landed: `tools/irsame.sh` (`make irsame REF=<commit>`), `make check-ir`
->   (also a `make verify` step) and the `tests/ir/` probes, with bug B's probe in `tests/ir/pending/`.
+>   (also a `make verify` step) and the `tests/ir/` probes.
 > - #17's cases 2 and 4 (§9, question 4) now compile.
-> - Bugs A to F of §1.3 are fixed in their own commits (wf/defects), outside the IR steps.
+> - Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
+>   program is now a compile-time error asking to annotate the field.
 >
 > - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
 >   on the corpus). Where they differ from the text below:
@@ -45,7 +46,7 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - `anyall` records a `seq` `Loop` too;
 >   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
 >     compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
->     internal error as on an IR that `llvm-as` rejects;
+>     internal error as on an IR that `llvm-as` rejects, and on a program that does not compile;
 >   - the jump to the first cold block that follows the `ret` a function falls into is a block
 >     without a label (LLVM starts one after a terminator), so that each block still ends with
 >     its one terminator.

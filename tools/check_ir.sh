@@ -1,13 +1,13 @@
 #!/bin/sh
-# IR validity: the compiler's own check of the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise)
-# and llvm-as must accept the `ir` output of every program of the tools/irsame.sh corpus that
-# compiles, tests/errors/*.py aside (they must not compile); llvm-as is run from PYSTACHY_LLVM if set,
-# as the driver runs it. A program the compiler rejects with an error of the program is listed and
-# skipped; an internal error (such as the IR check's), or an IR that llvm-as rejects, is listed with
-# the first lines of its message. A tests/ir/NAME.py with a NAME.fx is compiled with PYSTACHY_IRFX=1,
-# which prints each function's effect summary: they must be the ones NAME.fx lists.
-# The programs run from the repository root in PYSTACHY_JOBS workers
-# (default: one per CPU). Exit status 0 only if every program that compiles passed its checks.
+# IR validity: every program of the tools/irsame.sh corpus, tests/errors/*.py aside (they must not
+# compile), must compile and pass the compiler's own check of the IR it builds (PYSTACHY_IRCHECK=1,
+# unless set otherwise), and llvm-as must accept its `ir` output; llvm-as is run from PYSTACHY_LLVM if
+# set, as the driver runs it. A program the compiler rejects is a failure too, since tests/run.sh never
+# compiles the tests/ir probes; so is an internal error (such as the IR check's), or an IR that llvm-as
+# rejects: each failure is listed with the first lines of its message. A tests/ir/NAME.py with a
+# NAME.fx is compiled with PYSTACHY_IRFX=1, which prints each function's effect summary: they must be
+# the ones NAME.fx lists. The programs run from the repository root in PYSTACHY_JOBS workers (default:
+# one per CPU). Exit status 0 only if every program compiled and passed its checks.
 # usage: tools/check_ir.sh [COMPILER [FILE...]]   (default: ./pystachy and the corpus; make check-ir,
 #        or make check-ir FILES=tests/ir/pending/NAME.py for a probe outside the corpus)
 cd "$(dirname "$0")/.." || exit 1
@@ -62,13 +62,13 @@ for f; do
   n=$((n + 1)); r=""; [ -f "$T/$n/result" ] && read -r r < "$T/$n/result"
   case $r in
     ok) ;;
-    skip) skip=$((skip + 1)); echo "SKIP $f (does not compile): $(head -1 "$T/$n/msg")" ;;
+    skip) skip=$((skip + 1)); echo "FAIL $f: does not compile"; head -3 "$T/$n/msg" ;;
     internal) bad=$((bad + 1)); echo "INTERNAL ERROR $f"; head -5 "$T/$n/msg" ;;
     fx) bad=$((bad + 1)); echo "OTHER EFFECTS $f (than ${f%.py}.fx lists)"; head -10 "$T/$n/msg" ;;
     bad) bad=$((bad + 1)); echo "REJECTED $f (by llvm-as)"; head -5 "$T/$n/msg" ;;
     *) bad=$((bad + 1)); echo "FAIL $f: no result (its worker died)" ;;
   esac
 done
-n=$((n - skip)); s=""; [ $skip = 0 ] || s=" ($skip more did not compile)"
-if [ $bad = 0 ]; then echo "the IR check and llvm-as accept the IR of $n programs$s"; else echo "the IR of $bad of $n programs is rejected$s"; fi
-[ $bad = 0 ]
+if [ $((bad + skip)) = 0 ]; then echo "the IR check and llvm-as accept the IR of $n programs"
+else echo "$((bad + skip)) of $n programs fail: $skip do not compile, the checks reject $bad"; fi
+[ $((bad + skip)) = 0 ]

@@ -4,6 +4,7 @@ mods.shapes: init mods.shapes
 mods.counter: init mods.counter
 mods.cyc_a: start
 mods.cyc_b: start
+mods.cyc_b: cyc_a.NEG is -1
 mods.cyc_b: end
 mods.cyc_a: end 10
 mods.ns.leaf: init mods.ns.leaf
