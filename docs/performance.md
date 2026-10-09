@@ -25,8 +25,9 @@ CPython's.
 The speedup column is computed by `bench/run.sh` from the unrounded times. The first `run` after a
 build also compiles and caches the runtime, which adds one to two seconds once.
 
-Run them yourself with `make bench` (`bench/run.sh`): each program runs under CPython, under the
-JIT and as an AOT executable, and the three outputs must be identical.
+Run them yourself with `make bench` (`bench/run.sh`): each program runs once under CPython, under
+the JIT and as an AOT executable, and the script reports any output that differs from CPython's;
+the benchmarks step of `make verify` fails on one.
 
 ## Where the gains are smaller
 
@@ -50,8 +51,8 @@ CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the earlie
 The native compiler translates its own 11,000 lines to LLVM IR in about 0.2 s of CPU time,
 against 1.4 s when CPython runs it, and a full AOT build of itself, with clang -O2, takes about
 12 s of CPU; CPython's syntax checks and the definition-time checks of imported modules cost
-about a quarter more time per source line than the compiler of 7,000 lines did (0.09 s and
-7.5 s).
+about a quarter more time per source line than the compiler of 7,000 lines did when it emitted
+its own IR (0.09 s then).
 
 Compile time grows linearly with the program: `tools/scaling.py` generates programs that grow in
 one dimension at a time (functions, globals, classes, modules, fields, call and import chains,
