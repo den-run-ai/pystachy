@@ -3275,6 +3275,63 @@ class Loader:
             else:
                 al.kind = "pass"
                 self.used_before(m, al)
+        self.evaluated(m)
+
+    def evaluated(self, m: Mod) -> None:
+        # CPython 3.13 evaluates the annotations of a def's parameters and return, of a class body
+        # and of module-level code when the statement runs (unless the module imports annotations
+        # from __future__): one that raises there fails the import (qann checks module attributes)
+        for st in m.body.kids:
+            for a in st.kids if st.kind == "import" else st.kids[:0]:
+                if a.kids[0].s == "__future__.annotations":
+                    return
+        bound = dict(m.fnglobal)
+        known: dict[str, str] = {}  # what a name is bound to, as ann_raises() needs it: a class, a typing name
+        for t in "int float str bool bytes object complex".split():
+            known[t] = "type"
+        for st in m.body.kids:
+            body = st.kids[0].kids if st.kind == "class" else st.kids[0].kids[0].kids if st.kind == "subclass" else [st]
+            inner = dict(bound)
+            binds(body if st.kind == "class" or st.kind == "subclass" else [], inner, True)  # (a class body's names, conservatively)
+            anns = [b for b in st.kids[1:] if b.kind != "typeparams"] if st.kind == "subclass" else []
+            for d in body:
+                anns.extend([p.kids[0] for p in d.kids[0].kids] + [d.kids[1]] if d.kind == "def" else d.kids[1:2] if d.kind == "annassign" else [])
+            for n in anns if not (st.kind == "subclass" and st.kids[1].kind == "typeparams") else []:  # (not class C[T])
+                why = self.ann_raises(n, inner, known)
+                if why != "":
+                    fail(why, n.line)
+            now: dict[str, bool] = {}
+            binds([st], now, True)
+            if st.kind == "pass" and len(st.kids) == 2:
+                now[st.kids[0].s] = True  # (an alias, see bindings)
+            for nm in now:
+                bound[nm] = True
+                known[nm] = "type" if st.kind == "class" else ""
+            for a in st.kids if st.kind == "import" and st.s == "from" else st.kids[:0]:
+                known[a.s] = a.kids[0].s.replace("typing_extensions.", "typing.")
+
+    def ann_raises(self, n: Node, bound: dict[str, bool], known: dict[str, str]) -> str:
+        # the exception evaluating annotation n raises where the names in bound are bound, or ""
+        for x in n.kids:
+            why = self.ann_raises(x, bound, known)
+            if why != "":
+                return why
+        if n.kind == "attr":
+            n.chk = True
+        if n.kind == "name" and n.s not in bound and n.s not in PYBUILTINS and "*" not in bound:
+            return f"name '{n.s}' is not defined" + (" (import it from typing)" if n.s in TYPING else "")
+        ts: list[str] = []
+        for x in n.kids if n.kind == "index" or n.kind == "binop" else n.kids[:0]:
+            ts.append("str" if x.kind == "str" else "NoneType" if x.kind == "None" else known.get(x.s, "") if x.kind == "name" else "")
+        if n.kind == "index" and ts[0] == "type":
+            return f"type '{n.kids[0].s}' is not subscriptable"
+        have = len(n.kids[1].kids) if n.kind == "index" and n.kids[1].kind == "tuple" else 1
+        want = {"typing.Optional": 1, "typing.List": 1, "typing.Dict": 2}.get(ts[0], have) if n.kind == "index" else have
+        if want != have:
+            return f"too {'many' if have > want else 'few'} arguments for {ts[0]}; actual {have}, expected {want}"
+        if n.kind == "binop" and n.s == "|" and "str" in ts and "" not in ts and not ts[0].startswith("typing.") and not ts[1].startswith("typing."):
+            return f"unsupported operand type(s) for |: '{ts[0]}' and '{ts[1]}'"
+        return ""
 
     def late_aliases(self, m: Mod) -> None:
         # name = f where an import binds f (from m import f): an alias too, if nothing else binds name
@@ -4200,12 +4257,13 @@ class Loader:
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
-            n.chk = True  # (a string, which CPython does not evaluate: see Gen.ann)
         if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
                 self.qann(m, k, loc)
         else:
             self.qexpr(m, n, loc)
+            if n.chk and n.kind == "badattr" and " has no attribute " in n.s:
+                fail(n.s, n.line)  # (an evaluated annotation: see evaluated)
 
     def qstmts(self, m: Mod, body: list[Node], loc: dict[str, bool], cls: bool) -> None:
         for st in body:
@@ -5089,10 +5147,6 @@ class Gen:
         # code calling back into the module
         self.late: dict[str, bool] = {}
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
-        # declaring a def or class statement of module evmod at line evat: its annotations name what
-        # is bound there (0: an annotation CPython does not evaluate)
-        self.evat = 0
-        self.evmod = ""
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
@@ -5411,15 +5465,9 @@ class Gen:
         k = n.kind
         if k == "None":
             return "None"
-        if k == "str" or (n.chk and self.evat != 0):
-            at = self.evat
-            self.evat = 0  # (a string is not evaluated: a forward reference, which the loader parses)
-            t = self.ann(self.parse_expr(n.s) if k == "str" else n)
-            self.evat = at
-            return t
-        s = n.s if k == "name" else n.kids[0].s if k == "index" and n.kids[0].kind == "name" else ""
-        if s != "" and self.undefined(s):
-            return f"!name '{short(s)}' is not defined"  # (where the def or class statement runs)
+        if k == "str":
+            return self.ann(self.parse_expr(n.s))
+        s = n.s
         if k == "name":
             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
                 return s
@@ -5456,21 +5504,10 @@ class Gen:
                 return self.opt(ts[0])
         return "!unsupported type annotation"
 
-    def undefined(self, s: str) -> bool:
-        # does name s, in an annotation CPython evaluates (see evat), name nothing bound there (a
-        # typing name not imported has typing_name's error)
-        if self.evat == 0 or "__future__.annotations" in self.imports.values():
-            return False
-        if s in self.classes:
-            return self.classes[s].mod == self.evmod and self.classes[s].node.line >= self.evat
-        return not (s in PYBUILTINS or s in TYPING or self.bound(s) or self.imported(s) != "" or s in self.aliases or s in self.unsupported)
-
     def ann_problem(self, n: Node, ret: bool) -> str:
-        # why typeof(n), for a return annotation (ret), or vtype(n) fails, or "" (a NameError where
-        # the def or class statement runs, at import, is an error now)
+        # why typeof(n), for a return annotation (ret), or vtype(n) fails, or "" (one that raises
+        # where CPython evaluates it is the loader's error: see evaluated)
         t = self.ann(n)
-        if t.startswith("!name '") and self.evat != 0:
-            self.err(t[1:])
         if t == "None" and not ret:
             return "None is only supported as a return type; annotate an optional object as C | None"
         return t[1:] if t.startswith("!") else ""
@@ -5595,8 +5632,6 @@ class Gen:
     def declare_fields(self, ci: ClassInfo) -> None:
         noann = mk("noann", "", ci.node.line, [])
         last = ""
-        self.evat = ci.node.line
-        self.evmod = ci.mod
         for st in ci.node.kids[0].kids:
             self.line = st.line
             if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
@@ -5612,7 +5647,6 @@ class Gen:
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
                 self.err("a class body may only contain annotated fields and methods")
-        self.evat = 0
         if self.is_dc(ci.name):
             self.dc_methods(ci)
         if "__init__" in ci.methods:
@@ -6771,11 +6805,8 @@ class Gen:
                     if st.s in self.funcs or st.s in self.classes:
                         self.err(f"redefinition of '{st.s}' is not supported")
                     self.lib = m.name != ""
-                    self.evat = st.line
-                    self.evmod = m.name
                     self.funcs[st.s] = self.declare_fn(st, "")
                     self.lib = False
-                    self.evat = 0
                     self.funcs[st.s].mod = m.name
                     top.append(mk("defaults", st.s, st.line, []))
                 elif st.kind == "subclass" or (st.kind == "class" and st.s not in self.classes):
@@ -6787,11 +6818,8 @@ class Gen:
                             if d.s in self.classes[st.s].methods:
                                 self.err(f"redefinition of method '{st.s}.{d.s}' is not supported")
                             self.lib = m.name != ""
-                            self.evat = st.line
-                            self.evmod = m.name
                             self.classes[st.s].methods[d.s] = self.declare_fn(d, st.s)
                             self.lib = False
-                            self.evat = 0
                             self.classes[st.s].methods[d.s].mod = m.name
                     top.append(mk("cdefaults", st.s, st.line, []))
                 else:
