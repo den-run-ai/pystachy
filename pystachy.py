@@ -4425,12 +4425,20 @@ CALLS: dict[str, str] = {
 # Each is a few LLVM instructions with its checks, no runtime call; tools/rt_cpython/_rt.py is their
 # CPython version, for running runtime.py there. str_new makes a zeroed str of n bytes that only
 # str_put and copy may change, before str_done hands it out (a no-op here). null(s) tests for the
-# null pointer that callers pass for an omitted str argument (s.strip()).
+# null pointer that callers pass for an omitted str argument (s.strip()). same(a, i, b, j, n) is
+# a[i:i + n] == b[j:j + n] (memcmp) and find_byte(s, c, st, en) the first index of byte c in
+# s[st:en] or -1 (memchr). A str's length and its bytes are told apart for LLVM's alias analysis
+# (TBAA), so that a loop that builds one str keeps the lengths it reads in registers. udiv and
+# urem divide 64-bit patterns as unsigned ints, and mul_ovf tells whether a * b would overflow.
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
     "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+    "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
+    "urem": "int,int:int", "mul_ovf": "int,int:bool",
 }
+TBAA_LEN = 3
+TBAA_BYTES = 4
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -5508,6 +5516,11 @@ class Gen:
         a = [v.v for v in vals]
         if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
             return Val(self.ins(f"{name[5:]} i64 {a[0]}, {a[1]}"), "int")
+        if name == "udiv" or name == "urem":
+            self.guard(self.ins(f"icmp eq i64 {a[1]}, 0"), "ZeroDivisionError: integer division or modulo by zero")
+            return Val(self.ins(f"{name} i64 {a[0]}, {a[1]}"), "int")
+        if name == "mul_ovf":
+            return Val(self.checked("smul", a[0], a[1])[1], "bool")
         if name == "shl" or name == "lshr":
             # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
             return Val(self.ins(f"{name} i64 {a[0]}, {self.ins(f'and i64 {a[1]}, 63')}"), "int")
@@ -5515,16 +5528,37 @@ class Gen:
             return vals[0]
         if name == "null":
             return Val(self.ins(f"icmp eq ptr {a[0]}, null"), "bool")
+        if name == "same":
+            # same(a, i, b, j, n): within both, and n >= 0
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+            n1 = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}")
+            for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n0}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n0}, {a[1]}')}",
+                      f"icmp ugt i64 {a[3]}, {n1}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n1}, {a[3]}')}"]:
+                self.guard(self.ins(x), "IndexError: compare out of range")
+            self.decls["memcmp"] = "declare i32 @memcmp(ptr, ptr, i64)"
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+            p1 = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 8')}")
+            return Val(self.ins(f"icmp eq i32 {self.ins(f'call i32 @memcmp(ptr {p0}, ptr {p1}, i64 {a[4]})')}, 0"), "bool")
+        if name == "find_byte":
+            # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+            for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
+                self.guard(self.ins(x), "IndexError: search out of range")
+            self.decls["memchr"] = "declare ptr @memchr(ptr, i32, i64)"
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
+            f = self.ins(f"call ptr @memchr(ptr {p0}, i32 {self.ins(f'trunc i64 {a[1]} to i32')}, i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')})")
+            d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
+            return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
         if name == "str_new":
             self.guard(self.ins(f"icmp slt i64 {a[0]}, 0"), "MemoryError: negative size")
             r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.iop('sadd', a[0], '9')}"])  # zeroed: the NUL is there
-            self.emit(f"store i64 {a[0]}, ptr {r}")
+            self.emit(f"store i64 {a[0]}, ptr {r}, !tbaa !{TBAA_LEN}")
             return Val(r, "str")
         # the others index a str: an unsigned compare with its length also rejects a negative index
-        n = self.ins(f"load i64, ptr {a[0]}")
+        n = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
         if name == "copy":
             # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
-            m = self.ins(f"load i64, ptr {a[2]}")
+            m = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}")
             for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n}, {a[1]}')}",
                       f"icmp ugt i64 {a[3]}, {m}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {m}, {a[3]}')}"]:
                 self.guard(self.ins(x), "IndexError: copy out of range")
@@ -5536,9 +5570,9 @@ class Gen:
         self.guard(self.ins(f"icmp uge i64 {a[1]}, {n}"), "IndexError: string index out of range")
         p = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
         if name == "byte":
-            return Val(self.ins(f"zext i8 {self.ins(f'load i8, ptr {p}')} to i64"), "int")
+            return Val(self.ins(f"zext i8 {self.ins(f'load i8, ptr {p}, !tbaa !{TBAA_BYTES}')} to i64"), "int")
         self.guard(self.ins(f"icmp ugt i64 {a[2]}, 255"), "ValueError: byte must be in range(0, 256)")
-        self.emit(f"store i8 {self.ins(f'trunc i64 {a[2]} to i8')}, ptr {p}")
+        self.emit(f"store i8 {self.ins(f'trunc i64 {a[2]} to i8')}, ptr {p}, !tbaa !{TBAA_BYTES}")
         return Val("null", "None")
 
     def iop(self, op: str, a: str, b: str) -> str:
@@ -7155,6 +7189,12 @@ class Gen:
         if self.rtmode:
             for ci in self.classes.values():
                 self.err(f"runtime.py may not define classes ({ci.name})")
+            # TBAA: a str's length and its bytes never alias (see RTL); other accesses carry no tag
+            hdr.append(f'!{TBAA_LEN - 3} = !{{!"pystachy runtime.py"}}')
+            hdr.append(f'!{TBAA_LEN - 2} = !{{!"str length", !{TBAA_LEN - 3}, i64 0}}')
+            hdr.append(f'!{TBAA_LEN - 1} = !{{!"str bytes", !{TBAA_LEN - 3}, i64 0}}')
+            hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
+            hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
             return "\n".join(hdr) + "\n"
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals

@@ -16,6 +16,8 @@
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
+#                  math functions give on random inputs
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
@@ -180,6 +182,11 @@ for b in bench/*.py; do
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
+
+# ---- rtcheck: runtime.py on CPython against CPython's own str methods and math functions
+L=$V/rtcheck.log; s=$(now); r=fail
+$PY tools/rtcheck.py > "$L" 2>&1 && r=pass
+step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
 L=$V/dict-probes.log; s=$(now); r=fail

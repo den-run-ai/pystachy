@@ -66,3 +66,32 @@ def lshr(a, n):
 
 def null(s):
     return s is None
+
+
+def same(a, i, b, j, n):
+    if n < 0 or not 0 <= i <= len(a) - n or not 0 <= j <= len(b) - n:
+        raise IndexError("compare out of range")
+    return a[i : i + n] == b[j : j + n]
+
+
+def find_byte(s, c, st, en):
+    if not 0 <= st <= en <= len(s):
+        raise IndexError("search out of range")
+    i = s.find(c if isinstance(s, bytearray) else chr(c), st, en)
+    return i
+
+
+def udiv(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    return i64((a & M64) // (b & M64))
+
+
+def urem(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    return i64((a & M64) % (b & M64))
+
+
+def mul_ovf(a, b):
+    return not -(1 << 63) <= a * b < 1 << 63

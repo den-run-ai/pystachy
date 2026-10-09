@@ -18,20 +18,21 @@ import _rt
 
 # ---------- the math module's integer functions ----------
 # The subset's arithmetic is checked, so an int result that does not fit in 64 bits raises
-# CPython's OverflowError where runtime.c had to test for it, but there are no unsigned or
-# 128-bit ints: these work on negated magnitudes (-2**63 has no positive counterpart) and
-# reduce by a gcd before multiplying.
+# CPython's OverflowError where runtime.c had to test for it by hand. There are no unsigned or
+# 128-bit ints: gcd divides unsigned 64-bit patterns with _rt.urem (|-2**63| fits in them), and
+# comb asks _rt.mul_ovf before it multiplies.
 
 
 def pys_m_gcd(a: int, b: int) -> int:
-    # Euclid on -|a| and -|b|: a floor remainder of two non-positive ints is non-positive
-    x = a if a <= 0 else -a
-    y = b if b <= 0 else -b
+    x = _rt.wrap_sub(0, a) if a < 0 else a  # |a| as an unsigned 64-bit pattern
+    y = _rt.wrap_sub(0, b) if b < 0 else b
     while y != 0:
-        t = x % y
+        t = _rt.urem(x, y)
         x = y
         y = t
-    return -x  # gcd(-2**63, 0) = 2**63 does not fit: OverflowError
+    if x < 0:
+        raise OverflowError("integer result does not fit in 64 bits")  # gcd(-2**63, 0) = 2**63
+    return x
 
 
 def pys_m_lcm(a: int, b: int) -> int:
@@ -74,12 +75,17 @@ def pys_m_comb(n: int, k: int) -> int:
         return 0
     if k > n - k:
         k = n - k
-    # r = C(n - k + i, i) after step i, which never exceeds the result: i divides r * (n - k + i),
-    # so with g = gcd(r, i), i // g divides n - k + i and no step overflows unless the result does
+    # r = C(n - k + i, i) after step i, which never exceeds the result. i divides r * m, so where
+    # that product overflows, i // g divides m for g = gcd(r, i), and no step overflows unless the
+    # result does
     r = 1
     for i in range(1, k + 1):
-        g = pys_m_gcd(r, i)
-        r = r // g * ((n - k + i) // (i // g))
+        m = n - k + i
+        if _rt.mul_ovf(r, m):
+            g = pys_m_gcd(r, i)
+            r = r // g * (m // (i // g))
+        else:
+            r = r * m // i
     return r
 
 
@@ -119,22 +125,38 @@ def adj_end(en: int, n: int) -> int:
 
 
 def match(h: str, i: int, n: str) -> bool:
-    # whether n occurs in h at i, which leaves room for it
-    for j in range(len(n)):
+    # whether n occurs in h at i, which leaves room for it: byte by byte while it is short, else memcmp
+    m = len(n)
+    if m > 8:
+        return _rt.same(h, i, n, 0, m)
+    for j in range(m):
         if _rt.byte(h, i + j) != _rt.byte(n, j):
             return False
     return True
 
 
 def search(h: str, n: str, st: int, en: int) -> int:
-    # the first i from st on where n occurs in h[:en], or -1; st <= en
+    # the first i from st on where n occurs in h[:en], or -1: the next occurrence of n's first
+    # byte, looked for inline over 16 bytes (dense matches) and then with memchr (sparse ones)
     m = len(n)
     if m == 0:
-        return st
+        return st if st <= en else -1
     first = _rt.byte(n, 0)
-    for i in range(st, en - m + 1):
-        if _rt.byte(h, i) == first and match(h, i, n):
+    last = en - m  # the last place n can start
+    i = st
+    while i <= last:
+        stop = i + 16 if i + 16 <= last else last + 1
+        while i < stop and _rt.byte(h, i) != first:
+            i += 1
+        if i == stop:
+            if i > last:
+                return -1
+            i = _rt.find_byte(h, first, i, last + 1)
+            if i < 0:
+                return -1
+        if match(h, i, n):
             return i
+        i += 1
     return -1
 
 
@@ -199,7 +221,7 @@ def tail(s: str, p: str, st: int, en: int, end: bool) -> int:
     en = adj_end(en, len(s))
     if en - len(p) < st:
         return 0
-    return 1 if match(s, en - len(p) if end else st, p) else 0
+    return 1 if _rt.same(s, en - len(p) if end else st, p, 0, len(p)) else 0
 
 
 def pys_str_startswith(s: str, p: str, st: int, en: int) -> int:
@@ -361,13 +383,21 @@ def pys_str_isascii(s: str) -> int:
 
 
 def mapcase(s: str, how: int) -> str:
-    # 0 lower, 1 upper, 2 swap: ASCII letters only
-    r = _rt.str_new(len(s))
-    for i in range(len(s)):
-        c = _rt.byte(s, i)
-        if (how != 0 and lowc(c)) or (how != 1 and upc(c)):
-            c ^= 32
-        _rt.str_put(r, i, c)
+    # 0 lower, 1 upper, 2 swap: ASCII letters only (one loop per case, which LLVM vectorizes)
+    n = len(s)
+    r = _rt.str_new(n)
+    if how == 0:
+        for i in range(n):
+            c = _rt.byte(s, i)
+            _rt.str_put(r, i, c | 32 if upc(c) else c)
+    elif how == 1:
+        for i in range(n):
+            c = _rt.byte(s, i)
+            _rt.str_put(r, i, c & 223 if lowc(c) else c)
+    else:
+        for i in range(n):
+            c = _rt.byte(s, i)
+            _rt.str_put(r, i, c ^ 32 if lowc(c) or upc(c) else c)
     return _rt.str_done(r)
 
 
@@ -515,13 +545,13 @@ def pys_str_rpartition(s: str, sep: str) -> tuple[str, str, str]:
 
 
 def pys_str_removeprefix(s: str, p: str) -> str:
-    if len(p) > 0 and len(s) >= len(p) and match(s, 0, p):
+    if len(p) > 0 and len(s) >= len(p) and _rt.same(s, 0, p, 0, len(p)):
         return s[len(p) :]
     return s
 
 
 def pys_str_removesuffix(s: str, p: str) -> str:
-    if len(p) > 0 and len(s) >= len(p) and match(s, len(s) - len(p), p):
+    if len(p) > 0 and len(s) >= len(p) and _rt.same(s, len(s) - len(p), p, 0, len(p)):
         return s[: len(s) - len(p)]
     return s
 
