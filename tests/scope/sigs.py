@@ -65,3 +65,27 @@ def setup() -> None:
 class Hooks:
     def __init__(self) -> None:
         self.ready = setup()
+
+
+from typing import Iterable
+
+
+def total(xs: Iterable[int]) -> int:
+    return sum(xs)
+
+
+def maybe(x: int | None) -> int:
+    return 0 if x is None else x
+
+
+def by_weight(d: dict[float, Node]) -> int:
+    return len(d)
+
+
+class Weights:
+    keys: dict[float, int]
+
+
+class Cell:
+    def __init__(self) -> None:
+        self.held: int | None = None

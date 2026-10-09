@@ -5383,74 +5383,69 @@ class Gen:
 
     # ---- types and declarations
     def typeof(self, n: Node) -> str:
+        t = self.ann(n)
+        if t.startswith("!"):
+            self.err(t[1:])
+        return t
+
+    def ann(self, n: Node) -> str:
+        # the type annotation n denotes, or "!" and why Pystachy does not support it (typeof's error,
+        # which a declaration in an imported module defers to where the program uses it)
         k = n.kind
         if k == "None":
             return "None"
         if k == "str":
-            return self.typeof(self.parse_expr(n.s))
+            return self.ann(self.parse_expr(n.s))
         if k == "name":
             s = n.s
             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
                 return s
-            if self.typing_name(s) == "TextIO":
-                return "file"
+            t = self.typing_name(s)
+            if t == "TextIO" or t.startswith("!"):
+                return "file" if t == "TextIO" else t
             if s in self.unsupported:
-                self.err(self.unsupported[s])
+                return "!" + self.unsupported[s]
         elif k == "attr" and self.typing_attr(n) == "TextIO":
             return "file"
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
-            return self.opt(self.typeof(n.kids[0]))
+            return self.opt(self.ann(n.kids[0]))
         elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = n.kids[0].s
             if n.kids[0].kind == "attr":
                 base = self.typing_attr(n.kids[0]).lower()  # typing.List[int]
             elif base != "list" and base != "dict" and base != "tuple":
-                base = self.typing_name(base).lower()
-            a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
-            ts = [self.typeof(x) for x in a]
+                base = self.typing_name(base)
+                if base.startswith("!"):
+                    return base
+                base = base.lower()
+            ts: list[str] = []
+            for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+                ts.append(self.ann(x))
+                if ts[-1].startswith("!"):
+                    return ts[-1]
             if base == "list" and len(ts) == 1:
                 return f"list[{ts[0]}]"
             if base == "dict" and len(ts) == 2:
-                if ts[0] != "int" and ts[0] != "str":
-                    self.err("dict keys must be int or str")
-                return f"dict[{ts[0]},{ts[1]}]"
+                return f"dict[{ts[0]},{ts[1]}]" if ts[0] == "int" or ts[0] == "str" else "!dict keys must be int or str"
             if base == "tuple" and len(ts) > 0:
                 return f"tuple[{','.join(ts)}]"
             if base == "optional" and len(ts) == 1:
                 return self.opt(ts[0])
-        self.err("unsupported type annotation")
-        return ""
+        return "!unsupported type annotation"
 
     def ann_problem(self, n: Node, ret: bool) -> str:
-        # why typeof(n) would fail, as far as its form shows ("" for a string, a forward
-        # reference, which is checked where it is used)
-        k = n.kind
-        if k == "None":
-            return "" if ret else "None is only supported as a return type; annotate an optional object as C | None"
-        if k == "str":
-            return ""
-        if k == "name":
-            if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or self.imported(n.s) == "typing.TextIO":
-                return ""
-            return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
-        if k == "binop" and n.s == "|" and n.kids[1].kind == "None":
-            return self.ann_problem(n.kids[0], False)
-        if k == "attr" and self.typing_attr(n) == "TextIO":
-            return ""
-        if k == "index" and (n.kids[0].kind == "name" or (n.kids[0].kind == "attr" and self.typing_attr(n.kids[0]) != "")):
-            for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
-                r = self.ann_problem(x, False)
-                if r != "":
-                    return r
-            return ""
-        return "unsupported type annotation"
+        # why typeof(n), for a return annotation (ret), or vtype(n) fails, or ""
+        t = self.ann(n)
+        if t == "None" and not ret:
+            return "None is only supported as a return type; annotate an optional object as C | None"
+        return t[1:] if t.startswith("!") else ""
 
     def vtype(self, n: Node) -> str:
         # the annotation of a variable, parameter or field: None alone is only a return type
-        t = self.typeof(n)
-        if t == "None":
-            self.err("None is only supported as a return type; annotate an optional object as C | None")
-        return t
+        why = self.ann_problem(n, False)
+        if why != "":
+            self.err(why)
+        return self.ann(n)
 
     def typing_attr(self, n: Node) -> str:
         # the typing name an attribute denotes (typing.Optional, t.List after import typing as t), or ""
@@ -5463,19 +5458,17 @@ class Gen:
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
-        # evaluated (from __future__ import annotations)
+        # evaluated (from __future__ import annotations): the typing name s denotes, "", or "!" and
+        # the error
         if self.imported(s).startswith("typing."):
             return self.imported(s)[7:]
         if s in TYPING and "__future__.annotations" in self.imports.values():
             return s
-        if s in TYPING:
-            self.err(f"name '{s}' is not defined (import it from typing)")
-        return ""
+        return f"!name '{s}' is not defined (import it from typing)" if s in TYPING else ""
 
     def opt(self, t: str) -> str:
-        if t not in self.classes:
-            self.err(f"None/Optional is only supported for class types, not {t}")
-        return t
+        # T | None, Optional[T]: only an object may be None
+        return t if t in self.classes or t.startswith("!") else f"!None/Optional is only supported for class types, not {t}"
 
     def declare_fn(self, d: Node, cls: str) -> FnInfo:
         # a function or method. A module-level function with a parameter that has no annotation
