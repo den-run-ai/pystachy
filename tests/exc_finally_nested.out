@@ -1,0 +1,16 @@
+0 1111
+1 1111
+2 ValueError two
+3 1
+4 11
+5 111
+['inner 0 1111', 'inner 1 1111', 'inner 2 1111', 'inner 3 1111', 'inner 4 1111', 'inner 5 1111']
+['body 0', 'fin 0', 'fin2 0', 'after 0', 'fin 1', 'fin2 1', 'body 2', 'fin 2', 'fin2 2', 'fin 3', 'fin2 3']
+KeyError KeyError('k') RuntimeError No active exception to reraise ret
+bare raise in finally: outer
+a
+20
+r is changed
+HEY!
+module 12
+[exit 0]

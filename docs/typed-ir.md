@@ -93,7 +93,13 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     run before a handler takes it), and A only allocations on the way to returning, so the
 >     table's letters did not change (`tools/check_runtime.py` derives them so).
 >   - `return`, `break` and `continue` leave through `Gen.exits` (with blocks, except clauses,
->     finally blocks), which runs a copy of each finally block they cross, as CPython does.
+>     finally blocks), which runs a copy of each finally block they cross, as CPython does. A
+>     finally block that holds a try statement with a finally block of its own is compiled once
+>     instead, after the rest of its statement: each way out (the end, the exception, each
+>     `return`, `break` or `continue`) stores its index in an i64 slot (`Exit.sel`) and jumps to
+>     it, and a chain of compares at its end goes on to that way's continuation (`Exit.conts`);
+>     a return's value goes through a slot of its own. Copies of copies grew as 3^depth: 9.4 MB
+>     of LLVM IR at depth 8, which LLVM's passes took 25 s over; it is now linear.
 >   - landing blocks that no try statement writes: an except clause whose name may be read
 >     after it has one around its body, which unbinds the name and throws again (CPython's
 >     clause has a finally block for it); and in a program with a try, a module's code

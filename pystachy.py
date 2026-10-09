@@ -5416,6 +5416,17 @@ def binds_other(body: list[Node], name: str) -> bool:
     return False
 
 
+def has_finally(body: list[Node]) -> bool:
+    # does code body hold a try statement with a finally block (not in the functions and classes it defines)
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        for k in st.kids:
+            if (k.kind == "block" and ((st.kind == "try" and k.s != "else" and k is not st.kids[0]) or has_finally(k.kids))) or (k.kind == "except" and has_finally(k.kids[1].kids)):
+                return True
+    return False
+
+
 def binds_as(body: list[Node], name: str) -> bool:
     # does an except clause in code body bind name (not in the functions and classes it defines)
     for st in body:
@@ -5627,6 +5638,9 @@ class Exit:
         self.body: list[Node] = []
         self.nloops = 0
         self.nexcs = 0
+        self.entry = ""  # a finally block compiled once (Gen.try_): where it starts, ""  if each way out has a copy
+        self.sel = ""  # the slot of the way out it goes on to, an index into conts
+        self.conts: list[str] = []
 
 
 class Frame:
@@ -5859,6 +5873,7 @@ class Gen:
         self.wdepth: list[int] = []  # len(exits) when each enclosing loop began
         self.handler = ""  # the landing block of the innermost try statement around the code, or ""
         self.excs: list[Val] = []  # the exceptions being handled by the except clauses around it (bare raise)
+        self.carried = Val("", "")  # a return's value while leave() runs the finally blocks it leaves
         # the names of except ... as clauses around it that have a variable of their own (another
         # type than the name has outside): [name, its type outside ("": a global), register, flag]
         self.shadows: list[list[str]] = []
@@ -9155,6 +9170,7 @@ class Gen:
         # outside it (where its own break or return goes). True if one of those took the way out
         # over (its own return, break, continue or raise), so that the caller's is not compiled
         here = self.handler
+        cv = self.carried
         ended = False
         for i in range(len(self.exits) - 1, depth - 1, -1):
             if ended:
@@ -9170,6 +9186,19 @@ class Gen:
             elif x.kind == "handler":
                 self.rt("pys_exc_restore", "void", [f"ptr {x.v}"])
                 self.unbind(x.name)
+            elif x.entry != "":
+                # a finally block compiled once (try_): it goes on here, by its index in conts; a
+                # return's value is kept in a slot, as other ways out reach the code after it too
+                sl = ""
+                if cv.v.startswith("%"):
+                    sl = self.alloca(cv.t, "")
+                    self.emit(f"store {lt(cv.t)} {cv.v}, ptr {sl}")
+                self.emit(f"store i64 {len(x.conts)}, ptr {x.sel}")
+                x.conts.append(self.label())
+                self.br(x.entry)
+                self.place(x.conts[-1])
+                if sl != "":
+                    cv = Val(self.ins(f"load {lt(cv.t)}, ptr {sl}"), cv.t)
             else:
                 exits = self.exits
                 loops = self.loops
@@ -9189,6 +9218,7 @@ class Gen:
                 self.wdepth = wdepth
                 self.excs = excs
         self.handler = here
+        self.carried = cv
         return ended
 
     def try_(self, n: Node) -> None:
@@ -9232,12 +9262,18 @@ class Gen:
         tr.exit = done
         self.fn.tries.append(tr)
         self.branch += 1
+        fx = Exit("finally", "", outer)
         if hasfin:
-            x = Exit("finally", "", outer)
-            x.body = fin
-            x.nloops = len(self.loops)
-            x.nexcs = len(self.excs)
-            self.exits.append(x)
+            fx.body = fin
+            fx.nloops = len(self.loops)
+            fx.nexcs = len(self.excs)
+            if has_finally(fin):
+                # a finally block that holds one: compiled once, after the rest of the statement,
+                # where each way out stores its index and jumps (leave), else the copies of copies
+                # would grow exponentially with the nesting (CPython's bytecode does)
+                fx.entry = self.label()
+                fx.sel = self.alloca("int", "")
+            self.exits.append(fx)
         self.handler = he if he != "" else hf
         self.place(tr.body)
         self.stmts(n.kids[0].kids)
@@ -9306,16 +9342,53 @@ class Gen:
             self.exits.pop()
             self.handler = outer
             e = self.landing(hf, slot, mark)
-            self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
-            self.excs.append(e)
-            self.stmts(fin)
-            self.excs.pop()
-            self.exits.pop()
-            if not self.term:
-                self.throw(e)
+            if fx.entry != "":
+                # (the exception goes on after the finally block, from a slot of its own)
+                sl = self.alloca("exc", "")
+                self.emit(f"store ptr {e.v}, ptr {sl}")
+                self.emit(f"store i64 {len(fx.conts)}, ptr {fx.sel}")
+                fx.conts.append(self.label())
+                self.br(fx.entry)
+                self.place(fx.conts[-1])
+                self.throw(Val(self.ins(f"load ptr, ptr {sl}"), "exc"))
+            else:
+                self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
+                self.excs.append(e)
+                self.stmts(fin)
+                self.excs.pop()
+                self.exits.pop()
+                if not self.term:
+                    self.throw(e)
         self.handler = outer
         self.branch -= 1
-        if live:
+        if live and fx.entry != "":
+            self.place(done)
+            self.emit(f"store i64 {len(fx.conts)}, ptr {fx.sel}")
+            fx.conts.append(self.label())
+            self.br(fx.entry)
+        if fx.entry != "":
+            # the finally block, once: the exception being handled is the one in flight on the way
+            # out of an exception (a bare raise raises it: pys_reraise), else the one before the
+            # statement, which a break or return in it restores; then each way out goes on
+            self.place(fx.entry)
+            self.exits.append(Exit("handler", old, outer))
+            self.excs.append(Val("", "exc"))
+            self.branch += 1
+            self.stmts(fin)
+            self.branch -= 1
+            self.excs.pop()
+            self.exits.pop()
+            disp = self.label()
+            self.place(disp)
+            ksel = self.ins(f"load i64, ptr {fx.sel}")
+            for j in range(len(fx.conts) - 1):
+                nx = self.label()
+                self.cbr(self.ins(f"icmp eq i64 {ksel}, {j}"), fx.conts[j], nx)
+                self.place(nx)
+            self.br(fx.conts[-1])
+            if live:
+                self.place(fx.conts[-1])
+        elif live:
             self.place(done)
             self.stmts(fin)
 
@@ -9615,7 +9688,7 @@ class Gen:
         if len(n.kids) == 0:
             # a bare raise: the exception the except clause around it handles, or else the one
             # being handled where it runs (in a function an except clause calls)
-            if len(self.excs) > 0:
+            if len(self.excs) > 0 and self.excs[-1].v != "":
                 self.throw(self.excs[-1])
             elif self.eh:
                 self.rt("pys_reraise", "void", [])
@@ -10044,7 +10117,11 @@ class Gen:
                 if v.t != "None":
                     self.ret = v.t
                     self.curfn.ret = v.t
-                if self.leave(0):
+                self.carried = v
+                ended = self.leave(0)
+                v = self.carried
+                self.carried = Val("", "")
+                if ended:
                     pass  # (a finally block returned instead)
                 elif v.t == "None":
                     self.add(Ins("ret.none", "", ""))
@@ -10071,7 +10148,11 @@ class Gen:
                 if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes):
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret)
-                if not self.leave(0):  # (the value first: a finally block runs after it is computed)
+                self.carried = v  # (the value first: a finally block runs after it is computed)
+                ended = self.leave(0)
+                v = self.carried
+                self.carried = Val("", "")
+                if not ended:
                     self.ret_(Val(v.v, self.ret))
             self.term = True
         elif k == "break" or k == "continue":

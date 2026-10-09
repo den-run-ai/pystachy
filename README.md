@@ -589,7 +589,9 @@ exception classes.
   `pys_personality`, reads the call-site tables LLVM emits. Code that does not raise pays
   nothing for a `try` (under the JIT, two runtime calls as it is entered); a raise in the
   `try`'s own function costs tens of nanoseconds, one from a call one to three microseconds.
-  `finally` is compiled once for each way out, as in CPython. What a raise leaves half done in
+  `finally` is compiled once for each way out, as in CPython, but one that holds a `try` with a
+  `finally` of its own is compiled once, where each way out stores its index and jumps, so that
+  nested ones grow linearly, not as 3^depth. What a raise leaves half done in
   the runtime (a list being sorted, a `with` block's open file) is put right by unwind actions
   that the landing pad runs; one that raises (a close that fails) gives the landing its own
   exception instead, through a `siglongjmp` back into `pys_exc_begin` over runtime frames only.
