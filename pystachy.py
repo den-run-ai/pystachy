@@ -5545,6 +5545,7 @@ class Gen:
             n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
             for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
                 self.guard(self.ins(x), "IndexError: search out of range")
+            self.guard(self.ins(f"icmp ugt i64 {a[1]}, 255"), "ValueError: byte must be in range(0, 256)")
             self.decls["memchr"] = "declare ptr @memchr(ptr, i32, i64)"
             p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
             f = self.ins(f"call ptr @memchr(ptr {p0}, i32 {self.ins(f'trunc i64 {a[1]} to i32')}, i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')})")

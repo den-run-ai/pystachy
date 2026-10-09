@@ -13,7 +13,8 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (124163 lines of IR)
+fixed point: stage1 == stage2 == stage3 (126472 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (7959 lines)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -26,14 +27,15 @@ Requirements: LLVM/clang 18 (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`; set
 `PYSTACHY_LLVM=/usr/lib/llvm-18/bin` if they are not on `PATH` under those names) and
 CPython 3.11 or later for the bootstrap (tested with 3.13). `make verify`, `make test-py` and
 `make bench` also run CPython, as the reference, and the UBSan step of `make verify` needs
-the UBSan runtime (Ubuntu: `libclang-rt-18-dev`). The compiler looks for `runtime.c` and
+the UBSan runtime (Ubuntu: `libclang-rt-18-dev`). The compiler looks for `runtime.c`, `runtime.py` and
 its `build/` cache next to itself (or in its parent directory); a copy installed elsewhere
 needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
 | `pystachy.py` | 10,128 | lexer 611 · parser 1,658 · scopes (CPython's symbol-table errors) 544 · module loader 1,513 · types, tables and the definite-assignment pass 886 · type checker + IR generator 4,734 · driver 132 |
-| `runtime.c` | 2,665 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `runtime.c` | 2,342 | garbage collector, string, list and dict memory, timsort, dict tables, generic repr/compare, float digits, files and I/O, clocks |
+| `runtime.py` | 956 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing (`docs/runtime-in-subset.md`) |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
 | `tests/` | 270 programs, 320 rejection cases, 10 deviation cases, 6 IR probes | each program must print exactly what CPython prints, JIT and AOT |
 
@@ -409,7 +411,8 @@ but a builtin exception.
                                                        ▼
                                Gen: type check + emit LLVM IR (one pass), text only
                                             │
-            runtime.c ──clang──► runtime.bc │ runtime.o
+  runtime.c ──clang──┐
+  runtime.py ─Gen────┴─llvm-link, opt -O2──► runtime.bc │ runtime.o
                         ┌───────────────────┴──────────────────────┐
   pystachy build (AOT)  ▼                                          ▼  pystachy run (JIT)
   llvm-link program + runtime.bc                 opt mem2reg,instcombine,simplifycfg
@@ -530,6 +533,15 @@ but a builtin exception.
   load. clang tags the runtime with `target-cpu`/`target-features`, which makes LLVM
   refuse to inline it into attribute-less generated code; the driver strips those
   attributes when building `runtime.bc`.
+- **A runtime partly written in the subset.** `runtime.py` holds runtime functions written in
+  the subset itself. `pystachy rt runtime.py` compiles it in a runtime mode: its `pys_*`
+  functions keep runtime.c's C names and types, `def f(...) -> T: ...` declares a C function,
+  and `import _rt` gives a few primitives (byte reads, an in-place string builder, `memchr` and
+  `memcmp`, wrapping and unsigned arithmetic), each a few checked LLVM instructions. The
+  driver links it to runtime.c's bitcode when it rebuilds the cached runtime, which it does
+  when `runtime.c`, `runtime.py` or the running compiler is newer; programs' IR does not
+  change. `tools/rtcheck.py` runs `runtime.py` on CPython against CPython's own str methods,
+  `math` and `format()`. `docs/runtime-in-subset.md` evaluates the approach.
 - **Two tiers.** `run` favors latency: a three-pass pipeline over the program alone, then
   ORC JIT compilation linked against a cached, precompiled `runtime.o`. `build` favors
   throughput: the full `-O2` pipeline over program and runtime together. The driver
@@ -544,7 +556,9 @@ but a builtin exception.
   (stage 0). `make` then checks the fixed point: the stage-1 binary (built by
   CPython-hosted Pystachy) and the stage-2 binary (built by stage 1) must emit IR
   identical to CPython-hosted Pystachy's, byte for byte. Any semantic divergence between
-  Pystachy and CPython inside the compiler shows up as a diff.
+  Pystachy and CPython inside the compiler shows up as a diff. The three stages must also
+  emit the same IR for `runtime.py` (`pystachy rt`), which each compiles into the runtime it
+  links.
 
 ## Testing and verification
 
@@ -585,6 +599,12 @@ versions, platform, git commit and a timestamp:
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
 - **benchmarks** — output equal to CPython's, with timings;
+- **rtcheck** — `tools/rtcheck.py` runs `runtime.py` on CPython and compares each of its
+  functions with CPython's str methods, `math` functions and `format()` (and the dict hashes
+  with their formulas) on random inputs, about 260,000 cases;
+- **rt-abi** — `tools/rtabi.py`: every function `runtime.py` defines or declares has one LLVM
+  signature in `runtime.py`, in runtime.c and in every program of the corpus (`llvm-link`
+  would accept a mismatch silently);
 - **dict-probes** — `tools/dictprobe.c` counts the table slots that dict insertions and
   lookups visit for twelve key patterns that defeat a weak hash or probe sequence (`i << 46`,
   spaced ints, str keys sharing a long prefix or suffix, ...) and every shift `i << s`, with

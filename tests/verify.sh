@@ -18,6 +18,8 @@
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
+#   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
+#                  signature in runtime.py, runtime.c and every program of the corpus
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
@@ -187,6 +189,11 @@ step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\
 L=$V/rtcheck.log; s=$(now); r=fail
 $PY tools/rtcheck.py > "$L" 2>&1 && r=pass
 step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
+
+# ---- rt-abi: one signature per runtime function across runtime.py, runtime.c and the corpus
+L=$V/rt-abi.log; s=$(now); r=fail
+$PY tools/rtabi.py "$V/pystachy2" > "$L" 2>&1 && r=pass
+step rt-abi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) functions of runtime.py, \([0-9]*\) uses in runtime.c and \([0-9]*\) programs, \([0-9]*\) mismatches$/, "functions": \1, "uses": \2, "programs": \3, "mismatches": \4/p' "$L")"
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
 L=$V/dict-probes.log; s=$(now); r=fail

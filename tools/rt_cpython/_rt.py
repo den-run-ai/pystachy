@@ -77,6 +77,8 @@ def same(a, i, b, j, n):
 def find_byte(s, c, st, en):
     if not 0 <= st <= en <= len(s):
         raise IndexError("search out of range")
+    if not 0 <= c <= 255:
+        raise ValueError("byte must be in range(0, 256)")
     i = s.find(c if isinstance(s, bytearray) else chr(c), st, en)
     return i
 
