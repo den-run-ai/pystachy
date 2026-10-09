@@ -19,6 +19,11 @@ FILES: list[str] = []
 # so that neither compiler runs out of stack
 MAXNEST = 5000
 TOODEEP = f"source too complex: nested more than {MAXNEST} levels deep"
+# CPython's parser gives up past 6,000 levels of its rules (MemoryError), some 34 of them below a
+# statement's expression: Parser.deeper() counts its own levels and the rules CPython goes through
+# besides (Parser.extra), as measured, to stop where CPython does or a few levels before
+CPYSTACK = 5960
+MODDUNDERS = "__file__ __doc__ __spec__ __loader__ __package__ __builtins__"  # (which CPython's modules have)
 
 
 def shown(s: str) -> str:
@@ -217,7 +222,7 @@ class Lexer:
         elif low == "latin-1" or low == "iso-8859-1" or low == "iso-latin-1" or low.startswith("latin-1-") or low.startswith("iso-8859-1-") or low.startswith("iso-latin-1-"):
             cs = "iso-8859-1"
         if bom and cs != "" and cs != "utf-8":
-            fail(f"encoding problem: {cs} with BOM", csline)
+            fail(f"encoding problem: {cs} with BOM", self.line - 1)  # (CPython's line 0)
         self.declared = bom or cs == "utf-8" or (module and cs == "")
         kind = 0 if cs == "" or cs == "utf-8" else (2 if cs == "iso-8859-1" else codec(cs))
         nm = normcodec(cs).replace(".", "_")
@@ -237,7 +242,7 @@ class Lexer:
         elif kind == 3:
             for k in range(len(src)):
                 if ord(src[k]) >= 128:
-                    fail(f"'ascii' codec can't decode byte 0x{ord(src[k]):02x} in position {k}: ordinal not in range(128)" if module else f"encoding problem: {cs}", csline)
+                    fail(f"'ascii' codec can't decode byte 0x{ord(src[k]):02x} in position {k}: ordinal not in range(128)" if module else f"encoding problem: {cs}", self.line - 1 if module else csline)
         # the first line CPython cannot read: not UTF-8 (without a declaration), or a NUL byte
         i = 3 if bom else 0
         line = self.line
@@ -776,6 +781,7 @@ class Parser:
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
         self.nest = 0  # the parser's own recursion: nested expressions and elif branches
+        self.extra = 0  # CPython's parser's levels other than those: in brackets, blocks and operators
         self.xstar = -1  # the loops around the except* block the statement is in (-1: none)
         self.errs: list[str] = ["", "", ""]  # see later()
         self.at: list[int] = [0, 0, 0]
@@ -932,6 +938,7 @@ class Parser:
     def block(self) -> Node:
         line = self.line()
         body: list[Node] = []
+        self.extra += 7  # (6 or 7 in CPython's parser)
         if self.eat("nl"):
             self.expect("indent")
             while not self.eat("dedent"):
@@ -939,6 +946,7 @@ class Parser:
                     self.stmt(body)
         else:
             self.simple(body)
+        self.extra -= 7
         return mk("block", "", line, body)
 
     def stmt(self, out: list[Node]) -> None:
@@ -1275,7 +1283,9 @@ class Parser:
                 if kind != "param" and self.peek() == "=":
                     self.fail(f"var-{'positional' if kind == 'starparam' else 'keyword'} argument cannot have default value", self.line())
                 if kind == "param" and self.eat("="):
+                    self.extra += 7 if end == ":" else 0  # (a lambda's: 8 levels in CPython's parser)
                     dflt = self.test()
+                    self.extra -= 7 if end == ":" else 0
                 elif kind == "param" and kwonly < 0 and len(params.kids) > 0 and params.kids[-1].kids[1].kind != "noann":
                     self.fail("parameter without a default follows parameter with a default", at)
                 params.kids.append(mk(kind, pname, line, [ann, dflt]))
@@ -1644,6 +1654,8 @@ class Parser:
         self.nest += 1
         if self.nest > MAXNEST:
             fail(TOODEEP, self.line())
+        if self.nest + self.extra > CPYSTACK:
+            fail("source too complex for CPython's parser, whose stack overflows here (MemoryError)", self.line())
 
     def test(self) -> Node:
         self.deeper()
@@ -1685,7 +1697,10 @@ class Parser:
         if self.peek() == "id" and self.ahead() == ":=":
             name = self.toks[self.p].text
             self.p += 2
-            return mk("walrus", name, line, [self.test()])
+            self.extra += 1
+            v = self.test()
+            self.extra -= 1
+            return mk("walrus", name, line, [v])
         e = self.test()
         if self.peek() == ":=" and arg:
             self.invalid(self.line())
@@ -1715,7 +1730,9 @@ class Parser:
             n.s = "from"
             n.kids.append(self.test())
         elif self.peek() in STARTS or self.peek() == "*":
+            self.extra += 1  # (a level deeper in CPython's parser than after yield from)
             n.kids.append(self.no_star(self.exprlist()))
+            self.extra -= 1
         return n
 
     def or_test(self) -> Node:
@@ -1723,7 +1740,9 @@ class Parser:
         while self.peek() == "or":
             line = self.line()
             self.p += 1
+            self.extra += 2
             e = mk("boolop", "or", line, [e, self.and_test()])
+            self.extra -= 2
         return e
 
     def and_test(self) -> Node:
@@ -1731,7 +1750,9 @@ class Parser:
         while self.peek() == "and":
             line = self.line()
             self.p += 1
+            self.extra += 2
             e = mk("boolop", "and", line, [e, self.not_test()])
+            self.extra -= 2
         return e
 
     def not_test(self) -> Node:
@@ -1762,7 +1783,9 @@ class Parser:
             else:
                 break
             ops.append(k)
+            self.extra += 3
             kids.append(self.binary(0))
+            self.extra -= 3
         if len(ops) == 0:
             return e
         return mk("cmp", ",".join(ops), line, kids)
@@ -1799,9 +1822,13 @@ class Parser:
         return e
 
     def postfix(self) -> Node:
+        w = 27 if self.peek() == "(" else 28 if self.peek() == "[" or self.peek() == "{" else 0
+        self.extra += w  # (the levels of CPython's parser in a bracket, but the one deeper() counts)
         e = self.atom()
+        self.extra -= w
         while True:
             line = self.line()
+            self.extra += 23
             if self.eat("("):
                 c = mk("call", "", line, [e])
                 self.args(c, line, False)
@@ -1811,11 +1838,13 @@ class Parser:
                 # rejects); x[a, b] indexes with a tuple
                 items: list[Node] = [self.subscript(line)]
                 comma = False
+                self.extra += 3
                 while self.eat(","):
                     comma = True
                     if self.peek() == "]":
                         break
                     items.append(self.subscript(line))
+                self.extra -= 3
                 self.expect("]")
                 if not comma and items[0].kind == "sliceitem":
                     e = mk("slice", "", line, [e] + items[0].kids)
@@ -1824,7 +1853,9 @@ class Parser:
             elif self.eat("."):
                 e = mk("attr", self.expect("id").text, line, [e])
             else:
+                self.extra -= 23
                 return e
+            self.extra -= 23
 
     def args(self, c: Node, line: int, cls: bool) -> None:
         # the arguments of a call (or of a class statement: cls) after '(', appended to c:
@@ -1836,6 +1867,8 @@ class Parser:
         n = len(c.kids)
         while not self.eat(")"):
             at = self.line()
+            w = 4 if len(c.kids) > n or self.peek() == "*" or self.peek() == "**" or self.ahead() == "=" else 0
+            self.extra += w  # (an argument after the first, or a keyword or star one, is deeper)
             if self.peek() == "*" or self.peek() == "**":
                 star = "starred" if self.peek() == "*" else "dstar"
                 if star == "starred" and keyed == "dstar" and pos == "":
@@ -1877,6 +1910,7 @@ class Parser:
                     if cls and len(c.kids) == n and self.peek() == ")":
                         self.invalid(fl)  # (class C(x for x in y): only a call takes one)
                 c.kids.append(a)
+            self.extra -= w
             if not self.eat(","):
                 self.expect(")")
                 break
@@ -1903,30 +1937,34 @@ class Parser:
         if self.peek() != "]" and self.peek() != ":" and self.peek() != ",":
             n.kids[1] = self.test()
         if self.eat(":") and self.peek() != "]" and self.peek() != ",":
+            self.extra += 1
             n.kids.append(self.test())
+            self.extra -= 1
         return n
 
     def comp(self, e: Node, line: int) -> Node:
         # [e for t in it if c]; with more for and if clauses a "nestedcomp" node, with async for
         # an "asynccomp" one, whose clauses after the first iterable are "compif" (kids: the
-        # condition) and "compfor" (the target, the iterable) nodes
+        # condition) and "compfor" (the target, the iterable) nodes; s is "async" for an async for
+        # clause (the first: of the node itself, until a generator expression's is "gen")
         if e.kind == "starred":
             self.fail("iterable unpacking cannot be used in comprehension", e.line)
         aio = self.eat("async")
         self.expect("for")
         t = self.targets()
         self.expect("in")
-        n = mk("listcomp", "", line, [e, t, self.or_test()])
+        n = mk("listcomp", "async" if aio else "", line, [e, t, self.or_test()])
         ts = [t]
         while self.compnext() or self.peek() == "if":
             if self.eat("if"):
                 n.kids.append(mk("compif", "", line, [self.or_test()]))
             else:
-                aio = self.eat("async") or aio
+                a = self.eat("async")
+                aio = a or aio
                 self.p += 1
                 ts.append(self.targets())
                 self.expect("in")
-                n.kids.append(mk("compfor", "", line, [ts[-1], self.or_test()]))
+                n.kids.append(mk("compfor", "async" if a else "", line, [ts[-1], self.or_test()]))
         if len(n.kids) > 4 or len(ts) > 1:
             n.kind = "nestedcomp"
         elif len(n.kids) == 4 and not aio:
@@ -2000,10 +2038,12 @@ class Parser:
                 e.s = "gen"
             elif self.peek() == ",":
                 e = mk("tuple", "", line, [e])
+                self.extra += 3  # (later items are 2 or 3 levels deeper in CPython's parser)
                 while self.eat(","):
                     if self.peek() == ")":
                         break
                     e.kids.append(self.nitem())
+                self.extra -= 3
             elif e.kind == "starred" and self.peek() == ")":
                 self.fail("cannot use starred expression here", e.line)
             self.expect(")")
@@ -2017,10 +2057,12 @@ class Parser:
                     self.expect("]")
                     return e
                 items.append(e)
+                self.extra += 1
                 while self.eat(","):
                     if self.peek() == "]":
                         break
                     items.append(self.nitem())
+                self.extra -= 1
                 if self.compnext():
                     self.fail("did you forget parentheses around the comprehension target?", start(items[0]))
             self.expect("]")
@@ -2032,6 +2074,7 @@ class Parser:
             seen = 0  # the items so far
             while not self.eat("}"):
                 at = self.line()
+                self.extra += 1 if seen == 1 else 0
                 if self.eat("**"):
                     if d.kind == "set":
                         self.invalid(at)
@@ -2077,6 +2120,7 @@ class Parser:
                 if not self.eat(","):
                     self.expect("}")
                     break
+            self.extra -= 1 if seen > 1 else 0
             return d
         if k == "indent":
             fail("unexpected indent", line)  # (CPython reports it as it finds it)
@@ -2145,6 +2189,8 @@ class Parser:
                 for t in toks:
                     t.line = min(t.line, last)
                 sub = Parser(toks)
+                sub.nest = self.nest
+                sub.extra = self.extra + 5  # (33 levels in CPython's parser, 28 for parentheses)
                 sub.outer = self.outer + [self.toks]
                 sub.outerp = self.outerp + [self.p]
                 sub.expect("(")
@@ -2316,6 +2362,7 @@ class SymScope:
         self.idx = idx  # its position in the walk
         self.iterexpr = 0  # in a comprehension's iterable
         self.iters: dict[str, bool] = {}  # a comprehension's iteration variables
+        self.walrus: dict[str, bool] = {}  # and the names its own := bind so far
         self.flags: dict[str, int] = {}
         self.dirs: dict[str, int] = {}  # the line of each name's first global or nonlocal statement
         self.bound: dict[str, bool] = {}  # the names the enclosing functions bind
@@ -2324,6 +2371,8 @@ class SymScope:
         self.tpinner: dict[str, bool] = {}  # those the scopes nested in it see
         self.code: bool = kind == "def" or kind == "lambda" or kind == "class" or kind == "typeparams" or comp == "gen"  # a code object
         self.blocks = 0  # the blocks open in the code object around it (Symtable.depth())
+        self.fin = 0  # and its finally blocks open (Symtable.fin)
+        self.tuples = 0  # and the tuple displays (Symtable.tuples)
 
 
 def target_names(t: Node, out: dict[str, bool]) -> None:
@@ -2414,7 +2463,13 @@ class Symtable:
         self.quiet = 0  # in an annotation that CPython's compiler never compiles: none of its errors
         self.tparams: dict[int, str] = {}  # see Parser.tparams
         self.blocks = 0  # the blocks CPython's compiler has open in this code object (see depth())
+        self.fin = 0  # the finally blocks among them (see stmt())
+        # the first line in them with too many blocks only where exceptions run some of them, and its blocks
+        self.exc = 0
+        self.exce = 0
+        self.citer = False  # in the target of a comprehension's for clause after its first
         self.codes = 0  # the code objects nested here (see push())
+        self.tuples = 0  # and the tuple displays in this one
         self.deep = 0  # the line where they first nest too deeply to marshal, in an imported module
 
     def check(self, body: list[Node], doc: bool) -> None:
@@ -2437,15 +2492,20 @@ class Symtable:
             if self.errs[c] != "":
                 fail(self.errs[c], self.at[c])
         if self.deep > 0:
-            fail("functions, lambdas and classes nested 999 deep: CPython's import of this module fails as it writes its bytecode (ValueError: object too deeply nested to marshal)", self.deep)
+            fail("functions, lambdas, classes and constant tuples nested too deeply: CPython's import of this module fails as it writes its bytecode (ValueError: object too deeply nested to marshal)", self.deep)
 
     def depth(self, n: int, line: int) -> None:
         # CPython's compiler keeps at most 21 blocks open in a code object (CO_MAXBLOCKS): one for a
         # loop, a with item, a try body (two with finally and except), an except handler's body
         # (two), a finally block and an inlined comprehension (a generator or coroutine has one)
         self.blocks = n
-        if n > 21:
+        if n - self.fin > 21:
             self.note(2, "too many statically nested blocks", line)
+        elif n > 21 and (self.exc == 0 or n > self.exce):
+            # (CPython compiles each finally block's paths in turn: an error on its exception path, and
+            # on the normal ones of those around it (n - 21 deep), comes after errors only deeper)
+            self.exc = line
+            self.exce = n
 
     def note(self, cat: int, msg: str, line: int) -> None:
         if cat == 2 and self.quiet > 0:
@@ -2461,10 +2521,13 @@ class Symtable:
         self.n += 1
         if sc.code:
             sc.blocks = self.blocks
+            sc.fin = self.fin
+            sc.tuples = self.tuples
             self.blocks = 0
+            self.fin = 0
+            self.tuples = 0
             self.codes += 1
-            if self.codes == 999 and line >= LINES and self.deep == 0:
-                self.deep = line  # (with the module's, 1,000 code objects: CPython's marshal allows 2,000 levels)
+            self.marshal(line)
         if len(self.stack) > 0:
             sc.bound = self.stack[-1].inner
             sc.inner = sc.bound
@@ -2478,6 +2541,12 @@ class Symtable:
             sc.inner["__classdict__"] = True
         self.stack.append(sc)
         return sc
+
+    def marshal(self, line: int) -> None:
+        # CPython's marshal writes at most 2,000 levels: a code object nested in others is 2 deeper
+        # (and its constants' tuple), and a constant tuple 1 (a tuple display may be one)
+        if 2 * self.codes + self.tuples + 3 > 2000 and line >= LINES and self.deep == 0:
+            self.deep = line
 
     def pop(self) -> None:
         # CPython's analysis of the scope's global and nonlocal names
@@ -2494,6 +2563,8 @@ class Symtable:
                 self.note(1, f"nonlocal binding not allowed for type parameter '{nm}'", sc.dirs[nm])
         if sc.code:
             self.blocks = sc.blocks
+            self.fin = sc.fin
+            self.tuples = sc.tuples
             self.codes -= 1
         self.stack.pop()
 
@@ -2610,14 +2681,61 @@ class Symtable:
                 self.note(2, "'return' with value in async generator", st.line)
             base = self.blocks
             fin = 1 if k == "try" and st.kids[-1].s == "finally" else 0
+            herr = ""  # (the compiler's first error before a try's handlers, and the one depth() defers)
+            hat = 0
+            hkey = 0
+            hexc = 0
+            hexce = 0
             for kid in st.kids:
+                if k == "try" and kid.kind == "except" and kid is st.kids[1]:
+                    herr = self.errs[2]
+                    hat = self.at[2]
+                    hkey = self.keys[2]
+                    hexc = self.exc
+                    hexce = self.exce
                 if (k == "while" or k == "try") and kid is st.kids[0]:
                     self.depth(base + (1 if k == "while" or st.kids[1].kind == "except" else 0) + fin, st.line)
                 elif kid.kind == "except":
                     self.depth(base + fin + 2, kid.line)
                 elif kid.kind == "block" and (kid.s == "else" or kid.s == "finally"):
                     self.blocks = base + (1 if kid.s == "finally" else fin)
-                if kid.kind == "block":
+                if kid.kind == "block" and kid.s == "finally":
+                    # CPython compiles a finally block where the try ends, and then again where an
+                    # exception runs it, with one block more (finally blocks in it, in each of those):
+                    # an error only on such a path comes after the others (see depth())
+                    key = self.keys[2]
+                    exc = self.exc
+                    exce = self.exce
+                    self.exc = self.exc if self.fin > 0 else 0
+                    self.fin += 1
+                    self.stmts(kid.kids)
+                    self.fin -= 1
+                    if self.fin == 0 and self.exc > 0 and self.keys[2] == key:
+                        self.note(2, "too many statically nested blocks", self.exc)
+                    if self.fin == 0:
+                        self.exc = exc
+                        self.exce = exce
+                elif kid.kind == "block" and k == "try" and kid.s == "else":
+                    # CPython compiles a try's else block before its handlers: an error there comes first
+                    aerr = self.errs[2]
+                    aat = self.at[2]
+                    akey = self.keys[2]
+                    aexc = self.exc
+                    aexce = self.exce
+                    self.errs[2] = herr
+                    self.at[2] = hat
+                    self.keys[2] = hkey
+                    self.exc = hexc
+                    self.exce = hexce
+                    self.stmts(kid.kids)
+                    if self.errs[2] == herr and self.at[2] == hat:
+                        self.errs[2] = aerr
+                        self.at[2] = aat
+                        self.keys[2] = akey
+                    if self.exc == hexc or (aexc != hexc and aexce > self.exce):
+                        self.exc = aexc
+                        self.exce = aexce
+                elif kid.kind == "block":
                     self.stmts(kid.kids)
                 elif kid.kind == "except":
                     self.expr(kid.kids[0])
@@ -2706,12 +2824,18 @@ class Symtable:
     def target(self, t: Node) -> None:
         # an assigned (or deleted) target: its names are bound, the rest of it is read
         if t.kind == "name":
+            self.iter_name(t)
             self.flag(t.s, SYMLOCAL)
         elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
             for k in t.kids:
                 self.target(k)
         else:
             self.expr(t)
+
+    def iter_name(self, n: Node) -> None:
+        # a name in the target of a comprehension's for clause after its := of that name
+        if self.citer and n.s in self.stack[-1].walrus:
+            self.note(0, f"comprehension inner loop cannot rebind assignment expression target '{n.s}'", n.line)
 
     def store(self, t: Node) -> None:
         # CPython's compiler checks of an assignment target: where starred items go, and __debug__
@@ -2740,7 +2864,14 @@ class Symtable:
         if k == "starred" and e.s == "here":
             self.note(2, "can't use starred expression here", e.line)  # (see Parser.no_star)
         if k == "name":
+            self.iter_name(e)
             self.flag(e.s, SYMUSE)
+        elif k == "tuple":
+            self.tuples += 1
+            self.marshal(e.line)
+            for kid in e.kids:
+                self.expr(kid)
+            self.tuples -= 1
         elif k == "lambda":
             for p in e.kids[0].kids:
                 self.expr(p.kids[1])
@@ -2766,6 +2897,8 @@ class Symtable:
                 self.note(0, "assignment expression within a comprehension cannot be used in a class body", e.line)
             self.expr(e.kids[0])
             self.stack[i].flags[e.s] = self.stack[i].flags.get(e.s, 0) | SYMLOCAL
+            if sc.kind == "comp":
+                sc.walrus[e.s] = True
             if e.s == "__debug__":
                 self.note(2, "cannot assign to __debug__", e.line)
         elif k == "yield":
@@ -2802,8 +2935,11 @@ class Symtable:
         self.expr(c.kids[2])
         up.iterexpr -= 1
         base = self.blocks
+        n = 1
+        for x in [c] + c.kids[3:]:
+            n += 1 if x.s == "async" and (x is c or x.kind == "compfor") else 0
         if kind != "gen":
-            self.depth(base + 1, c.line)  # (a comprehension that is inlined)
+            self.depth(base + n, c.line)  # (a comprehension that is inlined, and each async for clause)
         err = self.errs[2]  # (CPython's compiler checks that before it compiles the rest)
         at = self.at[2]
         key = self.keys[2]
@@ -2815,7 +2951,9 @@ class Symtable:
         for x in c.kids[3:]:
             if x.kind == "compfor":
                 target_names(x.kids[0], sc.iters)
+                self.citer = True
                 self.target(x.kids[0])
+                self.citer = False
                 sc.iterexpr += 1
                 self.expr(x.kids[1])
                 sc.iterexpr -= 1
@@ -3028,20 +3166,27 @@ def builtin_try(st: Node) -> bool:
 
 
 def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool]) -> None:
-    # the names statement st binds for sure once it has run, at its own level (not in its blocks);
-    # a del removes the names it deletes from bound
+    # the names statement st binds for sure once it has run, at its own level and in a with block
+    # (not in its other blocks); a del, also in those blocks, removes the names it may delete from
+    # out and bound
     if st.kind != "for" and not (st.kind == "annassign" and len(st.kids) < 3):
         targets(st, out)
+    gone: dict[str, bool] = {}
     if st.kind == "import":
         for a in st.kids:
             if a.s != "*":
                 out[a.s] = True
     elif st.kind == "def" or st.kind == "class" or st.kind == "subclass":
         out[st.s] = True
-    elif st.kind == "del":
-        for t in st.kids:
-            if t.kind == "name" and t.s in bound:
-                del bound[t.s]
+    elif st.kind == "with":
+        for s in st.kids[-1].kids:
+            surely_binds(s, out, bound)
+    else:
+        deleted([st], gone)
+    for nm in gone:
+        for d in [out, bound]:
+            if nm in d:
+                del d[nm]
 
 
 def specials(m: Mod, body: list[Node], top: int, sure: bool = False) -> None:
@@ -3108,10 +3253,23 @@ def scope_names(st: Node) -> dict[str, bool]:
             out[p.s] = True
         globals_in(body, decl)
     binds(body, out, True)
+    for x in body:
+        bound_in(x, out)
     for nm in decl:
         if nm in out:
             del out[nm]
     return out
+
+
+def bound_in(n: Node, out: dict[str, bool]) -> None:
+    # the names that code n binds by :=, also in its comprehensions, by a match statement's captures
+    # or by a type statement (not in the functions, classes and lambdas it defines): the compiler
+    # rejects these, but in code that is dropped they still make the names local
+    if n.kind == "walrus" or n.kind == "typealias" or n.kind == "pattern":
+        for nm in n.s.split():
+            out[nm] = True
+    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
+        bound_in(k, out)
 
 
 class Loader:
@@ -3133,6 +3291,11 @@ class Loader:
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
         # and what its code binds, surely and maybe, as scan() finds it before it is loaded
         self.rawbound: dict[str, dict[str, bool]] = {}
+        # and those of the code of the module whose code is being simplified, up to statement ownpos
+        self.ownkids: list[Node] = []
+        self.ownpos = 0
+        self.ownsure: dict[str, bool] = {}
+        self.ownmaybe: dict[str, bool] = {}
         self.rawsure: dict[str, dict[str, bool]] = {}
         self.failc: dict[str, str] = {}  # what init_fails() found for a module not loaded yet
         self.scanning: dict[str, bool] = {}  # the modules init_fails() is looking at
@@ -3445,8 +3608,13 @@ class Loader:
                 d.kids[2].kids.insert(0, mk("annassign", msg, t.line, [mk("name", nm, t.line, []), t]))
             elif nm not in now and reads(d.kids[2], nm):
                 d.kids[2].kids.insert(0, mk("badimport", msg, d.line, []))
+        early: dict[str, bool] = {}
+        user: dict[str, bool] = {}
+        import_reads(d.kids[2], {}, early, user)
         self.unsure[str(d.line)] = {}
-        import_reads(d.kids[2], {}, self.unsure[str(d.line)])
+        for nm in early:
+            if nm in user:
+                self.unsure[str(d.line)][nm] = True
 
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
         # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
@@ -3513,7 +3681,7 @@ class Loader:
                 if r == 1:
                     # (CPython's handler runs if x is not bound by then)
                     site.kind = "badimport"
-                    site.s = f"'{xn}' may or may not be bound in module '{p}' when this optional import runs (it is bound in a branch, deleted, bound by a function or a star import, or that module's code is still running): not supported"
+                    site.s = f"cannot tell whether module '{p}' has bound '{xn}' when this optional import runs (it binds '{xn}' in a branch, deletes it, only annotates it, binds it in a function or by a star import, or its code is still running): not supported"
                     site.kids = []
                     return True
                 if r == 2:
@@ -3601,9 +3769,20 @@ class Loader:
         t = self.mods[p] if p in self.mods and p != m.name else Mod(p, path, path[:-12] if path.endswith("/__init__.py") else "")
         maybe = t.maybe
         if p == m.name:
-            for st in m.body.kids[: self.pos] if self.pos >= 0 else m.body.kids:
-                surely_binds(st, t.sure, t.sure)
-            maybe = rebound(m.body.kids[: self.pos] if self.pos >= 0 else m.body.kids, True)
+            # (what the statements before it bind, found once for all the optional imports in them)
+            end = self.pos if self.pos >= 0 else len(m.body.kids)
+            if self.ownkids is not m.body.kids or self.ownpos > end:
+                self.ownkids = m.body.kids
+                self.ownpos = 0
+                self.ownsure = {}
+                self.ownmaybe = {}
+            for st in m.body.kids[self.ownpos : end]:
+                surely_binds(st, self.ownsure, self.ownsure)
+                for nm in rebound([st], True):
+                    self.ownmaybe[nm] = True
+            self.ownpos = end
+            t.sure = self.ownsure
+            maybe = self.ownmaybe
         elif p not in self.mods:
             if path not in self.rawbound:
                 self.scan(t)
@@ -3750,11 +3929,12 @@ class Loader:
         if m.name in seen:
             self.rcyc = True  # (its code runs already, or was counted: a result that includes it is not its own)
             return 0
+        top = len(seen) == 0  # (then what it finds is all its code may run, cycles or not)
         seen[m.name] = True
         cyc = self.rcyc
         self.rcyc = False
         r = self.raises_in(m.body, m, m.name == ok, seen)
-        if m.name != ok and not self.rcyc:
+        if m.name != ok and (top or not self.rcyc):
             self.rmemo[m.name] = r
         self.rcyc = self.rcyc or cyc
         return r
@@ -4245,7 +4425,7 @@ class Loader:
             return base + "." + n.s  # a submodule (unless the package binds the name itself)
         if k == "":
             n.kind = "badattr"
-            n.s = f"module '{base}' has no attribute '{n.s}'"
+            n.s = f"module attribute '{n.s}' is not supported" if n.s in (MODDUNDERS + " __dict__ __cached__").split() or (n.s == "__path__" and t.pdir != "") else f"module '{base}' has no attribute '{n.s}'"
         elif k.startswith("x:"):
             n.kind = "badattr"
             n.s = k[2:]
@@ -4259,6 +4439,8 @@ class Loader:
         k = n.kind
         if k == "name" or k == "attr":
             if k == "name" and n.s == "__name__" and m.name != "" and n.s not in loc:
+                if "__name__" in m.rebound:
+                    fail(f"module '{m.name}' binds __name__, which is not supported in an imported module", n.line)
                 n.kind = "str"
                 n.s = m.name
                 return
@@ -4360,9 +4542,11 @@ class Loader:
                 indef = self.qdef
                 self.fk = self.fks.get(str(st.line), {})
                 for nm in self.unsure.get(str(st.line), {}):
-                    if self.fk.get(nm, "").startswith("m:") or self.fk.get(nm, "").startswith("a:"):
-                        # (a function's import binds a local, which CPython reads unbound before it runs)
-                        st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where the import in it that binds '{nm}' may not have run (CPython raises UnboundLocalError): not supported", st.line, []))
+                    k = self.fk.get(nm, "")
+                    if k.startswith("m:") or k.startswith("a:") or k.startswith("b:"):
+                        # (a function's import of a Python module binds a local, which CPython reads
+                        # unbound before it runs)
+                        st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where Pystachy cannot tell that the import in it that binds '{nm}' has run (where it has not, CPython raises UnboundLocalError): not supported", st.line, []))
                         break
                 self.qdef = True
                 self.qstmts(m, st.kids[2].kids, inner, False)
@@ -4954,26 +5138,46 @@ def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
 
 def local_names(body: list[Node], out: dict[str, bool]) -> None:
     # a function's locals: the names it assigns, deletes or defines (a def or class, which is an
-    # error where it is compiled), but not a qualified name (M$x), which an assignment to a
-    # module's attribute (M.x = ...) or a global M declares makes
+    # error where it is compiled, as bound_in()'s are), but not a qualified name (M$x), which an
+    # assignment to a module's attribute (M.x = ...) or a global M declares makes
     asg: dict[str, bool] = {}
     collect(body, asg)
     deleted(body, asg, True)
+    for st in body:
+        bound_in(st, asg)
     for nm in asg:
         if "$" not in nm:
             out[nm] = True
 
 
-def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool]) -> None:
+def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dict[str, bool]) -> None:
     # the names that code n of a function reads where no import in it has surely bound them yet
-    # (sure: those an import before n has bound)
+    # (sure: those an import before n has bound, to which n adds those it surely binds: in both
+    # branches of an if, in a with block, not in a loop), and those its imports of Python modules
+    # bind (user)
     if n.kind == "name" and n.s not in sure:
         out[n.s] = True
-    inner = dict(sure) if n.kind == "block" else sure
+    for a in n.kids if n.kind == "import" else n.kids[:0]:
+        sure[a.s] = True
+        if n.s.startswith("from.") or not (builtin_module(a.kids[1].s) or a.kids[1].s == "typing_extensions"):
+            user[a.s] = True
+    if n.kind == "if":
+        import_reads(n.kids[0], sure, out, user)
+        then = dict(sure)
+        import_reads(n.kids[1], then, out, user)
+        import_reads(n.kids[2], sure, out, user)
+        gone: list[str] = []
+        for nm in sure:
+            if nm not in then:
+                gone.append(nm)
+        for nm in gone:
+            del sure[nm]
+        if n.kids[0].kind == "True":
+            for nm in then:
+                sure[nm] = True
+        return
     for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
-        import_reads(k, inner, out)
-        for a in k.kids if k.kind == "import" and n.kind == "block" else k.kids[:0]:
-            inner[a.s] = True
+        import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user)
 
 
 def globals_in(body: list[Node], out: dict[str, bool]) -> None:
@@ -5249,7 +5453,10 @@ class Gen:
         self.gkk: dict[str, str] = {}  # a global's
         self.keykind: dict[str, str] = {}  # placeholder -> 1 (str keys) or 0 (int keys)
         self.nkeys = 0
-        self.twins: dict[str, str] = {}  # globals that hold the same empty container (X = Y at module level): one type
+        # globals that hold the same empty container (X = Y at module level), one type: each one's
+        # class of twins (named by a member), and each class's members
+        self.twin_of: dict[str, str] = {}
+        self.twin_set: dict[str, list[str]] = {}
         self.origin: dict[str, str] = {}  # X -> Y for those, where an annotation of the container belongs
         # code compiled before module code assigns what it reads (a template's function called
         # early, a function compiled early for a global's type: see ahead and early)
@@ -5985,7 +6192,7 @@ class Gen:
             self.err(self.unsupported[name])
         if name in PYBUILTINS:
             self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
-        if name in "__file__ __doc__ __spec__ __loader__ __package__ __builtins__".split():
+        if name in MODDUNDERS.split():
             self.err(f"'{name}' is not supported")  # (a module attribute that CPython defines)
         self.err(f"name '{short(name)}' is not defined")
         return Val("", "")
@@ -6112,15 +6319,25 @@ class Gen:
     def twin(self, x: str, y: str) -> None:
         # module globals x and y hold the same empty container without a type (x = y): one type,
         # which the first use of either gives (an annotation belongs where y got the container)
-        if y not in self.twins.get(x, "").split():
-            xs = [x] + self.twins.get(x, "").split()
-            ys = [y] + self.twins.get(y, "").split()
-            for a in xs:
-                for b in ys:
-                    # (and the twins of either: from m2 import Y, where m2 did from m1 import Y)
-                    self.twins[a] = self.twins.get(a, "") + " " + b
-                    self.twins[b] = self.twins.get(b, "") + " " + a
+        # (and the twins of either: from m2 import Y, where m2 did from m1 import Y)
+        a = self.twin_of.get(x, x)
+        b = self.twin_of.get(y, y)
+        if a != b:
+            if len(self.twin_set.get(a, [a])) < len(self.twin_set.get(b, [b])):
+                c = a
+                a = b
+                b = c
+            if a not in self.twin_set:
+                self.twin_set[a] = [a]
+                self.twin_of[a] = a
+            for nm in self.twin_set.pop(b, [b]):
+                self.twin_of[nm] = a
+                self.twin_set[a].append(nm)
             self.origin[x] = y
+
+    def twins(self, x: str) -> list[str]:
+        # the twins of global x
+        return [nm for nm in self.twin_set.get(self.twin_of.get(x, ""), []) if nm != x]
 
     def calls_open(self, n: Node, seen: dict[str, bool]) -> bool:
         # does n call, also through the templates' functions it calls (which a call compiles), a
@@ -6161,7 +6378,7 @@ class Gen:
         # module global name, which has no type here or holds an empty container without one,
         # read before the function that shows its type is compiled: a function that assigns the
         # global or fills the container (or the twins of name, see twins) is compiled now
-        names = [name] + self.twins.get(name, "").split()
+        names = [name] + self.twins(name)
         fs: list[FnInfo] = [f for f in self.funcs.values()]
         for ci in self.classes.values():
             if ci.bad == "":
@@ -6301,11 +6518,10 @@ class Gen:
             if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
                 self.adopt(t)  # the function returned it: so it returns t
         else:
-            self.gtypes[name] = t
-            toks = self.gkk.pop(name, "")
-            for tw in self.twins.get(name, "").split():
-                if "?" in self.gtypes[tw]:
-                    self.refine(tw, t, True)
+            for nm in [name] + self.twins(name):
+                if nm == name or "?" in self.gtypes[nm]:
+                    self.gtypes[nm] = t
+                    toks += " " + self.gkk.pop(nm, "")
         if is_dict(t):
             if targs(t)[0] != "int" and targs(t)[0] != "str":
                 self.err("dict keys must be int or str")
@@ -6321,7 +6537,7 @@ class Gen:
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
         names = [name]
         if self.globread(name):
-            for tw in self.twins.get(name, "").split():
+            for tw in self.twins(name):
                 if self.globread(tw):
                     names.append(tw)
         found: list[Node] = []
@@ -7685,7 +7901,7 @@ class Gen:
             self.copying = n.s == "from" and self.foreign(val.s)
             if len(n.kids) == 2 and t0.kind == "name" and (val.kind == "list" or val.kind == "dict") and len(val.kids) == 0 and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
                 self.assign(t0, self.empty(val.kind, t0.s))
-            elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or val.s in self.twins.get(t0.s, "").split()) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
+            elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or self.twin_of.get(t0.s, "-") == self.twin_of.get(val.s, "")) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
                 # X = Y between module globals, Y an empty container without a type yet (from m
                 # import Y copies it so): they are twins, which the first use of either types
                 # (ahead may have made them so already)
@@ -9425,7 +9641,7 @@ class Gen:
             elif name == "sorted" and a.s == "key":
                 self.err("sorted(key=...) is not supported: functions are not values")
             elif name != "open" and not (name == "sorted" and a.s == "reverse"):
-                self.err(f"{name}() does not accept keyword arguments")
+                self.err(f"keyword argument '{a.s}' of {name}() is not supported")
         if name in ARITY and npos > ARITY[name]:
             m = ARITY[name]
             self.err(f"{name}() takes {'exactly one argument' if m == 1 else f'at most {m} arguments'} ({npos} given)")

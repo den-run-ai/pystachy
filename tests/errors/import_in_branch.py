@@ -1,4 +1,4 @@
-# error: 'emods' is read in k() where the import in it that binds 'emods' may not have run
+# error: 'emods' is read in k() where Pystachy cannot tell that the import in it that binds 'emods' has run
 # The import in the function makes emods its local, unbound where the branch does not run
 # (CPython: UnboundLocalError), though the module imports emods too.
 import sys
