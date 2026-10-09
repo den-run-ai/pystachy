@@ -9137,6 +9137,8 @@ class Gen:
         # the classes that t, the classes an except clause names, catches (catches)
         names: list[str] = []
         for c in t.kids if t.kind == "tuple" else [t] if t.kind != "omit" else t.kids:
+            if c.kind == "attr" and (self.dotted(c) == "builtins." + c.s or self.dotted(c) == "os.error"):
+                c = mk("name", "OSError" if c.s == "error" else c.s, c.line, [])  # (builtins.ValueError, os.error)
             if c.kind != "name" or c.s in self.ltype or c.s in self.gtypes or c.s in self.funcs or c.s in self.assigned:
                 self.err("an except clause needs exception classes: a name, or a tuple of names")
             if c.s in self.unsupported:
