@@ -24,7 +24,7 @@
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
 typedef struct { I len, cap; I *a; } List;
-typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 1: str keys; see dicts */
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
@@ -1456,7 +1456,9 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
    first shift folds the key's high bits into its low ones, the multiply spreads them up and
    the last shift brings the product's high bits down, so keys that differ only in their high
    bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
-   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A lookup
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A tuple key
+   (kind is its type descriptor: items int, bool, str, None or a str, and such tuples) mixes
+   its items' hashes, None's a constant, and its keys are equal as == compares them. A lookup
    in a table that fits in the cache takes a few ns, so each costs only one multiply (per
    byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
    each step mixes five more of its bits in (perturb), so keys whose hashes share their low
@@ -1466,9 +1468,19 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
 #ifndef DICT_PROBE
 #define DICT_PROBE()
 #endif
+static uint64_t hsh(Dict *d, I k);
+static uint64_t hval(I k, const char *d) {           /* a tuple key's hash (or its item's), by its descriptor */
+  if (*d == '?' && !k) return 0x9E3779B97F4A7C15ULL;
+  if (*d == '?') d++;
+  if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }
+  uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
+  for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) h = (h ^ hval(((I *)k)[i], e)) * 0x100000001B3ULL;
+  return h ^ h >> 29;
+}
 static uint64_t hsh(Dict *d, I k) {
   uint64_t h = (uint64_t)k;
-  if (d->kind) {
+  if (d->kind > 1) h = hval(k, ((Str *)d->kind)->s);
+  else if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
     h ^= h >> 29;
@@ -1487,7 +1499,8 @@ static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *f
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)))) return i;
+    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind == 1 && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)) ||
+                                   (d->kind > 1 && eqv(d->keys[e - 1], k, ((Str *)d->kind)->s)))) return i;
   }
 }
 static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
@@ -1507,7 +1520,9 @@ Dict *pys_dict_new(I kind, I n) {                     /* a display of n items is
   if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
   return d;
 }
-static _Noreturn void keyerr(Dict *d, I k) { Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p); }
+static _Noreturn void keyerr(Dict *d, I k) {
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? ((Str *)d->kind)->s : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+}
 static I entry(Dict *d, I k) { I i = dfind(d, k, hsh(d, k), 0); return i < 0 ? -1 : d->idx[i] - 1; }
 I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
 I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }

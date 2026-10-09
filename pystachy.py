@@ -4740,6 +4740,24 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
     return n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == name and n.kids[2].kind == kind and len(n.kids[2].kids) == 0
 
 
+def key_problem(t: str) -> str:
+    # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
+    # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor)
+    if t == "int" or t == "str" or (is_tuple(t) and key_items(t)):
+        return ""
+    if is_tuple(t):
+        return f"dict keys must be int or str, or tuples of int, bool, str and str | None items, not {typestr(t)}"
+    return "dict keys must be int or str" + (f", not {typestr(t)} (a key cannot be None)" if is_opt(t) else "")
+
+
+def key_items(t: str) -> bool:
+    for x in targs(t):
+        u = unopt(x)
+        if x != "int" and x != "bool" and u != "str" and not (is_tuple(u) and key_items(u)):
+            return False
+    return True
+
+
 def elem(t: str) -> str:
     return t[5:-1]
 
@@ -5780,8 +5798,8 @@ class Gen:
             if base == "list" and len(ts) == 1:
                 return f"list[{ts[0]}]"
             if base == "dict" and len(ts) == 2:
-                if ts[0] != "int" and ts[0] != "str":
-                    self.err("dict keys must be int or str" + (f", not {typestr(ts[0])} (a key cannot be None)" if is_opt(ts[0]) else ""))
+                if key_problem(ts[0]) != "":
+                    self.err(key_problem(ts[0]))
                 return f"dict[{ts[0]},{ts[1]}]"
             if base == "tuple" and len(ts) > 0:
                 return f"tuple[{','.join(ts)}]"
@@ -6708,10 +6726,10 @@ class Gen:
                 if "?" in self.gtypes[tw]:
                     self.refine(tw, t, True)
         if is_dict(t):
-            if targs(t)[0] != "int" and targs(t)[0] != "str":
-                self.err("dict keys must be int or str")
+            if key_problem(targs(t)[0]) != "":
+                self.err(key_problem(targs(t)[0]))
             for tok in toks.split():
-                self.keykind[tok] = "1" if targs(t)[0] == "str" else "0"
+                self.keykind[tok] = self.key_kind(targs(t)[0])
 
     def lookahead(self, name: str, ahead: bool = False) -> str:
         # an empty list or dict read before the code that fills it: the first use in this
@@ -6803,7 +6821,7 @@ class Gen:
         if t != want:
             self.guessed[self.curfn.ll] = f"{short(f.name)}() at line {self.line} returns an empty {tname(t)} taken as {typestr(t)}: give it a type first, as in v: {'list[T]' if is_list(t) else 'dict[K, V]'} = {short(f.name)}()"
         if is_dict(t):
-            self.emit(f"store i64 {1 if targs(t)[0] == 'str' else 0}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
+            self.emit(f"store i64 {self.key_kind(targs(t)[0])}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
         return Val(v.v, t)
 
     def fills(self, body: list[Node], name: str, found: list[Node]) -> None:
@@ -9244,9 +9262,9 @@ class Gen:
             if kv[0] == "" or kv[1] == "":
                 self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
             vs = [self.coerce(x, kv[1]) for x in vs]
-            if kv[0] != "int" and kv[0] != "str":
-                self.err("dict keys must be int or str")
-            r = self.rt("pys_dict_new", "ptr", [f"i64 {1 if kv[0] == 'str' else 0}", f"i64 {len(ks)}"])
+            if key_problem(kv[0]) != "":
+                self.err(key_problem(kv[0]))
+            r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ks)}"])
             for i in range(len(ks)):
                 self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])])
             return Val(r, f"dict[{kv[0]},{kv[1]}]")
@@ -10741,6 +10759,13 @@ class Gen:
         if (d.t == "None" or (is_opt(d.t) and unopt(d.t) == t)) and t not in self.classes and self.optional(t) != "":
             return self.optional(t)
         return t
+
+    def key_kind(self, kt: str) -> str:
+        # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
+        # or a tuple key's type descriptor
+        if kt == "int" or kt == "str":
+            return "1" if kt == "str" else "0"
+        return f"ptrtoint (ptr {self.sconst(self.desc(kt))} to i64)"
 
     def dkey(self, k: Val, kt: str) -> Val:
         # a key for a dict whose keys have type kt: one that may be None stays optional (see nonekey)
