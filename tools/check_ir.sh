@@ -35,7 +35,7 @@ trap 'exit 130' INT TERM
 check() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
   fx=; [ -f "${1%.py}.fx" ] && fx=1
-  how=ir; [ "$1" = runtime.py ] && how=rt  # (the runtime's part written in the subset, in runtime mode)
+  how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
   if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx $PYS $how "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
