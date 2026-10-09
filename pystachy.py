@@ -4604,8 +4604,10 @@ for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cl
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
-# self-compile's deepest is 18), and the lookups that hold at once (7)
+# self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
+# hold at once (7)
 CANON_DEPTH = 1000
+REACH = 256
 LOOKUPS = 32
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
@@ -7827,14 +7829,20 @@ class Gen:
         # through blocks that a single branch leads to, or "" if an op between may write a's
         # memory (a slot's: only a store to it; a global's: a store to it, or an op with wG;
         # another's: a store that may alias it, or an op with wL wD wO), or no such op is found
+        # within REACH ops (each load would otherwise walk back over the whole function: a
+        # value that is not found is only its own canonical value)
         slot = a.startswith("%") and "." in a
         glob = a.startswith("@")
         heap = not slot and not glob
         end = " " + a  # (how a slot's or a global's load or store ends)
         stop = FXBIT["wG"] if glob else RAWW
+        steps = 0
         while True:
             code = vs.fn.blocks[j].code
             for y in range(x - 1, -1, -1):
+                steps += 1
+                if steps > REACH:
+                    return ""
                 i = code[y]
                 if i.op != "raw":
                     if not slot and self.opfx(i, vs.fn.fa) & stop != 0:

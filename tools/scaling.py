@@ -24,6 +24,7 @@ Each shape is a family of programs whose size grows with N:
   chain    one function that computes a dict key through N statements of 50 xors each, then
            tests and updates it (Gen.canon follows the key's chain of values)
   lookups  one function of N reads of a dict, each of another key (dictfuse's lookups that hold)
+  gdicts   N global dicts and one function that sets each (Gen.reaching walks back from each load)
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
@@ -181,10 +182,18 @@ def lookups(n):
     return {"main.py": src}
 
 
+
+def gdicts(n):
+    src = [f"D{i}: dict[str, int] = {{}}" for i in range(n)]
+    src += ["def big() -> int:"] + [f"    D{i}['a'] = {i}" for i in range(n)]
+    src += [f"    return D0['a'] + D{n - 1}['a']", "print(big())"]
+    return {"main.py": src}
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
           "fields": fields, "calls": calls, "imports": imports, "breaks": breaks, "exits": exits, "elifs": elifs,
           "topelifs": topelifs, "comps": comps, "chain": chain,
-          "lookups": lookups}
+          "lookups": lookups, "gdicts": gdicts}
 
 
 def write(d, files):
