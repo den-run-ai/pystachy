@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 85k-line
+and it can compile itself. The native compiler it produces reproduces its own 121k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -13,10 +13,11 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (84906 lines of IR)
+fixed point: stage1 == stage2 == stage3 (121464 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
+$ ./pystachy check prog.py              # only parse it: CPython's syntax errors, nothing compiled
 $ make test                             # differential tests against CPython
 $ make verify                           # everything below, with a JSON report
 ```
@@ -31,10 +32,10 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 6,952 | lexer 324 · parser 975 · module loader 732 · types, tables and the definite-assignment pass 648 · type checker + IR generator 4,112 · driver 118 |
-| `runtime.c` | 2,580 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `pystachy.py` | 9,800 | lexer 611 · parser 1,621 · scopes (CPython's symbol-table errors) 501 · module loader 1,493 · types, tables and the definite-assignment pass 756 · type checker + IR generator 4,636 · driver 132 |
+| `runtime.c` | 2,647 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 217 programs, 126 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 263 programs, 313 rejection cases, 8 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -121,15 +122,28 @@ and string forward references work (also inside `list["Node"]`), as does `typing
   function with `*args` is a template too: each call arity compiles it with `args` a tuple
   of the extra arguments' types (iterating it needs one item type; `()` is the empty
   tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is
-  unannotated.
+  unannotated. In a template's function, an empty list or dict that nothing fills where the
+  argument types let code run (a loop over the empty tuple of `*args`, a branch an
+  `isinstance` test removes) may be returned before anything shows its type: the first use
+  of it further on that does (a call it is passed to, a store, another `return` of a list or
+  dict) decides what the function returns. If none does, each call gives the container the
+  type its context expects (an annotated variable or parameter, `str.join()`, a declared
+  return type), else `list[int]` or `dict[int, int]`; a type error that such a guess causes
+  says where it came from.
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
   or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
   takes it from its first use that shows what the container holds: `append`, `insert`,
-  `extend`, `+=`, `xs[i] = v`, `d[k] = v`, `setdefault`, `get(k, default)` or a
-  reassignment (until then only `len()`, `bool()` and truth tests may read it; a read before
-  that use, in the function's source, is typed by it when its item expression can be).
-  `None` in a display takes the type of its neighbours.
+  `extend`, `+=`, `xs[i] = v`, `d[k] = v`, `setdefault` (also `d.setdefault(k, []).append(v)`
+  and `d.setdefault(k, {})[k2] = v`), `get(k, default)` or a reassignment (until then only
+  `len()`, `bool()` and truth tests may read it; a read before that use, in the function's
+  source, is typed by it when its item expression can be). A local that nothing in its
+  function fills takes the type expected where it is read. A module global's first use may
+  be in a function (also a method, or a function of another module): a read that needs the
+  type before that function is compiled compiles the function first; the same goes for a
+  global that only functions assign (`global x; x = ...`). After `from m import X` (or
+  `Y = X` at module level) of such a container, the two names hold one container, typed by
+  the first use of either. `None` in a display takes the type of its neighbours.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
@@ -152,8 +166,9 @@ with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included
 and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
 (`/`) parameters.
 
-**Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` next to
-the main program, on `PYSTACHY_PATH` (directories separated by `:`), or in `lib/` beside the
+**Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` in the
+directory of the main program's real file (symbolic links resolved, as for CPython's
+`sys.path[0]`), on `PYSTACHY_PATH` (directories separated by `:`), or in `lib/` beside the
 compiler. Packages (also namespace packages), submodules, `import a.b as x`, `from ... import`,
 relative imports, `from m import *` and circular imports work. A module's top-level code runs
 once, when the first import of it runs, as in CPython, and `__name__` (also `m.__name__`)
@@ -166,13 +181,30 @@ names bound when the module's code ends; a name a package binds itself (`from .p
 parse`) wins over its submodule of that name. A module-level `name = function` makes an
 alias. A global that its module's code may leave unbound (assigned in an `if`, or only after
 an import that can call back into the module) is checked where functions and other modules
-read it, raising CPython's `NameError` or `AttributeError`. What CPython decides at import
-time is decided at compile time: an imported module's `if __name__ == "__main__":` block is
-dropped, as are `if typing.TYPE_CHECKING:` blocks; `try: import _accel / except ImportError:`
-(the standard library's optional C accelerators) compiles the handler unless the module is
-found; tests of `sys.platform` against Windows and of `os.name` are decided for POSIX; and an
-import inside a function of an imported module that the program's module-level imports do
-not load is an error only where that function is compiled. A class or function of an
+read it, raising CPython's `NameError` or `AttributeError`. A template's function compiled
+before its module's code assigns a global it reads (first called in a branch that does not
+run) takes the global's type from its first binding in the branches of that code that run:
+an annotation, an assignment whose value can be typed there, or an empty container that the
+code fills; the read is checked as above.
+
+What CPython decides at import time is decided at compile time. An imported module's
+`if __name__ == "__main__":` block is dropped, and so are `if typing.TYPE_CHECKING:` blocks.
+Tests of `sys.platform` against Windows and of `os.name` are decided for POSIX, also inside
+`not`/`and`/`or`, where the other operands still run in CPython's order (`if effect() and
+os.name == "nt":` calls `effect()`). These names are recognized only where they name what
+the module imported: a parameter, local, loop variable or other import of the same name
+hides them, and a name a function binds only in code dropped this way is still its local.
+An optional import, `try: <imports> / except ImportError:` (the standard library's optional
+C accelerators), runs its imports in order until one fails: its module is not found, its
+module's code surely raises `ImportError` at its top level (`if sys.platform != "win32":
+raise ImportError(...)`), or a from-import names what its module neither binds nor has as a
+submodule. The imports before it run their code and bind their names, a failing module's
+code runs up to its raise, and then the handler runs; a module that failed is not imported,
+so a later import runs its code again. An import inside a function of an imported module
+that the program's module-level imports do not load is an error only where that function is
+compiled. `import pkg.util as u` binds `u` to the attribute `util` of `pkg`, as CPython
+does: the submodule, unless the package binds `util` itself after its own code imported the
+submodule (`from .util import util`). A class or function of an
 imported module that Pystachy cannot compile (inheritance, unannotated methods, a `bytes` or
 `**kwargs` parameter, a field whose type cannot be inferred, ...) is an error only where the
 program uses it. `lib/` holds unmodified
@@ -209,8 +241,8 @@ with inverses), `any`, `all`, `input`; the common `str`, `list` and `dict` metho
 CPython's modes, errors, `buffering=`, `newline=` translation and positions for `"+"`
 modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
-`sys.argv/exit/stdin/stdout/stderr/maxsize/platform` (the streams are files), `os.system/getpid/
-getenv/remove/rmdir/fspath/path.exists` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+`sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
+are files), `os.system/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors.
@@ -224,7 +256,30 @@ multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
 are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
 files, complex numbers, arbitrary-precision integers, `async`, `match` and `:=`. The parser
 accepts all of them, and the compiler rejects each where it compiles it, so an imported
-module may use them in code the program never runs.
+module may use them in code the program never runs. Misusing them as CPython forbids (an
+`await` outside an async def, a `nonlocal` without a binding, `yield` in a comprehension,
+`:=` outside brackets) is a syntax error wherever it is (below).
+
+**Syntax errors.** Every `SyntaxError` CPython reports before it runs a file is a
+compile-time error with CPython's message and line, wherever it is: in a template or a
+function of an imported module that is never compiled, in a class, and in code the loader
+drops (an imported module's `__main__` block, a platform branch). That covers the file
+(bytes that are not UTF-8 without a coding declaration, NUL bytes, coding declarations);
+CPython's tokenizer (brackets never closed, mismatched, or more than 200 deep; more than 99
+levels of indentation; unterminated strings; number literals; invalid characters; f-string
+fields); its parser (targets that cannot be assigned or deleted, with its "Maybe you meant
+'=='" variants; `try` without `except` or `finally`; parameter lists, also a lambda's;
+keyword and `**` arguments; `:=`, `yield` and `*x` where its grammar has no place for them;
+escapes in str and bytes literals); its symbol table (`global` and `nonlocal` after a use or
+of a parameter or without a binding; `yield` and `:=` in comprehensions; `import *` in a
+function); and its compiler (`break`, `continue`, `return`, `yield`, `await` and `async` out
+of place; a bare `except:` that is not last; starred targets; `__debug__`; a late `from
+__future__` import). When a file has several errors, Pystachy reports the one CPython
+reports: the parser's first, a tokenizer error only where the parser reaches it, then the
+symbol table's, then the compiler's. Where CPython's parser has a specific message for some
+malformed code (the statement an indented block is missing after, parenthesized
+parameters), Pystachy may say just "invalid syntax", and patterns in `match` statements are
+not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `compile()`.
 
 **Deviations from CPython** (the program compiles but can behave differently):
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
@@ -248,8 +303,9 @@ module may use them in code the program never runs.
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
   "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
   compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
-  stack: it goes past CPython's limit of 1,000 calls, and where CPython raises
-  `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
+  stack: it goes past CPython's limit of 1,000 calls (`sys.setrecursionlimit()` checks its
+  argument as CPython does and records it for `sys.getrecursionlimit()`, but bounds nothing),
+  and where CPython raises `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
   for a tail call in an AOT build, loops forever. `==` between two cyclic dataclass objects
   recurses like that too.
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
@@ -271,9 +327,20 @@ module may use them in code the program never runs.
   `posixpath.py`) replaces it, where CPython keeps its own.
 - In an imported module, a decorated function or class that is an error only where it is
   used (above) does not run its decorator at import time, so a decorator's side effects
-  (registering the function) are lost. A template's code is compiled per argument types, so an error in code a program never calls is not reported, and its
+  (registering the function) are lost. A template's code is compiled per argument types, so a type error in code a program never calls is not reported (syntax errors are), and its
   variables keep one type, so code that rebinds one to another type (`a /= b` on ints) is
   rejected when it is compiled.
+- An optional import of a module that Pystachy does not find runs its handler, also where
+  CPython would find the module (a standard library module Pystachy lacks, or a package
+  installed for CPython); a handler that may end the program is rejected instead (below). A
+  module whose code raises `ImportError` at its top level keeps the globals that code set
+  before the raise, where CPython discards the half-run module; a later import runs the
+  code again over them.
+- A global read while its module is still being imported (a circular import), before the
+  module's code assigns it, raises `AttributeError: module 'm' has no attribute 'x'`, and
+  `from m import x` of a global that m declares (`x: int`) but has not assigned yet raises
+  the same; CPython 3.13 raises `ImportError` naming the module's file, or says the module is
+  partially initialized.
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
   drops without closing is closed when a collection finds it unreachable, or at exit, not at
@@ -292,14 +359,34 @@ module may use them in code the program never runs.
 method or import name bound twice, or a name that is both a variable and a function,
 class or import; a class-body default that names an earlier class attribute (Pystachy
 has no class scope); a local read textually before its first assignment (declare it
-first: `x: int`); a module-level read of a global that only functions assign (declare it
-at module level); comparison dunders that do not return `bool`, `__str__`/`__repr__`
+first: `x: int`); a read of a global that only a template's function assigns, compiled
+before a call compiles that function (declare it at module level: `x: T`); `from m import x`
+of a global that only m's functions assign (read it as `m.x`, or declare it in m.py); a
+global read before its module's code assigns it whose first binding there is a `for` or
+`with` target or a value whose type is not known yet at that point; another module's global,
+other than a constant, read while that module is still being imported; an empty container
+whose first use stores an empty `[]` or `{}` into it (`d[k] = []`); an empty list or dict
+that a template's function returns empty, used where the `list[int]` / `dict[int, int]` guess
+does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders that do not return `bool`, `__str__`/`__repr__`
 that do not return `str`, methods without `self`; an `==` or `!=` between objects of
 different classes, which CPython would reflect to the right operand's `__eq__`; calling a
 builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
 CPython would reject at run time); `range()`, `enumerate()`, `zip()` or `reversed()` nested
 inside `enumerate()`, `zip()` or `reversed()` in a `for` loop, and `zip(strict=...)`;
-f-strings that reuse their own quote inside a field (PEP 701) and `\N{...}` escapes; a
+f-strings that reuse their own quote inside a field (PEP 701), `\N{...}` escapes, non-ASCII
+identifiers and tabs in indentation; a source file whose coding declaration names an encoding
+other than UTF-8, Latin-1 and ASCII; source nested more than 5,000 levels deep (expressions
+and `elif` branches; a `**` or `lambda` counts twice), which stays below where CPython's own
+parser and compiler give up (2,984 to 9,999 levels, by the kind of chain); a syntax error in
+a module that one of the program's import statements names, also where that import never
+runs; an optional import (`try: import m / except ImportError:`) in which what runs in the
+`try` may raise `ImportError` other than by a module's top-level raise reached for sure, whose
+handler names (`as e`) or re-raises the exception, whose handler may end the program where
+the module is not found, or whose failing module imports the module of the `try` back; a
+read of a function's local that only code dropped at compile time binds; a name a package
+binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
+with `from pkg import util` or in the package's functions, when which of the two it is
+depends on when the submodule is first imported; a
 template whose returns have different types (or `None` and a type other than a class), or
 that calls itself before a return statement decides its type; a parameter whose argument is
 `None` given a value of another type in an if branch or loop, or bound as a `for` target; an
@@ -311,12 +398,12 @@ but a builtin exception.
 ## How it works
 
 ```
- source ──► Lexer ──► Parser ──► AST ──► Loader: modules, qualified names, static imports
-                                            │
-                                            ▼
-                                         Flow: definite assignment (marks reads to check)
-                                            │
-                                            ▼
+ source ──► Lexer ──► Parser + Symtable ──► AST ──► Loader: modules, qualified names, static imports
+                                                       │
+                                                       ▼
+                                                    Flow: definite assignment (marks reads to check)
+                                                       │
+                                                       ▼
                                Gen: type check + emit LLVM IR (one pass), text only
                                             │
             runtime.c ──clang──► runtime.bc │ runtime.o
@@ -334,7 +421,17 @@ but a builtin exception.
   name. Code generation then sees one program without module objects. A module's top-level
   code is the function `@init.<module>`, which runs its body the first time an import calls it.
   Line numbers carry their file (`k * 10,000,000 + line` for the k-th file), so errors anywhere
-  name the right file.
+  name the right file. A module whose code surely raises `ImportError` at its top level gets
+  a guard flag: an optional import sets it, and the raise then returns from
+  `@init.<module>`, marked as not run, so that the handler runs.
+- **Syntax first.** `Lexer.file()` decodes each source file as CPython does (a coding
+  declaration; an imported module as bytes). As each module is parsed, `Symtable` walks its
+  scopes the way CPython's symbol table and compiler do, so a file CPython would refuse to
+  start is rejected even where Pystachy compiles nothing. A lexer error is a token that the
+  parser reports when it reaches it, as CPython's tokenizer runs only as far as its parser
+  reads. The parser counts its own recursion and the depth of the chains it builds, so
+  neither compiler runs out of stack (`MAXNEST`); the CPython-hosted compiler raises its
+  recursion limit to match.
 - **One pass from AST to IR.** After a declaration pass collects classes, fields and
   function signatures, `Gen` walks each function once, inferring expression types
   bottom-up while emitting IR. An expected type (`want`) flows top-down to type empty
@@ -345,7 +442,13 @@ but a builtin exception.
   state for the function it is in, compiles the template's body for the argument types (its
   first `return` with a value fixes the return type, so a recursive call after it works), and
   resumes. A `None` argument is not passed at all: in that instance the parameter is a
-  constant `None`. Errors in an instance name the call that compiled it.
+  constant `None`. Errors in an instance name the call that compiled it. A function compiled
+  in the middle of module code (a template's, or one compiled early because a read needs the
+  type of a global it assigns or fills) may read globals that this code assigns later: their
+  first binding in the branches that run gives them their type, compiled in the module's
+  frame into code that is dropped. A call compiled before the `def` or `class` statement of
+  the function it calls loads that function's non-constant default values from the global
+  the statement fills when it runs, so they are still evaluated once.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
   of variables assigned on every path (merging `if` branches, leaving `while True` only
   through its breaks). Reads it cannot prove are marked, and only those test an "is
@@ -435,16 +538,21 @@ but a builtin exception.
 status with what CPython recorded in `tests/*.out` (stdin from `tests/*.in`), and the last
 stderr line with `tests/*.err` where CPython wrote to stderr. `tests/record.sh NAME`
 records a test's expected output from CPython, the way `tests/run.sh` runs it. Each `tests/errors/*.py`
-must be rejected with the message on its first line, and each `tests/deviations/*.py` must
-print its hand-written expected output. The programs cover arithmetic and overflow edges,
+must be rejected with the message on its first line (a `tests/errors/syntax_*.py` one also by
+`pystachy check`), and each `tests/deviations/*.py` must print its hand-written expected
+output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
+`tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
+in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
-imports, modules and packages (`tests/mods/`, `tests/scope/`), templates, empty containers typed by their first
+imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
+loader decides at import time (`tests/loader/`), a program run through a symbolic link
+(`tests/linked/`), CPython's syntax errors and nesting limits, templates, empty containers typed by their first
 use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignment, sorting
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **576 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **984 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -458,11 +566,15 @@ versions, platform, git commit and a timestamp:
   and itself, reproduces the IR and passes the tests;
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
+- **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
+  and every test passes JIT and AOT with a collection at every allocation
+  (`PYSTACHY_GC_STRESS=1`);
 - **benchmarks** — output equal to CPython's, with timings.
 
-The garbage collector is additionally checked under stress: the whole test suite passes
-with `PYSTACHY_GC_STRESS=1` (a collection at every allocation), and the native compiler
-reproduces its own IR while collecting every few allocations. `.github/workflows/ci.yml`
+`tools/syntax_sweep.py` compares the syntax errors `pystachy check` reports with CPython's
+`compile()`: over CPython 3.13's standard library and the installed packages (5,701 files)
+the two agree everywhere except 19 valid files Pystachy cannot parse (tabs in indentation,
+`\N{...}` escapes, an f-string field that reuses its quote). `.github/workflows/ci.yml`
 runs `make verify` on every push and pull request (ubuntu-24.04, LLVM 18 from apt,
 Python 3.13) and uploads the report as an artifact.
 
