@@ -353,7 +353,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   is, where CPython raises `UnicodeDecodeError`); any other `encoding=` computed at run time
   raises `NotImplementedError` when the file opens. A surrogate (`chr(0xD800)` to
   `chr(0xDFFF)`) is held in its three-byte form and printed or written as it is, where
-  CPython raises `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
+  CPython raises `UnicodeEncodeError` (`sys.stderr`, which an uncaught exception's line and
+  `sys.exit()`'s message go to, writes it as `\udcff`, as CPython's does); its `repr()`,
+  `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).

@@ -338,16 +338,28 @@ Str *pys_exc_repr(Exc *e);
 void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
+static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="backslashreplace" (CPython's
+                                             sys.stderr) writes a surrogate, held in its three-byte form, as \udcff */
+  I i = 0, j = 0;
+  for (; i + 2 < n; i++)
+    if ((unsigned char)s[i] == 0xED && ((unsigned char)s[i + 1] & 0xE0) == 0xA0 && ((unsigned char)s[i + 2] & 0xC0) == 0x80) {
+      char t[8];
+      fwrite(s + j, 1, i - j, stderr);
+      fwrite(t, 1, snprintf(t, sizeof t, "\\u%04x", 0xD000 | (s[i + 1] & 0x3F) << 6 | (s[i + 2] & 0x3F)), stderr);
+      j = i + 3; i += 2;
+    }
+  fwrite(s + j, 1, n - j, stderr);
+}
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
   if (xthrow) xthrow(exc_line(m));
-  out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1);
+  out_flush(); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
 }
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
   if (xthrow) xthrow(exc_raise(kind, msg));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
-  if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
+  if (msg->len) { fputs(": ", stderr); ewrite(msg->s, msg->len); }
   fputc('\n', stderr);
   kbint = !strcmp(kind->s, "KeyboardInterrupt");
   pys_finish();
@@ -356,7 +368,7 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
 _Noreturn void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
   if (xthrow) xthrow(exc_exit(0, msg));
-  out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
+  out_flush(); ewrite(msg->s, msg->len); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
 __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
@@ -2011,7 +2023,7 @@ static _Noreturn void oserr(const char *path);
 static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
 static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
   if (f->closed) closed_err();
-  int e = f->emu ? wput(f, s, n) : (fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
   if (e) ioerr(e);
 }
 static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text, then bs bytes buffered */
@@ -2426,7 +2438,7 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
 static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
   Str *k = e->obj ? XCLS(e)->disp : e->kind;
   fwrite(k->s, 1, k->len, stderr);
-  if (m->len || e->detail) { fputs(": ", stderr); fwrite(m->s, 1, m->len, stderr); }
+  if (m->len || e->detail) { fputs(": ", stderr); ewrite(m->s, m->len); }
   fputc('\n', stderr);
   kbint = !e->obj && !strcmp(k->s, "KeyboardInterrupt");
   pys_finish();
@@ -2439,7 +2451,7 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
   }
   if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
     if (e->has_code) { pys_finish(); exit((int)e->code); }
-    out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
+    out_flush(); ewrite(e->msg->s, e->msg->len); fputc('\n', stderr); pys_finish(); exit(1);
   }
   out_flush();
   exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg);
