@@ -5385,6 +5385,21 @@ def stmt_binds(st: Node, name: str) -> bool:
     return name in names
 
 
+def binds_other(body: list[Node], name: str) -> bool:
+    # does code body bind name other than as an except clause's name (not in the functions and
+    # classes it defines)
+    for st in body:
+        if stmt_binds(st, name) or ((st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s == name):
+            return True
+        for a in st.kids if st.kind == "import" else st.kids[:0]:
+            if a.s == name:
+                return True
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if (k.kind == "block" and binds_other(k.kids, name)) or (k.kind == "except" and binds_other(k.kids[1].kids, name)):
+                return True
+    return False
+
+
 def assigns(st: Node, name: str) -> bool:
     # is name a target of assignment st itself (not inside a tuple)
     for t in st.kids[:-1]:
@@ -9344,17 +9359,42 @@ class Gen:
 
     def bind_as(self, name: str, e: Val, t: str) -> None:
         # except ... as name: name is exception e, or its object (of class t of the program). Where
-        # name has another type, it gets a variable of its own for the clause (the end of which
-        # unbinds both, see unbind, as CPython deletes the name)
+        # name has another type, or no type yet but another binding in its scope (which may give it
+        # one), it gets a variable of its own for the clause (the end of which unbinds both, see
+        # unbind, as CPython deletes the name). Not a module's global that a function reads, which
+        # would not see the exception
         v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
         self.nn[v.v] = True
         had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
-        if had != "" and had != t:
+        node = self.curfn.node
+        if (had != "" and had != t) or (had == "" and binds_other(node.kids if node.kind == "block" else node.kids[2].kids, name)):
+            f = self.global_reader(name) if self.modlevel else ""
+            if f != "":
+                self.err(f"except ... as {short(name)} is not supported here: the module's global '{short(name)}' has another type, so the clause binds a variable of its own, which {f}() would not see (use another name)")
             self.shadows.append([name, self.ltype.get(name, ""), self.lreg.get(name, ""), self.lflag.get(name, "")])
             if name in self.lflag:
                 del self.lflag[name]
             self.alloca(t, name)
         self.store_name(name, v)
+
+    def global_reader(self, name: str) -> str:
+        # a function or method of the program that reads module global name, or ""
+        fs = list(self.funcs.values())
+        for ci in self.classes.values():
+            fs += list(ci.methods.values())
+        for f in fs:
+            if f.mod != owner(name) or f.node.kind != "def":
+                continue
+            body = f.node.kids[2].kids
+            loc: dict[str, bool] = {}
+            decl: dict[str, bool] = {}
+            local_names(body, loc)
+            globals_in(body, decl)
+            if name not in loc or name in decl:
+                for st in body:
+                    if reads(st, name):
+                        return short(f.name)
+        return ""
 
     def unbinds(self, name: str) -> bool:
         # does unbind(name) clear an "is assigned" flag (a read that may follow tests it)

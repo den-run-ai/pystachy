@@ -185,7 +185,8 @@ of range, `int("x")`, a division by zero, `open()` of a missing file and the oth
 subclasses, unpacking, `sys.exit()` as `SystemExit`, and the checked arithmetic's
 `OverflowError`. A clause's classes are looked up when an exception gets to it (one whose
 `class` statement has not run raises `NameError`). The name bound by `as` is unbound after its
-clause, however the clause is left. A builtin exception, which
+clause, however the clause is left, and may be bound to a value of another type before or after
+it. A builtin exception, which
 calling a builtin exception class makes too (`err = ValueError("x")`), is a value of its own
 type, which `Exception`, `BaseException` or any builtin exception class names in annotations
 (`errors: list[Exception]`; `OSError(errno, strerror[, filename])` is CPython's `[Errno n]
@@ -478,7 +479,8 @@ than by `+=`, `append` and `extend`, for `import *`; `del` of another module's a
 `os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
 but an exception; an `except` clause that names something other than exception classes (a
 variable), and `except*`; `except ... as x` in a function where `x` is a global (the end of
-the clause deletes it, as `del` would); `==` between exceptions where an exception class
+the clause deletes it, as `del` would), and at a module's top level where `x` is a global of
+another type that a function reads (the function would not see the exception); `==` between exceptions where an exception class
 defines `__eq__` or `__ne__` (`is` works), but for objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
 an object of an exception class may be), and an object of an exception class where a
 builtin exception is expected (`list[Exception]`: annotate it with the class or a base of
