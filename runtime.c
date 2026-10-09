@@ -1181,23 +1181,28 @@ void pys_list_reverse(List *l) { rev(l->a, l->len); }
    unwind action (sort_undo) copies back the items that are only in the merge buffer, from where
    the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
    reversal and gives the list its array back. What it needs is in a record on the heap (Undo),
-   so that it can run when the sort's frame is gone. Speed: the common item types compare
-   inline, and binary insertion and the one-at-a-time merging of ints and floats use selects, as
-   random data makes their branches unpredictable (merging strings or objects keeps the
-   branches, which let the CPU fetch their data early). */
+   so that it can run when the sort's frame is gone, and the merges find it in a static (keep_u),
+   not in the MS: a program without try (eh 0) keeps the sort it had, instruction for
+   instruction. In one with a try, the notes (3 stores a comparison) cost a sort of objects a
+   few percent. Speed: the common item types compare inline, and binary insertion and the
+   one-at-a-time merging of ints and floats use selects, as random data makes their branches
+   unpredictable (merging strings or objects keeps the branches, which let the CPU fetch their
+   data early). */
 #define MIN_GALLOP 7
 typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
 typedef struct {
   const char *d; int kind; I cls;                   /* element descriptor; its kind (below) and class id */
   I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
   I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
-  struct Undo *u;                                   /* keep: sort_undo's record, else NULL */
 } MS;
 typedef struct Undo {                               /* for sort_undo: the list, its item array, length, */
   List *l; I *a, n, cap; int rev;                   /* capacity and reverse=; KEEP notes fs[:fn], the */
-  I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back */
+  I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back; */
+  struct Undo *outer;                               /* keep_u when the sort began */
 } Undo;
-#define KEEP(dst, src, k) do { if (keep) { Undo *u_ = ms->u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } } while (0)
+static Undo *keep_u;                                /* the Undo of the sort running (a comparison may sort */
+                                                    /* another list), NULL if it needs none; set only when eh */
+#define KEEP(dst, src, k) do { if (keep) { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } } while (0)
 static I sorting[1];                                /* the items of a list while it is being sorted */
 enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
 static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
@@ -1348,7 +1353,7 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
-  if (eh && ms->u) { merge_keep(ms, a, na, b, nb); ms->u->fn = 0; }   /* every item is in the array again */
+  if (eh && keep_u) { merge_keep(ms, a, na, b, nb); keep_u->fn = 0; }   /* every item is in the array again */
   else if (na <= nb) merge_lo(ms, a, na, b, nb, 0); else merge_hi(ms, a, na, b, nb, 0);
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
@@ -1368,16 +1373,19 @@ static void sort_undo(void *p) {
   if (u->fn) memcpy(u->fd, u->fs, u->fn * 8);
   if (u->rev) rev(u->a, u->n);
   u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
+  keep_u = u->outer;
 }
 void pys_list_sort_r(List *l, Str *d, I reverse) {
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
            .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+  Undo *u = 0, *outer = keep_u;
   if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
-    Undo *u = ms.u = pys_alloc(sizeof(Undo));
-    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0;
+    u = pys_alloc(sizeof(Undo));
+    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0; u->outer = outer;
     unwind_push(sort_undo, u);
   }
+  if (eh) keep_u = u;
   l->len = l->cap = 0; l->a = sorting;
   if (n > 1) {
     if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
@@ -1396,10 +1404,12 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     }
     if (reverse) rev(a, n);
   }
-  if (eh && ms.u) unwind_pop();
-  int bad = l->a != sorting;                        /* items added meanwhile are dropped, as in CPython */
+  if (eh) { keep_u = outer; if (u) unwind_pop(); }
+  if (l->a != sorting) {                            /* items added meanwhile are dropped, as in CPython */
+    if (eh) { l->len = n; l->cap = cap; l->a = a; }
+    pys_fail("ValueError: list modified during sort");
+  }
   l->len = n; l->cap = cap; l->a = a;
-  if (bad) pys_fail("ValueError: list modified during sort");
 }
 void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
 I pys_list_minmax(List *l, Str *d, I max) {
@@ -2245,7 +2255,8 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
    ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
    CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
-   not raise pays nothing, a try included; a raise costs about a microsecond. A program
+   not raise pays nothing, a try included, but for list.sort of objects, whose merges note where
+   their items are (a few percent; see list.sort); a raise costs about a microsecond. A program
    without try keeps none of this: the funnels reach it through xthrow, and what else tests
    eh (the unwind actions below) folds away, as only pys_eh_on stores either. It links
    pys_throw and the report only when it raises a user exception object.
