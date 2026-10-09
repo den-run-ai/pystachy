@@ -9322,9 +9322,9 @@ class Gen:
     def exit_(self, vals: list[Val]) -> None:
         # sys.exit(code) and raise SystemExit(code): None is status 0, an int is the status, and
         # anything else is printed to stderr with status 1. In a program that has a try, a code
-        # whose str() the runtime would not show as CPython's (None, a bool, several arguments)
-        # is thrown as the exception exit_value makes
-        if self.eh and (len(vals) != 1 or vals[0].t == "None" or vals[0].t == "bool"):
+        # whose str() or repr() the runtime would not show as CPython's (None, a bool, several
+        # arguments, anything but an int or a str) is thrown as the exception exit_value makes
+        if self.eh and (len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str" and vals[0].t not in self.classes)):
             self.throw(self.exit_value(vals))
             return
         if len(vals) > 1:
@@ -9346,6 +9346,9 @@ class Gen:
                     self.rt("pys_exit", "void", ["i64 0"])
                     self.unreachable()
                 self.place(l2)
+            if self.eh and vals[0].t != "str":
+                self.throw(self.exc_value("SystemExit", vals))
+                return
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
         self.unreachable()
 
@@ -9666,7 +9669,11 @@ class Gen:
             l2 = self.label()
             self.cbr(self.cond(n.kids[0]), l2, l1)
             self.place(l1)
-            self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
+            v = self.expr(n.kids[1], "") if len(n.kids) > 1 else Val(self.sconst(""), "str")
+            if self.eh and v.t != "str":
+                self.throw(self.exc_value("AssertionError", [v]))  # (repr(e) shows the repr of v)
+            else:
+                self.raise_("AssertionError", self.to_str(v).v)
             self.place(l2)
         elif k == "raise":
             self.raise_stmt(n)
