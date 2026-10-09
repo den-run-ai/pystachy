@@ -1,6 +1,7 @@
 # typing.NamedTuple classes: positional and keyword construction with defaults, attribute
 # reads, methods, _replace, unpacking (also in for loops), constant indexing, len, ==, the
 # ordering of tuples, repr (in containers too, and through a cycle) and a module's classes.
+from dataclasses import dataclass
 from typing import NamedTuple
 from mods.records import Pos, Token
 
@@ -80,4 +81,14 @@ print(hit == miss, miss == hit, miss is None, hit is not None and hit.name == "k
 if hit is not None:
     n, s, k, v = hit
     print(n, s, k, v)
+
+
+@dataclass
+class Span:
+    name: str
+    start: Pos = Pos(1)  # (a NamedTuple is hashable: a dataclass may take one as a default)
+    end: Pos = Pos(2, 3)
+
+
+print(Span("a"), Span("b", Pos(5)), Span("c").start is Span("d").start, Span("a") == Span("a"))
 print(len(miss))

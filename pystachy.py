@@ -5890,7 +5890,7 @@ class Gen:
                 elif k.kind == "class":
                     k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
             out.append(st)
-        return out
+        return out if len(out) < len(body) else body
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
@@ -8100,7 +8100,7 @@ class Gen:
                 bound[fl] = True
                 t = ci.ftypes[fl]
                 u = unopt(t)  # (a default of a T | None field that is not None is a T)
-                if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.is_dc(u) or self.unhashable(u)):
+                if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.unhashable(u) or (self.is_dc(u) and u not in self.nts)):
                     self.err(f"mutable default {u} for dataclass field '{fl}' is not allowed")
                 if not is_const(st.kids[2]) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                     # code compiled before this statement declared its global (class_default)
@@ -8126,8 +8126,9 @@ class Gen:
             self.no_class_names(k, bound, cls)
 
     def unhashable(self, t: str) -> bool:
-        # a class that defines __eq__ without __hash__ has __hash__ = None in CPython
-        return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods
+        # a class that defines __eq__ without __hash__ has __hash__ = None in CPython (a NamedTuple
+        # has a tuple's)
+        return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods and t not in self.nts
 
     def while_(self, n: Node) -> None:
         l1 = self.label()

@@ -14,4 +14,5 @@ Shelf(items=['shared'], owner=None) Shelf(items=['shared'], owner=None) True She
 Tree(name='root', kids=[Tree(name='leaf', kids=[]), Tree(name='root', kids=[...])]) True True
 False False True True
 2 s k ['v', 'w']
+Span(name='a', start=Pos(line=1, col=0), end=Pos(line=2, col=3)) Span(name='b', start=Pos(line=5, col=0), end=Pos(line=2, col=3)) True True
 [exit 1]
