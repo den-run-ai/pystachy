@@ -3775,8 +3775,9 @@ class Loader:
             for x in n.kids:
                 if x.kind == "str" and x.s in self.mods:
                     r = max(r, self.raises(self.mods[x.s], "", seen))
+        own = k == "try" and catches_import(n) and not may_end(n, True)  # (a try whose clauses catch ImportError, and do not re-raise it)
         for i in range(len(n.kids)):
-            if (k == "def" and (i == 1 or i == 2)) or (k == "annassign" and i == 1) or (k.endswith("param") and i == 0):
+            if (k == "def" and (i == 1 or i == 2)) or (k == "annassign" and i == 1) or (k.endswith("param") and i == 0) or (own and i == 0):
                 continue  # (a def runs its parameters' defaults and decorators, not its body; annotations call nothing)
             if r < 2:
                 r = max(r, self.raises_in(n.kids[i], m, ok, seen))
