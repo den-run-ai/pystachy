@@ -11006,7 +11006,7 @@ class Gen:
             return Val(self.ins(f"fneg double {v.v}"), "float")
         if (v.t == "int" or v.t == "float") and op == "+":
             return v
-        self.err(f"bad operand type for unary {op}: {v.t}")
+        self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
         return v
 
     def dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
@@ -11237,7 +11237,16 @@ class Gen:
             return self.tuple_([self.tget(a, i % len(targs(a.t))) for i in range(len(targs(a.t)) * max(0, int(b.v)))])
         if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t) or is_tuple(b.t)):
             return self.arith(op, b, a)
-        self.err(f"unsupported operand types for {op}: {a.t} and {b.t}")
+        if op == "+" and is_list(a.t) and is_list(b.t):
+            self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a list holds items of one type)")
+        # CPython's TypeError, at compile time
+        an = tname(a.t)
+        bn = tname(b.t)
+        if op == "+" and (a.t == "str" or is_list(a.t) or is_tuple(a.t)):
+            self.err(f'can only concatenate {an} (not "{bn}") to {an}')
+        if op == "*" and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or b.t == "str" or is_list(b.t) or is_tuple(b.t)):
+            self.err(f"can't multiply sequence by non-int of type '{bn if a.t == 'str' or is_list(a.t) or is_tuple(a.t) else an}'")
+        self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
         return a
 
     def compare(self, n: Node) -> Val:
@@ -12061,6 +12070,8 @@ class Gen:
             self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all() or str.join()")
         if name in self.gtypes or name in self.ltype:
             self.err(f"'{name}' is not callable")
+        if t in self.classes and name in NONEARG:
+            self.err(NONEARG[name].replace("NoneType", tname(t)))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
         self.err(f"unsupported call {key}")
         return v
 
