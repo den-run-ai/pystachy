@@ -33,3 +33,29 @@ print(b.name, repr(b))
 i = I("/x")
 print(i.path, str(i), repr(i))
 print(N().name, M("/m").path)
+
+
+# a class-body default shadows the builtin slot: CPython's instance keeps the field in its __dict__
+class SD(StopIteration):
+    value: int = 5
+
+    def __init__(self, v: int) -> None:
+        self.value = v
+        super().__init__("x")
+
+
+class TD(SD):
+    def __init__(self) -> None:
+        self.value = 9
+        super().__init__(1)
+
+
+class AD(AttributeError):
+    name: str = "default-name"
+
+
+class ID(ModuleNotFoundError):
+    path: str = "/default"
+
+
+print(SD(7).value, TD().value, AD("m").name, ID("no module").path)

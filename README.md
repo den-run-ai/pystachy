@@ -506,7 +506,8 @@ class), a field its base declares, or one that would be its builtin base's own a
 `msg` of `ImportError`), or one that the builtin base's `__init__` sets where it may run after
 the class's code assigns the field (`value` of `StopIteration`, `name` and `obj` of
 `AttributeError`, `name` of `NameError`, `name` and `path` of `ImportError`: assign it after
-`super().__init__(...)`); reading those attributes where the class has no such field
+`super().__init__(...)`, or give it a default in the class body, which CPython's objects keep
+apart from the base's attribute); reading those attributes where the class has no such field
 (`self.args`, `S(5).value`), `BaseException`'s methods other than `__str__` and `__repr__`
 (`e.add_note()`, `e.with_traceback()`), a field of a class deriving from a value's class read
 after `isinstance()` tested the value (`isinstance()` does not change the type of a value), a

@@ -6554,11 +6554,23 @@ class Gen:
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
         for b in EXCINIT:
-            if ci.exc != "" and name in EXCINIT[b].split() and exc_derives(ci.exc, b) and not self.init_after(ci, name):
+            if ci.exc != "" and name in EXCINIT[b].split() and exc_derives(ci.exc, b) and not self.init_after(ci, name) and not self.shadowed(ci, name):
                 why = f"a field '{name}' of exception class {short(ci.name)} is not supported here: {b}.__init__() sets its attribute {name} as it runs, after what assigned the field before it (assign self.{name} in __init__, after super().__init__(...))"
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+
+    def shadowed(self, ci: ClassInfo, name: str) -> bool:
+        # does class ci or a base of the program give attribute name a default in its class body:
+        # then CPython's instances keep it in their __dict__, apart from the slot of the builtin
+        # base that its __init__ sets
+        c = ci.name
+        while c in self.classes:
+            for st in self.classes[c].node.kids[0].kids:
+                if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name" and st.kids[0].s == name:
+                    return True
+            c = self.classes[c].base
+        return False
 
     def init_after(self, ci: ClassInfo, name: str) -> bool:
         # is field name of class ci's objects assigned after its builtin base's __init__ runs, if it
