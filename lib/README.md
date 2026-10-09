@@ -2,7 +2,7 @@
 
 A program's `import NAME` finds `NAME.py` or `NAME/__init__.py` next to the program, then on
 `PYSTACHY_PATH`, then here (Pystachy's builtin modules, `sys`, `os`, `math` and the others
-listed in the README, come first). The modules here are **unmodified** copies of CPython
+listed in [docs/language.md](../docs/language.md#builtins-and-library-modules), come first). The modules here are **unmodified** copies of CPython
 3.13.16's pure-Python standard library modules that Pystachy compiles as they are: their
 unannotated functions are templates, compiled for the argument types of each call, and the
 code they never run (CPython's C accelerators, `key=` functions, generators) is never
@@ -31,4 +31,4 @@ functions reject are accepted, `bisect`'s `hi=-1` is a plain bound (`len(a)` for
 
 These files are part of Python and are used under the PSF License Version 2; see
 `THIRD_PARTY_NOTICES`. `tools/import_sweep.py` tries every module of a CPython standard library
-this way; `docs/stdlib.md` reports which import and why the others do not.
+this way; [`docs/stdlib.md`](../docs/stdlib.md) reports which import and why the others do not.
