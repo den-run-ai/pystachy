@@ -3,8 +3,8 @@
 # __all__ lists after += and append, else the public names bound when the module's code
 # ends; a package's from-import of a function wins over the submodule of that name; a
 # submodule reads a constant of its partially imported package; what Pystachy cannot
-# compile in functions and classes the program never uses is no error; a global that its
-# module may leave unbound raises NameError where a function reads it.
+# compile in functions, classes and methods the program never uses is no error; a global
+# that its module may leave unbound raises NameError where a function reads it.
 import scope
 import scope.names as names
 from scope.names import *
@@ -33,7 +33,7 @@ print(visible, total, extra, helper(), tmp, kept, core)
 print(scope.core.banner, scope.parse("x,y"), splitter("a,b"), names.__name__, show())
 if TYPE_CHECKING:
     print("TYPE_CHECKING is the program's own")
-print(sigs.ok(), sigs.first([3, 4]), sigs.first(["s"]))
+print(sigs.ok(), sigs.first([3, 4]), sigs.first(["s"]), sigs.Bag(2).n, sigs.Pair(3).x)
 n = sigs.Node(1)
 n.kids.append(sigs.Node(2))
 print(n.kids[0].v, names.lazy(), names.parse(), sigs.head(n), sigs.head(None))
