@@ -1,6 +1,6 @@
-# error: StoreError() with more than one argument is not supported
+# error: StoreError() with more than three arguments is not supported
 class StoreError(OSError):
     pass
 
 
-raise StoreError(2, "no such file")
+raise StoreError(2, "no such file", "a", None)

@@ -188,7 +188,9 @@ subclasses, unpacking, `sys.exit()` as `SystemExit`, and the checked arithmetic'
 clause, however the clause is left. A builtin exception, which
 calling a builtin exception class makes too (`err = ValueError("x")`), is a value of its own
 type, which `Exception`, `BaseException` or any builtin exception class names in annotations
-(`errors: list[Exception]`): print it, `str()`, `repr()` or format it, store it, compare it
+(`errors: list[Exception]`; `OSError(errno, strerror[, filename])` is CPython's `[Errno n]
+strerror` of the subclass the errno names, and `ImportError(msg, name=..., path=...)` takes
+its keywords, as do `AttributeError`'s and `NameError`'s): print it, `str()`, `repr()` or format it, store it, compare it
 (by identity: an exception that raised an object of an exception class is that object, so
 `e is x` after `raise x`), `raise` it, test it with `isinstance()` or `type(e).__name__`; its
 attributes such as `e.args` are not supported. `raise ... from` a cause that is not an
@@ -485,9 +487,9 @@ class), a field its base declares, or one that would be its builtin base's own a
 from it defines `__init__` again for, `Base.method(self, ...)` naming a base other than the
 class's own, one whose `__init__` may leave a field of the base
 unassigned where the base's code reads it (call `super().__init__()` first), keyword
-arguments where no class of its line has an `__init__`, more than one argument for one
-deriving from `OSError` (whose `str()` would be `[Errno n] text`), and `super()` outside the
-methods of exception classes.
+arguments where no class of its line has an `__init__`, more than three arguments for one
+deriving from `OSError` (or for `OSError` itself), and `super()` outside the methods of
+exception classes.
 
 ## How it works
 

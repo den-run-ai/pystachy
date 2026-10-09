@@ -4606,6 +4606,16 @@ def is_excname(s: str) -> bool:
     return s in EXCBASES or s == "IOError" or s == "EnvironmentError"
 
 
+# the keyword arguments that the __init__ of builtin exception classes takes (and those deriving from them)
+EXCKW: dict[str, str] = {"ImportError": "name path", "AttributeError": "name obj", "NameError": "name"}
+
+
+def exc_base_of(c: str, base: str) -> bool:
+    # is c, which may name a builtin exception class (OSError's other names too), base or derived from it
+    c = "OSError" if c == "IOError" or c == "EnvironmentError" else c
+    return c in EXCBASES and exc_derives(c, base)
+
+
 def exc_derives(c: str, base: str) -> bool:
     # is exception class c base, or derived from it (EXCBASES)
     if c == base:
@@ -4831,7 +4841,7 @@ RUNTIME: dict[str, str] = {
     "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
     "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
-    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|",
+    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.errcls": "str:int|A|",
     "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
     "personality": "%i32:%i32,%i32,int,%ptr,%ptr||",
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|I rF wF|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
@@ -9382,12 +9392,37 @@ class Gen:
             self.err(f"name '{name}' is not defined")
         if EXCEPTIONS[name] == "-":
             self.err(f"raising {name} is not supported")
+        self.exc_kw(name, args, name + "()")
+        npos = 0
+        for a in args:
+            npos += 1 if a.kind != "kw" else 0
+        oe = exc_base_of(name, "OSError")
+        if npos > 1 and EXCEPTIONS[name] != "" and not (oe and npos <= 3):
+            self.err(f"{name}() with more than {'three arguments' if oe else 'one argument'} is not supported")
+        return args
+
+    def exc_kw(self, c: str, args: list[Node], what: str) -> None:
+        # the keyword arguments of a call of builtin exception class c (or of its __init__, what):
+        # those CPython's takes (an ImportError's name and path, ...), which set attributes that
+        # only CPython reads (exc_vals evaluates and drops them)
+        ok = (EXCKW["ImportError"] if exc_base_of(c, "ImportError") else EXCKW["AttributeError"] if exc_base_of(c, "AttributeError")
+              else EXCKW["NameError"] if exc_base_of(c, "NameError") else "").split()
+        for a in args:
+            if a.kind == "kw" and len(ok) == 0:
+                self.err(f"{what} takes no keyword arguments")
+            if a.kind == "kw" and a.s not in ok:
+                self.err(f"{what} got an unexpected keyword argument '{a.s}'")
+
+    def exc_vals(self, args: list[Node]) -> list[Val]:
+        # the positional arguments of a call of a builtin exception class, its keyword arguments
+        # evaluated in order too (exc_kw)
+        vals: list[Val] = []
         for a in args:
             if a.kind == "kw":
-                self.err(f"{name}() takes no keyword arguments")
-        if len(args) > 1 and EXCEPTIONS[name] != "":
-            self.err(f"{name}() with more than one argument is not supported")
-        return args
+                self.expr(a.kids[0], "")
+            else:
+                vals.append(self.expr(a, ""))
+        return vals
 
     def exc_class(self, e: Node) -> str:
         # the class that e, the exception of a raise statement, names or calls: a builtin exception
@@ -9411,8 +9446,7 @@ class Gen:
                 self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
                 self.place(self.label())  # (what follows, the raise itself, is never reached)
             return
-        for a in self.exc_args(c):
-            self.expr(a, "")
+        self.exc_vals(self.exc_args(c))
 
     def exc_value_of(self, e: Node, k: str) -> Val:
         # the value of e, the exception of a raise statement, unless it is a builtin exception class
@@ -9451,9 +9485,8 @@ class Gen:
                 self.cause(n.kids[1])
             self.throw(v)
             return
-        args = self.exc_args(e)
         name = e.kids[0].s if e.kind == "call" else e.s
-        vals = [self.expr(a, "") for a in args]
+        vals = self.exc_vals(self.exc_args(e))
         if len(n.kids) > 1:
             self.cause(n.kids[1])
         if n.s == "init":
@@ -9490,13 +9523,36 @@ class Gen:
                 self.place(l2)
             self.raise_(name, self.sconst("<no detail available>"))
             return
+        name = "OSError" if name == "IOError" or name == "EnvironmentError" else name
+        if len(vals) > 1 and exc_base_of(name, "OSError"):
+            oe = self.os_error(name, vals)
+            self.raise_(name, oe[1], oe[0])
+            return
         if len(vals) > 1:
             msg = self.repr(self.tuple_(vals)).v
         elif len(vals) == 1:
             msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
         else:
             msg = self.sconst("")
-        self.raise_("OSError" if name == "IOError" or name == "EnvironmentError" else name, msg)
+        self.raise_(name, msg)
+
+    def os_error(self, name: str, vals: list[Val]) -> list[str]:
+        # OSError(errno, strerror[, filename]) of builtin class name, as CPython's makes it: str(e)
+        # "[Errno n] strerror" (then ": " and repr(filename), unless it is None), args (errno,
+        # strerror) (and None), of the subclass the errno names where name is OSError itself.
+        # Gives its kind, str(e) and what repr(e) shows between its parentheses
+        no = vals[0]
+        kind = self.sconst(name) if name in EXCBASES else ""  # (an exception class of the program's is its own)
+        if name == "OSError" and (no.t == "int" or no.t == "bool"):
+            kind = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(no).v}"])
+        msg = self.cat(Val(self.sconst("[Errno "), "str"), self.to_str(no))
+        msg = self.cat(self.cat(msg, Val(self.sconst("] "), "str")), self.to_str(vals[1]))
+        args = self.cat(self.cat(self.repr(no), Val(self.sconst(", "), "str")), self.repr(vals[1]))
+        if len(vals) == 3 and vals[2].t == "None":
+            args = self.cat(args, Val(self.sconst(", None"), "str"))
+        elif len(vals) == 3:
+            msg = self.cat(self.cat(msg, Val(self.sconst(": "), "str")), self.repr(vals[2]))
+        return [kind, msg.v, args.v]
 
     def exc_value(self, name: str, vals: list[Val]) -> Val:
         # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
@@ -9513,6 +9569,9 @@ class Gen:
                 args = self.sconst("")
             elif vals[0].t != "str":
                 args = self.repr(vals[0]).v
+        elif len(vals) > 1 and exc_base_of(name, "OSError"):
+            oe = self.os_error(name, vals)
+            return Val(self.rt("pys_exc_new", "ptr", [f"ptr {oe[0]}", f"ptr {oe[1]}", f"ptr {oe[2]}"]), "exc")
         elif len(vals) > 1:
             msg = self.repr(self.tuple_(vals)).v
             args = self.rt("pys_str_slice", "ptr", [f"ptr {msg}", "i64 1", "i64 -1"])
@@ -9625,9 +9684,13 @@ class Gen:
         # text between repr(e)'s parentheses; a SystemExit's status and whether its code is one
         # (unless coded is False: its code is None)
         c = o.t
+        if len(vals) > 3 and self.derives(c, "OSError"):
+            self.err(f"{short(c)}() with more than three arguments is not supported")
         if len(vals) > 1 and self.derives(c, "OSError"):
-            self.err(f"{short(c)}() with more than one argument is not supported")  # (str(e) would be "[Errno n] text")
-        if len(vals) == 0:
+            oe = self.os_error(c, vals)  # ("[Errno n] text")
+            sv = oe[1]
+            av = oe[2]
+        elif len(vals) == 0:
             sv = self.sconst("")
             av = sv
         elif len(vals) == 1:
@@ -9673,11 +9736,8 @@ class Gen:
         if b in self.classes and m in self.classes[b].methods:
             return self.call_fn(self.classes[b].methods[m], [me], args)
         if m == "__init__":
-            vals: list[Val] = []
-            for a in args:
-                if a.kind == "kw":
-                    self.err(f"{short(b)}.__init__() takes no keyword arguments")
-                vals.append(self.expr(a, ""))
+            self.exc_kw(b, args, f"{short(b)}.__init__()")
+            vals = self.exc_vals(args)
             self.exc_keep(me, vals)
             return Val("null", "None")
         if (m == "__str__" or m == "__repr__") and len(args) == 0:
@@ -11290,7 +11350,7 @@ class Gen:
                 self.err(self.unsupported[f.s])
             if f.s in EXCEPTIONS and EXCEPTIONS[f.s] != "-":
                 # an exception made, not raised (raise e raises it)
-                vals = [self.expr(a, "") for a in self.exc_args(n)]
+                vals = self.exc_vals(self.exc_args(n))
                 if f.s == "SystemExit":
                     return self.exit_value(vals)
                 return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)

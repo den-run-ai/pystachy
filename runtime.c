@@ -2392,6 +2392,7 @@ Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without it
 }
 Str *pys_exc_ostr(void *obj) { return (*(ExcClass **)obj)->str(obj); }    /* str(e) of a user exception object */
 Str *pys_exc_orepr(void *obj) { return (*(ExcClass **)obj)->repr(obj); }  /* and repr(e) */
+Str *pys_exc_errcls(I e) { return cstr(e < 0 || e > 0x7FFFFFFF ? "OSError" : errcls((int)e)); }   /* OSError(e, text)'s class */
 Str *pys_exc_name(Exc *e) { int n; const char *k = exc_name(e, &n); return pys_str(k, n); }   /* type(e).__name__ */
 Str *pys_exc_cls(void *obj) {          /* and of a user exception object, which may be None */
   int n; const char *k = obj ? short_name((*(ExcClass **)obj)->disp, &n) : "NoneType";
