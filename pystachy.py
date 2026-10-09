@@ -5111,6 +5111,7 @@ class Gen:
         self.copying = False
         self.live = False  # fills skips the loops over the empty tuple too (see unfilled)
         self.dead = False  # and found a fill there, or in a branch a static test removes
+        self.whole = False  # static() for fills: only from facts that hold in the whole function
         # a template's function returning such an empty container without a type (see retval):
         # the locals it returns so, space-separated, by its LLVM name, and the functions whose
         # return type of that kind a call has used, so that it can no longer change (see adopt)
@@ -6105,6 +6106,16 @@ class Gen:
             self.type_reads(n)
         return self.static(n)
 
+    def static_whole(self, n: Node) -> int:
+        # static_now(n) for code that compiles later, where the facts of the code being compiled
+        # may no longer hold (see static_type)
+        if self.modlevel:
+            self.type_reads(n)
+        self.whole = True
+        s = self.static(n)
+        self.whole = False
+        return s
+
     def type_reads(self, n: Node) -> None:
         if n.kind == "name":
             self.gtype(n.s)
@@ -6259,9 +6270,9 @@ class Gen:
             elif k == "augassign" and st.kids[0].kind == "name" and st.kids[0].s == name and st.s == "+":
                 found.append(mk("omit", "", st.line, []))
                 found.append(st.kids[1])
-            elif k == "if" and self.static_now(st.kids[0]) >= 0:
-                # a test decided here: only the branch that runs
-                s = self.static(st.kids[0])
+            elif k == "if" and self.static_whole(st.kids[0]) >= 0:
+                # a test that facts true in the whole function decide: only the branch that runs
+                s = self.static_whole(st.kids[0])
                 self.dead = self.dead or shows_items(st.kids[2 if s == 1 else 1], name)
                 self.fills(st.kids[1 if s == 1 else 2].kids, name, found)
             elif k == "for" and self.live and st.kids[1].kind == "name" and self.qtype(st.kids[1].s) == "tuple[]":
@@ -8119,6 +8130,8 @@ class Gen:
         # the type of a variable read that cannot fail, or ""
         if n.kind != "name" or n.chk:
             return ""
+        if self.whole and n.s in self.assigned and n.s in self.curfn.params and self.curfn.ptypes[self.curfn.params.index(n.s)] == "None":
+            return ""  # (a parameter whose argument is None, but only until the function assigns it)
         if (n.s in self.nonevars or n.s in self.noneglobals) and n.s not in self.ltype:
             return "None"
         if n.s in self.ltype:
