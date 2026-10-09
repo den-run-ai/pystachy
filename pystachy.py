@@ -4991,8 +4991,19 @@ def same_kind(a: str, b: str) -> bool:
 
 
 def typestr(t: str) -> str:
-    # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict"
-    return t.replace("[?,?]", "").replace("[?]", "")
+    # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
+    # a builtin exception BaseException, a class its own name
+    t = t.replace("[?,?]", "").replace("[?]", "")
+    out: list[str] = []
+    w = ""
+    for c in t + ",":
+        if c == "[" or c == "]" or c == ",":
+            out.append("BaseException" if w == "exc" else short(w))
+            out.append(c)
+            w = ""
+        else:
+            w += c
+    return "".join(out)[:-1]
 
 
 def empty_display(e: Node) -> bool:
@@ -6202,6 +6213,8 @@ class Gen:
             return Val(v.v, t)  # (an exception object is an object of its base classes too)
         if v.t in self.classes and t == "exc" and self.classes[v.t].exc != "":
             self.err(f"expected a builtin exception, got an object of {short(v.t)} (annotate it with {short(v.t)} or a base class of the program)")
+        if v.t == "exc" and t in self.classes and self.classes[t].exc != "":
+            self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
         hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
         if hint == "" and self.curfn.ll in self.guessed:
             hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
@@ -10641,8 +10654,11 @@ class Gen:
             if et == "" or et == "None":
                 self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
             for v in items if not is_list(want) and et in self.classes else items[:0]:
+                e0 = et
                 while et in self.classes and self.classes[et].exc != "" and v.t in self.classes and not self.derives(v.t, et):
                     et = self.classes[et].base  # (exception objects of several classes: a base of them all)
+                if e0 in self.classes and et not in self.classes:
+                    self.err(f"objects of the exception classes {short(e0)} and {short(v.t)} in one list are not supported: no class of the program is a base of both (give them one: class Base(Exception), class {short(e0)}(Base), ...)")
             items = [self.coerce(v, et) for v in items]
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
             for v in items:
@@ -11464,6 +11480,8 @@ class Gen:
                     self.err(f"a call of __init__ on an object of {short(o.t)} is not supported where {short(c.name)}, deriving from it, defines __init__ again (calls are not dispatched on the object's class)")
         if o.t in self.classes:
             ci = self.classes[o.t]
+            if m not in ci.methods and ci.exc != "" and m in HASATTR["any"].split() + ["add_note", "with_traceback"]:
+                self.err(f"{short(o.t)} has no method {m}() of its own, and BaseException.{m}() is not supported" + (" (call super().__init__(...) in __init__)" if m == "__init__" else ""))
             if m not in ci.methods:
                 self.err(f"'{o.t}' object has no method '{m}'")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
@@ -12012,6 +12030,8 @@ class Gen:
             K = kv[0]
             V = kv[1]
         key = base + "." + m
+        if key not in METHODS and o.t == "exc":
+            self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
         if key not in METHODS:
             self.err(f"'{o.t}' has no method '{m}'")
         if key == "dict.get" and len(args) == 1 and V not in self.classes:
