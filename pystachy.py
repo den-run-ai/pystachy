@@ -4595,7 +4595,9 @@ IROPS: dict[str, str] = {
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
-LLNOTRAW: list[str] = "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split()
+LLNOTRAW: dict[str, bool] = {}
+for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split():
+    LLNOTRAW[_k] = True
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -7322,8 +7324,9 @@ class Gen:
                     self.bad_ir(fn, b, "a phi after other ops")
                 if i.op == "rt" and i.s not in self.rtfns:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
-                if len(i.r) != self.nums(i):
-                    self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {self.nums(i)}")
+                n = self.nums(i)
+                if len(i.r) != n:
+                    self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")
                 for x in i.r:
                     if x > fn.n:
                         self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
