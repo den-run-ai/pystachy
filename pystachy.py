@@ -4668,6 +4668,18 @@ def unopt(t: str) -> str:
     return t[4:-1] if t.startswith("opt[") else t
 
 
+def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
+    # the names in every one of states (narrowed where paths join)
+    r: dict[str, bool] = {}
+    for nm in states[0]:
+        ok = True
+        for st in states[1:]:
+            ok = ok and nm in st
+        if ok:
+            r[nm] = True
+    return r
+
+
 def same_kind(a: str, b: str) -> bool:
     # are types a and b both lists or both dicts (a class may be named listing)
     return (is_list(a) and is_list(b)) or (is_dict(a) and is_dict(b))
@@ -5362,6 +5374,8 @@ class Gen:
         self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
+        self.brks: list[list[dict[str, bool]]] = []  # for each loop being compiled, what narrowed holds at its breaks
+        self.elsebrks: list[dict[str, bool]] = []  # those of the last loop with an else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
         # what the container holds (see fill); a dict's key kind is a placeholder in the IR until then
         self.allowq = False  # the read being compiled may see such a type (len(), a truth test)
@@ -7905,25 +7919,38 @@ class Gen:
         self.cbr(self.cond(n.kids[0]), l2, l3)
         self.place(l2)
         self.narrow_by(n.kids[0], True)
-        self.loop(n.kids[1].kids, l1, l3)
+        brks = self.loop(n.kids[1].kids, l1, l3)
         self.br(l1)
         self.narrowed = after
-        if not has_kind(n.kids[1], "break"):
-            self.narrow_by(n.kids[0], False)  # (left only where its test is false)
+        # after the loop: what holds where its test is false (never for while True) and at each
+        # break that leaves it here (a loop with an else block breaks past it)
+        self.narrow_by(n.kids[0], False)
+        ends: list[dict[str, bool]] = []
+        if n.kids[0].kind != "True":
+            ends.append(self.narrowed)
+        if n.kids[1].kids is not self.elsekids:
+            ends.extend(brks)
+        self.narrowed = meet(ends) if len(ends) > 0 else after
         self.place(l3)
 
-    def loop(self, body: list[Node], cont: str, brk: str) -> None:
+    def loop(self, body: list[Node], cont: str, brk: str) -> list[dict[str, bool]]:
+        # a loop's body; what narrowed holds at its breaks is returned (see while_)
         if body is self.elsekids:
             brk = self.elsebrk  # the loop of a for/while ... else: break skips the else block
         self.loops.append(cont)
         self.loops.append(brk)
         self.wdepth.append(len(self.withs))
+        self.brks.append([])
         self.branch += 1
         self.stmts(body)
         self.branch -= 1
         self.wdepth.pop()
         self.loops.pop()
         self.loops.pop()
+        r = self.brks.pop()
+        if body is self.elsekids:
+            self.elsebrks = r
+        return r
 
     def close_withs(self, depth: int) -> None:
         # leaving with blocks (break, continue, return): their files close, innermost first
@@ -8135,9 +8162,15 @@ class Gen:
                 self.while_(n)
             self.elsekids = ek
             self.elsebrk = eb
+            brks = self.elsebrks
             self.branch += 1
             self.stmts(n.kids[-1].kids)
             self.branch -= 1
+            # after it: what holds at the end of the else block (if it goes on) and at each break
+            if not self.term:
+                brks.append(self.narrowed)
+            if len(brks) > 0:
+                self.narrowed = meet(brks)
             self.place(lb)
         elif k == "while":
             self.while_(n)
@@ -8190,6 +8223,8 @@ class Gen:
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
             self.close_withs(self.wdepth[-1])
+            if k == "break" and not self.term:
+                self.brks[-1].append(dict(self.narrowed))
             self.br(self.loops[-1] if k == "break" else self.loops[-2])
         elif k == "global":
             for nm in n.kids:
