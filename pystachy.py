@@ -7881,8 +7881,9 @@ class Gen:
                 self.no_class_names(st.kids[2], bound, ci.name)
                 bound[fl] = True
                 t = ci.ftypes[fl]
-                if self.is_dc(ci.name) and not is_const(st.kids[2]) and (is_list(t) or is_dict(t) or self.is_dc(t) or self.unhashable(t)):
-                    self.err(f"mutable default {t} for dataclass field '{fl}' is not allowed")
+                u = unopt(t)  # (a default of a T | None field that is not None is a T)
+                if self.is_dc(ci.name) and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.is_dc(u) or self.unhashable(u)):
+                    self.err(f"mutable default {u} for dataclass field '{fl}' is not allowed")
                 if not is_const(st.kids[2]) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                     # code compiled before this statement declared its global (class_default)
                     del self.pending[ci.fglob[fl]]
@@ -9102,13 +9103,48 @@ class Gen:
                 items.append(self.expr(x, ""))
         else:
             v = self.expr(rhs, "")
+            if is_tuple(unopt(v.t)) and is_opt(v.t):
+                return self.percent_opt(fmt, v)
             if is_tuple(v.t):
                 for i in range(len(targs(v.t))):
                     items.append(self.tget(v, i))
-            elif is_dict(v.t) and "%(" in fmt:
+            elif is_dict(unopt(v.t)) and "%(" in fmt:
                 self.err("% formatting with a mapping (%(name)s) is not supported")
             else:
                 items.append(v)
+        return self.pformat(fmt, items, False)
+
+    def percent_opt(self, fmt: str, v: Val) -> Val:
+        # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), l1, l2)
+        self.place(l1)
+        a = self.pformat(fmt, [Val("null", "None")], True)
+        phis: list[str] = []
+        if not self.term:
+            phis.append(f"[{a.v}, %{self.cur}]")
+        self.br(l3)
+        self.place(l2)
+        tv = Val(v.v, unopt(v.t))
+        items: list[Val] = []
+        for i in range(len(targs(tv.t))):
+            items.append(self.tget(tv, i))
+        b = self.pformat(fmt, items, False)
+        if not self.term:
+            phis.append(f"[{b.v}, %{self.cur}]")
+        self.br(l3)
+        self.place(l3)
+        if len(phis) == 0:
+            self.emit("unreachable")
+            self.term = True
+            return Val(self.sconst(""), "str")
+        return Val(self.ins(f"phi ptr {', '.join(phis)}"), "str")
+
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
+        # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
+        # (it is a tuple's place, see percent_opt), as CPython's error
         acc = Val(self.sconst(""), "str")
         lit: list[str] = []
         used = 0
@@ -9155,6 +9191,13 @@ class Gen:
             if len(lit) > 0:
                 acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
                 lit = []
+            if rtnone and v.t == "None" and t not in "sra":
+                bad = "must be real number, not NoneType"
+                if t == "c":
+                    bad = "%c requires int or char"
+                elif t in "diuxXo":
+                    bad = f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not NoneType"
+                return self.fmt_error(bad)
             acc = self.cat(acc, self.conversion(v, flags, width, prec, t))
         if used < len(items):
             return self.fmt_error("not all arguments converted during string formatting")
@@ -9180,8 +9223,8 @@ class Gen:
                 return sv
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
-            if v.t == "str":
-                return v
+            if unopt(v.t) == "str":
+                return self.unwrap(v, "TypeError: %c requires int or char")
             v = self.coerce(self.as_int(v), "int")
             cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
@@ -9463,7 +9506,7 @@ class Gen:
         # i1: is v None at run time
         if v.t == "None":
             return "true"
-        if v.t in self.classes and v.v not in self.nn:
+        if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t):
             return self.ins(f"icmp eq ptr {v.v}, null")
         return "false"
 
