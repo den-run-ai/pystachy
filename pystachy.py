@@ -7881,15 +7881,34 @@ class Gen:
         # program declared before it
         if st.kids[1].kind == "typeparams":
             return "generic classes (class C[T]) are not supported"
-        b = st.kids[1]
-        if b.kind != "name" or not (is_excname(b.s) or (b.s in self.classes and self.classes[b.s].exc != "")):
-            return UNSUPPORTED["subclass"]
+        b = self.exc_base(st.kids[1])
+        if b == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes:
+            return UNSUPPORTED["subclass"] + " (only an exception class may have a base)"
+        if b == "":
+            return UNSUPPORTED["subclass"] + " (only an exception class may have a base, which names a builtin exception class or an exception class of the program)"
         if len(st.kids) > 2:
             return "an exception class with more than one base is not supported"
-        if b.s not in self.classes and (EXCEPTIONS.get(b.s, "-") == "-" or exc_derives(b.s, "SyntaxError")):
-            return f"deriving from {b.s} is not supported"
+        if b not in self.classes and (EXCEPTIONS.get(b, "-") == "-" or exc_derives(b, "SyntaxError")):
+            return f"deriving from {b} is not supported"
         if len(st.kids[0].kids) > 1:
             return f"an exception class with a decorator (@{st.kids[0].kids[1].s}) is not supported"
+        return ""
+
+    def exc_base(self, b: Node) -> str:
+        # the exception class that b, the base of a class statement, names: a class of the program
+        # or a builtin one (IOError and EnvironmentError are OSError; builtins.X and os.error
+        # too), else ""
+        s = b.s
+        if b.kind == "attr" and b.kids[0].kind == "name" and self.imported(b.kids[0].s) == "builtins" and is_excname(b.s):
+            s = b.s
+        elif b.kind == "attr" and b.kids[0].kind == "name" and self.imported(b.kids[0].s) == "os" and b.s == "error":
+            s = "OSError"
+        elif b.kind != "name":
+            return ""
+        if s in self.classes:
+            return s if self.classes[s].exc != "" else ""
+        if is_excname(s):
+            return "OSError" if s == "IOError" or s == "EnvironmentError" else s
         return ""
 
     def inherit(self, ci: ClassInfo) -> None:
@@ -7964,9 +7983,8 @@ class Gen:
                         self.err(f"redefinition of class '{st.s}' is not supported")
                     ci = ClassInfo(st.s, st.kids[0])
                     ci.mod = m.name
-                    b = st.kids[1].s
-                    ci.base = "OSError" if b == "IOError" or b == "EnvironmentError" else b
-                    ci.exc = self.classes[b].exc if b in self.classes else ci.base
+                    ci.base = self.exc_base(st.kids[1])
+                    ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
                     self.classes[st.s] = ci
                 elif st.kind == "class":
                     if st.s in self.classes:

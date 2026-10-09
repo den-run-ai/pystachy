@@ -198,8 +198,8 @@ raises its `OSError` in its place, inside the `try` statement around, as `__exit
 module whose code raises is not imported: the name its import binds is unbound, and a later
 import runs its code again.
 
-**Exception classes.** A class whose one base is a builtin exception class, or an exception
-class of the program, is an exception class: fields, `__init__`, `__str__`, `__repr__`, other
+**Exception classes.** A class whose one base is a builtin exception class (also
+`builtins.ValueError`, `os.error`), or an exception class of the program, is an exception class: fields, `__init__`, `__str__`, `__repr__`, other
 methods, class-body fields with or without defaults and docstrings, as for any class. Its
 objects keep the positional arguments of the call that makes them, as CPython's `args`, for
 `str()` (`''`, `str(arg)` or the tuple's repr; a `KeyError`'s repr of its argument) and
