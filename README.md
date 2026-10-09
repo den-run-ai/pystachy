@@ -21,16 +21,17 @@ short list of documented deviations. Where Pystachy cannot keep that promise, it
   you want to run fast or ship as one binary, or curiosity about how a self-hosting compiler
   works.
 - **Not yet:** code that needs exceptions, inheritance, lambdas, generators or third-party
-  packages. See [what is missing](#status-and-limitations) and the [roadmap](#roadmap).
+  packages. See the [roadmap](#roadmap) and [what is missing](#status-and-limitations).
 
 ## At a glance
 
 ```mermaid
 flowchart LR
     src["your_program.py<br/>typed Python"]
+    lib["lib/<br/>unmodified stdlib modules"]
     cpy["CPython"]
     comp["pystachy.py<br/>one file that compiles itself"]
-    err["file:line: error<br/>rejected before it runs"]
+    err["file:line: error:<br/>rejected before it runs"]
     ir["LLVM IR"]
     rt["runtime.c<br/>own GC, str, list, dict"]
     jit["pystachy run<br/>JIT"]
@@ -38,6 +39,7 @@ flowchart LR
     same["same stdout and exit status<br/>the contract, tested in CI"]
     src --> cpy --> same
     src --> comp --> ir --> jit --> same
+    lib --> comp
     ir --> aot --> same
     comp -->|"cannot match CPython"| err
     rt --> jit
@@ -46,16 +48,17 @@ flowchart LR
 
 | | |
 |---|---|
-| **compiler** | `pystachy.py`, 11,118 lines, written in the subset it compiles |
-| **runtime** | `runtime.c`, 2,675 lines, with its own garbage collector; needs only the C library |
-| **bootstrap** | the compiler built by CPython and the compiler built by itself emit the same 140,206 lines of LLVM IR |
-| **tests** | 295 programs, 421 rejection cases, 11 deviation cases, 6 IR probes: 1,175 checks pass, JIT and AOT |
+| **compiler** | `pystachy.py`, about 11,000 lines, written in the subset it compiles |
+| **runtime** | `runtime.c`, under 3,000 lines, with its own garbage collector; needs only the C library |
+| **bootstrap** | the compiler built by CPython and the compiler built by itself emit byte-identical LLVM IR |
+| **tests** | about 300 programs that must print what CPython prints, JIT and AOT, and over 400 that must be rejected, with both compilers ([docs/testing.md](docs/testing.md)) |
 | **standard library** | 9 unmodified CPython 3.13 modules compile as they are ([`lib/`](lib/README.md)) |
 
 ### Speed
 
-Median of three warm runs on a 4-core x86-64 VM (CPython 3.13.16, LLVM 18). JIT times include
-compilation, and every output is checked against CPython's.
+Each benchmark is a plain Python program, run under CPython, under the JIT and as an AOT
+executable, and all three must print the same thing. Median of three warm runs on a 4-core
+x86-64 VM (CPython 3.13.16, LLVM 18); JIT times include compilation.
 
 | benchmark | CPython | Pystachy JIT | Pystachy AOT | AOT speedup |
 |---|---:|---:|---:|---:|
@@ -79,7 +82,7 @@ from their public documentation, as of October 2026; corrections are welcome.
 
 | | what it compiles | output | needs CPython at run time | behaviour vs CPython |
 |---|---|---|---|---|
-| **Pystachy** | a statically typed subset of Python; unannotated functions are compiled per call types | native code via LLVM: JIT, or a standalone executable | no | same stdout and exit status, tested against CPython on every push; what it cannot match is a compile-time error |
+| **Pystachy** | a statically typed subset of Python | native code via LLVM: JIT, or a standalone executable | no | same output, tested against CPython; otherwise a compile-time error |
 | CPython | all of Python | bytecode for its interpreter | it is CPython | the reference |
 | PyPy | all of Python | machine code from a tracing JIT, at run time | no: it replaces CPython | highly compatible; differs mainly in garbage-collection timing and C extensions |
 | Cython | Python, plus optional C type declarations | C extension modules | yes | Python semantics, and C semantics where you declare C types |
@@ -89,8 +92,10 @@ from their public documentation, as of October 2026; corrections are welcome.
 | Shed Skin | an implicitly typed subset of Python | C++, built into an executable or extension module | no, for executables | one static type per variable; 64-bit `int` by default |
 | LPython | a typed subset of Python with fixed-width types (`i32`, `f64`) | native code via LLVM, also C, C++ and WebAssembly | no | its programs also run under CPython; alpha |
 
-Pystachy is closest to Codon, Shed Skin and LPython: a static subset compiled to standalone
-native code. Its particular bet is the contract: every test program runs under both CPython and
+If you need all of Python, CPython, PyPy and Nuitka run it; for faster modules inside a CPython
+application, Cython and mypyc are mature choices. Pystachy sits with Codon, Shed Skin and
+LPython: it gives up Python's dynamic features for native programs that run without an
+interpreter. Its particular bet is the contract: every test program runs under both CPython and
 Pystachy, and anything Pystachy cannot match is a compile-time error rather than a silent
 difference. It is also the only one of those four whose compiler is written in the language it
 compiles and builds itself.
@@ -135,12 +140,12 @@ words.py:2: error: sorted(key=...) is not supported: functions are not values
 
 ## Quick start
 
-You need LLVM/clang 18 (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`; on Ubuntu 24.04 the
-packages `clang-18 llvm-18 llvm-18-runtime`, plus `libclang-rt-18-dev` for `make verify`) and
-CPython 3.11 or later (tested with 3.13) for the bootstrap. CI tests Linux x86-64. If the LLVM
-tools are not on `PATH` under those names, set `PYSTACHY_LLVM=/usr/lib/llvm-18/bin`.
+You need LLVM 18 and Python 3.11 or later (tested with 3.13); CI runs on Linux x86-64. On
+Ubuntu 24.04, as in CI:
 
 ```sh
+sudo apt install clang-18 llvm-18 llvm-18-runtime libclang-rt-18-dev   # the last one is for make verify
+export PYSTACHY_LLVM=/usr/lib/llvm-18/bin
 git clone https://github.com/den-run-ai/pystachy && cd pystachy
 make                                    # the compiler builds itself and checks the result
 ./pystachy run bench/nbody.py           # compile with the JIT and run
@@ -158,43 +163,37 @@ compiler on CPython. Other settings are listed in
 
 ## What makes it different
 
-- **Same output, or a compile-time error.** The compiler either reproduces CPython's behaviour
-  or refuses the program with `file:line: error:`; 421 test cases pin those refusals down. Every
-  `SyntaxError` that CPython reports before running a file is reported with CPython's message
-  and line.
+- **Same output, or a compile-time error.** The compiler reproduces CPython's behaviour or
+  refuses the program with `file:line: error:`. Even CPython's syntax errors are reported at
+  CPython's line, almost always with CPython's message.
 - **CPython is the oracle.** Every test program runs under CPython and under Pystachy, JIT and
-  AOT, and stdout and exit status must match, with both the CPython-hosted and the self-compiled
-  compiler.
-- **It compiles itself, to a fixed point.** `make` has CPython build stage 1 and stage 1 build
-  stage 2, and all three must emit identical LLVM IR, so any place where Pystachy and CPython
-  disagree inside the compiler shows up as a diff. In CI, with no Python on `PATH`, the native
-  compiler rebuilds itself and passes the tests.
-- **Unmodified library code compiles.** A module-level function without annotations is a
-  template, compiled once for each list of argument types it is called with, and what CPython
-  decides at import time (`__main__` guards, `TYPE_CHECKING`, platform tests, optional C
-  accelerators) is decided at compile time. Together they let `bisect`, `heapq`, `posixpath`
-  and six more CPython modules compile as they are.
-- **A small runtime that copies CPython where it shows.** `runtime.c` has its own conservative
-  garbage collector and needs nothing beyond the C library. Where output depends on an
-  algorithm, it uses CPython's: lists sort with a port of CPython's timsort, which makes the same
-  comparisons in the same order, and dicts use CPython 3.13's compact layout.
-- **Two tiers.** `pystachy run` compiles with LLVM's ORC JIT for a fast start; `pystachy build`
-  links the program and the runtime into one module and optimizes them together.
-- **Fast to compile, and kept that way.** The native compiler turns its own 11,000 lines into
-  LLVM IR in 0.2 s of CPU time (1.4 s on CPython), and CI fails if compile time stops growing
-  linearly with the program.
+  AOT, and stdout and exit status must match.
+- **It compiles itself, to a fixed point.** The compiler built by CPython and the compiler built
+  by itself must emit identical LLVM IR, so any place where Pystachy and CPython disagree inside
+  the compiler shows up as a diff. CI also rebuilds it with no Python on `PATH`.
+- **Unmodified library code compiles.** An unannotated module-level function is a template,
+  compiled for the argument types of each call, and what CPython decides at import time (`__main__` guards,
+  platform tests, optional C accelerators) is decided at compile time. That is how `bisect`,
+  `heapq`, `posixpath` and six more CPython modules compile as they are.
+- **A small runtime that copies CPython where it shows.** `runtime.c` has its own garbage
+  collector and needs only the C library. Lists sort with a port of CPython's timsort, and dicts
+  use CPython 3.13's layout, so ordering and iteration match.
+- **Two tiers.** `pystachy run` compiles with LLVM's JIT for a fast start; `pystachy build`
+  optimizes the program and the runtime together into one executable.
+- **Fast to compile, and kept that way.** The native compiler turns its own source into LLVM IR
+  in 0.2 s of CPU time, and CI fails if compile time stops growing linearly with the program.
 
 ## Roadmap
 
 The goal is to compile more existing Python: CPython's standard library, then popular PyPI
-packages. [Issue #5](https://github.com/den-run-ai/pystachy/issues/5) plans the way there in
-milestones, each sized with a static model: the share of functions in the top 1,000 PyPI
-packages and in CPython's `Lib/` that would need no missing feature, and the standard-library
-modules that would import. The percentages are upper bounds.
+packages. [Issue #5](https://github.com/den-run-ai/pystachy/issues/5) adds dynamic features back
+in the order of how much real code each lets compile. The numbers are cumulative estimates from
+a static model: an upper bound on the share of functions whose constructs would all be
+supported, not a measurement of what runs today.
 
 | milestone | what it adds | top-1000 PyPI functions | CPython `Lib/` functions | stdlib modules that import |
 |---|---|---:|---:|---:|
-| today | | 1.8% | 4.5% | 38 |
+| today | the subset described in [docs/language.md](docs/language.md) | 1.8% | 4.5% | 38 |
 | [M1](https://github.com/den-run-ai/pystachy/issues/6) | lenient annotations, cheap refinements | 4.8% | 4.6% | 38 |
 | [M2](https://github.com/den-run-ai/pystachy/issues/7) | full classes: inheritance, unannotated methods, properties | 18.8% | 25.6% | 39 |
 | [M3](https://github.com/den-run-ai/pystachy/issues/8) | functions as values: callbacks, lambdas, closures, decorators | 44.9% | 41.5% | 39 |
@@ -203,28 +202,33 @@ modules that would import. The percentages are upper bounds.
 | [M6](https://github.com/den-run-ai/pystachy/issues/11) | native stdlib hubs, C-module shims | 58.7% | 56.8% | 124 |
 | [M7](https://github.com/den-run-ai/pystachy/issues/12) | the long tail: generators, `async`, sets, `bytes`, `str.format` | 90.4% | 99.0% | 523 |
 
+Parts of M4 and M5 are in progress in #22. Open findings from earlier differential testing are
+tracked in [#13](https://github.com/den-run-ai/pystachy/issues/13) to
+[#17](https://github.com/den-run-ai/pystachy/issues/17).
+
 **In progress now** (draft pull requests, not merged yet):
 
 - **A typed IR** ([#22](https://github.com/den-run-ai/pystachy/pull/22); its
   [design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
   a small typed layer between type checking and LLVM, built step by step so that every step
-  emits byte-identical output (`make irsame` checks it). On top of it: `Optional` of `str`,
-  `list`, `dict`, `tuple` and the scalars, `NamedTuple`, tuple dict keys, `@classmethod`,
-  `@staticmethod`, `__getitem__` and friends, and the first IR optimizations (fused dict lookups
-  make a dict-counting benchmark 31% faster AOT). Exceptions (`try`/`except`/`finally`, user
-  exception classes) are being merged into it.
+  emits byte-identical output (`make irsame` checks it). On top of it: `T | None` for `str`,
+  `list`, `dict` and `tuple`, boxed `int | None`, `float | None` and `bool | None`,
+  `NamedTuple`, tuple dict keys, `@classmethod`, `@staticmethod`, `__getitem__` and friends,
+  and the first IR optimizations (fused dict lookups make a dict-counting benchmark 31% faster
+  AOT). Exceptions (`try`/`except`/`finally`, user exception classes) are being merged into it.
 - **Part of the runtime in Python** ([#19](https://github.com/den-run-ai/pystachy/pull/19)): 52
   runtime functions, among them all the `str` methods and the format-spec mini-language, are
   written in the subset and compiled by Pystachy itself, with no change to any program's IR and
-  the same performance.
+  the same performance. Follow-ups are tracked in
+  [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
 CPython-extension mode, like mypyc, so that compiled code can use real PyPI packages?
 [#4](https://github.com/den-run-ai/pystachy/issues/4) weighs the options; input is welcome.
 
-**Further out:** a WebAssembly GC backend, where the engine supplies memory management and
-tiered compilation; single inheritance with vtables; `set` and `frozenset` on top of the dict
-table; and more of the standard library, ranked by payoff in [docs/stdlib.md](docs/stdlib.md).
+**Further out:** single inheritance with vtables; `set` and `frozenset` on top of the dict table;
+more of the standard library, ranked by payoff in [docs/stdlib.md](docs/stdlib.md); and a
+WebAssembly GC backend, which a runtime written in the subset makes easier.
 
 ## Status and limitations
 
@@ -264,9 +268,9 @@ A few choices shape everything else. Each is explained, with the pull request th
 | reject rather than miscompile | a clear error at compile time is better than a program that silently behaves differently |
 | CPython's output is the specification | programs are ordinary Python, so CPython decides what is correct, and tests compare against it |
 | 64-bit checked `int` | fast native arithmetic; overflow raises instead of wrapping |
-| a conservative garbage collector in C | no dependencies, and memory stays near the live set |
+| a garbage collector of its own, in C | no dependencies, and memory stays near the live set |
 | templates for unannotated functions | most of the standard library is unannotated, so it compiles per call types instead |
-| import-time decisions at compile time | lets unmodified library modules, with their platform tests and optional accelerators, compile |
+| import-time decisions at compile time | unmodified library modules, with their platform tests and optional accelerators, compile |
 | a typed IR, introduced byte for byte (in progress) | room for optimizations and new backends, with every step checked to change no program's output |
 
 ## Documentation
@@ -291,7 +295,7 @@ matches CPython's. Good places to start:
   methods (`hex`, `oct`, `bin`, `dict.update`, `math.modf`, ...), a `lib/warnings.py` with
   `warn()`, folding `sys.version_info` tests at compile time.
 - **The standard library:** [docs/stdlib.md](docs/stdlib.md) lists 17 modules that compile after
-  a few small edits; each feature that removes an edit moves one of them closer to `lib/`.
+  1 to 18 small edits each; each feature that removes an edit moves one of them closer to `lib/`.
 - **Bugs:** the [open issues](https://github.com/den-run-ai/pystachy/issues), and any program
   whose output differs from CPython's.
 
@@ -305,6 +309,6 @@ starting something large there.
 
 ## License
 
-MIT ([LICENSE](LICENSE)). The list sort in `runtime.c` is a port of CPython's, and the modules in
-`lib/` are CPython's own; both are used under the PSF License Version 2
+MIT ([LICENSE](LICENSE)). The list sort in `runtime.c` is a port of CPython's, and the vendored
+CPython modules in `lib/` are CPython's own; both are used under the PSF License Version 2
 ([THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES)).
