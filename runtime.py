@@ -155,10 +155,13 @@ def scan(s: str, c: int, i: int, n: int) -> int:
 def scan_ws(s: str, i: int, n: int, want: bool) -> int:
     # the first k in [i, n) where the character at k is whitespace (want) or not, or n. (The
     # index steps by a character's 1 to 4 bytes within s: wrapping adds, which cannot overflow,
-    # here and in the other character loops below.)
+    # here and in the other character loops below. Each loop tests an ASCII byte itself, and
+    # calls wsat() and its kin, which LLVM does not inline, only for a non-ASCII one, as
+    # runtime.c's ws() calls uws())
     k = i
     while k < n:
-        w = wsat(s, k, n)
+        c = _rt.byte(s, k)
+        w = (1 if ws(c) else -1) if c < 128 else wsat(s, k, n)
         if (w > 0) == want:
             return k
         k = _rt.wrap_add(k, w) if w > 0 else _rt.wrap_sub(k, w)
@@ -479,22 +482,34 @@ def stripped(s: str, i: int, n: int, cs: str) -> int:
     return -k
 
 
+def strip_byte(c: int, cs: str) -> bool:
+    # whether strip() strips the ASCII byte c: whitespace if cs was omitted (null), else a byte of cs
+    return ws(c) if _rt.null(cs) else _rt.find_byte(cs, c, 0, len(cs)) >= 0
+
+
 def strip(s: str, cs: str, m: int) -> str:
-    # m: 1 left, 2 right, 3 both; character by character
+    # m: 1 left, 2 right, 3 both; character by character (an ASCII byte tested here, see scan_ws)
     i = 0
     j = len(s)
     if m & 1:
         while i < j:
-            k = stripped(s, i, j, cs)
+            c = _rt.byte(s, i)
+            k = (1 if strip_byte(c, cs) else -1) if c < 128 else stripped(s, i, j, cs)
             if k < 0:
                 break
             i = _rt.wrap_add(i, k)
     if m & 2:
         while j > i:
-            b = back(s, j)
-            if stripped(s, _rt.wrap_sub(j, b), j, cs) < 0:
-                break
-            j = _rt.wrap_sub(j, b)
+            c = _rt.byte(s, _rt.wrap_sub(j, 1))
+            if c < 128:
+                if not strip_byte(c, cs):
+                    break
+                j = _rt.wrap_sub(j, 1)
+            else:
+                b = back(s, j)
+                if stripped(s, _rt.wrap_sub(j, b), j, cs) < 0:
+                    break
+                j = _rt.wrap_sub(j, b)
     return s[i:j]
 
 
@@ -891,7 +906,8 @@ def pys_str_rsplit(s: str, sep: str, maxsplit: int) -> list[str]:
     if _rt.null(sep):
         while True:
             while j > 0:
-                b = wsback(s, j)
+                c = _rt.byte(s, _rt.wrap_sub(j, 1))
+                b = (1 if ws(c) else -1) if c < 128 else wsback(s, j)
                 if b < 0:
                     break
                 j = _rt.wrap_sub(j, b)
@@ -903,7 +919,8 @@ def pys_str_rsplit(s: str, sep: str, maxsplit: int) -> list[str]:
             left -= 1
             i = j
             while i > 0:
-                b = wsback(s, i)
+                c = _rt.byte(s, _rt.wrap_sub(i, 1))
+                b = (1 if ws(c) else -1) if c < 128 else wsback(s, i)
                 if b > 0:
                     break
                 i = _rt.wrap_add(i, b)
