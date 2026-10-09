@@ -9084,7 +9084,7 @@ class Gen:
         v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
         self.nn[v.v] = True
         had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
-        if had != "" and had != t and not (had in self.classes and t in self.classes and self.derives(t, had)):
+        if had != "" and had != t:
             self.shadows.append([name, self.ltype.get(name, ""), self.lreg.get(name, ""), self.lflag.get(name, "")])
             if name in self.lflag:
                 del self.lflag[name]
