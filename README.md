@@ -13,8 +13,8 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (126472 lines of IR)
-fixed point: runtime.py's IR, rt1 == rt2 == rt3 (7959 lines)
+fixed point: stage1 == stage2 == stage3 (126481 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (7971 lines)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR

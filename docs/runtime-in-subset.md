@@ -22,7 +22,7 @@ The prototype is stacked on `claude/typed-ir-prep` (commit `30b51d9`). Unless a 
 - **How.** `pystachy rt runtime.py` compiles the file in a *runtime mode*:
   - functions named `pys_*` are defined under their C names, with runtime.c's types;
   - `def f(...) -> T: ...` declares a C function;
-  - `import _rt` gives 18 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`, wrapping and unsigned arithmetic (§1.2).
+  - `import _rt` gives 16 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`, wrapping and unsigned arithmetic (§1.2).
 
   The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime.bc` and `runtime.o`), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
 - **Performance: the same as runtime.c on real workloads** (§2.4).
@@ -80,7 +80,7 @@ runtime.c keeps a prototype of every moved function, so its own code can still c
 | `copy(d, at, s, lo, n)` | `d[at:at+n] = s[lo:lo+n]` | five compares, `memmove` | `array.copy` |
 | `str_done(s)` | hand the str out; it is no longer changed | nothing | nothing |
 | `same(a, i, b, j, n)` | `a[i:i+n] == b[j:j+n]` | `memcmp` | a loop |
-| `find_byte(s, c, st, en)` | first index of byte `c` in `s[st:en]`, or -1 | `memchr` | a loop |
+| `find_byte(s, c, st, en)` | first index of byte `c` (0 to 255) in `s[st:en]`, or -1 | `memchr` | a loop |
 | `null(s)` | the null that callers pass for an omitted `str` argument | `icmp eq ptr` | `ref.is_null` |
 | `wrap_add/sub/mul(a, b)` | 64-bit arithmetic that wraps | `add`/`sub`/`mul` | `i64.add`/... |
 | `shl(a, n)`, `lshr(a, n)` | shifts by `n % 64`, logical to the right | `shl`/`lshr` | `i64.shl`/`i64.shr_u` |
@@ -106,7 +106,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 - **When the cache is rebuilt.** The cache is rebuilt when `runtime.c`, `runtime.py` or the running compiler is newer than it. The running compiler is its executable, or `pystachy.py` under CPython.
   - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
   - Regenerating the IR on every run would be exact, but costs 18 ms of a 40 ms JIT start.
-- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): 7,959 lines.
+- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): 7,971 lines.
   - The Python-free stage of `make verify` rebuilds the runtime, `runtime.py` included, with the native compiler alone, and compares that IR too.
 - **Compile cost.** The native compiler emits `runtime.py`'s IR in 18 ms; under CPython it takes 0.23 s. This cost is paid only when the cache is rebuilt.
 - **dictprobe.** `tools/dictprobe.c` includes runtime.c to count probes, and runtime.c's hash functions now live in `runtime.py`. So `make dictprobe` and the `dict-probes` step link it with `runtime.py`'s IR.
@@ -160,7 +160,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 **Worse, or different.**
 - **UBSan.** `make verify`'s UBSan stage instruments C only. `clang -fsanitize=undefined` adds no checks to `.ll` input, so it no longer covers the moved code.
   - The moved code cannot have the undefined behaviour UBSan looks for. Its arithmetic is checked or explicitly wrapping, and its memory accesses go through checked primitives.
-  - The remaining risk is a bug in a primitive's lowering, which is 100 lines of `Gen.primitive`.
+  - The remaining risk is a bug in a primitive's lowering, which is about 75 lines of `Gen.primitive`.
 - **A compiler bug can now break the runtime.** Before, a code generation bug miscompiled programs; now it can also miscompile the runtime they link. Three things contain it:
   - the fixed point covers `runtime.py`'s IR;
   - `rtcheck` tests the same code without the compiler;
@@ -171,8 +171,8 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 
 - **One language for the semantics.** The moved functions now read like the CPython behaviour they implement. `pys_str_count` is a loop over `search()` instead of `memmem` pointer arithmetic.
 - **Differential testing in-process.** `rtcheck` is the RPython idea (§3): run the runtime on the host interpreter.
-  - It compares about 260,000 cases per second against CPython itself. The differential test suite compiles each program twice and runs it.
-  - In its first minute, its format fuzzer found that runtime.c reported `Cannot specify both ',' and '_'.` for `f"{x:,,}"` and `f"{x:__}"`. CPython reads `,` and then `_`, so a second `,` or `_` is taken as the presentation type: `Cannot specify ',' with ','.`
+  - It compares about 300,000 cases per second against CPython itself (261,538 in 0.85 s). The differential test suite compiles each program twice and runs it.
+  - On its first run, its format fuzzer found that runtime.c reported `Cannot specify both ',' and '_'.` for `f"{x:,,}"` and `f"{x:__}"`. CPython reads `,` and then `_`, so a second `,` or `_` is taken as the presentation type: `Cannot specify ',' with ','.`
   - The fix is three lines of `runtime.py`. `tests/rt_format_comma_twice.py` and `tests/rt_format_underscore_twice.py` were recorded from CPython; the compiler of `30b51d9` fails both.
 - **Another bug found during this evaluation**, outside the runtime: class ids in type descriptors are written with `{:03d}` and read as exactly three digits (`ocls` in runtime.c). With more than 1,000 classes in containers, `repr([C1000()])` calls `C100.__repr__`.
   - The repro is 1,002 classes, each put in a list and printed. It prints `[C100]` where CPython prints `[C1000]`.
@@ -206,11 +206,11 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 - A cold runtime build costs 0.28 s more: `runtime.py`'s IR, `llvm-link`, and one `opt -O2` over the linked module. A warm cache costs nothing: the JIT tier's startup is unchanged.
 - `runtime.bc` grows by 25% because it holds `runtime.py`'s code before `--only-needed` linking. The JIT tier's `runtime.o` grows by 4%, and an AOT executable does not grow.
 - The native compiler grows by 3%, which is its own new code (runtime mode, primitives, driver).
-- **New coupling.** The runtime now depends on the compiler that builds it. CPython's compiler, stage 1 and stage 2 must agree on `runtime.py`'s IR, and `make` checks that they do. The rule "a newer compiler rebuilds the cache" makes the first run after a rebuild of the compiler slower, about 1.5 s for clang and `opt`.
+- **New coupling.** The runtime now depends on the compiler that builds it. CPython's compiler, stage 1 and stage 2 must agree on `runtime.py`'s IR, and `make` checks that they do. The rule "a newer compiler rebuilds the cache" makes the first run after a rebuild of the compiler slower, by about 2 s for clang, `runtime.py` and `opt`.
 
 ### 2.4 Performance
 
-All timings: best of 5 to 7 runs, AOT (`pystachy build`) and JIT (`pystachy run`, compilation included). "C" is the compiler and runtime of `30b51d9`; "subset" is the prototype. Outputs are checked against CPython on every run.
+All timings: best of 5 to 11 runs, AOT (`pystachy build`) and JIT (`pystachy run`, compilation included). "C" is the compiler and runtime of `30b51d9`; "subset" is the prototype. Outputs are checked against CPython on every run.
 
 #### 2.4.1 Workloads
 
@@ -273,7 +273,7 @@ Without primitives, the subset can only read a byte as `ord(s[i])` and build a s
 | kernel | C | plain subset | with primitives |
 |---|---:|---:|---:|
 | `isascii` over 1 MB (ABI probe, AOT) | 5.6 ms | 48 ms (8.5×) | 5.5 ms with a byte read |
-| `upper` over 1 MB (ABI probe, AOT) | 15–18 ms | 285–388 ms (about 20×) | `upper()` above: 1.06× |
+| `upper` over 1 MB (ABI probe, AOT) | 15–18 ms | 285–388 ms (about 20×) | `upper()` above: 1.12× |
 | substring count, 1 MiB × 100 (codegen probe) | 0.295 s | 0.902 s (3.1×) | `count()` above: 1.09× |
 | binary insertion sort, 40,000 ints (codegen probe) | 0.179 s | 0.950 s (5.3×) | 0.180 s without list bounds checks |
 
@@ -285,10 +285,10 @@ Without primitives, the subset can only read a byte as `ord(s[i])` and build a s
 1. **`for i in range(...)` steps with `llvm.sadd.with.overflow`.** LLVM's scalar evolution cannot see through it, so it cannot prove `i >= 0`.
    - The effect: the unsigned bounds check in `byte(s, i)` stays, and the loop does not vectorize.
    - With a step of ±1 the increment cannot overflow, because `i < stop` (or `i > stop`), so `add nsw` is exact.
-   - Runtime mode emits `add nsw`. That made `pys_hash_str` the same machine code as runtime.c's, and took `bench/dictkeys.py` from 1.10 to 1.00.
+   - Runtime mode emits `add nsw`. That made `pys_hash_str`'s loop the same machine code as runtime.c's, and took `bench/dictkeys.py` from 1.10 to between 1.00 and 1.05 across runs.
    - In programs, the same change makes the compiler compile itself 5% faster (0.170 → 0.161 s) and leaves the benchmarks unchanged. All 1,009 tests pass and the fixed point holds.
    - It is not applied to programs here, because it changes every program's IR. It belongs to the typed IR's re-baseline (step 16).
-2. **TBAA.** Without alias information, LLVM reloads a str's length after every byte store into a new str. The primitives' tags (§1.2) let `upper()` vectorize: 1.63 → 1.06.
+2. **TBAA.** Without alias information, LLVM reloads a str's length after every byte store into a new str. The primitives' tags (§1.2), plus one loop per case mapping, let `upper()` vectorize: 1.63 → 1.12.
 
 #### 2.4.4 Build cost and size
 
@@ -305,7 +305,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
   - typed IR §7.1: `dict.find`, `entry_val`, `entry_set`.
 
   Today all of that would be C. Most of it is semantic code of the kind moved here: parsing, formatting, string algorithms, dispatch with CPython's error messages.
-- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 7,959 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
+- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 7,971 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
 - **The C core stays small and stable.** The collector, memory layouts and I/O changed least on the stack: 93% of the stack's runtime.c additions were new functions appended at the end of a section.
 
 ### 2.6 Extensibility
@@ -313,7 +313,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 - **Adding a builtin.** It takes a function in `runtime.py` and one line in `CALLS` or `METHODS`. Before, it took a function in runtime.c and that same line.
 - **Who can write it.** Contributors write Python, with the subset's checks. They can test it on CPython before compiling anything.
 - **Expressiveness.**
-  - Everything in §1.6's "moved" column was expressible with the 18 primitives.
+  - Everything in §1.6's "moved" column was expressible with the 16 primitives.
   - Code that needs raw memory (the collector, list and dict tables) or generic slots (the descriptor-driven `eq`/`repr`/sort) is not. That needs either templates (typed IR §7.3) or a pointer layer, which §5 argues against for now.
   - Classes are not allowed in `runtime.py` yet. A class kept in a container would need the program's `pys_obj_*` dispatch.
 - **Templates (#2)** already make generic functions possible, but their instance names are not stable, so a template cannot be a C export today.
@@ -348,7 +348,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
   1. **Exceptions (§7.2 there).** The error-flag design was chosen partly because "the C runtime calls user code back from timsort and from `pys_eq`/`pys_repr` … landing pads would have to unwind through those C frames". Callbacks from `runtime.py` code have no C frames. Once the generic helpers move, landing pads become an option again.
   2. **Generic helpers as templates.** `pys_eq`, `pys_repr`, `pys_list_find`, `minmax` and the sort interpret a type descriptor at run time and call back through `pys_obj_*`. As `runtime.py` templates, they would be instantiated per type:
      - the `U?` effect becomes exact;
-     - the descriptor-and-callback ABI (and the bug of §2.2) goes away;
+     - the descriptor-and-callback ABI (and the class-id bug of §2.2) goes away;
      - the Wasm backend gets them for free.
   3. **One layout definition.** The compiler and runtime.c both hard-code `Str`, `List` and `Dict` layouts today. Moving the accessors into `runtime.py` is a step toward a single definition.
 - **Sequencing.**
@@ -374,7 +374,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 | **Zig** | `compiler_rt` (23k lines plus 97k of tests, no C), libc functions moving into libzigc | about 2,000 bundled C files (Jan 2026) | `export`, weak/hidden symbols, `no_builtin`, `no_panic` | function by function, deleting each C copy | shipping the runtime as source, built lazily per target, is what makes cross-compiling work; the self-hosted compiler builds in a third of the memory | tests ported with each routine |
 | **LLVM libc** | libc in C++ (326k lines) | 48 files with inline asm | `LIBC_INLINE`, no dependency between public entry points | new code, used beside the system libc | correctly rounded math; GPU builds ship bitcode for LTO | MPFR, exhaustive single-precision tests, differential fuzzing against the system libc |
 | **Mojo** | the standard library (116k lines) | CompilerRT (1.2k lines of C++), AsyncRT (12k) | `__mlir_op` (256 uses), `__mlir_type`, `@always_inline("builtin")` | written in Mojo from the start | library-defined `Int.add` stopped compile-time folding until a "builtin" inlining was added | the stdlib's own tests |
-| **RPython / PyPy** | the GC (incminimark, 3.5k lines) and the interpreter, in a Python subset | — | `lltype`, `llmemory`, `llop` | — | — | **untranslated, on CPython**: the model for `rtcheck`; a full translation takes about 40 minutes |
+| **RPython / PyPy** | the GC (incminimark, 3.5k lines; 15.8k for the memory layer) and the interpreter, in a Python subset | 10.9k lines of C support (dtoa, threads, signals) | `lltype`, `llmemory`, `llarena`, `llop` | designed that way | a full translation takes 20 to 45 minutes and 4 to 6 GB | **untranslated, on CPython**: the model for `rtcheck` |
 | **Codon** (a Python-syntax LLVM compiler: the closest analog) | the standard library, `int`, `str`, `list` and `dict` included: 94k lines | 1.7k lines of C++ (allocation, print, locale, exceptions, regex) and the Boehm GC | `@llvm` functions with inline LLVM IR (758 of them), `Ptr[T]`, `@C` | written that way from the start | "rival C/C++ in performance" (CC'23); the library is tied to LLVM text | its own test suite |
 | **Jikes RVM / MMTk** | the whole JVM, GC included, in Java | a small boot loader | `org.vmmagic`: unboxed `Address`/`Word`, intrinsics, `@Uninterruptible` | — | MMTk in Java (2004): about 5% slower than monolithic collectors, 60% faster than glibc's malloc thanks to inlining. Its "fully-static dialect of Java" blocked reuse, and it was rewritten in Rust in 2016. | a harness that simulates memory as a hash table of pages |
 | **GraalVM Native Image** | the serial GC (25k lines of Java) | 3.9k lines of C helpers | `org.graalvm.word`, `@Uninterruptible` (711 uses in the GC) | — | "the object layout code used by the GC can immediately be used in other parts of the VM and the compiler" | runs hosted on HotSpot, with boxed words |
@@ -415,7 +415,7 @@ Sources and line counts: the research notes behind this table measured each repo
 |---|---|
 | a code generation bug miscompiles the runtime | fixed point over `runtime.py`'s IR; `rtcheck` runs the same code on CPython, without the compiler; differential tests |
 | a stale cached runtime after a compiler change | the cache is rebuilt when the running compiler is newer (§1.4) |
-| ABI mismatch between `runtime.py` and the program's declarations | no `bool` in exported or external signatures. A mismatch elsewhere would show in the tests, since every function is exercised. A check against the corpus's `declare` lines, like the typed IR's planned `check_runtime.py`, is the next step. |
+| ABI mismatch between `runtime.py` and the program's declarations | no `bool` in exported or external signatures; `make verify`'s `rt-abi` step (`tools/rtabi.py`) requires one LLVM signature per function across `runtime.py`, runtime.c and the 297 programs of the corpus (1,083 uses), and reports a planted mismatch |
 | self-recursion through a lowering | rejected at compile time (`Gen.rt`) |
 | `_rt` grows into a pointer layer | the rule in §1.2: `str` and `int` operands only, one Wasm GC counterpart each |
 | performance cliffs in subset code (bounds checks, `sadd.with.overflow`) | primitives, TBAA, nsw range steps; measure every move (§2.4) |
@@ -427,11 +427,11 @@ Sources and line counts: the research notes behind this table measured each repo
 **Recommendation:** merge the mechanism, and move code into `runtime.py` function by function. Write the roadmap's new runtime code there by default, and C only where §1.6 says C.
 
 1. **Now, with this prototype.**
-   - `runtime.py`, runtime mode, `_rt`, external declarations, the cache rule, the fixed point and `rtcheck`.
+   - `runtime.py`, runtime mode, `_rt`, external declarations, the cache rule, the fixed point, `rtcheck`, `rtabi` and `rtbench`.
    - The 52 functions moved here.
 2. **Next leaf moves, independent of the typed IR.**
    - `int()` and `float()` parsing. They need wrapping arithmetic; the digit tables would use a `str` as a table.
-   - str `repr`/`ascii` escaping, `pys_str_list`, `splitlines`'s friends, `expandtabs` (done).
+   - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which fixes §2.2's two decoder bugs; `pys_str_list`; `str(int)`.
    - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`, `dict.update`/`popitem`/`fromkeys` over the C dict API. Write them in `runtime.py` from the start.
 3. **Small language and compiler work that runtime code needs.**
    - Allow classes in runtime mode, as long as none ends up in a container.
@@ -467,7 +467,11 @@ Sources and line counts: the research notes behind this table measured each repo
 | `runtime.py` | new, 956 lines (724 of code) |
 | `runtime.c` | −328 lines of code. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`. |
 | `tools/rt_cpython/_rt.py`, `tools/rtcheck.py` | CPython's primitives and the differential fuzzer |
-| `Makefile`, `tests/verify.sh` | the runtime fixed point, the Python-free check, the rtcheck step, dictprobe's link |
+| `tools/rtabi.py` | the ABI check across `runtime.py`, runtime.c and the corpus |
+| `tools/rtbench.py`, `tools/rtbench/` | the microbenchmarks of §2.4.2, for any two compilers |
+| `Makefile`, `tests/verify.sh` | the runtime fixed point, the Python-free check, the `rtcheck` and `rt-abi` steps, dictprobe's link |
+| `tools/dictprobe.c` | its usage note: the build links `runtime.py`'s IR |
+| `README.md` | `runtime.py` in the file table, the pipeline, the bootstrap and the verification steps |
 | `tests/rt_format_*_twice.*` | the separator bug's regression tests |
 
 ## Appendix B: reproducing the measurements
