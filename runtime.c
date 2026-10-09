@@ -1818,10 +1818,13 @@ typedef struct {
 static File std_in, std_out, std_err;
 static File **files;                   /* the open files, malloc'd: the collector does not see them */
 static I cfiles;
-static const char *errcls(int e) {     /* CPython's OSError subclass for an errno */
+static const char *errcls(int e) {     /* CPython's OSError subclass for an errno (EWOULDBLOCK is EAGAIN) */
   return e == ENOENT ? "FileNotFoundError" : e == EEXIST ? "FileExistsError" : e == EISDIR ? "IsADirectoryError" :
     e == ENOTDIR ? "NotADirectoryError" : e == EACCES || e == EPERM ? "PermissionError" : e == EINTR ? "InterruptedError" :
-    e == EPIPE ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" : "OSError";
+    e == EPIPE || e == ESHUTDOWN ? "BrokenPipeError" : e == ECONNRESET ? "ConnectionResetError" :
+    e == ECONNABORTED ? "ConnectionAbortedError" : e == ECONNREFUSED ? "ConnectionRefusedError" : e == ECHILD ? "ChildProcessError" :
+    e == EAGAIN || e == EALREADY || e == EINPROGRESS ? "BlockingIOError" : e == ESRCH ? "ProcessLookupError" :
+    e == ETIMEDOUT ? "TimeoutError" : "OSError";
 }
 static _Noreturn void ioerr(int e) {   /* a failed write, flush or close raises, as in CPython */
   char b[160]; snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
