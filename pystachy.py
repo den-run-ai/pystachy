@@ -6288,11 +6288,42 @@ class Gen:
         # evaluated (from __future__ import annotations)
         if self.imported(s).startswith("typing."):
             return self.imported(s)[7:]
-        if s in TYPING and "__future__.annotations" in self.imports.values():
-            return s
+        if short(s) in TYPING and "__future__.annotations" in self.imports.values():
+            return short(s)  # (a module's name that only an if TYPE_CHECKING: block imports)
         if s in TYPING:
             self.err(f"name '{s}' is not defined (import it from typing)")
         return ""
+
+    def finals(self, body: list[Node], cls: bool) -> None:
+        # typing.Final says nothing at run time: x: Final[T] = v is x: T = v, x: Final = v is x = v
+        # (in a class body, a field typed by the constant v), and x: Final alone does nothing
+        for st in body:
+            self.line = st.line
+            a = st.kids[1] if st.kind == "annassign" else st
+            f = a.kids[0] if a.kind == "index" else a
+            if st.kind == "annassign" and ((f.kind == "name" and self.typing_name(f.s) == "Final") or (f.kind == "attr" and self.typing_attr(f) == "Final")):
+                v = st.kids[2] if len(st.kids) == 3 else st
+                if a.kind == "index":
+                    st.kids[1] = a.kids[1]
+                elif v is st:
+                    st.kind = "pass"
+                    st.kids = []
+                elif not cls:
+                    st.kind = "assign"
+                    st.kids = [st.kids[0], v]
+                elif v.kind == "int" or v.kind == "float" or v.kind == "str":
+                    st.kids[1] = mk("name", v.kind, v.line, [])
+                elif v.kind == "True" or v.kind == "False":
+                    st.kids[1] = mk("name", "bool", v.line, [])
+                else:
+                    self.err("a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]")
+            for k in st.kids:
+                if k.kind == "block":
+                    self.finals(k.kids, st.kind == "class")
+                elif k.kind == "except":
+                    self.finals(k.kids[1].kids, False)
+            if st.kind == "subclass":
+                self.finals([st.kids[0]], False)
 
     def opt(self, t: str) -> str:
         if t == "exc":
@@ -7961,6 +7992,8 @@ class Gen:
         for m in mods:
             self.scan_imports(m.body.kids)
             self.eh = self.eh or has_try(m.body.kids)
+        for m in mods:
+            self.finals(m.body.kids, False)
         for m in mods:
             for st in m.body.kids:
                 self.line = st.line

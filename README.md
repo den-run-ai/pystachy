@@ -104,6 +104,8 @@ constants), user classes, `Optional[C]` / `C | None` for class types, and `None`
 return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `TextIO`) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
+`typing.Final` adds nothing: `Final[T]` is `T`, and `x: Final = v` is `x = v` (a class-body
+field typed by its constant).
 
 **Typing rules.**
 - A function whose parameters are annotated has those types; a missing return annotation
