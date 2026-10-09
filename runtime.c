@@ -325,6 +325,8 @@ _Noreturn void pys_throw(Exc *e);
 Exc *pys_exc_new(Str *kind, Str *msg, Str *args);
 static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
+void pys_unwind_push(void (*fn)(void *), void *arg);
+void pys_unwind_pop(void);
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
   if (top || nunw) pys_throw(exc_line(m));
@@ -1164,17 +1166,24 @@ void pys_list_reverse(List *l) { rev(l->a, l->len); }
    comparisons as opv. As in CPython (ob_item NULL, allocated -1), the list looks empty while it is
    sorted, and growing it from __lt__ makes the sort fail afterwards. Items can exist only in the
    merge buffer when a comparison runs the collector: the buffer is scanned memory, and it and the
-   item array stay in volatile fields of the MergeState (MS) on the stack. Speed: the common item
-   types compare inline, and binary insertion and the one-at-a-time merging of ints and floats use
-   selects, as random data makes their branches unpredictable (merging strings or objects keeps
-   the branches, which let the CPU fetch their data early). */
+   item array stay in volatile fields of the MergeState (MS) on the stack. A comparison that
+   raises into a try leaves the list with all its items, in the order reached, as in CPython: an
+   unwind action (sort_undo) copies back the items that are only in the merge buffer, from where
+   the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
+   reversal and gives the list its array back. Speed: the common item types compare inline, and
+   binary insertion and the one-at-a-time merging of ints and floats use selects, as random data
+   makes their branches unpredictable (merging strings or objects keeps the branches, which let
+   the CPU fetch their data early). */
 #define MIN_GALLOP 7
 typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
 typedef struct {
   const char *d; int kind; I cls;                   /* element descriptor; its kind (below) and class id */
   I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
   I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
-} MS;
+  List *l; I cap; int rev, keep;                    /* for sort_undo: the list, its capacity, reverse=; */
+  I *volatile fd, *volatile fs; volatile I fn;      /* keep: KEEP notes fs[:fn], the items only in the */
+} MS;                                               /* buffer, and fd, where they go back */
+#define KEEP(dst, src, k) do { if (keep) { ms->fd = (dst); ms->fs = (src); ms->fn = (k); } } while (0)
 static I sorting[1];                                /* the items of a list while it is being sorted */
 enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
 static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
@@ -1229,7 +1238,9 @@ static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geo
   if (need > ms->nt) { ms->nt = need > 2 * ms->nt ? need : 2 * ms->nt; ms->t = pys_alloc(ms->nt * 8); }
   return ms->t;
 }
-static void merge_lo(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */
+/* na <= nb: a goes to the buffer, merge from the left. The merges are compiled twice: into
+   merge_at for keep 0, where KEEP makes no code (no cost without a try), and merge_keep */
+static inline __attribute__((always_inline)) void merge_lo(MS *ms, I *a, I na, I *b, I nb, int keep) {
   I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;
   *d++ = *pb++;
   if (--nb == 0) goto done;
@@ -1241,6 +1252,7 @@ static void merge_lo(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to 
       pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;
     } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */
     else for (;;) {                                 /* the others by branches */
+      KEEP(d, pa, na);
       if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }
       else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }
     }
@@ -1249,10 +1261,12 @@ static void merge_lo(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to 
     mg++;
     do {                                            /* galloping */
       mg -= mg > 1; ms->min_gallop = mg;
+      KEEP(d, pa, na);
       ac = k = gallop(ms, *pb, pa, na, 0, 1);
       if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }
       *d++ = *pb++;
       if (--nb == 0) goto done;
+      KEEP(d, pa, na);
       bc = k = gallop(ms, *pa, pb, nb, 0, 0);
       if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }
       *d++ = *pa++;
@@ -1266,7 +1280,8 @@ done:
 copyb:                                              /* the last of a goes after the rest of b */
   memmove(d, pb, nb * 8); d[nb] = *pa;
 }
-static void merge_hi(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */
+/* na > nb: b goes to the buffer, merge from the right */
+static inline __attribute__((always_inline)) void merge_hi(MS *ms, I *a, I na, I *b, I nb, int keep) {
   I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;
   *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */
   if (--na == 0) goto done;
@@ -1278,6 +1293,7 @@ static void merge_hi(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to t
       pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;
     } while (na && nb > 1 && ac < mg && bc < mg);
     else for (;;) {
+      KEEP(d - nb, t, nb);
       if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }
       else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }
     }
@@ -1286,10 +1302,12 @@ static void merge_hi(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to t
     mg++;
     do {
       mg -= mg > 1; ms->min_gallop = mg;
+      KEEP(d - nb, t, nb);
       ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);
       if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }
       *--d = *--pb;
       if (--nb == 1) goto copya;
+      KEEP(d - nb, t, nb);
       bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);
       if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }
       *--d = *--pa;
@@ -1303,6 +1321,9 @@ done:
 copya:                                              /* the first of b goes before the rest of a */
   d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];
 }
+static __attribute__((noinline)) void merge_keep(MS *ms, I *a, I na, I *b, I nb) {
+  if (na <= nb) merge_lo(ms, a, na, b, nb, 1); else merge_hi(ms, a, na, b, nb, 1);
+}
 static void merge_at(MS *ms, int i) {               /* merge pending runs i and i+1 */
   Run *p = ms->p;
   I *a = ms->a + p[i].s, na = p[i].n, *b = a + na, nb = p[i + 1].n, k;
@@ -1312,7 +1333,9 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
-  if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
+  if (ms->keep) merge_keep(ms, a, na, b, nb);
+  else if (na <= nb) merge_lo(ms, a, na, b, nb, 0); else merge_hi(ms, a, na, b, nb, 0);
+  ms->fn = 0;                                       /* every item is in the array again */
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
   if (!ms->np) return;
@@ -1326,10 +1349,18 @@ static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs
   while (ms->np > 1 && ms->p[ms->np - 2].power > power) merge_at(ms, ms->np - 2);
   ms->p[ms->np - 1].power = power;
 }
+static void sort_undo(void *p) {
+  MS *ms = p; I *a = ms->a, k = ms->fn;
+  if (k) memcpy(ms->fd, ms->fs, k * 8);
+  if (ms->rev) rev(a, ms->n);
+  ms->l->len = ms->n; ms->l->cap = ms->cap; ms->l->a = a;
+}
 void pys_list_sort_r(List *l, Str *d, I reverse) {
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
-           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP, .l = l, .cap = cap, .rev = reverse != 0};
+  ms.keep = top && n > 1 && (ms.kind == OBJ || !ms.kind);   /* a comparison may raise into a try */
+  if (ms.keep) pys_unwind_push(sort_undo, &ms);
   l->len = l->cap = 0; l->a = sorting;
   if (n > 1) {
     if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
@@ -1348,8 +1379,10 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     }
     if (reverse) rev(a, n);
   }
-  if (l->a != sorting) pys_fail("ValueError: list modified during sort");
+  if (ms.keep) pys_unwind_pop();
+  int bad = l->a != sorting;                        /* items added meanwhile are dropped, as in CPython */
   l->len = n; l->cap = cap; l->a = a;
+  if (bad) pys_fail("ValueError: list modified during sort");
 }
 void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
 I pys_list_minmax(List *l, Str *d, I max) {
@@ -2197,10 +2230,11 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    What a longjmp out of the runtime would leave half done is restored from the record (the
    I/O layer's busy count, which defers a Ctrl-C, and the stack of objects whose generated
    __repr__ runs, which nests) or undone by an unwind action: a with statement's file is
-   closed as its __exit__ would (a close that fails raises instead). The rest raises before
-   it changes anything (list and dict operations; open() closes the file it opened first),
-   builds new objects that become garbage (strings, containers, formatting) or never raises
-   (the collector and its closing of unreachable files). */
+   closed as its __exit__ would (a close that fails raises instead), and a list being sorted
+   gets its items back (list.sort). The rest raises before it changes anything (list and
+   dict operations; open() closes the file it opened first), builds new objects that become
+   garbage (strings, containers, formatting) or never raises (the collector and its closing
+   of unreachable files). */
 typedef struct ExcClass {
   Str *kind;                           /* unique name, which pys_exc_in matches */
   Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
