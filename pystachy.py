@@ -2961,6 +2961,18 @@ def accel_try(st: Node) -> bool:
     return True
 
 
+def catches_import(st: Node) -> bool:
+    # may an except clause of try statement st catch ImportError (a bare except, or one naming it,
+    # ModuleNotFoundError, Exception or BaseException)
+    for h in st.kids[1:]:
+        if h.kind == "except" and h.kids[0].kind == "omit":
+            return True
+        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else h.kids[:0]:
+            if t.kind == "name" and (t.s == "ImportError" or t.s == "ModuleNotFoundError" or t.s == "Exception" or t.s == "BaseException"):
+                return True
+    return False
+
+
 def is_main_guard(st: Node) -> bool:
     # if __name__ == "__main__":
     if st.kind != "if" or st.kids[0].kind != "cmp" or st.kids[0].s != "==":
@@ -3160,6 +3172,7 @@ class Loader:
         # <def line, or empty> <name>"), which the import may leave unbound (Node.mchk), each with the
         # module whose code then did not end; and the names imports outside try statements bind
         self.intry = 0
+        self.optry = False  # (in the body of one whose clauses may catch ImportError: not an optional import)
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
@@ -3294,7 +3307,9 @@ class Loader:
                 return self.mods[name]  # the package's own code imported it
         p = self.modpath(name)
         if p == "":
-            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {name[dot + 1 :]}.py on the module path", line)
+            # (an optional import other than try: <imports> / except ImportError:, which optional() decides)
+            hint = "; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)" if self.optry else ""
+            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
         if p.endswith("/__init__.py"):
             return self.load(name, p, p[:-12])
         if p.endswith(".py"):
@@ -3964,13 +3979,16 @@ class Loader:
                 elif not infn and (st.kind == "for" or st.kind == "while"):
                     binds([st], self.maybe, True, m.name if m.pdir != "" else "")  # (an earlier pass of the loop may have run its body)
                 intry = self.intry
+                optry = self.optry
                 self.intry = 0 if st.kind == "def" else intry + 1 if st.kind == "try" else intry
                 for kid in st.kids:
+                    self.optry = optry and st.kind != "def" or (st.kind == "try" and kid is st.kids[0] and catches_import(st))
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
                     elif kid.kind == "except":
                         self.imports(m, kid.kids[1], infn)
                 self.intry = intry
+                self.optry = optry
                 self.curdef = saved
             if not infn:
                 # (the statements in st's blocks took theirs above, but as they were before their
