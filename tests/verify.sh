@@ -14,6 +14,12 @@
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
+#                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
+#   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
+#                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
+#                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
+#                  scan, grow no faster than the programs
 # usage: tests/verify.sh   (make verify)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
@@ -162,6 +168,16 @@ for b in bench/*.py; do
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
+
+# ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
+L=$V/dict-probes.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 tools/dictprobe.c -o "$V/dictprobe" -lm && "$V/dictprobe" && r=pass; } > "$L" 2>&1
+step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
+
+# ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
+L=$V/scaling.log; s=$(now); r=fail
+$PY tools/scaling.py --check --ops -n 500,1000 -r 1 -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step scaling $r "$s" "$L" ', "sizes": [500, 1000]'
 
 # ---- report
 ver() { "$@" 2>&1 | head -1; }

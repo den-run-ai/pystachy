@@ -1451,23 +1451,40 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
    deleted). The sizes are CPython 3.13's, because they decide what a loop that changes its
    dict sees: size is a power of two >= 8 (0 before the first insertion and after clear()),
    at most size*2/3 entries are used, and inserting into a full table rebuilds it without
-   holes at the size for len*3. */
+   holes at the size for len*3. An int key's hash is one round of SplitMix64's mixer: the
+   first shift folds the key's high bits into its low ones, the multiply spreads them up and
+   the last shift brings the product's high bits down, so keys that differ only in their high
+   bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A lookup
+   in a table that fits in the cache takes a few ns, so each costs only one multiply (per
+   byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
+   each step mixes five more of its bits in (perturb), so keys whose hashes share their low
+   bits part after a few steps instead of piling up in one cluster. Unlike a linear probe's,
+   its second slot is in another cache line, which tables larger than the cache pay for.
+   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE). */
+#ifndef DICT_PROBE
+#define DICT_PROBE()
+#endif
 static uint64_t hsh(Dict *d, I k) {
-  uint64_t h;
+  uint64_t h = (uint64_t)k;
   if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
-  } else h = (uint64_t)k * 0x9E3779B97F4A7C15ULL;
-  h ^= h >> 29;
+    h ^= h >> 29;
+  } else {
+    h = (h ^ h >> 30) * 0xBF58476D1CE4E5B9ULL;
+    h ^= h >> 31;
+  }
   return h ? h : 1;                                  /* 0 marks a hole */
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *free: where to insert k */
-  I m = d->size * 2 - 1, f = -1;
+  I f = -1;
   if (!d->size) return -1;
-  for (I i = h & m;; i = (i + 1) & m) {
+  for (uint64_t m = d->size * 2 - 1, i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
     int32_t e = d->idx[i];
-    if (!e) { if (free) *free = f < 0 ? i : f; return -1; }
+    if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
     else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)))) return i;
   }
@@ -1476,10 +1493,11 @@ static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a ta
   I u = size * 2 / 3, *k = pys_alloc(u * 8), *v = pys_alloc(u * 8), n = 0, m = size * 2 - 1;
   uint64_t *hs = pys_alloc_atomic(u * 8); int32_t *ix = pys_alloc_atomic(size * 8);
   for (I e = 0; e < src->n; e++) {
-    if (!src->hs[e]) continue;
-    I i = src->hs[e] & m;
-    while (ix[i]) i = (i + 1) & m;
-    k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = src->hs[e]; ix[i] = (int32_t)++n;
+    uint64_t h = src->hs[e], i = h & m, p = h;
+    if (!h) continue;
+    DICT_PROBE();
+    while (ix[i]) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
+    k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = h; ix[i] = (int32_t)++n;
   }
   d->len = n; d->n = n; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix;
 }

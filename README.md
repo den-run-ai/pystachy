@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 138k-line
+and it can compile itself. The native compiler it produces reproduces its own 140k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -13,7 +13,7 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (137941 lines of IR)
+fixed point: stage1 == stage2 == stage3 (140206 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -32,10 +32,10 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 10,822 | lexer 611 · parser 1,672 · scopes (CPython's symbol-table errors) 639 · module loader 1,880 · types, tables and the definite-assignment pass 833 · type checker + IR generator 5,000 · driver 132 |
-| `runtime.c` | 2,657 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `pystachy.py` | 11,118 | lexer 611 · parser 1,690 · scopes (CPython's symbol-table errors) 685 · module loader 1,886 · types, tables and the definite-assignment pass 963 · type checker + IR generator 5,096 · driver 132 |
+| `runtime.c` | 2,675 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 287 programs, 411 rejection cases, 9 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 295 programs, 421 rejection cases, 11 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -317,7 +317,9 @@ of a parameter or without a binding; `yield` and `:=` in comprehensions, and a l
 function); and its compiler (`break`, `continue`, `return`, `yield`, `await` and `async` out
 of place; a bare `except:` that is not last; starred targets and more than 255 targets
 before one; `__debug__`; a late `from __future__` import; more than 21 statically nested
-blocks, counted as CPython's compiler counts them, at the line where it first finds them). When a file has several errors, Pystachy reports the one CPython
+blocks, counted as CPython's compiler counts them, at the line where it first finds them),
+also in a type parameter's bound or default and a `type` statement's value, which it compiles
+though they are evaluated lazily. When a file has several errors, Pystachy reports the one CPython
 reports: the parser's first, a tokenizer error only where the parser reaches it, then the
 symbol table's, then the compiler's. Where CPython's parser has a specific message for some
 malformed code (the statement an indented block is missing after, parenthesized
@@ -530,15 +532,21 @@ rebound the name by then; `raise` of anything but a builtin exception.
   the function it calls loads that function's non-constant default values from the global
   the statement fills when it runs, so they are still evaluated once.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
-  of variables assigned on every path (merging `if` branches, leaving `while True` only
-  through its breaks). Reads it cannot prove are marked, and only those test an "is
+  of variables assigned on every path (merging `if` branches, and a loop's `else` block with
+  the state before the loop, leaving `while True` only through what its breaks have in
+  common). Reads it cannot prove are marked, and only those test an "is
   assigned" flag that LLVM removes again where it can; fields that `__init__` may leave
   unassigned get a hidden flag in the object. Globals read in functions are safe when
   module code assigned them before its first call into user code, and calls to a
   function before its `def` has run raise `NameError`. The compiler itself needs none of
-  these checks. The same pass marks what an imported module's `def` and `class` statements
-  read in code that Pystachy leaves uncompiled, and those reads are checked where the
-  statement runs.
+  these checks. The pass costs what the code contains: a function is analysed over the names
+  its body mentions, not over every global of its module; a branch is undone from a log of
+  the changes it made rather than by copying the set, and an `if` leaves in that log only the
+  names whose state it changed, so the `if`s around it (an `elif` chain) do not look at the
+  rest again. Whether an import may run the importing module again (a circular import) is
+  read from the strongly connected components of the import graph. The same pass
+  marks what an imported module's `def` and `class` statements read in code that Pystachy
+  leaves uncompiled, and those reads are checked where the statement runs.
 - **Checked arithmetic, cheap errors.** `+`, `-` and `*` use LLVM's `*.with.overflow`
   intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
   one cold block per function and message. `self` is marked `nonnull`, so the `None`
@@ -584,7 +592,12 @@ rebound the name by then; `raise` of anything but a builtin exception.
   Dicts use CPython 3.13's compact layout (deleted entries stay as holes until
   the table is rebuilt, with its sizes and growth, and `dict(d)` merges as CPython's does),
   so deletion is O(1) and a loop that changes its dict, `reversed(d)` included, sees what
-  CPython's would. Files wrap C stdio with CPython's open() rules: argument checks in its
+  CPython's would. The index follows CPython's probe sequence (each step mixes in five more
+  bits of the hash), over a hash that costs one multiply: one round of SplitMix64's mixer
+  for an int, FNV-1a with the high half folded into the low for a str. Keys that differ only
+  in their high bits (`i << 46`, which used to form one cluster) probe as random keys do; the
+  price is about 2 ns per lookup in tables larger than the cache, whose second slot is in
+  another cache line. Files wrap C stdio with CPython's open() rules: argument checks in its
   order, errno-based `OSError` subclasses, newline translation, `"+"` mode positioning
   (including its 8 KiB read-ahead), and closed/readable/writable checks. Writes reach the
   OS when CPython's do: 8 KiB of pending text in front of a `st_blksize` buffer, line
@@ -626,7 +639,7 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
 in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
-dicts, tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
+dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
 loader decides at import time (`tests/loader/`), a program run through a symbolic link
 (`tests/linked/`), CPython's syntax errors and its compiler's block, parser-stack and marshal limits, templates, empty containers typed by their first
@@ -634,7 +647,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1141 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1175 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -651,7 +664,16 @@ versions, platform, git commit and a timestamp:
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
-- **benchmarks** — output equal to CPython's, with timings.
+- **benchmarks** — output equal to CPython's, with timings;
+- **dict-probes** — `tools/dictprobe.c` counts the table slots that dict insertions and
+  lookups visit for twelve key patterns that defeat a weak hash or probe sequence (`i << 46`,
+  spaced ints, str keys sharing a long prefix or suffix, ...) and every shift `i << s`, with
+  sequential keys as the control, at 4k to 30k keys, and fails above 3 slots per lookup: the
+  counts are the same on every machine, so no timing is compared with a threshold;
+- **scaling** — `tools/scaling.py --check` compiles generated programs of 500 and 1,000
+  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
+  comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
+  items its builtin calls copy or scan, must grow no faster than the programs.
 
 `tools/syntax_sweep.py` compares the syntax errors `pystachy check` reports with CPython's
 `compile()`: over CPython 3.13's standard library and the installed packages (5,701 files)
@@ -684,8 +706,14 @@ million short-lived strings (`str(i)` in a loop) peak at 35 MiB instead of 155 M
 Ouro v1's bump allocator, and building and discarding fifty 2M-element lists at 50 MiB
 instead of 1.5 GiB, while running faster (0.47 s instead of 0.52 s, and 0.30 s instead of
 2.0 s). Sorting is CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the
-earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, against
-0.55 s when CPython runs it; a full AOT build of itself, with clang -O2, takes about 9 s.
+earlier merge sort. The native compiler translates its own 11,000 lines to LLVM IR in about 0.2 s of CPU
+time, against 1.4 s when CPython runs it, and a full AOT build of itself, with clang -O2,
+takes about 12 s of CPU; CPython's syntax checks and the definition-time checks of imported
+modules cost about a quarter more time per source line than the compiler of 7,000 lines
+did (0.09 s and 7.5 s). Compile time grows linearly with the program: `tools/scaling.py`
+generates programs that grow in one dimension at a time (functions, globals, classes,
+modules, fields, call and import chains, `elif` chains, comprehensions), and `make verify`
+fails if what the CPython-hosted compiler executes grows faster than the program.
 
 ## Next steps
 

@@ -22,11 +22,18 @@ test-py:
 bench: pystachy
 	PY="$(PY)" bench/run.sh
 
-# Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks) -> build/verification.json
+# Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
+# counts, so the run fails above a fixed limit; the timings it prints are for information only
+dictprobe: tools/dictprobe.c runtime.c
+	mkdir -p build
+	$(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)clang -O2 tools/dictprobe.c -o build/dictprobe -lm
+	build/dictprobe
+
+# Full verification (bootstrap, both compilers, Python-free stage, UBSan, benchmarks, dict probes, scaling) -> build/verification.json
 verify:
 	PY="$(PY)" tests/verify.sh
 
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py bench verify clean
+.PHONY: test test-py bench dictprobe verify clean
