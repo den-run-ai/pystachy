@@ -1,5 +1,7 @@
 helper loaded
 broken2 loaded
 fallback 2
+broken loaded
 fallback 3
+broken loaded
 [exit 1]

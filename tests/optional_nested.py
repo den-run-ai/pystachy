@@ -1,6 +1,6 @@
 # A module whose own optional import comes before its top-level raise of ImportError, or whose
-# handler raises ImportError (a module that requires a missing one): an optional import of it runs
-# the handler, and an import that is not optional ends the program with its exception.
+# handler raises ImportError (a module that requires one that fails): an optional import of it
+# runs the handler, and an import that is not optional ends the program with its exception.
 try:
     import loader.broken2
 except ImportError:
