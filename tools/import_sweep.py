@@ -3,7 +3,7 @@
 usage: python3 tools/import_sweep.py [COMPILER] [LIBDIR] [OUT.json]
        (defaults: ./pystachy, the running CPython's stdlib directory, build/import-sweep.json)
 Each module is compiled (pystachy ir) in a program of its own, with LIBDIR on PYSTACHY_PATH; the
-JSON maps each module to "OK" or the compiler's error, and a summary groups the errors.
+JSON maps each module to "OK", the compiler's error or a timeout, and a summary groups the errors.
 """
 import collections
 import json
@@ -13,6 +13,7 @@ import sys
 import sysconfig
 import tempfile
 
+TIMEOUT = 120  # seconds per module
 SKIP = ("test", "tests", "idlelib", "tkinter", "turtledemo", "site-packages", "dist-packages", "lib2to3", "ensurepip", "venv", "__pycache__")
 
 
@@ -43,7 +44,12 @@ def main():
         for m in modules(lib):
             with open(prog, "w") as f:
                 f.write(f"import {m}\n")
-            p = subprocess.run([pys, "ir", prog, "-o", os.devnull], capture_output=True, text=True, env=env, timeout=120)
+            try:
+                p = subprocess.run([pys, "ir", prog, "-o", os.devnull], capture_output=True, text=True, env=env,
+                                   timeout=TIMEOUT)
+            except subprocess.TimeoutExpired:
+                res[m] = f"timeout: no result after {TIMEOUT} s"
+                continue
             err = p.stderr.strip().splitlines()
             res[m] = "OK" if p.returncode == 0 else (err[-1].replace(d + "/", "") if err else f"exit {p.returncode}")
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
@@ -55,6 +61,8 @@ def main():
     for m, v in res.items():
         if v != "OK":
             msg = v.split("error: ", 1)[-1]
+            if msg.startswith("timeout: "):
+                msg = "timeout"
             if "is not supported: it is not a builtin module" in msg:
                 msg = "imports the missing module " + msg.split("'")[1]
             why[msg[:100]] += 1

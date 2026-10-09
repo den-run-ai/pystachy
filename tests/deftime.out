@@ -1,0 +1,8 @@
+main: start
+note: counted
+note: later
+note: raw
+defmods.unused: loaded 3
+3 7 42 x
+rebound later
+[exit 0]
