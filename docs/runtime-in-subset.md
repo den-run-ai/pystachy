@@ -88,7 +88,11 @@ runtime.c keeps a prototype of every moved function, so its own code can still c
 - `udiv` and `urem` check for zero.
 - The other arithmetic primitives are defined for every input.
 - `null` and `str_done` check nothing.
-- Nothing checks that `str_put` and `copy` write only into a str that `str_new` made. That is the one rule a caller must keep.
+- Two rules are the caller's to keep, and nothing checks them:
+  - `str_put` and `copy` write only into a str that `str_new` made, before `str_done`;
+  - a `str` parameter that a caller may omit (`strip`'s characters, `split`'s separator, a fill) is the null pointer then, and is tested with `null` before anything reads it. `len()` or a primitive would load through it and crash.
+
+  A `buf` type and a nullable `str` would make both compile-time checks (§5).
 
 | primitive | meaning | LLVM | Wasm GC (§2.7) |
 |---|---|---|---|
@@ -106,7 +110,7 @@ runtime.c keeps a prototype of every moved function, so its own code can still c
 | `udiv(a, b)`, `urem(a, b)` | unsigned division of 64-bit patterns | `udiv`/`urem` | `i64.div_u`/`rem_u` |
 | `mul_ovf(a, b)` | whether `a * b` overflows | `smul.with.overflow` | a 128-bit check |
 
-`memchr`, `memcmp`, `memmem`, `llvm.memmove` and `pys_alloc_atomic` are called through `rt` ops, with `RUNTIME` entries, as every call the compiler makes is: the typed IR's check rejects a call written as raw LLVM text. The rest of each primitive is raw ops: loads, stores, compares and pointer arithmetic on the str it was given.
+`memchr`, `memcmp`, `memmem`, `llvm.memmove` and `pys_alloc_atomic` are called through `rt` ops, with `RUNTIME` entries, as every call of a runtime function is: the typed IR's check rejects a call written as raw LLVM text. The rest of each primitive is raw ops: loads, stores, compares and pointer arithmetic on the str it was given.
 
 The string length loads and byte accesses that the primitives emit carry TBAA tags: a str's length and its bytes never alias. That lets LLVM keep the lengths in registers in a loop that builds a str, and vectorize it (§2.4.3).
 
@@ -114,7 +118,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 
 ### 1.3 Calling C
 
-`def pys_fmt_float(m: float, ty: int, prec: int, alt: int) -> str: ...` declares runtime.c's function. That is how the format code gets a float's digits, which runtime.c writes with `snprintf`, as before. The form names only runtime.c's functions (`pys_*`), and `rtabi` checks that runtime.c defines each one, with the same types. Such a call is a `call` op, whose effects count as every letter (§2.8); a function that `RUNTIME` also names is checked against its entry and declared from it. A `str` crosses as runtime.c's `Str *`, never as a `char *`, so libc is reached through runtime.c.
+`def pys_fmt_float(m: float, ty: int, prec: int, alt: int) -> str: ...` declares runtime.c's function. That is how the format code gets a float's digits, which runtime.c writes with `snprintf`, as before. The form names only runtime.c's functions (`pys_*`), and `rtabi` checks that runtime.c defines each one, with the same types. Such a call is a `call` op, whose effects count as every letter but N (the summary of a callee that is not compiled); a function that `RUNTIME` also names is checked against its entry and declared from it. A `str` crosses as runtime.c's `Str *`, never as a `char *`, so libc is reached through runtime.c.
 
 ### 1.4 Building, caching and the bootstrap
 
@@ -124,7 +128,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
   - it links the two with `llvm-link` and optimizes the result once with `opt -O2`. LLVM then inlines runtime.c's helpers into `runtime.py`'s code, and the reverse: `hsh()` gets `pys_hash_int` inlined.
   - Each step is a separate command whose status counts. A pipe would let a failed `llvm-link` leave an empty module in the cache.
 
-  `runtime.o`, the JIT tier's precompiled runtime, is built from that bitcode, so the JIT tier gets the cross-language inlining too. The name says `runtime-py`: a compiler from before `runtime.py`, run with the same home, keeps its runtime.c-only cache apart. The driver stops at once when `runtime.py` is missing.
+  `build/runtime-py.o`, the JIT tier's precompiled runtime, is built from that bitcode, so the JIT tier gets the cross-language inlining too. The name says `runtime-py`: a compiler from before `runtime.py`, run with the same home, keeps its runtime.c-only cache apart. The driver stops at once when `runtime.py` is missing.
 - **When the cache is rebuilt.** The cache is rebuilt when `runtime.c`, `runtime.py` or the running compiler is newer than it.
   - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython. The claims audit of this document found the `PATH` case missing; it is fixed.
   - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
@@ -420,21 +424,29 @@ See §2.3: a cold runtime build takes 0.18 s more, and AOT executables grow only
 
 ### 2.8 The typed IR
 
-The prototype was written against `30b51d9`, before the IR existed, and has since been merged with `claude/typed-ir` (`39d8471`, #22: steps 4 to 8). That merge is the test of the predictions this section made.
+The prototype was written against `30b51d9`, before the IR existed, and has since been merged with `claude/typed-ir` (`39d8471`, #22: steps 4 to 8; then `cc472e4`). That merge is the test of the predictions this section made. An adversarial review of the merge (four reviewers, each finding checked by a skeptic) found the gaps fixed below.
 
 - **No interference with the migration.** The migration checks every step with `tools/irsame.sh`, which compares programs' IR byte for byte.
-  - `irsame` never sees the runtime, and the prototype changes no program's IR: on `30b51d9`, all 629 programs were identical; on the typed IR, `make irsame REF=39d8471` reports all 759 identical.
+  - The prototype changes no program's IR: on `30b51d9`, all 629 programs were identical; on the typed IR, `make irsame REF=cc472e4` reports all 761 identical.
   - Runtime-mode code paths (`rtmode`, `primitive`, `extern`, the nsw increment) run only for `runtime.py`. Its IR came out of the merge with the same 8,803 lines; only one `declare` moved.
+  - But every executable holds code that `Gen` generates from `runtime.py`, and `irsame` did not compile it, so a step of the IR that changed it would have passed as identical. When both compilers have runtime mode, `irsame` now compiles `runtime.py` and `tests/errors/rtmode_*.py` with `rt`.
 - **The merge.** The predicted conflicts were the real ones: `Gen.rt`, the end of `Gen.function` and `Gen.program`, four hunks in all. They resolved as follows:
-  - **Calls.** `Gen.rt` is the typed IR's: every call of a runtime function is an `rt` op checked against its `RUNTIME` entry. A function that `runtime.py` defines is bound to its key the same way: the `rt` op calls it, the header leaves out its `declare`, and `Gen.function` checks that the definition has the entry's types. This replaces the prototype's call-site check, and also covers the functions that `runtime.py` itself never calls (`rtmode_call_signature`).
+  - **Calls.** `Gen.rt` is the typed IR's: every call of a runtime function is an `rt` op checked against its `RUNTIME` entry. A function that `runtime.py` defines is bound to its key the same way: the `rt` op calls it, the header leaves out its `declare`, and `Gen.function` checks that the definition has the entry's types. This replaces the prototype's call-site check, and also covers the functions that `runtime.py` itself never calls (`rtmode_call_signature`). The review found that LLVM types alone let a `partition` returning `tuple[str, str]` through, which crashes programs; the subset types are compared too (`rt_subset`, `rtmode_subset_signature`).
   - **The primitives.** `memchr`, `memcmp`, `memmem`, `llvm.memmove` and `pys_alloc_atomic` got `RUNTIME` entries. The IR check rejects a call written as raw LLVM text, and every primitive used to emit one.
   - **Externs.** They are `call` ops, which the IR check accepts for functions that `runtime.py` declares. One that `RUNTIME` names is declared once, from the entry (`rtmode_extern_signature`).
   - **Lowering.** `lower()` defines an exported function without `internal`, and the ABI checks moved to the end of `Gen.function`. The rest (TBAA, the nsw step, no `@main`) merged as it was.
 - **`RUNTIME` and `check_runtime.py`.** Step 4's table now binds a key either to a C symbol or to a `runtime.py` function, as this section asked. `tools/check_runtime.py` (`make check-runtime`, the `runtime-table` step of `make verify`) checks both kinds:
   - **Signatures.** It compiles `runtime.py` in its own process and checks each definition against the entry. runtime.c's prototype is checked too, where runtime.c calls the function.
-  - **Effects.** They are derived from the ops of `runtime.py`'s functions: R from `raise` statements and from calls that may raise, A, U and I from the calls. The subset's implicit checks do not count as R: overflow, indexes and a zero divisor, compiled as check ops or as calls like `pys_str_get`. They are the subset's version of runtime.c's unchecked arithmetic, and fire only on a bug of `runtime.py`.
-  - **A finding.** The check found that `str.expandtabs` lacked R. `runtime.py` raises CPython's `OverflowError` for a tab size beyond a C int (§2.1). The entry is fixed.
-  - **Recursion.** It joins `runtime.py`'s call graph to runtime.c's, and rejects a function of `runtime.py` that reaches itself through runtime.c. This closes the first gap of §2.10. A planted `f"{s:>{n}}"` inside `pys_format_str` is reported as `pys_format_str -> pys_format -> pys_format_str`. The check is conservative: a recursion through runtime.c that does end is reported too. None exists today; one that is meant (a `repr` of nested lists, once it moves) would need a base case the check cannot see, and an exception list.
+  - **Effects.** A, U and I are derived from the ops of `runtime.py`'s functions, through the runtime functions they call (their entries, or runtime.c's call graph for an extern). R is derived from the runtime the driver builds: `runtime.py` linked with runtime.c and optimized with `opt -O2`. A function has R if it reaches a raise there that `opt` could not remove, but for two kinds:
+    - the subset's index, divisor, shift and conversion checks, which fire only on a bug of `runtime.py`, where runtime.c's unchecked indexing would misbehave;
+    - a `MemoryError`, which is A.
+
+    An overflow check counts. The first version of the check left out all implicit checks, and the review showed an overflow firing on valid input: `s.replace("", s)` for a 3 GB `s`, where CPython raises `OverflowError` too. runtime.c's functions get the letters of the `runtime.py` functions they call (`hsh()` calls `pys_hash_str`).
+  - **Findings.** The check found that `str.expandtabs` lacked R: `runtime.py` raises CPython's `OverflowError` for a tab size beyond a C int (§2.1). Nine more entries got R from the second version. `str.join` and `str.replace` raise `OverflowError` for a result too long, as CPython does. `find`, `rfind`, `count`, `in`, `startswith`, `endswith` and `splitlines` keep overflow checks that `opt` cannot prove dead: sums like `i + 16` near the length limit. A `!range` of 0 to 2**63 − 10 on runtime mode's length loads (`_rt.str_new`'s limit) let `opt` remove 24 other overflow checks and 6 raise paths, and vectorize 6 more loops.
+  - **Recursion.** It joins `runtime.py`'s call graph to runtime.c's, and rejects a function of `runtime.py` that reaches itself through an operation's lowering (an `rt` op) or through runtime.c. Recursion by name stays allowed. This closes the first gap of §2.10.
+    - A planted `f"{s:>{n}}"` inside `pys_format_str` is reported as `pys_format_str -> pys_format -> pys_format_str`.
+    - The first version saw only cycles through runtime.c. The review showed two that hung and passed: a helper calling `math.gcd` inside `pys_m_gcd`, and `gcd` and `lcm` using each other. Both are now reported, as `pys_m_gcd -> f.gcd_helper -> rt:pys_m_gcd -> pys_m_gcd`.
+    - The check is conservative. A recursion through runtime.c that does end is reported too, and so is one through a path that a descriptor never takes: a `str ==` in `pys_hash_str` reaches `pys_eq`, whose dict case hashes. None exists today. One that is meant (a `repr` of nested lists, once it moves) would need an exception list.
   - `check-ir` now also compiles `runtime.py` in runtime mode, with the IR check on.
 - **What to keep frozen.** The runtime ABI, as `docs/typed-ir.md` §2 asks. A `RUNTIME` entry whose function moves to `runtime.py` keeps its key and its types; only its effects are rechecked.
 - **Synergies, in order of value.**

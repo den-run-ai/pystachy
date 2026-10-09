@@ -346,8 +346,10 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
   three-byte form and printed or written as it is, where CPython raises
   `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's. A format width or
-  precision above 10**8 raises `ValueError: Too many decimal digits in format string`, which
-  CPython raises only above 2**63 - 1.
+  precision above 10**8, in a format spec or a `%` format, raises `ValueError: Too many decimal
+  digits in format string`. CPython accepts it up to 2**63 - 1 (2**31 - 1 for a float's
+  precision, above which it raises `precision too big`), and its `%` formats report `width too
+  big` or `precision too big`.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).
@@ -488,12 +490,12 @@ rebound the name by then; `raise` of anything but a builtin exception.
                                Gen: type check + emit LLVM IR (one pass), text only
                                             │
   runtime.c ──clang──┐
-  runtime.py ─Gen────┴─llvm-link, opt -O2──► runtime.bc │ runtime.o
+  runtime.py ─Gen────┴─llvm-link, opt -O2──► runtime-py.bc │ runtime-py.o
                         ┌───────────────────┴──────────────────────┐
   pystachy build (AOT)  ▼                                          ▼  pystachy run (JIT)
-  llvm-link program + runtime.bc                 opt mem2reg,instcombine,simplifycfg
+  llvm-link program + runtime-py.bc              opt mem2reg,instcombine,simplifycfg
   clang -O2 on the whole module                  lli: ORC JIT of the program, linked
-  native executable                              with the precompiled runtime.o
+  native executable                              with the precompiled runtime-py.o
 ```
 
 - **Modules by renaming.** The loader parses each imported module once, decides what CPython
@@ -616,7 +618,7 @@ rebound the name by then; `raise` of anything but a builtin exception.
   bitcode and optimized together with it, so `xs[i]` inlines to a bounds check and a
   load. clang tags the runtime with `target-cpu`/`target-features`, which makes LLVM
   refuse to inline it into attribute-less generated code; the driver strips those
-  attributes when building `runtime.bc`.
+  attributes when building `build/runtime-py.bc`.
 - **A runtime partly written in the subset.** `runtime.py` holds runtime functions written in
   the subset itself. `pystachy rt runtime.py` compiles it in a runtime mode: its `pys_*`
   functions keep runtime.c's C names and types, `def f(...) -> T: ...` declares a C function,
@@ -627,7 +629,7 @@ rebound the name by then; `raise` of anything but a builtin exception.
   change. `tools/rtcheck.py` runs `runtime.py` on CPython against CPython's own str methods,
   `math` and `format()`. `docs/runtime-in-subset.md` evaluates the approach.
 - **Two tiers.** `run` favors latency: a three-pass pipeline over the program alone, then
-  ORC JIT compilation linked against a cached, precompiled `runtime.o`. `build` favors
+  ORC JIT compilation linked against a cached, precompiled `build/runtime-py.o`. `build` favors
   throughput: the full `-O2` pipeline over program and runtime together. The driver
   works in a private `tempfile.mkdtemp()` directory; `PYSTACHY_CFLAGS` adds clang flags
   (such as sanitizers) to the runtime and the AOT build, with a runtime cache per flag set.
@@ -684,13 +686,19 @@ versions, platform, git commit and a timestamp:
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
 - **check-ir** — every program of the corpus below compiles, and the compiler's IR check
-  (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept its IR;
+  (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept its IR, and `runtime.py`'s, compiled as the
+  runtime is (`pystachy rt`);
 - **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
   `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
   entry's declaration has the types clang compiles the function to, every runtime function
   the compiler names has an entry, and an entry's effect letters are known ones and include
   what the function's C call graph shows (it may raise, allocate, call user code, read the
-  lists and dicts of a value it walks by its descriptor, or never return);
+  lists and dicts of a value it walks by its descriptor, or never return). A function that
+  `runtime.py` defines is checked from the IR the compiler builds for it: its definition's
+  types, and the effects its code shows (R where a raise survives `opt -O2` in the linked
+  runtime, but for the subset's index and divisor checks); and no function of `runtime.py`
+  may reach itself through an operation's lowering or through runtime.c, a recursion that
+  nothing in its source would show;
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
@@ -714,10 +722,12 @@ versions, platform, git commit and a timestamp:
 `tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both
 compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviations/*.py`,
 `bench/*.py` and `tests/ir/*.py`) and must emit the same IR byte for byte, and for each
-`tests/errors/*.py` the same messages and exit status. `make irsame REF=<commit>` (default
+`tests/errors/*.py` the same messages and exit status; when both have runtime mode, they
+compile `runtime.py` and `tests/errors/rtmode_*.py` with `rt`, as the driver does, since every
+executable holds `runtime.py`'s code. `make irsame REF=<commit>` (default
 `HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
 `./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
-every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; a program
+every program of the corpus, and `runtime.py`, with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; a program
 that does not compile fails it, as an internal error and a rejected IR do, and so do effect
 summaries of a `tests/ir/NAME.py` other than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1`
 prints them). `tests/ir/*.py` probe code-generation paths the other programs never take (dead
