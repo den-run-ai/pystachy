@@ -141,8 +141,8 @@ def match(h: str, i: int, n: str) -> bool:
 
 def scan(s: str, c: int, i: int, n: int) -> int:
     # the first k in [i, n) where byte k of s is c, or -1: inline over 8 bytes (dense candidates),
-    # then memchr (sparse ones). (Scans are range loops, which step with an nsw add, so LLVM can
-    # drop byte()'s index check; a while loop's += is checked.)
+    # then memchr (sparse ones). (Scans are range loops, which step with an nsw add where a while
+    # loop's += is checked; byte()'s index check stays, as LLVM cannot tell that n <= len(s).)
     stop = _rt.wrap_add(i, 8)
     if stop > n:
         stop = n
@@ -183,6 +183,10 @@ def seek(h: str, n: str, i: int, en: int, st: int) -> int:
     if m == 0:
         return i if i <= en else -1
     first = _rt.byte(n, 0)
+    if m == 1:
+        # one byte: memchr, as runtime.c's memmem was for it, not scan()'s inline loop, whose exit
+        # mispredicts where the gaps between hits vary (the fields of a CSV line, lines, tags)
+        return _rt.find_byte(h, first, i, en) if i < en else -1
     last = en - m  # the last place n can start
     paid = i - 64  # where the failed candidates' cost has reached: once past one, memmem
     while i <= last:
