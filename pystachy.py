@@ -7855,7 +7855,7 @@ class Gen:
         ci = self.classes[o.t]
         if o.t + "." + name in self.cvars:
             # a class variable: the object's own value once it has assigned one, else the class's
-            own = self.ins(f"load i1, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
+            own = self.ins(f"load i1, ptr {self.fgep(o, ci.fflag[name])}")
             fv = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
             self.class_default(ci, name)
             r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
@@ -12654,7 +12654,7 @@ class Gen:
         if maybe:
             self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lread)
             self.place(lread)
-        t = self.tuple_([self.getfield(v, Val(self.ins(f"getelementptr %C.{v.t}, ptr {v.v}, i32 0, i32 {ci.fpos[x]}"), ci.ftypes[x]), x) for x in ci.fields])
+        t = self.tuple_([self.getfield(v, Val(self.fgep(v, ci.fpos[x]), ci.ftypes[x]), x) for x in ci.fields])
         if not maybe:
             return t
         l1 = self.cur

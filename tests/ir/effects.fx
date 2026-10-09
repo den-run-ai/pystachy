@@ -14,6 +14,8 @@
 @f.both: R A rL wL
 @m.P.__init__: wO
 @m.P.__eq__: R rO
+@m.K.get: rO rG
+@m.K.__init__:
 @o.eq.P: R rO
 @o.cmp.P: R
 @o.repr.P: A
