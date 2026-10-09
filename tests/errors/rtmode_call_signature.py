@@ -1,4 +1,4 @@
-# error: pys_m_gcd() is called as i64(i64, i64) but defined as double(double, double)
+# error: pys_m_gcd() is defined as double(double, double), but the compiler calls it as i64(i64, i64) (RUNTIME's m.gcd)
 import math
 
 

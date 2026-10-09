@@ -13,9 +13,59 @@ This is the preparation step, and none of it is implemented yet. Function names 
 > - A `Symtable` pass now mirrors CPython's symbol table on every parsed module (#15). It is the
 >   natural starting point for the resolver track of §6.4.
 > - Step 0's tooling has landed: `tools/irsame.sh` (`make irsame REF=<commit>`), `make check-ir`
->   (also a `make verify` step) and the `tests/ir/` probes, with bug B's probe in `tests/ir/pending/`.
+>   (also a `make verify` step) and the `tests/ir/` probes.
 > - #17's cases 2 and 4 (§9, question 4) now compile.
-> - Bugs A to F of §1.3 are fixed in their own commits (wf/defects), outside the IR steps.
+> - Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
+>   program is now a compile-time error asking to annotate the field.
+>
+> - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
+>   on the corpus). Where they differ from the text below:
+>   - the op table is `IROPS`, since the lexer's `OPS` holds Python's operators; `raise` has the
+>     letters T R N, and the effect letters are listed in `FX`;
+>   - `rt()` builds `rt` ops, whose operands are typed as their `RUNTIME` entry spells them (`S`,
+>     `*T`, `#`, ...) and whose `Ins.x` holds the descriptor text of a `#` parameter; `call_fn`
+>     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
+>     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
+>     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
+>     U and I. `IFn.fx` holds each function's summary: every letter until `Gen.effects`
+>     computes it, once the program is built (`Gen.opfx` gives one op's letters). No pass reads
+>     the summaries yet, so only `PYSTACHY_IRCHECK=1` computes them, and `PYSTACHY_IRFX=1`, which
+>     prints them (`fxs` spells them): `tests/ir/effects.fx` lists those of the `effects.py` probe, and
+>     `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
+>     add values or blocks; the verifier checks that no number or label is above it;
+>   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
+>     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
+>     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
+>     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
+>     descriptor) against runtime.c's call graph; `Gen.rtfns` holds one `RtFn` (symbol, signature,
+>     LLVM types, declare line, effects) per runtime function declared, in the order of first use,
+>     and replaces R2's `decls`: the header prints their declare lines;
+>   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
+>     a list comprehension's result list is a hole too, which `listcomp` fills with the list type
+>     once it knows the element type (a list hole lowers as it was built, so this changes no output);
+>   - `anyall` records a `seq` `Loop` too;
+>   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
+>     compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
+>     internal error as on an IR that `llvm-as` rejects, and on a program that does not compile;
+>   - the jump to the first cold block that follows the `ret` a function falls into is a block
+>     without a label (LLVM starts one after a terminator), so that each block still ends with
+>     its one terminator.
+>   - `IFn.ps` holds the indices of the parameters passed, and lowering spells the `define` line
+>     from them (`ptr nonnull %a0` for a method's receiver).
+>   - a `raise` of `SyntaxError`, `IndentationError` or `TabError` whose message is true has the
+>     whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
+>     message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
+>     leaves out. Its `s` is the kind, but its operands are not (kind, message): the exception
+>     lowering of §7.2 must mark such a raise (a flag in `k`) before it reads them so.
+>   - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
+>     (R5), so only debug information or the traceback lines of §7.7 will, and they can add it.
+>   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
+>     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
+>     stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
+>     function's IR (blocks, slots, loops, cold blocks) once it is lowered, keeping its summary.
+>     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
+>     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
+>     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -425,7 +475,7 @@ RUNTIME: dict[str, str] = {
     "list.get": "*T:S,int|R rL|",
     "list.set": "None:S,int,*T|R wL|",
     "list.append": "None:S,*T|A wL|",
-    "list.find": "int:S,*T,#|rL U?|",
+    "list.find": "int:S,*T,#|rL rD U?|",
     "dict.getitem": "*V:S,*K|R rD|",
     "dict.has": "bool:S,*K|rD|",
     "dict.set": "None:S,*K,*V|A wD|",
@@ -441,9 +491,9 @@ RUNTIME: dict[str, str] = {
 
 | letter | meaning |
 |---|---|
-| R | May raise. Today a raise prints its message, flushes stdout and exits. |
+| R | May raise. Today a raise prints its message, flushes stdout and exits (closing the open files). |
 | N | Never returns. |
-| A | Allocates; a collection may run. |
+| A | Allocates; a collection may run. A collection also closes the open files that nothing refers to any more, flushing them and reporting a failed close on stderr. That is not I, rF or wF: when a dropped file is closed is unspecified (README), and any change to the program's allocations moves it. |
 | U | May run user code: a direct call, a dunder, or a callback from the runtime through `pys_obj_eq/cmp/repr`. U implies every other letter. `U?` means U when the static type contains a class. |
 | I | I/O, the process, or global runtime state (`pys_repr_enter`/`leave`). |
 | rL / wL | Reads / writes lists, contents or length. |
@@ -1116,7 +1166,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 
 | risk | how it is contained |
 |---|---|
-| **Numbering is coupled to the builder.** Identity depends on `%tN`, `LN` and `%name.N` being allocated in exactly today's order. Ops that define several values, and a label opened inside them in dead code, can shift numbers that the corpus never exercises. | `put()` reproduces the order. The `tests/ir` probes cover the dead-code case. Lowering asserts that each op prints exactly the numbers in `Ins.r`. |
+| **Numbering is coupled to the builder.** Identity depends on `%tN`, `LN` and `%name.N` being allocated in exactly today's order. Ops that define several values, and a label opened inside them in dead code, can shift numbers that the corpus never exercises. | `put()` reproduces the order. The `tests/ir` probes cover the dead-code case. The verifier (`PYSTACHY_IRCHECK=1`) checks that each op holds exactly the numbers its lowering prints (`Ins.r`). |
 | **Lowering reads state late.** An op that reads mutable builder state (`ltype`, `gtypes`, `cur`) at lowering time would print different text. | Ops carry everything as fields. Lowering reads only the op, `f.ret`, `holes` and the program tables (R2). |
 | **Error order.** Moving any check into lowering changes which error is reported first. | R5: lowering cannot fail on user input. `irsame` compares the full stderr of all error cases. |
 | **Memory and time.** The whole program's IR is alive at the end. | The 1.3× gate, lowering per function as a fallback, and interning op names. |
@@ -1127,7 +1177,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 | **Merge conflicts** with the compatibility work in the same code (the PR stack and the M0 fixes). The conversions touch about 105 `rt`, 126 `ins` and 69 `place` lines. | Small PRs, one construct each, never mixed with behaviour changes. `make irsame` makes a rebase verifiable in seconds. |
 | **Unsound effects make the optimizations unsound.** For example, forgetting that `pys_list_find`, `sort_r`, `minmax`, `pys_eq`, `pys_repr` and `pys_format` can call user code. | Unknown callees count as all effects. `check_runtime.py` and the call-site check validate the table. Each pass can be switched off. The tests of loops that change what they iterate run under GC stress and UBSan. |
 | **Typing stays coupled to emission** while `Val.v` holds spellings. | Accepted. Steps 1 to 4 remove every typing decision that reads text, the lint keeps it out, and step 16 removes the spellings. |
-| **Holes resolved after use.** A hole lowered before it is resolved would print the wrong key kind. | Lowering runs after the whole program, and the verifier rejects a `?` type outside a hole's creation site. |
+| **Holes resolved after use.** A hole lowered before it is resolved would print the wrong key kind. | Lowering runs after the whole program, when no use is left to resolve a hole: a dict hole that nothing filled lowers with int keys, and a list hole lowers as it was built. Other ops may still carry a `?` type (a call of a function that returns a container nothing has typed, a comprehension's list before `listcomp` types it), which the verifier does not check. |
 
 ## 9. Open questions
 
@@ -1136,6 +1186,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 3. **Speculative instances.** Template instances and `called` marks made only inside `dry` are compiled and emitted although nothing calls them. Pruning them by the reachability of lowered calls changes output. Should it be part of the re-baseline?
 4. **Late reads of holes.** #17's case 2 reads a global dict before the function that fills it has been compiled. Its case 4 builds a list that nothing fills. Some operations do not depend on the element type at elaboration time: `print`, `repr`, `len`, truth, `return`. These could take a hole-typed value and leave the descriptor to lowering, once all holes are resolved. Is that sound for every reader, and what type should a hole that nothing fills get?
 5. **Program end or per function.** Should lowering stay at the program's end, which global holes and exact effect summaries need, or move to each function's end with a patch for the remaining global holes, which roughly halves memory?
+   Measured at `7fce954` on the native self-compile: lowering a function when it completes (unless one of its dict holes is still open) and dropping its IR there leaves the output identical, takes the instructions executed from 1,704M to 1,645M (the reference compiler's: 1,541M), the heap peak from 78.2 to 72.3 MiB and the collector's time from about 40 to 35.5 ms, while the wall time stays within noise (1.08 to 1.09 times the reference's). It would need each function's own letters and callees kept for the summaries, and a pass that needs the summaries of callees compiled after their caller, such as the error tests of §7.2, could not run on that caller. Lowering stays at the end while the 1.3× gate holds.
 6. **Flow per instance.** Should Flow run per template instance on the IR, after folding, so that a branch the instance never compiles no longer forces a check?
 7. **Nullability in the type.** When does `C` stop meaning "C or None"? WasmGC wants `(ref $C)` versus `(ref null $C)` in signatures, and M4 needs `C|None`. Is a per-value fact enough until then?
 8. **Structure for Wasm.** Are the reducible CFG and the `Loop` records enough for structured control flow, or should `if` and `with` regions be recorded too?
