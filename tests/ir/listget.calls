@@ -1,0 +1,13 @@
+@main.init:
+@f.first_set:
+@f.dot:
+@f.weighted: pys_raise
+@f.grow: pys_list_append
+@f.named:
+@f.other: pys_list_get
+@m.Box.__init__:
+@m.Box.total:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

@@ -1,0 +1,6 @@
+Node(a, [], {})
+Node(a, [Node(a, [...], {'self': Node(a, [...], {...})}), Node(b, [], {})], {'self': Node(a, [Node(a, [...], {...}), Node(b, [], {})], {...})})
+[Node(a, [Node(a, [...], {'self': Node(a, [...], {...})}), Node(b, [], {})], {'self': Node(a, [Node(a, [...], {...}), Node(b, [], {})], {...})})] {'k': [Node(a, [Node(a, [...], {'self': Node(a, [...], {...})}), Node(b, [], {})], {'self': Node(a, [Node(a, [...], {...}), Node(b, [], {})], {...})})]} ([Node(a, [...], {'self': Node(a, [...], {...})}), Node(b, [], {})], 1) [Node(a, [...], {'self': Node(a, [...], {...})}), Node(b, [], {})] {'self': Node(a, [Node(a, [...], {...}), Node(b, [], {})], {...})}
+Node(m, [], {'n': Node(a, [Node(a, [...], {'self': Node(a, [...], {...}), 'm': Node(m, [], {...})}), Node(b, [], {})], {'self': Node(a, [Node(a, [...], {...}), Node(b, [], {})], {...}), 'm': Node(m, [], {...})})})
+[Node(a, [...], {'self': Node(a, [...], {...}), 'm': Node(m, [], {'n': Node(a, [...], {...})})}), Node(b, [], {})]
+[exit 0]

@@ -3,10 +3,9 @@
 # (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
-# tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh). Where
-# tests/NAME.big exists, the compiler (and so a JIT run) gets PYSTACHY_GC_STRESS empty: with a
-# collection at every allocation, each marking all the IR it holds, it would take hours on a
-# program that large (the AOT-built program still collects as often).
+# tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
+# PYSTACHY_GC_STRESS_PROGRAM=N makes the programs collect every N allocations (JIT and AOT), whatever
+# PYSTACHY_GC_STRESS gives the compiler that builds them.
 # Every tests/errors/*.py must be rejected with the message in its first line (rtmode_*.py as
 # "pystachy rt" compiles runtime.py), and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
@@ -24,6 +23,7 @@ export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 T=${TMPDIR:-/tmp}/pystachy-tests.$$
+XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
 mkdir -p "$T"
 exec 3> /dev/full
 
@@ -32,13 +32,12 @@ program() { # tests/NAME.py
   n=$(basename "$1" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
   o=1; [ -f "tests/$n.full" ] && o=3
   mp=$PYSTACHY_PATH; [ -f "tests/$n.path" ] && mp=$(cat "tests/$n.path")
-  gs=$PYSTACHY_GC_STRESS; [ -f "tests/$n.big" ] && gs=
   for mode in $MODES; do
     if [ $mode = jit ]; then
-      (PYSTACHY_GC_STRESS=$gs PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+      (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
-      PYSTACHY_GC_STRESS=$gs PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
-        ("$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
+      PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
+        ($XENV "$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then
       pass=$((pass + 1)); else
@@ -59,7 +58,7 @@ deviation() { # tests/deviations/NAME.py
     if [ $mode = jit ]; then
       ($PYS run "$1" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
     else
-      { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
+      { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi
     if cmp -s "$T/dev.$n.$mode" "$exp"; then pass=$((pass + 1)); else
       fail=$((fail + 1)); echo "FAIL deviations/$n ($mode)"; diff "$exp" "$T/dev.$n.$mode" | head -10; fi

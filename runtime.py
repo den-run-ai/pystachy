@@ -153,10 +153,15 @@ def scan(s: str, c: int, i: int, n: int) -> int:
 
 
 def scan_ws(s: str, i: int, n: int, want: bool) -> int:
-    # the first k in [i, n) where ws(byte k) is want, or n
-    for k in range(i, n):
-        if ws(_rt.byte(s, k)) == want:
+    # the first k in [i, n) where the character at k is whitespace (want) or not, or n. (The
+    # index steps by a character's 1 to 4 bytes within s: wrapping adds, which cannot overflow,
+    # here and in the other character loops below.)
+    k = i
+    while k < n:
+        w = wsat(s, k, n)
+        if (w > 0) == want:
             return k
+        k = _rt.wrap_add(k, w) if w > 0 else _rt.wrap_sub(k, w)
     return n
 
 
@@ -392,26 +397,100 @@ def pys_str_replace(s: str, a: str, b: str) -> str:
 
 
 def ws(c: int) -> bool:
+    # an ASCII whitespace byte
     return c == 32 or (c >= 9 and c <= 13) or (c >= 28 and c <= 31)
 
 
-def stripped(c: int, cs: str) -> bool:
-    # whether strip() removes byte c: one of cs, or whitespace if cs was omitted (null)
+def uchar(s: str, i: int, n: int) -> int:
+    # the character at byte i of s[:n] (i < n), as runtime.c's u8char reads it: a UTF-8 sequence
+    # as chr() writes it (no overlong form, nothing above U+10FFFF), else the one byte. Its code
+    # point * 8 + its byte count
+    c = _rt.byte(s, i)
+    k = 1 if c > 244 else 4 if c >= 240 else 3 if c >= 224 else 2 if c >= 194 else 1
+    if k == 1 or k > _rt.wrap_sub(n, i):
+        return c * 8 + 1
+    v = c & (127 >> k)
+    for j in range(1, k):
+        b = _rt.byte(s, _rt.wrap_add(i, j))
+        if b & 192 != 128:
+            return c * 8 + 1
+        v = _rt.shl(v, 6) | (b & 63)  # (below 2**21)
+    if v < (128 if k == 2 else 2048 if k == 3 else 65536) or v > 1114111:
+        return c * 8 + 1
+    return _rt.shl(v, 3) | k
+
+
+def uspace(cp: int) -> bool:
+    # str.isspace() of code point cp (Unicode 15.1, CPython 3.13): ASCII's and these
+    if cp < 128:
+        return ws(cp)
+    return cp == 133 or cp == 160 or cp == 5760 or (cp >= 8192 and cp <= 8202) or cp == 8232 or cp == 8233 or cp == 8239 or cp == 8287 or cp == 12288
+
+
+def wsat(s: str, i: int, n: int) -> int:
+    # the character at byte i of s[:n] is whitespace: its byte count, else minus that (an ASCII
+    # byte is tested inline; only a non-ASCII one is decoded)
+    c = _rt.byte(s, i)
+    if c < 128:
+        return 1 if ws(c) else -1
+    u = uchar(s, i, n)
+    return u & 7 if uspace(u >> 3) else -(u & 7)
+
+
+def back(s: str, j: int) -> int:
+    # the byte count of the character that ends at byte j (j > 0): a UTF-8 sequence that ends
+    # there, as uchar reads it, else one byte (runtime.c's uback)
+    if _rt.byte(s, _rt.wrap_sub(j, 1)) < 128:
+        return 1
+    i = _rt.wrap_sub(j, 1)
+    while i > 0 and _rt.wrap_sub(j, i) < 4 and _rt.byte(s, i) & 192 == 128:
+        i = _rt.wrap_sub(i, 1)
+    return _rt.wrap_sub(j, i) if uchar(s, i, j) & 7 == _rt.wrap_sub(j, i) else 1
+
+
+def wsback(s: str, j: int) -> int:
+    # as wsat, for the character that ends at byte j (j > 0)
+    c = _rt.byte(s, _rt.wrap_sub(j, 1))
+    if c < 128:
+        return 1 if ws(c) else -1
+    b = back(s, j)
+    return wsat(s, _rt.wrap_sub(j, b), j)
+
+
+def stripped(s: str, i: int, n: int, cs: str) -> int:
+    # as wsat, for the characters of cs (whitespace if cs was omitted: null), so that a
+    # character of several bytes is stripped whole or not at all, as CPython strips code points
     if _rt.null(cs):
-        return ws(c)
-    return _rt.find_byte(cs, c, 0, len(cs)) >= 0
+        return wsat(s, i, n)
+    c = _rt.byte(s, i)
+    if c < 128:
+        return 1 if _rt.find_byte(cs, c, 0, len(cs)) >= 0 else -1
+    k = uchar(s, i, n) & 7
+    j = 0
+    while j < len(cs):
+        m = uchar(cs, j, len(cs)) & 7
+        if m == k and _rt.same(cs, j, s, i, m):
+            return k
+        j = _rt.wrap_add(j, m)
+    return -k
 
 
 def strip(s: str, cs: str, m: int) -> str:
-    # m: 1 left, 2 right, 3 both
+    # m: 1 left, 2 right, 3 both; character by character
     i = 0
     j = len(s)
     if m & 1:
-        while i < j and stripped(_rt.byte(s, i), cs):
-            i += 1
+        while i < j:
+            k = stripped(s, i, j, cs)
+            if k < 0:
+                break
+            i = _rt.wrap_add(i, k)
     if m & 2:
-        while j > i and stripped(_rt.byte(s, j - 1), cs):
-            j -= 1
+        while j > i:
+            b = back(s, j)
+            if stripped(s, _rt.wrap_sub(j, b), j, cs) < 0:
+                break
+            j = _rt.wrap_sub(j, b)
     return s[i:j]
 
 
@@ -440,14 +519,14 @@ def upc(c: int) -> bool:
 
 
 def every(s: str, k: int) -> int:
-    # all bytes are: 0 digits, 1 letters, 2 either, 3 whitespace; and there is one
+    # all bytes are: 0 digits, 1 letters, 2 either; and there is one
     if len(s) == 0:
         return 0
     for i in range(len(s)):
         c = _rt.byte(s, i)
         d = digit(c)
         a = lowc(c | 32)
-        if not (d if k == 0 else a if k == 1 else d or a if k == 2 else ws(c)):
+        if not (d if k == 0 else a if k == 1 else d or a):
             return 0
     return 1
 
@@ -481,7 +560,8 @@ def pys_str_isalnum(s: str) -> int:
 
 
 def pys_str_isspace(s: str) -> int:
-    return every(s, 3)
+    # all characters are whitespace (Unicode's, character by character), and there is one
+    return 1 if len(s) > 0 and scan_ws(s, 0, len(s), False) == len(s) else 0
 
 
 def pys_str_isupper(s: str) -> int:
@@ -734,8 +814,13 @@ def pys_str_join(sep: str, l: list[str]) -> str:
     # iterating (no index checks), and a separator of one byte stored as a byte
     m = len(sep)
     n = 0
+    i = 0
     for x in l:
+        if _rt.null(x):
+            # an item of a list[str | None]
+            raise TypeError("sequence item " + str(i) + ": expected str instance, NoneType found")
         n += len(x)
+        i += 1
     if len(l) > 1:
         n += m * (len(l) - 1)
     r = _rt.str_new(n)
@@ -801,8 +886,11 @@ def pys_str_rsplit(s: str, sep: str, maxsplit: int) -> list[str]:
     left = maxsplit if maxsplit >= 0 else 9223372036854775807
     if _rt.null(sep):
         while True:
-            while j > 0 and ws(_rt.byte(s, j - 1)):
-                j -= 1
+            while j > 0:
+                b = wsback(s, j)
+                if b < 0:
+                    break
+                j = _rt.wrap_sub(j, b)
             if j <= 0:
                 break
             if left == 0:
@@ -810,8 +898,11 @@ def pys_str_rsplit(s: str, sep: str, maxsplit: int) -> list[str]:
                 break
             left -= 1
             i = j
-            while i > 0 and not ws(_rt.byte(s, i - 1)):
-                i -= 1
+            while i > 0:
+                b = wsback(s, i)
+                if b > 0:
+                    break
+                i = _rt.wrap_add(i, b)
             out.append(s[i:j])
             j = i
     else:

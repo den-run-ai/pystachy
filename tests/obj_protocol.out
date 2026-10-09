@@ -1,0 +1,74 @@
+mods: init mods
+mods.shapes: init mods.shapes
+set x 1
+evaluated y
+set y 2
+set z 3
+get y
+2 3
+evaluated y
+get y
+set y 12
+get y
+12
+evaluated x
+del x
+contains y
+contains x
+contains x
+True False True
+iter
+k y
+k z
+iter
+iter
+iter
+['y', 'z'] ['y', 'z'] ['z', 'y']
+iter
+['y!', 'z!']
+iter
+iter
+iter
+y,z z y
+iter
+0 y
+1 z
+iter
+y 7
+z 8
+iter
+y z
+iter
+iter
+iter
+['a', 'y', 'z'] True True
+5 7 4 [4, 0, 7, 0, 5, 0]
+True False False
+['h', 'e', 'l', 'l', 'o'] ['a', 'b', 'c']
+3 4 11
+[8, 0, 14, 0, 10, 0]
+[0, 2, 4, 6, 8]
+P contains 1
+P contains 2
+True False
+True False
+a b c d 
+3
+7
+16 2 3
+stack set 0 [1, 2, 3]
+stack set 0 []
+[[]] []
+['a', 'b'] True False [['1', 'x', 'y'], ['2']]
+make a
+make b
+iter a
+iter b
+1 1
+2 2
+make c
+start
+iter c
+5 1
+6 2
+[exit 0]

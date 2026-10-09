@@ -1,0 +1,11 @@
+verbose False
+in S1
+in S1
+in S1
+in S2
+[(None, 'x'), ('s1', 'a'), ('s1', 'b'), ('s2', 'c')]
+abcde none
+one two None None a|b c None|None
+<v> none True
+b
+[exit 0]

@@ -1,0 +1,8 @@
+True True False True False True True 1 0 0
+True False True False False False True
+True 1 1 1 0 2
+True True False False True False 2 2 1 1
+True True False 1 2 False True 1 2 True True
+False False True False True
+[1, 3] [2.0] [True]
+[exit 0]

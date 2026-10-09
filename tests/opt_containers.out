@@ -1,0 +1,21 @@
+['b', None, 'a', None] 4 None b True True False 2 1 2
+['c', 'b', 'a', None] True True None ['c', 'b', 'a', None]
+['a', 'b', 'c'] ['c', 'b', 'a'] a c
+False True True True
+{'a': 'x', 'b': None, 'c': None, 'd': 'y'} None x dflt True 4
+a x False
+b None True
+c None True
+d y False
+True None {'a': 'x', 'c': None, 'd': 'y'}
+('a', 1) (None, 2) False True True [('a', 1), (None, 2)]
+None 2
+[[1], None, []] [1, 0] True True
+Entry(name='one', note=None, tags=None) Entry(name='two', note='a note', tags=['t']) True False 'a note' True
+Entry(name='one', note='set', tags=[]) False
+None None -1 2
+lbl LBL
+None
+now True
+None
+[exit 0]

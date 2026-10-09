@@ -16,7 +16,7 @@ jobs:
   verify:
     name: make verify (Linux x86-64, LLVM 18, Python 3.13)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:

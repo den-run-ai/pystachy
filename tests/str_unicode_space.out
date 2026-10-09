@@ -1,0 +1,26 @@
+0x9 0xa 0xb 0xc 0xd 0x1c 0x1d 0x1e 0x1f 0x20 0x85 0xa0 0x1680 0x2000 0x2001 0x2002 0x2003 0x2004 0x2005 0x2006 0x2007 0x2008 0x2009 0x200a 0x2028 0x2029 0x202f 0x205f 0x3000 
+'\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000' '' '' '' True
+   [] [] [] [] [] [] [] []
+'\u3000name = value\xa0\u2028' 'name = value' 'name = value\xa0\u2028' '\u3000name = value' False
+   ['name', '=', 'value'] ['name', '=', 'value'] ['name', '= value\xa0\u2028'] ['\u3000name =', 'value'] ['name = value\xa0\u2028'] ['\u3000name = value'] ['name', '=', 'value\xa0\u2028'] ['\u3000name', '=', 'value']
+'ŠŅ' 'ŠŅ' 'ŠŅ' 'ŠŅ' False
+   ['ŠŅ'] ['ŠŅ'] ['ŠŅ'] ['ŠŅ'] ['ŠŅ'] ['ŠŅ'] ['ŠŅ'] ['ŠŅ']
+' aŠb \u2003 cŅ\u3000d\u205f' 'aŠb \u2003 cŅ\u3000d' 'aŠb \u2003 cŅ\u3000d\u205f' ' aŠb \u2003 cŅ\u3000d' False
+   ['aŠb', 'cŅ', 'd'] ['aŠb', 'cŅ', 'd'] ['aŠb', 'cŅ\u3000d\u205f'] [' aŠb \u2003 cŅ', 'd'] ['aŠb \u2003 cŅ\u3000d\u205f'] [' aŠb \u2003 cŅ\u3000d'] ['aŠb', 'cŅ', 'd\u205f'] [' aŠb', 'cŅ', 'd']
+'x\u2009y\u202fz😀\u1680' 'x\u2009y\u202fz😀' 'x\u2009y\u202fz😀\u1680' 'x\u2009y\u202fz😀' False
+   ['x', 'y', 'z😀'] ['x', 'y', 'z😀'] ['x', 'y\u202fz😀\u1680'] ['x\u2009y', 'z😀'] ['x\u2009y\u202fz😀\u1680'] ['x\u2009y\u202fz😀'] ['x', 'y', 'z😀\u1680'] ['x', 'y', 'z😀']
+'été\u3000été' 'été\u3000été' 'été\u3000été' 'été\u3000été' False
+   ['été', 'été'] ['été', 'été'] ['été', 'été'] ['été', 'été'] ['été\u3000été'] ['été\u3000été'] ['été', 'été'] ['été', 'été']
+'\x85a\xa0b\x85' 'a\xa0b' 'a\xa0b\x85' '\x85a\xa0b' False
+   ['a', 'b'] ['a', 'b'] ['a', 'b\x85'] ['\x85a', 'b'] ['a\xa0b\x85'] ['\x85a\xa0b'] ['a', 'b'] ['a', 'b']
+'' '' '' '' False
+   [] [] [] [] [] [] [] []
+'\u200b' '\u200b' '\u200b' '\u200b' False
+   ['\u200b'] ['\u200b'] ['\u200b'] ['\u200b'] ['\u200b'] ['\u200b'] ['\u200b'] ['\u200b']
+True True False False False
+'a' 'éa' 'a'
+'x😁' '\u2003' 'a'
+'ŠaŠ' 'a'
+['one', 'two', 'three', 'four'] 4
+['a', 'b'] ['x\u2029', 'y\x85', 'z']
+[exit 0]

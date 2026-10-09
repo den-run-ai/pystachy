@@ -1,0 +1,17 @@
+a alice 'alice' alice [alice] ['alice'] [ alice] alice|'alice'|alice
+b None None None [None] [None] None|None| None
+None None None a ['b'] c
+[2] None {'abc': 3} None ('p', 1) None None x
+'alice' True False yes False True False True
+None False True no True False True False
+'' False True no False True False True
+'x' True False yes False True False True
+True False True True True True True True True
+True False False True True False
+True False True False True
+('p', 1) None True False True False
+None default None
+zed zed ZED zed!
+[] False False
+'' was empty ''
+[exit 0]
