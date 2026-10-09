@@ -2270,21 +2270,30 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    exception being handled (a bare raise's, CPython's exc_info) is a global: pys_exc_begin sets
    it, and every way out of a handler restores the one its try noted (pys_exc_restore).
    What compiled code raises. The funnels raise what they always ended the program with:
-   pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg (kind() when it
-   is empty), pys_exit(c) for sys.exit(c) of an int c, pys_exit_msg(m) for one of a str m.
-   The kind is a class's bare name; pys_raise takes Gen's "SyntaxError: x" line as kind too.
-   Anything else is pys_throw of an Exc that pys_exc_new(kind, str(e), args) makes, args being
-   what repr(e) shows in its parentheses ("" for no argument, "5", "'a', 'b'"): ValueError(5),
-   KeyError('a', 'b'), ValueError(''). A SystemExit whose code is None, a bool or an int is
+   pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg known not to be
+   empty and for kind() (msg empty), pys_exit(c) for sys.exit(c) of an int c (not a bool),
+   pys_exit_msg(m) for sys.exit(m) of a str m. The kind is a class's bare name, but for one the
+   runtime raises, io.UnsupportedOperation (reading a file open for writing, writing one open
+   for reading), whose bases are OSError and ValueError: the names an except clause of either,
+   of Exception or of BaseException matches (pys_exc_in) include it. pys_raise takes Gen's
+   "SyntaxError: x" line as kind too. Anything else is pys_throw of an Exc that pys_exc_new(kind,
+   str(e), args) makes, args being what repr(e) shows in its parentheses ("" for no argument,
+   "5", "'a', 'b'"): ValueError(5), KeyError('a', 'b') (str "('a', 'b')"), KeyError('a') (str
+   "'a'"), ValueError('') (str ""). A SystemExit whose code is None, a bool or an int is
    pys_exc_exit(status, str(code), repr(code)), so that nothing catching it ends the program
-   with that status and no output: pys_exc_exit(0, "", "") for sys.exit() and sys.exit(None)
-   (str(e) "", repr SystemExit()), (1, "True", "True") for sys.exit(True). Another code is
-   pys_exc_new("SystemExit", str(code), args): str(code) and status 1. The traceback shows
-   a SyntaxError, IndentationError or TabError as "kind: " + str(msg or "<no detail
+   with that status and no output: pys_exc_exit(0, "", "") for sys.exit(), sys.exit(None) and
+   raise SystemExit (str(e) "", repr SystemExit()), (0, "None", "None") for SystemExit(None),
+   (1, "True", "True") for sys.exit(True). Another code is pys_exc_new("SystemExit", str(code),
+   args): str(code) and status 1. sys.exit(t) of a tuple t (not raise SystemExit(t)) takes t's
+   items as the args: sys.exit(()) is sys.exit(), sys.exit((3,)) is sys.exit(3). The traceback
+   shows a SyntaxError, IndentationError or TabError as "kind: " + str(msg or "<no detail
    available>"), msg being its first argument (None without): pys_exc_detail(e, that text)
    gives an Exc that line, while str(e) stays str(msg) ("None" without). A user exception
-   object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end
-   the program as the builtin one its code makes.
+   object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end the
+   program as the builtin one its code makes. Its line is "disp: str(e)", where str(e) without
+   a __str__ is its builtin base's: of KeyError, repr(arg) for one argument; of OSError and its
+   subclasses, "[Errno a] b" for two (3 to 5 add filenames to str(e) and drop them from args:
+   reject them); an ExcClass cannot give the SyntaxError family's line: reject such classes.
    What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
    which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
    and the unwind actions registered since the try's mark run, the latest first, each popped
