@@ -1,0 +1,6 @@
+caught
+caught 'repr fail'
+caught tuple
+caught in f-string
+[ValueError('v')]
+[exit 0]

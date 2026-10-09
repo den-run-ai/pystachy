@@ -5387,7 +5387,8 @@ class Ins:
         self.s = s
         self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1)
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
-        # is U when it holds a class (O<id>)
+        # is U when it holds a class (O<id>), or an exception (E) in a program that makes objects of
+        # exception classes
         self.x = ""
         self.r: list[int] = NONUMS  # the numbers of the values it defines, given when it was built
         self.a: list[Val] = NOVALS  # operands, in evaluation order (an rt op's typed as RUNTIME spells its parameters)
@@ -7684,8 +7685,9 @@ class Gen:
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else FXALL
         if i.op == "rt":
+            # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run)
             f = self.rtfns[i.s]
-            return FXALL if f.q and "O" in i.x else f.fx
+            return FXALL if f.q and ("O" in i.x or ("E" in i.x and len(self.xcls) > 0)) else f.fx
         return self.opfxs[i.op]
 
     def eh_ir(self, fn: IFn) -> None:
