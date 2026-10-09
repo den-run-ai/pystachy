@@ -302,7 +302,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
-  `d.items()` steps the dict itself and does).
+  `d.items()` steps the dict itself and does), and neither do `in`, `min()` and `max()` over
+  `d.values()` when an `__eq__` or `__lt__` of the values changes the dict, where CPython
+  raises `RuntimeError`.
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
   "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
   compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
@@ -370,7 +372,10 @@ global read before its module's code assigns it whose first binding there is a `
 other than a constant, read while that module is still being imported; an empty container
 whose first use stores an empty `[]` or `{}` into it (`d[k] = []`); an empty list or dict
 that a template's function returns empty, used where the `list[int]` / `dict[int, int]` guess
-does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders that do not return `bool`, `__str__`/`__repr__`
+does not fit and the context gives no type (`xs: list[str] = collect()` gives one); a
+conditional expression whose arms are both `None`, also as a statement
+(`xs.append(x) if c else None`); a `bool` as the key of an `int`-keyed dict (`True in d`);
+comparison dunders that do not return `bool`, `__str__`/`__repr__`
 that do not return `str`, methods without `self`; an `==` or `!=` between objects of
 different classes, which CPython would reflect to the right operand's `__eq__`; calling a
 builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
@@ -574,7 +579,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1013 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1017 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
