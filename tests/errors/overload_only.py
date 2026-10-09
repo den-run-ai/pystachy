@@ -1,4 +1,4 @@
-# error: overload_only.py:10: error: name 'area' is not defined
+# error: overload_only.py:6: error: an @overload stub of 'area' must be followed by the def that implements it (calling a stub raises NotImplementedError)
 from typing import overload
 
 

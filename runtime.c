@@ -969,7 +969,7 @@ static const char *repr(Buf *b, I v, const char *d) {
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
-  case 's': repr_str(b, (Str *)v); return d;
+  case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
   case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
     List *l = (List *)v;
     if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
@@ -989,6 +989,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
   case 'T': {
+    if (!v) { put(b, "None", 4); return skip(d - 1); }
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
@@ -1003,7 +1004,7 @@ static I entry(Dict *d, I k);
 static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'f': return dbl(a) == dbl(b);
-  case 's': return pys_str_eq((Str *)a, (Str *)b);
+  case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {
     List *x = (List *)a, *y = (List *)b;
     if (x->len != y->len) return 0;
@@ -1022,6 +1023,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'T': {
     I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+    if (!x || !y) return x == y;
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqv(x[i], y[i], e)) return 0;
     return 1;
   }
@@ -1474,7 +1476,7 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
 #endif
 static uint64_t hsh(Dict *d, I k);
 static uint64_t hval(I k, const char *d) {           /* a tuple key's hash (or its item's), by its descriptor */
-  if (*d == '?' && !k) return 0x9E3779B97F4A7C15ULL;
+  if ((*d == '?' || *d == 's' || *d == 'T') && !k) return 0x9E3779B97F4A7C15ULL;   /* None (also a looked-up key's) */
   if (*d == '?') d++;
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;

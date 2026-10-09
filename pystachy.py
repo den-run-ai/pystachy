@@ -667,6 +667,7 @@ class Node:
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
         self.depth = 1  # levels of nodes from this one down, as mk counted them
+        self.quoted = False  # an annotation parsed from a string (Loader.qann), which CPython does not evaluate
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
@@ -1632,6 +1633,11 @@ class Parser:
                 self.fail("trailing comma not allowed without surrounding parentheses", self.line())
         if paren:
             self.expect(")")
+        if path == "collections" and len([a for a in n.kids if a.kids[0].s != "collections.abc"]) == 0:
+            # from collections import abc: import collections.abc as abc (a builtin module)
+            n.s = ""
+            for a in n.kids:
+                a.kids[1].s = "collections.abc"
         return n
 
     # ---- expressions
@@ -4300,6 +4306,7 @@ class Loader:
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
+            n.quoted = True
         if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
                 self.qann(m, k, loc)
@@ -4457,7 +4464,10 @@ for _k in ("List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Ite
            "Counter Deque ChainMap Hashable Sized Collection Container Reversible MutableMapping MutableSequence MutableSet "
            "AbstractSet KeysView ItemsView ValuesView SupportsInt SupportsFloat SupportsIndex SupportsAbs SupportsRound TypedDict "
            "LiteralString Required NotRequired Unpack TypeVarTuple override final get_type_hints no_type_check runtime_checkable "
-           "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString").split():
+           "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString AsyncContextManager AsyncGenerator "
+           "ContextManager ForwardRef MappingView NoDefault ParamSpecArgs ParamSpecKwargs ReadOnly SupportsBytes SupportsComplex "
+           "TypeAliasType TypeIs assert_type clear_overloads get_args get_origin get_overloads get_protocol_members is_protocol "
+           "is_typeddict no_type_check_decorator").split():
     TYPING[_k] = True
 # collections.abc: imported as typing's names are (Mapping[K, V] is dict[K, V], see typeof)
 ABCS: dict[str, bool] = {}
@@ -4745,9 +4755,29 @@ def key_problem(t: str) -> str:
     # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor)
     if t == "int" or t == "str" or (is_tuple(t) and key_items(t)):
         return ""
-    if is_tuple(t):
-        return f"dict keys must be int or str, or tuples of int, bool, str and str | None items, not {typestr(t)}"
-    return "dict keys must be int or str" + (f", not {typestr(t)} (a key cannot be None)" if is_opt(t) else "")
+    if is_opt(t):
+        return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
+    return f"dict keys must be int or str, or tuples of int, bool, str and str | None items, not {typestr(t)}"
+
+
+def lookable(a: str, b: str) -> bool:
+    # can a value of type a be looked up among dict keys of type b, as CPython compares them: True
+    # is 1, and None (a tuple's item) is no str
+    if a == b or (a == "bool" and b == "int") or (b == "str" and (a == "None" or a == "opt[str]")):
+        return True
+    if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+        return False
+    for i in range(len(targs(a))):
+        if not lookable(targs(a)[i], targs(b)[i]):
+            return False
+    return True
+
+
+def none_items(t: str) -> str:
+    # a tuple key type with str | None for its None items (a key's None says no more of the type)
+    if t == "None":
+        return "opt[str]"
+    return f"tuple[{','.join([none_items(x) for x in targs(t)])}]" if is_tuple(t) else t
 
 
 def key_items(t: str) -> bool:
@@ -5802,14 +5832,14 @@ class Gen:
                 if key_problem(ts[0]) != "":
                     self.err(key_problem(ts[0]))
                 return f"dict[{ts[0]},{ts[1]}]"
-            if base == "tuple" and len(ts) > 0:
-                return f"tuple[{','.join(ts)}]"
+            if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple"):
+                return f"tuple[{','.join(ts)}]"  # (tuple[()] is the empty tuple's)
             if base == "optional" and len(ts) == 1:
                 return self.opt(ts[0])
             if base == "union" and len(ts) == 2 and (ts[0] == "None" or ts[1] == "None"):
                 return self.opt(ts[0] if ts[1] == "None" else ts[1])  # Union[T, None]
         if self.typing_ref(n) == "Final":
-            self.err("Final without a type is only supported where a value gives it (x: Final = v, outside class bodies); write Final[T]")
+            self.err("a bare Final needs a value to give its type (x: Final = v), outside class bodies; write Final[T]")
         self.err("unsupported type annotation")
         return ""
 
@@ -5869,18 +5899,28 @@ class Gen:
     def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
         # what typing decides before any code runs, in the statements of body (a class body if cls)
         # and in those they hold: a def decorated with @overload is a stub that the def after it
-        # replaces, so it is dropped; x: Final = v is x = v outside class bodies, x: Final[T] is x: T
+        # replaces, so it is dropped (unless no def of its name follows in its block, past other
+        # defs, or a default is more than a constant); x: Final = v is x = v outside class bodies,
+        # x: Final[T] is x: T
         out: list[Node] = []
         defs: dict[str, bool] = {}
-        for st in body:
-            stub = False
-            for d in st.kids[3:] if st.kind == "def" else []:
-                root = d.s[: d.s.find(".")] if "." in d.s else d.s
-                stub = stub or (self.imported(m.q + root) or self.imported(root)) + d.s[len(root) :] == "typing.overload"
+        for i in range(len(body)):
+            st = body[i]
+            stub = self.stub(m, st)
+            self.line = st.line
             if stub and st.s in defs:
-                self.line = st.line
                 self.err(f"an @overload stub after the definition of '{short(st.s)}' is not supported (it would replace it)")
             if stub:
+                # (one that nothing replaces is what a call finds, which raises NotImplementedError;
+                # other defs between them run nothing that could call it)
+                j = i + 1
+                while j < len(body) and body[j].kind == "def" and (body[j].s != st.s or self.stub(m, body[j])):
+                    j += 1
+                if j == len(body) or body[j].kind != "def":
+                    self.err(f"an @overload stub of '{short(st.s)}' must be followed by the def that implements it (calling a stub raises NotImplementedError)")
+                for p in st.kids[0].kids:
+                    if p.kids[1].kind != "ellipsis" and not is_const(p.kids[1]):
+                        self.err("a default of an @overload stub that is not a constant (or ...) is not supported (CPython evaluates it where the def runs)")
                 continue
             if st.kind == "def":
                 defs[st.s] = True
@@ -5897,6 +5937,46 @@ class Gen:
                     k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
             out.append(st)
         return out if len(out) < len(body) else body
+
+    def stub(self, m: Mod, st: Node) -> bool:
+        # is st a def decorated with typing.overload
+        r = False
+        for d in st.kids[3:] if st.kind == "def" else []:
+            root = d.s[: d.s.find(".")] if "." in d.s else d.s
+            r = r or (self.imported(m.q + root) or self.imported(root)) + d.s[len(root) :] == "typing.overload"
+        return r
+
+    def ann_names(self, m: Mod, body: list[Node], later: dict[str, bool]) -> None:
+        # CPython 3.13 evaluates the annotations of a def's parameters and return, and of the
+        # module's and class bodies' variables, where the statement runs (unless annotations are
+        # lazy): a class the module defines only further on is a NameError there (later holds
+        # their names), and so is, in an @overload stub (which Pystachy drops), a name nothing binds
+        for st in body:
+            anns: list[Node] = [st.kids[1]] if st.kind == "annassign" else []
+            if st.kind == "def":
+                anns = [p.kids[0] for p in st.kids[0].kids] + [st.kids[1]]
+            for a in anns:
+                self.ann_name(m, a, later, self.stub(m, st))
+            if st.kind == "class" or st.kind == "subclass":
+                self.ann_names(m, (st if st.kind == "class" else st.kids[0]).kids[0].kids, later)
+                later[st.s] = False
+            elif st.kind != "def":
+                for k in st.kids:
+                    if k.kind == "block":
+                        self.ann_names(m, k.kids, later)
+
+    def ann_name(self, m: Mod, a: Node, later: dict[str, bool], stub: bool) -> None:
+        # the names annotation a evaluates (not those in a string), checked as ann_names says
+        if a.kind == "str" or a.quoted:
+            return
+        x = a.s
+        known = "$" in x or x in PYBUILTINS or x in m.kinds or self.imported(x) != ""
+        if a.kind == "name" and (later.get(x, False) or (stub and not known)):
+            self.line = a.line
+            why = f"the annotation runs before class {short(x)} is defined: quote it, '{short(x)}'" if later.get(x, False) else "in an @overload stub, which CPython evaluates where the def runs"
+            self.err(f"name '{short(x)}' is not defined ({why})")
+        for k in a.kids:
+            self.ann_name(m, k, later, stub)
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
@@ -5939,6 +6019,9 @@ class Gen:
         if is_opt(a) or is_opt(b):
             j = self.join(unopt(a), unopt(b))
             return self.optional(j) if j != "" else ""
+        if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+            js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
+            return f"tuple[{','.join(js)}]" if "" not in js else ""
         return ""
 
     def wider(self, a: str, b: str) -> str:
@@ -5957,9 +6040,10 @@ class Gen:
         if is_list(a) and is_list(b):
             w = self.wider(elem(a), elem(b))
             return f"list[{w}]" if w != "" else ""
-        if is_dict(a) and is_dict(b) and targs(a)[0] == targs(b)[0]:
+        if is_dict(a) and is_dict(b):
+            k = self.wider(targs(a)[0], targs(b)[0])  # (tuple keys whose items may be None)
             w = self.wider(targs(a)[1], targs(b)[1])
-            return f"dict[{targs(a)[0]},{w}]" if w != "" else ""
+            return f"dict[{k},{w}]" if k != "" and w != "" else ""
         if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
             return ""
         bs = targs(b)
@@ -6003,6 +6087,8 @@ class Gen:
                 deco = x.s
         if deco != "" and not self.lib:
             # (CPython applies a decorator when the def runs, called or not)
+            if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
+                self.err(f"name '{deco}' is not defined (import it from typing)")
             self.err(f"unsupported decorator @{deco}")
         if cls != "" and len(ps) == 0:
             self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
@@ -6110,7 +6196,8 @@ class Gen:
         body: list[Node] = []
         d = mk("def", "__init__", ci.node.line, [noann, noann, mk("block", "", ci.node.line, body)])
         f = FnInfo("__init__", f"@m.{ci.name}.__init__", d, ci.name)
-        f.params.append("self")
+        me = "self" if "self" not in ci.ftypes else "__pys_self"  # (a field may be named self)
+        f.params.append(me)
         f.ptypes.append(ci.name)
         f.defaults.append(noann)
         f.dglob.append("")
@@ -6120,18 +6207,21 @@ class Gen:
                 f.ptypes.append(ci.ftypes[fl])
                 f.defaults.append(ci.fdefault[fl] if fl in ci.fdefault else noann)
                 f.dglob.append("")
-                me = mk("name", "self", d.line, [])
-                body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [me]), mk("name", fl, d.line, [])]))
+                body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [mk("name", me, d.line, [])]), mk("name", fl, d.line, [])]))
         ci.methods["__init__"] = f
 
     def nt_class(self, ci: ClassInfo) -> None:
-        # class P(NamedTuple): a dataclass (its __init__, __repr__ and __eq__) whose fields are
-        # never assigned after __init__, read in order where it is unpacked or indexed, and ordered
-        # as the tuple of its fields (see richcmp); CPython's tuple methods are not there
+        # class P(NamedTuple): a dataclass (its __init__ and __repr__) whose fields are never
+        # assigned after __init__, read in order where it is unpacked, indexed or iterated, and
+        # compared, concatenated and %-formatted as the tuple of its fields (see ntop); tuple's
+        # other methods are not there
         self.line = ci.node.line
         for m in "__new__ __init__ __slots__ __getnewargs__ _fields _field_defaults _make _replace _asdict _source".split():
             if m in ci.methods:
                 self.err(f"Cannot overwrite NamedTuple attribute {m}")
+        for m in ["__getitem__", "__iter__"]:
+            if m in ci.methods:
+                self.err(f"a NamedTuple that defines {m} is not supported (Pystachy reads its fields where CPython would call it)")
         for fl in ci.fields:
             if fl.startswith("_"):
                 self.err(f"Field names cannot start with an underscore: '{fl}'")
@@ -6189,7 +6279,7 @@ class Gen:
                                                   mk("assign", "", line, [r, mk("fstr", "", line, parts)]),
                                                   mk("expr", "", line, [mk("call", "", line, [mk("name", "__pys_repr_leave", line, []), me])]),
                                                   mk("return", "", line, [r])])
-        if "__eq__" not in ci.methods:
+        if "__eq__" not in ci.methods and ci.name not in self.nts:  # (a NamedTuple's is tuple's, see ntop)
             test = mk("True", "", line, [])
             for i in range(len(ci.fields)):
                 c = mk("cmp", "==", line, [mk("attr", ci.fields[i], line, [me]), mk("attr", ci.fields[i], line, [other])])
@@ -6751,6 +6841,8 @@ class Gen:
         # global name if glob), and so do its twins
         if "?" in t or "None" in targs(t):
             self.err(f"cannot infer the type of '{name}' from this use; annotate it")
+        if is_dict(t):
+            t = f"dict[{none_items(targs(t)[0])},{targs(t)[1]}]"  # (d[k, None] = v)
         toks = ""
         if name in self.ltype and not glob:
             self.ltype[name] = t
@@ -7116,6 +7208,8 @@ class Gen:
             self.err(t.s)
         if k in UNSUPPORTED:
             self.err(UNSUPPORTED[k])
+        if k == "tuple" and len([x for x in t.kids if x.kind == "starred"]) > 0:
+            self.err(UNSUPPORTED["starred"])  # (before the number of targets is checked)
         if k == "name":
             self.store_name(t.s, v)
         elif k == "attr" and self.dotted(t) != "":
@@ -7322,6 +7416,14 @@ class Gen:
         for m in mods:
             self.scan_imports(m.body.kids)
         for m in mods:
+            fwd: dict[str, bool] = {}
+            lazy = False
+            for st in m.body.kids:
+                if st.kind == "class" or st.kind == "subclass":
+                    fwd[st.s] = True
+                lazy = lazy or (st.kind == "import" and "__future__.annotations" in [a.kids[0].s for a in st.kids])
+            if not lazy:
+                self.ann_names(m, m.body.kids, fwd)
             m.body.kids = self.typing_forms(m, m.body.kids, False)
             for i in range(len(m.body.kids)):
                 st = m.body.kids[i]
@@ -7412,20 +7514,20 @@ class Gen:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
         for m in mods:
-            if m.name != "":
-                # a module global that module code only sets to None (an optional accelerator's
-                # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
-                # assigned before any read is the constant None; a compiled function that gives
-                # it another value is an error
-                vals: dict[str, list[Node]] = {}
-                none_assigns(m.body.kids, vals)
-                for nm in vals:
-                    nones = True
-                    for v in vals[nm]:
-                        if v.kind != "None":
-                            nones = False
-                    if nones and nm not in self.gflag and nm in self.mvars:
-                        self.noneglobals[nm] = True
+            # a module global that module code only sets to None (an optional accelerator's
+            # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
+            # assigned before any read is the constant None; a compiled function that gives it
+            # another value is an error (in the program's module, one whose global statement
+            # binds it is left to the advice to annotate it)
+            vals: dict[str, list[Node]] = {}
+            none_assigns(m.body.kids, vals)
+            for nm in vals:
+                nones = True
+                for v in vals[nm]:
+                    if v.kind != "None":
+                        nones = False
+                if nones and nm not in self.gflag and nm in self.mvars and (m.name != "" or nm not in m.fnglobal):
+                    self.noneglobals[nm] = True
         for m in mods:
             for st in m.body.kids if m.name != "" else []:
                 # an imported module's constants (NAME = literal) are typed before any module code
@@ -8780,7 +8882,8 @@ class Gen:
         # a tuple is iterated as a list of its items, which must then share one type; None raises msg
         v = self.unwrap(v, msg)
         if v.t in self.nts:
-            self.err(f"iterating over a NamedTuple ({short(v.t)}) is not supported: unpack it, or read its fields")
+            self.notnone(v, msg)
+            v = self.ntup(v, True)  # (the tuple of its fields)
         if not is_tuple(v.t) or v.t == "tuple[]":
             return v
         ts = targs(v.t)
@@ -9090,8 +9193,9 @@ class Gen:
         # types x cannot have
         if c.kind == "binop" and c.s == "|":
             return self.only_class(t, mk("tuple", "", c.line, c.kids))
-        if c.kind == "name":
-            return c.s == t
+        if c.kind == "name" or c.kind == "attr":
+            # (or tuple and Sequence for a NamedTuple)
+            return (c.kind == "name" and c.s == t) or (t in self.nts and (c.s == "tuple" or c.s == "Sequence") and self.isinst(t, c) < 0)
         if c.kind != "tuple":
             return False
         n = 0
@@ -9119,6 +9223,14 @@ class Gen:
                 if y < 0:
                     r = -1
             return r
+        abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
+        if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
+            # (collections.abc's: str and tuple, also a NamedTuple, are Sequences, list is a mutable one)
+            if abc.endswith("Mapping"):
+                return 1 if is_dict(t) else 0
+            if is_list(t) or (abc == "Sequence" and (t == "str" or is_tuple(t))):
+                return 1
+            return -1 if abc == "Sequence" and t in self.nts else 0
         if c.kind != "name":
             return -1
         if c.s in self.classes:
@@ -9132,7 +9244,7 @@ class Gen:
         if c.s == "bool" or c.s == "float" or c.s == "str":
             return 1 if t == c.s else 0
         if c.s == "tuple" and t in self.nts:
-            self.err("isinstance() of a NamedTuple and tuple is not supported")
+            return -1  # (a tuple, unless it is None)
         if c.s == "list" or c.s == "dict" or c.s == "tuple":
             return 1 if t.startswith(c.s + "[") else 0
         if c.s in "bytes bytearray memoryview set frozenset complex range slice type".split():
@@ -9248,7 +9360,13 @@ class Gen:
             path = self.dotted(n)
             if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.modattr(path)
+            c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+            if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
+                return self.class_attr(n.kids[0], n.s)
             o = self.expr(n.kids[0], "")
+            if o.t in self.nts and n.s == "_fields":
+                self.notnone(o, "AttributeError: 'NoneType' object has no attribute '_fields'")
+                return self.tuple_([Val(self.sconst(x), "str") for x in self.classes[o.t].fields])
             if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
                 r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
                 return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if n.s == "closed" else Val(r, "str")
@@ -9288,8 +9406,8 @@ class Gen:
                     et = v.t
                 jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
                 items.append(v)
-            if not given and is_opt(jt):
-                et = jt  # None among strings (or T | None among T): T | None
+            if not given and (is_opt(jt) or is_tuple(jt)):
+                et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
             if given and soft:
                 for v in items:
                     et = self.wider(et, v.t) or et
@@ -9306,7 +9424,9 @@ class Gen:
             ks: list[Val] = []
             vs: list[Val] = []
             given = kv[1] != ""
+            kgiven = kv[0] != ""
             jt = ""
+            kj = ""
             for i in range(0, len(n.kids), 2):
                 a = self.expr(n.kids[i], kv[0])
                 if kv[0] == "":
@@ -9315,10 +9435,14 @@ class Gen:
                 if kv[1] == "" and b.t != "None":
                     kv[1] = b.t
                 jt = b.t if jt == "" else self.join(jt, b.t) or "-"
-                ks.append(self.coerce(a, kv[0]))
+                kj = a.t if kj == "" else self.join(kj, a.t) or "-"
+                ks.append(a)
                 vs.append(b)
-            if not given and is_opt(jt):
-                kv[1] = jt  # None among strings (or T | None among T): T | None
+            if not given and (is_opt(jt) or is_tuple(jt)):
+                kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+            if not kgiven and is_tuple(kj):
+                kv[0] = none_items(kj)
+            ks = [self.coerce(x, kv[0]) for x in ks]
             if given and soft:
                 for b in vs:
                     kv[1] = self.wider(kv[1], b.t) or kv[1]
@@ -9359,6 +9483,23 @@ class Gen:
         self.err(f"unsupported expression '{k}'")
         return Val("", "")
 
+    def class_attr(self, cn: Node, a: str) -> Val:
+        # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
+        # (instances read it until they assign the field; C.a = v is not supported)
+        c = cn.s
+        ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
+        if (cn.chk or self.foreign(c)) and c in self.gflag:
+            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c}.def')}, true"), self.unbound(c))
+        if a == "_fields":
+            return self.tuple_([Val(self.sconst(x), "str") for x in ci.fields])
+        t = ci.ftypes[a]
+        if is_const(ci.fdefault[a]):
+            return self.coerce(self.expr(ci.fdefault[a], t), t)
+        self.class_default(ci, a)
+        return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+
     def percent(self, fmt: str, rhs: Node) -> Val:
         # "format" % args with a constant format: each conversion becomes what format() or
         # str()/repr() of its argument gives, as CPython's printf-style formatting does
@@ -9367,7 +9508,7 @@ class Gen:
             for x in rhs.kids:
                 items.append(self.expr(x, ""))
         else:
-            v = self.expr(rhs, "")
+            v = self.ntup(self.expr(rhs, ""))  # (a NamedTuple is a tuple: its fields are the arguments)
             if is_tuple(unopt(v.t)) and is_opt(v.t):
                 return self.percent_opt(fmt, v)
             if is_tuple(v.t):
@@ -9742,8 +9883,10 @@ class Gen:
     def dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         # operator overloading, resolved statically: a + b -> A.__add__(a, b)
         m = DUNDER.get(op, "")
-        if m != "" and ((a.t in self.nts and is_tuple(b.t)) or (b.t in self.nts and is_tuple(a.t))):
-            self.err(f"comparing a NamedTuple with a tuple ({typestr(a.t)} {op} {typestr(b.t)}) is not supported")
+        if m != "" and (a.t in self.nts or b.t in self.nts):
+            r = self.ntop(op, a, b, shown)
+            if r.t != "":
+                return r
         if op in REFL and (a.t in self.classes or b.t in self.classes):
             return self.richcmp(op, a, b)
         if (op == "==" or op == "!=") and a.t == "None" and b.t in self.classes:
@@ -9768,6 +9911,53 @@ class Gen:
             return Val(self.ins(f"xor i1 {self.dunder('==', a, b).v}, true"), "bool")
         return Val("", "")
 
+    def ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        # a op b with a NamedTuple operand: tuple's methods, which compare it (with tuples and
+        # other NamedTuples), concatenate and repeat it as the tuple of its fields, unless its class
+        # defines the operator; Val("", "") where the class's own method or no method applies
+        m = DUNDER[op]
+        rm = DUNDER[REFL[op]] if op in REFL else m if op == "==" or op == "!=" else "__r" + m[2:]
+        tl = (a.t in self.nts or is_tuple(a.t)) and (b.t in self.nts or is_tuple(b.t))
+        if a.t in self.nts and m in self.classes[a.t].methods:
+            if tl and a.t != b.t:
+                self.err(f"{short(a.t)}.{m} with a {typestr(b.t)} operand is not supported")
+            return Val("", "")
+        cmp = op in REFL or op == "==" or op == "!="
+        if b.t in self.nts and rm in self.classes[b.t].methods and (is_tuple(a.t) if cmp else a.t != b.t):
+            # (CPython asks a tuple's subclass first, and b's __radd__ & co where a has no __add__)
+            self.err(f"{short(b.t)}.{rm} with a {typestr(a.t)} operand is not supported")
+        if tl and (op == "==" or op == "!="):
+            return self.cmp2(op, self.ntup(a), self.ntup(b))
+        if tl and cmp:
+            return self.richcmp(op, a, b)
+        if (op == "+" and tl) or (op == "*" and (a.t == "int" or b.t == "int")):
+            sh = shown if shown != "" else op
+            self.none_operand(sh, a, b)  # (None on the left)
+            self.notnone(b, 'TypeError: can only concatenate tuple (not "NoneType") to tuple' if op == "+" else f"TypeError: unsupported operand type(s) for {sh}: 'int' and 'NoneType'")
+            return self.arith(op, self.ntup(a, True), self.ntup(b, True), shown)
+        return Val("", "")
+
+    def ntup(self, v: Val, known: bool = False) -> Val:
+        # a NamedTuple as tuple's methods see it: the tuple of its fields (a tuple | None if it
+        # may be None and is not known not to be here); any other value as it is
+        if v.t not in self.nts:
+            return v
+        ci = self.classes[v.t]
+        maybe = v.v not in self.nn and not known
+        l0 = self.cur
+        lread = self.label() if maybe else ""
+        lend = self.label() if maybe else ""
+        if maybe:
+            self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lread)
+            self.place(lread)
+        t = self.tuple_([self.getfield(v, Val(self.ins(f"getelementptr %C.{v.t}, ptr {v.v}, i32 0, i32 {ci.fpos[x]}"), ci.ftypes[x]), x) for x in ci.fields])
+        if not maybe:
+            return t
+        l1 = self.cur
+        self.br(lend)
+        self.place(lend)
+        return Val(self.ins(f"phi ptr [null, %{l0}], [{t.v}, %{l1}]"), self.opt(t.t))
+
     def cmp_method(self, t: str, m: str, other: str) -> str:
         # m, if class t defines it as a binary method that accepts an operand of type other
         if t not in self.classes or m not in self.classes[t].methods:
@@ -9790,7 +9980,9 @@ class Gen:
         # b.__gt__(a), else TypeError naming both run-time types (None defines neither)
         fw = self.cmp_method(a.t, DUNDER[op], b.t)
         rf = self.cmp_method(b.t, DUNDER[REFL[op]], a.t)
-        nt = fw == "" and rf == "" and a.t == b.t and a.t in self.nts  # (as the tuples of their fields)
+        # a NamedTuple without the method compares as the tuple of its fields (see ntop): b's
+        # reflected method runs only where a is None
+        nt = fw == "" and (a.t in self.nts or b.t in self.nts) and (a.t in self.nts or is_tuple(a.t)) and (b.t in self.nts or is_tuple(b.t))
         if fw == "" and rf == "" and not self.lenient and not nt:
             self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
         if fw != "" and a.v in self.nn:
@@ -9802,8 +9994,7 @@ class Gen:
             lnone = self.label()
             self.cbr(self.ins(f"or i1 {self.isnull(a)}, {self.isnull(b)}"), lnone, lcall)
             self.place(lcall)
-            fs = self.classes[a.t].fields
-            r = self.cmp2(op, self.tuple_([self.getfield(a, self.field(a, x), x) for x in fs]), self.tuple_([self.getfield(b, self.field(b, x), x) for x in fs]))
+            r = self.cmp2(op, self.ntup(a, True), self.ntup(b, True))
             phis.append(f"[{r.v}, %{self.cur}]")
             self.br(lend)
             self.place(lnone)
@@ -9906,7 +10097,13 @@ class Gen:
             return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), self.wider(a.t, b.t))  # (a new list)
         if op == "*" and seq and b.t == "int":
             return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
-        if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t)):
+        if op == "+" and is_tuple(a.t) and is_tuple(b.t):
+            return self.tuple_([self.tget(a, i) for i in range(len(targs(a.t)))] + [self.tget(b, i) for i in range(len(targs(b.t)))])
+        if op == "*" and is_tuple(a.t) and b.t == "int":
+            if b.v.startswith("%"):
+                self.err(f"{typestr(a.t)} * n needs a constant n (its length is part of its type)")
+            return self.tuple_([self.tget(a, i % len(targs(a.t))) for i in range(len(targs(a.t)) * max(0, int(b.v)))])
+        if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t) or is_tuple(b.t)):
             return self.arith(op, b, a)
         self.err(f"unsupported operand types for {op}: {a.t} and {b.t}")
         return a
@@ -9973,6 +10170,9 @@ class Gen:
             return du
         if (op == "in" or op == "not in") and is_opt(b.t):
             b = self.unwrap(b, "TypeError: argument of type 'NoneType' is not iterable")
+        if (op == "in" or op == "not in") and b.t in self.nts and "__contains__" not in self.classes[b.t].methods:
+            self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
+            b = self.ntup(b, True)  # (tuple's __contains__)
         if (op == "in" or op == "not in") and b.t == "str":
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
         if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and self.optional(elem(b.t)) == "" and elem(b.t) not in self.classes)):
@@ -10026,7 +10226,7 @@ class Gen:
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et))}"])
                 r = self.ins(f"add i64 {r}, 1")
             elif is_dict(b.t):
-                s = self.to_slot(self.coerce(a, targs(b.t)[0]))
+                s = self.to_slot(self.dkey(a, targs(b.t)[0]))
                 r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"])
             else:
                 self.err(f"'in' is not supported for {b.t}")
@@ -10106,6 +10306,8 @@ class Gen:
                 return self.builtin(path, args, want)
             if f.kids[0].kind == "name" and "?" in self.rtype(f.kids[0].s):
                 return self.fill(f.kids[0], f.s, args, want)
+            if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
+                self.err(f"{short(f.kids[0].s)}._make() is not supported: call {short(f.kids[0].s)}(...) with the fields")
             o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
             r = self.method(o, f.s, args)
             if f.s != "close":
@@ -10184,9 +10386,11 @@ class Gen:
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
         if o.t in self.classes:
             ci = self.classes[o.t]
-            if m not in ci.methods and not (m == "_replace" and o.t in self.nts):
+            if m not in ci.methods and not ((m == "_replace" or m == "_asdict") and o.t in self.nts):
                 self.err(f"'{o.t}' object has no method '{m}'")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            if m == "_asdict" and m not in ci.methods:
+                return self.asdict(o, args)
             if m not in ci.methods:
                 return self.replace(o, args)
             return self.call_fn(ci.methods[m], [o], args)
@@ -10196,9 +10400,10 @@ class Gen:
         # p._replace(f=v, ...): a new NamedTuple with the fields given, and p's others
         ci = self.classes[o.t]
         given: dict[str, Val] = {}
+        npos = len([a for a in args if a.kind != "kw"])
         for a in args:
             if a.kind != "kw":
-                self.err("_replace() takes only keyword arguments")
+                self.err(f"{short(o.t)}._replace() takes 1 positional argument but {npos + 1} were given")
             if a.s not in ci.ftypes:
                 self.err(f"Got unexpected field names: ['{a.s}']")
             given[a.s] = self.expr(a.kids[0], ci.ftypes[a.s])
@@ -10207,6 +10412,22 @@ class Gen:
             vals.append(given[fl] if fl in given else self.getfield(o, self.field(o, fl), fl))
         self.call_fn(ci.methods["__init__"], vals, [])
         return vals[0]
+
+    def asdict(self, o: Val, args: list[Node]) -> Val:
+        # p._asdict(): a dict from its fields' names to their values, which must then share one type
+        ci = self.classes[o.t]
+        if len(args) > 0:
+            self.err(f"{short(o.t)}._asdict() takes 1 positional argument but {len(args) + 1} were given")
+        vt = ci.ftypes[ci.fields[0]]
+        for fl in ci.fields:
+            vt = self.wider(vt, ci.ftypes[fl])
+            if vt == "":
+                self.err(f"_asdict() of a NamedTuple whose fields have different types is not supported (a dict's values have one type): {short(o.t)}")
+        r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind('str')}", f"i64 {len(ci.fields)}"])
+        for fl in ci.fields:
+            v = self.coerce(self.getfield(o, self.field(o, fl), fl), vt)
+            self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(fl), "str")), "i64 " + self.to_slot(v)])
+        return Val(r, f"dict[str,{vt}]")
 
     def new_obj(self, c: str) -> Val:
         # a new object of class c, not initialized
@@ -10247,29 +10468,29 @@ class Gen:
                 pos += 1
                 continue
             if a.kind == "kw" and f.vararg >= 0 and a.s == f.params[f.vararg]:
-                self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
+                self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
             if a.kind == "kw":
                 if a.s not in f.params:
-                    self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
+                    self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
                 j = f.params.index(a.s)
                 if j < f.posonly:
-                    self.err(f"{f.name}() got a positional-only argument passed as a keyword argument: '{a.s}'")
+                    self.err(f"{self.fname(f)}() got a positional-only argument passed as a keyword argument: '{a.s}'")
                 e = a.kids[0]
             else:
                 pos += 1
                 if j >= f.npos and f.npos >= 0 and j < np:
-                    self.err(f"{f.name}() takes {f.npos} positional argument{'s' if f.npos != 1 else ''} but more were given")
+                    self.err(f"{self.fname(f)}() takes {f.npos} positional argument{'s' if f.npos != 1 else ''} but more were given")
             if j >= np:
-                self.err(f"too many arguments in call to {f.name}()")
+                self.err(f"too many arguments in call to {self.fname(f)}()")
             if vals[j].t != "":
-                self.err(f"{f.name}() got multiple values for argument '{f.params[j]}'")
+                self.err(f"{self.fname(f)}() got multiple values for argument '{f.params[j]}'")
             vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j], f, j)
         if f.vararg >= 0:
             vals[f.vararg] = self.tuple_(extra)
         for j in range(np):
             if vals[j].t == "":
                 if f.defaults[j].kind == "noann":
-                    self.err(f"missing argument '{f.params[j]}' in call to {f.name}()")
+                    self.err(f"missing argument '{f.params[j]}' in call to {self.fname(f)}()")
                 t = f.ptypes[j]
                 if f.dglob[j] == "" and not is_const(f.defaults[j]):
                     self.early_default(f, j)
@@ -10295,6 +10516,10 @@ class Gen:
             self.qused[f.ll] = True  # (a recursive call: what it returns can no longer change)
             return self.typed_empty(Val(self.ins(call), f.ret), want, f)
         return Val(self.ins(call), f.ret)
+
+    def fname(self, f: FnInfo) -> str:
+        # f as CPython's errors about a call's arguments name it: a NamedTuple's is P.__new__
+        return f"{short(f.cls)}.__new__" if f.name == "__init__" and f.cls in self.nts else f.name
 
     def instance(self, f: FnInfo, ts: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first
@@ -10385,6 +10610,8 @@ class Gen:
             name = name[6:]
         if name.startswith("builtins."):
             name = name[9:]
+        if name == "typing.NamedTuple":
+            self.err("the functional NamedTuple form is not supported: write a class, class P(NamedTuple): with annotated fields")
         if "." not in name and name not in PYBUILTINS:
             self.err(f"name '{short(name)}' is not defined")
         # builtins and module functions ("os.system"); most are one call listed in CALLS
@@ -10649,7 +10876,10 @@ class Gen:
         return self.listcomp(mk("listcomp", "", n.line, [it, mk("name", "__item", n.line, []), n]), want)
 
     def as_list(self, v: Val, name: str) -> Val:
-        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple of one item type, as a list
+        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item type, as a list
+        if v.t in self.nts:
+            self.notnone(v, "TypeError: 'NoneType' object is not iterable")
+            v = self.ntup(v, True)
         if is_dict(v.t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
         if is_tuple(v.t):
@@ -10782,8 +11012,8 @@ class Gen:
         optget = key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and self.optional(V) != ""
         if optget:
             args = args[:1]
-        if key == "dict.get" and len(args) == 1 and V not in self.classes and not optget:
-            self.err("dict.get(key) needs a default value unless the values are objects")
+        if key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and not optget:
+            self.err(f"dict.get(key{', None' if len(args) == 2 else ''}) needs values that can be None (str, list, dict, tuple or objects), not {typestr(V)}: give another default ({typestr(V)} | None would need boxing)")
         spec = METHODS[key]
         c = spec.find(":")
         av = [f"{lt(o.t)} {o.v}"]
@@ -10822,6 +11052,8 @@ class Gen:
                 if base == "dict" and i == 0 and is_opt(v.t) and unopt(v.t) == K and (m == "get" or m == "pop"):
                     kx = v
                     pt = v.t
+                elif base == "dict" and i == 0 and (m == "get" or m == "pop"):
+                    v = self.dkey(v, K)
                 elif key == "dict.get" and i == 1 and self.optdefault(v, V) != V:
                     pt = self.optdefault(v, V)  # d.get(k, default) with a default that may be None: V | None
                     optget = True
@@ -10873,9 +11105,14 @@ class Gen:
         return f"ptrtoint (ptr {self.sconst(self.desc(kt))} to i64)"
 
     def dkey(self, k: Val, kt: str) -> Val:
-        # a key for a dict whose keys have type kt: one that may be None stays optional (see nonekey)
+        # a key to look up in a dict whose keys have type kt: one that may be None stays optional
+        # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
         if is_opt(k.t) and unopt(k.t) == kt:
             return k
+        if k.t == "bool" and kt == "int":
+            return self.as_int(k)  # (True is the key 1)
+        if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
+            return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
         return self.coerce(k, kt)
 
     def nonekey(self, k: Val, none: str, fn: str, av: list[str]) -> str:

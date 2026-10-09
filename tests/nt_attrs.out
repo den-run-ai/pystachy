@@ -1,0 +1,13 @@
+('a', 'b') ('a', 'b') ('self', 'other') 2
+{'a': 'x', 'b': None} {'a': 'y', 'b': 'z'} {'self': 1, 'other': 2}
+self 3
+other 4
+Me(self=7, other=2) 7 2 Me(self=8, other=2) Me(self=0, other=1) Me(self=9, other=2)
+Box(self='s', n=0) Box(self='t', n=2) u
+True True False False
+True True True False
+True True True False
+sequence list mapping sequence other sequence
+5 9 cfg ['t'] ['t'] 0.5 1
+10 cfg! 0
+[exit 0]
