@@ -7166,7 +7166,10 @@ class Gen:
                 j = i + 1
                 while j < len(body) and body[j].kind == "def" and (body[j].s != st.s or self.stub(m, body[j])):
                     j += 1
-                if (j == len(body) or body[j].kind != "def") and m.name != "":
+                later = False  # (a def of its name past other statements, which could call the stub first)
+                for k in body[j:]:
+                    later = later or (k.kind == "def" and k.s == st.s)
+                if (j == len(body) or body[j].kind != "def") and m.name != "" and not later:
                     out.append(st)  # (an imported module's, also a method: an error where it is called, see declare_fn)
                     continue
                 if j == len(body) or body[j].kind != "def":
