@@ -3815,6 +3815,8 @@ class Loader:
             return 2
         if k == "call" and self.plain_call(n, m):
             return 0
+        if k == "assign" and n.s == "from" and n.kids[-1].kind == "name" and owner(n.kids[-1].s) in self.mods and not self.binds_surely(owner(n.kids[-1].s), short(n.kids[-1].s)):
+            return 2  # (from m import x, where m's code may leave x unbound: CPython raises ImportError)
         r = 0 if k in NOCALL else 1
         if k == "uimport":
             for x in n.kids:
