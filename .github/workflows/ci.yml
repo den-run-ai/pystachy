@@ -1,6 +1,7 @@
 # Full verification on every push and pull request: bootstrap fixed point, differential tests with
-# the CPython-hosted and native compilers, the Python-free native stage, the UBSan stage and the
-# benchmarks (see tests/verify.sh). build/verification.json is uploaded even when a step fails.
+# the CPython-hosted and native compilers, the Python-free native stage, the UBSan stage, the
+# garbage-collector stress stage and the benchmarks (see tests/verify.sh).
+# build/verification.json is uploaded even when a step fails.
 name: CI
 
 on:

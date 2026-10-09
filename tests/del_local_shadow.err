@@ -1,0 +1,1 @@
+UnboundLocalError: cannot access local variable 'os' where it is not associated with a value

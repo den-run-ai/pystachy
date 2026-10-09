@@ -1,2 +1,2 @@
-# error: invalid float literal
+# error: invalid decimal literal
 print(1e)

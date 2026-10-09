@@ -1,0 +1,6 @@
+nested_own util is own string
+nested_own.other loaded
+other 2
+other 2
+own string
+[exit 0]

@@ -1,0 +1,13 @@
+helper loaded
+fallback
+1
+fallback 2
+pkg loaded
+fallback 3
+5
+False
+rel loaded
+slow
+fallback in f
+1
+[exit 0]

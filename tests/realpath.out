@@ -1,0 +1,7 @@
+True True True
+/ / /no-such-x /y /no-such-x/a/c
+<cwd> <cwd>/tests <cwd>/no/file <cwd>/tests/realpath.py
+<cwd>/tests/linked/main_real.py <cwd>/tests/loader/helper.py <cwd>/tests/realpath.py
+<cwd>/tests/linked/loop1 <cwd>/tests/linked/loop2/x <cwd>/tests/linked/nowhere
+<cwd>/tests/linked
+[exit 1]

@@ -1,0 +1,16 @@
+fl init
+no _speedups
+fl.broken loaded
+fallback
+fl.broken loaded
+relative fallback
+no _cext
+1
+fl.one loaded
+fl.two loaded
+no nothere
+1
+fl.broken loaded
+broken again
+no nothere2
+[exit 0]

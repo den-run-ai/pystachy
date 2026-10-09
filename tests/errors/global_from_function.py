@@ -1,12 +1,8 @@
 # error: a function assigns it, so declare it at module level first (g: T)
-def getg() -> int:
-    return g
-
-
-def setg() -> None:
+def setg(v):
     global g
-    g = 5
+    g = v
 
 
-setg()
-print(getg())
+print(g)
+setg(5)

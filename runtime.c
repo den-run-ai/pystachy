@@ -2126,6 +2126,13 @@ I pys_system(Str *c) {
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
 I pys_getpid(void) { return getpid(); }
+static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
+void pys_setrecursionlimit(I n) {
+  if (n > INT32_MAX || n < INT32_MIN) pys_fail("OverflowError: Python int too large to convert to C int");
+  if (n < 1) pys_fail("ValueError: recursion limit must be greater or equal than 1");
+  recursion_limit = n;
+}
+I pys_getrecursionlimit(void) { return recursion_limit; }
 Str *pys_platform(void) {              /* sys.platform */
 #if defined(__linux__)
   return cstr("linux");
@@ -2443,6 +2450,66 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
+typedef struct { Str **a; I n, cap; } Parts;            /* a stack of path components; NULL marks a resolved link */
+static void parts_push(Parts *p, Str *s) {
+  if (p->n == p->cap) { I c = p->cap * 2 + 16; Str **a = pys_alloc(c * sizeof(Str *)); if (p->n) memcpy(a, p->a, p->n * sizeof(Str *)); p->a = a; p->cap = c; }
+  p->a[p->n++] = s;
+}
+static I parts_split(Parts *p, const char *s, I n) {    /* push s.split("/") reversed, so that it pops in order */
+  I k = p->n;
+  for (I i = n, j = n; i >= 0; i--) if (i == 0 || s[i - 1] == '/') { parts_push(p, pys_str(s + i, j - i)); j = i - 1; }
+  return p->n - k;
+}
+Str *pys_realpath(Str *f) {    /* os.path.realpath(f): CPython 3.13's posixpath.realpath (strict=False), step for step */
+  if (nul(f)) pys_fail("ValueError: lstat: embedded null character in path");
+  Parts rest = {0}, seen = {0};                          /* seen: link path, then its resolved path (NULL: not yet) */
+  I count = parts_split(&rest, f->s, f->len);
+  Str *path;
+  if (f->len && f->s[0] == '/') path = cstr("/");
+  else {
+    char *c = getcwd(NULL, 0);
+    if (!c) {
+      int e = errno; Buf b = {0}; char t[32]; const char *k = errcls(e), *m = strerror(e);
+      put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, "", 1); pys_fail(b.p);
+    }
+    path = cstr(c); free(c);
+  }
+  while (count) {
+    Str *name = rest.a[--rest.n];
+    if (!name) {                                         /* a link's target is resolved */
+      Str *l = rest.a[--rest.n];
+      for (I i = 0; i < seen.n; i += 2) if (seen.a[i] == l) seen.a[i + 1] = path;
+      continue;
+    }
+    count--;
+    if (!name->len || (name->len == 1 && name->s[0] == '.')) continue;
+    if (name->len == 2 && name->s[0] == '.' && name->s[1] == '.') {
+      I i = path->len - 1;
+      while (path->s[i] != '/') i--;
+      path = pys_str(path->s, i ? i : 1);
+      continue;
+    }
+    Buf b = {0}; put(&b, path->s, path->len); if (path->len > 1) put(&b, "/", 1); put(&b, name->s, name->len);
+    Str *np = done(&b);
+    struct stat st;
+    if (lstat(np->s, &st) || !S_ISLNK(st.st_mode)) { path = np; continue; }   /* (errors are ignored) */
+    I k = -1;
+    for (I i = 0; i < seen.n; i += 2) if (seen.a[i]->len == np->len && !memcmp(seen.a[i]->s, np->s, np->len)) k = i;
+    if (k >= 0) { path = seen.a[k + 1] ? seen.a[k + 1] : np; continue; }   /* (NULL: a loop, kept as it is) */
+    Str *t = 0;
+    for (I n = 256; !t; n *= 2) {
+      char *buf = pys_alloc_atomic(n); ssize_t r = readlink(np->s, buf, n);
+      if (r < 0) break;
+      if (r < n) t = pys_str(buf, r);
+    }
+    if (!t) { path = np; continue; }
+    if (t->len && t->s[0] == '/') path = cstr("/");
+    parts_push(&seen, np); parts_push(&seen, 0);
+    parts_push(&rest, np); parts_push(&rest, 0);
+    count += parts_split(&rest, t->s, t->len);
+  }
+  return path;
+}
 static void abspath(Buf *r, const char *d) {            /* os.path.abspath + "/": no symlink resolution */
   char cwd[4096]; Buf b = {0};
   if (*d != '/' && getcwd(cwd, sizeof cwd)) { put(&b, cwd, strlen(cwd)); put(&b, "/", 1); }

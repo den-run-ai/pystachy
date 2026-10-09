@@ -22,14 +22,6 @@ class Job:
         return n
 
 
-class Plain:
-    pass
-
-
-class Sub(Plain[int]):
-    pass
-
-
 class Ratio:
     half = 1 // 0
 
