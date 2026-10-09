@@ -10,6 +10,9 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - coverage: every runtime function pystachy.py names (METHODS, CALLS, IRT, FRT, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
+  - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
+    with the same bases; every builtin exception class of this Python is one of them, and so is
+    every class a raise statement accepts (EXCEPTIONS);
   - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
     C call graph reaches pys_fail, pys_raise, oserr or kbint_exit (not counting the allocator's
     MemoryError: that is A), A if it reaches the allocator's slow path (gc_slow), U or U? if it
@@ -19,7 +22,9 @@ disagrees with its entry is an internal error. This tool checks the table itself
     graph shows are allowed (an entry may be conservative); -v lists them.
 The exit status is 1 if a check fails. Clang and llvm-as come from PATH, or PYSTACHY_LLVM.
 """
+import builtins
 import importlib.util
+import io
 import os
 import re
 import subprocess
@@ -161,6 +166,20 @@ def main():
     for s in sorted(pys.RTSYM):
         if s not in named:
             bad.append(f"{pys.RTSYM[s]}: RUNTIME's entry is for {s}, which pystachy.py never names")
+    # exceptions
+    for k, v in pys.EXCBASES.items():
+        c = io.UnsupportedOperation if k == "io.UnsupportedOperation" else getattr(builtins, k, None)
+        if not (isinstance(c, type) and issubclass(c, BaseException) and c.__name__ == k.split(".")[-1]):
+            bad.append(f"EXCBASES: {k} is no builtin exception class of this Python")
+        elif ",".join(b.__name__ for b in c.__bases__ if b is not object) != v:
+            bad.append(f"EXCBASES gives {k} the bases {v or '(none)'}, this Python {', '.join(b.__name__ for b in c.__bases__)}")
+    for n in dir(builtins):
+        c = getattr(builtins, n)
+        if isinstance(c, type) and issubclass(c, BaseException) and c.__name__ == n and not n.startswith("_") and n not in pys.EXCBASES:
+            bad.append(f"EXCBASES has no entry for the builtin exception class {n}")
+    for k in pys.EXCEPTIONS:
+        if k not in pys.EXCBASES and k != "IOError" and k != "EnvironmentError":
+            bad.append(f"EXCEPTIONS: {k} is not in EXCBASES")
     # effects
     for k in rt:
         sym = pys.rtsym(k)
@@ -193,7 +212,7 @@ def main():
     if verbose:
         for n in note:
             print("note:", n)
-    print(f"{len(rt)} RUNTIME entries: " + (f"{len(bad)} problems" if bad else "signatures, coverage and effects agree with runtime.c"))
+    print(f"{len(rt)} RUNTIME entries, {len(pys.EXCBASES)} exception classes: " + (f"{len(bad)} problems" if bad else "signatures, coverage and effects agree with runtime.c, the classes with this Python"))
     sys.exit(1 if bad else 0)
 
 
