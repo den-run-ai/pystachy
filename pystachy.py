@@ -4539,10 +4539,14 @@ for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN
            "ECANCELED EOWNERDEAD ENOTRECOVERABLE").split():
     ERRNO[_k] = True
 # math functions raise CPython's domain and range errors (runtime.c, pys_m_*)
-for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians".split():
+for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians asinh acosh atanh erf erfc ulp".split():
     CALLS[f"math.{_k}(float)"] = f"pys_m_{_k}:float"
-for _k in "pow atan2 hypot fmod copysign".split():
+for _k in "pow atan2 hypot fmod copysign nextafter remainder".split():
     CALLS[f"math.{_k}(float,float)"] = f"pys_m_{_k}:float"
+CALLS["math.fma(float,float,float)"] = "pys_m_fma:float"
+CALLS["math.ldexp(float,int)"] = "pys_m_ldexp:float"
+CALLS["math.frexp(float)"] = "pys_m_frexp:tuple[float,int]"
+CALLS["math.modf(float)"] = "pys_m_modf:tuple[float,float]"
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
 for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno".split():
@@ -4844,7 +4848,11 @@ RUNTIME: dict[str, str] = {
     "m.hypot": "float:float,float||", "m.fmod": "float:float,float|R|", "m.copysign": "float:float,float||",
     "m.logb": "float:float,float|R|", "m.trunc": "int:float|R|", "m.gcd": "int:int,int|R|", "m.lcm": "int:int,int|R|",
     "m.isqrt": "int:int|R|", "m.factorial": "int:int|R|", "m.comb": "int:int,int|R|", "m.perm": "int:int,int|R|",
-    "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||",
+    "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||", "m.asinh": "float:float|R|",
+    "m.acosh": "float:float|R|", "m.atanh": "float:float|R|", "m.erf": "float:float|R|", "m.erfc": "float:float|R|",
+    "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
+    "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
+    "m.fma": "float:float,float,float|R|",
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A rL rD U?|",
     "format": "str:*T,#,str|R A rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
@@ -11989,6 +11997,9 @@ class Gen:
             self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
+        if key not in CALLS and name == "math.ldexp" and len(vals) == 2:
+            vals = [self.as_float(self.as_int(vals[0])), self.as_int(vals[1])]
+            key = f"{name}({','.join([v.t for v in vals])})"
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"

@@ -851,6 +851,35 @@ static double mchk(double r, double x, double y, int ovf) {
 #define M1(f, ovf) double pys_m_##f(double x) { return mchk(f(x), x, 0, ovf); }
 M1(sqrt, 0) M1(sin, 0) M1(cos, 0) M1(tan, 0) M1(asin, 0) M1(acos, 0) M1(atan, 0) M1(sinh, 1) M1(cosh, 1) M1(tanh, 0)
 M1(exp, 1) M1(log, 0) M1(log2, 0) M1(log10, 0) M1(fabs, 0) M1(log1p, 0) M1(expm1, 1) M1(exp2, 1) M1(cbrt, 0)
+M1(asinh, 0) M1(acosh, 0) M1(atanh, 0) M1(erf, 0) M1(erfc, 0)
+double pys_m_ldexp(double x, I i) {   /* CPython's: an exponent beyond int's range is clamped */
+  if (x == 0 || !isfinite(x)) return x;
+  double r = ldexp(x, i > 0x7FFFFFFF ? 0x7FFFFFFF : i < -0x7FFFFFFF ? -0x7FFFFFFF : (int)i);
+  if (isinf(r)) pys_fail("OverflowError: math range error");
+  return r;
+}
+void **pys_m_frexp(double x) {        /* (m, e), a tuple of a float and an int */
+  int e = 0; double m = isnan(x) || isinf(x) || x == 0 ? x : frexp(x, &e);
+  I *t = pys_alloc(16); memcpy(t, &m, 8); t[1] = e; return (void **)t;
+}
+void **pys_m_modf(double x) {         /* (fractional part, integral part); an infinity's is (+-0.0, x), as in CPython */
+  double i, f = isinf(x) ? copysign(0.0, x) : isnan(x) ? x : modf(x, &i);
+  if (isinf(x) || isnan(x)) i = x;
+  I *t = pys_alloc(16); memcpy(t, &f, 8); memcpy(t + 1, &i, 8); return (void **)t;
+}
+double pys_m_nextafter(double x, double y) { return nextafter(x, y); }
+double pys_m_remainder(double x, double y) { return mchk(remainder(x, y), x, y, 0); }
+double pys_m_fma(double x, double y, double z) {   /* x * y + z, rounded once */
+  double r = fma(x, y, z);
+  if (isnan(r) && !isnan(x) && !isnan(y) && !isnan(z)) pys_fail("ValueError: invalid operation in fma");
+  if (isinf(r) && isfinite(x) && isfinite(y) && isfinite(z)) pys_fail("OverflowError: overflow in fma");
+  return r;
+}
+double pys_m_ulp(double x) {          /* the distance from |x| to the next float away from zero (or below the largest) */
+  if (isnan(x) || isinf(x)) return fabs(x);
+  double a = fabs(x), b = nextafter(a, INFINITY);
+  return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
+}
 double pys_m_pow(double x, double y) {
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);

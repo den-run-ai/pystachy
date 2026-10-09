@@ -309,7 +309,8 @@ modes, and files' `read`/`readline`/
 are files), `os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
-constants, which raise CPython's domain and range errors.
+constants, which raise CPython's domain and range errors (but `dist`, `fsum`, `gamma`,
+`isclose`, `lgamma`, `prod` and `sumprod`, which are rejected).
 
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
 feature: generator functions (`yield`), generator expressions other than the consumer
