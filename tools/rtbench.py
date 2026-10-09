@@ -1,6 +1,7 @@
 """Time the runtime's functions under two compilers: tools/rtbench/*.py, small loops over the
 functions runtime.py implements, built AOT and run JIT with each compiler (each uses the runtime
-beside it: PYSTACHY_HOME is ignored, as one home would give both the same runtime), best of REPS runs, outputs checked against CPython's. Use it to
+beside it: PYSTACHY_HOME is ignored, as one home would give both the same runtime), the least CPU time
+of REPS runs, outputs checked against CPython's. Use it to
 measure a function before and after it moves between runtime.c and runtime.py.
 
 usage: python3 tools/rtbench.py OLD_COMPILER NEW_COMPILER [NAME...]   (env REPS, default 7)
@@ -12,7 +13,6 @@ import statistics
 import subprocess
 import sys
 import tempfile
-import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = os.path.join(ROOT, "tools", "rtbench")
@@ -26,13 +26,19 @@ ENV = {k: v for k, v in os.environ.items() if k != "PYSTACHY_HOME"}
 
 
 def best(cmd, want):
+    # the least CPU time (user + system, the child's and its descendants', from wait4) of REPS runs
     ts = []
     for _ in range(REPS):
-        t = time.perf_counter()
-        r = subprocess.run(cmd, capture_output=True, text=True, env=ENV)
-        ts.append(time.perf_counter() - t)
-        if r.returncode != 0 or r.stdout != want:
-            sys.exit(f"{' '.join(cmd)}: wrong output or status {r.returncode}: {r.stdout[:200]}{r.stderr[-300:]}")
+        with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+            p = subprocess.Popen(cmd, stdout=out, stderr=err, env=ENV)
+            _, status, ru = os.wait4(p.pid, 0)
+            p.returncode = os.waitstatus_to_exitcode(status)
+            out.seek(0)
+            err.seek(0)
+            got, msg = out.read().decode(), err.read().decode()
+        ts.append(ru.ru_utime + ru.ru_stime)
+        if p.returncode != 0 or got != want:
+            sys.exit(f"{' '.join(cmd)}: wrong output or status {p.returncode}: {got[:200]}{msg[-300:]}")
     return min(ts)
 
 
