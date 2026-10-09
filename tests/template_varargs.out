@@ -1,0 +1,6 @@
+0 1 6 9
+ a x, y, z
+a: 0 more b: 2 more, last 2 C: 1 MORE, LAST X
+0 2 () (1,) (1, 'a') True 0 False True
+() () True False
+[exit 0]

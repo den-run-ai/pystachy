@@ -1,0 +1,23 @@
+main: start
+mods: init mods
+mods.shapes: init mods.shapes
+mods.counter: init mods.counter
+mods.cyc_a: start
+mods.cyc_b: start
+mods.cyc_b: end
+mods.cyc_a: end 10
+mods.ns.leaf: init mods.ns.leaf
+1.2 3 3 3
+main.helper shapes.helper main x 5 __main__
+2 4 4 0 4
+mods.counter: count=4 limit=3 log=['over 3: 4']
+9 mods.counter: count=9 limit=10 log=['over 3: 4'] 3
+9 0
+[Square(side=3), Square(side=1), Square(side=2)] [Square(side=1), Square(side=2), Square(side=3)] Square(side=3) 9 1
+True True 1
+{'a': Circle(1.0), 'b': Circle(2.5)} 19.635
+True 1
+101 10 100
+mods.ns.leaf
+14
+[exit 0]

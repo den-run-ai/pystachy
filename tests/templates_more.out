@@ -1,0 +1,12 @@
+note evaluated once
+(True, True, True, False) (True, False, False, False) True True
+mapping list str other
+True False
+(True, False) (False, False) (True, False) (False, True) (False, True)
+None x default given
+[1] ['b', 'a'] {'ab': 2, 'c': 1}
+C(2) True C(3) True
+3 5
+2 3 0 [7]
+1 2
+[exit 0]

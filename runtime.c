@@ -357,6 +357,16 @@ I pys_ord(Str *s) {                    /* a byte, or one UTF-8 encoded character
   for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);   /* the length in characters */
   char b[96]; snprintf(b, 96, "TypeError: ord() expected a character, but string of length %lld found", (long long)n); pys_fail(b);
 }
+Str *pys_pct_char(Str *s) {            /* "%c" % s: s must be one character, as for ord() */
+  I cp;
+  if (!s->len || u8char(s->s, s->len, &cp) != s->len) pys_fail("TypeError: %c requires int or char");
+  return s;
+}
+Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded also below 256 (unlike chr()) */
+  if (c < 0 || c > 0x10FFFF) pys_fail("OverflowError: %c arg not in range(0x110000)");
+  char b[4];
+  return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
+}
 Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
   Buf b = {0}; char t[16];
   for (I i = 0; i < r->len;) {
@@ -488,13 +498,97 @@ static Str *mapc(Str *s, int up) {
 }
 Str *pys_str_upper(Str *s) { return mapc(s, 1); }
 Str *pys_str_lower(Str *s) { return mapc(s, 0); }
-static Str *pad(Str *s, I w, int left) {
-  if (s->len >= w) return s;
-  Str *r = pys_alloc_atomic(sizeof(Str) + w + 1); r->len = w; memset(r->s, ' ', w);
-  memcpy(r->s + (left ? 0 : w - s->len), s->s, s->len); return r;
+static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
+static Str *pad(Str *s, I w, Str *fill, int how) {   /* how: 0 right, 1 left, 2 center; widths count code points */
+  if (fill && ulen(fill->s, fill->len) != 1) pys_fail("TypeError: The fill character must be exactly one character long");
+  I n = ulen(s->s, s->len), f = fill ? fill->len : 1;
+  if (n >= w) return s;
+  I gap = w - n, l = how == 1 ? 0 : how == 0 ? gap : gap / 2 + (gap & w & 1);   /* CPython's centering */
+  if (gap > (INT64_MAX - s->len) / f) oom();
+  Str *r = pys_alloc_atomic(sizeof(Str) + s->len + gap * f + 1); r->len = s->len + gap * f;
+  char *o = r->s;
+  for (I i = 0; i < l; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
+  memcpy(o, s->s, s->len); o += s->len;
+  for (I i = l; i < gap; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
+  return r;
 }
-Str *pys_str_ljust(Str *s, I w) { return pad(s, w, 1); }
-Str *pys_str_rjust(Str *s, I w) { return pad(s, w, 0); }
+Str *pys_str_ljust(Str *s, I w, Str *fill) { return pad(s, w, fill, 1); }
+Str *pys_str_rjust(Str *s, I w, Str *fill) { return pad(s, w, fill, 0); }
+Str *pys_str_center(Str *s, I w, Str *fill) { return pad(s, w, fill, 2); }
+Str *pys_str_zfill(Str *s, I w) {
+  Str *r = pad(s, w, cstr("0"), 0);
+  I z = r->len - s->len;                       /* a sign moves in front of the zeros */
+  if (z && s->len && (s->s[0] == '+' || s->s[0] == '-')) { r->s[0] = s->s[0]; r->s[z] = '0'; }
+  return r;
+}
+static void **triple(Str *a, Str *b, Str *c) { void **t = pys_alloc(24); t[0] = a; t[1] = b; t[2] = c; return t; }
+void **pys_str_partition(Str *s, Str *sep) {
+  if (!sep->len) pys_fail("ValueError: empty separator");
+  I i = find(s, sep, 0);
+  if (i < 0) return triple(s, cstr(""), cstr(""));
+  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
+}
+void **pys_str_rpartition(Str *s, Str *sep) {
+  if (!sep->len) pys_fail("ValueError: empty separator");
+  I i = pys_str_rfind(s, sep, 0, s->len);
+  if (i < 0) return triple(cstr(""), cstr(""), s);
+  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
+}
+Str *pys_str_removeprefix(Str *s, Str *p) {
+  return p->len && s->len >= p->len && !memcmp(s->s, p->s, p->len) ? pys_str(s->s + p->len, s->len - p->len) : s;
+}
+Str *pys_str_removesuffix(Str *s, Str *p) {
+  return p->len && s->len >= p->len && !memcmp(s->s + s->len - p->len, p->s, p->len) ? pys_str(s->s, s->len - p->len) : s;
+}
+static int lowc(char c) { return c >= 'a' && c <= 'z'; }
+static int upc(char c) { return c >= 'A' && c <= 'Z'; }
+Str *pys_str_swapcase(Str *s) {
+  Str *r = pys_str(s->s, s->len);
+  for (I i = 0; i < r->len; i++) if (lowc(r->s[i]) || upc(r->s[i])) r->s[i] ^= 32;
+  return r;
+}
+Str *pys_str_capitalize(Str *s) {
+  Str *r = mapc(s, 0);
+  if (r->len && lowc(r->s[0])) r->s[0] -= 32;
+  return r;
+}
+Str *pys_str_title(Str *s) {                   /* a letter after a letter is lowered, any other raised */
+  Str *r = pys_str(s->s, s->len); int prev = 0;
+  for (I i = 0; i < r->len; i++) {
+    char c = r->s[i];
+    if (prev && upc(c)) r->s[i] = c + 32;
+    if (!prev && lowc(c)) r->s[i] = c - 32;
+    prev = lowc(c) || upc(c);
+  }
+  return r;
+}
+I pys_str_istitle(Str *s) {                    /* CPython's istitle, over ASCII letters */
+  int prev = 0, any = 0;
+  for (I i = 0; i < s->len; i++) {
+    char c = s->s[i];
+    if (upc(c)) { if (prev) return 0; prev = any = 1; }
+    else if (lowc(c)) { if (!prev) return 0; prev = any = 1; }
+    else prev = 0;
+  }
+  return any;
+}
+I pys_str_isascii(Str *s) { for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] > 127) return 0; return 1; }
+I pys_str_isdecimal(Str *s) { return all(s, 0); }
+I pys_str_isnumeric(Str *s) { return all(s, 0); }
+Str *pys_str_casefold(Str *s) { return mapc(s, 0); }
+Str *pys_str_expandtabs(Str *s, I size) {
+  Buf o = {0}; I col = 0;
+  for (I i = 0; i < s->len; i++) {
+    char c = s->s[i];
+    if (c == '\t') {
+      if (size > 0) { I n = size - col % size; col += n; while (n--) put(&o, " ", 1); }
+    } else {
+      put(&o, &c, 1);
+      if (c == '\n' || c == '\r') col = 0; else col += ((unsigned char)c & 0xC0) != 0x80;
+    }
+  }
+  return done(&o);
+}
 Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
@@ -697,7 +791,7 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   return d > t ? -1 : d < t ? 1 : 0;
 }
 double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
-  if (a == 0 && b < 0) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
   if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
   double r = pow(a, b);
   if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
@@ -841,7 +935,7 @@ I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 static I ocls(const char *d) { return (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0'; }
 Str *pys_default_repr(Str *cls, void *p) {
-  const char *f = "<__main__.%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
+  const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
 }
 static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
@@ -1301,7 +1395,7 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
     for (;;) {
       while (i < n && ws(s->s[i])) i++;
       if (i >= n) return l;
-      if (maxsplit-- == 0) { I j = n; while (j > i && ws(s->s[j - 1])) j--; pys_list_append(l, (I)pys_str(s->s + i, j - i)); return l; }
+      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s + i, n - i)); return l; }   /* the rest, as it is */
       I j = i; while (j < n && !ws(s->s[j])) j++;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
     }
@@ -1309,6 +1403,44 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
   if (!sep->len) pys_fail("ValueError: empty separator");
   for (I j; maxsplit-- != 0 && (j = find(s, sep, i)) >= 0; i = j + sep->len) pys_list_append(l, (I)pys_str(s->s + i, j - i));
   pys_list_append(l, (I)pys_str(s->s + i, n - i));
+  return l;
+}
+static I eol(Str *s, I i) {                    /* the length of the line break at i, 0 if none */
+  unsigned char c = s->s[i], *p = (unsigned char *)s->s + i; I left = s->len - i;
+  if (c == '\r') return left > 1 && p[1] == '\n' ? 2 : 1;
+  if (c == '\n' || c == 11 || c == 12 || (c >= 28 && c <= 30)) return 1;
+  if (c == 0xC2 && left > 1 && p[1] == 0x85) return 2;                          /* U+0085 */
+  if (c == 0xE2 && left > 2 && p[1] == 0x80 && (p[2] == 0xA8 || p[2] == 0xA9)) return 3;  /* U+2028, U+2029 */
+  return 0;
+}
+List *pys_str_splitlines(Str *s, I keep) {
+  List *l = pys_list_new(0); I i = 0, st = 0;
+  while (i < s->len) {
+    I k = eol(s, i);
+    if (!k) { i++; continue; }
+    pys_list_append(l, (I)pys_str(s->s + st, i - st + (keep ? k : 0)));
+    i += k; st = i;
+  }
+  if (st < s->len) pys_list_append(l, (I)pys_str(s->s + st, s->len - st));
+  return l;
+}
+List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; the parts stay in order */
+  List *l = pys_list_new(0); I j = s->len;
+  if (maxsplit < 0) maxsplit = INT64_MAX;
+  if (!sep) {
+    for (;;) {
+      while (j > 0 && ws(s->s[j - 1])) j--;
+      if (j <= 0) break;
+      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s, j)); break; }
+      I i = j; while (i > 0 && !ws(s->s[i - 1])) i--;
+      pys_list_append(l, (I)pys_str(s->s + i, j - i)); j = i;
+    }
+  } else {
+    if (!sep->len) pys_fail("ValueError: empty separator");
+    for (I i; maxsplit-- != 0 && (i = pys_str_rfind(s, sep, 0, j)) >= 0; j = i) pys_list_append(l, (I)pys_str(s->s + i + sep->len, j - i - sep->len));
+    pys_list_append(l, (I)pys_str(s->s, j));
+  }
+  for (I a = 0, b = l->len - 1; a < b; a++, b--) { I t = l->a[a]; l->a[a] = l->a[b]; l->a[b] = t; }
   return l;
 }
 
@@ -1435,7 +1567,6 @@ Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? clone(d
 static _Noreturn void failf(const char *f, ...) {
   char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
 }
-static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
 static I uoff(const char *p, I n, I k) {          /* byte offset of code point k */
   I i = 0;
   for (; i < n && k > 0; k--) { i++; while (i < n && ((unsigned char)p[i] & 0xC0) == 0x80) i++; }
@@ -1995,8 +2126,313 @@ I pys_system(Str *c) {
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
 I pys_getpid(void) { return getpid(); }
+Str *pys_platform(void) {              /* sys.platform */
+#if defined(__linux__)
+  return cstr("linux");
+#elif defined(__APPLE__)
+  return cstr("darwin");
+#elif defined(__FreeBSD__)
+  return cstr("freebsd");
+#else
+  return cstr("unknown");
+#endif
+}
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+
+/* ---------- the time module: clocks and sleep ---------- */
+static I clock_ns(clockid_t c) { struct timespec t; clock_gettime(c, &t); return (I)t.tv_sec * 1000000000 + t.tv_nsec; }
+static double ns_secs(I ns) { return ns % 1000000000 == 0 ? (double)(ns / 1000000000) : (double)ns / 1e9; }   /* as CPython */
+double pys_time(void) { return ns_secs(clock_ns(CLOCK_REALTIME)); }
+I pys_time_ns(void) { return clock_ns(CLOCK_REALTIME); }
+double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
+I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
+double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
+I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
+  if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
+  if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
+  if (s >= 9.2e9) pys_fail("OverflowError: timestamp too large to convert to C _PyTime_t");
+  struct timespec t = {(time_t)s, (long)((s - (double)(time_t)s) * 1e9)}, r;
+  if (t.tv_nsec >= 1000000000) { t.tv_sec++; t.tv_nsec -= 1000000000; }
+  while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
+}
+void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- the errno module: the platform's error numbers ---------- */
+static const struct { const char *name; int value; } errnos[] = {
+#ifdef EPERM
+  {"EPERM", EPERM},
+#endif
+#ifdef ENOENT
+  {"ENOENT", ENOENT},
+#endif
+#ifdef ESRCH
+  {"ESRCH", ESRCH},
+#endif
+#ifdef EINTR
+  {"EINTR", EINTR},
+#endif
+#ifdef EIO
+  {"EIO", EIO},
+#endif
+#ifdef ENXIO
+  {"ENXIO", ENXIO},
+#endif
+#ifdef E2BIG
+  {"E2BIG", E2BIG},
+#endif
+#ifdef ENOEXEC
+  {"ENOEXEC", ENOEXEC},
+#endif
+#ifdef EBADF
+  {"EBADF", EBADF},
+#endif
+#ifdef ECHILD
+  {"ECHILD", ECHILD},
+#endif
+#ifdef EAGAIN
+  {"EAGAIN", EAGAIN},
+#endif
+#ifdef ENOMEM
+  {"ENOMEM", ENOMEM},
+#endif
+#ifdef EACCES
+  {"EACCES", EACCES},
+#endif
+#ifdef EFAULT
+  {"EFAULT", EFAULT},
+#endif
+#ifdef ENOTBLK
+  {"ENOTBLK", ENOTBLK},
+#endif
+#ifdef EBUSY
+  {"EBUSY", EBUSY},
+#endif
+#ifdef EEXIST
+  {"EEXIST", EEXIST},
+#endif
+#ifdef EXDEV
+  {"EXDEV", EXDEV},
+#endif
+#ifdef ENODEV
+  {"ENODEV", ENODEV},
+#endif
+#ifdef ENOTDIR
+  {"ENOTDIR", ENOTDIR},
+#endif
+#ifdef EISDIR
+  {"EISDIR", EISDIR},
+#endif
+#ifdef EINVAL
+  {"EINVAL", EINVAL},
+#endif
+#ifdef ENFILE
+  {"ENFILE", ENFILE},
+#endif
+#ifdef EMFILE
+  {"EMFILE", EMFILE},
+#endif
+#ifdef ENOTTY
+  {"ENOTTY", ENOTTY},
+#endif
+#ifdef ETXTBSY
+  {"ETXTBSY", ETXTBSY},
+#endif
+#ifdef EFBIG
+  {"EFBIG", EFBIG},
+#endif
+#ifdef ENOSPC
+  {"ENOSPC", ENOSPC},
+#endif
+#ifdef ESPIPE
+  {"ESPIPE", ESPIPE},
+#endif
+#ifdef EROFS
+  {"EROFS", EROFS},
+#endif
+#ifdef EMLINK
+  {"EMLINK", EMLINK},
+#endif
+#ifdef EPIPE
+  {"EPIPE", EPIPE},
+#endif
+#ifdef EDOM
+  {"EDOM", EDOM},
+#endif
+#ifdef ERANGE
+  {"ERANGE", ERANGE},
+#endif
+#ifdef EDEADLK
+  {"EDEADLK", EDEADLK},
+#endif
+#ifdef ENAMETOOLONG
+  {"ENAMETOOLONG", ENAMETOOLONG},
+#endif
+#ifdef ENOLCK
+  {"ENOLCK", ENOLCK},
+#endif
+#ifdef ENOSYS
+  {"ENOSYS", ENOSYS},
+#endif
+#ifdef ENOTEMPTY
+  {"ENOTEMPTY", ENOTEMPTY},
+#endif
+#ifdef ELOOP
+  {"ELOOP", ELOOP},
+#endif
+#ifdef EWOULDBLOCK
+  {"EWOULDBLOCK", EWOULDBLOCK},
+#endif
+#ifdef ENOMSG
+  {"ENOMSG", ENOMSG},
+#endif
+#ifdef EIDRM
+  {"EIDRM", EIDRM},
+#endif
+#ifdef ENOSTR
+  {"ENOSTR", ENOSTR},
+#endif
+#ifdef ENODATA
+  {"ENODATA", ENODATA},
+#endif
+#ifdef ETIME
+  {"ETIME", ETIME},
+#endif
+#ifdef ENOSR
+  {"ENOSR", ENOSR},
+#endif
+#ifdef EREMOTE
+  {"EREMOTE", EREMOTE},
+#endif
+#ifdef ENOLINK
+  {"ENOLINK", ENOLINK},
+#endif
+#ifdef EPROTO
+  {"EPROTO", EPROTO},
+#endif
+#ifdef EMULTIHOP
+  {"EMULTIHOP", EMULTIHOP},
+#endif
+#ifdef EBADMSG
+  {"EBADMSG", EBADMSG},
+#endif
+#ifdef EOVERFLOW
+  {"EOVERFLOW", EOVERFLOW},
+#endif
+#ifdef EILSEQ
+  {"EILSEQ", EILSEQ},
+#endif
+#ifdef EUSERS
+  {"EUSERS", EUSERS},
+#endif
+#ifdef ENOTSOCK
+  {"ENOTSOCK", ENOTSOCK},
+#endif
+#ifdef EDESTADDRREQ
+  {"EDESTADDRREQ", EDESTADDRREQ},
+#endif
+#ifdef EMSGSIZE
+  {"EMSGSIZE", EMSGSIZE},
+#endif
+#ifdef EPROTOTYPE
+  {"EPROTOTYPE", EPROTOTYPE},
+#endif
+#ifdef ENOPROTOOPT
+  {"ENOPROTOOPT", ENOPROTOOPT},
+#endif
+#ifdef EPROTONOSUPPORT
+  {"EPROTONOSUPPORT", EPROTONOSUPPORT},
+#endif
+#ifdef ESOCKTNOSUPPORT
+  {"ESOCKTNOSUPPORT", ESOCKTNOSUPPORT},
+#endif
+#ifdef EOPNOTSUPP
+  {"EOPNOTSUPP", EOPNOTSUPP},
+#endif
+#ifdef ENOTSUP
+  {"ENOTSUP", ENOTSUP},
+#endif
+#ifdef EPFNOSUPPORT
+  {"EPFNOSUPPORT", EPFNOSUPPORT},
+#endif
+#ifdef EAFNOSUPPORT
+  {"EAFNOSUPPORT", EAFNOSUPPORT},
+#endif
+#ifdef EADDRINUSE
+  {"EADDRINUSE", EADDRINUSE},
+#endif
+#ifdef EADDRNOTAVAIL
+  {"EADDRNOTAVAIL", EADDRNOTAVAIL},
+#endif
+#ifdef ENETDOWN
+  {"ENETDOWN", ENETDOWN},
+#endif
+#ifdef ENETUNREACH
+  {"ENETUNREACH", ENETUNREACH},
+#endif
+#ifdef ENETRESET
+  {"ENETRESET", ENETRESET},
+#endif
+#ifdef ECONNABORTED
+  {"ECONNABORTED", ECONNABORTED},
+#endif
+#ifdef ECONNRESET
+  {"ECONNRESET", ECONNRESET},
+#endif
+#ifdef ENOBUFS
+  {"ENOBUFS", ENOBUFS},
+#endif
+#ifdef EISCONN
+  {"EISCONN", EISCONN},
+#endif
+#ifdef ENOTCONN
+  {"ENOTCONN", ENOTCONN},
+#endif
+#ifdef ESHUTDOWN
+  {"ESHUTDOWN", ESHUTDOWN},
+#endif
+#ifdef ETOOMANYREFS
+  {"ETOOMANYREFS", ETOOMANYREFS},
+#endif
+#ifdef ETIMEDOUT
+  {"ETIMEDOUT", ETIMEDOUT},
+#endif
+#ifdef ECONNREFUSED
+  {"ECONNREFUSED", ECONNREFUSED},
+#endif
+#ifdef EHOSTDOWN
+  {"EHOSTDOWN", EHOSTDOWN},
+#endif
+#ifdef EHOSTUNREACH
+  {"EHOSTUNREACH", EHOSTUNREACH},
+#endif
+#ifdef EALREADY
+  {"EALREADY", EALREADY},
+#endif
+#ifdef EINPROGRESS
+  {"EINPROGRESS", EINPROGRESS},
+#endif
+#ifdef ESTALE
+  {"ESTALE", ESTALE},
+#endif
+#ifdef EDQUOT
+  {"EDQUOT", EDQUOT},
+#endif
+#ifdef ECANCELED
+  {"ECANCELED", ECANCELED},
+#endif
+#ifdef EOWNERDEAD
+  {"EOWNERDEAD", EOWNERDEAD},
+#endif
+#ifdef ENOTRECOVERABLE
+  {"ENOTRECOVERABLE", ENOTRECOVERABLE},
+#endif
+};
+I pys_errno(Str *name) {
+  for (size_t i = 0; i < sizeof errnos / sizeof errnos[0]; i++) if (strcmp(errnos[i].name, name->s) == 0) return errnos[i].value;
+  Buf b = {0}; put(&b, "AttributeError: module 'errno' has no attribute '", 49); put(&b, name->s, name->len); put(&b, "'", 2); pys_fail(b.p);
+}
 
 /* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
 static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
