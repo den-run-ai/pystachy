@@ -593,6 +593,8 @@ def pys_str_removesuffix(s: str, p: str) -> str:
 
 
 def pys_str_expandtabs(s: str, size: int) -> str:
+    if size > 2147483647 or size < -2147483648:
+        raise OverflowError("Python int too large to convert to C int")  # CPython's C int
     # two passes: the length, then the bytes
     r = _rt.str_new(0)
     for k in range(2):

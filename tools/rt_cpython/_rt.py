@@ -34,7 +34,10 @@ def str_put(s, i, b):
 
 
 def str_done(s):
-    return bytes(s).decode("latin-1")
+    # the builder is emptied, so a later str_put or copy into it fails here as it should
+    r = bytes(s).decode("latin-1")
+    s.clear()
+    return r
 
 
 def copy(dst, at, src, lo, n):

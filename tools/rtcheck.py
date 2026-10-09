@@ -107,7 +107,7 @@ def fuzz_str():
         same("rpartition", outcome(rt.pys_str_rpartition, s, n), outcome(s.rpartition, n), (s, n))
         same("removeprefix", outcome(rt.pys_str_removeprefix, s, n), outcome(s.removeprefix, n), (s, n))
         same("removesuffix", outcome(rt.pys_str_removesuffix, s, n), outcome(s.removesuffix, n), (s, n))
-        ts = R.choice([-1, 0, 1, 4, 8])
+        ts = R.choice([-1, 0, 1, 4, 8, -2**31, -2**31 - 1, 2**31, 2**62])
         same("expandtabs", outcome(rt.pys_str_expandtabs, s, ts), outcome(s.expandtabs, ts), (s, ts))
         parts = [text(n=4) for _ in range(R.randrange(4))]
         same("join", outcome(rt.pys_str_join, n, parts), outcome(n.join, parts), (n, parts))
