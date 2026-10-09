@@ -11214,6 +11214,13 @@ class Gen:
             w = b.t
             if ops[0] == "in" or ops[0] == "not in":
                 w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+            if (ops[0] == "in" or ops[0] == "not in") and b.t in self.classes and b.t not in self.nts:
+                # x in o: the type of __contains__'s parameter, or of the items __iter__ steps through
+                ms = self.classes[b.t].methods
+                if "__contains__" in ms:
+                    w = self.argtype(b.t, "__contains__", 1, "")
+                elif "__iter__" in ms and is_list(ms["__iter__"].ret):
+                    w = elem(ms["__iter__"].ret)
             if len(n.kids[0].kids) > 0:
                 self.soft = n.kids[0]
             return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
