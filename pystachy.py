@@ -666,6 +666,9 @@ class Node:
         self.line = line
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
+        # a read of a module's attribute through a name that an import in a try statement binds,
+        # which an exception may have left unbound: "<module> <name> <L (a local) or G>", else ""
+        self.mchk = ""
         self.depth = 1  # levels of nodes from this one down, as mk counted them
 
 
@@ -3152,6 +3155,13 @@ class Loader:
         self.fgl: dict[str, dict[str, bool]] = {}  # and the names its global statements declare
         self.curdef = ""  # the def whose body imports() is in
         self.fk: dict[str, str] = {}  # the bindings of the function being qualified
+        self.fkey = ""  # and its def's line
+        # the try statements imports() is in; the names that imports in try statements bind ("<module>
+        # <def line, or empty> <name>"), which the import may leave unbound (Node.mchk), each with the
+        # module whose code then did not end; and the names imports outside try statements bind
+        self.intry = 0
+        self.fragile: dict[str, str] = {}
+        self.solid: dict[str, bool] = {}
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
         self.rawbound: dict[str, dict[str, bool]] = {}  # and what rebound() finds in it before it is loaded
         self.failc: dict[str, str] = {}  # what init_fails() found for a module not loaded yet
@@ -3953,11 +3963,14 @@ class Loader:
                     globals_in(st.kids[2].kids, self.fgl[self.curdef])
                 elif not infn and (st.kind == "for" or st.kind == "while"):
                     binds([st], self.maybe, True, m.name if m.pdir != "" else "")  # (an earlier pass of the loop may have run its body)
+                intry = self.intry
+                self.intry = 0 if st.kind == "def" else intry + 1 if st.kind == "try" else intry
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
                     elif kid.kind == "except":
                         self.imports(m, kid.kids[1], infn)
+                self.intry = intry
                 self.curdef = saved
             if not infn:
                 # (the statements in st's blocks took theirs above, but as they were before their
@@ -4055,6 +4068,11 @@ class Loader:
             elif st.s == "":
                 # import a.b.c binds a; import a as x binds x to a
                 self.bind(m, a.s, "m:" + a.kids[0].s, infn, line)
+                key = f"{m.name} {self.curdef if infn else ''} {a.s}"
+                if self.intry == 0:
+                    self.solid[key] = True
+                elif key not in self.solid:
+                    self.fragile[key] = path
             elif a.s == "*":
                 for x in self.public(src):
                     self.take(m, src, x, x, infn, keep, inits, copies, line)
@@ -4234,7 +4252,18 @@ class Loader:
                 n.kind = "str"
                 n.s = m.name
                 return
+            root = n
+            while root.kind == "attr":
+                root = root.kids[0]
+            fr = ""
+            if k == "attr" and root.kind == "name" and root.s not in loc:
+                inf = root.s in self.fk
+                key = f"{m.name} {self.fkey if inf else ''} {root.s}"
+                if key in self.fragile:
+                    fr = f"{self.fragile[key]} {root.s} {'L' if inf else 'G'}"
             mod = self.qmod(m, n, loc)
+            if fr != "" and (n.kind == "name" or n.kind == "str"):
+                n.mchk = fr
             if mod != "":
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
@@ -4331,12 +4360,15 @@ class Loader:
                     if nm in inner:
                         del inner[nm]
                 saved = self.fk
+                key = self.fkey
                 indef = self.qdef
                 self.fk = self.fks.get(str(st.line), {})
+                self.fkey = str(st.line)
                 self.qdef = True
                 self.qstmts(m, st.kids[2].kids, inner, False)
                 self.qdef = indef
                 self.fk = saved
+                self.fkey = key
             elif k == "subclass":
                 self.qstmts(m, [st.kids[0]], loc, cls)
                 st.s = st.kids[0].s
@@ -6681,6 +6713,16 @@ class Gen:
             self.guard(bad, self.unbound(name))
         return self.load_name(name)
 
+    def modchk(self, n: Node) -> None:
+        # n reads module m's attribute through a name that an import in a try statement binds
+        # (Node.mchk): if that import raised, m's code did not end (its done flag is clear, see
+        # function), and CPython left the name unbound
+        if n.mchk == "":
+            return
+        p = n.mchk.split(" ")
+        un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value" if p[2] == "L" else f"NameError: name '{p[1]}' is not defined"
+        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @init.{p[0]}.done')}, true"), un)
+
     def foreign(self, name: str) -> bool:
         # another module's global that may be unbound when this code reads it
         return name in self.late and owner(name) != self.curfn.mod
@@ -7450,6 +7492,21 @@ class Gen:
             self.ret_(Val("null", "None"))
             self.place(l2)
             self.emit(f"store i1 true, ptr {done}")
+        hm = ""
+        mark = Val("", "")
+        slot = ""
+        if f.ll.startswith("@init.") and self.eh:
+            # an exception that leaves a module's code leaves the module not imported, as CPython
+            # removes it from sys.modules: a landing block around the code clears its done flag
+            # and throws again, so that a later import runs the code again
+            mark = Val(self.rt("pys_try_mark", "i64", []), "int")
+            slot = self.alloca("exc", "")
+            hm = self.label()
+            tr = Try(self.label())
+            tr.landing = hm
+            self.fn.tries.append(tr)
+            self.handler = hm
+            self.place(tr.body)
         self.stmts(body)
         if f.ret == "":
             f.ret = "None"  # a template's function without a return statement that has a value
@@ -7459,6 +7516,13 @@ class Gen:
                 for x in b.code:
                     if x.op == "ret.none" and f.ret != "None" and f.ret not in self.classes:
                         self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
+        if hm != "":
+            if not self.term:
+                self.ret_(Val("null", "None"))
+            self.handler = ""
+            e = self.landing(hm, slot, mark)
+            self.emit(f"store i1 false, ptr {f.ll}.done")
+            self.throw(e)
         if not self.term:
             if f.ret == "None" or (f.infer and f.ret in self.classes):
                 self.ret_(Val("null", f.ret))  # (a template's function that ends without a return: None)
@@ -8976,10 +9040,11 @@ class Gen:
                 x.name = h.s
                 up = self.handler
                 hu = ""
-                if h.s != "" and self.unbinds(h.s) and (up != "" or (self.modlevel and self.curfn.mod != "")):
+                if h.s != "" and self.unbinds(h.s) and up != "":
                     # an exception that leaves the clause unbinds its name too, where something may
                     # read it after (CPython deletes it in a finally block of its own): the clause
-                    # has a landing block of its own, which unbinds the name and throws again
+                    # has a landing block of its own, which unbinds the name and throws again (an
+                    # imported module's code is in a landing block's region, see function)
                     hu = self.label()
                     self.handler = hu
                     self.place(self.label())
@@ -10317,6 +10382,7 @@ class Gen:
         if k == "float":
             return Val(fbits(n.s), "float")
         if k == "str":
+            self.modchk(n)
             return Val(self.sconst(n.s), "str")
         if k == "True" or k == "False":
             return Val(k.lower(), "bool")
@@ -10325,6 +10391,7 @@ class Gen:
         if k == "name":
             if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
                 self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
+            self.modchk(n)
             return self.read(n)
         if k == "badattr":
             self.err(n.s)  # a module attribute that does not exist, or a module used as a value
@@ -11072,6 +11139,8 @@ class Gen:
         for a in args:
             if a.kind == "starred" or a.kind == "dstar":
                 self.err("star arguments are not supported")
+        if f.kind == "name":
+            self.modchk(f)
         if f.kind == "name" and f.s not in self.ltype:
             if self.unbound_local(f.s):
                 self.err(f"local variable '{f.s}' is read before its first assignment; declare it first ({f.s}: T)")
