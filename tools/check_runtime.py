@@ -14,8 +14,9 @@ disagrees with its entry is an internal error. This tool checks the table itself
     with the same bases; every builtin exception class of this Python is one of them, and so is
     every class a raise statement accepts (EXCEPTIONS);
   - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
-    C call graph reaches pys_fail, pys_raise, oserr or kbint_exit (not counting the allocator's
-    MemoryError: that is A), A if it reaches the allocator's slow path (gc_slow), U or U? if it
+    C call graph reaches pys_fail, pys_raise, oserr, kbint_exit or throw_ (not counting the
+    allocator's MemoryError: that is A), A if it reaches the allocator's slow path (gc_slow) other
+    than through the exception a raise builds (EXC_MAKERS: R stands for that), U or U? if it
     reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it has a #
     parameter and reaches eqv, opv or repr (which walk a value of any type by its descriptor:
     the lists and dicts in it), and N if the C function is noreturn. More letters than the call
@@ -37,7 +38,11 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # functions whose call graph reaches user code only through a KeyError's repr of the key: dict
 # keys are int or str, whose repr never calls user code
 NO_USER = {"dict.getitem", "dict.pop", "dict.pop_default"}
-RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit"}
+RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_"}
+# what the raise funnels build their exception with: in a program that has a try, a raise allocates
+# its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
+# so these do not make an entry A
+EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
 BY_DESC = {"eqv", "opv", "repr"}
@@ -195,7 +200,7 @@ def main():
             derived.append("R")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, {"gc_slow"}, set()):
+        if reaches(fns, sym, {"gc_slow"}, EXC_MAKERS):
             derived.append("A")
         if reaches(fns, sym, USER, set()) and k not in NO_USER:
             derived.append("U")

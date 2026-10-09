@@ -4631,18 +4631,20 @@ IROPS: dict[str, str] = {
 LLNOTRAW: dict[str, bool] = {}
 for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split():
     LLNOTRAW[_k] = True
-# Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
-# returns; A allocates (a collection may run, and running out of memory ends the program); U may
-# run user code, and so has every other letter (U?: when the static type, the descriptor of a #
-# parameter, holds a class); I does I/O, or uses the process or global runtime state; rL wL,
-# rD wD, rO wO, rG wG, rF wF read or write lists, dicts, objects' fields and flags, globals and
-# their flags, files. Strings and tuples are immutable, slots are never address-taken, and dict
-# keys are int or str (no user code): they need no letter. N is a property of one op: an effect
-# summary (IFn.fx) leaves it out. The end of the program (an error, an exit) flushes stdout and
-# closes the open files: R and N stand for that. A collection closes the open files nothing refers
-# to any more (and reports a failed close on stderr), which A stands for, not I, rF or wF: when a
-# dropped file is closed is unspecified (README: at a collection or at exit, not at once as in
-# CPython), so moving an A op may change it, as any change to the program's allocations does.
+# Effect letters: R may raise (in a program that has a try, the raise allocates its exception, so a
+# collection may run before a handler takes it; if none does, the raise prints its message, flushes
+# stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
+# running out of memory ends the program); U may run user code, and so has every other letter (U?:
+# when the static type, the descriptor of a # parameter, holds a class); I does I/O, or uses the
+# process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or write lists, dicts,
+# objects' fields and flags, globals and their flags, files. Strings and tuples are immutable, slots
+# are never address-taken, and dict keys are int or str (no user code): they need no letter. N is a
+# property of one op: an effect summary (IFn.fx) leaves it out. The end of the program (an error, an
+# exit) flushes stdout and closes the open files: R and N stand for that. A collection closes the
+# open files nothing refers to any more (and reports a failed close on stderr), which A stands for,
+# not I, rF or wF: when a dropped file is closed is unspecified (README: at a collection or at exit,
+# not at once as in CPython), so moving an A op may change it, as any change to the program's
+# allocations does.
 FX: list[str] = "R N A U I rL wL rD wD rO wO rG wG rF wF".split()
 FXBIT: dict[str, int] = {}
 for _j in range(len(FX)):
