@@ -1202,7 +1202,7 @@ typedef struct Undo {                               /* for sort_undo: the list, 
 } Undo;
 static Undo *keep_u;                                /* the Undo of the sort running (a comparison may sort */
                                                     /* another list), NULL if it needs none; set only when eh */
-#define KEEP(dst, src, k) do { if (keep) { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } } while (0)
+#define KEEP(dst, src, k) do { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } while (0)
 static I sorting[1];                                /* the items of a list while it is being sorted */
 enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
 static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
@@ -1257,92 +1257,96 @@ static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geo
   if (need > ms->nt) { ms->nt = need > 2 * ms->nt ? need : 2 * ms->nt; ms->t = pys_alloc(ms->nt * 8); }
   return ms->t;
 }
-/* na <= nb: a goes to the buffer, merge from the left. The merges are compiled twice: into
-   merge_at for keep 0, where KEEP makes no code (no cost without a try), and merge_keep, which
-   merge_at calls only when eh: a program without try does not keep it */
-static inline __attribute__((always_inline)) void merge_lo(MS *ms, I *a, I na, I *b, I nb, int keep) {
-  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;
-  *d++ = *pb++;
-  if (--nb == 0) goto done;
-  if (na == 1) goto copyb;
-  for (;;) {
-    I ac = 0, bc = 0, w;                            /* times a and b won in a row */
-    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */
-      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;
-      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;
-    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */
-    else for (;;) {                                 /* the others by branches */
-      KEEP(d, pa, na);
-      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }
-      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }
-    }
-    if (!nb) goto done;
-    if (na == 1) goto copyb;
-    mg++;
-    do {                                            /* galloping */
-      mg -= mg > 1; ms->min_gallop = mg;
-      KEEP(d, pa, na);
-      ac = k = gallop(ms, *pb, pa, na, 0, 1);
-      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }
-      *d++ = *pb++;
-      if (--nb == 0) goto done;
-      KEEP(d, pa, na);
-      bc = k = gallop(ms, *pa, pb, nb, 0, 0);
-      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }
-      *d++ = *pa++;
-      if (--na == 1) goto copyb;
-    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
-    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */
-  }
-done:
-  if (na) memcpy(d, pa, na * 8);
-  return;
-copyb:                                              /* the last of a goes after the rest of b */
-  memmove(d, pb, nb * 8); d[nb] = *pa;
+/* The merges, written once (MERGES) and compiled twice: merge_lo and merge_hi, where NOTE notes
+   nothing, are those merge_at calls for a sort that needs no Undo, the code they had before;
+   merge_lo_k and merge_hi_k, where NOTE is KEEP, those it calls (by merge_keep) when eh and
+   keep_u: a program without try does not keep them */
+#define MERGES(SFX, NOTE) \
+static void merge_lo##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */ \
+  I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;                                   \
+  *d++ = *pb++;                                                                                                         \
+  if (--nb == 0) goto done;                                                                                             \
+  if (na == 1) goto copyb;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                            /* times a and b won in a row */                                    \
+    if (ms->kind == INT || ms->kind == FLOAT) do {  /* one item at a time: scalars by selects */                        \
+      w = LT(*pb, *pa); *d++ = w ? *pb : *pa;                                                                           \
+      pb += w; nb -= w; pa += !w; na -= !w; bc = w ? bc + 1 : 0; ac = w ? 0 : ac + 1;                                   \
+    } while (nb && na > 1 && ac < mg && bc < mg);   /* a step moves one side: all of CPython's exits */                 \
+    else for (;;) {                                 /* the others by branches */                                        \
+      NOTE(d, pa, na);                                                                                                  \
+      if (LT(*pb, *pa)) { *d++ = *pb++; bc++; ac = 0; if (--nb == 0 || bc >= mg) break; }                               \
+      else { *d++ = *pa++; ac++; bc = 0; if (--na == 1 || ac >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!nb) goto done;                                                                                                 \
+    if (na == 1) goto copyb;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                            /* galloping */                                                     \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d, pa, na);                                                                                                  \
+      ac = k = gallop(ms, *pb, pa, na, 0, 1);                                                                           \
+      if (k) { memcpy(d, pa, k * 8); d += k; pa += k; na -= k; if (na == 1) goto copyb; if (!na) goto done; }           \
+      *d++ = *pb++;                                                                                                     \
+      if (--nb == 0) goto done;                                                                                         \
+      NOTE(d, pa, na);                                                                                                  \
+      bc = k = gallop(ms, *pa, pb, nb, 0, 0);                                                                           \
+      if (k) { memmove(d, pb, k * 8); d += k; pb += k; if ((nb -= k) == 0) goto done; }                                 \
+      *d++ = *pa++;                                                                                                     \
+      if (--na == 1) goto copyb;                                                                                        \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                          /* penalize leaving galloping mode */                               \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (na) memcpy(d, pa, na * 8);                                                                                        \
+  return;                                                                                                               \
+copyb:                                              /* the last of a goes after the rest of b */                        \
+  memmove(d, pb, nb * 8); d[nb] = *pa;                                                                                  \
+}                                                                                                                       \
+static void merge_hi##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na > nb: b goes to the buffer, merge from the right */ \
+  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;                 \
+  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */          \
+  if (--na == 0) goto done;                                                                                             \
+  if (nb == 1) goto copya;                                                                                              \
+  for (;;) {                                                                                                            \
+    I ac = 0, bc = 0, w;                                                                                                \
+    if (ms->kind == INT || ms->kind == FLOAT) do {                                                                      \
+      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];                                                               \
+      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;                                   \
+    } while (na && nb > 1 && ac < mg && bc < mg);                                                                       \
+    else for (;;) {                                                                                                     \
+      NOTE(d - nb, t, nb);                                                                                              \
+      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }                         \
+      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }                                            \
+    }                                                                                                                   \
+    if (!na) goto done;                                                                                                 \
+    if (nb == 1) goto copya;                                                                                            \
+    mg++;                                                                                                               \
+    do {                                                                                                                \
+      mg -= mg > 1; ms->min_gallop = mg;                                                                                \
+      NOTE(d - nb, t, nb);                                                                                              \
+      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);                                                               \
+      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }                                 \
+      *--d = *--pb;                                                                                                     \
+      if (--nb == 1) goto copya;                                                                                        \
+      NOTE(d - nb, t, nb);                                                                                              \
+      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);                                                               \
+      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }           \
+      *--d = *--pa;                                                                                                     \
+      if (--na == 0) goto done;                                                                                         \
+    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);                                                                     \
+    ms->min_gallop = ++mg;                                                                                              \
+  }                                                                                                                     \
+done:                                                                                                                   \
+  if (nb) memcpy(d - nb, t, nb * 8);                                                                                    \
+  return;                                                                                                               \
+copya:                                              /* the first of b goes before the rest of a */                      \
+  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];                                                            \
 }
-/* na > nb: b goes to the buffer, merge from the right */
-static inline __attribute__((always_inline)) void merge_hi(MS *ms, I *a, I na, I *b, I nb, int keep) {
-  I *t = memcpy(getmem(ms, nb), b, nb * 8), *d = b + nb, *pa = b, *pb = t + nb, k, mg = ms->min_gallop;
-  *--d = *--pa;                                     /* d, pa, pb: just past the next slot, a's and b's last */
-  if (--na == 0) goto done;
-  if (nb == 1) goto copya;
-  for (;;) {
-    I ac = 0, bc = 0, w;
-    if (ms->kind == INT || ms->kind == FLOAT) do {
-      w = LT(pb[-1], pa[-1]); *--d = w ? pa[-1] : pb[-1];
-      pa -= w; na -= w; pb -= !w; nb -= !w; ac = w ? ac + 1 : 0; bc = w ? 0 : bc + 1;
-    } while (na && nb > 1 && ac < mg && bc < mg);
-    else for (;;) {
-      KEEP(d - nb, t, nb);
-      if (LT(pb[-1], pa[-1])) { *--d = *--pa; ac++; bc = 0; if (--na == 0 || ac >= mg) break; }
-      else { *--d = *--pb; bc++; ac = 0; if (--nb == 1 || bc >= mg) break; }
-    }
-    if (!na) goto done;
-    if (nb == 1) goto copya;
-    mg++;
-    do {
-      mg -= mg > 1; ms->min_gallop = mg;
-      KEEP(d - nb, t, nb);
-      ac = k = na - gallop(ms, pb[-1], a, na, na - 1, 1);
-      if (k) { d -= k; pa -= k; memmove(d, pa, k * 8); if ((na -= k) == 0) goto done; }
-      *--d = *--pb;
-      if (--nb == 1) goto copya;
-      KEEP(d - nb, t, nb);
-      bc = k = nb - gallop(ms, pa[-1], t, nb, nb - 1, 0);
-      if (k) { d -= k; pb -= k; memcpy(d, pb, k * 8); nb -= k; if (nb == 1) goto copya; if (!nb) goto done; }
-      *--d = *--pa;
-      if (--na == 0) goto done;
-    } while (ac >= MIN_GALLOP || bc >= MIN_GALLOP);
-    ms->min_gallop = ++mg;
-  }
-done:
-  if (nb) memcpy(d - nb, t, nb * 8);
-  return;
-copya:                                              /* the first of b goes before the rest of a */
-  d -= na; pa -= na; memmove(d, pa, na * 8); d[-1] = pb[-1];
-}
+#define NOTHING(dst, src, k)
+MERGES(, NOTHING)
+MERGES(_k, KEEP)
 static __attribute__((noinline)) void merge_keep(MS *ms, I *a, I na, I *b, I nb) {
-  if (na <= nb) merge_lo(ms, a, na, b, nb, 1); else merge_hi(ms, a, na, b, nb, 1);
+  if (na <= nb) merge_lo_k(ms, a, na, b, nb); else merge_hi_k(ms, a, na, b, nb);
 }
 static void merge_at(MS *ms, int i) {               /* merge pending runs i and i+1 */
   Run *p = ms->p;
@@ -1354,7 +1358,7 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
   if (eh && keep_u) { merge_keep(ms, a, na, b, nb); keep_u->fn = 0; }   /* every item is in the array again */
-  else if (na <= nb) merge_lo(ms, a, na, b, nb, 0); else merge_hi(ms, a, na, b, nb, 0);
+  else if (na <= nb) merge_lo(ms, a, na, b, nb); else merge_hi(ms, a, na, b, nb);
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
   if (!ms->np) return;
