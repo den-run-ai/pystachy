@@ -5314,7 +5314,7 @@ class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
-        self.ps: list[str] = []  # its parameters, as LLVM text (None-typed ones are not passed)
+        self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
         self.loops: list[Loop] = []
@@ -7154,7 +7154,6 @@ class Gen:
             self.err(f.bad)
         self.compiled[f.ll] = True
         self.enter(f, body)
-        ps: list[str] = []
         if f.cls != "":
             # callers check the receiver, so self is never None inside a method
             self.nn["%a0"] = True
@@ -7166,7 +7165,7 @@ class Gen:
                 # an argument that is None: the parameter is not passed, and reads of it are None
                 self.nonevars[f.params[i]] = True
                 continue
-            ps.append(f"{lt(t)}{' nonnull' if i == 0 and f.cls != '' else ''} %a{i}")
+            self.fn.ps.append(i)
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
         if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
             # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
@@ -7217,14 +7216,16 @@ class Gen:
             self.place(self.fn.cold[msg])
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
-        self.fn.ps = ps
         self.fn.n = self.n
         self.fns.append(self.fn)
 
     # ---- lowering: an IFn as LLVM text
     def lower(self, fn: IFn) -> None:
         o = self.out
-        o.append(f"define internal {lt(fn.f.ret)} {fn.f.ll}({', '.join(fn.ps)}) {{")
+        f = fn.f
+        # a method's receiver is never None (callers check it)
+        ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and f.cls != '' else ''} %a{j}" for j in fn.ps]
+        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
         o.append("entry:")
         for i in fn.slots:
             if i.k == 1:

@@ -49,6 +49,8 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - the jump to the first cold block that follows the `ret` a function falls into is a block
 >     without a label (LLVM starts one after a terminator), so that each block still ends with
 >     its one terminator.
+>   - `IFn.ps` holds the indices of the parameters passed, and lowering spells the `define` line
+>     from them (`ptr nonnull %a0` for a method's receiver).
 >   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
 >     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
 >     stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
