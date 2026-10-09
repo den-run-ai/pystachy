@@ -5076,8 +5076,9 @@ class Gen:
         self.term = False
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
-        # parameters of a template's function whose argument is None: 0, or the line that gives one
-        # a value of another type (see assign, static_type)
+        # parameters of a template's function whose argument is None, and the line from which one
+        # may hold a value of another type: its first binding (none_end), once compiled the line
+        # that gives it that value (see assign, static_type)
         self.nonevars: dict[str, int] = {}
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -6163,10 +6164,9 @@ class Gen:
     def none_end(self, p: str) -> int:
         # the line of the first statement, in the blocks that may run, that binds parameter p,
         # whose argument is None (a large number if none does): p is None before it
-        w = self.whole
         self.whole = -1  # (a test of a None parameter may go either way)
         st = self.first_binding(self.curfn.node.kids[2].kids, p)
-        self.whole = w
+        self.whole = 0
         return st.line if st is not None else 1 << 40
 
     def type_reads(self, n: Node) -> None:
@@ -6654,6 +6654,8 @@ class Gen:
                 continue
             ps.append(f"{lt(t)}{' nonnull' if i == 0 and f.cls != '' else ''} %a{i}")
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
+        for p in self.nonevars:
+            self.nonevars[p] = self.none_end(p)
         if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
             # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
             ci = self.classes[f.cls]
@@ -8202,7 +8204,7 @@ class Gen:
         if self.whole != 0 and n.s in self.nonevars:
             # for fills, the parameter at the line of the if: None up to the line that binds it,
             # and then of a type known only once that line is compiled
-            if self.whole > 0 and self.whole <= (self.nonevars[n.s] if n.s in self.ltype else self.none_end(n.s)):
+            if self.whole > 0 and self.whole <= self.nonevars[n.s]:
                 return "None"
             self.unsure = self.unsure or n.s not in self.ltype
             return self.ltype.get(n.s, "") if self.whole > 0 else ""
