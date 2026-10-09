@@ -5687,6 +5687,8 @@ class Gen:
             # (CPython would pass the None on: there is nothing here that could hold it)
             if what == "":
                 what = "a value used as " + typestr(t)
+            if self.curfn.ll + v.v in self.wide:
+                self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
             self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
         hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
         if hint == "" and self.curfn.ll in self.guessed:
@@ -6176,7 +6178,10 @@ class Gen:
         if name in ci.fflag:
             f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
             self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
-        return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+        r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
+        if is_opt(p.t):
+            self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+        return Val(r, p.t)
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
@@ -6240,7 +6245,10 @@ class Gen:
             self.err(f"local variable '{name}' is read before its first assignment; declare it first ({name}: T)")
         if name in self.gtypes:
             t = self.gtypes[name]
-            return Val(self.ins(f"load {lt(t)}, ptr @g.{name}"), t)
+            r = self.ins(f"load {lt(t)}, ptr @g.{name}")
+            if is_opt(t):
+                self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+            return Val(r, t)
         if name == "__name__":
             return Val(self.sconst("__main__"), "str")
         if name in self.aliases:

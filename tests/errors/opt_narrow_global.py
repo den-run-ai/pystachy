@@ -1,4 +1,4 @@
-# error: argument 1 of show() may be None (str | None); test it with 'is not None' first
+# error: argument 1 of show() may be None (str | None), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that
 current: str | None = "a"
 
 
