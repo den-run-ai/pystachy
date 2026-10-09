@@ -66,45 +66,70 @@ def utf8(c: int) -> str:
     return chr(240 | (c >> 18)) + chr(128 | ((c >> 12) & 63)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
 
 
-def unescape(s: str, line: int) -> str:
-    # decode the backslash escapes of a string literal's source text
-    out: list[str] = []
+def utf8len(s: str, i: int) -> int:
+    # the length of the UTF-8 sequence at s[i] (a character per byte), as CPython's valid_utf8
+    # checks it (no overlong form, surrogate or code point past U+10FFFF); if it is not valid,
+    # minus the number of its bytes that are (0: not even the first)
+    c = ord(s[i])
+    if c < 128:
+        return 1
+    n = 3 if c >= 240 and c < 245 else (2 if c >= 224 and c < 240 else (1 if c >= 194 and c < 224 else 0))
+    lo = 160 if c == 224 else (144 if c == 240 else 128)
+    hi = 159 if c == 237 else (143 if c == 244 else 191)
+    for k in range(1, n + 1):
+        d = ord(s[i + k]) if i + k < len(s) else 0
+        if d < lo or d > hi:
+            return -k
+        lo = 128
+        hi = 191
+    return 0 if n == 0 else n + 1
+
+
+def utf8_error(s: str) -> str:
+    # what CPython's UTF-8 codec says of bytes s (a character per byte), "" if they are UTF-8
     i = 0
-    n = len(s)
-    while i < n:
-        c = s[i]
-        if c != "\\" or i + 1 >= n:
-            out.append(c)
-            i += 1
-            continue
-        e = s[i + 1]
-        i += 2
-        if e == "\n":
-            continue
-        if e == "x" or e == "u" or e == "U":
-            k = 2 if e == "x" else (4 if e == "u" else 8)
-            h = s[i : i + k]
-            for d in h:
-                if d not in "0123456789abcdefABCDEF":
-                    fail(f"truncated \\{e} escape in string literal", line)
-            if len(h) != k or int(h, 16) > 1114111:
-                fail(f"invalid \\{e} escape in string literal", line)
-            out.append(utf8(int(h, 16)))
+    while i < len(s):
+        k = utf8len(s, i)
+        if k > 0:
             i += k
-        elif e >= "0" and e <= "7":
-            v = ord(e) - 48
-            for _ in range(2):
-                if i < n and s[i] >= "0" and s[i] <= "7":
-                    v = v * 8 + ord(s[i]) - 48
-                    i += 1
-            out.append(utf8(v))
-        elif e == "N":
-            fail("\\N{...} escapes are not supported", line)
-        elif e in ESCAPES:
-            out.append(ESCAPES[e])
-        else:
-            out.append("\\" + e)
-    return "".join(out)
+            continue
+        why = "invalid start byte" if k == 0 else ("unexpected end of data" if i - k >= len(s) else "invalid continuation byte")
+        at = f"byte 0x{ord(s[i]):02x} in position {i}" if k >= -1 else f"bytes in position {i}-{i - k - 1}"
+        return f"'utf-8' codec can't decode {at}: {why}"
+    return ""
+
+
+def codepoint(s: str, i: int) -> int:
+    # the code point of the valid UTF-8 sequence at s[i]
+    c = ord(s[i])
+    n = utf8len(s, i)
+    if n == 1:
+        return c
+    v = c & (31 if n == 2 else (15 if n == 3 else 7))
+    for k in range(1, n):
+        v = (v << 6) | (ord(s[i + k]) & 63)
+    return v
+
+
+# code points that cannot be in an identifier, as first-last pairs: CPython's "invalid
+# non-printable character" (spaces, controls, format characters, private use) and its "invalid
+# character" (the blocks of punctuation and symbols). Other non-ASCII characters may be letters.
+NONPRINT: list[int] = [0x80, 0xA0, 0xAD, 0xAD, 0x600, 0x605, 0x61C, 0x61C, 0x6DD, 0x6DD, 0x70F, 0x70F, 0x180E, 0x180E,
+                       0x1680, 0x1680, 0x2000, 0x200B, 0x200E, 0x200F, 0x2028, 0x202F, 0x205F, 0x2064, 0x2066, 0x206F,
+                       0x3000, 0x3000, 0xE000, 0xF8FF, 0xFEFF, 0xFEFF, 0xFFF9, 0xFFFB, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
+                       0xF0000, 0x10FFFF]
+NOTID: list[int] = [0xA1, 0xA9, 0xAB, 0xAC, 0xAE, 0xB4, 0xB6, 0xB6, 0xB8, 0xB9, 0xBB, 0xBF, 0xD7, 0xD7, 0xF7, 0xF7,
+                    0x2010, 0x2027, 0x2030, 0x203E, 0x2041, 0x2053, 0x2055, 0x205E, 0x2070, 0x2070, 0x2074, 0x207E,
+                    0x2080, 0x208E, 0x20A0, 0x20C0, 0x2150, 0x215F, 0x2189, 0x218B, 0x2190, 0x2BFF, 0x2E00, 0x2E7F,
+                    0x3001, 0x3004, 0x3008, 0x3020, 0x3030, 0x3030, 0x303D, 0x303F, 0xFF01, 0xFF0F, 0xFF1A, 0xFF20,
+                    0xFF3B, 0xFF3E, 0xFF40, 0xFF40, 0xFF5B, 0xFF64, 0xFFE0, 0xFFEE, 0xFFFC, 0xFFFD, 0x1F000, 0x1FAFF]
+
+
+def among(c: int, ranges: list[int]) -> bool:
+    for k in range(0, len(ranges), 2):
+        if c >= ranges[k] and c <= ranges[k + 1]:
+            return True
+    return False
 
 
 class Tok:
@@ -112,6 +137,7 @@ class Tok:
         self.kind = kind
         self.text = text
         self.line = line
+        self.esc = False  # a string literal (or bytes literal) whose escapes the parser decodes
 
 
 class Lexer:
@@ -120,21 +146,137 @@ class Lexer:
         self.i = 0
         self.line = line
         self.toks: list[Tok] = []
+        self.cut = ""  # the error at the end of src, where CPython stopped reading the file (see file())
+        self.cutline = 0
+        self.declared = False  # a file declared UTF-8 (by a byte order mark or coding declaration)
 
     def add(self, kind: str, text: str) -> None:
         self.toks.append(Tok(kind, text, self.line))
+
+    def bad(self, msg: str, line: int) -> None:
+        # an error of CPython's tokenizer, which CPython meets only where its parser gets to it
+        # (after the parser's errors before it): the tokens end with an "error" token there. It
+        # also replaces an error of CPython's parser earlier in the file (see Parser.fail)
+        if self.cut != "" and self.i >= len(self.src):
+            msg = self.cut  # (at the end of what CPython could read)
+            line = self.cutline
+        self.toks.append(Tok("error", msg, line))
+        self.i = len(self.src)
+
+    def stop(self, msg: str, line: int) -> None:
+        # an error that replaces no parser error before it: one that CPython's tokenizer reports
+        # without an exception (a bad unindent, an unclosed bracket, a backslash in a line) or in
+        # an f-string, or a Pystachy limitation
+        self.bad(msg, line)
+        if self.toks[-1].text == msg:
+            self.toks[-1].kind = "stop"  # (unless bad() reported where CPython stopped reading instead)
+
+    def file(self) -> list[Tok]:
+        # the tokens of a source file. CPython decodes it as UTF-8 or in the encoding that a coding
+        # declaration on its first or second line names; a Latin-1 file is read as UTF-8 (what
+        # CPython's str holds), and other encodings are rejected. CPython reads the main program
+        # line by line, and its tokenizer fails at the first line that holds a NUL byte or (without
+        # a declaration) is not UTF-8: the tokens end there. It compiles an imported module from
+        # its bytes: there a NUL byte is an error first, and invalid UTF-8 one only in a string or
+        # a name (as in a file declared UTF-8).
+        src = self.src
+        module = self.line >= LINES
+        if module and src.find(chr(0)) >= 0:
+            fail("source code string cannot contain null bytes", self.line + src[: src.find(chr(0))].count("\n"))
+        bom = src.startswith(chr(239) + chr(187) + chr(191))
+        at = 3 if bom else 0
+        cs = ""
+        csline = self.line
+        while cs == "" and csline < self.line + 2 and at < len(src):
+            e = src.find("\n", at)
+            ln = src[at:] if e < 0 else src[at : e + 1]
+            j = 0
+            while j < len(ln) and (ln[j] == " " or ln[j] == "\t" or ln[j] == "\f"):
+                j += 1
+            if j < len(ln) and ln[j] != "#" and ln[j] != "\n" and ln[j] != "\r":
+                break  # (code: a declaration may only follow a comment or blank line)
+            m = ln.find("coding", j)
+            while cs == "" and m >= 0 and m + 6 < len(ln):
+                t = m + 6
+                if ln[t] == ":" or ln[t] == "=":
+                    t += 1
+                    while t < len(ln) and (ln[t] == " " or ln[t] == "\t"):
+                        t += 1
+                    b = t
+                    while t < len(ln) and (ln[t].isalnum() or ln[t] == "-" or ln[t] == "_" or ln[t] == ".") and ord(ln[t]) < 128:
+                        t += 1
+                    cs = ln[b:t]
+                m = ln.find("coding", m + 1)
+            if cs == "":
+                csline += 1
+                at = len(src) if e < 0 else e + 1
+        # CPython's names for UTF-8 and Latin-1 (get_normal_name)
+        low = cs[:12].lower().replace("_", "-")
+        if low == "utf-8" or low.startswith("utf-8-"):
+            cs = "utf-8"
+        elif low == "latin-1" or low == "iso-8859-1" or low == "iso-latin-1" or low.startswith("latin-1-") or low.startswith("iso-8859-1-") or low.startswith("iso-latin-1-"):
+            cs = "iso-8859-1"
+        if bom and cs != "" and cs != "utf-8":
+            fail(f"encoding problem: {cs} with BOM", csline)
+        self.declared = bom or cs == "utf-8" or (module and cs == "")
+        kind = 0 if cs == "" or cs == "utf-8" else (2 if cs == "iso-8859-1" else codec(cs))
+        nm = normcodec(cs).replace(".", "_")
+        if kind == 0 and nm in "ascii us_ascii 646 us cp367 csascii ibm367 iso646_us iso_ir_6 ansi_x3_4_1968 ansi_x3_4_1986 iso_646_irv_1991".split():
+            kind = 3
+        if kind == 0 and cs != "" and cs != "utf-8":
+            fail(f"encoding problem: {cs} (Pystachy reads only UTF-8, Latin-1 and ASCII source files)", csline)
+        if kind == 2:
+            out: list[str] = []
+            for c in src:
+                out.append(c if ord(c) < 128 else utf8(ord(c)))
+            src = "".join(out)
+            self.src = src
+        elif kind == 1 and utf8_error(src) != "":
+            # (CPython's codec decodes the whole file)
+            fail(utf8_error(src) if module else f"encoding problem: {cs}", csline)
+        elif kind == 3:
+            for k in range(len(src)):
+                if ord(src[k]) >= 128:
+                    fail(f"'ascii' codec can't decode byte 0x{ord(src[k]):02x} in position {k}: ordinal not in range(128)" if module else f"encoding problem: {cs}", csline)
+        # the first line CPython cannot read: not UTF-8 (without a declaration), or a NUL byte
+        i = 3 if bom else 0
+        line = self.line
+        while i < len(src) and not module:
+            e = src.find("\n", i)
+            if e < 0:
+                e = len(src) - 1
+            k = i
+            while k <= e and not self.declared and kind == 0:
+                v = ord(src[k])
+                if v == 0:
+                    break
+                n = 1 if v < 128 else utf8len(src, k)
+                if n <= 0:
+                    self.cut = f"Non-UTF-8 code starting with '\\x{v:02x}' in file {SRC} on line {line}, but no encoding declared; see https://peps.python.org/pep-0263/ for details"
+                    break
+                k += n
+            if self.cut == "" and src.find(chr(0), i, e + 1) >= 0:
+                self.cut = "source code cannot contain null bytes"
+            if self.cut != "":
+                self.src = src[:i]
+                self.cutline = line
+                break
+            i = e + 1
+            line += 1
+        return self.run()
 
     def run(self) -> list[Tok]:
         src = self.src
         n = len(src)
         indents = [0]
-        depth = 0
+        opens: list[str] = []  # the brackets open, and their lines
+        openl: list[int] = []
         if src.startswith(chr(239) + chr(187) + chr(191)):  # a UTF-8 byte order mark
             self.i = 3
         bol = True
         while self.i < n:
             c = src[self.i]
-            if bol and depth == 0:
+            if bol and len(opens) == 0:
                 col = 0
                 while self.i < n and (src[self.i] == " " or src[self.i] == "\f"):
                     col = col + 1 if src[self.i] == " " else 0  # (a form feed restarts the count, as in CPython)
@@ -154,20 +296,23 @@ class Lexer:
                     self.line += 1
                     continue
                 if c == "\t":
-                    fail("tabs are not supported for indentation", self.line)
+                    self.stop("tabs are not supported for indentation", self.line)
+                    break
                 bol = False
                 if col > indents[-1]:
                     if len(indents) == 100:
-                        fail("too many levels of indentation", self.line)
+                        self.bad("too many levels of indentation", self.line)  # (CPython's MAXINDENT)
+                        break
                     indents.append(col)
                     self.add("indent", "")
                 while col < indents[-1]:
                     indents.pop()
                     self.add("dedent", "")
                 if col != indents[-1]:
-                    fail("inconsistent indentation", self.line)
+                    self.stop("unindent does not match any outer indentation level", self.line)
+                    break
             elif c == "\n":
-                if depth == 0:
+                if len(opens) == 0:
                     self.add("nl", "")
                     bol = True
                 self.line += 1
@@ -177,10 +322,12 @@ class Lexer:
             elif c == "#":
                 while self.i < n and src[self.i] != "\n":
                     self.i += 1
-            elif c == "\\" and src.startswith("\n", self.i + 1):
+            elif c == "\\" and (src.startswith("\n", self.i + 1) or self.i + 1 == n):
                 self.i += 2
                 self.line += 1
-            elif c.isdigit() or (c == "." and src[self.i + 1 : self.i + 2].isdigit()):
+                if self.i >= n and len(opens) == 0:
+                    self.stop("unexpected EOF while parsing", self.line - 1)
+            elif (c >= "0" and c <= "9") or (c == "." and src[self.i + 1 : self.i + 2] >= "0" and src[self.i + 1 : self.i + 2] <= "9"):
                 self.number()
             elif c.isalpha() or c == "_" or ord(c) >= 128:
                 self.word()
@@ -189,12 +336,23 @@ class Lexer:
             else:
                 self.op()
                 k = self.toks[-1].kind
-                if k == "(" or k == "[" or k == "{":
-                    depth += 1
-                    if depth > 200:
-                        fail("too many nested parentheses", self.line)
+                if (k == "(" or k == "[" or k == "{") and len(opens) == 200:
+                    self.bad("too many nested parentheses", self.line)  # (CPython's MAXLEVEL)
+                elif k == "(" or k == "[" or k == "{":
+                    opens.append(k)
+                    openl.append(self.line)
+                elif (k == ")" or k == "]" or k == "}") and len(opens) == 0:
+                    self.bad(f"unmatched '{k}'", self.line)
                 elif k == ")" or k == "]" or k == "}":
-                    depth -= 1
+                    o = opens.pop()
+                    ol = openl.pop()
+                    if "([{".find(o) != ")]}".find(k):
+                        self.bad(f"closing parenthesis '{k}' does not match opening parenthesis '{o}'" + (f" on line {ol % LINES}" if ol != self.line else ""), self.line)
+        ended = len(self.toks) > 0 and (self.toks[-1].kind == "error" or self.toks[-1].kind == "stop")
+        if self.cut != "" and not ended:
+            self.bad(self.cut, self.cutline)
+        elif len(opens) > 0 and not ended:
+            self.stop(f"'{opens[-1]}' was never closed", openl[-1])
         if not bol:
             self.add("nl", "")
         while len(indents) > 1:
@@ -204,23 +362,33 @@ class Lexer:
         return self.toks
 
     def number(self) -> None:
+        # a number literal, scanned as CPython's tokenizer does (its error messages included)
         src = self.src
         j = self.i
         pfx = src[j : j + 2].lower()
         if pfx == "0x" or pfx == "0o" or pfx == "0b":
             base = 16 if pfx == "0x" else (8 if pfx == "0o" else 2)
             kind = "hexadecimal" if base == 16 else ("octal" if base == 8 else "binary")
+            ds = "0123456789abcdefABCDEF" if base == 16 else "01234567"[:base]
             j += 2
-            while j < len(src) and (src[j].isalnum() or src[j] == "_"):
-                j += 1
-            body = src[self.i + 2 : j]
-            for c in body:
-                dv = "0123456789abcdef".find(c.lower())
-                if c != "_" and (dv < 0 or dv >= base):
-                    fail(f"invalid {kind} literal", self.line)
-            if body.replace("_", "") == "" or "__" in body or body.endswith("_"):
-                fail(f"invalid {kind} literal", self.line)
-            h = body.replace("_", "").lstrip("0")
+            while True:
+                # digits, with single underscores between them (and after the prefix)
+                if src[j : j + 1] == "_":
+                    j += 1
+                if j >= len(src) or ds.find(src[j]) < 0:
+                    c = src[j : j + 1]
+                    self.bad(f"invalid digit '{c}' in {kind} literal" if c >= "0" and c <= "9" else f"invalid {kind} literal", self.line)
+                    return
+                while j < len(src) and ds.find(src[j]) >= 0:
+                    j += 1
+                if src[j : j + 1] != "_":
+                    break
+            if src[j : j + 1] >= "0" and src[j : j + 1] <= "9":
+                self.bad(f"invalid digit '{src[j]}' in {kind} literal", self.line)
+                return
+            if not self.end_of_number(j, kind):
+                return
+            h = src[self.i + 2 : j].replace("_", "").lstrip("0")
             # significant bits, without converting a number that may not fit
             bits = 0
             if h != "":
@@ -238,35 +406,89 @@ class Lexer:
             self.add("int", "9223372036854775808" if bits == 64 else str(int("0" + h, base)))
             self.i = j
             return
-        isf = False
-        while j < len(src) and (src[j].isdigit() or src[j] == "_"):
+        isf = src[j] == "."
+        if src[j] == "0":
+            # 0, 00 or 0_0; other digits after a leading zero only in a float or imaginary literal
             j += 1
-        if src.startswith(".", j) and not src.startswith("..", j):
+            while src[j : j + 1] == "0" or src[j : j + 1] == "_":
+                if src[j] == "_" and not (src[j + 1 : j + 2] >= "0" and src[j + 1 : j + 2] <= "9"):
+                    self.bad("invalid decimal literal", self.line)
+                    return
+                j += 1
+            k = j
+            j = self.decimals(j)
+            if j < 0:
+                return
+            c = src[j : j + 1]
+            if j > k and c != "." and c != "e" and c != "E" and c != "j" and c != "J":
+                self.bad("leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers", self.line)
+                return
+        elif not isf:
+            j = self.decimals(j)
+            if j < 0:
+                return
+        if src[j : j + 1] == ".":
             isf = True
             j += 1
-            while j < len(src) and (src[j].isdigit() or src[j] == "_"):
-                j += 1
-        if j < len(src) and (src[j] == "e" or src[j] == "E"):
-            isf = True
-            j += 1
-            if j < len(src) and (src[j] == "+" or src[j] == "-"):
-                j += 1
-            if j >= len(src) or not src[j].isdigit():
-                fail("invalid float literal", self.line)
-            while j < len(src) and (src[j].isdigit() or src[j] == "_"):
-                j += 1
-        text = src[self.i : j]
-        low = text.lower()
-        if "__" in text or text.endswith("_") or "_." in text or "._" in text or "_e" in low or "e_" in low:
-            fail("invalid decimal literal", self.line)
-        if not isf and len(text) > 1 and text[0] == "0" and text.replace("_", "").strip("0") != "":
-            fail("leading zeros in decimal integer literals are not permitted", self.line)
-        if j < len(src) and (src[j] == "j" or src[j] == "J"):
-            self.add("complex", text.replace("_", "") + "j")
-            self.i = j + 1
+            if src[j : j + 1] >= "0" and src[j : j + 1] <= "9":
+                j = self.decimals(j)
+                if j < 0:
+                    return
+        if src[j : j + 1] == "e" or src[j : j + 1] == "E":
+            k = j + 1
+            if src[k : k + 1] == "+" or src[k : k + 1] == "-":
+                k += 1
+                if not (src[k : k + 1] >= "0" and src[k : k + 1] <= "9"):
+                    self.bad("invalid decimal literal", self.line)
+                    return
+            if src[k : k + 1] >= "0" and src[k : k + 1] <= "9":
+                isf = True
+                j = self.decimals(k)
+                if j < 0:
+                    return
+            elif not self.end_of_number(j, "decimal"):
+                return
+            else:
+                # 1else: the literal ends before the e
+                self.add("float" if isf else "int", src[self.i : j].replace("_", ""))
+                self.i = j
+                return
+        if src[j : j + 1] == "j" or src[j : j + 1] == "J":
+            if self.end_of_number(j + 1, "imaginary"):
+                self.add("complex", src[self.i : j].replace("_", "") + "j")
+                self.i = j + 1
             return
-        self.add("float" if isf else "int", text.replace("_", ""))
-        self.i = j
+        if self.end_of_number(j, "decimal"):
+            self.add("float" if isf else "int", src[self.i : j].replace("_", ""))
+            self.i = j
+
+    def decimals(self, j: int) -> int:
+        # the end of the digits from j, with single underscores between them (-1 after an error)
+        src = self.src
+        while True:
+            while j < len(src) and src[j] >= "0" and src[j] <= "9":
+                j += 1
+            if src[j : j + 1] != "_":
+                return j
+            j += 1
+            if not (src[j : j + 1] >= "0" and src[j : j + 1] <= "9"):
+                self.bad("invalid decimal literal", self.line)
+                return -1
+
+    def end_of_number(self, j: int, kind: str) -> bool:
+        # what may follow a number literal (CPython's verify_end_of_number): the keyword and, else,
+        # for, not or or, or if, in or is at the start of a name (with a SyntaxWarning, which
+        # Pystachy does not print), but no other letter, digit or "_"
+        src = self.src
+        for w in ["and", "else", "for", "not", "or", "if", "in", "is"]:
+            c = src[j + len(w) : j + len(w) + 1]
+            if src.startswith(w, j) and (len(w) == 2 and w != "or" or not (c != "" and (c.isalnum() or c == "_" or ord(c) >= 128))):
+                return True
+        c = src[j : j + 1]
+        if c != "" and (c.isalnum() or c == "_") and ord(c) < 128:
+            self.bad(f"invalid {kind} literal", self.line)
+            return False
+        return True
 
     def word(self) -> None:
         src = self.src
@@ -274,9 +496,28 @@ class Lexer:
         while j < len(src) and (src[j].isalnum() or src[j] == "_" or ord(src[j]) >= 128):
             j += 1
         w = src[self.i : j]
-        for ch in w:
-            if ord(ch) >= 128:
-                fail("non-ASCII identifiers are not supported", self.line)
+        k = 0
+        letter = False
+        while k < len(w):
+            # CPython's error for the first character no identifier may hold; a non-ASCII letter
+            # is a Pystachy limitation
+            n = 1 if ord(w[k]) < 128 else utf8len(w, k)
+            cp = codepoint(w, k) if n > 1 else 0
+            if among(cp, NONPRINT):
+                self.bad(f"invalid non-printable character U+{cp:04X}", self.line)
+                return
+            if among(cp, NOTID):
+                # (chr() is the same bytes natively, and the character where CPython runs this)
+                self.bad(f"invalid character '{chr(cp) if cp >= 256 else w[k : k + n]}' (U+{cp:04X})", self.line)
+                return
+            if n <= 0:
+                self.bad("(unicode error) " + utf8_error(w), self.line)  # (in a file declared UTF-8)
+                return
+            letter = letter or n != 1
+            k += n
+        if letter:
+            self.stop("non-ASCII identifiers are not supported", self.line)
+            return
         self.i = j
         if j < len(src) and (src[j] == '"' or src[j] == "'") and len(w) <= 2:
             p = w.lower()
@@ -300,11 +541,13 @@ class Lexer:
         fields: list[int] = []
         while True:
             if self.i >= len(src):
-                fail("unterminated string", line)
+                self.unterminated(prefix, triple, len(fields) > 0, line)
+                return
             c = src[self.i]
             if c == q and (not triple or src.startswith(q + q + q, self.i)):
                 if len(fields) > 0 and fields[-1] >= 0 and not triple and self.reuses_quote(q):
-                    fail("f-string: reusing the string's quote inside a replacement field (PEP 701) is not supported; use the other quote", line)
+                    self.stop("f-string: reusing the string's quote inside a replacement field (PEP 701) is not supported; use the other quote", line)
+                    return
                 break
             if "f" in prefix and (len(fields) == 0 or fields[-1] < 0):
                 # literal text, or a format spec: {{ and }} are braces, { opens a field, } closes one
@@ -312,6 +555,9 @@ class Lexer:
                     if len(fields) == 0 and src[self.i + 1 : self.i + 2] == c:
                         self.i += 2
                         continue
+                    if c == "{" and len(fields) == 3:
+                        self.stop("f-string: expressions nested too deeply", self.line)
+                        return
                     if c == "{":
                         fields.append(0)
                     elif len(fields) > 0:
@@ -333,9 +579,22 @@ class Lexer:
                     fields.pop()
                 elif c == ":" and fields[-1] == 0:
                     fields[-1] = -1
+                elif c == "#":
+                    # a comment, to the end of the line, after which the field goes on
+                    j = src.find("\n", self.i)
+                    if j < 0:
+                        self.stop("'{' was never closed", line)
+                        return
+                    self.i = j
+                    continue
             if c == "\n":
-                if not triple:
-                    fail("unterminated string", line)
+                # (a field's expression may go on over lines, in any f-string)
+                if not triple and len(fields) > 0 and fields[-1] < 0:
+                    self.stop("f-string: newlines are not allowed in format specifiers for single quoted f-strings", self.line)
+                    return
+                if not triple and len(fields) == 0:
+                    self.unterminated(prefix, triple, False, line)
+                    return
                 self.line += 1
             if c == "\\":
                 # an escaped character never ends the literal, even in a raw string
@@ -346,17 +605,32 @@ class Lexer:
             self.i += 1
         text = src[start : self.i]
         self.i += 3 if triple else 1
-        if "f" in prefix:
+        if self.declared and "b" not in prefix and utf8_error(text) != "":
+            # (only a file declared UTF-8 is not checked as CPython reads it)
+            self.stop("(unicode error) " + utf8_error(text), line)
+        elif "f" in prefix:
             # decoded later, piece by piece, so escapes never turn into replacement fields
             self.toks.append(Tok("rfstr" if "r" in prefix else "fstr", text, line))
-        elif "b" in prefix:
-            self.toks.append(Tok("bytes", text, line))
         else:
-            self.toks.append(Tok("str", text if "r" in prefix else unescape(text, line), line))
+            # (decoded where the parser reaches it, as CPython does)
+            self.toks.append(Tok("bytes" if "b" in prefix else "str", text, line))
+            self.toks[-1].esc = "r" not in prefix
+
+    def unterminated(self, prefix: str, triple: bool, field: bool, line: int) -> None:
+        # CPython's error for a string literal that the line (or the file) ends in
+        at = self.line % LINES
+        if self.i >= len(self.src) and self.src.endswith("\n"):
+            at -= 1
+        kind = ("triple-quoted " if triple else "") + ("f-string" if "f" in prefix else "string")
+        if field or "f" in prefix:
+            self.stop("'{' was never closed" if field else f"unterminated {kind} literal (detected at line {at})", line)
+        else:
+            self.bad(f"unterminated {kind} literal (detected at line {at})", line)
 
     def reuses_quote(self, q: str) -> bool:
         # f"{d["k"]}": the quote that would end the f-string inside a field starts a string that
-        # closes on this line and is followed by more of the expression; otherwise the field is unclosed
+        # closes on this line and is followed by more of the expression (an operator, or a keyword:
+        # f"{f"a" if x else ""}"); otherwise the field is unclosed
         src = self.src
         j = src.find(q, self.i + 1)
         if j < 0 or src.find("\n", self.i, j) >= 0:
@@ -364,7 +638,7 @@ class Lexer:
         k = j + 1
         while k < len(src) and src[k] == " ":
             k += 1
-        return k < len(src) and src[k] in "])}.,[!:=+*%<>"
+        return k < len(src) and (src[k] in "])}.,[!:=+*%<>" or (k > j + 1 and src[k].isalpha()))
 
     def op(self) -> None:
         for o in OPS:
@@ -372,7 +646,16 @@ class Lexer:
                 self.add(o, o)
                 self.i += len(o)
                 return
-        fail(f"unexpected character {repr(self.src[self.i])}", self.line)
+        c = self.src[self.i]
+        if c == "\\":
+            self.stop("unexpected character after line continuation character", self.line)
+        elif ord(c) < 32 or ord(c) == 127:
+            self.bad(f"invalid non-printable character U+{ord(c):04X}", self.line)
+        else:
+            # ($, ?, `, a lone !): an operator to CPython's tokenizer, and invalid syntax where its
+            # parser reaches it (see Parser.peek)
+            self.add("?", c)
+            self.i += 1
 
 
 # ---------------------------------------------------------------- parser
@@ -424,8 +707,51 @@ def as_target(n: Node) -> Node:
     return n
 
 
+# CPython's name for an expression in its "cannot assign to" errors (_PyPegen_get_expr_name)
+EXPRNAMES: dict[str, str] = {
+    "attr": "attribute", "index": "subscript", "slice": "subscript", "starred": "starred", "name": "name", "list": "list",
+    "tuple": "tuple", "lambda": "lambda", "call": "function call", "binop": "expression", "unary": "expression",
+    "boolop": "expression", "yield": "yield expression", "await": "await expression", "setcomp": "set comprehension",
+    "dictcomp": "dict comprehension", "dict": "dict literal", "dstar": "dict literal", "set": "set display",
+    "fstr": "f-string expression", "str": "literal", "int": "literal", "float": "literal", "complex": "literal",
+    "bytes": "literal", "None": "None", "True": "True", "False": "False", "ellipsis": "ellipsis", "cmp": "comparison",
+    "ifexp": "conditional expression", "walrus": "named expression",
+}
+
+
+def expr_name(n: Node) -> str:
+    if n.kind == "listcomp" or n.kind == "nestedcomp" or n.kind == "asynccomp":
+        return "generator expression" if n.s == "gen" else "list comprehension"
+    return EXPRNAMES.get(n.kind, "expression")
+
+
+def start(n: Node) -> int:
+    # the line expression n starts on (an operator, call, attribute or subscript node has its
+    # operator's line)
+    k = n.kind
+    if k == "binop" or k == "boolop" or k == "cmp" or k == "call" or k == "attr" or k == "index" or k == "slice":
+        return start(n.kids[0])
+    if k == "ifexp":
+        return start(n.kids[1])
+    return n.line
+
+
+def bad_target(n: Node, delete: bool, out: list[Node]) -> None:
+    # the first part of target n that cannot be assigned to (or deleted), as CPython's parser finds it
+    k = n.kind
+    if len(out) > 0:
+        return
+    if k == "tuple" or k == "list":
+        for x in n.kids:
+            bad_target(x, delete, out)
+    elif k == "starred" and not delete:
+        bad_target(n.kids[0], delete, out)
+    elif k != "name" and k != "attr" and k != "index" and k != "slice":
+        out.append(n)
+
+
 STARTS: dict[str, bool] = {}
-for _k in "id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None True False lambda yield".split():
+for _k in "id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None True False lambda yield await".split():
     STARTS[_k] = True
 CMPOPS: dict[str, bool] = {"<": True, ">": True, "==": True, ">=": True, "<=": True, "!=": True, "in": True}
 AUGOPS: dict[str, bool] = {}
@@ -442,9 +768,24 @@ class Parser:
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
         self.nest = 0  # the parser's own recursion: nested expressions and elif branches
+        self.xstar = -1  # the loops around the except* block the statement is in (-1: none)
+        self.errs: list[str] = ["", "", ""]  # see later()
+        self.at: list[int] = [0, 0, 0]
+        # an f-string field's parser: the parsers it is in, and where each is, whose tokens follow
+        self.outer: list[list[Tok]] = []
+        self.outerp: list[int] = []
+        self.orp = -1  # the tokens of the disjunction that an expression ended with (see comma())
+        self.ore = -1
+        self.orn = mk("omit", "", 0, [])
+        self.tparams: dict[int, str] = {}  # the type parameters of the generic defs and classes, by line
 
     def peek(self) -> str:
-        return self.toks[self.p].kind
+        t = self.toks[self.p]
+        if t.kind == "error" or t.kind == "stop":
+            fail(t.text, t.line)  # (the tokenizer's error, see Lexer.bad)
+        if t.kind == "?":
+            self.fail("invalid syntax", t.line)
+        return t.kind
 
     def ahead(self) -> str:
         return self.toks[self.p + 1].kind
@@ -453,35 +794,131 @@ class Parser:
         return self.toks[self.p].line
 
     def eat(self, k: str) -> bool:
-        if self.toks[self.p].kind == k:
+        if self.peek() == k:
             self.p += 1
             return True
         return False
 
     def expect(self, k: str) -> Tok:
         t = self.toks[self.p]
-        if t.kind != k:
-            fail(f"expected '{k}' but found '{t.text or t.kind}'", t.line)
+        if self.peek() != k:
+            if k == ":" and t.kind == "nl":
+                self.fail("expected ':'", t.line)
+            if k == "indent":
+                self.fail("expected an indented block", t.line)
+            if (k == ")" or k == "]" or k == "}") and self.ore == self.p:
+                self.comma()
+            self.invalid(t.line)  # (CPython's parser says only that, where its grammar forces no token)
         self.p += 1
         return t
+
+    def comma(self) -> None:
+        # in brackets, an expression right after the disjunction an expression ended with: CPython
+        # says that a comma may be missing (not after a name that a string follows, nor after a
+        # soft keyword), and after print or exec that its call's parentheses are
+        a = self.toks[self.orp]
+        e = self.orn
+        k = self.peek()
+        if k == "-" or k == "+" or k == "~" or k == "not":
+            k = self.ahead()
+        if (k not in STARTS and k != "id") or k == "yield":
+            return
+        if e.kind == "name" and (e.s == "print" or e.s == "exec"):
+            self.fail(f"Missing parentheses in call to '{e.s}'. Did you mean {e.s}(...)?", e.line)
+        b = self.toks[self.orp + 1].kind
+        if a.kind == "id" and (b == "str" or b == "fstr" or b == "rfstr" or b == "bytes" or a.text == "match" or a.text == "case" or a.text == "_" or a.text == "type"):
+            return
+        self.fail("invalid syntax. Perhaps you forgot a comma?", start(e))
+
+    def colon(self) -> None:
+        # a ':' that CPython's grammar forces (after a def's signature, try, else and finally)
+        if self.peek() != ":":
+            self.fail("expected ':'", self.line())
+        self.p += 1
+
+    def invalid(self, line: int) -> None:
+        self.fail("invalid syntax", line)
+
+    def fail(self, msg: str, line: int) -> None:
+        # an error of CPython's parser: CPython then tokenizes the rest of the file, and an error
+        # its tokenizer raises there replaces it ("error" tokens); a bracket never closed does
+        # only if it opened on a line before the one the parser got to
+        cur = self.toks[min(self.p, len(self.toks) - 1)].line
+        for k in range(len(self.outer) + 1):
+            toks = self.toks if k == 0 else self.outer[-k]
+            for t in toks[self.p if k == 0 else self.outerp[-k] :]:
+                if t.kind == "error" or (t.kind == "stop" and t.text.endswith("was never closed") and t.line < cur):
+                    fail(t.text, t.line)
+        fail(msg, line)
+
+    def assignable(self, t: Node) -> Node:
+        # a for loop's, comprehension's or with statement's target
+        bad: list[Node] = []
+        bad_target(t, False, bad)
+        if len(bad) > 0:
+            self.fail(f"cannot assign to {expr_name(bad[0])}", start(bad[0]))
+        return t
+
+    def later(self, cat: int, msg: str, line: int) -> None:
+        # an error CPython reports only once it has parsed the whole file: its symbol table's (cat
+        # 0) or its compiler's (cat 2); the earliest of each is kept (on one line, the first found)
+        if self.errs[cat] == "" or line < self.at[cat]:
+            self.errs[cat] = msg
+            self.at[cat] = line
+
+    def no_debug(self, name: str, line: int) -> None:
+        # CPython's compiler: nothing may bind __debug__ (an assignment's targets: Symtable.store())
+        if name == "__debug__":
+            self.later(2, "cannot assign to __debug__", line)
+
+    def no_star(self, e: Node) -> Node:
+        # a value that is a lone *x (x = *a, return *a): an error of CPython's compiler, which
+        # Symtable reports in its order (s "here")
+        if e.kind == "starred":
+            e.s = "here"
+        return e
+
+    def docstring(self) -> bool:
+        # does the file start with a docstring: string literals (no f-string), maybe in
+        # parentheses, alone in a statement
+        j = 0
+        d = 0
+        while self.toks[j].kind == "(":
+            d += 1
+            j += 1
+        if self.toks[j].kind != "str":
+            return False
+        while self.toks[j].kind == "str":
+            j += 1
+        while d > 0 and self.toks[j].kind == ")":
+            d -= 1
+            j += 1
+        return d == 0 and (self.toks[j].kind == "nl" or self.toks[j].kind == ";")
 
     # ---- statements
     def module(self) -> Node:
         body: list[Node] = []
+        doc = self.docstring()
         while self.peek() != "eof":
             if not self.eat("nl"):
                 self.stmt(body)
+        st = Symtable(self.errs, self.at)
+        st.tparams = self.tparams
+        st.check(body, doc)
         return mk("block", "", 1, body)
 
     def scope(self, fn: bool) -> Node:
         # the body of a def (fn) or class: no loop around it
         loops = self.loops
         infn = self.infn
+        xstar = self.xstar
         self.loops = 0
         self.infn = fn
+        self.xstar = -1
         b = self.block()
         self.loops = loops
         self.infn = infn
+        self.xstar = xstar
         return b
 
     def block(self) -> Node:
@@ -499,7 +936,7 @@ class Parser:
     def stmt(self, out: list[Node]) -> None:
         k = self.peek()
         line = self.line()
-        if k != "from" and k != "import" and not (k == "str" and self.p == 0):
+        if k != "from" and k != "import" and not (self.p == 0 and self.docstring()):
             self.early = False  # from __future__ imports may follow only a docstring
         if k == "def":
             out.append(self.funcdef())
@@ -513,17 +950,15 @@ class Parser:
             if self.peek() == "[":
                 self.typeparams(tps)
                 bases.append(mk("typeparams", "", line, []))  # class C[T]: a generic class
+                self.tparams[line] = " ".join(tps)
             if self.eat("("):
-                while not self.eat(")"):
-                    if self.peek() == "id" and self.ahead() == "=":
-                        self.p += 2
-                        bases.append(mk("kw", self.toks[self.p - 2].text, line, [self.test()]))
-                    else:
-                        bases.append(self.item())
-                    if not self.eat(","):
-                        self.expect(")")
-                        break
+                args = mk("call", "", line, [])
+                self.args(args, line, True)
+                bases.extend(args.kids)
+                for b in args.kids if len(tps) > 0 else []:
+                    self.scoped(b, "the definition of a generic")
             self.expect(":")
+            self.no_debug(name, line)
             c = mk("class", name, line, [self.scope(False)])
             if len(bases) == 0 or (len(bases) == 1 and bases[0].kind == "name" and bases[0].s == "object"):
                 out.append(c)
@@ -533,7 +968,7 @@ class Parser:
             out.append(self.ifstmt())
         elif k == "while":
             self.p += 1
-            c = self.test()
+            c = self.named()
             self.expect(":")
             self.loops += 1
             out.append(mk("while", "", line, [c, self.block()]))
@@ -542,29 +977,33 @@ class Parser:
             self.p += 1
             t = self.targets()
             self.expect("in")
-            it = self.exprlist()
+            it = self.no_star(self.exprlist())
             self.expect(":")
             self.loops += 1
             out.append(mk("for", "", line, [t, it, self.block()]))
             self.loops -= 1
         elif k == "@":
-            # a decorator: s is its dotted name, a decorator with arguments keeps the call as its kid
+            # a decorator: s is its dotted name, a decorator with arguments (or that is no dotted
+            # name: s has a "?") keeps its expression as its kid
             self.p += 1
-            e = self.test()
+            e = self.named()
             self.expect("nl")
+            k = self.peek()
+            if k != "def" and k != "class" and k != "@" and k != "async" and k != "indent":
+                self.invalid(self.line())
+            if k == "async" and self.ahead() != "def":
+                self.invalid(self.toks[self.p + 1].line)
             self.stmt(out)
             d = out[-1]
             if d.kind == "subclass":
                 d = d.kids[0]
-            if d.kind != "class" and d.kind != "def":
-                fail("invalid syntax: a decorator must precede a def or class", line)
             fn = e.kids[0] if e.kind == "call" else e
             name = ""
             while fn.kind == "attr":
                 name = "." + fn.s + name
                 fn = fn.kids[0]
             name = (fn.s if fn.kind == "name" else "?") + name
-            d.kids.append(mk("deco", name, line, [e] if e.kind == "call" else []))
+            d.kids.append(mk("deco", name, line, [e] if e.kind == "call" or "?" in name else []))
         elif k == "with":
             # with open(p) as f, ...: kids are the items (expression [, target]) and the block
             self.p += 1
@@ -575,7 +1014,7 @@ class Parser:
             while not (paren and self.peek() == ")"):
                 it = mk("withitem", "", line, [self.test()])
                 if self.eat("as"):
-                    it.kids.append(as_target(self.postfix()))
+                    it.kids.append(as_target(self.assignable(self.item())))
                 items.append(it)
                 if not self.eat(","):
                     break
@@ -588,30 +1027,56 @@ class Parser:
             # kids: the body, one "except" node (s: the name bound, kids: type or omit, block) per
             # handler, then the else and finally blocks (blocks with s "else" and "finally")
             self.p += 1
-            self.expect(":")
+            self.colon()
             kids = [self.block()]
+            kind = ""  # except or except*
+            bare = 0  # the line of an except without a type, which must be the last
             while self.peek() == "except":
                 hl = self.line()
                 self.p += 1
-                self.eat("*")
+                star = self.eat("*")
+                if kind != "" and kind != ("except*" if star else "except"):
+                    self.fail("cannot have both 'except' and 'except*' on the same 'try'", hl)
+                kind = "except*" if star else "except"
+                if bare > 0:
+                    self.later(2, "default 'except:' must be last", bare)
                 typ = mk("omit", "", hl, [])
                 name = ""
                 if self.peek() != ":":
                     typ = self.test()
+                    if self.peek() == ",":
+                        self.fail("multiple exception types must be parenthesized", start(typ))
                     if self.eat("as"):
                         name = self.expect("id").text
+                        self.no_debug(name, hl)
+                        if self.peek() != ":":
+                            self.invalid(self.line())
+                elif star:
+                    self.fail("expected one or more exception types", self.line())
+                else:
+                    bare = hl
                 self.expect(":")
+                xstar = self.xstar
+                if star:
+                    self.xstar = self.loops
                 kids.append(mk("except", name, hl, [typ, self.block()]))
+                self.xstar = xstar
+            if len(kids) == 1 and self.peek() != "finally":
+                self.fail("expected 'except' or 'finally' block", self.next_line())
             for w in ["else", "finally"]:
                 if self.eat(w):
-                    self.expect(":")
+                    self.colon()
                     b = self.block()
                     b.s = w
                     kids.append(b)
+            if self.peek() == "except" or self.peek() == "else" or self.peek() == "finally":
+                self.invalid(self.line())  # (a clause out of order)
             out.append(mk("try", "", line, kids))
         elif k == "async":
             # async def, async with, async for: kept as an "async" node that code generation rejects
             self.p += 1
+            if self.peek() != "def" and self.peek() != "with" and self.peek() != "for":
+                self.invalid(self.line())
             inner: list[Node] = []
             self.stmt(inner)
             if inner[0].kind == "def":
@@ -620,9 +1085,11 @@ class Parser:
             else:
                 out.append(mk("async", "", line, inner))
         elif k == "id" and self.toks[self.p].text == "match" and self.soft_match():
-            # match subject: case pattern [if guard]: ... -- kept as a "match" node (patterns skipped)
+            # match subject: case pattern [if guard]: ... -- kept as a "match" node: the subject, then
+            # per case a "pattern" node (s: the names the pattern's captures bind; kids: the guard)
+            # and the block. A pattern is skipped, not checked.
             self.p += 1
-            n = mk("match", "", line, [self.exprlist()])
+            n = mk("match", "", line, [self.exprlist(True)])
             self.expect(":")
             self.expect("nl")
             self.expect("indent")
@@ -630,31 +1097,35 @@ class Parser:
                 if self.eat("nl"):
                     continue
                 if self.toks[self.p].text != "case":
-                    fail("expected 'case'", self.line())
-                depth = 0
-                while not (depth == 0 and self.peek() == ":"):
-                    if self.peek() == "(" or self.peek() == "[" or self.peek() == "{":
-                        depth += 1
-                    elif self.peek() == ")" or self.peek() == "]" or self.peek() == "}":
-                        depth -= 1
-                    elif self.peek() == "eof":
-                        fail("expected ':'", self.line())
-                    self.p += 1
+                    self.fail("expected 'case'", self.line())
+                pat = mk("pattern", "", self.line(), [])
+                caps: list[str] = []
                 self.p += 1
+                depth = 0
+                while not (depth == 0 and (self.peek() == ":" or self.peek() == "if")):
+                    tk = self.toks[self.p]
+                    if tk.kind == "(" or tk.kind == "[" or tk.kind == "{":
+                        depth += 1
+                    elif tk.kind == ")" or tk.kind == "]" or tk.kind == "}":
+                        depth -= 1
+                    elif tk.kind == "eof":
+                        self.fail("expected ':'", tk.line)
+                    elif tk.kind == "id" and tk.text != "_" and self.toks[self.p - 1].kind != "." and self.ahead() != "(" and self.ahead() != "." and self.ahead() != "=":
+                        caps.append(tk.text)  # (not a class, a dotted value or a keyword of a class pattern)
+                    self.p += 1
+                if self.eat("if"):
+                    pat.kids.append(self.named())
+                self.expect(":")
+                pat.s = " ".join(caps)
+                n.kids.append(pat)
                 n.kids.append(self.block())
             out.append(n)
-        elif k == "id" and self.toks[self.p].text == "type" and self.ahead() == "id" and (self.toks[self.p + 2].kind == "=" or self.toks[self.p + 2].kind == "["):
-            # type X = ... (PEP 695)
-            while self.peek() != "nl" and self.peek() != "eof":
-                self.p += 1
-            self.expect("nl")
-            out.append(mk("typealias", "", line, []))
         else:
             self.simple(out)
         if self.peek() == "else" and (k == "for" or k == "while"):
             # for/while ... else: the else block is the loop's last kid, a block with s "else"
             self.p += 1
-            self.expect(":")
+            self.colon()
             b = self.block()
             b.s = "else"
             out[-1].kids.append(b)
@@ -697,7 +1168,7 @@ class Parser:
     def ifstmt(self) -> Node:
         line = self.line()
         self.p += 1
-        c = self.test()
+        c = self.named()
         self.expect(":")
         n = mk("if", "", line, [c, self.block(), mk("block", "", line, [])])
         if self.peek() == "elif":
@@ -705,7 +1176,7 @@ class Parser:
             n.kids[2].kids.append(self.ifstmt())
             self.nest -= 1
         elif self.eat("else"):
-            self.expect(":")
+            self.colon()
             n.kids[2] = self.block()
         return n
 
@@ -716,75 +1187,18 @@ class Parser:
         tps: list[str] = []
         if self.peek() == "[":
             self.typeparams(tps)
-        self.expect("(")
-        # params: s is "<number of positional-only parameters>,<index of the first keyword-only one>"
-        # (-1: none); *args and **kwargs are "starparam" and "dstarparam" kids
-        params = mk("params", "", line, [])
-        seen: dict[str, bool] = {}
-        posonly = 0
-        kwonly = -1
-        slash = False
-        star = False  # a * or *args seen
-        bare = False  # a bare * not yet followed by a named parameter
-        dstar = False
-        while not self.eat(")"):
-            if dstar:
-                fail("arguments cannot follow var-keyword argument", line)
-            if self.eat("/"):
-                if slash:
-                    fail("/ may appear only once", line)
-                if kwonly >= 0:
-                    fail("/ must be ahead of *", line)
-                if len(params.kids) == 0:
-                    fail("at least one argument must precede /", line)
-                slash = True
-                posonly = len(params.kids)
-            elif self.peek() == "*" and (self.ahead() == "," or self.ahead() == ")"):
-                if star:
-                    fail("* argument may appear only once", line)
-                self.p += 1
-                star = True
-                bare = True
-                kwonly = len(params.kids)
-            else:
-                kind = "param"
-                if self.eat("*"):
-                    kind = "starparam"
-                    if star:
-                        fail("* argument may appear only once", line)
-                    star = True
-                elif self.eat("**"):
-                    kind = "dstarparam"
-                    if bare:
-                        fail("named arguments must follow bare *", line)
-                    dstar = True
-                elif bare:
-                    bare = False
-                pname = self.expect("id").text
-                if pname in seen:
-                    fail(f"duplicate argument '{pname}' in function definition", line)
-                seen[pname] = True
-                ann = mk("noann", "", line, [])
-                dflt = mk("noann", "", line, [])
-                if self.eat(":"):
-                    ann = self.item() if kind == "starparam" and self.peek() == "*" else self.test()
-                if kind == "param" and self.eat("="):
-                    dflt = self.test()
-                elif kind == "param" and kwonly < 0 and len(params.kids) > 0 and params.kids[-1].kids[1].kind != "noann":
-                    fail("parameter without a default follows parameter with a default", line)
-                params.kids.append(mk(kind, pname, line, [ann, dflt]))
-                if kind == "starparam":
-                    kwonly = len(params.kids)
-            if not self.eat(","):
-                self.expect(")")
-                break
-        if bare:
-            fail("named arguments must follow bare *", line)
-        params.s = f"{posonly},{kwonly}"
+            self.tparams[line] = " ".join(tps)
+        if self.peek() != "(":
+            self.fail("expected '('", self.line())
+        self.p += 1
+        params = self.params(")", line)
         ret = mk("noann", "", line, [])
         if self.eat("->"):
             ret = self.test()
-        self.expect(":")
+        self.colon()
+        self.no_debug(name, line)
+        for a in [p.kids[0] for p in params.kids] + [ret] if len(tps) > 0 else []:
+            self.scoped(a, "the definition of a generic")
         # def f[T](x: T) -> T: what mentions a type parameter is left unannotated (a template)
         for p in params.kids:
             if mentions(p.kids[0], tps):
@@ -793,20 +1207,119 @@ class Parser:
             ret = mk("noann", "", line, [])
         return mk("def", name, line, [params, ret, self.scope(True)])
 
+    def params(self, end: str, line: int) -> Node:
+        # a def's parameters up to ')' or a lambda's up to ':' (without annotations). s is "<number
+        # of positional-only parameters>,<index of the first keyword-only one>" (-1: none); *args
+        # and **kwargs are "starparam" and "dstarparam" kids. Errors name the line of the token
+        # CPython reports.
+        params = mk("params", "", line, [])
+        seen: dict[str, bool] = {}
+        posonly = 0
+        kwonly = -1
+        slash = False
+        star = False  # a * or *args seen
+        bare = 0  # the line of a bare * not yet followed by a named parameter
+        dstar = False
+        while not self.eat(end):
+            at = self.line()
+            if dstar:
+                self.fail("arguments cannot follow var-keyword argument", at)
+            if self.eat("/"):
+                if slash:
+                    self.fail("/ may appear only once", at)
+                if kwonly >= 0:
+                    self.fail("/ must be ahead of *", at)
+                if len(params.kids) == 0:
+                    self.fail("at least one argument must precede /" if self.peek() == "," else "invalid syntax", at)
+                slash = True
+                posonly = len(params.kids)
+            elif self.peek() == "*" and (self.ahead() == "," or self.ahead() == end):
+                if star:
+                    self.fail("* argument may appear only once", at)
+                self.p += 1
+                star = True
+                bare = at
+                kwonly = len(params.kids)
+            else:
+                kind = "param"
+                if self.eat("*"):
+                    kind = "starparam"
+                    if star:
+                        self.fail("* argument may appear only once", at)
+                    star = True
+                elif self.eat("**"):
+                    kind = "dstarparam"
+                    if bare > 0:
+                        self.fail("named arguments must follow bare *", bare if end == ")" else at)
+                    dstar = True
+                else:
+                    bare = 0
+                at = self.line()
+                pname = self.expect("id").text
+                if pname in seen:
+                    self.later(0, f"duplicate argument '{pname}' in function definition", at)
+                seen[pname] = True
+                self.no_debug(pname, at)
+                ann = mk("noann", "", line, [])
+                dflt = mk("noann", "", line, [])
+                if end == ")" and self.eat(":"):
+                    ann = self.item() if kind == "starparam" and self.peek() == "*" else self.test()
+                if kind != "param" and self.peek() == "=":
+                    self.fail(f"var-{'positional' if kind == 'starparam' else 'keyword'} argument cannot have default value", self.line())
+                if kind == "param" and self.eat("="):
+                    dflt = self.test()
+                elif kind == "param" and kwonly < 0 and len(params.kids) > 0 and params.kids[-1].kids[1].kind != "noann":
+                    self.fail("parameter without a default follows parameter with a default", at)
+                params.kids.append(mk(kind, pname, line, [ann, dflt]))
+                if kind == "starparam":
+                    kwonly = len(params.kids)
+            if not self.eat(","):
+                self.expect(end)
+                break
+        if bare > 0:
+            self.fail("named arguments must follow bare *", bare if end == ")" else self.toks[self.p - 1].line)
+        params.s = f"{posonly},{kwonly}"
+        return params
+
     def typeparams(self, out: list[str]) -> None:
-        # [T, U: bound, *Ts, **P, V = default] after a def's or class's name
+        # [T, U: bound, *Ts, **P, V = default] after the name of a def, a class or a type alias
+        if self.toks[self.p + 1].kind == "]":
+            self.fail("Type parameter list cannot be empty", self.line())
         self.expect("[")
         while not self.eat("]"):
-            if not self.eat("**"):
-                self.eat("*")
-            out.append(self.expect("id").text)
+            kind = "TypeVar"
+            if self.eat("**"):
+                kind = "ParamSpec"
+            elif self.eat("*"):
+                kind = "TypeVarTuple"
+            at = self.line()
+            name = self.expect("id").text
+            if name in out:
+                self.later(0, f"duplicate type parameter '{name}'", at)
+            self.no_debug(name, at)
+            out.append(name)
             if self.eat(":"):
-                self.test()
+                b = self.test()
+                self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
             if self.eat("="):
-                self.test()
+                self.scoped(self.item(), f"a {kind} default")
             if not self.eat(","):
                 self.expect("]")
                 break
+
+    def scoped(self, e: Node, what: str) -> None:
+        # CPython's symbol table: a type parameter's bound or default, a type alias's value, and a
+        # generic's annotations and bases are evaluated in scopes of their own, where yield, await
+        # and := cannot stand (except in a lambda, and := in a comprehension neither)
+        k = e.kind
+        if k == "walrus" or k == "yield" or k == "await":
+            self.later(0, f"{'named' if k == 'walrus' else k} expression cannot be used within {what}", e.line)
+        if (k == "listcomp" or k == "nestedcomp" or k == "asynccomp" or k == "setcomp" or k == "dictcomp") and has_kind(e, "walrus"):
+            where = "within " + what if what.startswith("the") else "in " + (what if what == "a type alias" else "a TypeVar bound")
+            self.later(0, f"assignment expression within a comprehension cannot be used {where}", e.line)
+        elif k != "lambda":
+            for kid in e.kids:
+                self.scoped(kid, what)
 
     def compnext(self) -> bool:
         # a comprehension's for clause follows
@@ -825,21 +1338,36 @@ class Parser:
         k = self.peek()
         future = k == "from" and self.toks[self.p + 1].text == "__future__"
         if future and not self.early:
-            fail("from __future__ imports must occur at the beginning of the file", line)
-        if not future and not (k == "str" and self.p == 0):
+            self.later(2, "from __future__ imports must occur at the beginning of the file", line)
+        if not future and not (self.p == 0 and self.docstring()):
             self.early = False
+        if k == "id" and self.toks[self.p].text == "type" and self.ahead() == "id" and (self.toks[self.p + 2].kind == "=" or self.toks[self.p + 2].kind == "["):
+            # type X[T] = value (PEP 695): s is X
+            self.p += 1
+            name = self.expect("id").text
+            tps: list[str] = []
+            if self.peek() == "[":
+                self.typeparams(tps)
+            self.expect("=")
+            self.scoped(self.test(), "a type alias")
+            self.no_debug(name, line)
+            return mk("typealias", name, line, [])
         if k == "pass" or k == "break" or k == "continue":
-            if k != "pass" and self.loops == 0:
-                fail("'break' outside loop" if k == "break" else "'continue' not properly in loop", line)
+            if k != "pass" and self.loops == self.xstar:
+                self.later(2, "'break', 'continue' and 'return' cannot appear in an except* block", line)
+            elif k != "pass" and self.loops == 0:
+                self.later(2, "'break' outside loop" if k == "break" else "'continue' not properly in loop", line)
             self.p += 1
             return mk(k, "", line, [])
         if k == "return":
             if not self.infn:
-                fail("'return' outside function", line)
+                self.later(2, "'return' outside function", line)
+            elif self.xstar >= 0:
+                self.later(2, "'break', 'continue' and 'return' cannot appear in an except* block", line)
             self.p += 1
             if self.peek() == "nl" or self.peek() == ";":
                 return mk("return", "", line, [])
-            return mk("return", "", line, [self.exprlist()])
+            return mk("return", "", line, [self.no_star(self.exprlist())])
         if k == "global":
             self.p += 1
             n = mk("global", "", line, [])
@@ -868,11 +1396,19 @@ class Parser:
             # del a, (b, [c]): each name, item or attribute, in order
             self.p += 1
             n = mk("del", "", line, [])
-            flat_del(self.test(), n.kids)
+            flat_del(self.item(), n.kids)
             while self.eat(","):
                 if self.peek() == "nl" or self.peek() == ";":
                     break
-                flat_del(self.test(), n.kids)
+                flat_del(self.item(), n.kids)
+            bad: list[Node] = []
+            for t in n.kids:
+                bad_target(t, True, bad)
+            if len(bad) > 0:
+                self.fail(f"cannot delete {expr_name(bad[0])}", start(bad[0]))
+            for t in n.kids:
+                if t.kind == "name" and t.s == "__debug__":
+                    self.later(2, "cannot delete __debug__", t.line)
             return n
         if k == "nonlocal":
             self.p += 1
@@ -881,26 +1417,140 @@ class Parser:
                 n.kids.append(mk("name", self.expect("id").text, line, []))
                 if not self.eat(","):
                     return n
-        e = self.exprlist()
+        p = self.p
+        e = self.rhs()
         if e.kind == "name" and e.s == "print" and (self.peek() in STARTS or self.peek() == "id"):
-            fail("Missing parentheses in call to 'print'. Did you mean print(...)?", line)
-        if self.eat(":"):
-            n = mk("annassign", "", line, [e, self.test()])
+            self.fail("Missing parentheses in call to 'print'. Did you mean print(...)?", line)
+        if self.peek() == ":=":
+            # CPython's parser also tries the expressions that start a statement as named
+            # expressions: x := v where x is no name (nor a starred or yield expression)
+            last = e
+            if e.kind == "tuple" and not (self.toks[p].kind == "(" and self.close(p) == self.p - 1):
+                last = e.kids[-1]
+            if last.kind != "starred" and not (last.kind == "yield" and self.toks[p].kind == "yield") and not (last.kind == "name" and self.toks[self.p - 1].kind == "id"):
+                self.fail(f"cannot use assignment expressions with {expr_name(last)}", start(last))
+        if self.peek() == ":":
+            # x: T [= v]; s is "(" for a target in parentheses, which declares no annotated name
+            if e.kind == "starred":
+                self.invalid(self.line())
+            if e.kind == "tuple" or e.kind == "list":
+                self.fail(f"only single target (not {e.kind}) can be annotated", start(e))
+            if e.kind != "name" and e.kind != "attr" and e.kind != "index" and e.kind != "slice":
+                self.fail("illegal target for annotation", start(e))
+            self.p += 1
+            n = mk("annassign", "(" if self.toks[p].kind == "(" else "", line, [e, self.test()])
             if self.eat("="):
-                n.kids.append(self.exprlist())
+                n.kids.append(self.no_star(self.rhs()))
             return n
         if self.peek() == "=":
-            n = mk("assign", "", line, [as_target(e)])
+            # a = b = v: target i (and the value) starts at token at[i]
+            n = mk("assign", "", line, [e])
+            at = [p]
             while self.eat("="):
-                n.kids.append(self.exprlist())
-            for i in range(1, len(n.kids) - 1):
-                as_target(n.kids[i])
+                at.append(self.p)
+                n.kids.append(self.rhs())
+            self.assign_check(n.kids, at)
+            for t in n.kids[:-1]:
+                as_target(t)
             return n
         k = self.peek()
         if k in AUGOPS:
+            if e.kind != "name" and e.kind != "attr" and e.kind != "index" and e.kind != "slice":
+                self.fail(f"'{expr_name(e)}' is an illegal expression for augmented assignment", start(e))
             self.p += 1
-            return mk("augassign", k[:-1], line, [e, self.exprlist()])
-        return mk("expr", "", line, [e])
+            return mk("augassign", k[:-1], line, [e, self.no_star(self.rhs())])
+        return mk("expr", "", line, [self.no_star(e)])
+
+    def assign_check(self, ts: list[Node], at: list[int]) -> None:
+        # the targets ts[:-1] of an assignment: CPython's parser errors, then its compiler's (which
+        # compiles the value first)
+        bad: list[Node] = []
+        for t in ts[:-1]:
+            bad_target(t, False, bad)
+        if len(bad) > 0:
+            # CPython's parser first tries the first target's last item, then "=", then a bitwise_or
+            # that no "=" or ":=" follows, as a misspelt comparison
+            eq = at[1] - 1
+            cs = self.commas(at[0], eq, ",")
+            if ts[0].kind != "tuple":
+                cs = []  # (lambda a, b: ...)
+            i = cs[-1] + 1 if len(cs) > 0 else at[0]
+            last = ts[0].kids[-1] if len(cs) > 0 else ts[0]
+            k = self.toks[at[1]].kind
+            rhs = k != "yield" and k != "not" and k != "lambda" and k != "*" and not (k == "id" and ts[1].kind == "walrus")
+            if len(ts) > 2 and self.bitwise(ts[1], at[1], at[2] - 1):
+                rhs = False
+            if i < eq and rhs and self.toks[i].kind == "id" and i + 1 == eq:
+                self.fail("invalid syntax. Maybe you meant '==' or ':=' instead of '='?", last.line)
+            if i < eq and rhs and self.bitwise(last, i, eq) and not self.display(i):
+                self.fail(f"cannot assign to {expr_name(last)} here. Maybe you meant '==' instead of '='?", start(last))
+            for j in range(len(ts) - 1):
+                bad = []
+                bad_target(ts[j], False, bad)
+                if len(bad) > 0 and bad[0] is ts[j] and self.toks[at[j]].kind == "yield":
+                    self.fail("assignment to yield expression not possible", bad[0].line)
+                if len(bad) > 0:
+                    self.fail(f"cannot assign to {expr_name(bad[0])}", start(bad[0]))
+        self.no_star(ts[-1])
+
+    def commas(self, i: int, j: int, k: str) -> list[int]:
+        # the tokens of kind k outside brackets among tokens i..j-1
+        out: list[int] = []
+        d = 0
+        while i < j:
+            t = self.toks[i].kind
+            if t == "(" or t == "[" or t == "{":
+                d += 1
+            elif t == ")" or t == "]" or t == "}":
+                d -= 1
+            elif t == k and d == 0:
+                out.append(i)
+            i += 1
+        return out
+
+    def close(self, i: int) -> int:
+        # the token that closes the bracket at token i
+        d = 0
+        while True:
+            t = self.toks[i].kind
+            if t == "(" or t == "[" or t == "{":
+                d += 1
+            elif t == ")" or t == "]" or t == "}":
+                d -= 1
+                if d == 0:
+                    return i
+            i += 1
+
+    def bitwise(self, e: Node, i: int, j: int) -> bool:
+        # is expression e (tokens i..j-1) one bitwise_or of CPython's grammar: no comparison, not,
+        # and, or, conditional, lambda, *x, := or yield outside parentheses
+        if self.toks[i].kind == "(" and self.close(i) == j - 1:
+            return True
+        k = e.kind
+        return not (k == "cmp" or k == "boolop" or k == "ifexp" or k == "lambda" or k == "walrus" or k == "starred" or k == "tuple" or (k == "unary" and e.s == "not") or k == "yield")
+
+    def display(self, i: int) -> bool:
+        # does a list or tuple display, a generator expression, True, None or False start at token i
+        k = self.toks[i].kind
+        if k == "True" or k == "None" or k == "False":
+            return True
+        if k != "(" and k != "[":
+            return False
+        j = self.close(i)
+        if len(self.commas(i + 1, j, "for")) > 0:
+            return k == "("
+        return k == "[" or j == i + 1 or (len(self.commas(i + 1, j, ",")) > 0 and self.toks[i + 1].kind != "yield")
+
+    def next_line(self) -> int:
+        # the line CPython reports for the token after a block: at the end of the file, the last line
+        j = self.p
+        while self.toks[j].kind == "dedent":
+            j += 1
+        if self.toks[j].kind != "eof":
+            return self.toks[self.p].line
+        while self.toks[j].kind != "nl":
+            j -= 1
+        return max(self.toks[j].line, self.toks[-1].line - 1)
 
     def dotted_name(self) -> str:
         s = self.expect("id").text
@@ -921,6 +1571,7 @@ class Parser:
                     name = self.expect("id").text
                     tgt = path
                 n.kids.append(mk("alias", name, line, [mk("str", tgt, line, []), mk("str", path, line, [])]))
+                self.no_debug(name, line)
                 if not self.eat(","):
                     return n
         self.expect("from")
@@ -937,23 +1588,27 @@ class Parser:
             if x != "*" and self.eat("as"):
                 name = self.expect("id").text
             n.kids.append(mk("alias", name, line, [mk("str", path + "." + x if path != "" else x, line, []), mk("str", path, line, [])]))
+            self.no_debug(name, line)
             if x == "*" or not self.eat(",") or (paren and self.peek() == ")"):
                 break
+            if not paren and (self.peek() == "nl" or self.peek() == ";"):
+                self.fail("trailing comma not allowed without surrounding parentheses", self.line())
         if paren:
             self.expect(")")
         return n
 
     # ---- expressions
-    def exprlist(self) -> Node:
+    def exprlist(self, named: bool = False) -> Node:
+        # expressions separated by commas (named: named expressions, as a match statement's subject)
         line = self.line()
-        e = self.item()
+        e = self.nitem() if named else self.item()
         if self.peek() != ",":
             return e
         t = mk("tuple", "", line, [e])
         while self.eat(","):
             if self.peek() not in STARTS and self.peek() != "*":
                 break
-            t.kids.append(self.item())
+            t.kids.append(self.nitem() if named else self.item())
         return t
 
     def item(self) -> Node:
@@ -964,16 +1619,17 @@ class Parser:
         return self.test()
 
     def targets(self) -> Node:
+        # the target of a for loop or comprehension (up to 'in', so no comparison)
         line = self.line()
-        e = self.item() if self.peek() == "*" else self.postfix()
+        e = self.item() if self.peek() == "*" else self.binary(0)
         if self.peek() != ",":
-            return as_target(e)
+            return as_target(self.assignable(e))
         t = mk("tuple", "", line, [e])
         while self.eat(","):
             if self.peek() == "in":
                 break
-            t.kids.append(self.item() if self.peek() == "*" else self.postfix())
-        return as_target(t)
+            t.kids.append(self.item() if self.peek() == "*" else self.binary(0))
+        return as_target(self.assignable(t))
 
     def deeper(self) -> None:
         # one more level of the parser's recursion, which the caller undoes
@@ -988,29 +1644,71 @@ class Parser:
         return e
 
     def test1(self) -> Node:
+        # an expression: no x := v outside brackets (CPython's grammar has it only where named()
+        # is called), so := after one is "invalid syntax" (see expect())
         line = self.line()
         if self.eat("lambda"):
-            # lambda params: body (kids: the parameter names, then the body)
-            n = mk("lambda", "", line, [])
-            while not self.eat(":"):
-                if self.eat("*") or self.eat("**") or self.eat("/") or self.eat(","):
-                    continue
-                n.kids.append(mk("name", self.expect("id").text, line, []))
-                if self.eat("="):
-                    self.test()
+            # lambda params: body (kids: the parameters, as a def's, then the body)
+            ps = self.params(":", line)
             self.deeper()  # (a lambda counts as two levels, as a ** does)
-            n.kids.append(self.test())
+            b = self.test()
             self.nest -= 1
-            return n
+            return mk("lambda", "", line, [ps, b])
+        p = self.p
         e = self.or_test()
-        if self.peek() == ":=" and e.kind == "name":
-            self.p += 1
-            return mk("walrus", e.s, line, [self.test()])
+        self.orp = p
+        self.ore = self.p
+        self.orn = e
         if self.eat("if"):
             c = self.or_test()
-            self.expect("else")
+            if self.peek() == ":":
+                self.invalid(self.line())
+            if self.peek() != "else":
+                self.fail("expected 'else' after 'if' expression", start(e))
+            self.p += 1
             return mk("ifexp", "", line, [c, e, self.test()])
         return e
+
+    def named(self, arg: bool = False) -> Node:
+        # CPython's named_expression, x := v or an expression: a condition, a subscript, an item of
+        # a list, set or tuple display, a comprehension's element; or (arg) a call's positional
+        # argument, where := after anything but a name is plain invalid syntax
+        line = self.line()
+        if self.peek() == "id" and self.ahead() == ":=":
+            name = self.toks[self.p].text
+            self.p += 2
+            return mk("walrus", name, line, [self.test()])
+        e = self.test()
+        if self.peek() == ":=" and arg:
+            self.invalid(self.line())
+        if self.peek() == ":=":
+            self.fail(f"cannot use assignment expressions with {expr_name(e)}", start(e))
+        return e
+
+    def nitem(self) -> Node:
+        # an item of a list, set or tuple display: *x or a named expression
+        if self.peek() == "*":
+            return self.item()
+        return self.named()
+
+    def rhs(self) -> Node:
+        # what may stand after = (and at the start of a statement): a yield expression, or an
+        # expression list
+        if self.peek() == "yield":
+            return self.yield_()
+        return self.exprlist()
+
+    def yield_(self) -> Node:
+        # yield [values], or yield from x: s is "from"
+        line = self.line()
+        self.p += 1
+        n = mk("yield", "", line, [])
+        if self.eat("from"):
+            n.s = "from"
+            n.kids.append(self.test())
+        elif self.peek() in STARTS or self.peek() == "*":
+            n.kids.append(self.no_star(self.exprlist()))
+        return n
 
     def or_test(self) -> Node:
         e = self.and_test()
@@ -1098,40 +1796,7 @@ class Parser:
             line = self.line()
             if self.eat("("):
                 c = mk("call", "", line, [e])
-                kws: dict[str, bool] = {}
-                gen = False
-                while not self.eat(")"):
-                    if self.peek() == "*" or self.peek() == "**":
-                        star = "starred" if self.peek() == "*" else "dstar"
-                        self.p += 1
-                        c.kids.append(mk(star, "", line, [self.test()]))
-                        if not self.eat(","):
-                            self.expect(")")
-                            break
-                        continue
-                    if self.peek() == "id" and self.ahead() == "=":
-                        name = self.toks[self.p].text
-                        if name in kws:
-                            fail(f"keyword argument repeated: {name}", line)
-                        kws[name] = True
-                        self.p += 2
-                        c.kids.append(mk("kw", name, line, [self.test()]))
-                    else:
-                        if len(kws) > 0:
-                            fail("positional argument follows keyword argument", line)
-                        a = self.test()
-                        if self.compnext():
-                            a = self.comp(a, line)
-                            a.s = "gen"
-                            gen = True
-                        c.kids.append(a)
-                    if not self.eat(","):
-                        self.expect(")")
-                        break
-                    if gen:
-                        fail("Generator expression must be parenthesized", line)
-                if gen and len(c.kids) > 2:
-                    fail("Generator expression must be parenthesized", line)
+                self.args(c, line, False)
                 e = c
             elif self.eat("["):
                 # x[i], x[lo:hi], x[lo:hi:step] (a step is a fourth kid, which code generation
@@ -1153,15 +1818,79 @@ class Parser:
             else:
                 return e
 
+    def args(self, c: Node, line: int, cls: bool) -> None:
+        # the arguments of a call (or of a class statement: cls) after '(', appended to c:
+        # expressions, "starred" (*x), "kw" (name=x) and "dstar" (**x) nodes
+        kws: dict[str, bool] = {}
+        keyed = ""  # "kw" after a keyword argument, "dstar" after a ** one
+        pos = ""  # a positional argument after those: CPython reports it at the ')'
+        gen = 0  # the line of the first generator expression's element
+        n = len(c.kids)
+        while not self.eat(")"):
+            at = self.line()
+            if self.peek() == "*" or self.peek() == "**":
+                star = "starred" if self.peek() == "*" else "dstar"
+                if star == "starred" and keyed == "dstar" and pos == "":
+                    self.fail("iterable argument unpacking follows keyword argument unpacking", self.toks[self.p - 1].line)
+                if star == "dstar":
+                    keyed = "dstar"
+                self.p += 1
+                c.kids.append(mk(star, "", line, [self.test()]))
+                if star == "starred" and self.compnext():
+                    self.fail("iterable unpacking cannot be used in comprehension", at)
+                if star == "dstar" and self.peek() == "=":
+                    self.fail("cannot assign to keyword argument unpacking", at)
+            elif (self.peek() == "True" or self.peek() == "False" or self.peek() == "None") and self.ahead() == "=":
+                self.fail(f"cannot assign to {self.peek()}", at)
+            elif self.peek() == "id" and self.ahead() == "=":
+                name = self.toks[self.p].text
+                if name in kws:
+                    self.later(2, f"keyword argument repeated: {name}", self.line())
+                kws[name] = True
+                self.no_debug(name, self.line())
+                if keyed == "":
+                    keyed = "kw"
+                self.p += 2
+                c.kids.append(mk("kw", name, line, [self.test()]))
+                if self.compnext():
+                    self.fail("invalid syntax. Maybe you meant '==' or ':=' instead of '='?", at)
+            else:
+                if keyed != "" and pos == "":
+                    pos = "positional argument follows keyword argument" + (" unpacking" if keyed == "dstar" else "")
+                a = self.named(True)
+                if self.peek() == "=":
+                    self.fail('expression cannot contain assignment, perhaps you meant "=="?', start(a))
+                if self.compnext():
+                    if gen == 0:
+                        gen = start(a)
+                    fl = self.line()
+                    a = self.comp(a, line)
+                    a.s = "gen"
+                    if cls and len(c.kids) == n and self.peek() == ")":
+                        self.invalid(fl)  # (class C(x for x in y): only a call takes one)
+                c.kids.append(a)
+            if not self.eat(","):
+                self.expect(")")
+                break
+            if gen > 0:
+                self.fail("Generator expression must be parenthesized", gen)
+        if gen > 0 and len(c.kids) > n + 1:
+            self.fail("Generator expression must be parenthesized", gen)
+        if pos != "":
+            self.fail(pos, self.toks[self.p - 1].line)
+
     def subscript(self, line: int) -> Node:
         # one item of a subscript: an expression, *x, or lo:hi[:step] (a "sliceitem")
         if self.peek() == "*":
             return self.item()
         lo = mk("omit", "", line, [])
+        p = self.p
         if self.peek() != ":":
-            lo = self.test()
+            lo = self.named()
         if not self.eat(":"):
             return lo
+        if lo.kind == "walrus" and self.toks[p].kind == "id":
+            self.invalid(self.toks[self.p - 1].line)  # (x[a := 1:2]: a bound is an expression)
         n = mk("sliceitem", "", line, [lo, mk("omit", "", line, [])])
         if self.peek() != "]" and self.peek() != ":" and self.peek() != ",":
             n.kids[1] = self.test()
@@ -1171,29 +1900,35 @@ class Parser:
 
     def comp(self, e: Node, line: int) -> Node:
         # [e for t in it if c]; with more for and if clauses a "nestedcomp" node, with async for
-        # an "asynccomp" one
+        # an "asynccomp" one, whose clauses after the first iterable are "compif" (kids: the
+        # condition) and "compfor" (the target, the iterable) nodes
+        if e.kind == "starred":
+            self.fail("iterable unpacking cannot be used in comprehension", e.line)
         aio = self.eat("async")
         self.expect("for")
         t = self.targets()
         self.expect("in")
         n = mk("listcomp", "", line, [e, t, self.or_test()])
-        if self.eat("if"):
-            n.kids.append(self.or_test())
+        ts = [t]
         while self.compnext() or self.peek() == "if":
-            n.kind = "nestedcomp"
             if self.eat("if"):
-                n.kids.append(self.or_test())
+                n.kids.append(mk("compif", "", line, [self.or_test()]))
             else:
                 aio = self.eat("async") or aio
                 self.p += 1
-                n.kids.append(self.targets())
+                ts.append(self.targets())
                 self.expect("in")
-                n.kids.append(self.or_test())
+                n.kids.append(mk("compfor", "", line, [ts[-1], self.or_test()]))
+        if len(n.kids) > 4 or len(ts) > 1:
+            n.kind = "nestedcomp"
+        elif len(n.kids) == 4 and not aio:
+            n.kids[3] = n.kids[3].kids[0]  # [e for t in it if c]
         if aio:
             n.kind = "asynccomp"
         return n
 
     def atom(self) -> Node:
+        self.peek()
         t = self.toks[self.p]
         self.p += 1
         k = t.kind
@@ -1202,34 +1937,37 @@ class Parser:
             return mk("name", t.text, line, [])
         if k == "int" or k == "float" or k == "complex":
             return mk(k, t.text, line, [])
-        if k == "bytes" or k == "...":
-            while k == "bytes" and self.peek() == "bytes":
-                self.p += 1
-            return mk("bytes" if k == "bytes" else "ellipsis", "", line, [])
+        if k == "...":
+            return mk("ellipsis", "", line, [])
         if k == "await":
-            self.deeper()
-            e = self.unary()
-            self.nest -= 1
-            return mk("await", "", line, [e])
+            # await x: x is a primary (await -x, await await x and await not x are invalid)
+            a = self.peek()
+            if a not in STARTS or a == "-" or a == "+" or a == "~" or a == "not" or a == "lambda" or a == "yield" or a == "await":
+                self.invalid(self.line())
+            return mk("await", "", line, [self.postfix()])
         if k == "yield":
-            n = mk("yield", "", line, [])
-            if self.eat("from"):
-                n.kids.append(self.test())
-            elif self.peek() in STARTS or self.peek() == "*":
-                n.kids.append(self.exprlist())
-            return n
-        if k == "str" or k == "fstr" or k == "rfstr":
-            # adjacent literals concatenate; any f-string among them makes the whole an f-string
+            self.invalid(line)  # (a yield expression stands only where rhs() parses it, or in parentheses)
+        if k == "str" or k == "fstr" or k == "rfstr" or k == "bytes":
+            # adjacent literals concatenate; any f-string among them makes the whole an f-string.
+            # CPython decodes each in turn, then checks that all or none are bytes.
             parts: list[Tok] = [t]
-            while self.peek() == "str" or self.peek() == "fstr" or self.peek() == "rfstr":
+            while self.peek() == "str" or self.peek() == "fstr" or self.peek() == "rfstr" or self.peek() == "bytes":
                 parts.append(self.toks[self.p])
                 self.p += 1
             n = mk("fstr", "", line, [])
+            nb = 0
             for pt in parts:
-                if pt.kind == "str":
-                    n.kids.append(mk("str", pt.text, pt.line, []))
+                if pt.kind == "bytes":
+                    self.bytes_check(pt)
+                    nb += 1
+                elif pt.kind == "str":
+                    n.kids.append(mk("str", self.unescape(pt.text, pt.line) if pt.esc else pt.text, pt.line, []))
                 else:
                     self.fparts(pt.text, pt.kind == "rfstr", pt.line, n)
+            if nb > 0 and nb < len(parts):
+                self.fail("cannot mix bytes and nonbytes literals", self.line())
+            if nb > 0:
+                return mk("bytes", "", line, [])
             plain = True
             for kd in n.kids:
                 if kd.kind != "str":
@@ -1242,7 +1980,13 @@ class Parser:
         if k == "(":
             if self.eat(")"):
                 return mk("tuple", "", line, [])
-            e = self.item() if self.peek() != "yield" else self.atom()
+            if self.peek() == "yield":
+                e = self.yield_()
+                if self.peek() != ")":
+                    self.invalid(self.line())
+                self.p += 1
+                return e
+            e = self.nitem()
             if self.compnext():
                 e = self.comp(e, line)
                 e.s = "gen"
@@ -1251,13 +1995,15 @@ class Parser:
                 while self.eat(","):
                     if self.peek() == ")":
                         break
-                    e.kids.append(self.item())
+                    e.kids.append(self.nitem())
+            elif e.kind == "starred" and self.peek() == ")":
+                self.fail("cannot use starred expression here", e.line)
             self.expect(")")
             return e
         if k == "[":
             items: list[Node] = []
             if self.peek() != "]":
-                e = self.item()
+                e = self.nitem()
                 if self.compnext():
                     e = self.comp(e, line)
                     self.expect("]")
@@ -1266,25 +2012,57 @@ class Parser:
                 while self.eat(","):
                     if self.peek() == "]":
                         break
-                    items.append(self.item())
+                    items.append(self.nitem())
+                if self.compnext():
+                    self.fail("did you forget parentheses around the comprehension target?", start(items[0]))
             self.expect("]")
             return mk("list", "", line, items)
         if k == "{":
-            # a dict display; set displays and comprehensions, and dict comprehensions, are their own nodes
+            # a dict display; set displays and comprehensions, and dict comprehensions, are their own
+            # nodes. A dict's items are key: value and **x, a set's x and *x, never both.
             d = mk("dict", "", line, [])
+            seen = 0  # the items so far
             while not self.eat("}"):
+                at = self.line()
                 if self.eat("**"):
+                    if d.kind == "set":
+                        self.invalid(at)
                     d.kind = "dstar"
                     d.kids.append(self.binary(0))
+                    if self.peek() == ":":
+                        self.invalid(self.line())
                 else:
-                    d.kids.append(self.item())
+                    p = self.p
+                    e = self.nitem()
                     if self.peek() != ":":
+                        if seen > 0 and d.kind != "set" and e.kind == "starred":
+                            self.invalid(start(e))
+                        if seen > 0 and d.kind != "set":
+                            self.fail("':' expected after dictionary key", start(e))
                         d.kind = "set"
+                        d.kids.append(e)
                     else:
+                        if d.kind == "set" or e.kind == "starred" or (e.kind == "walrus" and self.toks[p].kind == "id"):
+                            self.invalid(self.line())
                         self.p += 1
+                        if self.peek() == "*":
+                            self.fail("cannot use a starred expression in a dictionary value", self.line())
+                        if self.peek() == "}" or self.peek() == ",":
+                            self.fail("expression expected after dictionary key and ':'", self.toks[self.p - 1].line)
+                        d.kids.append(e)
                         d.kids.append(self.test())
+                seen += 1
                 if self.compnext():
-                    c = self.comp(d.kids[-1], line)
+                    if d.kind == "dstar" and seen > 1:
+                        self.invalid(at)
+                    if d.kind == "dstar":
+                        self.fail("dict unpacking cannot be used in dict comprehension", at)
+                    if d.kind == "set" and len(d.kids) > 1:
+                        self.fail("did you forget parentheses around the comprehension target?", start(d.kids[0]))
+                    if len(d.kids) > 2:
+                        self.invalid(self.line())
+                    # (a dict comprehension's element is the tuple of its key and value)
+                    c = self.comp(d.kids[-1] if d.kind == "set" else mk("tuple", "", line, d.kids[-2:]), line)
                     d = mk("dictcomp" if d.kind == "dict" else "setcomp", "", line, [c])
                     self.expect("}")
                     break
@@ -1292,12 +2070,15 @@ class Parser:
                     self.expect("}")
                     break
             return d
-        fail(f"unexpected '{t.text or k}'", line)
+        if k == "indent":
+            fail("unexpected indent", line)  # (CPython reports it as it finds it)
+        self.invalid(line)
         return mk("omit", "", line, [])
 
     def fparts(self, s: str, raw: bool, line: int, n: Node) -> None:
         # the parts of an f-string body (or of a format spec with nested fields), appended to n:
-        # literal text as str nodes, each replacement field as fmt(expression, spec)
+        # literal text as str nodes, each replacement field as fmt(expression, spec). (Errors of
+        # CPython's tokenizer in an f-string are reported where they are, with fail().)
         lit: list[str] = []
         i = 0
         while i < len(s):
@@ -1308,27 +2089,36 @@ class Parser:
             elif c == "}":
                 fail("f-string: single '}' is not allowed", line)
             elif c == "{":
-                # the expression ends at a top-level '}', ':' or '!' (but not '!=')
+                # the expression ends at a top-level '}', ':' or '!' (but not '!='); its text
+                # leaves out the comments in it, which run to the end of their line
                 j = i + 1
                 depth = 0
+                code: list[str] = []
                 while j < len(s) and (depth > 0 or not (s[j] == "}" or s[j] == ":" or (s[j] == "!" and s[j + 1 : j + 2] != "="))):
+                    k = j + 1
                     if s[j] == "'" or s[j] == '"':
-                        q = s[j]
-                        j += 1
-                        while j < len(s) and s[j] != q:
-                            j += 2 if s[j] == "\\" else 1
-                        if j >= len(s):
+                        while k < len(s) and s[k] != s[j]:
+                            k += 2 if s[k] == "\\" else 1
+                        if k >= len(s):
                             fail("f-string: unterminated string", line)
+                        k += 1
+                    elif s[j] == "#":
+                        k = s.find("\n", j)
+                        j = len(s) if k < 0 else k
+                        continue
                     elif s[j] == "(" or s[j] == "[" or s[j] == "{":
                         depth += 1
                     elif s[j] == ")" or s[j] == "]" or s[j] == "}":
                         depth -= 1
-                    j += 1
+                        if depth < 0:
+                            fail(f"f-string: unmatched '{s[j]}'", line)
+                    code.append(s[j:k])
+                    j = k
                 if j >= len(s):
-                    fail("f-string: expecting '}'", line)
+                    self.fail("f-string: expecting '}'", line)
                 self.flush(lit, raw, line, n)
                 lit = []
-                text = s[i + 1 : j]
+                text = "".join(code)
                 src = text.rstrip()
                 selfdoc = src.endswith("=") and not (src.endswith("==") or src.endswith("!=") or src.endswith("<=") or src.endswith(">="))
                 if selfdoc:
@@ -1336,19 +2126,45 @@ class Parser:
                     n.kids.append(mk("str", text, line, []))
                     src = src[:-1]
                 if src.strip() == "":
-                    fail("f-string: valid expression required before '}'", line)
-                # (in parentheses, an expression may continue over lines: f"""{x\n + 1}""")
-                sub = Parser(Lexer("(" + src.strip() + "\n)", line).run())
+                    self.fail("f-string: valid expression required before '}'", line)
+                lam = src.strip()
+                if lam.startswith("lambda") and not (lam[6:7].isalnum() or lam[6:7] == "_") and s[j] == ":":
+                    self.fail("f-string: lambda expressions are not allowed without parentheses", line)
+                # (in parentheses, an expression may continue over lines: f"""{x\n + 1}"""); an
+                # error at the closing parenthesis is on the field's last line
+                toks = Lexer("(" + src.strip() + "\n)", line).run()
+                last = line + src.strip().count("\n")
+                for t in toks:
+                    t.line = min(t.line, last)
+                sub = Parser(toks)
+                sub.outer = self.outer + [self.toks]
+                sub.outerp = self.outerp + [self.p]
                 sub.expect("(")
-                e = sub.test()
+                e = sub.no_star(sub.rhs())
                 if sub.peek() != ")":
-                    fail("f-string: invalid syntax", line)
+                    sub.fail("f-string: invalid syntax", line)
+                for cat in [0, 2]:
+                    if sub.errs[cat] != "":
+                        self.later(cat, sub.errs[cat], sub.at[cat])
                 conv = ""
                 if s[j] == "!":
-                    conv = s[j + 1 : j + 2]
+                    # !r, !s or !a, right after the '!'; then (white space and) ':' or '}'
+                    k = self.fskip(s, j + 1)
+                    m = k
+                    while m < len(s) and ((s[m].isalnum() and ord(s[m]) < 128) or s[m] == "_"):
+                        m += 1
+                    conv = s[k:m]
+                    if conv == "" and (s[k : k + 1] == ":" or s[k : k + 1] == "}"):
+                        self.fail("f-string: missing conversion character", line)
+                    if conv == "" or (conv[0] >= "0" and conv[0] <= "9"):
+                        self.fail("f-string: invalid conversion character", line)
+                    if k > j + 1:
+                        self.fail("f-string: conversion type must come right after the exclamation mark", line)
                     if conv != "r" and conv != "s" and conv != "a":
-                        fail(f"f-string: invalid conversion character '{conv}': expected 's', 'r', or 'a'", line)
-                    j += 2
+                        self.fail(f"f-string: invalid conversion character '{conv}': expected 's', 'r', or 'a'", line)
+                    j = self.fskip(s, m)
+                    if j >= len(s) or (s[j] != ":" and s[j] != "}"):
+                        self.fail("f-string: expecting ':' or '}'", line)
                 spec = mk("str", "", line, [])
                 if j < len(s) and s[j] == ":":
                     # the spec runs to the matching '}' and may hold nested fields: {x:>{w}}
@@ -1365,10 +2181,10 @@ class Parser:
                         spec = mk("fstr", "", line, [])
                         self.fparts(st, raw, line, spec)
                     else:
-                        spec = mk("str", st if raw else unescape(st, line), line, [])
+                        spec = mk("str", st if raw else self.unescape(st, line), line, [])
                     j = k
                 if j >= len(s) or s[j] != "}":
-                    fail("f-string: expecting '}'", line)
+                    self.fail("f-string: expecting '}'", line)
                 if selfdoc and conv == "" and (spec.kind != "str" or spec.s == ""):
                     conv = "r"
                 if conv != "":
@@ -1381,9 +2197,587 @@ class Parser:
                 i += 1
         self.flush(lit, raw, line, n)
 
+    def fskip(self, s: str, j: int) -> int:
+        # past the white space and comments from s[j] in a replacement field
+        while j < len(s) and (s[j] == " " or s[j] == "\t" or s[j] == "\n" or s[j] == "\r" or s[j] == "\f" or s[j] == "#"):
+            if s[j] == "#":
+                k = s.find("\n", j)
+                j = len(s) if k < 0 else k
+            else:
+                j += 1
+        return j
+
     def flush(self, lit: list[str], raw: bool, line: int, n: Node) -> None:
         if len(lit) > 0:
-            n.kids.append(mk("str", "".join(lit) if raw else unescape("".join(lit), line), line, []))
+            n.kids.append(mk("str", "".join(lit) if raw else self.unescape("".join(lit), line), line, []))
+
+    def unescape(self, s: str, line: int) -> str:
+        # decode the backslash escapes of a string literal's source text. CPython's error for an
+        # invalid one gives its position in what CPython decodes, where a non-ASCII character is
+        # a \U escape of 10 characters (and a backslash before one is \u005c)
+        out: list[str] = []
+        i = 0
+        at = 0  # (CPython's position of s[i])
+        n = len(s)
+        while i < n:
+            c = s[i]
+            if c != "\\" or i + 1 >= n or ord(s[i + 1]) >= 128:
+                out.append(c)
+                at += 6 if c == "\\" else (1 if ord(c) < 128 else (10 if ord(c) >= 192 else 0))
+                i += 1
+                continue
+            e = s[i + 1]
+            b = i
+            i += 2
+            if e == "x" or e == "u" or e == "U":
+                k = 2 if e == "x" else (4 if e == "u" else 8)
+                h = 0
+                while h < k and i + h < n and "0123456789abcdefABCDEF".find(s[i + h]) >= 0:
+                    h += 1
+                if h < k:
+                    self.fail(f"(unicode error) 'unicodeescape' codec can't decode bytes in position {at}-{at + 1 + h}: truncated \\{e}{'X' * k} escape", line)
+                v = int(s[i : i + k], 16)
+                if v > 1114111:
+                    self.fail(f"(unicode error) 'unicodeescape' codec can't decode bytes in position {at}-{at + 1 + k}: illegal Unicode character", line)
+                out.append(utf8(v))
+                i += k
+            elif e >= "0" and e <= "7":
+                v = ord(e) - 48
+                for _ in range(2):
+                    if i < n and s[i] >= "0" and s[i] <= "7":
+                        v = v * 8 + ord(s[i]) - 48
+                        i += 1
+                out.append(utf8(v))
+            elif e == "N":
+                # \N{name}: CPython's error when it is malformed (a name is a Pystachy limitation)
+                k = s.find("}", i)
+                if s[i : i + 1] != "{" or k < 0 or k == i + 1:
+                    end = at + 1 if s[i : i + 1] != "{" else (at + 2 if k == i + 1 else at + n - b - 1)
+                    self.fail(f"(unicode error) 'unicodeescape' codec can't decode bytes in position {at}-{end}: malformed \\N character escape", line)
+                self.fail("\\N{...} escapes are not supported", line)
+            elif e == "\n":
+                pass
+            elif e in ESCAPES:
+                out.append(ESCAPES[e])
+            else:
+                out.append("\\" + e)
+            at += i - b
+        return "".join(out)
+
+    def bytes_check(self, t: Tok) -> None:
+        # CPython's errors for a bytes literal: a character that is not ASCII, an \x without two
+        # hexadecimal digits
+        for c in t.text:
+            if ord(c) >= 128:
+                self.fail("bytes can only contain ASCII literal characters", t.line)
+        k = t.text.find("\\") if t.esc else -1
+        while k >= 0:
+            if t.text[k + 1 : k + 2] == "x":
+                h = t.text[k + 2 : k + 4]
+                if len(h) < 2 or "0123456789abcdefABCDEF".find(h[0]) < 0 or "0123456789abcdefABCDEF".find(h[1]) < 0:
+                    self.fail(f"(value error) invalid \\x escape at position {k}", t.line)
+            k = t.text.find("\\", k + 2)
+
+
+# ---------------------------------------------------------------- scopes
+# CPython checks a whole file before running any of it, but Pystachy compiles a function only
+# where the program calls it. So, as each module is parsed, Symtable checks its scopes the way
+# CPython's symbol table does (global and nonlocal statements, yield in comprehensions), then
+# its analysis does (the bindings nonlocal statements name), then its compiler does (yield, await
+# and async outside a function or an async def, async comprehensions, starred targets and values,
+# in the order it compiles them, but not in the annotations it never compiles), and reports the
+# first error of the first of those. A name's flags in a scope, as CPython's symbol table has them:
+SYMPARAM = 1
+SYMUSE = 2
+SYMLOCAL = 4
+SYMANNOT = 8
+SYMGLOBAL = 16
+SYMNONLOCAL = 32
+COMPNAMES: dict[str, str] = {"list": "list comprehension", "set": "set comprehension", "dict": "dict comprehension", "gen": "generator expression"}
+
+
+class SymScope:
+    def __init__(self, kind: str, comp: str, isasync: bool, idx: int):
+        # module, class, def, lambda, comp (a comprehension), annotation (a postponed one) or
+        # typeparams (those of a generic def or class, around its own scope)
+        self.kind = kind
+        self.comp = comp  # a comprehension's kind (list, set, dict or gen)
+        self.isasync = isasync  # an async def
+        self.coro = isasync  # it awaits (CPython's ste_coroutine)
+        self.gen = False  # an async def that yields
+        self.idx = idx  # its position in the walk
+        self.iterexpr = 0  # in a comprehension's iterable
+        self.iters: dict[str, bool] = {}  # a comprehension's iteration variables
+        self.flags: dict[str, int] = {}
+        self.dirs: dict[str, int] = {}  # the line of each name's first global or nonlocal statement
+        self.bound: dict[str, bool] = {}  # the names the enclosing functions bind
+        self.inner: dict[str, bool] = {}  # those the scopes nested in it see
+        self.tps: dict[str, bool] = {}  # the type parameters among bound (not bound again since)
+        self.tpinner: dict[str, bool] = {}  # those the scopes nested in it see
+
+
+def target_names(t: Node, out: dict[str, bool]) -> None:
+    if t.kind == "name":
+        out[t.s] = True
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        for k in t.kids:
+            target_names(k, out)
+
+
+def walrus_names(e: Node, out: dict[str, bool]) -> None:
+    # x := v binds x in the enclosing function, also inside a comprehension or a lambda's
+    # defaults (not in its body)
+    if e.kind == "walrus":
+        out[e.s] = True
+    if e.kind == "lambda":
+        for p in e.kids[0].kids:
+            walrus_names(p.kids[1], out)
+    else:
+        for k in e.kids:
+            walrus_names(k, out)
+
+
+def binds(body: list[Node], out: dict[str, bool], decl: dict[str, str]) -> None:
+    # the names a function's body binds (not those of the functions and classes in it), and in
+    # decl those its global and nonlocal statements declare
+    for st in body:
+        k = st.kind
+        if k == "global" or k == "nonlocal":
+            for g in st.kids:
+                decl[g.s] = k
+        elif k == "def":
+            # (with its defaults, annotations and decorators, which run here)
+            out[st.s] = True
+            for p in st.kids[0].kids:
+                walrus_names(p.kids[0], out)
+                walrus_names(p.kids[1], out)
+            for x in [st.kids[1]] + st.kids[3:]:
+                walrus_names(x, out)
+        elif k == "class" or k == "subclass":
+            # (with its decorators and bases)
+            c = st if k == "class" else st.kids[0]
+            out[c.s] = True
+            for x in c.kids[1:] + (st.kids[1:] if k == "subclass" else []):
+                walrus_names(x, out)
+        elif k == "typealias":
+            out[st.s] = True
+        elif k == "import":
+            for a in st.kids:
+                if a.s != "*":
+                    out[a.s] = True
+        elif k == "assign" or k == "del":
+            for t in st.kids if k == "del" else st.kids[:-1]:
+                target_names(t, out)
+        elif (k == "annassign" and (st.s == "" or len(st.kids) == 3)) or k == "augassign" or k == "for":
+            target_names(st.kids[0], out)
+        elif k == "with":
+            for it in st.kids[:-1]:
+                if len(it.kids) == 2:
+                    target_names(it.kids[1], out)
+        if k != "def" and k != "class" and k != "subclass":
+            for kid in st.kids:
+                if kid.kind == "block":
+                    binds(kid.kids, out, decl)
+                elif kid.kind == "except":
+                    if kid.s != "":
+                        out[kid.s] = True
+                    walrus_names(kid.kids[0], out)
+                    binds(kid.kids[1].kids, out, decl)
+                elif k == "async":
+                    binds([kid], out, decl)
+                else:
+                    for nm in kid.s.split() if kid.kind == "pattern" else []:
+                        out[nm] = True  # (a match statement's captures)
+                    walrus_names(kid, out)
+
+
+class Symtable:
+    def __init__(self, errs: list[str], at: list[int]):
+        # the first error of CPython's symbol table (0), its analysis (1) and its compiler (2), with
+        # the parser's of 0 and 2 (see Parser.later)
+        self.errs = errs
+        self.at = at
+        self.keys: list[int] = [at[0], at[1], at[2]]  # what decides the first: the line; in the analysis, the scope
+        self.stack: list[SymScope] = []
+        self.n = 0
+        self.future = False  # from __future__ import annotations: annotations are not evaluated
+        self.quiet = 0  # in an annotation that CPython's compiler never compiles: none of its errors
+        self.tparams: dict[int, str] = {}  # see Parser.tparams
+
+    def check(self, body: list[Node], doc: bool) -> None:
+        # first the features that the from __future__ imports at the top (after a docstring) choose
+        i = 1 if doc else 0
+        while i < len(body) and body[i].kind == "import" and body[i].s == "from" and body[i].kids[0].kids[1].s == "__future__":
+            for a in body[i].kids:
+                x = a.kids[0].s[11:]
+                if x == "braces":
+                    fail("not a chance", body[i].line)
+                if x not in FUTURE and x != "barry_as_FLUFL":
+                    fail(f"future feature {x} is not defined", body[i].line)
+                if x == "annotations":
+                    self.future = True
+            i += 1
+        self.push("module", "", False)
+        self.stmts(body)
+        self.pop()
+        for c in range(3):
+            if self.errs[c] != "":
+                fail(self.errs[c], self.at[c])
+
+    def note(self, cat: int, msg: str, line: int) -> None:
+        if cat == 2 and self.quiet > 0:
+            return
+        key = self.stack[-1].idx if cat == 1 else line
+        if self.errs[cat] == "" or key < self.keys[cat]:
+            self.errs[cat] = msg
+            self.at[cat] = line
+            self.keys[cat] = key
+
+    def push(self, kind: str, comp: str, isasync: bool) -> SymScope:
+        sc = SymScope(kind, comp, isasync, self.n)
+        self.n += 1
+        if len(self.stack) > 0:
+            sc.bound = self.stack[-1].inner
+            sc.inner = sc.bound
+            sc.tps = self.stack[-1].tpinner
+            sc.tpinner = sc.tps
+            sc.iterexpr = self.stack[-1].iterexpr  # (a lambda or comprehension in an iterable is in it too)
+        if kind == "class":
+            # (its methods see __class__)
+            sc.inner = dict(sc.bound)
+            sc.inner["__class__"] = True
+            sc.inner["__classdict__"] = True
+        self.stack.append(sc)
+        return sc
+
+    def pop(self) -> None:
+        # CPython's analysis of the scope's global and nonlocal names
+        sc = self.stack[-1]
+        for nm in sc.dirs:
+            f = sc.flags[nm]
+            if (f & SYMGLOBAL) != 0 and (f & SYMNONLOCAL) != 0:
+                self.note(1, f"name '{nm}' is nonlocal and global", sc.dirs[nm])
+            elif (f & SYMNONLOCAL) != 0 and sc.kind == "module":
+                self.note(1, "nonlocal declaration not allowed at module level", sc.dirs[nm])
+            elif (f & SYMNONLOCAL) != 0 and nm not in sc.bound:
+                self.note(1, f"no binding for nonlocal '{nm}' found", sc.dirs[nm])
+            elif (f & SYMNONLOCAL) != 0 and nm in sc.tps:
+                self.note(1, f"nonlocal binding not allowed for type parameter '{nm}'", sc.dirs[nm])
+        self.stack.pop()
+
+    def flag(self, name: str, f: int) -> None:
+        sc = self.stack[-1]
+        sc.flags[name] = sc.flags.get(name, 0) | f
+
+    def stmts(self, body: list[Node]) -> None:
+        for st in body:
+            self.stmt(st)
+
+    def stmt(self, st: Node) -> None:
+        sc = self.stack[-1]
+        k = st.kind
+        if k == "def":
+            self.flag(st.s, SYMLOCAL)
+            for p in st.kids[0].kids:
+                self.expr(p.kids[1])
+            for d in st.kids[3:]:
+                self.deco(d)
+            for p in st.kids[0].kids:
+                self.annotation(p.kids[0], False)
+            self.annotation(st.kids[1], False)
+            self.function(st)
+        elif k == "class" or k == "subclass":
+            c = st if k == "class" else st.kids[0]
+            self.flag(c.s, SYMLOCAL)
+            for b in st.kids[1:] if k == "subclass" else []:
+                self.expr(b)
+            for d in c.kids[1:]:
+                self.deco(d)
+            self.generic(c.line)
+            cs = self.push("class", "", False)
+            own: dict[str, bool] = {}
+            decl: dict[str, str] = {}
+            binds(c.kids[0].kids, own, decl)
+            self.rebind(cs, own)
+            self.stmts(c.kids[0].kids)
+            self.pop()
+            if c.line in self.tparams:
+                self.pop()
+        elif k == "global" or k == "nonlocal":
+            for g in st.kids:
+                f = sc.flags.get(g.s, 0)
+                msg = ""
+                if (f & SYMPARAM) != 0:
+                    msg = f"name '{g.s}' is parameter and {k}"
+                elif (f & SYMUSE) != 0:
+                    msg = f"name '{g.s}' is used prior to {k} declaration"
+                elif (f & SYMANNOT) != 0:
+                    msg = f"annotated name '{g.s}' can't be {k}"
+                elif (f & SYMLOCAL) != 0:
+                    msg = f"name '{g.s}' is assigned to before {k} declaration"
+                if msg != "":
+                    self.note(0, msg, st.line)
+                self.flag(g.s, SYMGLOBAL if k == "global" else SYMNONLOCAL)
+                if g.s not in sc.dirs:
+                    sc.dirs[g.s] = st.line
+        elif k == "annassign":
+            t = st.kids[0]
+            if t.kind == "name" and st.s == "":
+                f = sc.flags.get(t.s, 0)
+                if (f & (SYMGLOBAL | SYMNONLOCAL)) != 0 and sc.kind != "module":
+                    self.note(0, f"annotated name '{t.s}' can't be {'global' if (f & SYMGLOBAL) != 0 else 'nonlocal'}", st.line)
+                self.flag(t.s, SYMANNOT | SYMLOCAL)
+            elif len(st.kids) == 3 or t.kind != "name":
+                self.target(t)
+            self.annotation(st.kids[1], sc.kind == "def")
+            for v in st.kids[2:]:
+                self.expr(v)
+            self.store(t)
+        elif k == "assign" or k == "augassign" or k == "del":
+            for i in range(len(st.kids)):
+                if k == "del" or i < len(st.kids) - 1:
+                    self.target(st.kids[i])
+                else:
+                    self.expr(st.kids[i])
+            for t in st.kids[:-1] if k == "assign" else []:
+                self.store(t)  # (once the value is computed, as CPython's compiler stores it)
+            t = st.kids[0]
+            if k == "augassign" and t.kind == "name" and t.s == "__debug__":
+                self.note(2, "cannot assign to __debug__", t.line)  # (x.__debug__ += 1 is valid)
+        elif k == "for":
+            self.target(st.kids[0])
+            self.expr(st.kids[1])
+            self.store(st.kids[0])
+            for b in st.kids[2:]:
+                self.stmts(b.kids)
+        elif k == "with":
+            for it in st.kids[:-1]:
+                self.expr(it.kids[0])
+                if len(it.kids) == 2:
+                    self.target(it.kids[1])
+                    self.store(it.kids[1])
+            self.stmts(st.kids[-1].kids)
+        elif k == "typealias":
+            self.flag(st.s, SYMLOCAL)
+        elif k == "import":
+            for a in st.kids:
+                if a.s == "*" and sc.kind != "module":
+                    self.note(0, "import * only allowed at module level", st.line)
+        elif k == "async":
+            if not sc.isasync:
+                self.note(2, f"'async {st.kids[0].kind}' outside async function", st.line)
+            self.stmt(st.kids[0])
+        else:
+            if k == "return" and len(st.kids) > 0 and sc.gen:
+                self.note(2, "'return' with value in async generator", st.line)
+            for kid in st.kids:
+                if kid.kind == "block":
+                    self.stmts(kid.kids)
+                elif kid.kind == "except":
+                    self.expr(kid.kids[0])
+                    if kid.s != "":
+                        self.flag(kid.s, SYMLOCAL)
+                    self.stmts(kid.kids[1].kids)
+                elif kid.kind == "pattern":
+                    for nm in kid.s.split():
+                        self.flag(nm, SYMLOCAL)
+                    for g in kid.kids:
+                        self.expr(g)
+                else:
+                    self.expr(kid)
+
+    def deco(self, d: Node) -> None:
+        if len(d.kids) > 0:
+            self.expr(d.kids[0])
+        elif d.s != "async":
+            self.flag(d.s[: d.s.find(".")] if "." in d.s else d.s, SYMUSE)
+
+    def annotation(self, e: Node, local: bool) -> None:
+        # evaluated where the def or the annotated assignment is; a postponed one (from __future__
+        # import annotations) in a scope of its own, where yield, await and := are errors. CPython's
+        # compiler never compiles a postponed one or one in a function body (local).
+        if e.kind == "noann":
+            return
+        if local or self.future:
+            self.quiet += 1
+        if self.future:
+            self.push("annotation", "", False)
+        self.expr(e)
+        if self.future:
+            self.pop()
+        if local or self.future:
+            self.quiet -= 1
+
+    def rebind(self, sc: SymScope, own: dict[str, bool]) -> None:
+        # a type parameter that scope sc binds again is none to the scopes nested in it
+        sc.tpinner = {}
+        for nm in sc.tps:
+            if nm not in own:
+                sc.tpinner[nm] = True
+
+    def generic(self, line: int) -> None:
+        # the type parameters of the generic def or class on line: in a scope of their own, around
+        # its scope (and their own type parameters to a nonlocal statement in it)
+        if line not in self.tparams:
+            return
+        sc = self.push("typeparams", "", False)
+        sc.inner = dict(sc.bound)
+        sc.tpinner = dict(sc.tps)
+        for nm in self.tparams[line].split():
+            sc.inner[nm] = True
+            sc.tpinner[nm] = True
+
+    def function(self, d: Node) -> None:
+        # a def's body, in a scope of its own: the names it binds are those its nested functions see
+        isasync = False
+        for x in d.kids[3:]:
+            if x.s == "async" and len(x.kids) == 0:
+                isasync = True
+        self.generic(d.line)
+        sc = self.push("def", "", isasync)
+        own: dict[str, bool] = {}
+        decl: dict[str, str] = {}
+        for p in d.kids[0].kids:
+            own[p.s] = True
+            sc.flags[p.s] = SYMPARAM
+        binds(d.kids[2].kids, own, decl)
+        sc.inner = dict(sc.bound)
+        for nm in decl:
+            if decl[nm] == "global" and nm in sc.inner:
+                del sc.inner[nm]
+        for nm in own:
+            if nm not in decl:
+                sc.inner[nm] = True
+        self.rebind(sc, own)
+        sc.gen = isasync and has_kind(d.kids[2], "yield")
+        self.stmts(d.kids[2].kids)
+        self.pop()
+        if d.line in self.tparams:
+            self.pop()
+
+    def target(self, t: Node) -> None:
+        # an assigned (or deleted) target: its names are bound, the rest of it is read
+        if t.kind == "name":
+            self.flag(t.s, SYMLOCAL)
+        elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+            for k in t.kids:
+                self.target(k)
+        else:
+            self.expr(t)
+
+    def store(self, t: Node) -> None:
+        # CPython's compiler checks of an assignment target: where starred items go, and __debug__
+        k = t.kind
+        if k == "starred":
+            self.note(2, "starred assignment target must be in a list or tuple", t.line)
+        elif k == "tuple" or k == "list":
+            stars = 0
+            for x in t.kids:
+                if x.kind == "starred":
+                    stars += 1
+            if stars > 1:
+                self.note(2, "multiple starred expressions in assignment", t.line)
+            for x in t.kids:
+                self.store(x.kids[0] if x.kind == "starred" else x)
+        elif (k == "name" or k == "attr") and t.s == "__debug__":
+            self.note(2, "cannot assign to __debug__", t.line)
+
+    def expr(self, e: Node) -> None:
+        sc = self.stack[-1]
+        k = e.kind
+        if (k == "yield" or k == "await" or k == "walrus") and sc.kind == "annotation":
+            self.note(0, f"{'named' if k == 'walrus' else k} expression cannot be used within an annotation", e.line)
+        if k == "starred" and e.s == "here":
+            self.note(2, "can't use starred expression here", e.line)  # (see Parser.no_star)
+        if k == "name":
+            self.flag(e.s, SYMUSE)
+        elif k == "lambda":
+            for p in e.kids[0].kids:
+                self.expr(p.kids[1])
+            ls = self.push("lambda", "", False)
+            for p in e.kids[0].kids:
+                ls.flags[p.s] = SYMPARAM
+            self.expr(e.kids[1])
+            self.pop()
+        elif k == "listcomp" or k == "nestedcomp" or k == "asynccomp":
+            self.comp(e, "gen" if e.s == "gen" else "list")
+        elif k == "setcomp" or k == "dictcomp":
+            self.comp(e.kids[0], k[:-4])
+        elif k == "walrus":
+            # x := v in a comprehension binds x in the function around it
+            if sc.iterexpr > 0:
+                self.note(0, "assignment expression cannot be used in a comprehension iterable expression", e.line)
+            i = len(self.stack) - 1
+            while self.stack[i].kind == "comp" or self.stack[i].kind == "annotation":
+                if e.s in self.stack[i].iters:
+                    self.note(0, f"assignment expression cannot rebind comprehension iteration variable '{e.s}'", e.line)
+                i -= 1
+            if sc.kind == "comp" and self.stack[i].kind == "class":
+                self.note(0, "assignment expression within a comprehension cannot be used in a class body", e.line)
+            self.expr(e.kids[0])
+            self.stack[i].flags[e.s] = self.stack[i].flags.get(e.s, 0) | SYMLOCAL
+            if e.s == "__debug__":
+                self.note(2, "cannot assign to __debug__", e.line)
+        elif k == "yield":
+            # (CPython's compiler checks where a yield is before its value, its symbol table where
+            # a comprehension's is after it)
+            if sc.kind == "module" or sc.kind == "class":
+                self.note(2, "'yield from' outside function" if e.s == "from" else "'yield' outside function", e.line)
+            elif e.s == "from" and sc.isasync:
+                self.note(2, "'yield from' inside async function", e.line)
+            for kid in e.kids:
+                self.expr(kid)
+            if sc.kind == "comp":
+                self.note(0, f"'yield' inside {COMPNAMES[sc.comp]}", e.line)
+        elif k == "await":
+            sc.coro = True
+            i = len(self.stack) - 1
+            while self.stack[i].kind == "comp" and self.stack[i].comp != "gen":
+                i -= 1  # (a list, set or dict comprehension runs in the scope around it)
+            up = self.stack[i]
+            if up.kind == "module" or up.kind == "class":
+                self.note(2, "'await' outside function", e.line)
+            elif (up.kind == "def" and not up.isasync) or up.kind == "lambda":
+                self.note(2, "'await' outside async function", e.line)
+            self.expr(e.kids[0])
+        else:
+            for kid in e.kids:
+                self.expr(kid)
+
+    def comp(self, c: Node, kind: str) -> None:
+        # a comprehension: its first iterable is evaluated outside it, the rest in a scope of its
+        # own; an asynchronous one (async for, await) must be in an async def
+        up = self.stack[-1]
+        up.iterexpr += 1
+        self.expr(c.kids[2])
+        up.iterexpr -= 1
+        err = self.errs[2]  # (CPython's compiler checks that before it compiles the rest)
+        at = self.at[2]
+        key = self.keys[2]
+        sc = self.push("comp", kind, False)
+        sc.coro = c.kind == "asynccomp"
+        target_names(c.kids[1], sc.iters)
+        self.target(c.kids[1])
+        self.store(c.kids[1])
+        for x in c.kids[3:]:
+            if x.kind == "compfor":
+                target_names(x.kids[0], sc.iters)
+                self.target(x.kids[0])
+                sc.iterexpr += 1
+                self.expr(x.kids[1])
+                sc.iterexpr -= 1
+                self.store(x.kids[0])
+            else:
+                self.expr(x)
+        self.expr(c.kids[0])
+        self.pop()
+        if sc.coro and kind != "gen":
+            if up.kind != "comp" and not ((up.kind == "def" or up.kind == "lambda") and up.coro) and self.quiet == 0:
+                self.errs[2] = err
+                self.at[2] = at
+                self.keys[2] = key
+                self.note(2, "asynchronous comprehension outside of an asynchronous function", c.line)
+            up.coro = True
 
 
 # ---------------------------------------------------------------- modules
@@ -1502,7 +2896,7 @@ class Loader:
         # the main program and the modules it imports, in the order their code may first run
         m = Mod("", path, "")
         FILES.append(path)
-        m.body = Parser(Lexer(src, 1).run()).module()
+        m.body = Parser(Lexer(src, 1).file()).module()
         self.simplify(m, m.body)
         self.bindings(m)
         self.imports(m, m.body, False)
@@ -1611,7 +3005,7 @@ class Loader:
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
-        m.body = Parser(Lexer(src, k * LINES + 1).run()).module()
+        m.body = Parser(Lexer(src, k * LINES + 1).file()).module()
         self.simplify(m, m.body)
         self.bindings(m)
         self.imports(m, m.body, False)
@@ -1648,8 +3042,6 @@ class Loader:
                 names: dict[str, bool] = {}
                 collect([st], names)
                 for nm in names:
-                    if nm == "__debug__":
-                        fail("cannot assign to __debug__", st.line)
                     m.kinds[nm] = "v"
                     if nm in m.fnonly:
                         del m.fnonly[nm]
@@ -1785,10 +3177,6 @@ class Loader:
         # load the user modules that the import statements in blk name, and rewrite those
         out: list[Node] = []
         for st in blk.kids:
-            if st.kind == "import" and infn:
-                for a in st.kids:
-                    if a.s == "*":
-                        fail("import * only allowed at module level", st.line)
             if st.kind == "import" and infn and m.name != "":
                 self.later.append(st)
                 self.laterm.append(m)
@@ -2070,10 +3458,6 @@ class Loader:
                 local_names(st.kids[2].kids, inner)
                 decl: dict[str, bool] = {}
                 globals_in(st.kids[2].kids, decl)
-                for p in st.kids[0].kids:
-                    if p.s in decl:
-                        fail(f"name '{p.s}' is parameter and global", st.line)
-                global_order(st.kids[2].kids, {}, decl)
                 for nm in decl:
                     if nm in inner:
                         del inner[nm]
@@ -2275,9 +3659,17 @@ for _k in "latin1 latin l1 iso8859_1 iso_8859_1 iso_8859_1_1987 iso_ir_100 iso88
 
 
 def codec(e: str) -> int:
-    # 1 UTF-8, 2 Latin-1, 0 another (runtime.c's codec()): the name normalized (lowercase; a run of
-    # characters other than ASCII letters, digits and "." is one "_" between them) is an alias, or
-    # one with "." read as "_", or the codec's module name
+    # 1 UTF-8, 2 Latin-1, 0 another (runtime.c's codec()): the name normalized is an alias, or one
+    # with "." read as "_", or the codec's module name
+    n = normcodec(e)
+    if n.find(".") >= 0:
+        return CODECS.get(n.replace(".", "_"), 0)
+    return 1 if n == "utf_8" else 2 if n == "latin_1" else CODECS.get(n, 0)
+
+
+def normcodec(e: str) -> str:
+    # an encoding's name normalized as CPython's codec lookup does: lowercase, and a run of
+    # characters other than ASCII letters, digits and "." is one "_" between them
     n = ""
     punct = False
     for c in e:
@@ -2291,9 +3683,7 @@ def codec(e: str) -> int:
             punct = False
         else:
             punct = True
-    if n.find(".") >= 0:
-        return CODECS.get(n.replace(".", "_"), 0)
-    return 1 if n == "utf_8" else 2 if n == "latin_1" else CODECS.get(n, 0)
+    return n
 # the most positional arguments a builtin takes: more are a compile error (a TypeError in CPython)
 ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "chr": 1, "bool": 1, "float": 1, "list": 1,
                          "dict": 1, "str": 1, "sorted": 1, "any": 1, "all": 1, "input": 1, "int": 2, "round": 2,
@@ -2487,58 +3877,6 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
         for nm in names:
             count[nm] = count.get(nm, 0) + 1
     return count
-
-
-def global_order(body: list[Node], seen: dict[str, str], decl: dict[str, bool]) -> None:
-    # CPython's symbol-table errors for global statements in a function body: a name it
-    # declares global must not be assigned or used before, nor annotated
-    for st in body:
-        if st.kind == "global":
-            for g in st.kids:
-                if g.s in seen:
-                    fail(f"name '{g.s}' is {seen[g.s]} global declaration", st.line)
-            continue
-        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s in decl:
-            fail(f"annotated name '{st.kids[0].s}' can't be global", st.line)
-        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
-            seen[st.s] = "assigned to before"
-            continue
-        asg: dict[str, bool] = {}
-        compound = False
-        for kid in st.kids:
-            if kid.kind == "block":
-                compound = True
-        if not compound:
-            collect([st], asg)
-        elif st.kind == "for" or st.kind == "with":
-            names: list[str] = []
-            for kid in st.kids:
-                if kid is st.kids[0] and st.kind == "for":
-                    names_in(kid, names)
-                elif kid.kind == "withitem" and len(kid.kids) == 2:
-                    names_in(kid.kids[1], names)
-            for nm in names:
-                asg[nm] = True
-        for kid in st.kids:
-            if kid.kind != "block":
-                uses(kid, seen)
-        for nm in asg:
-            if nm == "__debug__":
-                fail("cannot assign to __debug__", st.line)
-            seen[nm] = "assigned to before"
-        for kid in st.kids:
-            if kid.kind == "block":
-                global_order(kid.kids, seen, decl)
-
-
-def uses(n: Node, seen: dict[str, str]) -> None:
-    # the names expression n reads, as global_order records them
-    if n.kind == "name" and n.s not in seen:
-        seen[n.s] = "used prior to"
-    if n.kind == "lambda":
-        return
-    for k in n.kids:
-        uses(k, seen)
 
 
 def has_kind(n: Node, kind: str) -> bool:
@@ -6899,15 +8237,21 @@ def main() -> None:
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
     sys.setrecursionlimit(MAXNEST * 40)
     argv = sys.argv
-    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir"):
+    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir" and argv[1] != "check"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
+        print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
         sys.exit(2)
     cmd = argv[1]
     SRC = argv[2]
     if not os.path.exists(SRC):
         fail("file not found", 0)
+    if cmd == "check":
+        f = open(SRC, "r", encoding="latin-1")
+        Parser(Lexer(f.read(), 1).file()).module()
+        f.close()
+        return
     home = os.getenv("PYSTACHY_HOME", "")
     if home == "":
         s = argv[0].rfind("/")

@@ -39,3 +39,4 @@ xf = 3.14159
 print(f"{p!a} {p=} {xf!s:.3} [{p!s:>3}] {'é'!a} {ascii('caf' + chr(233))}")
 print(f"{F()}", f"{F():}", f"{F():>5}", f"[{xf:.{w - 4}f}]", f"[{'ab':>{w}}]", f"{'\n'.join(['a', 'b'])}")
 print(f"{None!r:>6}|{None}")
+print(f"{w, xf}", f"{w, xf = }", f"{w, -w!r:>9}")

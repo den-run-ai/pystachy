@@ -5,6 +5,8 @@
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails).
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
+# "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
+# tests/errors/syntax_*.py whose error is in its own file.
 # The cases run in PYSTACHY_JOBS workers at once (default: one per CPU); the report lists them
 # in the same order whatever the number of workers. Worker 0 runs in this shell and takes the
 # cases about SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
@@ -34,6 +36,11 @@ program() { # tests/NAME.py
       fail=$((fail + 1)); echo "FAIL $n ($mode)"; diff "tests/$n.out" "$T/$n.$mode" | head -10
       [ -f "tests/$n.err" ] && echo "  stderr: want '$(cat "tests/$n.err")', got '$(tail -1 "$T/$n.err")'"; head -5 "$T/$n.err"; fi
   done
+  case $n in
+    syntax_*)
+      if $PYS check "$1" > "$T/chk.$n" 2>&1 && [ ! -s "$T/chk.$n" ]; then pass=$((pass + 1)); else
+        fail=$((fail + 1)); echo "FAIL $n (check)"; head -5 "$T/chk.$n"; fi ;;
+  esac
 }
 # Documented deviations from CPython: tests/deviations/*.out is written by hand and holds
 # stdout and stderr together (the runtime flushes stdout before reporting an error).
@@ -55,6 +62,12 @@ rejection() { # tests/errors/NAME.py
   if $PYS ir "$1" > /dev/null 2> "$T/rej.$n" || ! grep -qF "$want" "$T/rej.$n"; then
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got: $(cat "$T/rej.$n")"
   else pass=$((pass + 1)); fi
+  case $n:$want in
+    syntax_*:"$n.py:"*)
+      if $PYS check "$1" > /dev/null 2> "$T/chk.$n" || ! grep -qF "$want" "$T/chk.$n"; then
+        fail=$((fail + 1)); echo "FAIL $1 (check): expected error '$want', got: $(cat "$T/chk.$n")"
+      else pass=$((pass + 1)); fi ;;
+  esac
 }
 # worker K: the cases whose position in the list is K modulo $JOBS, but worker 0 takes every
 # case about SIGINT; case I's report goes to $T/I.log and its counts to $T/I.n
