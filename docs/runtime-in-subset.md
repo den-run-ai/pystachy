@@ -426,6 +426,31 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 - **Where conflicts will come from.** The dict core (typed-IR §7.1's fused lookups, M1, M4, M7's sets) and M5's error paths, which touch every `pys_fail`. Neither is moved here.
 - **Fixes get cheaper.** The separator bug of §2.2 is one example: the fuzzer found it, the fix is three lines of Python, and `rtcheck` confirms it in a second.
 
+### 2.10 What an adversarial review found
+
+Six independent reviewers attacked the prototype before it was submitted. Each had one lens: the str methods, the format/math/hash code, the compiler changes, GC and memory safety, worst-case performance, and this document's claims. Their reproducers compare CPython, the compiler of `30b51d9` and the prototype, JIT and AOT.
+
+- **Equivalence.**
+  - The str reviewer read every moved function beside its C. It ran loop programs over the edge cases: indexes from INT64_MIN to INT64_MAX, every `maxsplit`, every line break, fills, tab sizes, raw and UTF-8 bytes. Base and prototype agreed everywhere.
+  - The format/math/hash reviewer ran about 210,000 compiled cases, under GC stress too, and 32,203 math cases at the 2**63 boundary. It checked 4 million hash values against the old formulas. It found no regression.
+- **Regressions in the prototype, found and fixed before submission.**
+
+  | problem | effect | fix |
+  |---|---|---|
+  | `search()` checked every candidate with no bound on the work: O(n·m) | a 200,000-byte needle in 2 MB took 6.5 s against 0.006 s; a 20-byte needle in dense text took 17 times as long | a work bound with a cutover to `memmem` (`_rt.find_sub`). Both cases now take runtime.c's time, and `rtcheck` tests the cutover. |
+  | `join` and `split` executed more instructions | `bench/words.py` +10% and `dictkeys` +5% in instructions | iteration instead of indexing, `memchr` per part for a one-byte separator. Both are now at 1.00. |
+  | `strip(chars)` looped over the set for each byte | 14 times runtime.c's time with a 95-byte set | `memchr`, as runtime.c did |
+  | `ljust` and friends within 9 bytes of 2**63 | `OverflowError` where CPython and runtime.c raise `MemoryError` | `_rt.str_new` reports such sizes as `MemoryError`; `tests/rt_ljust_huge.py` |
+  | the cache rule ignored a compiler run through `PATH` | a newer compiler could reuse an older runtime | `PATH` lookup |
+
+  `rtcheck` could not see any of these. The first four are performance problems, or differences between `_rt.str_new` and its CPython twin. Compiled differential tests at the edges, and performance tests with long needles, are what found them. `tools/rtbench/` now has three such cases (`find_dense`, `find_worst`, `strip_chars`), and §2.4.2 reports them.
+- **Improvements over runtime.c that the review found.** These are the format fixes of §2.2: message truncation, a NUL in the spec, and presentation types read as code points.
+- **Shared deviations it found and left as they are.**
+  - A format width above 10**8 is rejected.
+  - `"%c" % 233` writes one byte.
+  - `strip()` with non-ASCII chars, and `replace("", x)`, work byte by byte. This is the byte-string model, but the README lists only `split()`.
+  - `expandtabs` accepts tab sizes above CPython's C int limit.
+
 ## 3. How other compilers and runtimes do it
 
 | system | in the language | still native | low-level dialect | how it moved | measured effect | how it is tested |
