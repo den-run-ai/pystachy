@@ -102,8 +102,8 @@ Pystachy is Python with types made static and the dynamic machinery removed.
 (keys `int`, `str`, or tuples of `int`, `bool`, `str`, `str | None` and such tuples),
 `tuple[A, B, ...]` (up to 9 elements, indexed by integer
 constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[T, None]`)
-for a class type or for `str`, `list`, `dict` and `tuple` (wherever a type goes, inside
-containers too), and `None` as a return type. The `typing`
+for a class type or for `str`, `int`, `float`, `bool`, `list`, `dict` and `tuple` (wherever a
+type goes, inside containers too), and `None` as a return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
 `collections.abc` imports as `typing` does (also `from collections import abc`), and
@@ -162,7 +162,9 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   `Y = X` at module level) of such a container, the two names hold one container, typed by
   the first use of either. `None` in a display takes the type of its neighbours.
 - Optional values: a `T | None` is a `T`'s pointer, and `None` is null (a class type includes
-  `None` already). A local first assigned `None` is `T | None` for the first other value
+  `None` already); an `int | None`, `float | None` or `bool | None` is a pointer to an
+  immutable box of the value, made where an `int`, `float` or `bool` becomes one. A local
+  first assigned `None` is `T | None` for the first other value
   assigned to it, typed where it is assigned (also by unpacking); a read before that, in the
   order the code is compiled, takes the type of the first such value in the function's source
   whose type is known there, or else the type expected where it is read (a return, an
@@ -170,16 +172,20 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   then only comparisons with `None` may read it), as does a global that module code only
   assigns `None` and no function's `global` statement binds. So is module code's global for
   the values module code assigns it, where they can be typed at its first assignment.
-  `x if c else None` (also nested: `x if c else y if d else None`), `x or None`, a template
-  that returns `None` and a `T` (in either order) and a display that holds `None` among `T`
-  items give `T | None`; `None or x` is `x`. `d.get(k)` and `os.getenv(name)` without a
-  default return `V | None` and `str | None`, and so do `d.get(k, d)` and `d.pop(k, d)` with a
-  default `d` that may be `None`. A `T` or `None` goes where a `T | None` is expected (a tuple
+  `x if c else None` (also nested: `x if c else y if d else None`, and `None if x is None
+  else x + 1`), `x or None`, a template that returns `None` and a `T` (in either order) and a
+  display that holds `None` among `T` items give `T | None`; `None or x` is `x`, and `x or 0`
+  is an `int` for an `int | None` `x`. `d.get(k)` and `os.getenv(name)` without a default
+  return `V | None` (also for `int`, `float` and `bool` values) and `str | None`, and so do
+  `d.get(k, d)` and `d.pop(k, d)` with a default `d` that may be `None`. A `T` or `None` goes
+  where a `T | None` is expected (a tuple
   item by item). Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`,
   `<`, unpacking, a builtin's argument) the value is checked when it runs, and `None` raises
-  CPython's error; `==`, `is`, truth tests, `str()`, `repr()`, f-strings, `%` (a
-  `tuple | None` is its items or one `None`), `print()`'s `sep` and `end`, and `sys.exit()`
-  treat `None` as CPython does, and so do the repr, comparisons and sorting of containers
+  CPython's error (also `-x`, `abs()`, `int()`, `range()`, `%d` and a format spec of an
+  `int | None`); `==`, `is`, truth tests, `str()`, `repr()`, f-strings, `%` (a
+  `tuple | None` is its items or one `None`), `print()`'s `sep` and `end`, a slice's bounds
+  (`None` is an omitted one) and `sys.exit()` treat `None` as CPython does, and so do the
+  repr, comparisons and sorting of containers
   of optional items, also against containers of `T` items (`list[str | None] ==
   list[str]`; `+` of the two makes a `list[str | None]`, which `extend()` and `+=` also
   take a `list[str]` into); `join()` and `writelines()` check each `str | None` item. A key
@@ -469,11 +475,14 @@ read of a function's local that only code dropped at compile time binds; a name 
 binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
 with `from pkg import util` or in the package's functions, when which of the two it is
 depends on when the submodule is first imported; a
-template whose returns have different types (or `None` and an `int`, `float` or `bool`, or
-`None` and an empty `[]` or `{}` that it does not fill), or that calls itself before a
-return statement decides its type (or, after a return of a `T`, before a return of `None`
-makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
-boxing), dict key types that may be `None`, and tuple keys holding other items (a `float`,
+template whose returns have different types (or `None` and an empty `[]` or `{}` that it
+does not fill), or that calls itself before a return statement decides its type (or, after a
+return of a `T`, before a return of `None` makes it return `T | None`); `is` between two
+`int | None` values (an `int` has no identity here), a `list[int]` or `dict[K, int]` where a
+container of `int | None` items is expected, compared or added (also for `float` and `bool`:
+an `int` item is no box), and `int | None` arguments of the builtins other than those above
+(`divmod()`, `sum()` of a `list[int | None]`); dict key types that may be `None`, and tuple
+keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
 keeps the `bool`, which prints as `True`); `typing.ClassVar`, `os.PathLike` other than in a
 union with `str`, a `TypeVar` named other than by a module-level function's parameters and

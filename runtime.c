@@ -961,6 +961,10 @@ I pys_repr_enter(void *p) {
   busy[nbusy++] = p; return 1;
 }
 void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
+/* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
+   box of its value's 8 bytes (a bool's 0 or 1), and None is null */
+void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
@@ -1020,7 +1024,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
-  case '?': if (v) return repr(b, v, d); put(b, "None", 4); return skip(d);
+  case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
   }
   return d;
 }
@@ -1053,7 +1057,7 @@ static int eqv(I a, I b, const char *d) {
     return 1;
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case '?': return a && b ? eqv(a, b, d + 1) : a == b;          /* None equals only None */
+  case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   }
   return a == b;
 }
@@ -1081,7 +1085,7 @@ static int opv(I a, I b, const char *d, I op) {
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case '?':
-    if (a && b) return opv(a, b, d + 1, op);
+    if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
   }
@@ -1573,6 +1577,9 @@ static I dpop(Dict *d, I k, I dflt, int has) {
 }
 I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
 I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+/* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
+I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_box(d->vals[e]); }
+I pys_dict_popbox(Dict *d, I k, I dflt) { return entry(d, k) < 0 ? dflt : (I)pys_box(dpop(d, k, 0, 0)); }
 I pys_dict_setdefault(Dict *d, I k, I v) { I e = entry(d, k); if (e >= 0) return d->vals[e]; pys_dict_set(d, k, v); return v; }
 void pys_dict_clear(Dict *d) { d->len = d->n = d->size = 0; d->keys = d->vals = 0; d->hs = 0; d->idx = 0; }
 /* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
@@ -1656,17 +1663,18 @@ static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   
   }
 }
 Str *pys_format(I v, Str *desc, Str *spec) {
-  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
-  char d = desc->s[desc->s[0] == '?'], align = 0, sign = 0, type = 0, sep = 0;   /* ?: None or a value */
-  if (desc->s[0] == '?' && !v) {
-    if (spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
-    return cstr("None");
+  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ", *ds = desc->s;
+  if (*ds == '?') {                            /* None or a value */
+    if (!v && spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
+    if (!v) return cstr("None");
+    v = unbox(v, ++ds);
   }
+  char d = *ds, align = 0, sign = 0, type = 0, sep = 0;
   int alt = 0, zneg = 0, fillset = 0;
   I fl = 1, width = 0, prec = -1;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
-    return pys_repr(v, desc);
+    Buf b = {0}; repr(&b, v, ds); return done(&b);
   }
   I cl = p < end ? uoff(p, end - p, 1) : 0;
   if (cl && p + cl < end && p[cl] && strchr("<>=^", p[cl])) { fill = p; fl = cl; fillset = 1; align = p[cl]; p += cl + 1; }

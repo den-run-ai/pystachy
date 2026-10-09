@@ -4476,6 +4476,7 @@ for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hasha
            "MutableSequence ByteString Buffer").split():
     ABCS[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
+OPTTYPES = "class types, str, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
@@ -4535,6 +4536,8 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "ord": "ord() expected string of length 1, but NoneType found",
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.fspath": "expected str, bytes or os.PathLike object, not NoneType",
+                           "abs": "bad operand type for abs(): 'NoneType'", "round": "type NoneType doesn't define __round__ method",
+                           "chr": "'NoneType' object cannot be interpreted as an integer",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
 # what those return (for None itself, which always raises)
@@ -4674,6 +4677,7 @@ RUNTIME: dict[str, str] = {
     "dict.new": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD|", "dict.getitem": "*V:S,*K|R A rD|",
     "dict.get": "*V:S,*K,*V|rD|", "dict.set": "None:S,*K,*V|A rD wD|", "dict.pop": "*V:S,*K|R A rD wD|",
     "dict.pop_default": "*V:S,*K,*V|R A rD wD|", "dict.setdefault": "*V:S,*K,*V|A rD wD|", "dict.clear": "None:S|wD|",
+    "dict.getbox": "*V:S,*K,*V|A rD|", "dict.popbox": "*V:S,*K,*V|R A rD wD|",
     "dict.copy": "S:S|A rD|", "dict.from": "S:S|A rD|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
@@ -4715,7 +4719,7 @@ RUNTIME: dict[str, str] = {
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R A I rL rD U?|",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "unpack_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|",
@@ -4867,13 +4871,18 @@ def is_tuple(t: str) -> bool:
 
 
 def is_opt(t: str) -> bool:
-    # opt[T]: T | None for T str, list, dict or tuple (a class type includes None already)
+    # opt[T]: T | None for T str, int, float, bool, list, dict or tuple (a class type includes None already)
     return t.startswith("opt[")
 
 
 def unopt(t: str) -> str:
     # the type an optional value has when it is not None
     return t[4:-1] if t.startswith("opt[") else t
+
+
+def is_sopt(t: str) -> bool:
+    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box)
+    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]"
 
 
 def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
@@ -6017,7 +6026,61 @@ class Gen:
         if not is_opt(v.t):
             return v
         self.guard(self.ins(f"icmp eq ptr {v.v}, null"), msg)
-        return Val(v.v, unopt(v.t))
+        return self.deref(v)
+
+    def deref(self, v: Val) -> Val:
+        # an optional value known not to be None, as the value it holds: the same pointer, or an
+        # int's, float's or bool's box read
+        if not is_sopt(v.t):
+            return Val(v.v, unopt(v.t))
+        return self.from_slot(self.ins(f"load i64, ptr {v.v}"), unopt(v.t))
+
+    def reboxes(self, a: str, b: str) -> bool:
+        # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
+        # be None (boxed), and that are as they are otherwise
+        if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)) or a == b:
+            return False
+        for i in range(len(targs(a))):
+            x = targs(a)[i]
+            y = targs(b)[i]
+            if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.reboxes(x, y):
+                return False
+        return True
+
+    def convert_at(self, v: Val, t: str, label: str) -> Val:
+        # v as a t, computed at the end of block label (before its terminator), where it reaches a
+        # phi from: an int boxed as an int | None, or an int | None known not to be None unboxed
+        if not self.converts(v.t, t):
+            return self.coerce(v, t)  # (no code)
+        for b in self.fn.blocks:
+            if b.label == label:
+                return self.convert_in(v, t, b)
+        fail(f"internal error: no block {label} to convert {v.t} to {t} in", 0)
+        return v
+
+    def converts(self, a: str, b: str) -> bool:
+        # does a value of type a take code to be one of type b (convert_in)
+        return self.boxes(a, b) or (is_sopt(a) and b == unopt(a))
+
+    def boxes(self, a: str, b: str) -> bool:
+        # is a value of type a one of type b once boxed: an int as an int | None, also as tuple items
+        return (is_sopt(b) and a == unopt(b)) or self.reboxes(a, b)
+
+    def convert_in(self, v: Val, t: str, blk: Blk) -> Val:
+        # v as a t, at the end of block blk, which has ended (see convert_at)
+        here = self.blk
+        cur = self.cur
+        term = self.term
+        self.blk = blk
+        last = blk.code.pop()
+        self.cur = blk.label
+        self.term = False
+        r = self.deref(v) if is_sopt(v.t) and t == unopt(v.t) else self.coerce(v, t)
+        blk.code.append(last)
+        self.blk = here
+        self.cur = cur
+        self.term = term
+        return r
 
     def sconst(self, s: str) -> str:
         if s in self.strs:
@@ -6112,6 +6175,11 @@ class Gen:
             return Val("null", t)
         if self.widens(v.t, t):
             return Val(v.v, t)
+        if is_sopt(t) and v.t == unopt(t):
+            return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t)  # (a new box)
+        if self.reboxes(v.t, t):
+            # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
+            return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
         if is_opt(v.t) and self.widens(unopt(v.t), t):
             # (CPython would pass the None on: there is nothing here that could hold it)
             if what == "":
@@ -6448,18 +6516,18 @@ class Gen:
         return ""
 
     def opt(self, t: str) -> str:
-        # T | None: a class type includes None already; str, list, dict and tuple become opt[T]
+        # T | None: a class type includes None already; str, int, float, bool, list, dict and
+        # tuple become opt[T]
         r = self.optional(t)
         if r == "":
-            why = f" ({'an' if t == 'int' else 'a'} {t} is a machine value, which has no room for None)" if self.isnum(t) else ""
-            self.err(f"None/Optional is only supported for class types, str, list, dict and tuple, not {typestr(t)}{why}")
+            self.err(f"None/Optional is only supported for {OPTTYPES}, not {typestr(t)}")
         return r
 
     def optional(self, t: str) -> str:
         # the type of a value that is a t or None, "" if there is none
         if t in self.classes or is_opt(t):
             return t
-        if (t == "str" or is_list(t) or is_dict(t) or is_tuple(t)) and "?" not in t:
+        if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_tuple(t)) and "?" not in t:
             return f"opt[{t}]"
         return ""
 
@@ -6483,9 +6551,11 @@ class Gen:
     def wider(self, a: str, b: str) -> str:
         # the type of values of types a and b as they are, where they differ only in what may be
         # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
-        # containers made of both; "" if there is none
+        # containers made of both; "" if there is none (an int is no int | None as it is: that is a box)
         if a == b:
             return a
+        if self.isnum(a) or self.isnum(b):
+            return ""
         if "?" in a or "?" in b:
             return ""
         if a == "None" or b == "None":
@@ -6517,7 +6587,7 @@ class Gen:
         if a == b:
             return True
         if is_opt(b):
-            return a == "None" or self.widens(unopt(a), unopt(b))
+            return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
         if b in self.classes:
             return a == "None"
         if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
@@ -6920,7 +6990,7 @@ class Gen:
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
             if name in self.narrowed and is_opt(t) and t != NONEVAR:
-                t = unopt(t)  # known not to be None here
+                return self.deref(Val(r, t))  # known not to be None here
             return Val(r, t)
         if self.unbound_local(name):
             self.err(f"local variable '{name}' is read before its first assignment; declare it first ({name}: T)")
@@ -6992,7 +7062,7 @@ class Gen:
                 self.narrowed = pre
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR:
                     if self.optional(t) == "":
-                        self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                        self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for {OPTTYPES}")
                     return self.optional(t)
         return ""
 
@@ -7642,7 +7712,7 @@ class Gen:
             t = self.ltype[name]
             if t == NONEVAR and v.t != "None":
                 if self.optional(v.t) == "":
-                    self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                    self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
                 t = self.optional(v.t)
                 self.ltype[name] = t
             if "?" in t and same_kind(t, v.t) and "?" not in v.t:
@@ -9075,6 +9145,9 @@ class Gen:
                 self.rt("pys_exit", "void", ["i64 0"])
                 self.unreachable()
                 self.place(l2)
+            if is_sopt(vals[0].t):
+                self.exit_([self.deref(vals[0])])  # (an int is the status)
+                return
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
         self.unreachable()
 
@@ -9216,7 +9289,7 @@ class Gen:
                         t = self.optional(t)  # after a return of None: T | None (before it calls itself)
                     self.ret = t
                     self.curfn.ret = t
-                    self.ret_(Val(v.v, t))
+                    self.ret_(self.coerce(v, t))
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
                     self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
@@ -9240,7 +9313,7 @@ class Gen:
                 j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
                 if j != self.ret and j != "" and is_opt(j):
                     self.reopt(j)  # a template's function returns T and None (or T | None): T | None
-                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret):
+                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
                     if v.t == "None":
                         self.err(self.nonemix(self.curfn, self.ret))
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
@@ -9358,13 +9431,17 @@ class Gen:
         if "?" in t:
             k = tname(t)
             return f"{short(f.name)}() returns None and an empty {k} whose items' type it does not show; annotate its return type (-> {k}[{'T' if k == 'list' else 'K, V'}] | None)"
-        why = f" ({'an' if t == 'int' else 'a'} {t} is a machine value, which has no room for None)" if self.isnum(t) else ""
-        return f"{short(f.name)}() returns both None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple{why}"
+        return f"{short(f.name)}() returns both None and {typestr(t)}, and None/Optional is only supported for {OPTTYPES}"
 
     def reopt(self, t: str) -> None:
         # the template's function being compiled, which returned a T, returns None too: T | None
         if self.curfn.ll in self.retseen:
             self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a return of None shows that it returns {typestr(t)}; annotate its return type")
+        if is_sopt(t) or self.reboxes(self.ret, t):
+            # its returns of an int so far return its box: each gets one before its ret
+            for b in self.fn.blocks:
+                if len(b.code) > 0 and b.code[-1].op == "ret" and len(b.code[-1].a) == 1 and b.code[-1].a[0].t != t:
+                    b.code[-1].a = [self.convert_in(b.code[-1].a[0], t, b)]
         self.ret = t
         self.curfn.ret = t
 
@@ -9491,6 +9568,8 @@ class Gen:
         if is_opt(a.t):
             m1 = self.sconst(f"unsupported operand type(s) for {sh}: 'NoneType' and 'NoneType'")
             m2 = self.sconst(f"unsupported operand type(s) for {sh}: 'NoneType' and '{tname(y)}'")
+            if op == "*" and is_sopt(a.t) and (y == "str" or is_list(y)):
+                m2 = self.sconst("can't multiply sequence by non-int of type 'NoneType'")
             lerr = self.label()
             lok = self.label()
             self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
@@ -9585,14 +9664,18 @@ class Gen:
                 self.err(f"cannot iterate over {v.t}: its items have different types")
         return self.as_list(v, "iter")
 
-    def ival(self, n: Node) -> Val:
-        # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does)
-        return self.coerce(self.as_int(self.expr(n, "int")), "int")
+    def ival(self, n: Node, none: str = "") -> Val:
+        # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does);
+        # an int | None that is None raises none ("Kind: text")
+        v = self.expr(n, "int")
+        if is_sopt(v.t) and none != "":
+            v = self.unwrap(v, none)
+        return self.coerce(self.as_int(v), "int")
 
     def range_args(self, args: list[Node]) -> list[str]:
         vs: list[str] = []
         for a in args:
-            vs.append(self.ival(a).v)
+            vs.append(self.ival(a, "TypeError: 'NoneType' object cannot be interpreted as an integer").v)
         if len(vs) == 1:
             vs.insert(0, "0")
         if len(vs) == 2:
@@ -9992,7 +10075,7 @@ class Gen:
             l2 = self.label()
             self.cbr(nn, l1, l2)
             self.place(l1)
-            r = self.truth(Val(v.v, unopt(t)))
+            r = self.truth(self.deref(v))
             e1 = self.cur
             self.br(l2)
             self.place(l2)
@@ -10094,8 +10177,12 @@ class Gen:
                 if x.kind == "omit":
                     bnd.append("-9223372036854775808")  # the runtime's "omitted" marker
                 else:
+                    bv = self.expr(x, "int")
+                    if is_sopt(bv.t):
+                        bnd.append(self.optbound(bv))  # (None: omitted)
+                        continue
                     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
-                    bd = self.ival(x).v
+                    bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
                     if bd.startswith("%"):
                         bd = self.select(self.ins(f"icmp eq i64 {bd}, -9223372036854775808"), Val("-9223372036854775807", "int"), Val(bd, "int"))
                     elif bd == "-9223372036854775808":
@@ -10174,6 +10261,8 @@ class Gen:
                 v = self.expr(n.kids[i], ws[i] if i < len(ws) else "")
                 if i < len(ws) and v.t != ws[i] and self.widens(v.t, ws[i]):
                     v = Val(v.v, ws[i])  # (None as an object, T as T | None)
+                elif i < len(ws) and self.converts(v.t, ws[i]) and not is_sopt(v.t):
+                    v = self.coerce(v, ws[i])  # (an int as an int | None: its box)
                 vals.append(v)
             return self.tuple_(vals)
         if k == "listcomp":
@@ -10309,18 +10398,23 @@ class Gen:
                 acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
                 lit = []
             if rtnone and v.t == "None" and t not in "sra":
-                bad = "must be real number, not NoneType"
-                if t == "c":
-                    bad = "%c requires int or char"
-                elif t in "diuxXo":
-                    bad = f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not NoneType"
-                return self.fmt_error(bad)
+                return self.fmt_error(self.nonefmt(t))
+            if is_sopt(v.t) and t not in "sra":
+                v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
             acc = self.cat(acc, self.conversion(v, flags, width, prec, t))
         if used < len(items):
             return self.fmt_error("not all arguments converted during string formatting")
         if len(lit) > 0:
             acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
         return acc
+
+    def nonefmt(self, t: str) -> str:
+        # what %-conversion t (not s, r or a) raises for None
+        if t == "c":
+            return "%c requires int or char"
+        if t in "diuxXo":
+            return f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not NoneType"
+        return "must be real number, not NoneType"
 
     def fmt_error(self, msg: str) -> Val:
         self.raise_("TypeError", self.sconst(msg))
@@ -10379,7 +10473,7 @@ class Gen:
             return self.to_str(v)
         if is_opt(v.t):
             # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
-            if spec.kind == "str" and unopt(v.t) != "str":
+            if spec.kind == "str" and unopt(v.t) != "str" and not is_sopt(v.t):
                 self.err(f"unsupported format string passed to {tname(unopt(v.t))}.__format__")
             sv = self.expr(spec, "str")
             return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t))}", f"ptr {sv.v}"]), "str")
@@ -10395,6 +10489,24 @@ class Gen:
         sv = self.expr(spec, "str")
         d = self.sconst(self.desc(v.t))
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
+
+    def optbound(self, v: Val) -> str:
+        # a slice bound that is an int | None: None is an omitted bound (the runtime's marker -2**63,
+        # which a given bound of -2**63 is not: it clamps exactly like -2**63 + 1)
+        e0 = self.cur
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(self.ins(f"icmp ne ptr {v.v}, null"), l1, l2)
+        self.place(l1)
+        bd = self.as_int(self.deref(v)).v
+        bd = self.select(self.ins(f"icmp eq i64 {bd}, -9223372036854775808"), Val("-9223372036854775807", "int"), Val(bd, "int"))
+        e1 = self.cur
+        self.br(l2)
+        self.place(l2)
+        ph = Ins("phi", "int", "")
+        self.incoming(ph, "-9223372036854775808", e0)
+        self.incoming(ph, bd, e1)
+        return self.phi(ph)
 
     def tuple_(self, vals: list[Val]) -> Val:
         p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
@@ -10415,7 +10527,7 @@ class Gen:
         t = unopt(o.t)
         sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
         if is_list(t) or t == "str":
-            i = self.ival(n.kids[1])
+            i = self.ival(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
             o = self.unwrap(o, sub)
             if t == "str":
                 return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
@@ -10517,7 +10629,7 @@ class Gen:
             t = self.join(a.t, b.t)  # x if c else None: T | None
         ph = Ins("phi", t, "")
         if e1 != "":
-            self.incoming(ph, self.coerce(a, t).v, e1)
+            self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
         if e2 != "":
             self.incoming(ph, self.coerce(b, t).v, e2)
         self.br(l3)
@@ -10554,6 +10666,12 @@ class Gen:
         l3 = self.label()
         if n.s == "and":
             self.cbr(c, l2, l3)
+        elif is_sopt(a.t) and not ascond:
+            # x or y with x an int | None: a true x is unboxed where it goes to the join (e1)
+            e1 = self.label()
+            self.cbr(c, e1, l2)
+            self.place(e1)
+            self.br(l3)
         else:
             self.cbr(c, l3, l2)
         self.place(l2)
@@ -10568,7 +10686,7 @@ class Gen:
             if not self.term and self.join(rt, b.t) != "":
                 rt = self.join(rt, b.t)
         ph = Ins("phi", rt, "")
-        self.incoming(ph, a.v, e1)
+        self.incoming(ph, self.convert_at(a, rt, e1).v if not ascond and self.converts(a.t, rt) else a.v, e1)
         if not self.term:
             self.incoming(ph, self.coerce(b, rt).v, self.cur)
         self.br(l3)
@@ -10582,7 +10700,10 @@ class Gen:
             return Val(self.ins(f"xor i1 {self.cond(e)}, true"), "bool")
         if op == "-" and (e.kind == "int" or e.kind == "float"):
             return self.expr(mk(e.kind, "-" + e.s, e.line, []), "")
-        v = self.as_int(self.expr(e, ""))
+        v = self.expr(e, "")
+        if is_sopt(v.t):
+            v = self.unwrap(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
+        v = self.as_int(v)
         if v.t == "int" and op == "-":
             return Val(self.iop("-", "0", v.v), "int")
         if v.t == "int" and op == "~":
@@ -10786,7 +10907,7 @@ class Gen:
             return du
         if is_opt(a.t) or is_opt(b.t):
             self.none_operands(op, a, b, shown)
-            return self.arith(op, Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)), shown)
+            return self.arith(op, self.deref(a) if is_opt(a.t) else a, self.deref(b) if is_opt(b.t) else b, shown)
         if a.t == "bool" and b.t == "bool" and (op == "&" or op == "|" or op == "^"):
             return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
         a = self.as_int(a)
@@ -10879,7 +11000,7 @@ class Gen:
             if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
                 # a number or bool is never None
                 return Val("false" if op == "is" else "true", "bool")
-            if not self.isref(a.t) or not self.isref(b.t):
+            if not self.isref(a.t) or not self.isref(b.t) or (is_sopt(a.t) and b.t != "None") or (is_sopt(b.t) and a.t != "None"):
                 self.err("'is' is only supported for objects and None")
             return Val(self.ins(f"icmp {'eq' if op == 'is' else 'ne'} ptr {a.v}, {b.v}"), "bool")
         du = self.dunder(op, a, b)
@@ -10892,17 +11013,17 @@ class Gen:
             b = self.ntup(b, True)  # (tuple's __contains__)
         if (op == "in" or op == "not in") and b.t == "str":
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
-        if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and self.optional(elem(b.t)) == "" and elem(b.t) not in self.classes)):
+        if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
             return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict, and no number
-        if (op == "in" or op == "not in") and is_dict(b.t) and is_opt(a.t) and unopt(a.t) == targs(b.t)[0]:
-            # None is no key of the dict
+        if (op == "in" or op == "not in") and is_opt(a.t) and ((is_dict(b.t) and unopt(a.t) == targs(b.t)[0]) or (is_sopt(a.t) and is_list(b.t) and unopt(a.t) == elem(b.t))):
+            # None is no key of the dict (and no int of a list[int])
             nn = self.ins(f"icmp ne ptr {a.v}, null")
             e0 = self.cur
             l1 = self.label()
             l2 = self.label()
             self.cbr(nn, l1, l2)
             self.place(l1)
-            hv = self.cmp2("in", Val(a.v, unopt(a.t)), b)
+            hv = self.cmp2("in", self.deref(a), b)
             e1 = self.cur
             self.br(l2)
             self.place(l2)
@@ -10940,7 +11061,7 @@ class Gen:
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
                 et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
-                if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "":
+                if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                     et = self.optional(elem(b.t))
                 s = self.to_slot(self.coerce(a, et))
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et))}"])
@@ -10951,6 +11072,8 @@ class Gen:
             else:
                 self.err(f"'in' is not supported for {b.t}")
             return Val(self.ins(f"icmp {'ne' if op == 'in' else 'eq'} i64 {r}, 0"), "bool")
+        if (is_sopt(a.t) or is_sopt(b.t)) and self.isnum(unopt(a.t)) and self.isnum(unopt(b.t)):
+            return self.optcmp(op, a, b)
         if self.isnum(a.t) and self.isnum(b.t):
             if a.t != "float" and b.t != "float":
                 return Val(self.ins(f"icmp {ICMP[op]} i64 {self.as_int(a).v}, {self.as_int(b).v}"), "bool")
@@ -10983,9 +11106,40 @@ class Gen:
         self.err(f"cannot compare {a.t} {op} {b.t}")
         return a
 
+    def optcmp(self, op: str, a: Val, b: Val) -> Val:
+        # a op b for numbers of which one or both may be None: == and != compare None as CPython
+        # does (None equals only None), and an ordering raises its TypeError for None
+        an = self.isnull(a)
+        bn = self.isnull(b)
+        anyn = an if bn == "false" else bn if an == "false" else self.ins(f"or i1 {an}, {bn}")
+        lnone = self.label()
+        lval = self.label()
+        lend = self.label()
+        self.cbr(anyn, lnone, lval)
+        self.place(lnone)
+        ph = Ins("phi", "bool", "")
+        if op == "==" or op == "!=":
+            both = "false" if an == "false" or bn == "false" else self.ins(f"and i1 {an}, {bn}")
+            self.incoming(ph, both if op == "==" else self.ins(f"xor i1 {both}, true"), self.cur)
+            self.br(lend)
+        else:
+            ms: list[str] = []
+            for x in ["NoneType", tname(unopt(a.t))]:
+                for y in ["NoneType", tname(unopt(b.t))]:
+                    ms.append(self.sconst(f"'{op}' not supported between instances of '{x}' and '{y}'"))
+            mn = self.select(bn, Val(ms[0], "str"), Val(ms[1], "str"))
+            mf = self.select(bn, Val(ms[2], "str"), Val(ms[3], "str"))
+            self.raise_("TypeError", self.select(an, Val(mn, "str"), Val(mf, "str")))
+        self.place(lval)
+        r = self.cmp2(op, self.deref(a) if is_opt(a.t) else a, self.deref(b) if is_opt(b.t) else b)
+        self.incoming(ph, r.v, self.cur)
+        self.br(lend)
+        self.place(lend)
+        return Val(self.phi(ph), "bool")
+
     def comparable(self, t: str, u: str) -> bool:
         # can t == u be true at all? (otherwise CPython just answers False)
-        if t == u or (self.isnum(t) and self.isnum(u)) or self.wider(t, u) != "":
+        if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "":
             return True
         return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
@@ -11721,7 +11875,8 @@ class Gen:
             d = self.expr(args[1], kv[1])
             vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
             dv = self.to_slot(self.coerce(d, vt))
-            return self.from_slot(self.nonekey(kx, dv, "pys_dict_pop_default", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), vt)
+            fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
+            return self.from_slot(self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), vt)
         base = o.t
         T = ""
         K = ""
@@ -11742,7 +11897,7 @@ class Gen:
         if optget:
             args = args[:1]
         if key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and not optget:
-            self.err(f"dict.get(key{', None' if len(args) == 2 else ''}) needs values that can be None (str, list, dict, tuple or objects), not {typestr(V)}: give another default ({typestr(V)} | None would need boxing)")
+            self.err(f"dict.get(key{', None' if len(args) == 2 else ''}) needs values that can be None ({OPTTYPES}), not {typestr(V)}: give another default")
         spec = METHODS[key]
         c = spec.find(":")
         av = [f"{lt(o.t)} {o.v}"]
@@ -11792,7 +11947,7 @@ class Gen:
                     nones.append(v.v)
                     nmsg.append(self.none_arg(m, i + 1))
                     v = Val(v.v, pt)
-                elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and base == "list" and m != "append" and m != "insert" and self.optional(T) != "":
+                elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and base == "list" and m != "append" and m != "insert" and self.optional(T) != "" and not self.isnum(T):
                     pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
                     dt = pt
                 v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
@@ -11811,10 +11966,13 @@ class Gen:
         rtype = subst(r[1:] if slot else r, T, K, V, o.t)
         if optget:
             rtype = self.optional(V)
+        fn = f"pys_{base}_{m}"
+        if optget and is_sopt(rtype) and not is_sopt(V):
+            fn = "pys_dict_getbox"  # (the value's box: an int | None)
         if kx.t != "":
-            res = self.nonekey(kx, av[2][4:] if m == "get" else "", f"pys_{base}_{m}", av)
+            res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av)
         else:
-            res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
+            res = self.rt(fn, "i64" if slot else rtt(rtype), av)
         if slot:
             return self.from_slot(res, rtype)
         return self.rres(res, rtype)
@@ -11851,13 +12009,13 @@ class Gen:
             return self.rt(fn, "i64", av)
         if none == "":
             self.guard(self.ins(f"icmp eq ptr {k.v}, null"), "KeyError: None")
-            return self.rt(fn, "i64", av)
+            return self.rt(fn, "i64", self.keyed(k, av))
         l1 = self.label()
         l2 = self.label()
         l3 = self.label()
         self.cbr(self.ins(f"icmp eq ptr {k.v}, null"), l1, l2)
         self.place(l2)
-        r = self.rt(fn, "i64", av)
+        r = self.rt(fn, "i64", self.keyed(k, av))
         e2 = self.cur
         self.br(l3)
         self.place(l1)
@@ -11867,6 +12025,13 @@ class Gen:
         self.incoming(ph, none, l1)
         self.incoming(ph, r, e2)
         return self.phi(ph)
+
+    def keyed(self, k: Val, av: list[str]) -> list[str]:
+        # the arguments av of a dict lookup by key k (av[1]), which is not None here: an int key
+        # that may be None is the int its box holds
+        if not is_sopt(k.t):
+            return av
+        return [av[0], "i64 " + self.to_slot(self.deref(k))] + av[2:]
 
     def none_arg(self, m: str, k: int) -> str:
         # what str method m (or file.write) raises for None as its argument k
