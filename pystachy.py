@@ -5758,7 +5758,10 @@ class Gen:
             ok = ok and args[j][:sp] == ll[j + 1]
             v = args[j][sp + 1 :]
             i.a.append(Val(v, ts[j + 1]))
-            if ts[j + 1] == "#" and v.startswith("@s."):
+            if ts[j + 1] == "#":
+                # the descriptor: a string constant, whose text gives the op its static type (and so U?)
+                if not v.startswith("@s."):
+                    fail(f"internal error: {name} called with the descriptor {v}, which is no string constant", 0)
                 i.x = self.strvals[int(v[3:])]
         if not ok:
             fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {self.rtdecls[k]}", 0)
