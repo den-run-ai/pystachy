@@ -9735,6 +9735,10 @@ class Gen:
                 v = self.expr(it.kids[0], "")
                 if v.t != "file":
                     self.err(f"'with' is supported for files only (with open(...) as f:), not {v.t}")
+                if not self.open_call(it.kids[0]):
+                    # (a file's __enter__ raises if it is closed)
+                    c = self.rt("pys_file_closed", "i64", [f"ptr {v.v}"])
+                    self.guard(self.ins(f"icmp ne i64 {c}, 0"), "ValueError: I/O operation on closed file.")
                 if self.eh:
                     self.rt("pys_unwind_file", "void", [f"ptr {v.v}"])
                 if len(it.kids) == 2:
