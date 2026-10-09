@@ -2,7 +2,7 @@
 
 Pystachy compiles a statically typed subset of Python to native code through LLVM. The
 compiler is a single file, `pystachy.py`, written in that same subset: CPython can run it,
-and it can compile itself. The native compiler it produces reproduces its own 131k-line
+and it can compile itself. The native compiler it produces reproduces its own 132k-line
 LLVM IR byte for byte. Programs are ordinary Python files that print exactly what CPython
 prints, apart from a short list of documented deviations; anything Pystachy cannot run
 faithfully is rejected at compile time with a `file:line: error:` instead of miscompiled.
@@ -13,7 +13,7 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (131286 lines of IR)
+fixed point: stage1 == stage2 == stage3 (131669 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -32,10 +32,10 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 10,587 | lexer 611 · parser 1,670 · scopes (CPython's symbol-table errors) 653 · module loader 1,695 · types, tables and the definite-assignment pass 923 · type checker + IR generator 4,848 · driver 132 |
+| `pystachy.py` | 10,637 | lexer 611 · parser 1,688 · scopes (CPython's symbol-table errors) 685 · module loader 1,695 · types, tables and the definite-assignment pass 923 · type checker + IR generator 4,848 · driver 132 |
 | `runtime.c` | 2,665 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 285 programs, 377 rejection cases, 10 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 286 programs, 380 rejection cases, 10 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -298,7 +298,9 @@ of a parameter or without a binding; `yield` and `:=` in comprehensions, and a l
 function); and its compiler (`break`, `continue`, `return`, `yield`, `await` and `async` out
 of place; a bare `except:` that is not last; starred targets and more than 255 targets
 before one; `__debug__`; a late `from __future__` import; more than 21 statically nested
-blocks, counted as CPython's compiler counts them, at the line where it first finds them). When a file has several errors, Pystachy reports the one CPython
+blocks, counted as CPython's compiler counts them, at the line where it first finds them),
+also in a type parameter's bound or default and a `type` statement's value, which it compiles
+though they are evaluated lazily. When a file has several errors, Pystachy reports the one CPython
 reports: the parser's first, a tokenizer error only where the parser reaches it, then the
 symbol table's, then the compiler's. Where CPython's parser has a specific message for some
 malformed code (the statement an indented block is missing after, parenthesized
@@ -603,7 +605,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1105 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1114 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes

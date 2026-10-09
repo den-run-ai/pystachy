@@ -792,6 +792,10 @@ class Parser:
         self.ore = -1
         self.orn = mk("omit", "", 0, [])
         self.tparams: dict[int, str] = {}  # the type parameters of the generic defs and classes, by line
+        # what a generic def or class or a type statement (by line) evaluates in a scope of its own
+        # that the parser drops: its type parameters' bounds and defaults, a type alias's value, a
+        # generic def's annotations that name its type parameters (each in an "annotation" node)
+        self.tpx: dict[int, list[Node]] = {}
 
     def peek(self) -> str:
         t = self.toks[self.p]
@@ -918,6 +922,7 @@ class Parser:
                 self.stmt(body)
         st = Symtable(self.errs, self.at)
         st.tparams = self.tparams
+        st.tpx = self.tpx
         st.check(body, doc)
         return mk("block", "", 1, body)
 
@@ -964,7 +969,7 @@ class Parser:
             bases: list[Node] = []
             tps: list[str] = []
             if self.peek() == "[":
-                self.typeparams(tps)
+                self.typeparams(tps, line)
                 bases.append(mk("typeparams", "", line, []))  # class C[T]: a generic class
                 self.tparams[line] = " ".join(tps)
             if self.eat("("):
@@ -1202,7 +1207,7 @@ class Parser:
         name = self.expect("id").text
         tps: list[str] = []
         if self.peek() == "[":
-            self.typeparams(tps)
+            self.typeparams(tps, line)
             self.tparams[line] = " ".join(tps)
         if self.peek() != "(":
             self.fail("expected '('", self.line())
@@ -1218,8 +1223,10 @@ class Parser:
         # def f[T](x: T) -> T: what mentions a type parameter is left unannotated (a template)
         for p in params.kids:
             if mentions(p.kids[0], tps):
+                self.dropped(line, mk("annotation", "", line, [p.kids[0]]))
                 p.kids[0] = mk("noann", "", line, [])
         if mentions(ret, tps):
+            self.dropped(line, mk("annotation", "", line, [ret]))
             ret = mk("noann", "", line, [])
         return mk("def", name, line, [params, ret, self.scope(True)])
 
@@ -1299,8 +1306,8 @@ class Parser:
         params.s = f"{posonly},{kwonly}"
         return params
 
-    def typeparams(self, out: list[str]) -> None:
-        # [T, U: bound, *Ts, **P, V = default] after the name of a def, a class or a type alias
+    def typeparams(self, out: list[str], line: int) -> None:
+        # [T, U: bound, *Ts, **P, V = default] after the name of a def, a class or a type alias (on line)
         if self.toks[self.p + 1].kind == "]":
             self.fail("Type parameter list cannot be empty", self.line())
         self.expect("[")
@@ -1319,8 +1326,11 @@ class Parser:
             if self.eat(":"):
                 b = self.test()
                 self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
+                self.dropped(line, b)
             if self.eat("="):
-                self.scoped(self.item(), f"a {kind} default")
+                b = self.item()
+                self.scoped(b, f"a {kind} default")
+                self.dropped(line, b)
             if not self.eat(","):
                 self.expect("]")
                 break
@@ -1338,6 +1348,12 @@ class Parser:
         elif k != "lambda":
             for kid in e.kids:
                 self.scoped(kid, what)
+
+    def dropped(self, line: int, e: Node) -> None:
+        # e, which the parser drops, is compiled by the statement on line (see tpx)
+        if line not in self.tpx:
+            self.tpx[line] = []
+        self.tpx[line].append(e)
 
     def compnext(self) -> bool:
         # a comprehension's for clause follows
@@ -1365,9 +1381,11 @@ class Parser:
             name = self.expect("id").text
             tps: list[str] = []
             if self.peek() == "[":
-                self.typeparams(tps)
+                self.typeparams(tps, line)
             self.expect("=")
-            self.scoped(self.test(), "a type alias")
+            v = self.test()
+            self.scoped(v, "a type alias")
+            self.dropped(line, v)
             self.no_debug(name, line)
             return mk("typealias", name, line, [])
         if k == "pass" or k == "break" or k == "continue":
@@ -2370,6 +2388,7 @@ class SymScope:
         self.tps: dict[str, bool] = {}  # the type parameters among bound (not bound again since)
         self.tpinner: dict[str, bool] = {}  # those the scopes nested in it see
         self.code: bool = kind == "def" or kind == "lambda" or kind == "class" or kind == "typeparams" or comp == "gen"  # a code object
+        self.seeclass = False  # a scope of type parameters or of a type alias in a class body (see Symtable.comp)
         self.blocks = 0  # the blocks open in the code object around it (Symtable.depth())
         self.fin = 0  # and its finally blocks open (Symtable.fin)
         self.tuples = 0  # and the tuple displays (Symtable.tuples)
@@ -2462,6 +2481,8 @@ class Symtable:
         self.future = False  # from __future__ import annotations: annotations are not evaluated
         self.quiet = 0  # in an annotation that CPython's compiler never compiles: none of its errors
         self.tparams: dict[int, str] = {}  # see Parser.tparams
+        self.tpx: dict[int, list[Node]] = {}  # see Parser.tpx
+        self.tpann = False  # in a generic def's annotations or a generic class's bases (see comp)
         self.blocks = 0  # the blocks CPython's compiler has open in this code object (see depth())
         self.fin = 0  # the finally blocks among them (see stmt())
         # the first line in them with too many blocks only where exceptions run some of them, and its blocks
@@ -2516,8 +2537,9 @@ class Symtable:
             self.at[cat] = line
             self.keys[cat] = key
 
-    def push(self, kind: str, comp: str, isasync: bool, line: int = 0) -> SymScope:
+    def push(self, kind: str, comp: str, isasync: bool, line: int = 0, code: bool = False) -> SymScope:
         sc = SymScope(kind, comp, isasync, self.n)
+        sc.code = sc.code or code
         self.n += 1
         if sc.code:
             sc.blocks = self.blocks
@@ -2587,27 +2609,33 @@ class Symtable:
                 self.deco(d)
             blocks = self.blocks
             fin = self.fin
+            tpann = self.tpann
             if st.line in self.tparams:
                 self.blocks = 0  # (a generic def's annotations are compiled in its type parameters' scope)
                 self.fin = 0
+                self.tpann = True
             for p in st.kids[0].kids:
                 self.annotation(p.kids[0], False)
             self.annotation(st.kids[1], False)
             self.blocks = blocks
             self.fin = fin
+            self.tpann = tpann
             self.function(st)
         elif k == "class" or k == "subclass":
             c = st if k == "class" else st.kids[0]
             self.flag(c.s, SYMLOCAL)
             blocks = self.blocks
             fin = self.fin
+            tpann = self.tpann
             if c.line in self.tparams:
                 self.blocks = 0  # (and a generic class's bases)
                 self.fin = 0
+                self.tpann = True
             for b in st.kids[1:] if k == "subclass" else []:
                 self.expr(b)
             self.blocks = blocks
             self.fin = fin
+            self.tpann = tpann
             for d in c.kids[1:]:
                 self.deco(d)
             self.generic(c.line)
@@ -2682,6 +2710,7 @@ class Symtable:
             self.blocks = base
         elif k == "typealias":
             self.flag(st.s, SYMLOCAL)
+            self.dropped(st.line)
         elif k == "import":
             for a in st.kids:
                 if a.s == "*" and sc.kind != "module":
@@ -2800,11 +2829,28 @@ class Symtable:
         if line not in self.tparams:
             return
         sc = self.push("typeparams", "", False, line)
+        sc.seeclass = self.stack[-2].kind == "class"
         sc.inner = dict(sc.bound)
         sc.tpinner = dict(sc.tps)
         for nm in self.tparams[line].split():
             sc.inner[nm] = True
             sc.tpinner[nm] = True
+        self.dropped(line)
+
+    def dropped(self, line: int) -> None:
+        # what the def, class or type statement on line evaluates in scopes of its own that the
+        # parser drops (Parser.tpx): CPython compiles it with no block open around it, whether or
+        # not it runs (a type alias's value and the bounds are evaluated lazily)
+        if line not in self.tpx:
+            return
+        sc = self.push("typeparams", "", False, line)
+        sc.seeclass = self.stack[-2].kind == "class" or self.stack[-2].seeclass
+        for e in self.tpx[line]:
+            if e.kind == "annotation":
+                self.annotation(e.kids[0], False)
+            else:
+                self.expr(e)
+        self.pop()
 
     def function(self, d: Node) -> None:
         # a def's body, in a scope of its own: the names it binds are those its nested functions see
@@ -2952,12 +2998,16 @@ class Symtable:
         n = 1
         for x in [c] + c.kids[3:]:
             n += 1 if x.s == "async" and (x is c or x.kind == "compfor") else 0
-        if kind != "gen":
+        # (CPython inlines a list, set or dict comprehension, but not where it can see a class's
+        # names: in the scope of type parameters or of a type alias in a class body, where it is a
+        # function of its own, as a generator expression is)
+        own = kind == "gen" or up.seeclass or (self.tpann and up.kind == "class")
+        if not own:
             self.depth(base + n, c.line)  # (a comprehension that is inlined, and each async for clause)
         err = self.errs[2]  # (CPython's compiler checks that before it compiles the rest)
         at = self.at[2]
         key = self.keys[2]
-        sc = self.push("comp", kind, False, c.line)
+        sc = self.push("comp", kind, False, c.line, own)
         sc.coro = c.kind == "asynccomp"
         target_names(c.kids[1], sc.iters)
         self.target(c.kids[1])
