@@ -6610,6 +6610,9 @@ class Gen:
             if name in ci.methods:
                 self.err(f"{o.t}.{name} is a method: call it, {name}(...) (methods are not values)")
             if ci.exc != "":
+                sub = [c for c in self.classes.values() if c.name != o.t and name in c.ftypes and self.derives(c.name, o.t)]
+                if len(sub) > 0:
+                    self.err(f"'{short(o.t)}' object has no attribute '{name}' (it is a field of {short(sub[0].name)}, which derives from {short(o.t)}: isinstance() does not change the type of a value)")
                 self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
