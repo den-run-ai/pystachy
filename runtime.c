@@ -2297,8 +2297,9 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args o
 Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
 Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
   if (e->obj) return XCLS(e)->repr(e->obj);
-  Buf b = {0}; Str *k = e->kind, *m = e->msg; const char *dot = memrchr(k->s, '.', k->len);
-  if (dot) put(&b, dot + 1, k->s + k->len - dot - 1); else put(&b, k->s, k->len);
+  Buf b = {0}; Str *k = e->kind, *m = e->msg; const char *n = k->s + k->len;
+  while (n > k->s && n[-1] != '.') n--;  /* not memrchr: tools/dictprobe.c includes this file after <time.h> */
+  put(&b, n, k->s + k->len - n);
   put(&b, "(", 1);
   if (e->args) put(&b, e->args->s, e->args->len);
   else if (e->has_code || !strcmp(k->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
