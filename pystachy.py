@@ -8925,6 +8925,8 @@ class Gen:
             for j in range(len(hs)):
                 h = hs[j]
                 self.line = h.line
+                if h.s != "" and not self.modlevel and h.s in self.gdecl:
+                    self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
                 if sets[j] != "":
                     l = self.label()
                     nxt = self.label()
