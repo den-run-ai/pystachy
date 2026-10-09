@@ -8948,8 +8948,10 @@ class Gen:
         ret = spec[spec.find(":") + 1 :]
         if len(f.params) != n:
             self.err(f"{f.name} must take {n - 1} argument{'s' if n != 2 else ''} besides self")
-        if ret != "" and f.ret != ret:
-            self.err(f"{f.name} must return {ret}")
+        if f.name == "__bool__" and f.ret != "bool":
+            self.err(f"__bool__ should return bool, returned {tname(f.ret)}")  # (CPython's TypeError)
+        if ret != "" and f.ret != ret and not (f.name == "__len__" and f.ret == "bool"):
+            self.err(f"{f.name} must return {ret}")  # (a bool is an int to len())
         if f.name == "__format__" and f.ptypes[1] != "str":
             self.err("__format__ takes the format spec as a str")
 
@@ -9692,7 +9694,7 @@ class Gen:
         return self.arith(op, cur, self.expr(rhs, cur.t), op + "=")
 
     def objlen(self, v: Val) -> Val:
-        r = self.call_fn(self.classes[v.t].methods["__len__"], [v], [])
+        r = self.as_int(self.call_fn(self.classes[v.t].methods["__len__"], [v], []))
         self.guard(self.ins(f"icmp slt i64 {r.v}, 0"), "ValueError: __len__() should return >= 0")
         return r
 

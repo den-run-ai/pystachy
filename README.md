@@ -474,8 +474,8 @@ global read before its module's code assigns it whose first binding there is a `
 other than a constant, read while that module is still being imported; an empty container
 whose first use stores an empty `[]` or `{}` into it (`d[k] = []`); an empty list or dict
 that a template's function returns empty, used where the `list[int]` / `dict[int, int]` guess
-does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders that do not return `bool`, `__str__`/`__repr__`
-that do not return `str`, methods without `self` (or a class method without `cls`); a class
+does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders and `__bool__` that do not return `bool`, `__str__`/`__repr__`
+that do not return `str`, a `__len__` that returns neither an `int` nor a `bool`, methods without `self` (or a class method without `cls`); a class
 method's `cls` used as a value or assigned, `@staticmethod` or `@classmethod` on a special
 method, a method of objects called through its class (`C.m(o)`), and decorators other than
 these, `@dataclass` and `@overload`; an `__iter__` that is a generator, or
