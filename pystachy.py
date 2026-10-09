@@ -6381,8 +6381,9 @@ class Gen:
                     last = st.kids[0].s
                 elif last != "" and self.is_dc(ci.name):
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
-            elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
-                self.err("a class body may only contain annotated fields and methods")
+            elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
+                what = "an assignment without an annotation (X: int = 1)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
+                self.err(f"a class body may only contain annotated fields, methods, a docstring, pass and ..., not {what}")
         if self.is_dc(ci.name):
             self.dc_methods(ci)
         if "__init__" in ci.methods or ci.exc != "":
@@ -7835,7 +7836,7 @@ class Gen:
                         return f"method {b.s}() takes *args or **kwargs"
                     if i > 0 and ps[i].kids[0].kind == "noann":
                         return f"parameter '{ps[i].s}' of method {b.s}() has no type annotation"
-            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and b.kids[0].kind == "str"):
+            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and (b.kids[0].kind == "str" or b.kids[0].kind == "ellipsis")):
                 return "its body holds statements other than fields, methods and a docstring"
         return ""
 
