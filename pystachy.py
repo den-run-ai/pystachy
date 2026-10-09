@@ -7169,19 +7169,23 @@ class Gen:
         self.out.append("}")
 
     def check_special(self, f: FnInfo) -> None:
-        # the special methods Pystachy calls implicitly must have the shape it relies on
-        if f.name not in SPECIAL:
+        # the special methods Pystachy calls implicitly must have the shape it relies on; in an
+        # imported module's class, a wrong one is an error where the method is called, as is a
+        # method whose declaration failed (f.bad: its types are placeholders)
+        if f.name not in SPECIAL or f.bad != "":
             return
         self.line = f.node.line
         spec = SPECIAL[f.name]
         n = int(spec[: spec.find(":")])
         ret = spec[spec.find(":") + 1 :]
         if len(f.params) != n:
-            self.err(f"{f.name} must take {n - 1} argument{'s' if n != 2 else ''} besides self")
-        if ret != "" and f.ret != ret:
-            self.err(f"{f.name} must return {ret}")
-        if f.name == "__format__" and f.ptypes[1] != "str":
-            self.err("__format__ takes the format spec as a str")
+            f.bad = f"{f.name} must take {n - 1} argument{'s' if n != 2 else ''} besides self"
+        elif ret != "" and f.ret != ret:
+            f.bad = f"{f.name} must return {ret}"
+        elif f.name == "__format__" and f.ptypes[1] != "str":
+            f.bad = "__format__ takes the format spec as a str"
+        if f.bad != "" and self.classes[f.cls].mod == "":
+            self.err(f.bad)
 
     def scan_imports(self, body: list[Node]) -> None:
         # every import anywhere in the program, checked up front; the alias table that code
@@ -8690,8 +8694,8 @@ class Gen:
         if t not in self.classes or m not in self.classes[t].methods:
             return ""
         f = self.classes[t].methods[m]
-        if len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes)):
-            return m
+        if f.bad != "" or (len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes))):
+            return m  # (a method that cannot be compiled: the call reports why)
         return ""
 
     def isnull(self, v: Val) -> str:

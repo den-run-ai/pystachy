@@ -1,4 +1,4 @@
-# Functions and classes Pystachy cannot compile: errors only where a program uses them.
+# Functions, classes and methods Pystachy cannot compile: errors only where a program uses them.
 class Base:
     def __init__(self, v: int) -> None:
         self.v = v
@@ -89,3 +89,19 @@ class Weights:
 class Cell:
     def __init__(self) -> None:
         self.held: int | None = None
+
+
+class Bag:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self):
+        return self.n
+
+
+class Pair:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Pair) and other.x == self.x
