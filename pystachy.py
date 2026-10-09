@@ -14348,7 +14348,11 @@ def main() -> None:
         # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
-        code = sh(f"{fast} {q(ll)} -o {q(bc)} && PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
+        # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the compiler's
+        # (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing their compilation
+        gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
+        env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
+        code = sh(f"{fast} {q(ll)} -o {q(bc)} && {env}PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
     for p in [ll, bc, obj, rll, part]:
         if os.path.exists(p):
             os.remove(p)
