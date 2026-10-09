@@ -5056,12 +5056,17 @@ def only_none(body: list[Node], name: str) -> bool:
     for st in body:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             continue
-        if stmt_binds(st, name) and not (st.kind == "assign" and st.kids[-1].kind == "None" and assigns(st, name)):
+        if stmt_binds(st, name) and not (st.kind == "assign" and nonexpr(st.kids[-1]) and assigns(st, name)):
             return False  # (also a, name = None, None)
         for kid in st.kids:
             if kid.kind == "block" and not only_none(kid.kids, name):
                 return False
     return True
+
+
+def nonexpr(e: Node) -> bool:
+    # is e None, or a conditional expression of None in both arms
+    return e.kind == "None" or (e.kind == "ifexp" and nonexpr(e.kids[1]) and nonexpr(e.kids[2]))
 
 
 def assigns(st: Node, name: str) -> bool:
@@ -8248,6 +8253,7 @@ class Gen:
             eb = self.elsebrk
             self.elsekids = n.kids[2 if k == "for" else 1].kids
             self.elsebrk = self.label()
+            self.elsebrks = []  # (a loop over () has no body to compile)
             lb = self.elsebrk
             if k == "for":
                 self.for_(n, [])
@@ -9133,6 +9139,7 @@ class Gen:
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}"]), o.t)
         if k == "list":
             et = elem(want) if is_list(want) and "?" not in want else ""
+            soft = n is self.soft  # (an operand of ==: as its items are, see compare)
             items: list[Val] = []
             given = et != ""
             jt = ""
@@ -9144,9 +9151,9 @@ class Gen:
                 items.append(v)
             if not given and is_opt(jt):
                 et = jt  # None among strings (or T | None among T): T | None
-            if given and n is self.soft:
+            if given and soft:
                 for v in items:
-                    et = self.wider(et, v.t) or et  # (an operand of ==: as its items are)
+                    et = self.wider(et, v.t) or et
             if et == "" or et == "None":
                 self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
             items = [self.coerce(v, et) for v in items]
@@ -9156,6 +9163,7 @@ class Gen:
             return Val(r, f"list[{et}]")
         if k == "dict":
             kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
+            soft = n is self.soft
             ks: list[Val] = []
             vs: list[Val] = []
             given = kv[1] != ""
@@ -9172,7 +9180,7 @@ class Gen:
                 vs.append(b)
             if not given and is_opt(jt):
                 kv[1] = jt  # None among strings (or T | None among T): T | None
-            if given and n is self.soft:
+            if given and soft:
                 for b in vs:
                     kv[1] = self.wider(kv[1], b.t) or kv[1]
             if kv[0] == "" or kv[1] == "":

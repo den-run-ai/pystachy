@@ -19,7 +19,7 @@ def ors(s: str) -> None:
 def conds(c: bool, d: bool) -> None:
     x = "a" if c else ("b" if d else None)
     y = None if c else None
-    print(x, y is None, "p" if c else None if d else "q")
+    print(x, y is None, "p" if c else None if d else "q", y)
 
 
 def scope(x: str | None, ys: list[str | None]) -> None:

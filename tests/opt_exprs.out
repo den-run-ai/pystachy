@@ -1,8 +1,8 @@
 g
 s None  x
-a True p
-None True q
-b True None
+a True p None
+None True q None
+b True None None
 <a> [None, 'b'] 1
 b None
 [None] (None, 1) {'a': None}
