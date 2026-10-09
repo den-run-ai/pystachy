@@ -267,21 +267,19 @@ def pys_str_replace(s: str, a: str, b: str) -> str:
             at += len(b) + 1
         _rt.copy(r, at, b, 0, len(b))
         return _rt.str_done(r)
-    k = 0
+    pos: list[int] = []  # where a occurs: one search pass, not one to count and one to copy
     j = search(s, a, 0, n) if len(a) <= n else -1
     while j >= 0:
-        k += 1
+        pos.append(j)
         j = search(s, a, j + len(a), n) if n - j - len(a) >= len(a) else -1
-    r = _rt.str_new(n + k * (len(b) - len(a)))
+    r = _rt.str_new(n + len(pos) * (len(b) - len(a)))
     i = 0
     at = 0
-    j = search(s, a, 0, n) if k > 0 else -1
-    while j >= 0:
+    for j in pos:
         _rt.copy(r, at, s, i, j - i)
         _rt.copy(r, at + j - i, b, 0, len(b))
         at += j - i + len(b)
         i = j + len(a)
-        j = search(s, a, i, n) if n - i >= len(a) else -1
     _rt.copy(r, at, s, i, n - i)
     return _rt.str_done(r)
 
@@ -417,7 +415,7 @@ def mapcase(s: str, how: int) -> str:
     else:
         for i in range(n):
             c = _rt.byte(s, i)
-            _rt.str_put(r, i, c ^ 32 if lowc(c) or upc(c) else c)
+            _rt.str_put(r, i, c ^ 32 if lowc(c | 32) else c)  # a letter of either case: one range test
     return _rt.str_done(r)
 
 
@@ -514,6 +512,18 @@ def pad(s: str, w: int, fill: str, how: int) -> str:
         return s
     gap = w - n
     left = 0 if how == 1 else gap if how == 0 else gap // 2 + (gap & w & 1)  # CPython's centering
+    if len(f) == 1:
+        # one byte: stores that LLVM turns into memset, and calls small enough to inline
+        if gap > 9223372036854775807 - len(s):
+            raise MemoryError
+        c = _rt.byte(f, 0)
+        r = _rt.str_new(len(s) + gap)
+        for i in range(left):
+            _rt.str_put(r, i, c)
+        _rt.copy(r, left, s, 0, len(s))
+        for i in range(left + len(s), len(s) + gap):
+            _rt.str_put(r, i, c)
+        return _rt.str_done(r)
     if gap > (9223372036854775807 - len(s)) // len(f):
         raise MemoryError
     r = _rt.str_new(len(s) + gap * len(f))
@@ -726,6 +736,10 @@ def pys_str_splitlines(s: str, keep: int) -> list[str]:
     i = 0
     st = 0
     while i < len(s):
+        c = _rt.byte(s, i)
+        if c > 30 and c != 194 and c != 226:
+            i += 1  # no line break starts with c
+            continue
         k = eol(s, i)
         if k == 0:
             i += 1
