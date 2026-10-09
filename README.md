@@ -481,7 +481,9 @@ non-iterator of type 'list'`; and `iter(d.keys())`, `values()` or `items()`, who
 raises if the dict changes size: `iter(list(d.keys()))` copies them), and a call of it (`o.__iter__()`); iterating over an object,
 or `x in o`, by its `__getitem__` alone (CPython's old sequence protocol), and `reversed()`
 of an object; an `==` or `!=` between objects of
-different classes, which CPython would reflect to the right operand's `__eq__`; calling a
+different classes, which CPython would reflect to the right operand's `__eq__`, and between
+values of other types that cannot be equal (`1 == "1"`, or an `int | None` and a `str | None`,
+which CPython finds equal only when both are `None`); calling a
 builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
 CPython would reject at run time); `range()`, `enumerate()`, `zip()` or `reversed()` nested
 inside `enumerate()`, `zip()` or `reversed()` in a `for` loop, and `zip(strict=...)`;
