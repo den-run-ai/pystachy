@@ -3431,6 +3431,8 @@ class Loader:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.simplify(m, kid, inner)
+                    elif kid.kind == "except":
+                        self.simplify(m, kid.kids[1], inner)
                 self.pos = pos
                 self.fs = fs
                 self.fsure = fsure
@@ -3953,6 +3955,8 @@ class Loader:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
+                    elif kid.kind == "except":
+                        self.imports(m, kid.kids[1], infn)
                 self.curdef = saved
             if not infn:
                 # (the statements in st's blocks took theirs above, but as they were before their
@@ -4369,6 +4373,12 @@ class Loader:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.qstmts(m, kid.kids, loc, False)
+                    elif kid.kind == "except":
+                        # except E as e: E is read, and e bound, like any other name
+                        self.qexpr(m, kid.kids[0], loc)
+                        if kid.s != "":
+                            kid.s = self.qname(m, kid.s, loc)
+                        self.qstmts(m, kid.kids[1].kids, loc, False)
                     else:
                         self.qexpr(m, kid, loc)
 
@@ -4964,12 +4974,16 @@ def targets(st: Node, out: dict[str, bool]) -> None:
 
 
 def collect(body: list[Node], out: dict[str, bool]) -> None:
-    # Python's rule: a name assigned anywhere in a function is local to it
+    # Python's rule: a name assigned anywhere in a function is local to it (except ... as e too)
     for st in body:
         targets(st, out)
         for kid in st.kids:
             if kid.kind == "block":
                 collect(kid.kids, out)
+            elif kid.kind == "except":
+                if kid.s != "":
+                    out[kid.s] = True
+                collect(kid.kids[1].kids, out)
 
 def top_bindings(body: list[Node]) -> dict[str, int]:
     # how many module-level statements bind each name (imports aside)
@@ -5069,6 +5083,8 @@ def all_imports(body: list[Node], out: list[str]) -> None:
         for kid in st.kids:
             if kid.kind == "block":
                 all_imports(kid.kids, out)
+            elif kid.kind == "except":
+                all_imports(kid.kids[1].kids, out)
 
 
 def top_imports(body: list[Node]) -> list[str]:
@@ -5082,11 +5098,14 @@ def top_imports(body: list[Node]) -> list[str]:
             for kid in st.kids:
                 if kid.kind == "block":
                     out.extend(top_imports(kid.kids))
+                elif kid.kind == "except":
+                    out.extend(top_imports(kid.kids[1].kids))
     return out
 
 
 def deleted(body: list[Node], out: dict[str, bool]) -> None:
-    # the names that del statements in body unbind (not in functions)
+    # the names that del statements in body unbind (not in functions), and the end of an except
+    # clause that binds a name (except E as e: e is unbound after it)
     for st in body:
         if st.kind == "del":
             names: list[str] = []
@@ -5099,6 +5118,10 @@ def deleted(body: list[Node], out: dict[str, bool]) -> None:
             for kid in st.kids:
                 if kid.kind == "block":
                     deleted(kid.kids, out)
+                elif kid.kind == "except":
+                    if kid.s != "":
+                        out[kid.s] = True
+                    deleted(kid.kids[1].kids, out)
 
 
 def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
@@ -5124,6 +5147,12 @@ def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
         for kid in st.kids:
             if kid.kind == "block" and st.kind != "def" and st.kind != "class":
                 none_assigns(kid.kids, out)
+            elif kid.kind == "except":
+                if kid.s != "":
+                    if kid.s not in out:
+                        out[kid.s] = []
+                    out[kid.s].append(mk("omit", "", kid.line, []))
+                none_assigns(kid.kids[1].kids, out)
 
 
 def local_names(body: list[Node], out: dict[str, bool]) -> None:
@@ -5144,6 +5173,8 @@ def globals_in(body: list[Node], out: dict[str, bool]) -> None:
         for kid in st.kids:
             if kid.kind == "block":
                 globals_in(kid.kids, out)
+            elif kid.kind == "except":
+                globals_in(kid.kids[1].kids, out)
 
 
 def stmt_binds(st: Node, name: str) -> bool:
@@ -5182,6 +5213,8 @@ def typed_default(body: list[Node], d: Node, ret: bool) -> bool:
             return v.kids[0].kind == "attr" and (v.kids[0].s == "get" or v.kids[0].s == "setdefault")
         for kid in st.kids:
             if kid.kind == "block" and typed_default(kid.kids, d, ret):
+                return True
+            if kid.kind == "except" and typed_default(kid.kids[1].kids, d, ret):
                 return True
     return False
 
@@ -6261,6 +6294,8 @@ class Gen:
             for kid in st.kids:
                 if kid.kind == "block":
                     self.scan_fields(ci, f, kid.kids)
+                elif kid.kind == "except":
+                    self.scan_fields(ci, f, kid.kids[1].kids)
 
     def guess(self, e: Node, f: FnInfo) -> str:
         k = e.kind
@@ -6679,12 +6714,15 @@ class Gen:
     def live_blocks(self, st: Node) -> list[Node]:
         # the blocks of statement st that a static test (see static) does not leave out: of an if
         # decided here the branch that runs, of a while loop whose test is false its else block
+        # (and the bodies of a try statement's except clauses)
         s = self.static_now(st.kids[0]) if st.kind == "if" or st.kind == "while" else -1
         bs: list[Node] = []
         for i in range(len(st.kids)):
             kid = st.kids[i]
             if kid.kind == "block" and not (st.kind == "if" and s >= 0 and i == (2 if s == 1 else 1)) and not (st.kind == "while" and s == 0 and kid.s != "else"):
                 bs.append(kid)
+            elif kid.kind == "except":
+                bs.append(kid.kids[1])
         return bs
 
     def static_now(self, n: Node) -> int:
@@ -6859,6 +6897,8 @@ class Gen:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.fills(kid.kids, name, found)
+                    elif kid.kind == "except":
+                        self.fills(kid.kids[1].kids, name, found)
 
     def fill_calls(self, n: Node, name: str, found: list[Node]) -> None:
         # name.append(v), insert(i, v), extend(xs), setdefault(k, v), get(k, v) anywhere in n
@@ -8087,6 +8127,8 @@ class Gen:
             for k in st.kids:
                 if k.kind == "block":
                     self.scan_imports(k.kids)
+                elif k.kind == "except":
+                    self.scan_imports(k.kids[1].kids)
             if st.kind == "def" or st.kind == "class":
                 self.scan_imports(st.kids[-1].kids if st.kind == "class" else st.kids[2].kids)
 
