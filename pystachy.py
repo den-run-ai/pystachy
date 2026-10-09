@@ -11879,6 +11879,8 @@ class Gen:
                 rev = self.reverse_arg(a.kids[0], name)
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
+        if name == "sum" and len(vals) == 2 and (vals[0].t in self.classes or is_tuple(vals[0].t) or is_dict(vals[0].t)):
+            vals[0] = self.as_list(vals[0], "sum")  # (sum(o, start) iterates o once start is evaluated)
         if name == "round" and len(vals) == 2 and vals[1].t == "None":
             vals = vals[:1]  # round(x, None) is round(x)
         elif name == "round" and len(vals) == 2 and is_sopt(vals[1].t) and (unopt(vals[0].t) == "int" or unopt(vals[0].t) == "bool"):
