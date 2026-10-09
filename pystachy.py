@@ -8486,6 +8486,7 @@ class Gen:
                 fl.undo(mark)
                 for nm in bdels:
                     fl.drop(nm)
+                self.fl_expr(fl, h.kids[0])  # (its classes are read when an exception gets to it)
                 if h.s != "":
                     fl.put(h.s)
                     fl.unb.append(h.s)
@@ -8960,6 +8961,10 @@ class Gen:
                 self.line = h.line
                 if h.s != "" and not self.modlevel and h.s in self.gdecl:
                     self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
+                for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else h.kids[:0]:
+                    if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
+                        # a class whose class statement may not have run yet
+                        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c.s}.def')}, true"), self.unbound(c.s))
                 if sets[j] != "":
                     l = self.label()
                     nxt = self.label()
