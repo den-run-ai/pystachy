@@ -6218,7 +6218,10 @@ class Gen:
             r = f"dict[{self.dry(found[0])},{it}]"
         if "?" in r or "None" in targs(r):
             return ""
+        here = self.line
+        self.line = e.line  # (a key type a dict cannot have is the fill's error)
         self.refine(name, r)
+        self.line = here
         return r
 
     def unfilled(self, name: str) -> bool:
