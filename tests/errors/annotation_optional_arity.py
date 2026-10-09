@@ -1,4 +1,4 @@
-# error: annotation_optional_arity.py:11: error: too many arguments for typing.Optional; actual 2, expected 1
+# error: annotation_optional_arity.py:11: error: typing.Optional requires a single type (CPython evaluates this annotation when the def statement runs
 # typing.Optional takes one type: Optional[C, int] is a TypeError where the def runs.
 from typing import Optional
 

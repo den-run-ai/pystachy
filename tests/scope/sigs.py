@@ -126,7 +126,8 @@ class Probe:
     def __init__(self) -> None:
         self.x = self.helper()
 
-    def scan(self, xs: Iterable[int] = mk()) -> int:
+    def scan(self, xs: Iterable[int] = sorted([2, 1])) -> int:
+        # (a default that calls the program's code, mk(), is an error in a class left out)
         return 0
 
 
