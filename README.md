@@ -434,30 +434,31 @@ binds itself that is also the name of a submodule the program imports, read as `
 with `from pkg import util` or in the package's functions, when which of the two it is
 depends on when the submodule is first imported; a
 template whose returns have different types (or `None` and an `int`, `float` or `bool`, or
-`None` and an empty `[]` or `{}` that it does not fill), or that calls itself before a return
-statement decides its type (or, after a return of a `T`, before a return of `None` makes it
-return `T | None`); `int | None`, `float | None` and `bool | None` (they would need boxing),
-and dict key types that may be `None`; a value that may be `None` where CPython would pass it
-on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed or assigned where a
-`list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the container could then be
-given a `None` that its other references do not expect), and an argument that may be `None`
-of a builtin function other than `len()`, `int()`, `float()`, `ord()`, `dict()`, `sum()`,
-`os.system()`, `os.path.exists()` and those that take `None`; a read that needs the type of
-a local that only `None` has been assigned so far, where no other value assigned to it can
-be typed yet and the context expects none (annotate it: `x: T | None = None`); an empty
-`[]` or `{}` assigned to a local first assigned `None`, a list display of only `None` items
-(`[None] * n`) or a dict display of only `None` values whose type only later code would
-show, and an empty list that `append(None)` fills first (annotate them); a module global
-first assigned `None` whose other values in module code cannot be typed where it is first
-assigned (`for w in ws: last = w`), or that only functions or other modules give another
-value (annotate it at module level: `last: str | None = None`); in a template's function, a
-use of a parameter whose argument is `None` as a value (`s.upper()`, `xs[0]`; `len()`,
-`int()`, `float()` and `ord()` of it raise CPython's error when they run), also in a branch
-that does not run for that call; a parameter whose argument is
-`None` given a value of another type in an if branch or loop, or bound as a `for` target; an
-alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
-than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
-`raise` of anything but a builtin exception.
+`None` and an empty `[]` or `{}` that it does not fill), or that calls itself before a
+return statement decides its type (or, after a return of a `T`, before a return of `None`
+makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
+boxing), and dict key types that may be `None`; a value that may be `None` where CPython
+would pass it on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed or
+assigned where a `list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the
+container could then be given a `None` that its other references do not expect), and an
+argument that may be `None` of a builtin function other than `len()`, `int()`, `float()`,
+`ord()`, `dict()`, `sum()`, `os.system()`, `os.path.exists()` and those that take `None`; a
+read that needs the type of a local that only `None` has been assigned so far, where no
+other value assigned to it can be typed yet and the context expects none (annotate it:
+`x: T | None = None`); an empty `[]` or `{}` assigned to a local first assigned `None`, a
+list display of only `None` items (`[None] * n`, `print([None])`) or a dict display of only
+`None` values that no annotation or other operand gives a type, and an empty list that
+`append(None)` fills first (annotate them); a module global first assigned `None` whose
+other values in module code cannot be typed where it is first assigned
+(`for w in ws: last = w`), or that only functions or other modules give another value
+(annotate it at module level: `last: str | None = None`); in a template's function, a use of
+a parameter whose argument is `None` as a value (`s.upper()`, `xs[0]`; `len()`, `int()`,
+`float()` and `ord()` of it raise CPython's error when they run), also in a branch that does
+not run for that call; a parameter whose argument is `None` given a value of another type in
+an if branch or loop, or bound as a `for` target; an alias (`f = g`) that module-level code
+uses before its assignment; `__all__` changed other than by `+=`, `append` and `extend`, for
+`import *`; `del` of another module's attribute; `raise` of anything but a builtin
+exception.
 
 ## How it works
 
