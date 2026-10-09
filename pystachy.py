@@ -9161,9 +9161,20 @@ class Gen:
             if f.ll[1:] in RTSYM and rt_subset(RTSYM[f.ll[1:]], ts) != "":
                 # (the same LLVM types, but another layout: a tuple of two strs for one of three)
                 self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
+            self.untold(f, ts, "defined")
         del self.building[f.ll]
         self.fn.n = self.n
         self.fns.append(self.fn)
+
+    def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
+        # a function of runtime mode that runtime.c calls or defines and RUNTIME does not name
+        # (the dict's string hash, the format of a str): only LLVM's types check it (rtabi,
+        # check_runtime), which tell int, float and a pointer apart, not a list from a str. So it
+        # passes those alone
+        if f.ll[1:] not in RTSYM:
+            for t in ts:
+                if t not in ("int", "float", "str", "None"):
+                    self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str or None")
 
     # ---- lowering: an IFn as LLVM text
     def lower(self, fn: IFn) -> None:
@@ -10127,6 +10138,7 @@ class Gen:
                     self.runtime(f.ll[1:])
                     self.externs[f.ll] = ""
                 else:
+                    self.untold(f, [f.ret] + f.ptypes, "declared")
                     self.externs[f.ll] = f"declare {have[0]} {f.ll}({', '.join(have[1:])})"
             elif not f.generic and f.ll not in self.compiled:
                 self.function(f, f.node.kids[2].kids)
@@ -14588,17 +14600,13 @@ def main() -> None:
     # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
     # compile runtime.py differently, and the bootstrap checks that its stages do not
     me = argv[0]
-    if "/" not in me and not me.endswith(".py"):
-        # run through PATH: the first directory that holds it as a file, as the shell searched ("" is
-        # the current directory; p/. exists only for a directory p). CPython opens a script in the
-        # current directory, without a search
-        for d in os.getenv("PATH", "").split(":"):
-            p = (d if d != "" else ".") + "/" + me
-            if os.path.exists(p) and not os.path.exists(p + "/."):
-                me = p
-                break
     fresh = f"test {q(rtb)} -nt {q(rtc)} && test {q(rtb)} -nt {q(rtpy)}"
-    if os.path.exists(me):
+    if "/" not in me and not me.endswith(".py"):
+        # run through PATH: the shell's own search finds the executable it ran (command -v; none
+        # found compares as older, so the cache is rebuilt). CPython opens a script in the current
+        # directory, without a search
+        fresh = fresh + f' && test {q(rtb)} -nt "$(command -v {q(me)})"'
+    elif os.path.exists(me):
         fresh = fresh + f" && test {q(rtb)} -nt {q(me)}"
     rtir = ""
     if sh(f"mkdir -p {q(home + '/build')} && {fresh}") != 0:

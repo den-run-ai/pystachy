@@ -35,8 +35,8 @@ compiler builds for runtime.py, in this process:
   - signatures: its definition has the entry's types (runtime.c may only declare it, with them);
     the compiler also checks the subset types, which LLVM's do not tell apart;
   - effects: R if it may raise in the runtime the driver builds (runtime.py linked with runtime.c
-    and optimized with opt -O2): a raise it reaches there that opt could not remove, but those of
-    the subset's index, divisor, shift and conversion checks (BUG_ONLY), which fire only on a bug
+    and optimized with opt -O2): a raise statement, or a raise it reaches there that opt could not
+    remove, but those of the subset's index, divisor, shift and conversion checks (BUG_ONLY), which fire only on a bug
     of runtime.py, as runtime.c's unchecked indexing would misbehave; an overflow check counts,
     as CPython raises OverflowError for a result too long too (replace, join), and a MemoryError
     is A. A if it allocates, U if it runs user code, I if it does I/O: through the runtime
@@ -506,11 +506,17 @@ def main():
         lfns, lmsgs = linked(rpy_ir, tmp)
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
     writes = {}
+    used = state(ll)
+    pure = set(PURE_C)
+    PURE_C.update(rpy_ops)  # (while runtime.py's own functions get their letters, below)
+    via = {}  # a function of runtime.c that runtime.py declares -> runtime.py's functions it calls
     for f, ops in rpy_ops.items():
         m = set()
         if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f)):
             m.add("R")
         for op, x, d in ops:
+            if op == "raise":
+                m.add("R")  # (an explicit raise statement, whatever its message)
             if op == "rt" and pys.rtsym(x) not in rpy_ops:
                 e = rt[x]
                 ls = e[e.find("|") + 1 : e.rfind("|")].split()
@@ -527,6 +533,9 @@ def main():
                     m.add("A")
                 if reaches(fns, x[1:], USER, set()):
                     m.add("U")
+                if uses_state(fns, used, x[1:]):
+                    m.add("I")
+                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
         letters[f] = m
         # (whether it may write memory it did not allocate: an rt op that writes lists, dicts,
         # objects, globals or files, or a function of runtime.c it declares)
@@ -538,19 +547,21 @@ def main():
         for f, ops in rpy_ops.items():
             for op, x, _ in ops:
                 g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
-                if g in letters and g != f and (not letters[g] <= letters[f] or writes[g] and not writes[f]):
-                    letters[f] |= letters[g]
-                    writes[f] = writes[f] or writes[g]
-                    more = True
+                for h in via.get(g, set()) | {g}:
+                    if h in letters and h != f and (not letters[h] <= letters[f] or writes[h] and not writes[f]):
+                        letters[f] |= letters[h]
+                        writes[f] = writes[f] or writes[h]
+                        more = True
     # runtime.c calls some of them (hsh calls pys_hash_str): to the analysis of runtime.c below,
     # one that uses no state is as a pure C library function, and one that writes nothing it was
     # given only reads its arguments (runtime mode has no globals)
+    PURE_C.clear()
+    PURE_C.update(pure)
     for f in rpy_ops:
         if "I" not in letters[f]:
             PURE_C.add(f)
         if not writes[f]:
             READS_ONLY.add(f)
-    used = state(ll)
     eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1"))
     with tempfile.TemporaryDirectory() as tmp:
         libc = [pys.rtsym(k) for k in rt if not pys.rtsym(k).startswith(("pys_", "llvm."))]
