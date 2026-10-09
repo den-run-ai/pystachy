@@ -2367,6 +2367,17 @@ Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without it
   else if (m->len) repr_str(&b, m);
   put(&b, ")", 1); return done(&b);
 }
+Str *pys_exc_ostr(void *obj) { return (*(ExcClass **)obj)->str(obj); }    /* str(e) of a user exception object */
+Str *pys_exc_orepr(void *obj) { return (*(ExcClass **)obj)->repr(obj); }  /* and repr(e) */
+Str *pys_exc_name(Exc *e) { int n; const char *k = exc_name(e, &n); return pys_str(k, n); }   /* type(e).__name__ */
+Str *pys_exc_cls(void *obj) {          /* and of a user exception object, which may be None */
+  int n; const char *k = obj ? short_name((*(ExcClass **)obj)->disp, &n) : "NoneType";
+  return obj ? pys_str(k, n) : cstr(k);
+}
+Str *pys_exc_brepr(void *obj, Str *args) {   /* BaseException.__repr__ of one: its class's name, then (args) */
+  Buf b = {0}; int n; const char *k = short_name((*(ExcClass **)obj)->disp, &n);
+  put(&b, k, n); put(&b, "(", 1); put(&b, args->s, args->len); put(&b, ")", 1); return done(&b);
+}
 I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1B\1" */
   Str *k = e->kind;
   for (const char *p = names->s, *end = p + names->len; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)

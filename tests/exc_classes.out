@@ -1,0 +1,23 @@
+AppError() AppError('one') AppError('two', 2)
+[] [one] [('two', 2)]
+cfg ConfigError('cfg', [1, 2])
+<Coded 7 Coded('x')> x 7 coded
+<Coded 9 Coded('x')>
+Lookup('k') 'k'  ('a', 'b')
+Plain(5) 5 5
+12
+parse: empty ParseError('empty') line 4
+detailed: bad number 'x1' at line 4:3 DetailedError("bad number 'x1'") 4 3 line 4
+as ValueError: empty ParseError('empty')
+as Exception: bad number 'zz' at line 1:3
+config: missing
+app: <Coded 7 Coded()>
+app: AppError('base')
+class raised: ConfigError()
+lookup: 'key'
+[AppError('a'), ConfigError('b'), <Coded 7 Coded('c')>]
+['a', 'b', 'c']
+wrapped
+reraised: ParseError('inner')
+x at line 1:2 line 1
+[exit 1]
