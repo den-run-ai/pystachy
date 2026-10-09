@@ -708,6 +708,16 @@ def as_target(n: Node) -> Node:
     return n
 
 
+def name_targets(t: Node) -> bool:
+    # whether the targets of an assignment are only names, which no store to another can change
+    if t.kind == "tuple":
+        for k in t.kids:
+            if not name_targets(k):
+                return False
+        return True
+    return t.kind == "name"
+
+
 # CPython's name for an expression in its "cannot assign to" errors (_PyPegen_get_expr_name)
 EXPRNAMES: dict[str, str] = {
     "attr": "attribute", "index": "subscript", "slice": "subscript", "starred": "starred", "name": "name", "list": "list",
@@ -7851,13 +7861,21 @@ class Gen:
         elif k == "tuple" and is_opt(v.t):
             self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
         elif k == "tuple" and (is_list(v.t) or v.t == "str"):
-            # a, b = xs: the length is checked when it runs, as CPython does
+            # a, b = xs: the length is checked when it runs, as CPython does. CPython takes every
+            # item before it stores the first, so where a store may change the list (xs[1], xs[0] =
+            # xs, or a __setitem__ that empties it), the items are all read first
             self.rt("pys_unpack_check", "void", [f"i64 {self.ins(f'load i64, ptr {v.v}')}", f"i64 {len(t.kids)}"])
+            first = v.t != "str" and not name_targets(t)
+            items: list[Val] = []
             for i in range(len(t.kids)):
                 if v.t == "str":
                     self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
+                elif first:
+                    items.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
                 else:
                     self.assign(t.kids[i], self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
+            for i in range(len(items)):
+                self.assign(t.kids[i], items[i])
         elif k == "tuple" and v.t in self.nts:
             # a, b = p: a NamedTuple's fields in order
             fs = self.classes[v.t].fields
