@@ -12261,7 +12261,7 @@ class Gen:
             self.ret_(Val("null", "None"))
             self.place(l2)
         if name == "SystemExit":
-            self.exit_(vals)
+            self.exit_(vals, False)
             return
         if self.eh:
             self.throw(self.exc_value("OSError" if name == "IOError" or name == "EnvironmentError" else name, vals))
@@ -12303,11 +12303,35 @@ class Gen:
         kind = self.sconst(name) if name in EXCBASES else ""  # (an exception class of the program's is its own)
         if name == "OSError" and (no.t == "int" or no.t == "bool"):
             kind = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(no).v}"])
+        elif name == "OSError" and is_sopt(no.t) and (unopt(no.t) == "int" or unopt(no.t) == "bool"):
+            # (an errno that may be None: OSError itself if it is)
+            l1 = self.label()
+            l2 = self.label()
+            l3 = self.label()
+            self.cbr(self.isnull(no), l1, l2)
+            self.place(l1)
+            self.br(l3)
+            self.place(l2)
+            k = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(self.deref(no)).v}"])
+            b2 = self.cur
+            self.br(l3)
+            self.place(l3)
+            ph = Ins("phi", "str", "")
+            self.incoming(ph, kind, l1)
+            self.incoming(ph, k, b2)
+            kind = self.phi(ph)
         msg = self.cat(Val(self.sconst("[Errno "), "str"), self.to_str(no))
         msg = self.cat(self.cat(msg, Val(self.sconst("] "), "str")), self.to_str(vals[1]))
         args = self.cat(self.cat(self.repr(no), Val(self.sconst(", "), "str")), self.repr(vals[1]))
         if len(vals) == 3 and vals[2].t == "None":
             args = self.cat(args, Val(self.sconst(", None"), "str"))
+        elif len(vals) == 3 and is_opt(vals[2].t):
+            # (a filename that may be None: in args if it is, else in str(e))
+            nn = self.isnull(vals[2])
+            na = self.cat(args, Val(self.sconst(", None"), "str"))
+            fm = self.cat(self.cat(msg, Val(self.sconst(": "), "str")), self.repr(vals[2]))
+            args = Val(self.select(nn, na, args), "str")
+            msg = Val(self.select(nn, msg, fm), "str")
         elif len(vals) == 3:
             msg = self.cat(self.cat(msg, Val(self.sconst(": "), "str")), self.repr(vals[2]))
         return [kind, msg.v, args.v]
@@ -12344,12 +12368,14 @@ class Gen:
             e = self.rt("pys_exc_detail", "ptr", [f"ptr {e}", f"ptr {detail}"])
         return Val(e, "exc")
 
-    def exit_(self, vals: list[Val]) -> None:
-        # sys.exit(code) and raise SystemExit(code): None is status 0, an int is the status, and
-        # anything else is printed to stderr with status 1. In a program that has a try, a code
+    def exit_(self, vals: list[Val], sysx: bool) -> None:
+        # sys.exit(code) (sysx) and raise SystemExit(code): None is status 0, an int is the status,
+        # and anything else is printed to stderr with status 1. In a program that has a try, a code
         # whose str() or repr() the runtime would not show as CPython's (None, a bool, several
-        # arguments, anything but an int or a str) is thrown as the exception exit_value makes
-        if self.eh and (len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str" and vals[0].t not in self.classes)):
+        # arguments, anything but an int or a str) is thrown as the exception exit_value makes; a
+        # value that may be None (an object, or T | None) is tested first, and then is its T
+        opt = len(vals) == 1 and (vals[0].t in self.classes or is_opt(vals[0].t))
+        if self.eh and not opt and (len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str")):
             self.throw(self.exit_value(vals))
             return
         if len(vals) > 1:
@@ -12366,13 +12392,14 @@ class Gen:
                 self.cbr(self.isnull(vals[0]), l1, l2)
                 self.place(l1)
                 if self.eh:
-                    self.throw(self.no_code())
+                    # (sys.exit(None) is SystemExit(), but SystemExit(None) keeps its None, see exit_value)
+                    self.throw(self.no_code() if sysx else self.exit_value([Val("null", "None")]))
                 else:
                     self.rt("pys_exit", "void", ["i64 0"])
                     self.unreachable()
                 self.place(l2)
-            if is_sopt(vals[0].t):
-                self.exit_([self.deref(vals[0])])  # (an int is the status)
+            if is_sopt(vals[0].t) or (self.eh and is_opt(vals[0].t)):
+                self.exit_([self.deref(vals[0])], sysx)  # (an int is the status)
                 return
             if self.eh and vals[0].t != "str":
                 self.throw(self.exc_value("SystemExit", vals))
@@ -12394,6 +12421,25 @@ class Gen:
         if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None"):
             s = self.to_str(vals[0]).v
             return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
+        if len(vals) == 1 and is_opt(vals[0].t):
+            # a value that may be None: SystemExit(None), or the exception of the value it holds
+            l1 = self.label()
+            l2 = self.label()
+            l3 = self.label()
+            self.cbr(self.isnull(vals[0]), l1, l2)
+            self.place(l1)
+            e1 = self.exit_value([Val("null", "None")])
+            b1 = self.cur
+            self.br(l3)
+            self.place(l2)
+            e2 = self.exit_value([self.deref(vals[0])])
+            b2 = self.cur
+            self.br(l3)
+            self.place(l3)
+            ph = Ins("phi", "exc", "")
+            self.incoming(ph, e1.v, b1)
+            self.incoming(ph, e2.v, b2)
+            return Val(self.phi(ph), "exc")
         return self.exc_value("SystemExit", vals)
 
     def exc_object(self, c: str, args: list[Node]) -> Val:
@@ -12467,13 +12513,23 @@ class Gen:
         if self.derives(c, "SystemExit"):
             code = "0"
             hc = "true" if len(vals) == 0 or not coded else "false"
-            if len(vals) == 1 and coded:
-                t = vals[0].t
-                if t == "int" or t == "bool":
-                    code = self.as_int(vals[0]).v
-                hc = "true" if t == "int" or t == "bool" or t == "None" else self.isnull(vals[0]) if t in self.classes else "false"
+            t = vals[0].t if len(vals) == 1 and coded else ""
+            if t == "int" or t == "bool":
+                code = self.as_int(vals[0]).v
+            if t != "":
+                # (an int | None or a bool | None is a status, 0 if it is None; another value that
+                # may be None is one only if it is None)
+                st = t == "int" or t == "bool" or t == "None" or (is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool"))
+                hc = "true" if st else self.isnull(vals[0]) if t in self.classes or is_opt(t) else "false"
             self.setfield(o, self.field(o, " code"), " code", Val(code, "int"))
             self.setfield(o, self.field(o, " hc"), " hc", Val(hc, "bool"))
+            if is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool"):
+                l1 = self.label()
+                l2 = self.label()
+                self.cbr(self.isnull(vals[0]), l2, l1)
+                self.place(l1)
+                self.setfield(o, self.field(o, " code"), " code", self.as_int(self.deref(vals[0])))
+                self.place(l2)
 
     def exc_of(self, v: Val) -> Val:
         # the exception that raises exception object v
@@ -15555,7 +15611,7 @@ class Gen:
             if len(vals) == 1 and vals[0].t in self.classes and self.derives(vals[0].t, "SystemExit"):
                 self.throw(self.exc_of(vals[0]))  # (a SystemExit itself is raised as it is)
                 return Val("null", "None")
-            self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [])
+            self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [], True)
             return Val("null", "None")
         if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
             return vals[0]  # a str path is its own file system path

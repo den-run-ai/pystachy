@@ -1,0 +1,25 @@
+SystemExit() ''
+SystemExit(None) 'None'
+SystemExit() ''
+SystemExit() ''
+Quit None Quit(None)
+Stop None Stop(None) stop
+finally 0
+caught 0
+SystemExit(1) '1'
+SystemExit(1) '1'
+SystemExit(True) 'True'
+SystemExit('msg1') 'msg1'
+Quit 1 Quit(1)
+Stop 1 Stop(1) stop
+finally 1
+caught 1
+SystemExit(2) '2'
+SystemExit(2) '2'
+SystemExit(False) 'False'
+SystemExit('msg2') 'msg2'
+Quit 2 Quit(2)
+Stop 2 Stop(2) stop
+finally 2
+caught 2
+[exit 3]
