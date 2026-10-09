@@ -5871,13 +5871,19 @@ class Gen:
         # and in those they hold: a def decorated with @overload is a stub that the def after it
         # replaces, so it is dropped; x: Final = v is x = v outside class bodies, x: Final[T] is x: T
         out: list[Node] = []
+        defs: dict[str, bool] = {}
         for st in body:
             stub = False
             for d in st.kids[3:] if st.kind == "def" else []:
                 root = d.s[: d.s.find(".")] if "." in d.s else d.s
                 stub = stub or (self.imported(m.q + root) or self.imported(root)) + d.s[len(root) :] == "typing.overload"
+            if stub and st.s in defs:
+                self.line = st.line
+                self.err(f"an @overload stub after the definition of '{short(st.s)}' is not supported (it would replace it)")
             if stub:
                 continue
+            if st.kind == "def":
+                defs[st.s] = True
             a = st.kids[1] if st.kind == "annassign" else st
             if a.kind == "index" and self.typing_ref(a.kids[0]) == "Final":
                 st.kids[1] = a.kids[1]
