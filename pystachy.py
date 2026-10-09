@@ -10662,13 +10662,16 @@ def main() -> None:
     rtc = home + "/runtime.c"
     if not os.path.exists(rtc):
         fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
-    # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link;
-    # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags
+    # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link.
+    # The runtime is compiled with them and then -fexceptions (so they cannot drop it): a raise unwinds
+    # through runtime functions to compiled code's landing pads, which -O2 would turn back into calls
+    # if clang marked them nounwind. Each such set of flags caches its own runtime, named by a 32-bit
+    # FNV-1a hash of it, so a runtime cached without -fexceptions is never used
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
     key = 2166136261
-    for c in " ".join(flags):
+    for c in " ".join(flags + ["-fexceptions"]):
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
-    rtb = home + ("/build/runtime.bc" if len(flags) == 0 else f"/build/runtime-{key:08x}.bc")
+    rtb = home + f"/build/runtime-{key:08x}.bc"
     cflags = "".join([" " + q(a) for a in flags])
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
@@ -10690,9 +10693,9 @@ def main() -> None:
     f.write(ir)
     f.close()
     msg = ""
-    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
+    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
     if code == 0 and cmd == "run":
-        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} && mv -f {q(part)} {q(rto)})")
+        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} -fexceptions && mv -f {q(part)} {q(rto)})")
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
     if code != 0:
         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
