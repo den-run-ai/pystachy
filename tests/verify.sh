@@ -11,6 +11,8 @@
 #   ubsan          PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
 #                  compiler built that way reproduces the IR, and every test passes AOT-built with it
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
+#   check-ir       tools/check_ir.sh: llvm-as accepts the IR of every program of the corpus (the tests,
+#                  the benchmarks, the tests/ir probes and the compiler itself)
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
@@ -140,6 +142,11 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
 } > "$L" 2>&1
 x=$(tests "$V/ubsan-aot.log" "$V/ubsan-jit.log") && [ $built = 1 ] && r=pass
 step ubsan $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll")$x"
+
+# ---- check-ir: the IR of every program of the corpus is valid LLVM
+L=$V/check-ir.log; s=$(now); r=fail
+tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
+step check-ir $r "$s" "$L" "$(sed -n 's/^llvm-as accepts the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
 
 # ---- gc-stress: collections far more often than the collector would run them
 L=$V/gc-stress.log; s=$(now); r=fail

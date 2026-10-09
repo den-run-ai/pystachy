@@ -3,7 +3,8 @@
 # of the corpus, from the repository root as tests/run.sh runs them, and must print the same LLVM
 # IR byte for byte, the same messages (all of a tests/errors/*.py rejection) and the same exit status.
 # The corpus is pystachy.py (first: it takes longest), tests/*.py, tests/deviations/*.py, bench/*.py,
-# tests/ir/*.py and tests/errors/*.py. tests/ir/*.py probe code-generation paths the others never
+# tests/ir/*.py and tests/errors/*.py, with PYSTACHY_PATH from NAME.path where it exists, as
+# tests/run.sh runs them. tests/ir/*.py probe code-generation paths the others never
 # take: they are only compiled (here and by tools/check_ir.sh), never run. tests/ir/pending/ holds
 # the probes of open compiler bugs, which are not part of the corpus until the fix moves them up.
 # The programs run in PYSTACHY_JOBS workers (default: one per CPU), each taking the next program
@@ -31,8 +32,9 @@ trap 'exit 130' INT TERM
 
 # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
 same() {
-  $OLD ir "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
-  $NEW ir "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
+  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
+  PYSTACHY_PATH=$mp $OLD ir "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
+  PYSTACHY_PATH=$mp $NEW ir "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
   {
     [ $a = $b ] || echo "  exit status $a -> $b"
     if ! cmp -s "$2/old.msg" "$2/new.msg"; then

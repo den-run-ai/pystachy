@@ -35,7 +35,7 @@ needs `PYSTACHY_HOME` set to the checkout.
 | `pystachy.py` | 10,128 | lexer 611 · parser 1,658 · scopes (CPython's symbol-table errors) 544 · module loader 1,513 · types, tables and the definite-assignment pass 886 · type checker + IR generator 4,734 · driver 132 |
 | `runtime.c` | 2,665 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 270 programs, 320 rejection cases, 10 deviation cases | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 270 programs, 320 rejection cases, 10 deviation cases, 6 IR probes | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -580,6 +580,7 @@ versions, platform, git commit and a timestamp:
   and itself, reproduces the IR and passes the tests;
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
+- **check-ir** — `llvm-as` accepts the IR of every program of the corpus below;
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
@@ -593,6 +594,18 @@ versions, platform, git commit and a timestamp:
   functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
   comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
   items its builtin calls copy or scan, must grow no faster than the programs.
+
+`tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both
+compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviations/*.py`,
+`bench/*.py` and `tests/ir/*.py`) and must emit the same IR byte for byte, and for each
+`tests/errors/*.py` the same messages and exit status. `make irsame REF=<commit>` (default
+`HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
+`./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` runs
+`llvm-as` on the IR of every program of the corpus. `tests/ir/*.py` probe code-generation
+paths the other programs never take (dead code after `return`, templates instantiated during
+a look-ahead, nested templates, guards repeated in one function): these two tools compile
+them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
+need only POSIX sh, run in `PYSTACHY_JOBS` workers, and take a few seconds.
 
 `tools/syntax_sweep.py` compares the syntax errors `pystachy check` reports with CPython's
 `compile()`: over CPython 3.13's standard library and the installed packages (5,701 files)

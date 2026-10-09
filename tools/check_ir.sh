@@ -25,7 +25,8 @@ trap 'exit 130' INT TERM
 
 # check FILE DIR: DIR/result is ok, skip (does not compile) or bad; DIR/msg says why
 check() {
-  if ! $PYS ir "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then r=skip
+  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
+  if ! PYSTACHY_PATH=$mp $PYS ir "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then r=skip
   elif "${LLVM}llvm-as" -o /dev/null < "$2/ir.ll" > "$2/msg" 2>&1; then r=ok
   else r=bad; fi
   rm -f "$2/ir.ll"
