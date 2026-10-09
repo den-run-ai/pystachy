@@ -12,8 +12,8 @@
 @f.ping: R A I rF wF
 @f.pong: R A I rF wF
 @f.both: R A rL wL
-@m.P.__init__: wL wD wO
-@m.P.__eq__: R rL rD rO
-@o.eq.P: R rL rD rO
+@m.P.__init__: wO
+@m.P.__eq__: R rO
+@o.eq.P: R rO
 @o.cmp.P: R
 @o.repr.P: A

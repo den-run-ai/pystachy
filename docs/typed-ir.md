@@ -27,9 +27,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
 >     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
 >     U and I. A raw op's letters are what its text shows (`rawfx`): none for a slot's load or
->     store (an alloca is never address-taken), rG or wG for a global's, and rL rD rO or wL wD wO
->     through any other address, where the text does not tell a field from a list's or a dict's
->     header (or a new tuple's items, which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
+>     store (an alloca is never address-taken), rG or wG for a global's, rO or wO for an object's
+>     field or flag (an address from `getelementptr %C.<class>`, `Gen.fields`), and rL rD rO or
+>     wL wD wO through any other address (a list's or a dict's header, or a new tuple's items,
+>     which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
 >     computes it, once the program is built (`Gen.opfx` gives one op's letters). The passes of
 >     §7.1 read the summaries, and so do `PYSTACHY_IRCHECK=1` and `PYSTACHY_IRFX=1`, which
 >     prints them (`fxs` spells them) as the passes left them: `tests/ir/effects.fx` lists those of the `effects.py` probe, and

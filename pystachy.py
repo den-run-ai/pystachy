@@ -4758,8 +4758,9 @@ def runtime_decl(k: str) -> str:
 
 # every effect letter but N (it is no summary's): U's, and a summary not computed yet
 FXALL = (1 << len(FX)) - 1 - FXBIT["N"]
-# what a raw op that loads or stores through an address other than a slot's or a global's may
-# read or write: a list's or a dict's header or items, an object's fields and flags
+# what a raw op that loads or stores through an address other than a slot's, a global's or a
+# field's may read or write: a list's or a dict's header or items (or a tuple's items, which need
+# no letter); and an object's fields, for an address the IR does not show to be a field's
 RAWR = FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"]
 RAWW = FXBIT["wL"] | FXBIT["wD"] | FXBIT["wO"]
 
@@ -4797,11 +4798,11 @@ def optimizations() -> dict[str, bool]:
     return on
 
 
-def rawfx(s: str) -> int:
+def rawfx(s: str, fa: dict[str, bool]) -> int:
     # the effects (FX bits) of a raw op, whose LLVM text s loads, stores or computes: a load or a
     # store of a slot (%name.N, an alloca, which is never address-taken) has none, of a global
-    # (@name) rG or wG; one through another address may read (RAWR) or write (RAWW) a list, a
-    # dict or an object (or a tuple, which needs no letter, but the text does not tell them apart)
+    # (@name) rG or wG, of an object's field or flag (an address in fa, Gen.fields) rO or wO; one
+    # through another address may read (RAWR) or write (RAWW) a list or a dict
     st = s.startswith("store ")
     if not st and " = load " not in s:
         return 0
@@ -4810,6 +4811,8 @@ def rawfx(s: str) -> int:
         return FXBIT["wG"] if st else FXBIT["rG"]
     if "." in a:
         return 0  # (a temporary, %tN, has no dot)
+    if a in fa:
+        return FXBIT["wO"] if st else FXBIT["rO"]
     return RAWW if st else RAWR
 
 
@@ -7436,16 +7439,17 @@ class Gen:
         for fn in self.fns:
             m = 0
             cs: list[int] = []
+            fa = self.fields(fn)
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "raw":
-                        m |= rawfx(i.s)
+                        m |= rawfx(i.s, fa)
                     elif i.op == "call" and i.s in self.fll:
                         cs.append(self.fll[i.s])
                     elif i.op == "init" and "@init." + i.s in self.fll:
                         cs.append(self.fll["@init." + i.s])
                     else:
-                        m |= self.opfx(i)
+                        m |= self.opfx(i, fa)
             fn.fx = m & ~FXBIT["N"]
             calls.append(cs)
         more = True
@@ -7459,10 +7463,19 @@ class Gen:
                     self.fns[j].fx = m
                     more = True
 
-    def opfx(self, i: Ins) -> int:
-        # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx:
-        # every letter until effects has computed it, and if the callee is not compiled), a raw
-        # op's what its text does (rawfx)
+    def fields(self, fn: IFn) -> dict[str, bool]:
+        # the values of fn that are addresses of an object's field or flag (getelementptr %C.<class>)
+        fa: dict[str, bool] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "raw" and " = getelementptr %C." in i.s:
+                    fa[i.s[: i.s.find(" = ")]] = True
+        return fa
+
+    def opfx(self, i: Ins, fa: dict[str, bool]) -> int:
+        # the effects of op i (FX bits) of a function whose field addresses are fa (fields): a
+        # call's and an init's are its callee's summary (IFn.fx: every letter until effects has
+        # computed it, and if the callee is not compiled), a raw op's what its text does (rawfx)
         if i.op == "call" or i.op == "init":
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else FXALL
@@ -7470,7 +7483,7 @@ class Gen:
             f = self.rtfns[i.s]
             return FXALL if f.q and "O" in i.x else f.fx
         if i.op == "raw":
-            return rawfx(i.s)
+            return rawfx(i.s, fa)
         return self.opfxs[i.op]
 
     # ---- optimizations (OPTS): passes over an IFn, once the program is built and its effect
@@ -7506,6 +7519,7 @@ class Gen:
         for j in range(len(fn.blocks)):
             at[fn.blocks[j].label] = j
         np = self.preds(fn)
+        fa = self.fields(fn)
         bad = FXBIT["wL"] | FXBIT["U"]
         n = 0
         for lp in fn.loops:
@@ -7526,7 +7540,7 @@ class Gen:
                             fn.n += 3
                             n += 1
                             break
-                        if self.opfx(i) & bad != 0:
+                        if self.opfx(i, fa) & bad != 0:
                             break
                         if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and np[i.b[0]] == 1:
                             l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)

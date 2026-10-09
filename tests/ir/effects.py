@@ -1,8 +1,8 @@
 # Effect summaries (IFn.fx): tools/check_ir.sh compiles this with PYSTACHY_IRFX=1, which prints
 # each function's letters (FX), and compares them with effects.fx. A raw op (a load, a store or
 # arithmetic, until steps 10 to 12 make them ops) has the letters its text shows: none for a
-# slot's load or store, rG or wG for a global's, rL rD rO or wL wD wO through another address
-# (an object's field, as in P.__init__ and P.__eq__).
+# slot's load or store, rG or wG for a global's, rO or wO for an object's field's (P.__init__,
+# P.__eq__), and rL rD rO or wL wD wO through any other address (a list's or a dict's header).
 import sys
 
 
