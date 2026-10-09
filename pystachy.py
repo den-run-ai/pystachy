@@ -750,6 +750,23 @@ def bad_target(n: Node, delete: bool, out: list[Node]) -> None:
         out.append(n)
 
 
+def deep_comp(e: Node, d: int) -> int:
+    # the line of the first list, set or dict comprehension in expression e that is CPython's 22nd
+    # statically nested block, with d blocks around e (0: none): Symtable.blocks' count for the
+    # expressions the parser drops. A comprehension's first iterable is outside it; a generator
+    # expression's inside and a lambda's body start a count of their own
+    k = e.kind
+    comp = k == "listcomp" or k == "nestedcomp" or k == "asynccomp"
+    if comp and e.s != "gen" and d >= 21:
+        return e.line
+    line = 0
+    for i in range(len(e.kids)):
+        x = deep_comp(e.kids[i], 0 if k == "lambda" and i == 1 else d if not comp or i == 2 else 0 if e.s == "gen" else d + 1)
+        if x > 0 and (line == 0 or x < line):
+            line = x
+    return line
+
+
 STARTS: dict[str, bool] = {}
 for _k in "id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None True False lambda yield await".split():
     STARTS[_k] = True
@@ -778,6 +795,7 @@ class Parser:
         self.ore = -1
         self.orn = mk("omit", "", 0, [])
         self.tparams: dict[int, str] = {}  # the type parameters of the generic defs and classes, by line
+        self.lazy = False  # from __future__ import annotations: annotations are not compiled
 
     def peek(self) -> str:
         t = self.toks[self.p]
@@ -1199,6 +1217,8 @@ class Parser:
         self.no_debug(name, line)
         for a in [p.kids[0] for p in params.kids] + [ret] if len(tps) > 0 else []:
             self.scoped(a, "the definition of a generic")
+            if not self.lazy:
+                self.own_blocks(a)  # (also those dropped below)
         # def f[T](x: T) -> T: what mentions a type parameter is left unannotated (a template)
         for p in params.kids:
             if mentions(p.kids[0], tps):
@@ -1301,8 +1321,11 @@ class Parser:
             if self.eat(":"):
                 b = self.test()
                 self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
+                self.own_blocks(b)
             if self.eat("="):
-                self.scoped(self.item(), f"a {kind} default")
+                b = self.item()
+                self.scoped(b, f"a {kind} default")
+                self.own_blocks(b)
             if not self.eat(","):
                 self.expect("]")
                 break
@@ -1320,6 +1343,13 @@ class Parser:
         elif k != "lambda":
             for kid in e.kids:
                 self.scoped(kid, what)
+
+    def own_blocks(self, e: Node) -> None:
+        # e, which the parser drops, is evaluated in a scope of its own: CPython's compiler counts
+        # its blocks from 0 (see Symtable.blocks)
+        line = deep_comp(e, 0)
+        if line > 0:
+            self.later(2, "too many statically nested blocks", line)
 
     def compnext(self) -> bool:
         # a comprehension's for clause follows
@@ -1349,7 +1379,9 @@ class Parser:
             if self.peek() == "[":
                 self.typeparams(tps)
             self.expect("=")
-            self.scoped(self.test(), "a type alias")
+            v = self.test()
+            self.scoped(v, "a type alias")
+            self.own_blocks(v)
             self.no_debug(name, line)
             return mk("typealias", name, line, [])
         if k == "pass" or k == "break" or k == "continue":
@@ -1376,7 +1408,12 @@ class Parser:
                 if not self.eat(","):
                     return n
         if k == "import" or k == "from":
-            return self.import_(line)
+            n = self.import_(line)
+            if future:
+                for a in n.kids:
+                    if a.kids[0].s == "__future__.annotations":
+                        self.lazy = True
+            return n
         if k == "assert":
             self.p += 1
             n = mk("assert", "", line, [self.test()])
@@ -2285,8 +2322,9 @@ class Parser:
 # CPython's symbol table does (global and nonlocal statements, yield in comprehensions), then
 # its analysis does (the bindings nonlocal statements name), then its compiler does (yield, await
 # and async outside a function or an async def, async comprehensions, starred targets and values,
-# in the order it compiles them, but not in the annotations it never compiles), and reports the
-# first error of the first of those. A name's flags in a scope, as CPython's symbol table has them:
+# more than 21 statically nested blocks, in the order it compiles them, but not in the annotations
+# it never compiles), and reports the first error of the first of those. A name's flags in a
+# scope, as CPython's symbol table has them:
 SYMPARAM = 1
 SYMUSE = 2
 SYMLOCAL = 4
@@ -2314,6 +2352,7 @@ class SymScope:
         self.inner: dict[str, bool] = {}  # those the scopes nested in it see
         self.tps: dict[str, bool] = {}  # the type parameters among bound (not bound again since)
         self.tpinner: dict[str, bool] = {}  # those the scopes nested in it see
+        self.depth = 0  # the statically nested blocks around the statement or expression walked (see blocks)
 
 
 def target_names(t: Node, out: dict[str, bool]) -> None:
@@ -2482,15 +2521,23 @@ class Symtable:
                 self.expr(p.kids[1])
             for d in st.kids[3:]:
                 self.deco(d)
+            depth = sc.depth
+            if st.line in self.tparams:
+                sc.depth = 0  # (a generic def's annotations are evaluated in a scope of their own)
             for p in st.kids[0].kids:
                 self.annotation(p.kids[0], False)
             self.annotation(st.kids[1], False)
+            sc.depth = depth
             self.function(st)
         elif k == "class" or k == "subclass":
             c = st if k == "class" else st.kids[0]
             self.flag(c.s, SYMLOCAL)
+            depth = sc.depth
+            if c.line in self.tparams:
+                sc.depth = 0  # (and a generic class's bases)
             for b in st.kids[1:] if k == "subclass" else []:
                 self.expr(b)
+            sc.depth = depth
             for d in c.kids[1:]:
                 self.deco(d)
             self.generic(c.line)
@@ -2545,18 +2592,23 @@ class Symtable:
             if k == "augassign" and t.kind == "name" and t.s == "__debug__":
                 self.note(2, "cannot assign to __debug__", t.line)  # (x.__debug__ += 1 is valid)
         elif k == "for":
+            self.blocks(1, st.line)
             self.target(st.kids[0])
             self.expr(st.kids[1])
             self.store(st.kids[0])
-            for b in st.kids[2:]:
-                self.stmts(b.kids)
+            self.stmts(st.kids[2].kids)
+            self.blocks(-1, 0)
+            for b in st.kids[3:]:
+                self.stmts(b.kids)  # (the else block)
         elif k == "with":
             for it in st.kids[:-1]:
                 self.expr(it.kids[0])
+                self.blocks(1, st.line)  # (each item's block holds the items after it)
                 if len(it.kids) == 2:
                     self.target(it.kids[1])
                     self.store(it.kids[1])
             self.stmts(st.kids[-1].kids)
+            self.blocks(1 - len(st.kids), 0)
         elif k == "typealias":
             self.flag(st.s, SYMLOCAL)
         elif k == "import":
@@ -2570,14 +2622,26 @@ class Symtable:
         else:
             if k == "return" and len(st.kids) > 0 and sc.gen:
                 self.note(2, "'return' with value in async generator", st.line)
+            # the blocks of a while loop (its test and body) and of a try statement (its body and
+            # handlers, in one more if it has a finally block, as its else block is; each handler's
+            # body; its finally block)
+            x = 1 if k == "try" and st.kids[-1].s == "finally" and st.kids[1].kind == "except" else 0
             for kid in st.kids:
+                n = 0
+                if k == "while" or k == "try":
+                    n = 1 + x
+                    if kid.kind == "block" and kid.s != "":
+                        n = x if kid.s == "else" else 1
+                self.blocks(n, st.line)
                 if kid.kind == "block":
                     self.stmts(kid.kids)
                 elif kid.kind == "except":
                     self.expr(kid.kids[0])
                     if kid.s != "":
                         self.flag(kid.s, SYMLOCAL)
+                    self.blocks(1, kid.line)
                     self.stmts(kid.kids[1].kids)
+                    self.blocks(-1, 0)
                 elif kid.kind == "pattern":
                     for nm in kid.s.split():
                         self.flag(nm, SYMLOCAL)
@@ -2585,6 +2649,17 @@ class Symtable:
                         self.expr(g)
                 else:
                     self.expr(kid)
+                self.blocks(-n, 0)
+
+    def blocks(self, n: int, line: int) -> None:
+        # n more of CPython's statically nested blocks around what follows in the scope (n < 0:
+        # fewer): loops, the items of with statements, try statements and their handlers, list, set
+        # and dict comprehensions, and the body of a generator or coroutine. Its compiler allows 21
+        # in a module, class or function (a lambda or generator expression starts a count too)
+        sc = self.stack[-1]
+        sc.depth += n
+        if n > 0 and sc.depth > 21:
+            self.note(2, "too many statically nested blocks", line)
 
     def deco(self, d: Node) -> None:
         if len(d.kids) > 0:
@@ -2650,6 +2725,8 @@ class Symtable:
                 sc.inner[nm] = True
         self.rebind(sc, own)
         sc.gen = isasync and has_kind(d.kids[2], "yield")
+        if isasync or has_kind(d.kids[2], "yield"):
+            sc.depth = 1  # (CPython's compiler puts a generator's or coroutine's body in a block)
         self.stmts(d.kids[2].kids)
         self.pop()
         if d.line in self.tparams:
@@ -2751,10 +2828,12 @@ class Symtable:
         up.iterexpr += 1
         self.expr(c.kids[2])
         up.iterexpr -= 1
+        self.blocks(0 if kind == "gen" else 1, c.line)  # (a generator expression is a function of its own)
         err = self.errs[2]  # (CPython's compiler checks that before it compiles the rest)
         at = self.at[2]
         key = self.keys[2]
         sc = self.push("comp", kind, False)
+        sc.depth = 0 if kind == "gen" else up.depth
         sc.coro = c.kind == "asynccomp"
         target_names(c.kids[1], sc.iters)
         self.target(c.kids[1])
@@ -2771,6 +2850,7 @@ class Symtable:
                 self.expr(x)
         self.expr(c.kids[0])
         self.pop()
+        self.blocks(0 if kind == "gen" else -1, 0)
         if sc.coro and kind != "gen":
             if up.kind != "comp" and not ((up.kind == "def" or up.kind == "lambda") and up.coro) and self.quiet == 0:
                 self.errs[2] = err
@@ -4152,15 +4232,20 @@ class Loader:
                 self.qexpr(m, n.kids[0], loc)
         elif k == "listcomp":
             # [element for target in iterable if condition]: the target's names are the comprehension's
+            # (added to loc while the rest is qualified, not to a copy: loc has all of a function's locals)
             self.qexpr(m, n.kids[2], loc)
-            inner = dict(loc)
             names: list[str] = []
             names_in(n.kids[1], names)
+            added: list[str] = []
             for nm in names:
-                inner[nm] = True
+                if nm not in loc:
+                    loc[nm] = True
+                    added.append(nm)
             for i in range(len(n.kids)):
                 if i != 2:
-                    self.qexpr(m, n.kids[i], inner)
+                    self.qexpr(m, n.kids[i], loc)
+            for nm in added:
+                del loc[nm]
         else:
             for kid in n.kids:
                 self.qexpr(m, kid, loc)
@@ -4609,6 +4694,33 @@ def llstr(s: str) -> str:
     return "".join(out)
 
 
+def hpush(h: list[int], x: int) -> None:
+    # h is a binary min-heap (heapq's layout)
+    h.append(x)
+    i = len(h) - 1
+    while i > 0 and h[(i - 1) // 2] > x:
+        h[i] = h[(i - 1) // 2]
+        i = (i - 1) // 2
+    h[i] = x
+
+
+def hpop(h: list[int]) -> int:
+    top = h[0]
+    x = h.pop()
+    if len(h) > 0:
+        i = 0
+        while 2 * i + 1 < len(h):
+            c = 2 * i + 1
+            if c + 1 < len(h) and h[c + 1] < h[c]:
+                c += 1
+            if x <= h[c]:
+                break
+            h[i] = h[c]
+            i = c
+        h[i] = x
+    return top
+
+
 def hexn(v: int, n: int) -> str:
     s = ""
     for i in range(n):
@@ -4678,6 +4790,14 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
         for nm in names:
             count[nm] = count.get(nm, 0) + 1
     return count
+
+
+def name_nodes(n: Node, out: dict[str, bool]) -> None:
+    # the names of every name node in n
+    if n.kind == "name":
+        out[n.s] = True
+    for k in n.kids:
+        name_nodes(k, out)
 
 
 def has_kind(n: Node, kind: str) -> bool:
@@ -4985,6 +5105,7 @@ class ClassInfo:
         self.name = name
         self.node = node
         self.fields: list[str] = []
+        self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
         self.fglob: dict[str, str] = {}
@@ -4996,11 +5117,20 @@ class ClassInfo:
 
 class Flow:
     # definite assignment over one scope: which reads may find their variable unassigned
-    def __init__(self, tracked: dict[str, bool], defd: dict[str, bool], top: bool):
+    def __init__(self, tracked: dict[str, bool], defd: dict[str, bool]):
         self.tracked = tracked
         self.defd = defd  # names assigned on every path to here; " dead" marks unreachable code
-        self.top = top
-        self.brks: list[dict[str, bool]] = []
+        # every change to defd since the start, so that a branch is undone in the time it took
+        # (not by copying defd): the key, and whether it was in defd before
+        self.log: list[str] = []
+        self.was: list[bool] = []
+        # the innermost loop, if it is a while True (left only through break): what the states at
+        # its breaks so far have in common (see fold)
+        self.btrue = False
+        self.bjoin: dict[str, bool] = {}  # the keys whose common state is not their state where the loop began: that state
+        self.bany = False  # a break was folded
+        self.bwas: dict[str, bool] = {}  # the keys changed in the loop: whether each was in defd where it began
+        self.bnew: dict[str, bool] = {}  # the keys changed since the last break (or since the loop began)
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -5016,17 +5146,102 @@ class Flow:
                 if "." + f not in self.defd:
                     self.unsafe[f] = True
 
-    def join(self, other: dict[str, bool]) -> None:
-        if " dead" in other:
+    def put(self, k: str) -> None:
+        if k not in self.defd:
+            if self.btrue:
+                self.touch(k, False)
+            self.defd[k] = True
+            self.log.append(k)
+            self.was.append(False)
+
+    def drop(self, k: str) -> None:
+        if k in self.defd:
+            if self.btrue:
+                self.touch(k, True)
+            del self.defd[k]
+            self.log.append(k)
+            self.was.append(True)
+
+    def touch(self, k: str, was: bool) -> None:
+        # k changes in a while True loop: the next break looks at it (see fold)
+        if k not in self.bwas:
+            self.bwas[k] = was
+        self.bnew[k] = True
+
+    def undo(self, mark: int) -> None:
+        # back to the state when the log had mark entries
+        while len(self.log) > mark:
+            k = self.log.pop()
+            if self.btrue:
+                self.bnew[k] = True
+            if self.was.pop():
+                self.defd[k] = True
+            else:
+                del self.defd[k]
+
+    def since(self, mark: int) -> dict[str, bool]:
+        # the state now, as the keys changed since the log had mark entries, each with whether
+        # it is in defd (the other keys are as they were then), and " dead" in any case
+        out: dict[str, bool] = {}
+        for i in range(mark, len(self.log)):
+            out[self.log[i]] = self.log[i] in self.defd
+        out[" dead"] = " dead" in self.defd
+        return out
+
+    def fold(self) -> None:
+        # a break leaves the innermost loop, a while True, in the state here: bjoin keeps what
+        # the states at its breaks have in common, for the keys where that is not their state
+        # where the loop began. Only the keys changed since the last break need a look: the
+        # others are as they were there, so what they have in common stays
+        for k in self.bnew:
+            v = k in self.defd and (not self.bany or (self.bjoin[k] if k in self.bjoin else self.bwas[k]))
+            if v != self.bwas[k]:
+                self.bjoin[k] = v
+            elif k in self.bjoin:
+                del self.bjoin[k]
+        self.bnew = {}
+        self.bany = True
+
+    def join(self, other: dict[str, bool], mark: int) -> None:
+        # another path reaches here, in the state since(mark) gave for it: a name stays assigned
+        # if it is on both paths (or on the one that is not dead)
+        if other[" dead"]:
             return
         if " dead" in self.defd:
-            self.defd = dict(other)
+            # only the other path goes on: the state at mark, changed as it changed it
+            self.undo(mark)
+            for k in other:
+                if other[k]:
+                    self.put(k)
+                else:
+                    self.drop(k)
             return
-        out: dict[str, bool] = {}
-        for k in self.defd:
-            if k in other:
-                out[k] = True
-        self.defd = out
+        pre: dict[str, bool] = {}
+        for i in range(mark, len(self.log)):
+            if self.log[i] not in pre:
+                pre[self.log[i]] = self.was[i]
+        end = len(self.log)
+        for k in other:
+            if not other[k]:
+                self.drop(k)
+        for k in pre:
+            if not pre[k] and k not in other:
+                self.drop(k)
+        # the log since mark keeps one entry for each key not in its state at mark: the changes
+        # that cancel out (a key assigned on this path alone) are not looked at again by the
+        # joins of the enclosing ifs (an elif chain would cost its length times its last branch)
+        for i in range(end, len(self.log)):
+            if self.log[i] not in pre:
+                pre[self.log[i]] = self.was[i]
+        n = mark
+        for k in pre:
+            if (k in self.defd) != pre[k]:
+                self.log[n] = k
+                self.was[n] = pre[k]
+                n += 1
+        while len(self.log) > n:
+            self.log.pop()
+            self.was.pop()
 
 
 # ---------------------------------------------------------------- code generator
@@ -5063,6 +5278,8 @@ class Gen:
         self.nn: dict[str, bool] = {}
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
+        self.lazyat: dict[str, int] = {}  # each lazy function's position in lazy, once it is complete
+        self.wake: list[int] = []  # a min-heap of the positions of those called and not yet compiled
         self.called: dict[str, bool] = {}
         self.gflag: dict[str, bool] = {}
         self.ocls: dict[str, int] = {}  # classes that appear inside containers: id in descriptors
@@ -5086,6 +5303,7 @@ class Gen:
         self.late: dict[str, bool] = {}
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
+        self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
@@ -5561,6 +5779,7 @@ class Gen:
             if ci.ftypes[name] != t:
                 self.err(f"field '{name}' redeclared with a different type")
             return
+        ci.fpos[name] = len(ci.fields)
         ci.fields.append(name)
         ci.ftypes[name] = t
 
@@ -5742,7 +5961,7 @@ class Gen:
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
-        i = ci.fields.index(name)
+        i = ci.fpos[name]
         return Val(self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}"), ci.ftypes[name])
 
     def getfield(self, o: Val, p: Val, name: str) -> Val:
@@ -5819,8 +6038,9 @@ class Gen:
             self.err(f"class '{name}' cannot be used as a value (class attributes are read through an instance)")
         if name in self.fglobals:
             self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
-        if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.reaches(owner(name), self.curfn.mod, {}):
-            # (see ahead)
+        if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.comp[owner(name)] == self.comp[self.curfn.mod]:
+            # (see ahead; this module imports that one, as it reads its global: that module imports
+            # this one back if both are in one component of the import graph)
             self.err(f"'{short(name)}' of module {owner(name)} is read here while that module is still being imported (a circular import), when only its constants (NAME = literal) can be read: read it in a function that runs after the import")
         if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited:
             # no cycle: this module imports it later (in a function), so its code is compiled later
@@ -6723,8 +6943,25 @@ class Gen:
             imps: list[str] = []
             all_imports(m.body.kids, imps)
             self.deps[m.name] = " ".join(imps)
+        # the import graph's strongly connected components (see user_call)
+        num: dict[str, int] = {}
+        low: dict[str, int] = {}
+        stack: list[str] = []
+        for m in mods:
+            if m.name not in num:
+                self.scc(m.name, num, low, stack)
+        # each module's functions and classes, in the order they were declared
+        mfns: dict[str, list[FnInfo]] = {}
+        mcls: dict[str, list[ClassInfo]] = {}
+        for m in mods:
+            mfns[m.name] = []
+            mcls[m.name] = []
+        for f in self.funcs.values():
+            mfns[f.mod].append(f)
+        for ci in self.classes.values():
+            mcls[ci.mod].append(ci)
         for i in range(len(mods)):
-            self.flow_program(tops[i], mods[i].name)
+            self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name])
         for nm in self.gflag:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
@@ -6776,7 +7013,14 @@ class Gen:
                 elif f.ll not in self.lazy and f.ll not in self.compiled:
                     self.function(f, f.node.kids[2].kids)
         # generate on demand: dataclass methods that were called, and helpers for classes that
-        # appear inside containers (which can make more of both necessary)
+        # appear inside containers (which can make more of both necessary). Each pass compiles,
+        # in the order of lazy, the functions called by the time it gets to them: it takes their
+        # positions from wake (call_fn adds them), so that it costs what it compiles
+        lz = [x for x in self.lazy.values()]
+        for i in range(len(lz)):
+            self.lazyat[lz[i].ll] = i
+            if lz[i].ll in self.called:
+                hpush(self.wake, i)
         done: dict[str, bool] = {}
         helped: dict[str, bool] = {}
         while True:
@@ -6785,11 +7029,19 @@ class Gen:
                 if c not in helped:
                     helped[c] = True
                     self.obj_helpers(c)
-            for f in [x for x in self.lazy.values()]:
-                if f.ll in self.called and f.ll not in done:
-                    done[f.ll] = True
-                    if f.ll not in self.compiled:
-                        self.function(f, f.node.kids[2].kids)
+            at = -1
+            later: list[int] = []
+            while len(self.wake) > 0:
+                i = hpop(self.wake)
+                if i <= at:
+                    later.append(i)  # called after the pass went by: the next pass compiles it
+                elif lz[i].ll not in done:
+                    at = i
+                    done[lz[i].ll] = True
+                    if lz[i].ll not in self.compiled:
+                        self.function(lz[i], lz[i].node.kids[2].kids)
+            for i in later:
+                hpush(self.wake, i)
             if len(done) + len(helped) == before:
                 break
         for op in ["eq", "cmp", "repr"]:
@@ -6831,17 +7083,15 @@ class Gen:
     # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
     # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;
     # the others (Node.chk) test an "is assigned" flag kept only for the variables they read.
-    def flow_program(self, top: list[Node], mod: str) -> None:
-        # one module: its top-level code, functions and methods
+    def flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo]) -> None:
+        # one module: its top-level code, functions (mfns) and classes' methods (mcls)
         self.flowmod = mod
         fns: list[FnInfo] = []
-        for f in self.funcs.values():
-            if f.mod == mod:
-                fns.append(f)
-        for ci in self.classes.values():
+        for f in mfns:
+            fns.append(f)
+        for ci in mcls:
             for f in ci.methods.values():
-                if ci.mod == mod:
-                    fns.append(f)
+                fns.append(f)
         gl: dict[str, bool] = {}
         collect(top, gl)
         for f in fns:
@@ -6864,14 +7114,17 @@ class Gen:
         for nm in gl:
             self.mvars[nm] = True
         # def and class statements bind their names when they run: calls that may come first are checked
-        for f in self.funcs.values():
-            if f.mod == mod:
-                gl[f.name] = True
-        for ci in self.classes.values():
-            if ci.mod == mod:
-                gl[ci.name] = True
-        mfl = Flow(gl, {}, True)
-        self.fl_stmts(mfl, top)
+        for f in mfns:
+            gl[f.name] = True
+        for ci in mcls:
+            gl[ci.name] = True
+        mfl = Flow(gl, {})
+        for st in top:
+            # (a statement inside a compound one calls user code only if the compound one does)
+            if not mfl.called and self.user_call(st):
+                mfl.called = True
+                mfl.call = dict(mfl.defd)
+            self.fl_stmt(mfl, st)
         for nm in mfl.marks:
             self.gflag[nm] = True
         # functions run only from module code: globals assigned before its first call into user
@@ -6897,31 +7150,35 @@ class Gen:
             decl: dict[str, bool] = {}
             local_names(body, loc)
             globals_in(body, decl)
-            tracked = dict(gl)
+            # the analysis looks up only the names the body mentions, and each name's state is
+            # independent of the others': it tracks those alone, not every global of the module
+            refs: dict[str, bool] = {}
+            for st in body:
+                name_nodes(st, refs)
+            tracked: dict[str, bool] = {}
             defd: dict[str, bool] = {}
-            for nm in loc:
-                tracked[nm] = True
-            for nm in gl:
-                if nm in safe and nm not in dels and (nm not in loc or nm in decl):
+            for nm in refs:
+                if nm in gl or nm in loc:
+                    tracked[nm] = True
+                if nm in gl and nm in safe and nm not in dels and (nm not in loc or nm in decl):
                     defd[nm] = True
             for nm in f.params:
                 defd[nm] = True
-            fl = Flow(tracked, defd, False)
+            fl = Flow(tracked, defd)
             self.fl_stmts(fl, body)
             for nm in fl.marks:
                 if nm in loc and nm not in decl:
                     f.uflags[nm] = True
                 else:
                     self.gflag[nm] = True
-        for ci in self.classes.values():
-            if ci.mod == mod:
-                self.fl_fields(ci)
+        for ci in mcls:
+            self.fl_fields(ci)
 
     def fl_fields(self, ci: ClassInfo) -> None:
         # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
         # read raises AttributeError as in CPython instead of seeing 0 or null
         init = ci.methods["__init__"]
-        fl = Flow({}, {}, False)
+        fl = Flow({}, {})
         for f in ci.fdefault:
             fl.defd["." + f] = True
         fl.fields = ci.fields
@@ -6959,17 +7216,47 @@ class Gen:
                     out.append(d)
         return out
 
-    def reaches(self, a: str, b: str, seen: dict[str, bool]) -> bool:
-        # may running module a's code import (and so run) module b
-        if a == b:
-            return True
-        if a in seen:
-            return False
-        seen[a] = True
-        for x in self.deps.get(a, "").split():
-            if self.reaches(x, b, seen):
-                return True
-        return False
+    def scc(self, root: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
+        # Tarjan's algorithm over the import graph (deps) from module root: the modules numbered
+        # and not yet in a component are on the stack. The search keeps its path in lists, since
+        # a chain of imports can be longer than CPython's recursion limit
+        path: list[str] = []
+        outs: list[list[str]] = []
+        nxt: list[int] = []
+        x = root
+        enter = True
+        while True:
+            if enter:
+                # enter module x
+                num[x] = len(num)
+                low[x] = num[x]
+                stack.append(x)
+                path.append(x)
+                outs.append(self.deps.get(x, "").split())
+                nxt.append(0)
+                enter = False
+            a = path[-1]
+            if nxt[-1] < len(outs[-1]):
+                x = outs[-1][nxt[-1]]
+                nxt[-1] += 1
+                if x not in num:
+                    enter = True
+                elif x not in self.comp:
+                    low[a] = min(low[a], num[x])
+                continue
+            # leave module a
+            path.pop()
+            outs.pop()
+            nxt.pop()
+            if low[a] == num[a]:
+                while True:
+                    y = stack.pop()
+                    self.comp[y] = a
+                    if y == a:
+                        break
+            if len(path) == 0:
+                return
+            low[path[-1]] = min(low[path[-1]], low[a])
 
     def user_call(self, n: Node) -> bool:
         # may running n call a user function, method or constructor? (an import of a user module
@@ -6978,9 +7265,10 @@ class Gen:
             return True
         if n.kind == "uimport":
             # it runs a module's code, which can call this module's functions only if it imports
-            # this module (circular imports)
+            # this module (circular imports): as this module imports it, only if both are in one
+            # strongly connected component of the import graph
             for x in n.kids:
-                if self.reaches(x.s, self.flowmod, {}):
+                if self.comp[x.s] == self.comp[self.flowmod]:
                     return True
             return False
         if n.kind == "defaults" or n.kind == "cdefaults":
@@ -6998,9 +7286,6 @@ class Gen:
 
     def fl_stmt(self, fl: Flow, n: Node) -> None:
         k = n.kind
-        if fl.top and not fl.called and self.user_call(n):
-            fl.called = True
-            fl.call = dict(fl.defd)
         if k == "assign":
             self.fl_expr(fl, n.kids[-1])
             for i in range(len(n.kids) - 1):
@@ -7015,55 +7300,81 @@ class Gen:
             self.fl_target(fl, n.kids[0])
         elif k == "if":
             self.fl_expr(fl, n.kids[0])
-            pre = dict(fl.defd)
+            mark = len(fl.log)
             self.fl_stmts(fl, n.kids[1].kids)
-            then = fl.defd
-            fl.defd = pre
+            then = fl.since(mark)
+            fl.undo(mark)
             self.fl_stmts(fl, n.kids[2].kids)
-            fl.join(then)
+            fl.join(then, mark)
         elif k == "while" or k == "for":
             self.fl_expr(fl, n.kids[0] if k == "while" else n.kids[1])
             dels: dict[str, bool] = {}
             deleted(n.kids[2 if k == "for" else 1].kids, dels)
             for nm in dels:
-                if nm in fl.defd:
-                    del fl.defd[nm]  # (a del in the body may run before a read in the next pass)
-            pre = dict(fl.defd)
-            outer = fl.brks
-            fl.brks = []
+                fl.drop(nm)  # (a del in the body may run before a read in the next pass)
+            mark = len(fl.log)
+            btrue = fl.btrue
+            bjoin = fl.bjoin
+            bany = fl.bany
+            bwas = fl.bwas
+            bnew = fl.bnew
+            fl.btrue = k == "while" and n.kids[0].kind == "True"
+            fl.bjoin = {}
+            fl.bany = False
+            fl.bwas = {}
+            fl.bnew = {}
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
-            brks = fl.brks
-            fl.brks = outer
-            fl.defd = dict(pre)
+            exits = fl.bjoin
+            broke = fl.bany
+            # (undone before the enclosing loop's fields are back: to that loop, the body changed nothing)
+            fl.undo(mark)
+            fl.btrue = btrue
+            fl.bjoin = bjoin
+            fl.bany = bany
+            fl.bwas = bwas
+            fl.bnew = bnew
             if n.kids[-1].s == "else":
-                # (after the loop only what was assigned before it is surely assigned)
+                # (after the loop only what was assigned before it is surely assigned, less what
+                # the else block unbinds: the loop is left at its end or, from a break, in a state
+                # that has what was assigned before it. A while True never runs its else block)
                 self.fl_stmts(fl, n.kids[-1].kids)
-                fl.defd = dict(pre)
+                if k == "while" and n.kids[0].kind == "True":
+                    fl.undo(mark)
+                else:
+                    st = fl.since(mark)
+                    fl.undo(mark)
+                    fl.join(st, mark)
             if k == "while" and n.kids[0].kind == "True":
-                # while True is left only through break
-                fl.defd[" dead"] = True
-                for b in brks:
-                    fl.join(b)
+                # while True is left only through break: in what the states at its breaks have
+                # in common
+                if not broke:
+                    fl.put(" dead")
+                for x in exits:
+                    if exits[x]:
+                        fl.put(x)
+                    else:
+                        fl.drop(x)
         elif k == "break":
-            fl.brks.append(dict(fl.defd))
-            fl.defd[" dead"] = True
+            if fl.btrue and " dead" not in fl.defd:
+                fl.fold()
+            fl.put(" dead")
         elif k == "continue" or k == "return" or k == "raise":
             for c in n.kids:
                 self.fl_expr(fl, c)
             if k == "return":
                 fl.exposed()
-            fl.defd[" dead"] = True
+            fl.put(" dead")
         elif k == "defaults" or k == "cdefaults":
             for d in self.fl_defaults(n):
                 self.fl_expr(fl, d)
-            fl.defd[n.s] = True
+            fl.put(n.s)
         elif k == "expr" or k == "assert" or k == "del":
             for c in n.kids:
                 self.fl_expr(fl, c)
-                if k == "del" and c.kind == "name" and c.s in fl.defd:
-                    del fl.defd[c.s]  # unbound from here on
+                if k == "del" and c.kind == "name":
+                    fl.drop(c.s)  # unbound from here on
         elif k == "with":
             for it in n.kids[:-1]:
                 self.fl_expr(fl, it.kids[0])
@@ -7073,9 +7384,9 @@ class Gen:
 
     def fl_target(self, fl: Flow, t: Node) -> None:
         if t.kind == "name":
-            fl.defd[t.s] = True
+            fl.put(t.s)
         elif t.kind == "attr" and fl.me != "" and t.kids[0].kind == "name" and t.kids[0].s == fl.me:
-            fl.defd["." + t.s] = True
+            fl.put("." + t.s)
         elif t.kind == "tuple":
             for k in t.kids:
                 self.fl_target(fl, k)
@@ -7097,12 +7408,12 @@ class Gen:
         elif k == "listcomp":
             # [elt for target in iter if cond]: iter is read outside, the rest with target bound
             self.fl_expr(fl, e.kids[2])
-            saved = dict(fl.defd)
+            mark = len(fl.log)
             self.fl_target(fl, e.kids[1])
             for i in range(len(e.kids)):
                 if i != 1 and i != 2:
                     self.fl_expr(fl, e.kids[i])
-            fl.defd = saved
+            fl.undo(mark)
         elif k == "call":
             c = e.kids[0]
             if c.kind == "attr":
@@ -9058,6 +9369,8 @@ class Gen:
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "") -> Val:
         if f.bad != "" and not f.generic:
             self.err(f.bad)
+        if f.ll not in self.called and f.ll in self.lazyat:
+            hpush(self.wake, self.lazyat[f.ll])
         self.called[f.ll] = True
         line = self.line
         np = len(f.params)

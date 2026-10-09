@@ -1,0 +1,4 @@
+circ.third: start
+circ.fourth: start
+AttributeError: module 'circ.third' has no attribute 'y'
+[exit 1]
