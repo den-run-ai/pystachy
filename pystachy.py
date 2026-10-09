@@ -3102,7 +3102,8 @@ class Mod:
         self.sure: dict[str, bool] = {}
         self.maybe: dict[str, bool] = {}
         self.done = False
-        self.tvars: dict[str, Node] = {}  # names only name = f(...) binds, with f: a TypeVar if f is typing's
+        # the names only name = f(...) statements bind, with each f: a TypeVar if every f is typing's
+        self.tvars: dict[str, list[Node]] = {}
 
 
 # Python's builtin names: in an imported module, a name it does not bind is one of these or an
@@ -3629,8 +3630,14 @@ class Loader:
                     m.kinds[nm] = "v"
                     if nm in m.fnonly:
                         del m.fnonly[nm]
-                if k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call" and count[st.kids[0].s] == 1:
-                    m.tvars[st.kids[0].s] = st.kids[1].kids[0]  # (T = TypeVar("T"): see Loader.typevar)
+                if k == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "call":
+                    # (T = TypeVar("T"), also more than once: see Loader.typevar)
+                    if st.kids[0].s not in m.tvars:
+                        m.tvars[st.kids[0].s] = []
+                    m.tvars[st.kids[0].s].append(st.kids[1].kids[0])
+        for nm in m.tvars:
+            if len(m.tvars[nm]) != count[nm]:
+                m.tvars[nm] = []  # (another statement binds it too)
         for al in aliases:
             if al.kids[0].s in m.fnglobal:
                 m.kinds[al.kids[0].s] = "v"  # a function's global statement rebinds it
@@ -3862,11 +3869,14 @@ class Loader:
         return p + "." + e.s if p != "" else ""
 
     def typevar(self, e: Node) -> bool:
-        # is name e a module global that only e = TypeVar(...) binds, typing's (Gen.typevar_def):
-        # '|' of it and subscripts holding it run typing's code
-        if e.s not in self.dm.tvars or e.s in self.dm.fnglobal:
+        # is name e a module global that only e = TypeVar(...) statements bind, typing's (each one
+        # is Gen.typevar_def's): '|' of it and subscripts holding it run typing's code
+        if e.s not in self.dm.tvars or len(self.dm.tvars[e.s]) == 0 or e.s in self.dm.fnglobal:
             return False
-        return self.bpath(self.dm.tvars[e.s]) == "typing.TypeVar"
+        for c in self.dm.tvars[e.s]:
+            if self.bpath(c) != "typing.TypeVar":
+                return False
+        return True
 
     def kind_of(self, e: Node) -> str:
         # what a name, or an attribute of a user module (a.b), is bound to in module dm, or ""

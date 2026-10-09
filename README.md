@@ -125,12 +125,12 @@ exception (a name not bound yet, such as a class defined further on, `"C" | None
 a class, `Optional[A, B]`, an attribute a module does not have). Such an annotation must also
 read only names that are surely bound by then (not bound only in an `if` branch or a loop, nor
 deleted), and be a type: a class or `typing`'s name (also a module global that only
-`T = TypeVar("T")` binds), subscripts of those and of the builtin generics, `|` of them,
-literals, or a variable as the whole annotation (an alias, an error where the annotation is
-used). What may run code of the program there is rejected: a call, an operator other than
-`|`, a variable as an operand or subscripted, a subscript of one of the program's classes
-(`__class_getitem__`), an attribute of a builtin module other than `typing` (but
-`os.PathLike` and `collections.abc`'s names).
+`T = TypeVar("T")` statements bind, one or more), subscripts of those and of the builtin
+generics, `|` of them, literals, or a variable as the whole annotation (an alias, an error
+where the annotation is used). What may run code of the program there is rejected: a call, an
+operator other than `|`, a variable as an operand or subscripted, a subscript of one of the
+program's classes (`__class_getitem__`), an attribute of a builtin module other than `typing`
+(but `os.PathLike` and `collections.abc`'s names).
 A string annotation (`"Node"`) is not evaluated, and neither is any annotation in a module that
 imports `annotations` from `__future__`.
 
@@ -832,7 +832,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1582 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1585 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
