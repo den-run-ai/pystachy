@@ -13,7 +13,7 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (131184 lines of IR)
+fixed point: stage1 == stage2 == stage3 (131286 lines of IR)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -32,7 +32,7 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 10,577 | lexer 611 · parser 1,670 · scopes (CPython's symbol-table errors) 653 · module loader 1,685 · types, tables and the definite-assignment pass 923 · type checker + IR generator 4,848 · driver 132 |
+| `pystachy.py` | 10,587 | lexer 611 · parser 1,670 · scopes (CPython's symbol-table errors) 653 · module loader 1,695 · types, tables and the definite-assignment pass 923 · type checker + IR generator 4,848 · driver 132 |
 | `runtime.c` | 2,665 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
 | `tests/` | 285 programs, 377 rejection cases, 10 deviation cases | each program must print exactly what CPython prints, JIT and AOT |

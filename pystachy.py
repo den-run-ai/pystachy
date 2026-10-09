@@ -3179,10 +3179,11 @@ def builtin_try(st: Node) -> bool:
     return accel_try(st)
 
 
-def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool]) -> None:
+def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool], deep: bool = True) -> None:
     # the names statement st binds for sure once it has run, at its own level and in a with block
     # (not in its other blocks); a del, also in those blocks, removes the names it may delete from
-    # out and bound
+    # out and bound. Not deep: the statements in st's blocks have been through it already, with
+    # the same bound (Loader.imports), so only a with block's are looked at again (for out)
     if st.kind != "for" and not (st.kind == "annassign" and len(st.kids) < 3):
         targets(st, out)
     gone: dict[str, bool] = {}
@@ -3196,7 +3197,7 @@ def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool]) -> None
         for s in st.kids[-1].kids:
             surely_binds(s, out, bound)
     else:
-        deleted([st], gone)
+        deleted([st] if deep or st.kind == "del" else [], gone)
     for nm in gone:
         for d in [out, bound]:
             if nm in d:
@@ -3545,15 +3546,24 @@ class Loader:
             known[t] = "type"
         for st in m.body.kids:
             body = st.kids[0].kids if st.kind == "class" else st.kids[0].kids[0].kids if st.kind == "subclass" else [st]
-            inner = dict(bound)
-            binds(body if st.kind == "class" or st.kind == "subclass" else [], inner, True)  # (a class body's names, conservatively)
+            # (a class body's names, conservatively: added to bound while its annotations are
+            # checked, not to a copy, which would cost each statement all the names bound before it)
+            names: dict[str, bool] = {}
+            binds(body if st.kind == "class" or st.kind == "subclass" else [], names, True)
+            added: list[str] = []
+            for nm in names:
+                if nm not in bound:
+                    bound[nm] = True
+                    added.append(nm)
             anns = [b for b in st.kids[1:] if b.kind != "typeparams"] if st.kind == "subclass" else []
             for d in body:
                 anns.extend([p.kids[0] for p in d.kids[0].kids] + [d.kids[1]] if d.kind == "def" else d.kids[1:2] if d.kind == "annassign" else [])
             for n in anns if not (st.kind == "subclass" and st.kids[1].kind == "typeparams") else []:  # (not class C[T])
-                why = self.ann_raises(n, inner, known)
+                why = self.ann_raises(n, bound, known)
                 if why != "":
                     fail(why, n.line)
+            for nm in added:
+                del bound[nm]
             now: dict[str, bool] = {}
             binds([st], now, True)
             if st.kind == "pass" and len(st.kids) == 2:
@@ -4244,7 +4254,7 @@ class Loader:
             if not infn:
                 binds([st], self.maybe, True, m.name if m.pdir != "" else "", False)  # (imports() did its blocks)
                 now: dict[str, bool] = {}
-                surely_binds(st, now, self.sure)
+                surely_binds(st, now, self.sure, False)  # (and so an elif chain is not walked again for each elif)
                 for nm in now:
                     if nm not in self.sure:
                         self.sure[nm] = True
