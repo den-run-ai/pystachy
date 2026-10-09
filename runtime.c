@@ -10,7 +10,6 @@
 #include <locale.h>
 #include <stdarg.h>
 #include <math.h>
-#include <setjmp.h>
 #include <signal.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -108,8 +107,12 @@ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges 
 static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
-static Exc *xcur, *xhandled;           /* the exception raised last; the one being handled (see exceptions) */
-static int eh;                         /* raises go to pys_throw: the program has a try (see exceptions) */
+static struct { Exc *cur, *handled, *shown; } xr;   /* the exception raised last, the one being handled, the
+                                                      uncaught one whose str() is being shown (see exceptions) */
+static int eh;                         /* the program has a try: stored by pys_eh_on alone (see exceptions) */
+typedef void Thrower(Exc *);
+static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
+                                          or until an uncaught exception object is reported */
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
@@ -159,9 +162,10 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
-  scan((const W *)&xcur, (const W *)(&xcur + 1));
-  scan((const W *)&xhandled, (const W *)(&xhandled + 1));
-  if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
+  if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
+    scan((const W *)&xr, (const W *)(&xr + 1));
+    if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
+  }
 }
 __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
   I n = s->bump, sz = s->size;
@@ -316,23 +320,25 @@ static void gc_init(char *sb, I **roots, I nroots) {
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
    CPython reports it, with status 120. In a program that has a try (pys_eh_on) they are
-   raised instead, and end the program the same way if nothing catches them (see exceptions). */
+   raised instead, and end the program the same way if nothing catches them (see exceptions).
+   They reach that code only through xthrow, which nothing but pys_eh_on and the report of an
+   uncaught exception stores: a program without try links neither, so LLVM folds xthrow to
+   NULL and keeps none of it, and the funnels compile to the code they had before. */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
 static _Noreturn void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
-_Noreturn void pys_throw(Exc *e);
-Exc *pys_exc_new(Str *kind, Str *msg, Str *args);
+static Exc *exc_new(Str *kind, Str *msg, Str *args);
 static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
-void pys_unwind_push(void (*fn)(void *), void *arg);
-void pys_unwind_pop(void);
+static void unwind_push(void (*fn)(void *), void *arg);
+static void unwind_pop(void);
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
-  if (eh) pys_throw(exc_line(m));
+  if (xthrow) xthrow(exc_line(m));
   out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1);
 }
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
-  if (eh) pys_throw(pys_exc_new(kind, msg, 0));
+  if (xthrow) xthrow(exc_new(kind, msg, 0));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
@@ -341,9 +347,9 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
   pys_finish();
   exit(1);
 }
-_Noreturn void pys_exit(I c) { if (eh) pys_throw(exc_exit(c, 0)); pys_finish(); exit((int)c); }
+_Noreturn void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
-  if (eh) pys_throw(exc_exit(0, msg));
+  if (xthrow) xthrow(exc_exit(0, msg));
   out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
@@ -959,10 +965,10 @@ I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
   if (nbusy == cbusy) { cbusy = cbusy * 2 + 8; busy = realloc(busy, cbusy * sizeof(void *)); if (!busy) pys_fail("MemoryError"); }
   busy[nbusy++] = p;
-  if (eh) pys_unwind_push(unbusy, p);  /* a raise that leaves the __repr__ ends it too */
+  if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
   return 1;
 }
-void pys_repr_leave(void *p) { unbusy(p); if (eh) pys_unwind_pop(); }
+void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
@@ -1245,7 +1251,8 @@ static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geo
   return ms->t;
 }
 /* na <= nb: a goes to the buffer, merge from the left. The merges are compiled twice: into
-   merge_at for keep 0, where KEEP makes no code (no cost without a try), and merge_keep */
+   merge_at for keep 0, where KEEP makes no code (no cost without a try), and merge_keep, which
+   merge_at calls only when eh: a program without try does not keep it */
 static inline __attribute__((always_inline)) void merge_lo(MS *ms, I *a, I na, I *b, I nb, int keep) {
   I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;
   *d++ = *pb++;
@@ -1339,7 +1346,7 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
-  if (ms->u) { merge_keep(ms, a, na, b, nb); ms->u->fn = 0; }   /* every item is in the array again */
+  if (eh && ms->u) { merge_keep(ms, a, na, b, nb); ms->u->fn = 0; }   /* every item is in the array again */
   else if (na <= nb) merge_lo(ms, a, na, b, nb, 0); else merge_hi(ms, a, na, b, nb, 0);
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
@@ -1367,7 +1374,7 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
   if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
     Undo *u = ms.u = pys_alloc(sizeof(Undo));
     u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0;
-    pys_unwind_push(sort_undo, u);
+    unwind_push(sort_undo, u);
   }
   l->len = l->cap = 0; l->a = sorting;
   if (n > 1) {
@@ -1387,7 +1394,7 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     }
     if (reverse) rev(a, n);
   }
-  if (ms.u) pys_unwind_pop();
+  if (eh && ms.u) unwind_pop();
   int bad = l->a != sorting;                        /* items added meanwhile are dropped, as in CPython */
   l->len = n; l->cap = cap; l->a = a;
   if (bad) pys_fail("ValueError: list modified during sort");
@@ -2232,7 +2239,10 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
    ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
    CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
-   not raise pays nothing, a try included; a raise costs about a microsecond.
+   not raise pays nothing, a try included; a raise costs about a microsecond. A program
+   without try keeps none of this: the funnels reach it through xthrow, and what else tests
+   eh (the unwind actions below) folds away, as only pys_eh_on stores either. It links
+   pys_throw and the report only when it raises a user exception object.
    Compiled code's side. A function with landing pads names `personality ptr @pys_personality`;
    a call in a try that may raise is an invoke whose unwind label is a landing pad,
    `landingpad { ptr, i32 } catch ptr null`: every pad catches everything, and the code tests
@@ -2270,18 +2280,23 @@ struct Exc {                           /* GC-allocated, 16-byte aligned (exc_all
 _Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
 #define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
 #define XCLS(e) (*(ExcClass **)(e)->obj)
-static _Unwind_Reason_Code (*unwinder)(struct _Unwind_Exception *);   /* set here alone: a program */
-void pys_eh_on(void) { eh = 1; unwinder = _Unwind_RaiseException; }   /* without try links no unwinder */
+static _Noreturn void throw_(Exc *e);
+static Thrower *hide(Thrower *f) {     /* f, stored where the funnels find it: were its value seen, LLVM */
+  __asm__("" : "+r"(f));               /* would call throw_ directly there, and every program would link it */
+  return f;
+}
+void pys_eh_on(void) { eh = 1; xthrow = hide(throw_); }
 static Exc *exc_alloc(void) {          /* at a slot's first 16-byte boundary (an interior pointer keeps the slot) */
   return (Exc *)(((uintptr_t)pys_alloc(sizeof(Exc) + 15) + 15) & ~(uintptr_t)15);
 }
-Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { Exc *e = exc_alloc(); e->kind = kind; e->msg = msg; e->args = args; return e; }
+static Exc *exc_new(Str *kind, Str *msg, Str *args) { Exc *e = exc_alloc(); e->kind = kind; e->msg = msg; e->args = args; return e; }
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { return exc_new(kind, msg, args); }
 Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
 Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
-  Exc *e = pys_exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
+  Exc *e = exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
 }
 static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c), or sys.exit(m): message m, status 1 */
-  return m ? pys_exc_new(cstr("SystemExit"), m, 0) : pys_exc_exit(c, pys_str_int(c), 0);
+  return m ? exc_new(cstr("SystemExit"), m, 0) : pys_exc_exit(c, pys_str_int(c), 0);
 }
 static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args of its tuple and errno forms */
   const char *c = strstr(m, ": "), *t, *q;
@@ -2292,7 +2307,7 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args o
     put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2); repr_str(&b, pys_str(t + 2, q ? q - t - 2 : s->s + s->len - t - 2));
     a = done(&b);
   }
-  return pys_exc_new(pys_str(m, c ? c - m : (I)strlen(m)), s, a);
+  return exc_new(pys_str(m, c ? c - m : (I)strlen(m)), s, a);
 }
 Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
 Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
@@ -2313,43 +2328,30 @@ I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1
   return 0;
 }
 void *pys_exc_obj(Exc *e) { return e->obj; }
-Exc *pys_exc_handled(void) { return xhandled; }
-void pys_exc_restore(Exc *e) { xhandled = e; }
-void pys_unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
+Exc *pys_exc_handled(void) { return xr.handled; }
+void pys_exc_restore(Exc *e) { xr.handled = e; }
+static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
   if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
   unw[nunw++] = (Unwind){fn, arg};
 }
-void pys_unwind_pop(void) { nunw--; }  /* the frame is left another way: forget the latest action */
+static void unwind_pop(void) { nunw--; }   /* the frame is left another way: forget the latest action */
+void pys_unwind_push(void (*fn)(void *), void *arg) { unwind_push(fn, arg); }
+void pys_unwind_pop(void) { unwind_pop(); }
 static void close_with(void *f) { pys_file_close(f); }
-void pys_unwind_file(File *f) { pys_unwind_push(close_with, f); }   /* with open(...) as f */
+void pys_unwind_file(File *f) { unwind_push(close_with, f); }   /* with open(...) as f */
 static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
 I pys_try_mark(void) { return nunw; }
 Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the raise left, handle the Exc */
   Exc *e = ue;
-  xcur = e; io_busy = 0;
+  xr.cur = e; io_busy = 0;
   atomic_signal_fence(memory_order_seq_cst);
   if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
   unwind_to(mark);
-  xhandled = e;
+  xr.handled = e;
   return e;
 }
-static jmp_buf *strjb;                 /* the report's str(e) runs: a raise nothing catches comes back to it */
-static I strmark;
-static Str *safe_str(Exc *e) {         /* str(e) for the report: CPython's text if it raises */
-  jmp_buf jb; sig_atomic_t io = io_busy;
-  eh = 1; strjb = &jb; strmark = nunw;   /* a raise in __str__ unwinds to its own try, or comes back here */
-  if (setjmp(jb)) { strjb = 0; io_busy = io; return cstr("<exception str() failed>"); }
-  Str *s = pys_exc_str(e);
-  strjb = 0;
-  return s;
-}
-static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
-  if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
-    if (e->has_code) { pys_finish(); exit((int)e->code); }
-    out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
-  }
-  out_flush();
-  Str *k = e->obj ? XCLS(e)->disp : e->kind, *m = e->obj ? safe_str(e) : e->msg;
+static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
+  Str *k = e->obj ? XCLS(e)->disp : e->kind;
   fwrite(k->s, 1, k->len, stderr);
   if (m->len) { fputs(": ", stderr); fwrite(m->s, 1, m->len, stderr); }
   fputc('\n', stderr);
@@ -2357,19 +2359,30 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
   pys_finish();
   exit(1);
 }
-_Noreturn void pys_throw(Exc *e) {
-  xcur = e;
-  if (unwinder) {
-    e->ue.exception_class = PYS_EXC;
-    unwinder(&e->ue);                  /* comes back only if nothing catches e: the stack is as it was */
+static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+  if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
+    if (e->has_code) { pys_finish(); exit((int)e->code); }
+    out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
   }
-  unwind_to(strmark);
-  if (strjb) longjmp(*strjb, 1);
+  out_flush();
+  if (!e->obj) exc_report(e, e->msg);
+  xr.shown = e; xthrow = hide(throw_); /* its __str__ may raise, also in a program without try: throw_ */
+  exc_report(e, XCLS(e)->str(e->obj));
+}
+static _Noreturn void throw_(Exc *e) {
+  xr.cur = e;
+  if (eh) {
+    e->ue.exception_class = PYS_EXC;
+    _Unwind_RaiseException(&e->ue);    /* comes back only if nothing catches e: the stack is as it was */
+  }
+  unwind_to(0);
+  if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
   uncaught(e);
 }
+_Noreturn void pys_throw(Exc *e) { throw_(e); }
 _Noreturn void pys_reraise(void) {     /* a bare raise */
-  if (!xhandled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
-  pys_throw(xhandled);
+  if (!xr.handled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
+  throw_(xr.handled);
 }
 /* The personality routine. The LSDA (.gcc_except_table) of a function is a header (where the
    landing pads' offsets start, the type table, the call-site encoding), a call-site table
