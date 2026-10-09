@@ -6265,9 +6265,14 @@ class Values:
     def __init__(self, fn: IFn, pl: dict[str, list[int]]):
         self.fn = fn
         self.pl = pl  # the blocks that branch to each block (Gen.preds)
-        # by the number of the value a raw op or an rt op defines: its block * 2^20 + its position
-        # there (-1 for the other numbers)
+        # by the number of the value a raw op or an rt op defines: its block * stride + its position
+        # there (-1 for the other numbers), stride being more than the ops of any block (a block of
+        # 50 xors a line for 24,000 lines holds more than 2^20)
         self.at: list[int] = [-1] * (fn.n + 1)
+        self.stride = 1
+        for b in fn.blocks:
+            if len(b.code) >= self.stride:
+                self.stride = len(b.code) + 1
         self.cn: dict[str, str] = {}  # value -> its canonical value, once asked
         self.same: dict[str, str] = {}  # a computation's text, with canonical operands -> the first value of it
         self.text: dict[str, str] = {}  # and that value -> the text
@@ -6277,9 +6282,9 @@ class Values:
             for x in range(len(code)):
                 i = code[x]
                 if i.op == "raw" and i.k > 0:
-                    self.at[i.k] = j * 1048576 + x
+                    self.at[i.k] = j * self.stride + x
                 elif i.op == "rt" and len(i.r) == 1:
-                    self.at[i.r[0]] = j * 1048576 + x
+                    self.at[i.r[0]] = j * self.stride + x
 
 
 class Frame:
@@ -9428,14 +9433,14 @@ class Gen:
         r = v
         w = vs.at[int(v[2:])] if v.startswith("%t") and v[2:].isdigit() else -1
         if w >= 0:
-            i = vs.fn.blocks[w // 1048576].code[w % 1048576]
+            i = vs.fn.blocks[w // vs.stride].code[w % vs.stride]
             if i.op == "rt":
                 if self.rtfns[i.s].fx & ~FXBIT["R"] == 0 and not self.rtfns[i.s].q:
                     r = self.same(vs, v, f"rt {i.s} {', '.join([self.canon(vs, a.v) for a in i.a])}")
             else:
                 s = i.s[i.s.find(" = ") + 3 :]
                 if s.startswith("load "):
-                    x = self.reaching(vs, self.addr(vs, s[s.rfind(" ") + 1 :]), w // 1048576, w % 1048576)
+                    x = self.reaching(vs, self.addr(vs, s[s.rfind(" ") + 1 :]), w // vs.stride, w % vs.stride)
                     if x != "":
                         r = self.canon(vs, x)
                 else:
