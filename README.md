@@ -13,8 +13,8 @@ standard library and of popular packages compile, and what it would take to comp
 
 ```
 $ make                                  # bootstrap: CPython -> stage1 -> stage2 -> stage3
-fixed point: stage1 == stage2 == stage3 (126551 lines of IR)
-fixed point: runtime.py's IR, rt1 == rt2 == rt3 (8585 lines)
+fixed point: stage1 == stage2 == stage3 (127017 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (8607 lines)
 $ ./pystachy run bench/nbody.py         # JIT: LLVM ORC via lli
 $ ./pystachy build bench/nbody.py -o build/nbody  # AOT: native executable
 $ ./pystachy ir prog.py                 # print the LLVM IR
@@ -33,11 +33,11 @@ needs `PYSTACHY_HOME` set to the checkout.
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 10,324 | lexer 611 · parser 1,658 · scopes (CPython's symbol-table errors) 544 · module loader 1,513 · types, tables and the definite-assignment pass 906 · type checker + IR generator 4,851 · driver 192 |
+| `pystachy.py` | 10,364 | lexer 611 · parser 1,658 · scopes (CPython's symbol-table errors) 544 · module loader 1,513 · types, tables and the definite-assignment pass 907 · type checker + IR generator 4,887 · driver 195 |
 | `runtime.c` | 2,342 | garbage collector, string, list and dict memory, timsort, dict tables, generic repr/compare, float digits, files and I/O, clocks |
-| `runtime.py` | 1,030 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing (`docs/runtime-in-subset.md`) |
+| `runtime.py` | 1,034 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing (`docs/runtime-in-subset.md`) |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are (`lib/README.md`) |
-| `tests/` | 275 programs, 320 rejection cases, 10 deviation cases, 6 IR probes | each program must print exactly what CPython prints, JIT and AOT |
+| `tests/` | 276 programs, 328 rejection cases, 10 deviation cases, 6 IR probes | each program must print exactly what CPython prints, JIT and AOT |
 
 A taste — this is ordinary Python, and Pystachy and CPython print the same line:
 
@@ -580,7 +580,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1019 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1029 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes

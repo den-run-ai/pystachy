@@ -4,7 +4,7 @@
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
 # tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
-# Every tests/errors/*.py must be rejected with the message in its first line (rt_*.py as
+# Every tests/errors/*.py must be rejected with the message in its first line (rtmode_*.py as
 # "pystachy rt" compiles runtime.py), and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
@@ -63,7 +63,7 @@ rejection() { # tests/errors/NAME.py
   n=$(basename "$1" .py)
   want=$(head -1 "$1" | sed 's/^# error: //')
   how=ir
-  case $n in rt_*) how=rt ;; esac  # compiled as runtime.py is
+  case $n in rtmode_*) how=rt ;; esac  # compiled as runtime.py is
   if $PYS $how "$1" > /dev/null 2> "$T/rej.$n" || ! grep -qF "$want" "$T/rej.$n"; then
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got: $(cat "$T/rej.$n")"
   else pass=$((pass + 1)); fi

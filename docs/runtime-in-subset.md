@@ -20,7 +20,7 @@ The prototype is stacked on `claude/typed-ir-prep` (commit `30b51d9`). Unless a 
     - the two dict hash functions, from `hsh()`, which runtime.c's dict code calls on every lookup;
     - the format-spec mini-language, in 3 functions, from `pys_format()`. runtime.c keeps a 7-line dispatcher and the `snprintf` calls that write a float's digits.
 
-  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 777 (1,030 with comments). The compiler gains 196 lines net (+204/−8).
+  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 777 (1,034 with comments). The compiler gains 236 lines net (+249/−13).
 - **How.** `pystachy rt runtime.py` compiles the file in a *runtime mode*:
   - functions named `pys_*` are defined under their C names, with runtime.c's types;
   - `def f(...) -> T: ...` declares a C function;
@@ -77,7 +77,7 @@ These rules keep the ABI right:
 - An operation that lowers to a function `runtime.py` defines calls that definition, and must use its types. `math.gcd()` inside `pys_m_lcm` calls `pys_m_gcd`.
 - A function may not use the operation it implements. `math.gcd()` inside `pys_m_gcd` would lower to a call to `pys_m_gcd`. `Gen.rt` reports it at compile time. This is the recursion that other runtimes keep running into (§3: Rust's `memcpy` built from `mem::swap`, Zig's `strlen`). Only the direct case is caught: a cycle through runtime.c is not (§2.10).
 
-`tests/errors/rt_*.py` checks each rule, and the rejections of the table above.
+`tests/errors/rtmode_*.py` checks each rule, and the rejections of the table above.
 
 runtime.c keeps a prototype of every moved function, so its own code can still call them: `hsh()` calls `pys_hash_str`, and `pys_format` calls `pys_format_int`.
 
@@ -373,7 +373,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
   - typed IR §7.1: `dict.find`, `entry_val`, `entry_set`.
 
   Today all of that would be C. Most of it is semantic code of the kind moved here: parsing, formatting, string algorithms, dispatch with CPython's error messages.
-- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 7,971 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
+- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 18 ms for 8,607 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
 - **The C core stays small and stable.** The collector, memory layouts and I/O changed least on the stack: 93% of the stack's runtime.c additions were new functions appended at the end of a section.
 
 ### 2.6 Extensibility
@@ -407,7 +407,7 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
   - Runtime-mode code paths (`rtmode`, `primitive`, `extern`, the nsw increment) run only for `runtime.py`.
 - **Conflicts.**
   - The prototype edits `Gen.rt`, `Gen.function`, `Gen.declare_fn`, `Gen.program`, `Gen.builtin` (where `_rt.` calls go to `primitive()`), `for_range` and the driver. The IR steps rewrite all of these.
-  - The edits are small: 196 lines net, most of them in `primitive()` and the driver. They would move into the lowering with the code around them.
+  - The edits are small: 236 lines net, most of them in `primitive()` and the driver. They would move into the lowering with the code around them.
   - `primitive()` is exactly an IR op set (`byte`, `str_put`, ...), and would become `Ins` ops after step 12.
 - **What to keep frozen.**
   - The runtime ABI, as `docs/typed-ir.md` §2 asks.
@@ -574,16 +574,16 @@ Sources and line counts: the research notes behind this table measured each repo
 
 | file | change |
 |---|---|
-| `pystachy.py` | +204/−8 lines:<br>• runtime mode (`rtmode`, exported and external functions, `RTL` and `primitive()`, nsw range steps);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
-| `runtime.py` | new, 1,030 lines (777 of code) |
+| `pystachy.py` | +249/−13 lines:<br>• runtime mode (`rtmode`, exported and external functions and their checks, `RTL` and `primitive()`, nsw range steps);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
+| `runtime.py` | new, 1,034 lines (777 of code) |
 | `runtime.c` | −328 lines of code. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`. |
 | `tools/rt_cpython/_rt.py`, `tools/rtcheck.py` | CPython's primitives and the differential fuzzer |
 | `tools/rtabi.py` | the ABI check across `runtime.py`, runtime.c and the corpus |
 | `tools/rtbench.py`, `tools/rtbench/` | the microbenchmarks of §2.4.2, for any two compilers |
-| `Makefile`, `tests/verify.sh` | the runtime fixed point, the Python-free check, the `rtcheck` and `rt-abi` steps, dictprobe's link |
+| `Makefile`, `tests/verify.sh`, `tests/run.sh` | the runtime fixed point, the Python-free check, the `rtcheck` and `rt-abi` steps, dictprobe's link; `run.sh` compiles `tests/errors/rtmode_*.py` as runtime code |
 | `tools/dictprobe.c` | its usage note: the build links `runtime.py`'s IR |
 | `README.md` | `runtime.py` in the file table, the pipeline, the bootstrap and the verification steps |
-| `tests/rt_format_*` | the format fixes' regression tests (five programs) |
+| `tests/rt_format_{comma_twice,underscore_twice,long_spec,nul_spec,type_code}.py`, `tests/rt_ljust_huge.py`, `tests/errors/rtmode_*.py` | the format fixes' regression tests, `ljust`'s, and runtime mode's rejections (eight cases) |
 | `docs/runtime-inventory.tsv` | the per-function inventory behind §1.7 |
 
 ## Appendix B: reproducing the measurements
