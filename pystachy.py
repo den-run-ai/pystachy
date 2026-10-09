@@ -6592,8 +6592,13 @@ class Gen:
         return ""
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
+        if name == "__class__" and (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")):
+            self.err("e.__class__ of an exception is not supported; type(e).__name__ is")
         if o.t == "exc":
-            self.err(f"the attributes of an exception (e.{name}) are not supported; str(e) and repr(e) are")
+            # (isinstance() does not change the type of the name an except clause binds)
+            fl = [c for c in self.classes.values() if c.exc != "" and name in c.ftypes]
+            hint = f" (to read the fields of {short(fl[0].name)}, catch it by its class: except {short(fl[0].name)} as e)" if len(fl) > 0 else ""
+            self.err(f"the attributes of an exception (e.{name}) are not supported; str(e) and repr(e) are{hint}")
         if o.t not in self.classes:
             base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else o.t
             if base + "." + name in METHODS:
@@ -11649,6 +11654,8 @@ class Gen:
             self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all() or str.join()")
         if name in self.gtypes or name in self.ltype:
             self.err(f"'{name}' is not callable")
+        if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
+            self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err(f"unsupported call {key}")
         return v
 
