@@ -6409,6 +6409,10 @@ class Gen:
                 f.dglob.append("")
                 me = mk("name", "self", d.line, [])
                 body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [me]), mk("name", fl, d.line, [])]))
+            if "__post_init__" in ci.methods:
+                # (then calls __post_init__, as the __init__ @dataclass writes does)
+                post = mk("attr", "__post_init__", d.line, [mk("name", "self", d.line, [])])
+                body.append(mk("expr", "", d.line, [mk("call", "", d.line, [post])]))
         ci.methods["__init__"] = f
 
     def synth(self, ci: ClassInfo, name: str, ret: str, body: list[Node]) -> None:
