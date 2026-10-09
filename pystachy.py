@@ -10191,7 +10191,9 @@ class Gen:
         if c.kind != "name":
             return -1
         if c.s in self.classes:
-            return -1 if t == c.s else 0
+            # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
+            xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t))))
+            return -1 if t == c.s or xc else 0
         if self.bound(c.s):
             return -1
         if c.s == "object":
