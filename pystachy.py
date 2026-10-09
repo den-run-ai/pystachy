@@ -7610,13 +7610,14 @@ class Gen:
     def eh_ir(self, fn: IFn) -> None:
         # fn has try statements: its blocks' exception edges (Blk.handler) become LLVM's, once the
         # effect summaries say which calls may raise. A raise or throw that a landing block covers
-        # branches to the code after it (a raise's exception made as pys_raise makes it: no Syntax-
-        # Error line kind is left in a program that has a try, see raise_stmt), with the exception
-        # in its try's slot, as the landing op stores it: no unwinder, which takes a microsecond. A
-        # call a landing block covers that may raise (R) is an invoke whose unwind edge goes there,
-        # and ends its block (a phi after it names the last part as its predecessor). A landing
-        # block no invoke goes to is dropped (its try's code after it may still be reached from a
-        # raise), and a function left without one has no personality
+        # branches to the code after it, with the exception in its try's slot as the landing op
+        # stores it: no unwinder, which takes a microsecond. (A raise's exception is made as
+        # pys_raise makes it, from its kind and message: in a program that has a try, no raise op
+        # has the line of a SyntaxError as its kind, see raise_stmt.) A call a landing block covers
+        # that may raise (R) becomes an invoke whose unwind edge goes there, and ends its block (a
+        # phi after it names the last part as its predecessor). A landing block no invoke goes to
+        # is dropped (the code after it may still be reached from a raise), and a function left
+        # without one has no personality
         lands: dict[str, Ins] = {}
         for b in fn.blocks:
             if len(b.code) > 0 and b.code[0].op == "landing":
