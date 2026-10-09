@@ -16352,11 +16352,16 @@ def main() -> None:
         code = sh(f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
             # then this process becomes lli, through a shell that opens the bitcode for it and removes
-            # the files: the program's end is pystachy run's own, a signal that kills it too
+            # the files: the program's end is pystachy run's own, a signal that kills it too.
+            # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
+            # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
+            # their compilation
             for p in [ll, obj, rll, part]:
                 if os.path.exists(p):
                     os.remove(p)
-            run = f"PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli -extra-object={q(rto)} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
+            env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
+            run = f"{env}PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli -extra-object={q(rto)} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} && rm -f {q(bc)} && rmdir {q(tmp)} && {run}"])
     for p in [ll, bc, obj, rll, part]:
         if os.path.exists(p):

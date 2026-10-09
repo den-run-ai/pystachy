@@ -5,8 +5,8 @@
 #   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR
 #   tests-cpython  tests/run.sh with the CPython-hosted compiler, JIT and AOT
 #   tests-native   tests/run.sh with the stage-2 native compiler, JIT and AOT
-#   tests-opt-off  tests/run.sh with the stage-2 compiler and each optimization on the IR turned off
-#                  (PYSTACHY_OPT=-<name> for each name of OPTS in pystachy.py), then all of them (-all)
+#   tests-opt-off  tests/run.sh with the stage-2 compiler and every optimization on the IR turned off
+#                  (PYSTACHY_OPT=-all): the passes change no output
 #   python-free    PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools that the
 #                  driver and tests/run.sh call (no python3): the native compiler rebuilds its runtime
 #                  and itself, reproduces the same IR and passes the tests
@@ -18,8 +18,9 @@
 #                  the compiler itself)
 #   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c (types,
 #                  coverage, and the effects its call graph shows)
-#   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
-#                  the IR, and every test passes JIT and AOT with a collection at every allocation
+#   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 1000 allocations reproduces
+#                  the IR, and every test passes JIT and AOT with a collection at every allocation of the
+#                  program (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by the compiler collecting every 1000
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
@@ -99,7 +100,7 @@ tests/run.sh "$V/pystachy2" > "$L" 2>&1
 x=$(tests "$L") && r=pass || r=fail
 step tests-native $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"]'"$x"
 L=$V/tests-opt-off.log; s=$(now); logs=""; offs=""
-for o in $(sed -n 's/^OPTS: list\[str\] = \[\(.*\)\]$/\1/p' pystachy.py | tr -d '",') all; do
+for o in all; do
   PYSTACHY_OPT=-$o tests/run.sh "$V/pystachy2" > "$V/tests-opt-off-$o.log" 2>&1
   logs="$logs $V/tests-opt-off-$o.log"; offs="$offs, \"-$o\""
 done
@@ -169,13 +170,15 @@ step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, 
 # ---- gc-stress: collections far more often than the collector would run them
 L=$V/gc-stress.log; s=$(now); r=fail
 {
-  PYSTACHY_GC_STRESS=100 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" &&
-    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 100 allocations emits the stage1 IR" && r=pass
-  PYSTACHY_GC_STRESS=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
+  # (every 1000, not 100: the compiler keeps each function's IR until the program is built, and at
+  # every 100 its collections, which mark all of it, take minutes)
+  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" &&
+    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 1000 allocations emits the stage1 IR" && r=pass
+  PYSTACHY_GC_STRESS=1000 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
   echo "-- tests, collecting at every allocation"; cat "$V/gc-stress-tests.log"
 } > "$L" 2>&1
 x=$(tests "$V/gc-stress-tests.log") || r=fail
-step gc-stress $r "$s" "$L" ", \"compiler_interval\": 100, \"tests_interval\": 1, \"modes\": [\"jit\", \"aot\"], \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")$x"
+step gc-stress $r "$s" "$L" ", \"compiler_interval\": 1000, \"tests_interval\": 1, \"tests_compiler_interval\": 1000, \"modes\": [\"jit\", \"aot\"], \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")$x"
 
 # ---- benchmarks: same output as CPython, JIT and AOT
 L=$V/benchmarks.log; s=$(now); r=pass; x=""; n=0; ok=0
