@@ -5527,7 +5527,7 @@ class Gen:
                 f.ptypes.append("")
             elif self.lib and self.ann_problem(p.kids[0], False) != "":
                 bad = self.ann_problem(p.kids[0], False)
-                f.ptypes.append("int")
+                f.ptypes.append("")  # (any type: the def statement evaluates its default, see hoist)
             else:
                 f.ptypes.append(self.vtype(p.kids[0]))
         if int(marks[0]) == len(ps) and len(ps) > 0:
@@ -5663,7 +5663,9 @@ class Gen:
                 if name not in ci.ftypes:
                     why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
                     t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
-                    t = "" if t == "None" else t  # (f() that returns None: a field has a value type)
+                    if t.startswith("!"):
+                        why = t[1:]  # (a call of a function Pystachy cannot compile: its error)
+                    t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                     if t == "" and why == "":
                         why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                     if t == "" and ci.mod == "":
@@ -5689,13 +5691,14 @@ class Gen:
             t = self.guess(e.kids[0], f)
             return "int" if t == "bool" else t  # (-True is -1, as unary() computes it)
         if k == "name" and e.s in f.params:
-            return f.ptypes[f.params.index(e.s)]
+            t = f.ptypes[f.params.index(e.s)]
+            return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
         if k == "call" and e.kids[0].kind == "name":
             c = e.kids[0].s
             if c in self.classes:
                 return c
             if c in self.funcs:
-                return self.funcs[c].ret
+                return self.funcs[c].ret if self.funcs[c].bad == "" else "!" + self.funcs[c].bad
             if c == "str" or c == "int" or c == "float" or c == "bool":
                 return c
             if c == "len" or c == "ord":
@@ -5709,14 +5712,15 @@ class Gen:
             return self.classes[f.cls].ftypes.get(e.s, "")
         if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
             ms = self.classes[f.cls].methods
-            return ms[e.kids[0].s].ret if e.kids[0].s in ms else ""
+            m = e.kids[0].s
+            return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
         if k == "cmp" or (k == "unary" and e.s == "not"):
             return "bool"
         if k == "ifexp":
             return self.guess(e.kids[1], f)
         if k == "list" and len(e.kids) > 0:
             t = self.guess(e.kids[0], f)
-            return f"list[{t}]" if t != "" else ""
+            return f"list[{t}]" if t != "" and not t.startswith("!") else t
         if k == "binop":
             a = self.guess(e.kids[0], f)
             b = self.guess(e.kids[1], f)
@@ -9103,8 +9107,8 @@ class Gen:
         return v if t == "" else self.coerce(v, t)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "") -> Val:
-        if f.bad != "" and not f.generic:
-            self.err(f.bad)
+        if f.bad != "":
+            self.err(f.bad)  # (before its arguments, whose types may be placeholders')
         self.called[f.ll] = True
         line = self.line
         np = len(f.params)

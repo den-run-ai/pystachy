@@ -105,3 +105,26 @@ class Pair:
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Pair) and other.x == self.x
+
+
+def mk() -> list[int]:
+    return [1]
+
+
+def defaults(xs: Iterable[int] = [1, 2], d: dict[float, str] = {}) -> int:
+    return 0
+
+
+def template(x, ys: Iterable[int], y: int | None = None) -> int:
+    return x
+
+
+class Probe:
+    def helper(self) -> int | None:
+        return 3
+
+    def __init__(self) -> None:
+        self.x = self.helper()
+
+    def scan(self, xs: Iterable[int] = mk()) -> int:
+        return 0
