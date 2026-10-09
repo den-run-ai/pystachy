@@ -489,7 +489,10 @@ subclasses or an exception group, a decorated one, one defining again a method o
 other than `__init__`, `__str__` and `__repr__` (methods are not dispatched on the object's
 class), a field its base declares, or one that would be its builtin base's own attribute
 (`args`, `code` of `SystemExit`, `errno`, `strerror`, `filename` and `filename2` of `OSError`,
-`msg` of `ImportError`), a call `x.__init__(...)` on an object of a class that a class deriving
+`msg` of `ImportError`), or one that the builtin base's `__init__` sets where it may run after
+the class's code assigns the field (`value` of `StopIteration`, `name` and `obj` of
+`AttributeError`, `name` of `NameError`, `name` and `path` of `ImportError`: assign it after
+`super().__init__(...)`); reading those attributes where the class has no such field, a call `x.__init__(...)` on an object of a class that a class deriving
 from it defines `__init__` again for, `Base.method(self, ...)` naming a base other than the
 class's own, one whose `__init__` may leave a field of the base
 unassigned where the base's code reads it (call `super().__init__()` first), keyword

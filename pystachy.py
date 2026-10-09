@@ -4617,6 +4617,10 @@ EXCFIELDS = "cls:str str:str args:str code:int hc:bool"
 # the attributes of builtin exception classes that their str(), repr() or exit status read: an
 # exception class's field of that name would be theirs (not supported)
 EXCATTRS: dict[str, str] = {"BaseException": "args", "SystemExit": "code", "OSError": "errno strerror filename filename2", "ImportError": "msg"}
+# the attributes that the __init__ of builtin exception classes sets (StopIteration's value to its
+# first argument, the others to their keyword argument or None), which only CPython reads: an
+# exception class's field of that name must be assigned after that __init__ runs
+EXCINIT: dict[str, str] = {"StopIteration": "value", "AttributeError": "name obj", "NameError": "name", "ImportError": "name path"}
 
 
 def is_excname(s: str) -> bool:
@@ -5197,6 +5201,18 @@ def name_nodes(n: Node, out: dict[str, bool]) -> None:
         out[n.s] = True
     for k in n.kids:
         name_nodes(k, out)
+
+
+def calls_init(n: Node) -> bool:
+    # does n hold a call of an __init__ method (outside the functions and classes it defines)
+    if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].s == "__init__":
+        return True
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+        return False
+    for k in n.kids:
+        if calls_init(k):
+            return True
+    return False
 
 
 def has_kind(n: Node, kind: str) -> bool:
@@ -6504,6 +6520,42 @@ class Gen:
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+        for b in EXCINIT:
+            if ci.exc != "" and name in EXCINIT[b].split() and exc_derives(ci.exc, b) and not self.init_after(ci, name):
+                why = f"a field '{name}' of exception class {short(ci.name)} is not supported here: {b}.__init__() sets its attribute {name} as it runs, after what assigned the field before it (assign self.{name} in __init__, after super().__init__(...))"
+                if ci.mod == "":
+                    self.err(why)
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+
+    def init_after(self, ci: ClassInfo, name: str) -> bool:
+        # is field name of class ci's objects assigned after its builtin base's __init__ runs, if it
+        # runs: the __init__ that runs for them (of ci or the nearest base) does not call its base's,
+        # or calls it in a statement of its own after which it assigns self.name (or the base's
+        # __init__ does so, for its own objects), and calls it nowhere else
+        if "__init__" not in ci.methods:
+            return False  # (the builtin __init__ runs as the object is made)
+        f = ci.methods["__init__"]
+        d = self.classes[f.cls]
+        me = f.params[0] if len(f.params) > 0 else ""
+        body = f.node.kids[2].kids
+        last = -1
+        for i in range(len(body)):
+            st = body[i]
+            c = st.kids[0] if st.kind == "expr" else st
+            a = c.kids[0] if c.kind == "call" else c
+            if a.kind == "attr" and a.s == "__init__" and ((a.kids[0].kind == "call" and a.kids[0].kids[0].kind == "name" and a.kids[0].kids[0].s == "super")
+                                                         or (a.kids[0].kind == "name" and len(c.kids) > 1 and c.kids[1].kind == "name" and c.kids[1].s == me)):
+                last = i
+            elif calls_init(st):
+                return False  # (it may call the base's __init__ in another way)
+        if last < 0:
+            return True
+        if d.base in self.classes and self.init_after(self.classes[d.base], name):
+            return True
+        for st in body[last + 1 :]:
+            if (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "attr" and st.kids[0].s == name and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == me:
+                return True
+        return False
 
     def add_field(self, ci: ClassInfo, name: str, t: str) -> None:
         if name not in ci.ftypes:
@@ -6727,6 +6779,12 @@ class Gen:
                 sub = [c for c in self.classes.values() if c.name != o.t and name in c.ftypes and self.derives(c.name, o.t)]
                 if len(sub) > 0:
                     self.err(f"'{short(o.t)}' object has no attribute '{name}' (it is a field of {short(sub[0].name)}, which derives from {short(o.t)}: isinstance() does not change the type of a value)")
+                for b in EXCATTRS:
+                    if name in EXCATTRS[b].split() and exc_derives(ci.exc, b):
+                        self.err(f"'{short(o.t)}' object has no attribute '{name}': {b}'s attribute {name} is not supported (str(e) and repr(e) are)")
+                for b in EXCINIT:
+                    if name in EXCINIT[b].split() and exc_derives(ci.exc, b):
+                        self.err(f"'{short(o.t)}' object has no attribute '{name}': {b}'s attribute {name} is not supported (a field of the class assigned in __init__, after super().__init__(...), is)")
                 self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
