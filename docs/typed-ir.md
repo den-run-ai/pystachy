@@ -32,7 +32,8 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
 >     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
 >     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
->     coverage and the R, A, U and N letters against runtime.c's call graph;
+>     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
+>     descriptor) against runtime.c's call graph;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
 >   - `anyall` records a `seq` `Loop` too;
 >   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
@@ -455,7 +456,7 @@ RUNTIME: dict[str, str] = {
     "list.get": "*T:S,int|R rL|",
     "list.set": "None:S,int,*T|R wL|",
     "list.append": "None:S,*T|A wL|",
-    "list.find": "int:S,*T,#|rL U?|",
+    "list.find": "int:S,*T,#|rL rD U?|",
     "dict.getitem": "*V:S,*K|R rD|",
     "dict.has": "bool:S,*K|rD|",
     "dict.set": "None:S,*K,*V|A wD|",

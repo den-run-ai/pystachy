@@ -589,8 +589,9 @@ versions, platform, git commit and a timestamp:
 - **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
   `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
   entry's declaration has the types clang compiles the function to, every runtime function
-  the compiler names has an entry, and an entry's effect letters include what the function's
-  C call graph shows (it may raise, allocate, call user code, or never return);
+  the compiler names has an entry, and an entry's effect letters are known ones and include
+  what the function's C call graph shows (it may raise, allocate, call user code, read the
+  lists and dicts of a value it walks by its descriptor, or never return);
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);

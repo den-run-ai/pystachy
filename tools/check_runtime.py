@@ -10,10 +10,12 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - coverage: every runtime function pystachy.py names (METHODS, CALLS, IRT, FRT, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
-  - effects: an entry has R if the function's C call graph reaches pys_fail, pys_raise, oserr or
-    kbint_exit (not counting the allocator's MemoryError: that is A), A if it reaches the
-    allocator's slow path (gc_slow), U or U? if it reaches pys_obj_eq, pys_obj_cmp or
-    pys_obj_repr (user code), and N if the C function is noreturn. More letters than the call
+  - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
+    C call graph reaches pys_fail, pys_raise, oserr or kbint_exit (not counting the allocator's
+    MemoryError: that is A), A if it reaches the allocator's slow path (gc_slow), U or U? if it
+    reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it has a #
+    parameter and reaches eqv, opv or repr (which walk a value of any type by its descriptor:
+    the lists and dicts in it), and N if the C function is noreturn. More letters than the call
     graph shows are allowed (an entry may be conservative); -v lists them.
 The exit status is 1 if a check fails. Clang and llvm-as come from PATH, or PYSTACHY_LLVM.
 """
@@ -32,6 +34,8 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 NO_USER = {"dict.getitem", "dict.pop", "dict.pop_default"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
+# the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
+BY_DESC = {"eqv", "opv", "repr"}
 
 
 def load_compiler():
@@ -164,6 +168,9 @@ def main():
             continue
         e = rt[k]
         letters = e[e.find("|") + 1 : e.rfind("|")].split()
+        for x in letters:
+            if x not in pys.FX and x != "U?":
+                bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
         if reaches(fns, sym, RAISES, {"gc_slow"}):
             derived.append("R")
@@ -173,6 +180,8 @@ def main():
             derived.append("A")
         if reaches(fns, sym, USER, set()) and k not in NO_USER:
             derived.append("U")
+        if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, set()):
+            derived.extend(["rL", "rD"])
         for x in derived:
             if x not in letters and not (x == "U" and "U?" in letters):
                 bad.append(f"{k}: {sym} has effect {x} in runtime.c, which RUNTIME leaves out")
