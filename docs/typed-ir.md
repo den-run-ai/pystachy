@@ -81,8 +81,33 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     no other path, from a handler either, joins it) to the `list.get` of the list at that
 >     index, and stops at an op with wL or U. It makes the read a `list.load` op (letters rL),
 >     which lowers to the inline load of `l->a[i]` (three more numbers, from `IFn.n`). Every
->     loop over a list qualifies: 369 of the 1,767 `pys_list_get` calls of the self-compile,
->     and 254 more in 86 other programs of the corpus. `tests/ir/listget.py` pins it.
+>     loop over a list qualifies: 376 of the 1,823 `pys_list_get` calls of the self-compile,
+>     and 262 more in 88 other programs of the corpus. `tests/ir/listget.py` pins it.
+>   - `dictfuse` (item 2): a `dict.has` or a `dict.getitem` finds a key's entry, which a later
+>     `dict.getitem` or `dict.set` of the same dict and key reuses where the key is known to be
+>     there: after a getitem, or on the branch where the has's test is true (the pass reads the
+>     raw `icmp ne`/`eq i64 %r, 0` of its result, and an `xor i1 %c, true` of that). A forward
+>     pass over the blocks in order keeps the lookups (`Lookup`) that hold at the end of each
+>     block; the blocks that branch to a block meet by intersection, a later one (a loop's back
+>     edge) brings none, and an op with wD or U, or a set that reuses no entry, ends them all
+>     (a reused entry's set moves no entry, as `pys_dict_set` overwrites). `Gen.canon` (with
+>     `Values`) finds equal dicts and keys: a raw load reads what the last store or load of the
+>     same slot, global or field wrote or read, on the path back through blocks that one branch
+>     leads to (fields of different classes or indices never alias); a raw computation, and an
+>     `rt` op that only computes (no letter but R), equals the first of the same text with
+>     canonical operands. The has becomes `dict.find` (the entry or -1; the has's number is then
+>     the raw `add %e, 1`), a reused getitem `dict.entry` (the entry, or CPython's KeyError) and
+>     `dict.val`, and the ops that reuse an entry `dict.val` (the loops' `pys_dict_val`, which
+>     serves as §7.1's `dict.entry_val`) and `dict.entry_set`. In the self-compile it rewrites
+>     73 of the 496 `pys_dict_has` calls, 91 of the 327 `pys_dict_getitem` and 2 of the 766
+>     `pys_dict_set`; in 7 other programs of the corpus, 14 has, 32 getitem and 21 set.
+>     `tests/ir/dictfuse.py` pins it, and where it does not apply: `if k not in d: d[k] = []`
+>     before `d[k].append(x)` (the set inserts, so no entry is known after the join), and a
+>     call that may change a dict. `d[k] = d.get(k, 0) + 1` (bench/words.py) is not fused.
+>   - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
+>     field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
+>     passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with
+>     `PYSTACHY_OPT=-all`, under callgrind).
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -1102,6 +1127,8 @@ Each optimization is a behavioural step after step 14. Each is a function over a
    - Writing an existing entry never moves entries.
    - `if k in d: d[k] += 1` drops from three hash lookups to one.
    - LLVM cannot do this: the calls are opaque, and stores lie between them.
+   - Measured when it landed: 73 of the 496 `pys_dict_has` calls of the self-compile, and 91
+     of its 327 `pys_dict_getitem`; `bench/dictcount.py` runs in 0.11 s instead of 0.16 s AOT.
 3. **None-check elimination.**
    - A forward dataflow over blocks tracks "this slot or value is not None". The facts come from `check`, `new`, `self`, and the true edge of `isnull`.
    - Joins intersect the facts. A store of a value that may be None kills them, and so does the head of a loop that stores the slot.

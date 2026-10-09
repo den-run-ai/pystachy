@@ -4602,7 +4602,7 @@ for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cl
     LLNOTRAW[_k] = True
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget"]
+OPTS: list[str] = ["listget", "dictfuse"]
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -4644,6 +4644,7 @@ RUNTIME: dict[str, str] = {
     "dict.copy": "S:S|A rD|", "dict.from": "S:S|A rD|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
+    "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A rD|", "dict.entry_set": "None:S,int,*V|wD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|A rL|", "str.split": "list[str]:S,str,int|R A|",
@@ -5380,6 +5381,39 @@ class IFn:
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
         self.fa: dict[str, bool] = {}  # the values that are addresses of an object's field or flag (Gen.fgep)
+
+
+class Lookup:
+    # a dict.has or dict.getitem (op, in block blk of its IFn) of key k in dict d, given as their
+    # canonical values (Gen.canon): a getitem or a set of the same d and k after it may reuse the
+    # entry it finds (Gen.dictfuse)
+    def __init__(self, op: Ins, blk: int, d: str, k: str):
+        self.op = op
+        self.blk = blk
+        self.d = d
+        self.k = k
+        self.e = 0  # the number of the entry's index (%tN), once an op reuses it
+
+
+class Values:
+    # which values of an IFn are equal (Gen.canon), for dictfuse: each value's canonical value
+    def __init__(self, fn: IFn, pl: dict[str, list[int]]):
+        self.fn = fn
+        self.pl = pl  # the blocks that branch to each block (Gen.preds)
+        # by the number of the value a raw op or an rt op defines: its block * 2^20 + its position
+        # there (-1 for the other numbers)
+        self.at: list[int] = [-1] * (fn.n + 1)
+        self.cn: dict[str, str] = {}  # value -> its canonical value, once asked
+        self.same: dict[str, str] = {}  # a computation's text, with canonical operands -> the first value of it
+        self.text: dict[str, str] = {}  # and that value -> the text
+        for j in range(len(fn.blocks)):
+            code = fn.blocks[j].code
+            for x in range(len(code)):
+                i = code[x]
+                if i.op == "raw" and i.k > 0:
+                    self.at[i.k] = j * 1048576 + x
+                elif i.op == "rt" and len(i.r) == 1:
+                    self.at[i.r[0]] = j * 1048576 + x
 
 
 class Frame:
@@ -7493,19 +7527,22 @@ class Gen:
         n = 0
         if "listget" in on:
             n += self.listget(fn)
+        if "dictfuse" in on:
+            n += self.dictfuse(fn)
         return n
 
-    def preds(self, fn: IFn) -> dict[str, int]:
-        # how many branches lead to each block of fn, by label (a check's raising edge aside: its
-        # cold block ends the program)
-        np: dict[str, int] = {}
+    def preds(self, fn: IFn) -> dict[str, list[int]]:
+        # the blocks that branch to each block of fn, by label, as positions in fn.blocks, once
+        # each (a check's raising edge aside: its cold block ends the program)
+        pl: dict[str, list[int]] = {}
         for b in fn.blocks:
-            np[b.label] = 0
-        for b in fn.blocks:
-            i = b.code[len(b.code) - 1]
-            for l in i.b:
-                np[l] += 1
-        return np
+            pl[b.label] = []
+        for j in range(len(fn.blocks)):
+            code = fn.blocks[j].code
+            for l in code[len(code) - 1].b:
+                if j not in pl[l]:
+                    pl[l].append(j)
+        return pl
 
     def listget(self, fn: IFn) -> int:
         # Unchecked list reads in sequence loops. The test a seq loop makes of a list leads to a
@@ -7524,7 +7561,7 @@ class Gen:
         at: dict[str, int] = {}
         for j in range(len(fn.blocks)):
             at[fn.blocks[j].label] = j
-        np = self.preds(fn)
+        pl = self.preds(fn)
         bad = FXBIT["wL"] | FXBIT["U"]
         n = 0
         for lp in fn.loops:
@@ -7547,9 +7584,254 @@ class Gen:
                             break
                         if self.opfx(i, fn.fa) & bad != 0:
                             break
-                        if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and np[i.b[0]] == 1:
+                        if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1:
                             l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
         return n
+
+    def dictfuse(self, fn: IFn) -> int:
+        # Dict lookup fusion. A dict.has or a dict.getitem of key k in dict d finds k's entry; a
+        # dict.getitem or a dict.set of the same d and k after it, where k is known to be in d,
+        # can reuse that entry while no dict changes: the has or getitem becomes a dict.find
+        # (the entry, or -1) or a dict.entry (the entry, or a KeyError), the getitem after it a
+        # dict.val (the entry's value) and the set a dict.entry_set (which moves no entry). k is
+        # in d after a getitem, and where the test of a has's result is true. A forward pass over
+        # the blocks in order keeps the lookups that hold at the end of each block (Lookup, by
+        # position in looks: True where k is known to be in d), from the blocks that branch to a
+        # block, and none from a later one (a loop's back edge); an op with wD or U, and a set
+        # that reuses no entry, ends them all. d and k must be the same values (canon). How many
+        # ops it rewrote
+        some = False
+        for b in fn.blocks:
+            for i in b.code:
+                some = some or (i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem"))
+        if not some:
+            return 0
+        pl = self.preds(fn)
+        vs = Values(fn, pl)
+        looks: list[Lookup] = []
+        has: dict[str, int] = {}  # a has's result -> its lookup
+        cond: dict[str, int] = {}  # a test of it (icmp ne/eq 0, and xor true of one) -> the lookup
+        pos: dict[str, bool] = {}  # and whether it is true where k is in d
+        # (a block shares the state it starts with, and copies it before it changes it: own)
+        none: dict[int, bool] = {}
+        outs: list[dict[int, bool]] = []
+        bad = FXBIT["wD"] | FXBIT["U"]
+        n = 0
+        for j in range(len(fn.blocks)):
+            b = fn.blocks[j]
+            st = none
+            own = False
+            ps = pl[b.label]
+            back = False
+            for p in ps:
+                back = back or p >= j  # (a loop's back edge: none holds)
+            for x in range(len(ps) if not back else 0):
+                if x > 0 and len(st) == 0:
+                    break
+                # what holds on the branch from block ps[x]: a cbr on a has's test tells whether k is in d
+                e = outs[ps[x]]
+                t = fn.blocks[ps[x]].code[len(fn.blocks[ps[x]].code) - 1]
+                if t.op == "cbr" and t.b[0] != t.b[1] and t.a[0].v in cond and cond[t.a[0].v] in e:
+                    c = cond[t.a[0].v]
+                    e = e.copy()
+                    if (b.label == t.b[0]) == pos[t.a[0].v]:
+                        e[c] = True
+                    else:
+                        e.pop(c)
+                if x == 0:
+                    st = e
+                else:
+                    if not own:
+                        st = st.copy()
+                        own = True
+                    for c in [c for c in st]:
+                        if c not in e:
+                            st.pop(c)
+                        elif not e[c]:
+                            st[c] = False
+            for x in range(len(b.code)):
+                i = b.code[x]
+                if i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem" or i.s == "dict.set"):
+                    d = self.canon(vs, i.a[0].v)
+                    k = self.canon(vs, i.a[1].v)
+                    m = -1
+                    for c in st:
+                        if st[c] and looks[c].d == d and looks[c].k == k:
+                            m = c
+                    if m >= 0 and i.s != "dict.has":
+                        # reuse the entry lookup m found
+                        if looks[m].e == 0:
+                            fn.n += 1
+                            looks[m].e = fn.n
+                        ev = Val(f"%t{looks[m].e}", "int")
+                        if i.s == "dict.getitem":
+                            self.runtime("pys_dict_val")
+                            i.s = "dict.val"
+                            i.a = [i.a[0], ev]
+                        else:
+                            self.runtime("pys_dict_entry_set")
+                            i.s = "dict.entry_set"
+                            i.a = [i.a[0], ev, i.a[2]]
+                        n += 1
+                    elif i.s == "dict.set":
+                        st = none
+                        own = False
+                    else:
+                        if not own:
+                            st = st.copy()
+                            own = True
+                        st[len(looks)] = i.s == "dict.getitem"
+                        if i.s == "dict.has":
+                            has[f"%t{i.r[0]}"] = len(looks)
+                        looks.append(Lookup(i, j, d, k))
+                elif i.op == "raw" and i.k > 0:
+                    # %c = icmp ne i64 %r, 0 of a has's result (k in d; eq: k not in d), %c = xor i1 %t, true of one (not)
+                    s = i.s
+                    o = s.find(" = ") + 3 if len(cond) + len(has) > 0 else 0
+                    if len(has) > 0 and s.endswith(", 0") and (s.startswith("icmp ne i64 ", o) or s.startswith("icmp eq i64 ", o)):
+                        r = s[o + 12 : len(s) - 3]
+                        if r in has:
+                            cond[f"%t{i.k}"] = has[r]
+                            pos[f"%t{i.k}"] = s.startswith("icmp ne ", o)
+                    elif len(cond) > 0 and s.endswith(", true") and s.startswith("xor i1 ", o):
+                        r = s[o + 7 : len(s) - 6]
+                        if r in cond:
+                            cond[f"%t{i.k}"] = cond[r]
+                            pos[f"%t{i.k}"] = not pos[r]
+                elif len(st) > 0 and self.opfx(i, vs.fn.fa) & bad != 0:
+                    st = none
+                    own = False
+            outs.append(st)
+        # the lookups whose entry an op reuses: a has becomes a find (and k in d is its entry + 1,
+        # which is not 0), a getitem an entry and a val
+        for f in looks:
+            if f.e == 0:
+                continue
+            code = fn.blocks[f.blk].code
+            x = 0
+            while code[x] is not f.op:
+                x += 1
+            i = f.op
+            if i.s == "dict.has":
+                self.runtime("pys_dict_find")
+                fi = Ins("rt", "int", "dict.find")
+                fi.a = [i.a[0], i.a[1]]
+                fi.r = [f.e]
+                code[x] = fi
+                ad = Ins("raw", "", f"%t{i.r[0]} = add i64 %t{f.e}, 1")
+                ad.k = i.r[0]
+                code.insert(x + 1, ad)
+            else:
+                self.runtime("pys_dict_entry")
+                en = Ins("rt", "int", "dict.entry")
+                en.a = [i.a[0], i.a[1]]
+                en.r = [f.e]
+                code.insert(x, en)
+                self.runtime("pys_dict_val")
+                i.s = "dict.val"
+                i.a = [i.a[0], Val(f"%t{f.e}", "int")]
+            n += 1
+        return n
+
+    def canon(self, vs: Values, v: str) -> str:
+        # the canonical value of value v (Values): ops with the same canonical value compute
+        # equal values (as long as no back edge comes between them). A raw op's load reads what
+        # the store or load of the same address that comes last before it, on the one path back,
+        # stored or read; another raw op, or an rt op that only computes (it may raise, but reads
+        # no memory but strings', allocates nothing and does no I/O), computes what the first op
+        # of its text, with canonical operands, computed; any other value is its own
+        if v in vs.cn:
+            return vs.cn[v]
+        r = v
+        w = vs.at[int(v[2:])] if v.startswith("%t") and v[2:].isdigit() else -1
+        if w >= 0:
+            i = vs.fn.blocks[w // 1048576].code[w % 1048576]
+            if i.op == "rt":
+                if self.rtfns[i.s].fx & ~FXBIT["R"] == 0 and not self.rtfns[i.s].q:
+                    r = self.same(vs, v, f"rt {i.s} {', '.join([self.canon(vs, a.v) for a in i.a])}")
+            else:
+                s = i.s[i.s.find(" = ") + 3 :]
+                if s.startswith("load "):
+                    x = self.reaching(vs, self.addr(vs, s[s.rfind(" ") + 1 :]), w // 1048576, w % 1048576)
+                    if x != "":
+                        r = self.canon(vs, x)
+                else:
+                    # the text with each operand %tN canonical
+                    t: list[str] = []
+                    a = 0
+                    b = s.find("%t")
+                    while b >= 0:
+                        e = b + 2
+                        while e < len(s) and s[e].isdigit():
+                            e += 1
+                        t.append(s[a:b])
+                        t.append(self.canon(vs, s[b:e]) if e > b + 2 and (e == len(s) or s[e] == "," or s[e] == " ") else s[b:e])
+                        a = e
+                        b = s.find("%t", a)
+                    t.append(s[a:])
+                    r = self.same(vs, v, "".join(t))
+        vs.cn[v] = r
+        return r
+
+    def same(self, vs: Values, v: str, t: str) -> str:
+        # the first value of the computation t (Values.same): v, if it is the first
+        if t in vs.same:
+            return vs.same[t]
+        vs.same[t] = v
+        vs.text[v] = t
+        return v
+
+    def addr(self, vs: Values, a: str) -> str:
+        # the canonical address of address a: a slot (%name.N) and a global (@name) are their own
+        return self.canon(vs, a) if a.startswith("%t") and a[2:].isdigit() else a
+
+    def reaching(self, vs: Values, a: str, j: int, x: int) -> str:
+        # the value that the load at position x of block j reads from canonical address a: the
+        # value stored or read by the last store or load of a before it, on the one path back
+        # through blocks that a single branch leads to, or "" if an op between may write a's
+        # memory (a slot's: only a store to it; a global's: a store to it, or an op with wG;
+        # another's: a store that may alias it, or an op with wL wD wO), or no such op is found
+        slot = a.startswith("%") and "." in a
+        glob = a.startswith("@")
+        heap = not slot and not glob
+        end = " " + a  # (how a slot's or a global's load or store ends)
+        stop = FXBIT["wG"] if glob else RAWW
+        while True:
+            code = vs.fn.blocks[j].code
+            for y in range(x - 1, -1, -1):
+                i = code[y]
+                if i.op != "raw":
+                    if not slot and self.opfx(i, vs.fn.fa) & stop != 0:
+                        return ""
+                    continue
+                s = i.s
+                st = s.startswith("store ")
+                if not st and (i.k == 0 or not s.startswith("load ", s.find(" = ") + 3)):
+                    continue
+                if not heap:
+                    if s.endswith(end):
+                        return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"  # (store T V, ptr A)
+                    continue
+                p = s[s.rfind(" ") + 1 :]
+                q = self.addr(vs, p)
+                if q == a:
+                    return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"
+                if st and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
+                    return ""
+            ps = vs.pl[vs.fn.blocks[j].label]
+            if len(ps) != 1 or ps[0] >= j:
+                return ""
+            j = ps[0]
+            x = len(vs.fn.blocks[j].code)
+
+    def disjoint(self, vs: Values, a: str, b: str) -> bool:
+        # whether canonical addresses a and b are fields of different classes or at different
+        # indices (getelementptr %C.<class>, ptr <object>, i32 0, i32 <index>): never the same memory
+        ta = vs.text.get(a, "")
+        tb = vs.text.get(b, "")
+        if not ta.startswith("getelementptr %C.") or not tb.startswith("getelementptr %C."):
+            return False
+        return ta[: ta.find(",")] != tb[: tb.find(",")] or ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
 
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need

@@ -1,0 +1,16 @@
+@main.init:
+@f.get: pys_dict_find pys_dict_val
+@f.count: pys_dict_find pys_dict_val pys_dict_entry_set pys_dict_set pys_raise
+@f.put: pys_dict_find pys_dict_entry_set
+@f.bump: pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.twice: pys_dict_has pys_list_new pys_dict_set pys_dict_entry pys_dict_val pys_list_append pys_dict_val pys_list_append
+@f.changed: pys_dict_has pys_dict_clear pys_dict_set
+@f.other: pys_dict_find pys_dict_val pys_dict_set
+@f.clear: pys_dict_clear
+@f.called: pys_dict_has pys_dict_getitem
+@m.Tally.__init__: pys_dict_new
+@m.Tally.add: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

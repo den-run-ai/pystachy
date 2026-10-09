@@ -562,7 +562,9 @@ with its one terminator, an op left as LLVM text is no call, phi or terminator, 
 defines the numbers its lowering prints, branches go to blocks of the function, and a phi's
 predecessors branch to it). The optimizations that run on the IR before it is lowered
 (`docs/typed-ir.md` §7.1) can be turned off for a differential run: `PYSTACHY_OPT=-listget`
-(comma-separated names, or `-all`); the tests pass with each one off. The programs cover arithmetic and overflow edges,
+(a for loop's reads of the list it steps through, without a bounds check) or `-dictfuse` (one
+hash lookup for `if k in d: d[k] += 1` and the like), comma-separated, or `-all`; the tests
+pass with each one off. The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
@@ -664,11 +666,13 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   instructions whose control flow, checks, calls, runtime calls and empty-container holes are
   ops, and the LLVM text is printed from them once the whole program is built
   (`PYSTACHY_IRCHECK=1` checks the IR first). A `RUNTIME` table gives every runtime function
-  its signature and effects, from which each function gets an effect summary (computed when
-  `PYSTACHY_IRCHECK=1` or `PYSTACHY_IRFX=1`, until a pass needs it). Loads, stores
-  and arithmetic are still LLVM text; converting them, then a second lowering, would allow
-  language-level optimizations (redundant dict lookups, bounds-check hoisting) and further
-  backends.
+  its signature and effects, from which each function gets an effect summary. The first
+  language-level optimizations read them (§7.1): a for loop reads the items of a list it
+  steps through without a bounds check, and a dict lookup that a membership test or a read
+  of the same key made is reused (`if k in d: d[k] += 1` hashes `k` once; a dict-counting
+  benchmark, `bench/dictcount.py`, runs in 0.11 s instead of 0.16 s AOT). Loads, stores and
+  arithmetic are still LLVM text; converting them, then a second lowering, would allow more
+  of them (None checks, bounds-check hoisting) and further backends.
 - **A WebAssembly GC backend**, Ouro v2's design: the engine supplies memory management
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and

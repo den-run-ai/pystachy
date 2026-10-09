@@ -31,7 +31,7 @@ LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # functions whose call graph reaches user code only through a KeyError's repr of the key: dict
 # keys are int or str, whose repr never calls user code
-NO_USER = {"dict.getitem", "dict.pop", "dict.pop_default"}
+NO_USER = {"dict.getitem", "dict.entry", "dict.pop", "dict.pop_default"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
