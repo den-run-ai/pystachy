@@ -5362,8 +5362,8 @@ class Gen:
         self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
         return v
 
-    def desc(self, t: str) -> str:
-        # type descriptor for the runtime's generic repr/equality/ordering
+    def desc(self, t: str, use: str) -> str:
+        # type descriptor for the runtime's generic repr (use "r"), equality ("e") or ordering ("c")
         if t == "int":
             return "i"
         if t == "float":
@@ -5373,17 +5373,24 @@ class Gen:
         if t == "str":
             return "s"
         if is_list(t):
-            return "L" + self.desc(elem(t))
+            return "L" + self.desc(elem(t), use)
         if is_dict(t):
             a = targs(t)
-            return "D" + self.desc(a[0]) + self.desc(a[1])
+            return "D" + self.desc(a[0], use) + self.desc(a[1], use)
         if is_tuple(t):
             a = targs(t)
             if len(a) > 9:
                 self.err("tuples are limited to 9 elements")
-            return "T" + str(len(a)) + "".join([self.desc(x) for x in a])
+            return "T" + str(len(a)) + "".join([self.desc(x, use) for x in a])
         if t in self.classes:
-            # O<id>: the runtime calls back into pys_obj_eq/lt/repr, which dispatch on the id
+            # O<id>: the runtime calls back into pys_obj_eq/lt/repr, which dispatch on the id, and
+            # so the methods of use, with objects of class t (see obj_helpers): one that cannot
+            # take them is an error here
+            ms = self.classes[t].methods
+            for m in "__repr__:r __eq__:e __lt__:c __le__:c __gt__:c __ge__:c".split():
+                f = ms[m[:-2]] if m[:-2] in ms and m[-1] in use else None
+                if f is not None and (f.bad != "" or (m[-1] != "r" and f.ptypes[1] != t)):
+                    self.err(f.bad if f.bad != "" else f"comparing {shown(t)} objects (in a list, tuple, in, count, index, sort, min or max) calls {m[:-2]}() with a {shown(t)}, but it takes a {typestr(f.ptypes[1])}")
             if t not in self.ocls:
                 self.ocls[t] = len(self.ocls)
             return f"O{self.ocls[t]:03d}"
@@ -8574,7 +8581,7 @@ class Gen:
         if spec.kind == "str" and not self.isnum(v.t) and v.t != "str":
             self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
         sv = self.expr(spec, "str")
-        d = self.sconst(self.desc(v.t))
+        d = self.sconst(self.desc(v.t, "r"))
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
 
     def tuple_(self, vals: list[Val]) -> Val:
@@ -8779,8 +8786,8 @@ class Gen:
         if t not in self.classes or m not in self.classes[t].methods:
             return ""
         f = self.classes[t].methods[m]
-        if f.bad != "" or (len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes))):
-            return m  # (a method that cannot be compiled: the call reports why)
+        if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes))):
+            return m  # (a method that cannot be compiled: the call reports why; see desc)
         return ""
 
     def isnull(self, v: Val) -> str:
@@ -8796,6 +8803,8 @@ class Gen:
         # b.__gt__(a), else TypeError naming both run-time types (None defines neither)
         fw = self.cmp_method(a.t, DUNDER[op], b.t)
         rf = self.cmp_method(b.t, DUNDER[REFL[op]], a.t)
+        if fw == "" and rf == "" and not self.lenient and a.t in self.classes and DUNDER[op] in self.classes[a.t].methods:
+            self.err(f"{DUNDER[op]}() of {shown(a.t)} takes a {typestr(self.classes[a.t].methods[DUNDER[op]].ptypes[1])}, not a {typestr(b.t)}")
         if fw == "" and rf == "" and not self.lenient:
             self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
         if fw != "" and a.v in self.nn:
@@ -8980,7 +8989,7 @@ class Gen:
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
                 s = self.to_slot(self.coerce(a, elem(b.t)))
-                r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(elem(b.t)))}"])
+                r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(elem(b.t), 'e'))}"])
                 r = self.ins(f"add i64 {r}, 1")
             elif is_dict(b.t):
                 s = self.to_slot(self.coerce(a, targs(b.t)[0]))
@@ -9006,7 +9015,7 @@ class Gen:
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
         if a.t == b.t and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or (eq and is_dict(a.t))):
-            d = f"ptr {self.sconst(self.desc(a.t))}"
+            d = f"ptr {self.sconst(self.desc(a.t, 'e' if eq else 'ec'))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
             if eq:
@@ -9439,7 +9448,7 @@ class Gen:
             neg = self.iop("ssub", "0", v.v)
             return Val(self.ins(f"select i1 {c}, i64 {neg}, i64 {v.v}"), "int")
         elif (name == "min" or name == "max") and len(vals) == 1 and is_list(t):
-            d = self.sconst(self.desc(elem(t)))
+            d = self.sconst(self.desc(elem(t), "c"))
             r = self.rt("pys_list_minmax", "i64", [f"ptr {v.v}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"])
             return self.from_slot(r, elem(t))
         elif (name == "min" or name == "max") and len(vals) == 1:
@@ -9453,7 +9462,7 @@ class Gen:
         elif (name == "sorted" or name == "list") and is_list(t):
             c = v.v if fresh else self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
             if name == "sorted":
-                self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t)))}", f"i64 {rev}"])
+                self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t), 'c'))}", f"i64 {rev}"])
             return Val(c, t)
         elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
             dn = self.as_int(v)
@@ -9628,7 +9637,7 @@ class Gen:
                     rev = self.reverse_arg(a.kids[0], "sort")
                 else:
                     self.err(f"list.sort({a.s}=...) is not supported" if a.s == "key" else f"sort() got an unexpected keyword argument '{a.s}'")
-            self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(elem(o.t)))}", f"i64 {rev}"])
+            self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(elem(o.t), 'c'))}", f"i64 {rev}"])
             return Val("null", "None")
         for a in args:
             if a.kind == "kw":
@@ -9663,7 +9672,7 @@ class Gen:
             if p == "":
                 continue
             if p == "#":
-                av.append(f"ptr {self.sconst(self.desc(T))}")
+                av.append(f"ptr {self.sconst(self.desc(T, 'e'))}")  # (count, index, remove)
                 continue
             dflt = ""
             e = p.find("=")
@@ -9718,6 +9727,8 @@ class Gen:
         ms = self.classes[v.t].methods
         if m not in ms:
             m = "__repr__"
+        if m in ms and ms[m].bad != "" and self.lenient:
+            m = ""  # (see desc)
         if v.v in self.nn and m in ms:
             return self.call_fn(ms[m], [v], [])
         l1 = self.label()
@@ -9745,7 +9756,7 @@ class Gen:
             return Val(self.sconst("None"), "str")
         if v.t == "file":
             self.err(f"cannot convert {v.t} to str")
-        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t))}"]), "str")
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'r'))}"]), "str")
 
 
 # ---------------------------------------------------------------- driver

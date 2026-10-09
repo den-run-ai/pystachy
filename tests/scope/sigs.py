@@ -128,3 +128,14 @@ class Probe:
 
     def scan(self, xs: Iterable[int] = mk()) -> int:
         return 0
+
+
+class Tagged:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __repr__(self) -> str:
+        return f"Tagged({self.x})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Tagged) and other.x == self.x
