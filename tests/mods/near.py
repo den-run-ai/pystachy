@@ -27,6 +27,29 @@ def never(x, k):
         await r
 
 
+def never_match(v):
+    match v:
+        case {"k": a, **rest}:
+            pass
+
+    def h():
+        nonlocal rest
+        return rest
+
+    return h
+
+
+def never_walrus(v):
+    def g(a=(y := 1)):
+        return a
+
+    def h():
+        nonlocal y
+        return y
+
+    return g
+
+
 class Never:
     def m(self, x: int) -> None:
         y = [lambda: (yield) for v in range(x)]

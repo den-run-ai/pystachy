@@ -3,5 +3,6 @@ mods.shapes: init mods.shapes
 1 2 3 5 6 5
 True
 [2] (5, 6) d, e = (5, 6)
+a5b c6d #
 42
 [exit 0]
