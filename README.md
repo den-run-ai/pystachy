@@ -740,7 +740,7 @@ defines the numbers its lowering prints, branches go to blocks of the function, 
 predecessors branch to it). The programs cover arithmetic and overflow edges,
 strings (also their Unicode whitespace), escapes and f-strings, a 400-case sample of the
 format-spec language, lists, dicts (also keys that collide in the hash table, and tuple keys), tuples, classes
-(also their container protocol, and static and class methods), dataclasses, NamedTuples, typing's forms (`collections.abc`, `Final`, `@overload`, `TypeVar`,
+(also their container protocol, static and class methods, and class variables), dataclasses, NamedTuples, typing's forms (`collections.abc`, `Final`, `@overload`, `TypeVar`,
 `os.PathLike`), `Optional` structures, optional values (also boxed numbers) and
 their narrowing (with CPython's error for each use of `None` where only a value works), rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
@@ -748,9 +748,10 @@ loader decides at import time (`tests/loader/`), a program run through a symboli
 (`tests/linked/`), CPython's syntax errors and nesting limits, templates, empty containers typed by their first
 use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignment, sorting
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
-streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
+streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
+when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1310 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1416 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
