@@ -107,8 +107,9 @@ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges 
 static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
-static struct { Exc *cur, *handled, *shown; } xr;   /* the exception raised last, the one being handled, the
-                                                      uncaught one whose str() is being shown (see exceptions) */
+static struct { Exc *cur, *handled, *shown, *pend; } xr;   /* the exception raised last, the one being handled,
+                                     the uncaught one whose str() is being shown, the one a with-file's close
+                                     raised while unwinding (see exceptions) */
 static int eh;                         /* the program has a try: stored by pys_eh_on alone (see exceptions) */
 typedef void Thrower(Exc *);
 static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
@@ -1826,9 +1827,10 @@ static const char *errcls(int e) {     /* CPython's OSError subclass for an errn
     e == EAGAIN || e == EALREADY || e == EINPROGRESS ? "BlockingIOError" : e == ESRCH ? "ProcessLookupError" :
     e == ETIMEDOUT ? "TimeoutError" : "OSError";
 }
-static _Noreturn void ioerr(int e) {   /* a failed write, flush or close raises, as in CPython */
-  char b[160]; snprintf(b, sizeof b, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); pys_fail(b);
+static const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
+  snprintf(b, 160, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); return b;
 }
+static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
 
 /* Ctrl-C. CPython's handler only notes the signal; KeyboardInterrupt is raised between two
    bytecodes, and the program ends as for an uncaught exception, then by SIGINT. Here the handler
@@ -2275,11 +2277,16 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
    which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
    and the unwind actions registered since the try's mark run, the latest first, each popped
-   before it runs, so one that raises takes over with its own exception. A with statement's
-   file is closed as its __exit__ would close it (a close that fails raises instead), a list
+   before it runs. A with statement's file is closed as its __exit__ would close it, a list
    being sorted gets its items back (list.sort), and an object whose generated __repr__ was
    running leaves the repr guard. The frames between are gone by then, so what an action
    needs is on the heap. When nothing catches a raise, every action runs before the report.
+   No action raises: a with-file whose close fails notes its OSError, and once the actions
+   have run, it takes the place of the exception (the last such one, as the outermost
+   __exit__'s would), which pys_exc_begin returns to the try (CPython's __exit__ runs in the
+   try's body) or the report shows. An action compiled code registers (pys_unwind_push) must
+   not raise either: a landing pad calls pys_exc_begin, and what it raised would leave the pad
+   past its try.
    The rest raises before it changes anything (list and dict operations; open() closes the
    file it opened first), builds new objects that become garbage (strings, containers,
    formatting) or never raises (the collector and its closing of unreachable files).
@@ -2370,7 +2377,12 @@ static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a r
 static void unwind_pop(void) { nunw--; }   /* the frame is left another way: forget the latest action */
 void pys_unwind_push(void (*fn)(void *), void *arg) { unwind_push(fn, arg); }
 void pys_unwind_pop(void) { unwind_pop(); }
-static void close_with(void *f) { pys_file_close(f); }
+static void close_with(void *p) {      /* __exit__ of a with-file: a close that fails replaces the exception */
+  File *f = p; char b[160];
+  if (f->closed) return;
+  io_in(); int e = shut(f); io_out();
+  if (e) xr.pend = exc_line(ioerr_line(b, e));
+}
 void pys_unwind_file(File *f) { unwind_push(close_with, f); }   /* with open(...) as f */
 static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
 I pys_try_mark(void) { return nunw; }
@@ -2380,6 +2392,7 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
   atomic_signal_fence(memory_order_seq_cst);
   if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
   unwind_to(mark);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }   /* a close that failed: the try handles its OSError */
   xr.handled = e;
   return e;
 }
@@ -2411,6 +2424,7 @@ static _Noreturn void throw_(Exc *e) {
     _Unwind_RaiseException(&e->ue);    /* comes back only if nothing catches e: the stack is as it was */
   }
   unwind_to(0);
+  if (xr.pend) { e = xr.cur = xr.pend; xr.pend = 0; }
   if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
   uncaught(e);
 }
