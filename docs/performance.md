@@ -26,8 +26,9 @@ The speedup column is computed by `bench/run.sh` from the unrounded times. The f
 build also compiles and caches the runtime, which adds one to two seconds once. `bench/dictcount.py`
 is measured [below](#optimizations-on-the-typed-ir).
 
-Run them yourself with `make bench` (`bench/run.sh`): each program runs under CPython, under the
-JIT and as an AOT executable, and the three outputs must be identical.
+Run them yourself with `make bench` (`bench/run.sh`): each program runs once under CPython, under
+the JIT and as an AOT executable, and the script reports any output that differs from CPython's;
+the benchmarks step of `make verify` fails on one.
 
 ## Where the gains are smaller
 
@@ -76,7 +77,7 @@ CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the earlie
 
 The native compiler translates its own 16,000 lines to LLVM IR in about 0.45 s of CPU time,
 against 2.6 s when CPython runs it, and a full AOT build of itself, with clang -O2, takes about
-17 s of CPU. Before the typed IR and exceptions, its 11,000 lines took 0.2 s, 1.3 s and 11 s on
+17 s of CPU. Before the typed IR and exceptions, its 11,000 lines took 0.2 s, 1.4 s and 12 s on
 the same machine, and the compiler of 7,000 lines took 0.09 s to translate itself and 7.5 s to
 build. Per source line, translation to LLVM IR has grown from about 13 µs (7,000 lines) to
 18 µs (11,000 lines, which added CPython's syntax checks and the definition-time checks of

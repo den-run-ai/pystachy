@@ -17,7 +17,7 @@ with a `file:line: error:`, never miscompiled.
 | [Exceptions](#exceptions) | `try`/`except`/`else`/`finally` and `raise` with CPython 3.13's exception hierarchy, and exception classes of the program |
 | [Modules](#modules) | your own modules and packages, the builtin modules `sys`, `os`, `math`, `time`, ..., and unmodified standard library modules from `lib/` |
 | [Removed on purpose](#removed-on-purpose) | generators, lambdas and closures, inheritance (but an exception class's), sets, `bytes`, big integers, `async`, ... |
-| [Syntax errors](#syntax-errors) | every `SyntaxError` CPython reports before running a file, with CPython's message and line |
+| [Syntax errors](#syntax-errors) | every `SyntaxError` CPython reports before running a file, at CPython's line and almost always with its message |
 
 Contents: [Types](#types) · [Typing rules](#typing-rules) · [Statements](#statements) ·
 [Exceptions](#exceptions) · [Modules](#modules) · [Expressions](#expressions) ·
