@@ -408,6 +408,99 @@ def as_target(n: Node) -> Node:
     return n
 
 
+# the nodes that open blocks or start a count of their own (see nesting)
+NESTS: dict[str, bool] = {}
+for _k in "while for with withitem try except listcomp nestedcomp asynccomp lambda def class".split():
+    NESTS[_k] = True
+
+
+def nesting(body: list[Node]) -> None:
+    # CPython's limit of 21 statically nested blocks in a module, class or function: loops, the
+    # items of with statements, try statements and list comprehensions (not generator
+    # expressions or lambdas, which start a count of their own) open blocks, and the 22nd is a
+    # SyntaxError. The walk keeps a stack (an elif chain nests as deep as it is long) and takes
+    # the kids in the order CPython compiles them, so that the error names the line CPython
+    # names, but in some finally blocks, which CPython compiles twice
+    todo: list[Node] = []
+    at: list[int] = []  # the depth of each node on todo
+    for i in range(len(body) - 1, -1, -1):
+        todo.append(body[i])
+        at.append(0)
+    while len(todo) > 0:
+        n = todo.pop()
+        d = at.pop()
+        k = n.kind
+        if k not in NESTS:
+            # (most nodes: the kids at the same depth, and those without kids need no look)
+            for i in range(len(n.kids) - 1, -1, -1):
+                if len(n.kids[i].kids) > 0:
+                    todo.append(n.kids[i])
+                    at.append(d)
+            continue
+        ds: list[int] = []  # the depth of each kid
+        seq: list[int] = []  # the kids in the order they are compiled
+        for i in range(len(n.kids)):
+            ds.append(d)
+            seq.append(i)
+        if k == "while" or k == "for":
+            d += 1
+            for i in range(len(n.kids)):
+                if n.kids[i].kind != "block" or n.kids[i].s != "else":
+                    ds[i] = d
+            if k == "for":
+                seq[0] = 1
+                seq[1] = 0
+        elif k == "with":
+            # each item's expression is evaluated in the blocks of the items before it
+            for i in range(len(n.kids) - 1):
+                ds[i] = d + i
+            d += len(n.kids) - 1
+            ds[-1] = d
+        elif k == "withitem" and len(n.kids) == 2:
+            ds[1] = d + 1
+        elif k == "try":
+            # the body (and the handlers' tests) in a block, one more around a try/except that
+            # has a finally block; each handler's body in another; the else block before them
+            x = 1 if n.kids[-1].kind == "block" and n.kids[-1].s == "finally" and n.kids[1].kind == "except" else 0
+            seq = [0]
+            for i in range(len(n.kids)):
+                b = n.kids[i].s if n.kids[i].kind == "block" else ""
+                ds[i] = d + x if b == "else" else d + 1 if b == "finally" else d + 1 + x
+                if b == "else":
+                    seq.append(i)
+            for i in range(1, len(n.kids)):
+                if n.kids[i].kind != "block" or n.kids[i].s != "else":
+                    seq.append(i)
+            d += 1 + x
+        elif k == "except":
+            d += 1
+            ds[1] = d
+        elif k == "listcomp" or k == "nestedcomp" or k == "asynccomp":
+            # the first iterable is evaluated outside, the rest in the comprehension's block (a
+            # generator expression's is a function of its own), the element last
+            inner = 0 if n.s == "gen" else d + 1
+            seq = [2, 1]
+            for i in range(len(n.kids)):
+                ds[i] = d if i == 2 else inner
+                if i > 2:
+                    seq.append(i)
+            seq.append(0)
+            if n.s != "gen":
+                d += 1
+        elif k == "lambda":
+            for i in range(len(n.kids)):
+                ds[i] = 0
+        elif k == "def":
+            ds[2] = 0
+        elif k == "class":
+            ds[0] = 0
+        if d > 21:
+            fail("too many statically nested blocks", n.line)
+        for i in range(len(seq) - 1, -1, -1):
+            todo.append(n.kids[seq[i]])
+            at.append(ds[seq[i]])
+
+
 STARTS: dict[str, bool] = {}
 for _k in "id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None True False lambda yield".split():
     STARTS[_k] = True
@@ -454,6 +547,7 @@ class Parser:
         while self.peek() != "eof":
             if not self.eat("nl"):
                 self.stmt(body)
+        nesting(body)
         return mk("block", "", 1, body)
 
     def scope(self, fn: bool) -> Node:
