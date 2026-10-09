@@ -110,6 +110,9 @@ and string forward references work (also inside `list["Node"]`), as does `typing
 `Mapping[K, V]` and `MutableMapping[K, V]` (from either) are `dict[K, V]`, `Sequence[T]` and
 `MutableSequence[T]` are `list[T]` (so they are invariant, and a tuple or `str` is no
 `Sequence`); `isinstance(x, Sequence)` and its siblings are decided by `x`'s type.
+`os.PathLike` (also `os.PathLike[str]`) in a union with `str` is dropped, as a path of
+another type cannot exist in Pystachy: `str | os.PathLike[str]` is `str` (with `None`,
+`str | None`), and `os.fspath()` returns the `str` it is given.
 `x: Final = v` is `x = v` (outside class bodies), `x: Final[T]` is `x: T`, and a `def`
 decorated with `@overload` (also a method) is the stub CPython replaces with the `def` after
 it: it is dropped. As in CPython 3.13, the annotations of a `def`'s parameters and return and
@@ -470,16 +473,17 @@ return statement decides its type (or, after a return of a `T`, before a return 
 makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
 boxing), dict key types that may be `None`, and tuple keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
-keeps the `bool`, which prints as `True`); `typing.ClassVar`, a bare `Final` without a value or
-in a class body, an `@overload` stub that the `def` implementing it does not follow in its
-block (also one after that `def`: CPython keeps the stub, whose calls raise
-`NotImplementedError`), a stub's default other than a constant, and a name in a stub's
-annotation that nothing binds; typing's names in a function's local variable annotations
-that are not imported (CPython never evaluates those); `from <builtin module> import *`; a
-NamedTuple without fields, assigned a field outside its `__init__`, whose class defines
-`__getitem__` or `__iter__`, compared or added through its own operator method with another
-type, given to `hasattr()` of a name it does not define, `_make()`, `_asdict()` of fields of
-different types, the functional `NamedTuple("P", [...])`, slicing a tuple or NamedTuple, a
+keeps the `bool`, which prints as `True`); `typing.ClassVar`, `os.PathLike` other than in a
+union with `str`, a bare `Final` without a value or in a class body, an `@overload` stub that
+the `def` implementing it does not follow in its block (also one after that `def`: CPython
+keeps the stub, whose calls raise `NotImplementedError`), a stub's default other than a
+constant, and a name in a stub's annotation that nothing binds; typing's names in a
+function's local variable annotations that are not imported (CPython never evaluates
+those); `from <builtin module> import *`; a NamedTuple without fields, assigned a field
+outside its `__init__`, whose class defines `__getitem__` or `__iter__`, compared or added
+through its own operator method with another type, given to `hasattr()` of a name it does
+not define, `_make()`, `_asdict()` of fields of different types, the functional
+`NamedTuple("P", [...])`, slicing a tuple or NamedTuple, a
 tuple `*` a number that is not a constant, and CPython's class-creation errors of a
 NamedTuple (a field after a default, an underscored field, an overwritten `__init__`) and of
 a dataclass (a field without a default after one with it); a value that may be `None` where

@@ -1,0 +1,6 @@
+a/b.ini none x p pq
+setup.cfg None SETUP.CFG
+Entry(path='e.ini', alt=None) True True
+['a', 'b'] ['a', 'b']
+default
+[exit 1]

@@ -4476,6 +4476,7 @@ for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hasha
            "MutableSequence ByteString Buffer").split():
     ABCS[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
+PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
     FUTURE[_k] = True
@@ -4532,6 +4533,7 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "float": "float() argument must be a string or a real number, not 'NoneType'",
                            "ord": "ord() expected string of length 1, but NoneType found",
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
+                           "os.fspath": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
 # what those return (for None itself, which always raises)
@@ -6170,6 +6172,8 @@ class Gen:
                 self.err(self.unsupported[s])
         elif k == "attr" and self.typing_attr(n) == "TextIO":
             return "file"
+        elif k == "binop" and n.s == "|" and self.has_path(n):
+            return self.path_union(self.union_members(n, []))
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
             return self.opt(self.typeof(n.kids[0]))
         elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
@@ -6187,6 +6191,8 @@ class Gen:
             elif base == "classvar":
                 self.err(CLASSVAR)
             a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
+            if base == "union" and len([x for x in a if self.pathlike(x)]) > 0:
+                return self.path_union(a)
             ts = [self.typeof(x) for x in a]
             if base == "list" and len(ts) == 1:
                 return f"list[{ts[0]}]"
@@ -6202,8 +6208,53 @@ class Gen:
                 return self.opt(ts[0] if ts[1] == "None" else ts[1])  # Union[T, None]
         if self.typing_ref(n) == "Final":
             self.err("a bare Final needs a value to give its type (x: Final = v), outside class bodies; write Final[T]")
+        if self.pathlike(n):
+            self.err(PATHLIKE)
         self.err("unsupported type annotation")
         return ""
+
+    def pathlike(self, n: Node) -> bool:
+        # is annotation n os.PathLike or os.PathLike[T]
+        if n.kind == "str":
+            n = self.parse_expr(n.s)
+        return self.imported_ref(n.kids[0] if n.kind == "index" else n) == "os.PathLike"
+
+    def imported_ref(self, n: Node) -> str:
+        # what a name or an attribute chain on one refers to through the imports ("os.fspath"), or ""
+        p = ""
+        while n.kind == "attr":
+            p = "." + n.s + p
+            n = n.kids[0]
+        return self.imported(n.s + p) if n.kind == "name" else ""
+
+    def union_members(self, n: Node, out: list[Node]) -> list[Node]:
+        # the members of a union annotation A | B | ..., in order
+        if n.kind == "binop" and n.s == "|":
+            self.union_members(n.kids[0], out)
+            self.union_members(n.kids[1], out)
+        else:
+            out.append(n)
+        return out
+
+    def has_path(self, n: Node) -> bool:
+        return any(self.pathlike(x) for x in self.union_members(n, []))
+
+    def path_union(self, ms: list[Node]) -> str:
+        # the type of a union (members ms) that holds os.PathLike, which is dropped: a value of
+        # another path type cannot exist in Pystachy, so str | os.PathLike[str] is a str (and with
+        # None, str | None)
+        s = False
+        none = False
+        for x in ms:
+            if not self.pathlike(x):
+                t = self.typeof(x)
+                if t != "str" and t != "None" and t != "opt[str]":
+                    self.err(PATHLIKE.replace(" with str ", f" with str, not with {typestr(t)} "))
+                s = s or t != "None"
+                none = none or t != "str"
+        if not s:
+            self.err(PATHLIKE)
+        return "opt[str]" if none else "str"
 
     def ann_problem(self, n: Node, ret: bool) -> str:
         # why typeof(n) would fail, as far as its form shows ("" for a string, a forward
@@ -6213,10 +6264,18 @@ class Gen:
             return "" if ret else "None is only supported as a return type; annotate an optional value as T | None"
         if k == "str":
             return ""
+        if self.pathlike(n):
+            return PATHLIKE
         if k == "name":
             if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or self.imported(n.s) == "typing.TextIO":
                 return ""
             return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
+        if k == "binop" and n.s == "|" and self.has_path(n):
+            for x in self.union_members(n, []):
+                r = "" if x.kind == "None" or self.pathlike(x) else self.ann_problem(x, False)
+                if r != "":
+                    return r
+            return ""  # (whether the others make a str is checked where typeof() reads it)
         if k == "binop" and n.s == "|" and (n.kids[1].kind == "None" or n.kids[0].kind == "None"):
             return self.ann_problem(n.kids[0] if n.kids[1].kind == "None" else n.kids[1], False)
         if k == "attr" and self.typing_attr(n) == "TextIO":
@@ -6225,7 +6284,7 @@ class Gen:
             return CLASSVAR
         if k == "index" and (n.kids[0].kind == "name" or (n.kids[0].kind == "attr" and self.typing_attr(n.kids[0]) != "")):
             for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
-                r = self.ann_problem(x, False)
+                r = "" if self.pathlike(x) and self.typing_ref(n.kids[0]) == "Union" else self.ann_problem(x, False)
                 if r != "":
                     return r
             return ""
@@ -6688,6 +6747,8 @@ class Gen:
             return self.guess(e.kids[0], f)
         if k == "name" and e.s in f.params:
             return f.ptypes[f.params.index(e.s)]
+        if k == "call" and len(e.kids) == 2 and self.imported_ref(e.kids[0]) == "os.fspath" and unopt(self.guess(e.kids[1], f)) == "str":
+            return "str"  # (a str path is its own file system path)
         if k == "call" and e.kids[0].kind == "name":
             c = e.kids[0].s
             if c in self.classes:
@@ -8675,7 +8736,7 @@ class Gen:
     def known_path(self, p: str) -> bool:
         # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
         # a function builtin() handles itself
-        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or (p.startswith("errno.") and p[6:] in ERRNO):
+        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
             return True
         for k in CALLS:
             if k.startswith(p + "(") or k.startswith(p + "."):
