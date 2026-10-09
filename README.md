@@ -872,8 +872,9 @@ exception classes.
   `finally` of its own is compiled once, where each way out stores its index and jumps, so that
   nested ones grow linearly, not as 3^depth. What a raise leaves half done in
   the runtime (a list being sorted, a `with` block's open file) is put right by unwind actions
-  that the landing pad runs; one that raises (a close that fails) gives the landing its own
-  exception instead, through a `siglongjmp` back into `pys_exc_begin` over runtime frames only.
+  that the landing pad runs; none raises: a `with` block's file whose close fails notes its
+  `OSError`, which then takes the place of the exception the landing handles (CPython's
+  `__exit__` raises it inside the `try`).
   A module's code runs in the region of a landing block that marks the module not run and
   throws again; a read through a name that an import in a `try` statement binds checks that
   mark. `runtime.c` is compiled with `-fexceptions` in both tiers. An
