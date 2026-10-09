@@ -1,0 +1,18 @@
+PE [Errno 1] msg PermissionError(1, 'msg') PermissionError
+FNF [Errno 2] msg FileNotFoundError(2, 'msg')
+PE [Errno 13] msg PermissionError(13, 'msg') PermissionError
+OS [Errno 17] msg FileExistsError(17, 'msg') FileExistsError
+OS [Errno 21] msg IsADirectoryError(21, 'msg') IsADirectoryError
+OS [Errno 999] msg OSError(999, 'msg') OSError
+OS [Errno 11] msg BlockingIOError(11, 'msg') BlockingIOError
+[Errno 2] No such file: 'a.txt' FileNotFoundError(2, 'No such file') True
+[Errno 2] x FileNotFoundError(2, 'x', None)
+FileNotFoundError [Errno 13] y
+OSError [Errno s] t OSError('s', 't')
+ImportError('x') x
+cannot import I('cannot import')
+A('msg')
+[Errno 2] no such file StoreError(2, 'no such file') StoreError
+[Errno 2] gone: 'x.db' Sub(2, 'gone') x.db
+OSError [Errno 2] gone: 'x.db'
+[exit 1]

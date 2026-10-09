@@ -671,6 +671,9 @@ class Node:
         self.line = line
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
+        # a read of a module's attribute through a name that an import in a try statement binds,
+        # which an exception may have left unbound: "<module> <name> <L (a local) or G>", else ""
+        self.mchk = ""
         self.depth = 1  # levels of nodes from this one down, as mk counted them
 
 
@@ -1071,7 +1074,8 @@ class Parser:
             out.append(mk("with", "", line, items))
         elif k == "try":
             # kids: the body, one "except" node (s: the name bound, kids: type or omit, block) per
-            # handler, then the else and finally blocks (blocks with s "else" and "finally")
+            # handler, then the else and finally blocks (blocks with s "else" and "finally"); s is
+            # "*" if its handlers are except* clauses
             self.p += 1
             self.colon()
             kids = [self.block()]
@@ -1117,7 +1121,7 @@ class Parser:
                     kids.append(b)
             if self.peek() == "except" or self.peek() == "else" or self.peek() == "finally":
                 self.invalid(self.line())  # (a clause out of order)
-            out.append(mk("try", "", line, kids))
+            out.append(mk("try", "*" if kind == "except*" else "", line, kids))
         elif k == "async":
             # async def, async with, async for: kept as an "async" node that code generation rejects
             self.p += 1
@@ -3157,6 +3161,30 @@ def builtin_module(path: str) -> bool:
     return path in MODULES or root in MODULES or path == "collections.abc"
 
 
+def known_path(p: str) -> bool:
+    # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
+    # a function builtin() handles itself
+    if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or p == "os.path.join" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
+        return True
+    for k in CALLS:
+        if k.startswith(p + "(") or k.startswith(p + "."):
+            return True
+    return False
+
+
+def builtin_has(mod: str, x: str) -> bool:
+    # may from mod import x name x, of Pystachy's builtin module mod
+    if mod == "__future__":
+        return x in FUTURE
+    if mod == "typing":
+        return x in TYPING
+    if mod == "collections.abc":
+        return x in ABCS
+    if mod == "dataclasses":
+        return x == "dataclass"
+    return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
+
+
 def accel_try(st: Node) -> bool:
     # try: <import statements, then others> / except ImportError: (or ModuleNotFoundError),
     # without finally
@@ -3177,6 +3205,18 @@ def accel_try(st: Node) -> bool:
                 if t.kind != "name" or (t.s != "ImportError" and t.s != "ModuleNotFoundError"):
                     return False
     return True
+
+
+def catches_import(st: Node) -> bool:
+    # may an except clause of try statement st catch ImportError (a bare except, or one naming it,
+    # ModuleNotFoundError, Exception or BaseException)
+    for h in st.kids[1:]:
+        if h.kind == "except" and h.kids[0].kind == "omit":
+            return True
+        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else h.kids[:0]:
+            if t.kind == "name" and (t.s == "ImportError" or t.s == "ModuleNotFoundError" or t.s == "Exception" or t.s == "BaseException"):
+                return True
+    return False
 
 
 def is_main_guard(e: Node) -> bool:
@@ -3394,6 +3434,14 @@ class Loader:
         self.fgl: dict[str, dict[str, bool]] = {}  # and the names its global statements declare
         self.curdef = ""  # the def whose body imports() is in
         self.fk: dict[str, str] = {}  # the bindings of the function being qualified
+        self.fkey = ""  # and its def's line
+        # the try statements imports() is in; the names that imports in try statements bind ("<module>
+        # <def line, or empty> <name>"), which the import may leave unbound (Node.mchk), each with the
+        # module whose code then did not end; and the names imports outside try statements bind
+        self.intry = 0
+        self.optry = False  # (in the body of one whose clauses may catch ImportError: not an optional import)
+        self.fragile: dict[str, str] = {}
+        self.solid: dict[str, bool] = {}
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
         # and what its code binds, surely and maybe, as scan() finds it before it is loaded
         self.rawbound: dict[str, dict[str, bool]] = {}
@@ -3551,7 +3599,9 @@ class Loader:
                 return self.mods[name]  # the package's own code imported it
         p = self.modpath(name)
         if p == "":
-            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {name[dot + 1 :]}.py on the module path", line)
+            # (an optional import other than try: <imports> / except ImportError:, which optional() decides)
+            hint = "; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)" if self.optry else ""
+            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
         if p.endswith("/__init__.py"):
             return self.load(name, p, p[:-12])
         if p.endswith(".py"):
@@ -3927,6 +3977,8 @@ class Loader:
                 for kid in c.kids:
                     if kid.kind == "block":
                         self.simplify(m, kid, inner)
+                    elif kid.kind == "except":
+                        self.simplify(m, kid.kids[1], inner)
                 self.pos = pos
                 self.fs = fs
                 self.fsure = fsure
@@ -4044,6 +4096,10 @@ class Loader:
                 else:
                     subs.append(j)
                     site.kids.append(mk("str", p + "." + xn, line, []))
+            for j in range(len(x.kids) if x.s != "" and bad == "" and builtin_module(p) else 0):
+                # a name that Pystachy's builtin module lacks: as one that a module does not bind
+                if x.kids[j].s != "*" and not builtin_has(p, x.kids[j].kids[0].s[len(p) + 1 :]):
+                    gone = min(gone, j)
             if bad == "" and gone < len(x.kids):
                 bad = p
                 exc = "ImportError"
@@ -4090,14 +4146,15 @@ class Loader:
             if named != "":
                 msg = f"cannot import name '{named}' from '{bad}', and an except clause that re-raises or names the exception is not supported"
             elif missing:
-                msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path"
+                why = "names the exception (as " + short(st.kids[h].s) + ")" if st.kids[h].s != "" else "re-raises the exception" if may_end(b, True) else "may end the program"
+                msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path; an optional import whose except clause {why} needs its module"
             else:
                 msg = f"module '{bad}' raises {exc} as it initializes, and an except clause that re-raises or names the exception is not supported"
             out.append(mk("badimport", msg, line, []))
             return True
         out.extend(run)
         par = bad if named != "" else bad[: bad.rfind(".")] if missing and "." in bad else "" if missing else bad
-        if par != "":
+        if par != "" and not builtin_module(par):
             # the code of the failing module's packages runs (and its own until its raise), binding nothing
             al = mk("alias", "", line, [mk("str", par, line, []), mk("str", par, line, [])])
             if not missing and named == "":
@@ -4169,6 +4226,16 @@ class Loader:
             else:
                 kept.append(body[i])
                 surely_binds(body[i], sure, sure)
+
+    def binds_surely(self, p: str, x: str) -> bool:
+        # does module p's code bind x at its top level for sure (not only in an if, try or loop)
+        path = self.mods[p].path if p in self.mods else self.modpath(p)
+        if not path.endswith(".py"):
+            return False
+        bound: dict[str, bool] = {}
+        for st in self.mods[p].body.kids if p in self.mods else self.parse(path).kids:
+            surely_binds(st, bound, bound)
+        return x in bound
 
     def init_fails(self, name: str) -> str:
         # the exception module name's code raises at its top level for sure (init_raise()), or ""
@@ -4297,13 +4364,16 @@ class Loader:
             return 2
         if k == "call" and self.plain_call(n, m):
             return 0
+        if k == "assign" and n.s == "from" and n.kids[-1].kind == "name" and owner(n.kids[-1].s) in self.mods and not self.binds_surely(owner(n.kids[-1].s), short(n.kids[-1].s)):
+            return 2  # (from m import x, where m's code may leave x unbound: CPython raises ImportError)
         r = 0 if k in NOCALL else 1
         if k == "uimport":
             for x in n.kids:
                 if x.kind == "str" and x.s in self.mods:
                     r = max(r, self.raises(self.mods[x.s], "", seen))
+        own = k == "try" and catches_import(n) and not may_end(n, True)  # (a try whose clauses catch ImportError, and do not re-raise it)
         for i in range(len(n.kids)):
-            if (k == "def" and (i == 1 or i == 2)) or (k == "annassign" and i == 1) or (k.endswith("param") and i == 0):
+            if (k == "def" and (i == 1 or i == 2)) or (k == "annassign" and i == 1) or (k.endswith("param") and i == 0) or (own and i == 0):
                 continue  # (a def runs its parameters' defaults and decorators, not its body; annotations call nothing)
             if r < 2:
                 r = max(r, self.raises_in(n.kids[i], m, ok, seen))
@@ -4514,9 +4584,17 @@ class Loader:
                     globals_in(st.kids[2].kids, self.fgl[self.curdef])
                 elif not infn and (st.kind == "for" or st.kind == "while"):
                     binds([st], self.maybe, True, m.name if m.pdir != "" else "")  # (an earlier pass of the loop may have run its body)
+                intry = self.intry
+                optry = self.optry
+                self.intry = 0 if st.kind == "def" else intry + 1 if st.kind == "try" else intry
                 for kid in st.kids[0].kids if st.kind == "subclass" else st.kids:
+                    self.optry = optry and st.kind != "def" or (st.kind == "try" and kid is st.kids[0] and catches_import(st))
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
+                    elif kid.kind == "except":
+                        self.imports(m, kid.kids[1], infn)
+                self.intry = intry
+                self.optry = optry
                 self.curdef = saved
             if not infn:
                 binds([st], self.maybe, True, m.name if m.pdir != "" else "", False)  # (imports() did its blocks)
@@ -4616,6 +4694,11 @@ class Loader:
                 # import a.b.c binds a; import a as x binds x to a
                 self.bind(m, a.s, "m:" + a.kids[0].s, infn, line)
                 names.append(a.s)
+                key = f"{m.name} {self.curdef if infn else ''} {a.s}"
+                if self.intry == 0:
+                    self.solid[key] = True
+                elif key not in self.solid:
+                    self.fragile[key] = path
             elif a.s == "*":
                 for x in self.public(src):
                     self.take(m, src, x, x, infn, keep, inits, copies, line)
@@ -4803,7 +4886,18 @@ class Loader:
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)
                 return
+            root = n
+            while root.kind == "attr":
+                root = root.kids[0]
+            fr = ""
+            if k == "attr" and root.kind == "name" and root.s not in loc:
+                inf = root.s in self.fk
+                key = f"{m.name} {self.fkey if inf else ''} {root.s}"
+                if key in self.fragile:
+                    fr = f"{self.fragile[key]} {root.s} {'L' if inf else 'G'}"
             mod = self.qmod(m, n, loc)
+            if fr != "" and (n.kind == "name" or n.kind == "str"):
+                n.mchk = fr
             if mod != "":
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
@@ -4915,6 +5009,7 @@ class Loader:
                     if nm in inner:
                         del inner[nm]
                 saved = self.fk
+                key = self.fkey
                 indef = self.qdef
                 self.fk = self.fks.get(str(st.line), {})
                 for nm in self.unsure.get(str(st.line), {}):
@@ -4924,12 +5019,14 @@ class Loader:
                         # unbound before it runs)
                         st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where Pystachy cannot tell that the import in it that binds '{nm}' has run (where it has not, CPython raises UnboundLocalError): not supported", st.line, []))
                         break
+                self.fkey = str(st.line)
                 self.qdef = True
                 self.qstmts(m, st.kids[2].kids, inner, False)
                 self.qdef = indef
                 self.fk = saved
                 if cls:
                     loc[st.s] = True
+                self.fkey = key
             elif k == "subclass":
                 # (a generic class's type parameters stay unqualified in its bases and body)
                 tps = dict(loc)
@@ -4979,6 +5076,12 @@ class Loader:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.qstmts(m, kid.kids, loc, cls)
+                    elif kid.kind == "except":
+                        # except E as e: E is read, and e bound, like any other name
+                        self.qexpr(m, kid.kids[0], loc)
+                        if kid.s != "":
+                            kid.s = self.qname(m, kid.s, loc)
+                        self.qstmts(m, kid.kids[1].kids, loc, cls)
                     else:
                         self.qexpr(m, kid, loc)
 
@@ -5018,7 +5121,7 @@ CALLS: dict[str, str] = {
     "sum(list[float],int)": "pys_sum_float_int:float", "sum(list[int],float)": "pys_sum_int_float:float",
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
-    "os.system(str)": "pys_system:int",
+    "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
@@ -5045,10 +5148,14 @@ for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN
            "ECANCELED EOWNERDEAD ENOTRECOVERABLE").split():
     ERRNO[_k] = True
 # math functions raise CPython's domain and range errors (runtime.c, pys_m_*)
-for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians".split():
+for _k in "sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt degrees radians asinh acosh atanh erf erfc ulp".split():
     CALLS[f"math.{_k}(float)"] = f"pys_m_{_k}:float"
-for _k in "pow atan2 hypot fmod copysign".split():
+for _k in "pow atan2 hypot fmod copysign nextafter remainder".split():
     CALLS[f"math.{_k}(float,float)"] = f"pys_m_{_k}:float"
+CALLS["math.fma(float,float,float)"] = "pys_m_fma:float"
+CALLS["math.ldexp(float,int)"] = "pys_m_ldexp:float"
+CALLS["math.frexp(float)"] = "pys_m_frexp:tuple[float,int]"
+CALLS["math.modf(float)"] = "pys_m_modf:tuple[float,float]"
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
 for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno".split():
@@ -5107,6 +5214,67 @@ for _k in ("OSError IOError EnvironmentError BlockingIOError ChildProcessError C
     EXCEPTIONS[_k] = "x"
 for _k in "UnicodeDecodeError UnicodeEncodeError UnicodeTranslateError ExceptionGroup BaseExceptionGroup".split():
     EXCEPTIONS[_k] = "-"
+# the builtin exception classes, each with its bases (CPython 3.13's: tools/check_runtime.py
+# checks them), and io.UnsupportedOperation, which the runtime raises too. IOError and
+# EnvironmentError are other names of OSError. An except clause catches a class and the classes
+# deriving from it
+EXCBASES: dict[str, str] = {"BaseException": ""}
+for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException KeyboardInterrupt:BaseException SystemExit:BaseException "
+           "Exception:BaseException ArithmeticError:Exception FloatingPointError:ArithmeticError OverflowError:ArithmeticError "
+           "ZeroDivisionError:ArithmeticError AssertionError:Exception AttributeError:Exception BufferError:Exception "
+           "EOFError:Exception ExceptionGroup:BaseExceptionGroup,Exception ImportError:Exception ModuleNotFoundError:ImportError "
+           "LookupError:Exception IndexError:LookupError KeyError:LookupError MemoryError:Exception NameError:Exception "
+           "UnboundLocalError:NameError OSError:Exception BlockingIOError:OSError ChildProcessError:OSError ConnectionError:OSError "
+           "BrokenPipeError:ConnectionError ConnectionAbortedError:ConnectionError ConnectionRefusedError:ConnectionError "
+           "ConnectionResetError:ConnectionError FileExistsError:OSError FileNotFoundError:OSError InterruptedError:OSError "
+           "IsADirectoryError:OSError NotADirectoryError:OSError PermissionError:OSError ProcessLookupError:OSError "
+           "TimeoutError:OSError ReferenceError:Exception RuntimeError:Exception NotImplementedError:RuntimeError "
+           "PythonFinalizationError:RuntimeError RecursionError:RuntimeError StopAsyncIteration:Exception StopIteration:Exception "
+           "SyntaxError:Exception IndentationError:SyntaxError TabError:IndentationError SystemError:Exception TypeError:Exception "
+           "ValueError:Exception UnicodeError:ValueError UnicodeDecodeError:UnicodeError UnicodeEncodeError:UnicodeError "
+           "UnicodeTranslateError:UnicodeError Warning:Exception BytesWarning:Warning DeprecationWarning:Warning "
+           "EncodingWarning:Warning FutureWarning:Warning ImportWarning:Warning PendingDeprecationWarning:Warning "
+           "ResourceWarning:Warning RuntimeWarning:Warning SyntaxWarning:Warning UnicodeWarning:Warning UserWarning:Warning "
+           "io.UnsupportedOperation:OSError,ValueError").split():
+    EXCBASES[_k[: _k.find(":")]] = _k[_k.find(":") + 1 :]
+
+
+# the hidden fields an exception class's objects begin with (see Gen.declare_fields), with their types
+EXCFIELDS = "cls:str str:str args:str code:int hc:bool"
+# the attributes of builtin exception classes that their str(), repr() or exit status read: an
+# exception class's field of that name would be theirs (not supported)
+EXCATTRS: dict[str, str] = {"BaseException": "args", "SystemExit": "code", "OSError": "errno strerror filename filename2", "ImportError": "msg"}
+# the attributes that the __init__ of builtin exception classes sets (StopIteration's value to its
+# first argument, the others to their keyword argument or None), which only CPython reads: an
+# exception class's field of that name must be assigned after that __init__ runs
+EXCINIT: dict[str, str] = {"StopIteration": "value", "AttributeError": "name obj", "NameError": "name", "ImportError": "name path"}
+
+
+def is_excname(s: str) -> bool:
+    # does s name a builtin exception class (OSError's other names too)
+    return s in EXCBASES or s == "IOError" or s == "EnvironmentError"
+
+
+# the keyword arguments that the __init__ of builtin exception classes takes (and those deriving from them)
+EXCKW: dict[str, str] = {"ImportError": "name path", "AttributeError": "name obj", "NameError": "name"}
+
+
+def exc_base_of(c: str, base: str) -> bool:
+    # is c, which may name a builtin exception class (OSError's other names too), base or derived from it
+    c = "OSError" if c == "IOError" or c == "EnvironmentError" else c
+    return c in EXCBASES and exc_derives(c, base)
+
+
+def exc_derives(c: str, base: str) -> bool:
+    # is exception class c base, or derived from it (EXCBASES)
+    if c == base:
+        return True
+    for b in EXCBASES[c].split(","):
+        if b != "" and exc_derives(b, base):
+            return True
+    return False
+
+
 # the attributes hasattr() finds on values of the builtin types ("seq": str, list, tuple, dict), and
 # on every value; other attribute names are not decided
 HASATTR: dict[str, str] = {
@@ -5154,7 +5322,7 @@ NOREF: list[str] = "print str repr len bool sum sorted list tuple min max any al
 # node kinds the parser accepts but code generation rejects, where it compiles them: an
 # imported module may use them in functions the program never calls
 UNSUPPORTED: dict[str, str] = {
-    "try": "'try' statements are not supported", "nonlocal": "'nonlocal' is not supported",
+    "nonlocal": "'nonlocal' is not supported",
     "subclass": "class inheritance is not supported", "lambda": "lambda is not supported",
     "yield": "'yield' is not supported (there are no generator functions)", "set": "set literals are not supported",
     "setcomp": "set literals are not supported", "dictcomp": "dict comprehensions are not supported",
@@ -5254,6 +5422,7 @@ IROPS: dict[str, str] = {
     "raw": "*", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
     "list.load": "rL",
+    "landing": "T", "throw": "T R N", "exc.match": "",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
 LLNOTRAW: dict[str, bool] = {}
@@ -5268,20 +5437,21 @@ OPTS: list[str] = ["listget", "dictfuse"]
 CANON_DEPTH = 1000
 REACH = 256
 LOOKUPS = 32
-# Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
-# returns; A allocates (a collection may run, and running out of memory ends the program); U may
-# run user code, and so has every other letter (U?: when the static type, the descriptor of a #
-# parameter, holds a class); I does I/O, or uses the process or global runtime state; rL wL,
-# rD wD, rO wO, rG wG, rF wF read or write lists, dicts, objects' fields and flags, globals and
-# their flags, files. Strings and tuples are immutable, slots are never address-taken, dict keys
-# are ints, strs, or tuples of ints, bools, strs and None (key_problem), whose hash and == run no
-# user code, and what an operation writes into an object it makes itself
-# (list.copy, str.split, init's argument list) no other code has seen: they need no letter. N is
-# a property of one op: an effect summary (IFn.fx) leaves it out. The end of the program (an
-# error, an exit) flushes stdout and closes the open files: R and N stand for that. A collection
-# closes the open files nothing refers to any more (and reports a failed close on stderr), which
-# A stands for, not I, rF or wF: when a dropped file is closed is unspecified (README: at a
-# collection or at exit, not at once as in CPython), so moving an A op may change it, as any
+# Effect letters: R may raise (in a program that has a try, the raise allocates its exception, so a
+# collection may run before a handler takes it; if none does, the raise prints its message, flushes
+# stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
+# running out of memory ends the program); U may run user code, and so has every other letter (U?:
+# when the static type, the descriptor of a # parameter, holds a class); I does I/O, or uses the
+# process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or write lists, dicts,
+# objects' fields and flags, globals and their flags, files. Strings and tuples are immutable, slots
+# are never address-taken, dict keys are ints, strs, or tuples of ints, bools, strs and None
+# (key_problem), whose hash and == run no user code, and what an operation writes into an object it
+# makes itself (list.copy, str.split, init's argument list) no other code has seen: they need no
+# letter. N is a property of one op: an effect summary (IFn.fx) leaves it out. The end of the
+# program (an error, an exit) flushes stdout and closes the open files: R and N stand for that. A
+# collection closes the open files nothing refers to any more (and reports a failed close on
+# stderr), which A stands for, not I, rF or wF: when a dropped file is closed is unspecified (README:
+# at a collection or at exit, not at once as in CPython), so moving an A op may change it, as any
 # change to the program's allocations does.
 FX: list[str] = "R N A U I rL wL rD wD rO wO rG wG rF wF".split()
 FXBIT: dict[str, int] = {}
@@ -5301,7 +5471,7 @@ RUNTIME: dict[str, str] = {
     "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL rD U?|",
     "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
-    "list.sort_r": "None:S,#,bool|R A rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
+    "list.sort_r": "None:S,#,bool|R A I rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
@@ -5350,18 +5520,32 @@ RUNTIME: dict[str, str] = {
     "m.hypot": "float:float,float||", "m.fmod": "float:float,float|R|", "m.copysign": "float:float,float||",
     "m.logb": "float:float,float|R|", "m.trunc": "int:float|R|", "m.gcd": "int:int,int|R|", "m.lcm": "int:int,int|R|",
     "m.isqrt": "int:int|R|", "m.factorial": "int:int|R|", "m.comb": "int:int,int|R|", "m.perm": "int:int,int|R|",
-    "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||",
+    "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||", "m.asinh": "float:float|R|",
+    "m.acosh": "float:float|R|", "m.atanh": "float:float|R|", "m.erf": "float:float|R|", "m.erfc": "float:float|R|",
+    "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
+    "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
+    "m.fma": "float:float,float,float|R|",
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R A I rL rD U?|",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|", "path_join": "str:str,str|A|",
-    "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
+    # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
+    # closes with-files (which may raise) and gives a list being sorted its items back. str() and
+    # repr() of an exception object run its class's __str__ and __repr__ (through its ExcClass)
+    "eh_on": "None:|I|", "try_mark": "int:|I|", "exc.handled": "exc:|I|", "exc.restore": "None:exc|I|",
+    "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
+    "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
+    "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
+    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.errcls": "str:int|A|",
+    "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
+    "personality": "%i32:%i32,%i32,int,%ptr,%ptr|I|",
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|I rF wF|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
@@ -5511,6 +5695,8 @@ def tname(t: str) -> str:
         return "TextIOWrapper"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
+    if t == "exc":
+        return "BaseException"
     b = t.find("[")
     return t[:b] if b >= 0 else short(t)
 
@@ -5591,8 +5777,18 @@ def same_kind(a: str, b: str) -> bool:
 
 def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
-    # and opt[T] is T | None
-    return optnames(t.replace("[?,?]", "").replace("[?]", ""))
+    # opt[T] is T | None, a builtin exception BaseException, a class its own name
+    t = t.replace("[?,?]", "").replace("[?]", "")
+    out: list[str] = []
+    w = ""
+    for c in t + ",":
+        if c == "[" or c == "]" or c == ",":
+            out.append("BaseException" if w == "exc" else short(w))
+            out.append(c)
+            w = ""
+        else:
+            w += c
+    return optnames("".join(out)[:-1])
 
 
 def optnames(t: str) -> str:
@@ -5792,12 +5988,16 @@ def targets(st: Node, out: dict[str, bool]) -> None:
 
 
 def collect(body: list[Node], out: dict[str, bool]) -> None:
-    # Python's rule: a name assigned anywhere in a function is local to it
+    # Python's rule: a name assigned anywhere in a function is local to it (except ... as e too)
     for st in body:
         targets(st, out)
         for kid in st.kids:
             if kid.kind == "block":
                 collect(kid.kids, out)
+            elif kid.kind == "except":
+                if kid.s != "":
+                    out[kid.s] = True
+                collect(kid.kids[1].kids, out)
 
 def mark(names: list[str], sure: dict[str, bool], maybe: dict[str, bool], added: list[str]) -> None:
     # names are bound: added gets those that were not surely bound
@@ -5836,12 +6036,36 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
     return count
 
 
+def has_try(body: list[Node]) -> bool:
+    # does body hold a try statement, also in the functions and classes it defines (a class with
+    # bases is a subclass node whose first kid is the class)
+    for st in body:
+        if st.kind == "try":
+            return True
+        for kid in st.kids if st.kind != "subclass" else st.kids[0].kids:
+            if kid.kind == "block" and has_try(kid.kids):
+                return True
+    return False
+
+
 def name_nodes(n: Node, out: dict[str, bool]) -> None:
     # the names of every name node in n
     if n.kind == "name":
         out[n.s] = True
     for k in n.kids:
         name_nodes(k, out)
+
+
+def calls_init(n: Node) -> bool:
+    # does n hold a call of an __init__ method (outside the functions and classes it defines)
+    if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].s == "__init__":
+        return True
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+        return False
+    for k in n.kids:
+        if calls_init(k):
+            return True
+    return False
 
 
 def has_kind(n: Node, kind: str) -> bool:
@@ -5920,6 +6144,8 @@ def all_imports(body: list[Node], out: list[str]) -> None:
         for kid in st.kids:
             if kid.kind == "block":
                 all_imports(kid.kids, out)
+            elif kid.kind == "except":
+                all_imports(kid.kids[1].kids, out)
 
 
 def top_imports(body: list[Node]) -> list[str]:
@@ -5933,12 +6159,15 @@ def top_imports(body: list[Node]) -> list[str]:
             for kid in st.kids:
                 if kid.kind == "block":
                     out.extend(top_imports(kid.kids))
+                elif kid.kind == "except":
+                    out.extend(top_imports(kid.kids[1].kids))
     return out
 
 
 def deleted(body: list[Node], out: dict[str, bool], defs: bool = False) -> None:
-    # the names that del statements in body unbind (not in functions), and with defs those its def
-    # and class statements bind
+    # the names that del statements in body unbind (not in functions), and the end of an except
+    # clause that binds a name (except E as e: e is unbound after it); with defs, also those its
+    # def and class statements bind
     for st in body:
         if defs and (st.kind == "def" or st.kind == "class" or st.kind == "subclass"):
             out[st.s] = True
@@ -5953,6 +6182,10 @@ def deleted(body: list[Node], out: dict[str, bool], defs: bool = False) -> None:
             for kid in st.kids:
                 if kid.kind == "block":
                     deleted(kid.kids, out, defs)
+                elif kid.kind == "except":
+                    if kid.s != "":
+                        out[kid.s] = True
+                    deleted(kid.kids[1].kids, out, defs)
 
 
 def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
@@ -5978,6 +6211,12 @@ def none_assigns(body: list[Node], out: dict[str, list[Node]]) -> None:
         for kid in st.kids:
             if kid.kind == "block" and st.kind != "def" and st.kind != "class":
                 none_assigns(kid.kids, out)
+            elif kid.kind == "except":
+                if kid.s != "":
+                    if kid.s not in out:
+                        out[kid.s] = []
+                    out[kid.s].append(mk("omit", "", kid.line, []))
+                none_assigns(kid.kids[1].kids, out)
 
 
 def local_names(body: list[Node], out: dict[str, bool]) -> None:
@@ -6022,6 +6261,11 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
         return
     for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
         import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user)
+    first = n.kids[0].kids[0] if n.kind == "try" and len(n.kids[0].kids) > 0 else n
+    for a in first.kids if first.kind == "import" and first.s == "" else first.kids[:0]:
+        # try: import m as x / ...: after the statement, x is bound unless the import raised,
+        # which a read of it checks as it runs (Loader.fragile, Gen.modchk)
+        sure[a.s] = True
 
 
 def globals_in(body: list[Node], out: dict[str, bool]) -> None:
@@ -6032,6 +6276,8 @@ def globals_in(body: list[Node], out: dict[str, bool]) -> None:
         for kid in st.kids:
             if kid.kind == "block":
                 globals_in(kid.kids, out)
+            elif kid.kind == "except":
+                globals_in(kid.kids[1].kids, out)
 
 
 def stmt_binds(st: Node, name: str) -> bool:
@@ -6061,12 +6307,49 @@ def only_none(body: list[Node], name: str) -> bool:
         for kid in st.kids:
             if kid.kind == "block" and not only_none(kid.kids, name):
                 return False
+            if kid.kind == "except" and not only_none(kid.kids[1].kids, name):
+                return False
     return True
 
 
 def nonexpr(e: Node) -> bool:
     # is e None, or a conditional expression of None in both arms
     return e.kind == "None" or (e.kind == "ifexp" and nonexpr(e.kids[1]) and nonexpr(e.kids[2]))
+
+
+def binds_other(body: list[Node], name: str) -> bool:
+    # does code body bind name other than as an except clause's name (not in the functions and
+    # classes it defines)
+    for st in body:
+        if stmt_binds(st, name) or ((st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s == name):
+            return True
+        for a in st.kids if st.kind == "import" else st.kids[:0]:
+            if a.s == name:
+                return True
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if (k.kind == "block" and binds_other(k.kids, name)) or (k.kind == "except" and binds_other(k.kids[1].kids, name)):
+                return True
+    return False
+
+
+def has_finally(body: list[Node]) -> bool:
+    # does code body hold a try statement with a finally block (not in the functions and classes it defines)
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        for k in st.kids:
+            if (k.kind == "block" and ((st.kind == "try" and k.s != "else" and k is not st.kids[0]) or has_finally(k.kids))) or (k.kind == "except" and has_finally(k.kids[1].kids)):
+                return True
+    return False
+
+
+def binds_as(body: list[Node], name: str) -> bool:
+    # does an except clause in code body bind name (not in the functions and classes it defines)
+    for st in body:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if (k.kind == "block" and binds_as(k.kids, name)) or (k.kind == "except" and (k.s == name or binds_as(k.kids[1].kids, name))):
+                return True
+    return False
 
 
 def assigns(st: Node, name: str) -> bool:
@@ -6089,6 +6372,8 @@ def typed_default(body: list[Node], d: Node, ret: bool) -> bool:
             return v.kids[0].kind == "attr" and (v.kids[0].s == "get" or v.kids[0].s == "setdefault")
         for kid in st.kids:
             if kid.kind == "block" and typed_default(kid.kids, d, ret):
+                return True
+            if kid.kind == "except" and typed_default(kid.kids[1].kids, d, ret):
                 return True
     return False
 
@@ -6161,6 +6446,7 @@ class FnInfo:
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
+        self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
@@ -6209,7 +6495,8 @@ class Ins:
         # number of the value a raw op defines (%tN; 0: none)
         self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
-        # is U when it holds a class (O<id>)
+        # is U when it holds a class (O<id>), or an exception (E) in a program that makes objects of
+        # exception classes
         self.x = ""
         self.r: list[int] = NONUMS  # the numbers of the values it defines, given when it was built
         self.a: list[Val] = NOVALS  # operands, in evaluation order (an rt op's typed as RUNTIME spells its parameters)
@@ -6221,6 +6508,9 @@ class Blk:
     def __init__(self, label: str):
         self.label = label  # "entry", "L<n>", or "" for one LLVM starts after a terminator
         self.code: list[Ins] = []
+        # where an exception raised here goes: the landing block of the innermost try statement
+        # of its function around it, or "" (it leaves the function)
+        self.handler = ""
 
 
 class Loop:
@@ -6241,6 +6531,16 @@ class Loop:
         self.stop = Val("", "")  # a range loop's stop, evaluated once
 
 
+class Try:
+    # the shape of one try statement, for structured backends; lowering needs only Blk.handler
+    def __init__(self, body: str):
+        self.body = body  # the block where its body starts
+        self.landing = ""  # the landing block of its except clauses ("" without them)
+        self.final = ""  # the landing block of its finally block ("" without one)
+        self.orelse = ""  # the block where its else block starts ("" without one)
+        self.exit = ""  # where the normal path goes on: the copy of its finally block starts there
+
+
 class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
@@ -6252,6 +6552,11 @@ class IFn:
         # message "Kind: text" -> the label of the block that raises it: one per function and
         # message, numbered at the first check of it, and placed after the function's code
         self.cold: dict[str, str] = {}
+        # inside a try statement, a message's key is "<landing> <message>", and its cold block raises
+        # the message to that landing block: the key -> the landing block
+        self.coldh: dict[str, str] = {}
+        self.tries: list[Try] = []
+        self.pads = False  # whether it keeps landing pads (once the exception passes have run)
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL
@@ -6301,6 +6606,24 @@ class Values:
                     self.at[i.r[0]] = j * self.stride + x
 
 
+class Exit:
+    # what leaving a block through break, continue or return first does (Gen.exits)
+    def __init__(self, kind: str, v: str, handler: str):
+        # "with": close the file v; "handler": restore v as the exception being handled (and unbind
+        # name); "finally": run body, as where its try statement is: in nloops loops and nexcs
+        # except clauses. It runs under handler, the landing block around the construct
+        self.kind = kind
+        self.v = v
+        self.handler = handler
+        self.name = ""
+        self.body: list[Node] = []
+        self.nloops = 0
+        self.nexcs = 0
+        self.entry = ""  # a finally block compiled once (Gen.try_): where it starts, ""  if each way out has a copy
+        self.sel = ""  # the slot of the way out it goes on to, an index into conts
+        self.conts: list[str] = []
+
+
 class Frame:
     # the code generator's state for one function, saved while it compiles another
     def __init__(self, curfn: FnInfo, fn: IFn, blk: Blk):
@@ -6312,8 +6635,11 @@ class Frame:
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
         self.loops: list[Loop] = []
-        self.withs: list[str] = []
+        self.exits: list[Exit] = []
         self.wdepth: list[int] = []
+        self.handler = ""
+        self.excs: list[Val] = []
+        self.shadows: list[list[str]] = []
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = ""
@@ -6349,6 +6675,13 @@ class ClassInfo:
         self.mod = ""
         self.bad = ""  # why a class of an imported module cannot be compiled: an error where it is used
         self.kwonly = False  # @dataclass(kw_only=True): its __init__ takes the fields by keyword only
+        # an exception class: its base (a class of the program or a builtin exception class), and
+        # the builtin exception class it derives from through it ("" for any other class)
+        self.base = ""
+        self.exc = ""
+        self.nflag = 0  # the "is assigned" flags at the end of its struct (its own fields')
+        self.leak = False  # its __init__ lets self escape before it ends
+        self.flowed = False  # fl_fields has decided its flags
 
 
 class Flow:
@@ -6367,6 +6700,9 @@ class Flow:
         self.bany = False  # a break was folded
         self.bwas: dict[str, bool] = {}  # the keys changed in the loop: whether each was in defd where it began
         self.bnew: dict[str, bool] = {}  # the keys changed since the last break (or since the loop began)
+        # the names the except clauses inside the innermost loop bind, and those the finally blocks
+        # around them there may delete: a break unbinds them
+        self.unb: list[str] = []
         self.marks: dict[str, bool] = {}
         self.call: dict[str, bool] = {}
         self.called = False
@@ -6374,6 +6710,12 @@ class Flow:
         self.me = ""
         self.fields: list[str] = []
         self.unsafe: dict[str, bool] = {}
+        # in an exception class's __init__: the fields super().__init__() surely assigns, whether it
+        # lets self escape, and whether this __init__ does
+        self.sup: list[str] = []
+        self.base = ""  # (the class's base, whose __init__ it may call as Base.__init__(self, ...))
+        self.leak = False
+        self.escaped = False
 
     def exposed(self) -> None:
         # self escapes or __init__ returns: fields not assigned yet may be read unassigned
@@ -6511,8 +6853,16 @@ class Gen:
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
         self.loops: list[Loop] = []  # the loops the code being compiled is in, innermost last
-        self.withs: list[str] = []  # files of the enclosing with blocks, closed when the code leaves them
-        self.wdepth: list[int] = []  # len(withs) when each enclosing loop began
+        self.exits: list[Exit] = []  # what break, continue and return must do on their way out, innermost last
+        self.wdepth: list[int] = []  # len(exits) when each enclosing loop began
+        self.handler = ""  # the landing block of the innermost try statement around the code, or ""
+        self.excs: list[Val] = []  # the exceptions being handled by the except clauses around it (bare raise)
+        self.carried = Val("", "")  # a return's value while leave() runs the finally blocks it leaves
+        # the names of except ... as clauses around it that have a variable of their own (another
+        # type than the name has outside): [name, its type outside ("": a global), register, flag]
+        self.shadows: list[list[str]] = []
+        self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
+        self.eh = False  # the program has a try statement (closed world): exceptions are on (pys_eh_on)
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = "None"
@@ -6626,8 +6976,11 @@ class Gen:
         fr.assigned = self.assigned
         fr.compvars = self.compvars
         fr.loops = self.loops
-        fr.withs = self.withs
+        fr.exits = self.exits
         fr.wdepth = self.wdepth
+        fr.handler = self.handler
+        fr.excs = self.excs
+        fr.shadows = self.shadows
         fr.lcs = self.lcs
         fr.lct = self.lct
         fr.ret = self.ret
@@ -6658,8 +7011,11 @@ class Gen:
         self.assigned = fr.assigned
         self.compvars = fr.compvars
         self.loops = fr.loops
-        self.withs = fr.withs
+        self.exits = fr.exits
         self.wdepth = fr.wdepth
+        self.handler = fr.handler
+        self.excs = fr.excs
+        self.shadows = fr.shadows
         self.lcs = fr.lcs
         self.lct = fr.lct
         self.ret = fr.ret
@@ -6716,6 +7072,7 @@ class Gen:
         if not self.term:
             self.jump(l)
         self.blk = Blk(l)
+        self.blk.handler = self.handler
         self.fn.blocks.append(self.blk)
         self.cur = l
         self.term = False
@@ -6834,11 +7191,17 @@ class Gen:
         return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
 
     def guard(self, bad: str, msg: str) -> None:
-        # if bad, jump to a block (one per function and message) that raises msg ("Kind: text")
-        if msg not in self.fn.cold:
-            self.fn.cold[msg] = self.label()
+        # if bad, jump to a block (one per function and message) that raises msg ("Kind: text"); in a
+        # try statement, one per function, message and landing block (whose key the check holds in x)
+        key = msg if self.handler == "" else f"{self.handler} {msg}"
+        if key not in self.fn.cold:
+            self.fn.cold[key] = self.label()
+            if self.handler != "":
+                self.fn.coldh[key] = self.handler
         l = self.label()
         i = Ins("check", "", msg)
+        if self.handler != "":
+            i.x = key
         i.a = [Val(bad, "bool")]
         i.b = [l]
         self.add(i)
@@ -7008,6 +7371,12 @@ class Gen:
             return v
         if v.t == "None" and t in self.classes:
             return Val("null", t)
+        if v.t in self.classes and t in self.classes and self.classes[v.t].exc != "" and self.derives(v.t, t):
+            return Val(v.v, t)  # (an exception object is an object of its base classes too)
+        if v.t in self.classes and t == "exc" and self.classes[v.t].exc != "":
+            self.err(f"expected a builtin exception, got an object of {short(v.t)} (annotate it with {short(v.t)} or a base class of the program)")
+        if v.t == "exc" and t in self.classes and self.classes[t].exc != "":
+            self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
         if self.widens(v.t, t):
             return Val(v.v, t)
         if is_sopt(t) and v.t == unopt(t):
@@ -7054,6 +7423,8 @@ class Gen:
             if len(a) > 9:
                 self.err("tuples are limited to 9 elements")
             return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
+        if t == "exc":
+            return "E"  # (repr: pys_exc_repr; equality: identity)
         if t in self.classes:
             # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
             # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
@@ -7090,6 +7461,8 @@ class Gen:
         if k == "name":
             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
                 return s
+            if is_excname(s):
+                return "exc"  # (a builtin exception class: any exception, not only those of the class)
             t = self.typing_name(s)
             if t == "TextIO" or t == "Self" or t.startswith("!"):
                 return "file" if t == "TextIO" else self.self_type() if t == "Self" else t
@@ -7148,7 +7521,7 @@ class Gen:
                 if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                     return self.opt(us[0] if us[1] == "None" else us[1])  # Union[T, None]
         if self.typing_ref(n) == "Final":
-            return "!a bare Final needs a value to give its type (x: Final = v), outside class bodies; write Final[T]"
+            return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
         if self.pathlike(n):
             return "!" + PATHLIKE
         return "!unsupported type annotation"
@@ -7263,14 +7636,15 @@ class Gen:
         p = self.imported(n.s)
         if p.startswith("typing.") or p.startswith("collections.abc."):
             return p[p.rfind(".") + 1 :]
-        return n.s if n.s in TYPING and "__future__.annotations" in self.imports.values() else ""
+        return short(n.s) if short(n.s) in TYPING and "__future__.annotations" in self.imports.values() else ""
 
     def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
         # what typing decides before any code runs, in the statements of body (a class body if cls)
         # and in those they hold: a def decorated with @overload is a stub that the def after it
         # replaces, so it is dropped (unless no def of its name follows in its block, past other
         # defs, or a default is more than a constant); x: Final = v is x = v outside class bodies,
-        # x: Final[T] is x: T
+        # and a field typed by the constant v in one, x: Final[T] is x: T, and x: Final alone does
+        # nothing
         out: list[Node] = []
         defs: dict[str, bool] = {}
         for i in range(len(body)):
@@ -7305,11 +7679,25 @@ class Gen:
             elif a is not st and len(st.kids) == 3 and not cls and self.typing_ref(a) == "Final":
                 st.kind = "assign"
                 st.kids = [st.kids[0], st.kids[2]]
+            elif a is not st and len(st.kids) == 3 and self.typing_ref(a) == "Final":
+                # (a field, typed by its constant)
+                v = st.kids[2]
+                if v.kind == "int" or v.kind == "float" or v.kind == "str":
+                    st.kids[1] = mk("name", v.kind, v.line, [])
+                elif v.kind == "True" or v.kind == "False":
+                    st.kids[1] = mk("name", "bool", v.line, [])
+                else:
+                    self.err("a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]")
+            elif a is not st and self.typing_ref(a) == "Final":
+                st.kind = "pass"  # (x: Final alone binds nothing)
+                st.kids = []
             for k in st.kids:
                 if k.kind == "block":
                     k.kids = self.typing_forms(m, k.kids, st.kind == "class")
                 elif k.kind == "class":
                     k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
+                elif k.kind == "except":
+                    k.kids[1].kids = self.typing_forms(m, k.kids[1].kids, False)
             out.append(st)
         return out if len(out) < len(body) else body
 
@@ -7329,8 +7717,8 @@ class Gen:
             return self.imported(s)[7:]
         if self.imported(s).startswith("collections.abc."):
             return self.imported(s)[16:]
-        if s in TYPING and "__future__.annotations" in self.imports.values():
-            return s
+        if short(s) in TYPING and "__future__.annotations" in self.imports.values():
+            return short(s)  # (also a module's name that only an if TYPE_CHECKING: block imports)
         return f"!name '{s}' is not defined (import it from typing)" if s in TYPING else ""
 
     def opt(self, t: str) -> str:
@@ -7338,6 +7726,8 @@ class Gen:
         # dict and tuple become opt[T] (or "!" and why not)
         if t.startswith("!"):
             return t
+        if t == "exc":
+            return "!an exception that may be None (Exception | None) is not supported: only an object of an exception class of the program may be None"
         r = self.optional(t)
         return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
@@ -7436,13 +7826,14 @@ class Gen:
 
     def widens(self, a: str, b: str) -> bool:
         # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
-        # type), and a tuple item by item (tuples cannot change, so their items can widen)
+        # type), an object of an exception class as one of a base class (whose layout its own
+        # extends), and a tuple item by item (tuples cannot change, so their items can widen)
         if a == b:
             return True
         if is_opt(b):
             return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
         if b in self.classes:
-            return a == "None"
+            return a == "None" or (a in self.classes and self.classes[a].exc != "" and self.derives(a, b))
         if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
             return False
         bs = targs(b)
@@ -7588,7 +7979,68 @@ class Gen:
             return None
         return n.kids[1]
 
+    def exc_attr(self, ci: ClassInfo, name: str) -> None:
+        # a field name of class ci that is an attribute of its builtin exception class (EXCATTRS): an
+        # error (for an imported module's class, where the program uses it)
+        for b in EXCATTRS:
+            if ci.exc != "" and name in EXCATTRS[b].split() and exc_derives(ci.exc, b):
+                use = "its exit status" if b == "SystemExit" else "its str() and repr()" if b == "BaseException" else "its str()"
+                why = f"a field '{name}' of exception class {short(ci.name)} is not supported: it would be {b}'s own attribute {name}, which decides {use}"
+                if ci.mod == "":
+                    self.err(why)
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+        for b in EXCINIT:
+            if ci.exc != "" and name in EXCINIT[b].split() and exc_derives(ci.exc, b) and not self.init_after(ci, name) and not self.shadowed(ci, name):
+                why = f"a field '{name}' of exception class {short(ci.name)} is not supported here: {b}.__init__() sets its attribute {name} as it runs, after what assigned the field before it (assign self.{name} in __init__, after super().__init__(...))"
+                if ci.mod == "":
+                    self.err(why)
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+
+    def shadowed(self, ci: ClassInfo, name: str) -> bool:
+        # does class ci or a base of the program give attribute name a default in its class body:
+        # then CPython's instances keep it in their __dict__, apart from the slot of the builtin
+        # base that its __init__ sets
+        c = ci.name
+        while c in self.classes:
+            for st in self.classes[c].node.kids[0].kids:
+                if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name" and st.kids[0].s == name:
+                    return True
+            c = self.classes[c].base
+        return False
+
+    def init_after(self, ci: ClassInfo, name: str) -> bool:
+        # is field name of class ci's objects assigned after its builtin base's __init__ runs, if it
+        # runs: the __init__ that runs for them (of ci or the nearest base) does not call its base's,
+        # or calls it in a statement of its own after which it assigns self.name (or the base's
+        # __init__ does so, for its own objects), and calls it nowhere else
+        if "__init__" not in ci.methods:
+            return False  # (the builtin __init__ runs as the object is made)
+        f = ci.methods["__init__"]
+        d = self.classes[f.cls]
+        me = f.params[0] if len(f.params) > 0 else ""
+        body = f.node.kids[2].kids
+        last = -1
+        for i in range(len(body)):
+            st = body[i]
+            c = st.kids[0] if st.kind == "expr" else st
+            a = c.kids[0] if c.kind == "call" else c
+            if a.kind == "attr" and a.s == "__init__" and ((a.kids[0].kind == "call" and a.kids[0].kids[0].kind == "name" and a.kids[0].kids[0].s == "super")
+                                                         or (a.kids[0].kind == "name" and len(c.kids) > 1 and c.kids[1].kind == "name" and c.kids[1].s == me)):
+                last = i
+            elif calls_init(st):
+                return False  # (it may call the base's __init__ in another way)
+        if last < 0:
+            return True
+        if d.base in self.classes and self.init_after(self.classes[d.base], name):
+            return True
+        for st in body[last + 1 :]:
+            if (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "attr" and st.kids[0].s == name and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == me:
+                return True
+        return False
+
     def add_field(self, ci: ClassInfo, name: str, t: str) -> None:
+        if name not in ci.ftypes:
+            self.exc_attr(ci, name)
         if name in ci.ftypes:
             if ci.ftypes[name] != t:
                 self.err(f"field '{name}' redeclared with a different type")
@@ -7600,8 +8052,23 @@ class Gen:
     def declare_fields(self, ci: ClassInfo) -> None:
         noann = mk("noann", "", ci.node.line, [])
         last = ""
+        if ci.base in self.classes:
+            # an exception class's objects begin with its base's fields (and their flags, see fl_fields)
+            b = self.classes[ci.base]
+            for x in b.fields:
+                self.add_field(ci, x, b.ftypes[x])
+                if x in b.fdefault:
+                    ci.fdefault[x] = b.fdefault[x]
+        elif ci.exc != "":
+            # what its constructor sets (exc_object): its ExcClass, str(e) and the text between repr(e)'s
+            # parentheses, and a SystemExit's status and whether its code is one (None, an int or a bool)
+            xs = EXCFIELDS.split()
+            for x in xs if exc_derives(ci.exc, "SystemExit") else xs[:3]:
+                self.add_field(ci, " " + x[: x.find(":")], x[x.find(":") + 1 :])
         for st in ci.node.kids[0].kids:
             self.line = st.line
+            if st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
+                self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported)")
             if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
                 # an imported module's class: an error only where the program uses it
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {self.ann_problem(st.kids[1], False)}"
@@ -7629,15 +8096,18 @@ class Gen:
                 ci.fdefault[st.kids[0].s] = st.kids[1]
                 st.kind = "annassign"
                 st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
-            elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
-                self.err("a class body may only contain fields, methods and a docstring")
+            elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
+                what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
+                self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
         if ci.name in self.nts:
             self.nt_class(ci)
         if self.is_dc(ci.name):
             self.dc_methods(ci)
-        if "__init__" in ci.methods:
-            f = ci.methods["__init__"]
-            self.scan_fields(ci, f, f.node.kids[2].kids)
+        if "__init__" in ci.methods or ci.exc != "":
+            # (an exception class without __init__ of its own takes its base's, or none)
+            if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name:
+                f = ci.methods["__init__"]
+                self.scan_fields(ci, f, f.node.kids[2].kids)
             return
         # synthesize __init__: @dataclass takes every field as a parameter
         body: list[Node] = []
@@ -7657,6 +8127,10 @@ class Gen:
                 f.defaults.append(ci.fdefault[fl] if fl in ci.fdefault else noann)
                 f.dglob.append("")
                 body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [mk("name", me, d.line, [])]), mk("name", fl, d.line, [])]))
+            if "__post_init__" in ci.methods:
+                # (then calls __post_init__, as the __init__ @dataclass writes does)
+                post = mk("attr", "__post_init__", d.line, [mk("name", me, d.line, [])])
+                body.append(mk("expr", "", d.line, [mk("call", "", d.line, [post])]))
         ci.methods["__init__"] = f
 
     def nt_class(self, ci: ClassInfo) -> None:
@@ -7748,6 +8222,7 @@ class Gen:
             if (k == "assign" or k == "annassign") and st.kids[0].kind == "attr" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == f.params[0]:
                 name = st.kids[0].s
                 if name not in ci.ftypes:
+                    self.exc_attr(ci, name)
                     why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
                     t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                     if t.startswith("!"):
@@ -7765,6 +8240,8 @@ class Gen:
             for kid in st.kids:
                 if kid.kind == "block":
                     self.scan_fields(ci, f, kid.kids)
+                elif kid.kind == "except":
+                    self.scan_fields(ci, f, kid.kids[1].kids)
 
     def guess(self, e: Node, f: FnInfo) -> str:
         k = e.kind
@@ -7848,6 +8325,13 @@ class Gen:
         return ""
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
+        if name == "__class__" and (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")):
+            self.err("e.__class__ of an exception is not supported; type(e).__name__ is")
+        if o.t == "exc":
+            # (isinstance() does not change the type of the name an except clause binds)
+            fl = [c for c in self.classes.values() if c.exc != "" and name in c.ftypes]
+            hint = f" (to read the fields of {short(fl[0].name)}, catch it by its class: except {short(fl[0].name)} as e)" if len(fl) > 0 else ""
+            self.err(f"the attributes of an exception (e.{name}) are not supported; str(e) and repr(e) are{hint}")
         if o.t not in self.classes:
             t = unopt(o.t)
             base = "list" if is_list(t) else "dict" if is_dict(t) else t
@@ -7858,6 +8342,17 @@ class Gen:
         if name not in ci.ftypes:
             if name in ci.methods:
                 self.err(f"{o.t}.{name} is a method: call it, {name}(...) (methods are not values)")
+            if ci.exc != "":
+                sub = [c for c in self.classes.values() if c.name != o.t and name in c.ftypes and self.derives(c.name, o.t)]
+                if len(sub) > 0:
+                    self.err(f"'{short(o.t)}' object has no attribute '{name}' (it is a field of {short(sub[0].name)}, which derives from {short(o.t)}: isinstance() does not change the type of a value)")
+                for b in EXCATTRS:
+                    if name in EXCATTRS[b].split() and exc_derives(ci.exc, b):
+                        self.err(f"'{short(o.t)}' object has no attribute '{name}': {b}'s attribute {name} is not supported (str(e) and repr(e) are)")
+                for b in EXCINIT:
+                    if name in EXCINIT[b].split() and exc_derives(ci.exc, b):
+                        self.err(f"'{short(o.t)}' object has no attribute '{name}': {b}'s attribute {name} is not supported (a field of the class assigned in __init__, after super().__init__(...), is)")
+                self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
@@ -7883,7 +8378,23 @@ class Gen:
             return Val(r, p.t)
         if name in ci.fflag:
             f = self.fgep(o, ci.fflag[name])
-            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
+            bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true")
+            subs = [x for x in self.classes.values() if x.base == o.t]
+            if len(subs) > 0:
+                # an exception object, of o.t or a class deriving from it: CPython names its class
+                l1 = self.label()
+                l2 = self.label()
+                self.cbr(bad, l1, l2)
+                self.place(l1)
+                c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
+                q = self.sconst("'")
+                t = self.sconst("' object has no attribute '" + name + "'")
+                m = self.rt("pys_str_add", "ptr", [f"ptr {q}", f"ptr {c}"])
+                m = self.rt("pys_str_add", "ptr", [f"ptr {m}", f"ptr {t}"])
+                self.raise_("AttributeError", m)
+                self.place(l2)
+            else:
+                self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
         r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
         if is_opt(p.t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
@@ -8042,6 +8553,8 @@ class Gen:
             for kid in st.kids:
                 if kid.kind == "block":
                     self.none_values(kid.kids, name, out)
+                elif kid.kind == "except":
+                    self.none_values(kid.kids[1].kids, name, out)
 
     def read(self, n: Node) -> Val:
         # a variable read; if flow analysis found it may be unassigned, check at run time
@@ -8053,15 +8566,30 @@ class Gen:
                 self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
         elif (n.chk or self.foreign(name)) and name in self.gflag and name in self.gtypes:
             bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
-            self.guard(bad, self.unbound(name))
+            self.guard(bad, self.unbound(name, self.copying))
         return self.load_name(name)
+
+    def modchk(self, n: Node) -> None:
+        # n reads module m's attribute through a name that an import in a try statement binds
+        # (Node.mchk): if that import raised, m's code did not end (its done flag is clear, see
+        # function), and CPython left the name unbound
+        if n.mchk == "":
+            return
+        p = n.mchk.split(" ")
+        un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value" if p[2] == "L" else f"NameError: name '{p[1]}' is not defined"
+        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @init.{p[0]}.done')}, true"), un)
 
     def foreign(self, name: str) -> bool:
         # another module's global that may be unbound when this code reads it
         return name in self.late and owner(name) != self.curfn.mod
 
-    def unbound(self, name: str) -> str:
-        # what CPython raises for reading name unbound (as M.x from another module)
+    def unbound(self, name: str, imp: bool = False) -> str:
+        # what CPython raises for reading name unbound (as M.x from another module, or imp: by
+        # from M import x, naming the file of M, as found when compiling)
+        if self.foreign(name) and imp:
+            f = self.mfile[owner(name)]
+            where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
+            return f"ImportError: cannot import name '{short(name)}' from '{owner(name)}' ({where})"
         if self.foreign(name):
             return f"AttributeError: module '{owner(name)}' has no attribute '{short(name)}'"
         return f"NameError: name '{short(name)}' is not defined"
@@ -8318,12 +8846,15 @@ class Gen:
     def live_blocks(self, st: Node) -> list[Node]:
         # the blocks of statement st that a static test (see static) does not leave out: of an if
         # decided here the branch that runs, of a while loop whose test is false its else block
+        # (and the bodies of a try statement's except clauses)
         s = -1 if st.kind != "if" and st.kind != "while" else self.static_now(st.kids[0]) if self.whole == 0 else self.static_whole(st.kids[0], st.line)
         bs: list[Node] = []
         for i in range(len(st.kids)):
             kid = st.kids[i]
             if kid.kind == "block" and not (st.kind == "if" and s >= 0 and i == (2 if s == 1 else 1)) and not (st.kind == "while" and s == 0 and kid.s != "else"):
                 bs.append(kid)
+            elif kid.kind == "except":
+                bs.append(kid.kids[1])
         return bs
 
     def static_now(self, n: Node) -> int:
@@ -8550,6 +9081,8 @@ class Gen:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.fills(kid.kids, name, found)
+                    elif kid.kind == "except":
+                        self.fills(kid.kids[1].kids, name, found)
         return False
 
     def fill_calls(self, n: Node, name: str, found: list[Node]) -> None:
@@ -8646,6 +9179,10 @@ class Gen:
             if empty_display(args[-1]):
                 self.no_type(name)  # (xs.append([]) shows nothing of what xs holds)
             i = self.ival(args[0]) if m == "insert" else Val("0", "int")
+            if m == "extend" and args[0].kind == "listcomp" and args[0].s == "gen":
+                # (item by item, as bmethod's)
+                self.refine(name, self.listcomp(args[0], "", "", o.v).t)
+                return Val("null", "None")
             v = self.as_list(self.consume(args[-1], ""), "extend") if m == "extend" else self.expr(args[-1], "")
             if m == "extend" and not is_list(v.t):
                 self.err(f"cannot extend a list with {v.t}")
@@ -8880,8 +9417,11 @@ class Gen:
         self.assigned = {}
         self.compvars = {}
         self.loops = []
-        self.withs = []
+        self.exits = []
         self.wdepth = []
+        self.handler = ""
+        self.excs = []
+        self.shadows = []
         self.n = 0
         self.cur = "entry"
         self.term = False
@@ -8927,8 +9467,9 @@ class Gen:
             if f.params[i] in self.lflag:
                 self.emit(f"store i1 true, ptr {self.lflag[f.params[i]]}")  # (a parameter that del unbinds)
         self.none_ends()
-        if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
-            # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
+        if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann") and self.classes[f.cls].exc == "":
+            # class-body defaults (a synthesized dataclass __init__ assigns every field itself; an
+            # exception class's constructor assigns them, see exc_object)
             ci = self.classes[f.cls]
             me = Val("%a0", f.cls)
             for fl in ci.fields:
@@ -8952,9 +9493,28 @@ class Gen:
             self.ret_(Val("null", "None"))
             self.place(l2)
             self.emit(f"store i1 true, ptr {done}")
+        hm = ""
+        mark = Val("", "")
+        slot = ""
+        if f.ll.startswith("@init.") and self.eh:
+            # an exception that leaves a module's code leaves the module not imported, as CPython
+            # removes it from sys.modules: a landing block around the code clears its done flag
+            # and throws again, so that a later import runs the code again
+            mark = Val(self.rt("pys_try_mark", "i64", []), "int")
+            slot = self.alloca("exc", "")
+            hm = self.label()
+            tr = Try(self.label())
+            tr.landing = hm
+            self.fn.tries.append(tr)
+            self.handler = hm
+            self.place(tr.body)
         self.stmts(body)
         if f.ret == "":
             f.ret = "None"  # a template's function without a return statement that has a value
+            f.noret = f.infer and self.term
+            for b in self.fn.blocks:
+                for x in b.code:
+                    f.noret = f.noret and x.op != "ret" and x.op != "ret.none"
         if f.infer:
             # its returns of None, before it was known what it returns: None for an object, and
             # str, list, dict or tuple T make it return T | None (ret.none is lowered from f.ret)
@@ -8965,6 +9525,13 @@ class Gen:
                             self.err(self.nonemix(f, f.ret))
                         if f.ret != self.optional(f.ret) and f.ret != "None":
                             self.reopt(self.optional(f.ret))
+        if hm != "":
+            if not self.term:
+                self.ret_(Val("null", "None"))
+            self.handler = ""
+            e = self.landing(hm, slot, mark)
+            self.emit(f"store i1 false, ptr {f.ll}.done")
+            self.throw(e)
         if not self.term:
             if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret):
                 # (a template's function that ends without a return, or one returning T | None: None)
@@ -8977,8 +9544,12 @@ class Gen:
                     self.term = False
             else:
                 self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
-        for msg in self.fn.cold:
-            self.place(self.fn.cold[msg])
+        for key in self.fn.cold:
+            self.place(self.fn.cold[key])
+            msg = key
+            if key in self.fn.coldh:
+                self.blk.handler = self.fn.coldh[key]
+                msg = key[len(self.fn.coldh[key]) + 1 :]
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
         del self.building[f.ll]
@@ -8991,7 +9562,7 @@ class Gen:
         f = fn.f
         # a method's receiver is never None (callers check it)
         ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
-        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
+        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}){' personality ptr @pys_personality' if fn.pads else ''} {{")
         o.append("entry:")
         for i in fn.slots:
             if i.k == 1:
@@ -9018,7 +9589,7 @@ class Gen:
         elif op == "cbr":
             o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
         elif op == "check":
-            o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.s]}, label %{i.b[0]}")
+            o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.x if i.x != '' else i.s]}, label %{i.b[0]}")
         elif op == "phi":
             o.append(f"  %t{i.r[0]} = phi {lt(i.t)} {', '.join([f'[{i.a[j].v}, %{i.b[j]}]' for j in range(len(i.a))])}")
         elif op == "ovf":
@@ -9048,13 +9619,13 @@ class Gen:
                 # did; refine made a tuple key's descriptor a string constant)
                 h = self.holes[i.k]
                 vs[0] = f"i64 {self.key_kind(targs(h)[0]) if h != '' else '0'}"
-            c = f"call {ll[0]} @{f.sym}({', '.join(vs)})"
+            c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
             o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
         elif op == "call":
-            c = f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})"
+            c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
             o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
         elif op == "init":
-            o.append(f"  call void @init.{i.s}()")
+            o.append("  " + self.invoke(f"call void @init.{i.s}()", i))
         elif op == "list.load":
             # the item of a list at an index within its length (listget): l->a[index], as runtime.c
             # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
@@ -9063,18 +9634,41 @@ class Gen:
             o.append(f"  %t{r[2]} = load ptr, ptr %t{r[1]}")
             o.append(f"  %t{r[3]} = getelementptr inbounds i64, ptr %t{r[2]}, i64 {i.a[1].v}")
             o.append(f"  %t{r[0]} = load i64, ptr %t{r[3]}")
+        elif op == "landing":
+            r = i.r
+            o.append(f"  %t{r[0]} = landingpad {{ ptr, i32 }} catch ptr null")
+            o.append(f"  %t{r[1]} = extractvalue {{ ptr, i32 }} %t{r[0]}, 0")
+            o.append(f"  store ptr %t{r[1]}, ptr {i.a[0].v}")
+            o.append(f"  br label %{i.b[0]}")
+        elif op == "throw":
+            o.append(f"  call void @pys_throw(ptr {i.a[0].v})")
+            o.append("  unreachable")
+        elif op == "exc.match":
+            o.append(f"  %t{i.r[0]} = call i64 @pys_exc_in(ptr {i.a[0].v}, ptr {i.a[1].v})")
+            o.append(f"  %t{i.r[1]} = icmp ne i64 %t{i.r[0]}, 0")
         else:
             fail(f"internal error: no lowering for IR op {op}", 0)
 
+    def invoke(self, c: str, i: Ins) -> str:
+        # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])
+        return c if len(i.b) == 0 else f"invoke{c[4:]} to label %{i.b[0]} unwind label %{i.b[1]}"
+
     # ---- the IR's check (PYSTACHY_IRCHECK=1) and its effect summaries, once the program is built
-    def verify(self, fn: IFn) -> None:
+    def verify(self, fn: IFn, eh: bool) -> None:
         # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
         # a raw op is one LLVM instruction that is no call (calls are rt, call and init ops, whose
         # effects are known), no phi and no terminator, and call and init ops call compiled
         # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
         # starts its block, and its predecessors branch there; each op holds exactly the numbers
-        # its lowering prints (Ins.r), and no number or label is above IFn.n
+        # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
+        # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
+        # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
+        # try statement covers, no call that may raise is left a call, nor a raise or throw
         at: dict[str, int] = {}
+        lands: dict[str, bool] = {}
+        for b in fn.blocks:
+            if len(b.code) > 0 and b.code[0].op == "landing":
+                lands[b.label] = True
         for i in fn.slots:
             if i.op != "slot" or len(i.r) != 1:
                 self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
@@ -9094,8 +9688,18 @@ class Gen:
                 i = b.code[j]
                 if i.op not in IROPS:
                     self.bad_ir(fn, b, f"unknown op {i.op}")
-                if ("T" in IROPS[i.op]) != (j == len(b.code) - 1):
+                inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "init")
+                if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):
                     self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
+                if i.op == "landing" and j > 0:
+                    self.bad_ir(fn, b, "a landing op after other ops")
+                if inv and i.b[1] not in lands:
+                    self.bad_ir(fn, b, f"an invoke whose unwind edge goes to {i.b[1]}, which is no landing block")
+                for l in i.b[:1] if inv else i.b if i.op != "phi" else i.b[:0]:
+                    if l in lands:
+                        self.bad_ir(fn, b, f"a branch to the landing block {l}, which only unwind edges may reach")
+                if eh and b.handler != "" and (i.op == "raise" or i.op == "throw" or (not inv and (i.op == "rt" or i.op == "call" or i.op == "init") and self.opfx(i, fn.fa) & FXBIT["R"] != 0)):
+                    self.bad_ir(fn, b, f"{i.op} {i.s} may raise, in a block {b.handler} covers, but goes to no landing block")
                 if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
                     self.bad_ir(fn, b, "a phi after other ops")
                 if i.op == "rt" and i.s not in self.rtfns:
@@ -9118,7 +9722,8 @@ class Gen:
                 if i.op != "phi":
                     out.extend(i.b)
                 if i.op == "check":
-                    out.append(fn.cold[i.s] if i.s in fn.cold else f"(none for {i.s})")
+                    ck = i.x if i.x != "" else i.s
+                    out.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
             if len(b.code) == 0:
                 self.bad_ir(fn, b, "no terminator")
             for l in out:
@@ -9138,6 +9743,8 @@ class Gen:
             return 3
         if i.op == "list.load":
             return 4
+        if i.op == "landing" or i.op == "exc.match":
+            return 2
         if i.op == "phi" or i.op == "select":
             return 1
         if i.op == "rt":
@@ -9187,8 +9794,9 @@ class Gen:
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else FXALL
         if i.op == "rt":
+            # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run)
             f = self.rtfns[i.s]
-            return FXALL if f.q and "O" in i.x else f.fx
+            return FXALL if f.q and ("O" in i.x or ("E" in i.x and len(self.xcls) > 0)) else f.fx
         if i.op == "raw":
             return rawfx(i.s, fa)
         return self.opfxs[i.op]
@@ -9542,6 +10150,138 @@ class Gen:
             return False
         return ta[: ta.find(",")] != tb[: tb.find(",")] or ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
 
+    def eh_ir(self, fn: IFn) -> None:
+        # fn has try statements: its blocks' exception edges (Blk.handler) become LLVM's, once the
+        # effect summaries say which calls may raise. A raise or throw that a landing block covers
+        # branches to the code after it, with the exception in its try's slot as the landing op
+        # stores it: no unwinder, which takes a microsecond. (A raise's exception is made as
+        # pys_raise makes it, from its kind and message: in a program that has a try, no raise op
+        # has the line of a SyntaxError as its kind, see raise_stmt.) A call a landing block covers
+        # that may raise (R) becomes an invoke whose unwind edge goes there, and ends its block (a
+        # phi after it names the last part as its predecessor). A landing block no invoke goes to
+        # is dropped (the code after it may still be reached from a raise), and a function left
+        # without one has no personality
+        lands: dict[str, Ins] = {}
+        for b in fn.blocks:
+            if len(b.code) > 0 and b.code[0].op == "landing":
+                lands[b.label] = b.code[0]
+        used: dict[str, bool] = {}
+        ren: dict[str, str] = {}
+        blocks: list[Blk] = []
+        raises = FXBIT["R"]
+        for b in fn.blocks:
+            if b.handler == "":
+                blocks.append(b)
+                continue
+            code = b.code
+            t = code[-1]
+            if t.op == "raise" or t.op == "throw":
+                lp = lands[b.handler]
+                code = code[: len(code) - 1]
+                ex = t.a[0].v
+                if t.op == "raise":
+                    fn.n += 1
+                    i = Ins("rt", "exc", "exc.new")
+                    i.a = [t.a[0], t.a[1], Val("null", "str")]
+                    i.r = [fn.n]
+                    self.runtime("pys_exc_new")
+                    code.append(i)
+                    ex = f"%t{fn.n}"
+                code.append(Ins("raw", "", f"store ptr {ex}, ptr {lp.a[0].v}"))
+                br = Ins("br", "", "")
+                br.b = [lp.b[0]]
+                code.append(br)
+            cur = b
+            cur.code = []
+            for j in range(len(code)):
+                i = code[j]
+                cur.code.append(i)
+                if j < len(code) - 1 and (i.op == "rt" or i.op == "call" or i.op == "init") and self.opfx(i, fn.fa) & raises != 0:
+                    fn.n += 1
+                    i.b = [f"L{fn.n}", b.handler]
+                    used[b.handler] = True
+                    blocks.append(cur)
+                    cur = Blk(i.b[0])
+                    cur.handler = b.handler
+            blocks.append(cur)
+            if cur is not b:
+                ren[b.label] = cur.label
+        fn.blocks = []
+        for b in blocks:
+            if b.label in lands and b.label not in used:
+                continue
+            fn.blocks.append(b)
+            for i in b.code:
+                if i.op != "phi":
+                    break
+                for j in range(len(i.b)):
+                    if i.b[j] in ren:
+                        i.b[j] = ren[i.b[j]]
+        fn.pads = len(used) > 0
+        if fn.pads:
+            self.runtime("pys_personality")
+
+    def subclass_problem(self, st: Node) -> str:
+        # why class statement st, which names bases, cannot be compiled, or "": only an exception
+        # class can, whose one base is a builtin exception class or an exception class of the
+        # program declared before it
+        if st.kids[1].kind == "typeparams":
+            return "generic classes (class C[T]) are not supported"
+        b = self.exc_base(st.kids[1])
+        if b == "" and len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
+            return UNSUPPORTED["subclass"] + " (the module may have rebound the name 'object' before this statement)"
+        if b == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes:
+            return UNSUPPORTED["subclass"] + " (only an exception class may have a base)"
+        if b == "":
+            return UNSUPPORTED["subclass"] + " (only an exception class may have a base, which names a builtin exception class or an exception class of the program)"
+        if len(st.kids) > 2:
+            return "an exception class with more than one base is not supported"
+        if b not in self.classes and (EXCEPTIONS.get(b, "-") == "-" or exc_derives(b, "SyntaxError")):
+            return f"deriving from {b} is not supported"
+        if len(st.kids[0].kids) > 1:
+            return f"an exception class with a decorator (@{st.kids[0].kids[1].s}) is not supported"
+        return ""
+
+    def exc_base(self, b: Node) -> str:
+        # the exception class that b, the base of a class statement, names: a class of the program
+        # or a builtin one (IOError and EnvironmentError are OSError; builtins.X and os.error
+        # too), else ""
+        s = b.s
+        if b.kind == "attr" and b.kids[0].kind == "name" and self.imported(b.kids[0].s) == "builtins" and is_excname(b.s):
+            s = b.s
+        elif b.kind == "attr" and b.kids[0].kind == "name" and self.imported(b.kids[0].s) == "os" and b.s == "error":
+            s = "OSError"
+        elif b.kind != "name":
+            return ""
+        if s in self.classes:
+            return s if self.classes[s].exc != "" else ""
+        if is_excname(s):
+            return "OSError" if s == "IOError" or s == "EnvironmentError" else s
+        return ""
+
+    def inherit(self, ci: ClassInfo) -> None:
+        # an exception class has the methods of its base that it does not define: the same
+        # functions, compiled for the base (its objects begin as the base's do). It may define
+        # __init__, __str__ and __repr__ again (str() and repr() call those of the object's class,
+        # see exc_helpers), but no other method: calls are not dispatched on the object's class
+        if ci.base not in self.classes:
+            return
+        b = self.classes[ci.base]
+        for m in b.methods:
+            if m not in ci.methods:
+                ci.methods[m] = b.methods[m]
+            elif m != "__init__" and m != "__str__" and m != "__repr__":
+                self.line = ci.methods[m].node.line
+                self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
+
+    def derives(self, c: str, base: str) -> bool:
+        # is c, a class of the program or a builtin exception class, base or derived from it
+        while c in self.classes:
+            if c == base:
+                return True
+            c = self.classes[c].base
+        return c in EXCBASES and exc_derives(c, base)
+
     def class_problem(self, m: Mod, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
         # annotated parameters, and its body may hold only fields, methods and a docstring
@@ -9561,7 +10301,7 @@ class Gen:
                         return f"method {b.s}() takes *args or **kwargs"
                     if (i > 0 or static) and ps[i].kids[0].kind == "noann":
                         return f"parameter '{ps[i].s}' of method {b.s}() has no type annotation"
-            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and not (b.kind == "assign" and len(b.kids) == 2 and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and b.kids[0].kind == "str"):
+            elif not (b.kind == "annassign" and b.kids[0].kind == "name") and not (b.kind == "assign" and len(b.kids) == 2 and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and (b.kids[0].kind == "str" or b.kids[0].kind == "ellipsis")):
                 return "its body holds statements other than fields, methods and a docstring"
         return ""
 
@@ -9785,6 +10525,7 @@ class Gen:
         tops: list[list[Node]] = []
         for m in mods:
             self.scan_imports(m.body.kids)
+            self.eh = self.eh or has_try(m.body.kids)
         for m in mods:
             m.body.kids = self.typing_forms(m, m.body.kids, False)
             for i in range(len(m.body.kids)):
@@ -9802,9 +10543,9 @@ class Gen:
                 if st.kind == "class" or st.kind == "subclass":
                     self.hook(st)
                 if st.kind == "subclass":
-                    why = UNSUPPORTED["subclass"] if st.kids[1].kind != "typeparams" else "generic classes (class C[T]) are not supported"
-                    if len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
-                        why += " (the module may have rebound the name 'object' before this statement)"
+                    why = self.subclass_problem(st)
+                    if why == "" and m.name != "":
+                        why = self.class_problem(m, st.kids[0])
                 elif st.kind == "class" and m.name != "":
                     why = self.class_problem(m, st)
                 if why != "" and m.name == "":
@@ -9813,6 +10554,15 @@ class Gen:
                     # a class of an imported module that Pystachy cannot compile: an error only
                     # where the program uses it
                     self.unsupported[st.s] = f"class {st.s} is not supported: {why}"
+                elif st.kind == "subclass":
+                    # an exception class (subclass_problem)
+                    if st.s in self.classes:
+                        self.err(f"redefinition of class '{st.s}' is not supported")
+                    ci = ClassInfo(st.s, st.kids[0])
+                    ci.mod = m.name
+                    ci.base = self.exc_base(st.kids[1])
+                    ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
+                    self.classes[st.s] = ci
                 elif st.kind == "class":
                     if st.s in self.classes:
                         self.err(f"redefinition of class '{st.s}' is not supported")
@@ -9837,10 +10587,10 @@ class Gen:
                     self.lib = False
                     self.funcs[st.s].mod = m.name
                     top.append(mk("defaults", st.s, st.line, []))
-                elif st.kind == "subclass" or (st.kind == "class" and st.s not in self.classes):
+                elif (st.kind == "class" or st.kind == "subclass") and st.s not in self.classes:
                     top.append(mk("lclass", st.s, st.line, []))  # (a class it leaves out: class_effect)
-                elif st.kind == "class":
-                    for d in st.kids[0].kids:
+                elif st.kind == "class" or st.kind == "subclass":
+                    for d in self.classes[st.s].node.kids[0].kids:
                         if d.kind == "def":
                             self.line = d.line
                             if d.s in self.classes[st.s].methods:
@@ -9855,6 +10605,8 @@ class Gen:
                 else:
                     top.append(st)
             tops.append(top)
+        for ci in self.classes.values():
+            self.inherit(ci)
         for ci in self.classes.values():
             self.selfcls = ci.name
             self.declare_fields(ci)
@@ -9932,6 +10684,8 @@ class Gen:
                 self.function(f, f.node.kids[2].kids)
         for ci in self.classes.values():
             for f in ci.methods.values():
+                if f.cls != ci.name:
+                    continue  # (an exception class's base's)
                 if ci.mod != "" and f.ll not in self.lazy:
                     self.lazy[f.ll] = f
                 elif f.ll not in self.lazy and f.ll not in self.compiled:
@@ -9947,12 +10701,17 @@ class Gen:
                 hpush(self.wake, i)
         done: dict[str, bool] = {}
         helped: dict[str, bool] = {}
+        xmade: dict[str, bool] = {}
         while True:
-            before = len(done) + len(helped)
+            before = len(done) + len(helped) + len(xmade)
             for c in [x for x in self.ocls]:
                 if c not in helped:
                     helped[c] = True
                     self.obj_helpers(c)
+            for c in [x for x in self.xcls]:
+                if c not in xmade:
+                    xmade[c] = True
+                    self.exc_helpers(c)
             at = -1
             later: list[int] = []
             while len(self.wake) > 0:
@@ -9966,7 +10725,7 @@ class Gen:
                         self.function(lz[i], lz[i].node.kids[2].kids)
             for i in later:
                 hpush(self.wake, i)
-            if len(done) + len(helped) == before:
+            if len(done) + len(helped) + len(xmade) == before:
                 break
         for nm in self.flagged:
             if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
@@ -9981,20 +10740,27 @@ class Gen:
         on = optimizations()
         if chk:
             for fn in self.fns:
-                self.verify(fn)
-        if len(on) > 0 or chk or dump:
-            # the passes read the effect summaries (the IR check computes them too, so that the
-            # tests run effects even with every pass off)
+                self.verify(fn, False)
+        if self.eh or len(on) > 0 or chk or dump:
+            # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise); the IR
+            # check computes them too, so that the tests run effects even with every pass off
             self.effects()
         if len(on) > 0:
+            # (before eh_ir: a block that a try statement covers keeps its exception edge to the
+            # landing block, Blk.handler, which the passes count, see preds)
             changed = False
             for fn in self.fns:
                 if self.optimize(fn, on) > 0:
                     changed = True
                     if chk:
-                        self.verify(fn)
+                        self.verify(fn, False)
             if changed and dump:
                 self.effects()  # (what the passes left: tests/ir/*.fx pin them)
+        for fn in self.fns if self.eh else self.fns[:0]:
+            if len(fn.tries) > 0:
+                self.eh_ir(fn)
+                if chk:
+                    self.verify(fn, True)
         if dump:
             for fn in self.fns:
                 print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
@@ -10011,7 +10777,7 @@ class Gen:
         hdr: list[str] = ["; generated by pystachy"]
         for ci in self.classes.values():
             ts = [lt(ci.ftypes[x]) for x in ci.fields]
-            for _ in ci.fflag:
+            for _ in range(ci.nflag):
                 ts.append("i1")
             hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
         hdr.extend(self.globs)
@@ -10026,9 +10792,13 @@ class Gen:
         hdr.append(runtime_decl("init"))
         hdr.append(runtime_decl("finish"))
         hdr.append(runtime_decl("frameaddress"))
+        if self.eh:
+            hdr.append(runtime_decl("eh_on"))
         hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
         hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
         hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
+        if self.eh:
+            hdr.append("  call void @pys_eh_on()")  # (from now on, the runtime raises exceptions)
         hdr.append("  call void @main.init()")
         hdr.append("  call void @pys_finish()")
         hdr.append("  ret i32 0")
@@ -10046,7 +10816,8 @@ class Gen:
             fns.append(f)
         for ci in mcls:
             for f in ci.methods.values():
-                fns.append(f)
+                if f.cls == ci.name:
+                    fns.append(f)
         gl: dict[str, bool] = {}
         collect(top, gl)
         for f in fns:
@@ -10135,16 +10906,54 @@ class Gen:
 
     def fl_fields(self, ci: ClassInfo) -> None:
         # a field that may be read before __init__ assigns it gets an "is assigned" flag, so the
-        # read raises AttributeError as in CPython instead of seeing 0 or null
-        init = ci.methods["__init__"]
+        # read raises AttributeError as in CPython instead of seeing 0 or null. The flags follow
+        # the class's own fields; an exception class's struct begins with its base's, flags
+        # included, since the base's methods work on its objects. Its constructor sets the hidden
+        # fields; super().__init__() assigns what the base's __init__ surely does (and exposes self
+        # if that lets it escape), as the constructor does when it calls the base's __init__
+        if ci.flowed:
+            return
+        ci.flowed = True
         fl = Flow({}, {})
         for f in ci.fdefault:
             fl.defd["." + f] = True
+        nb = 0
+        if ci.base in self.classes:
+            b = self.classes[ci.base]
+            self.fl_fields(b)
+            own = [f for f in ci.fields if f not in b.ftypes]
+            ci.fields = [f for f in b.fields]
+            for f in b.fields:
+                ci.ftypes[f] = b.ftypes[f]  # (the places of its base's base's flags too)
+            for k in range(b.nflag):
+                ci.fields.append(f" {b.name}.{k}")  # (the place of one of the base's flags)
+                ci.ftypes[ci.fields[-1]] = "bool"
+            ci.fields.extend(own)
+            for i in range(len(ci.fields)):
+                ci.fpos[ci.fields[i]] = i
+            for f in b.fflag:
+                ci.fflag[f] = b.fflag[f]
+            for f in b.fields:
+                if f not in b.fflag:
+                    fl.sup.append(f)
+            fl.leak = b.leak
+            fl.base = shown(ci.base)
+            nb = len(ci.fields) - len(own)
+        for f in ci.fields:
+            if f.startswith(" "):
+                fl.defd["." + f] = True
         fl.fields = ci.fields
-        if init.node.kids[0].kind == "noann":
+        if ci.exc != "" and ("__init__" not in ci.methods or ci.methods["__init__"].cls != ci.name):
+            # its constructor calls the __init__ of its base (or of none)
+            for f in fl.sup:
+                fl.put("." + f)
+            fl.exposed()
+            ci.leak = fl.leak
+        elif ci.methods["__init__"].node.kids[0].kind == "noann":
             if not self.is_dc(ci.name):
                 fl.exposed()
         else:
+            init = ci.methods["__init__"]
             asg: dict[str, bool] = {}
             collect(init.node.kids[2].kids, asg)
             if init.params[0] not in asg:
@@ -10152,9 +10961,21 @@ class Gen:
                 fl.me = init.params[0]
                 self.fl_stmts(fl, init.node.kids[2].kids)
             fl.exposed()
+            ci.leak = fl.escaped
         for f in ci.fields:
-            if f in fl.unsafe or ci.name + "." + f in self.cvars:  # (a class variable's: has the object its own value)
-                ci.fflag[f] = len(ci.fields) + len(ci.fflag)
+            if (f in fl.unsafe or ci.name + "." + f in self.cvars) and f not in ci.fflag:  # (a class variable's: has the object its own value)
+                if ci.fpos[f] < nb and f in fl.unsafe:
+                    # (the base's code, which reads it with no flag to test)
+                    self.line = ci.node.line
+                    self.err(f"{short(ci.name)}.__init__ may leave field '{f}' of {short(ci.base)} unassigned where it is read: assign it, or call super().__init__(...) first")
+                ci.fflag[f] = len(ci.fields) + ci.nflag
+                ci.nflag += 1
+
+    def default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
+        # the class whose class-body default field fl has (an exception class's base's, or its own)
+        while ci.base in self.classes and fl in self.classes[ci.base].fdefault:
+            ci = self.classes[ci.base]
+        return ci
 
     def fl_defaults(self, n: Node) -> list[Node]:
         # the default values a def or class statement evaluates (see hoist)
@@ -10165,10 +10986,11 @@ class Gen:
         else:
             ci = self.classes[n.s]
             for fl in ci.fields:
-                if fl in ci.fdefault and not is_const(ci.fdefault[fl]):
+                if fl in ci.fdefault and not is_const(ci.fdefault[fl]) and self.default_home(ci, fl) is ci:
                     out.append(ci.fdefault[fl])
             for f in ci.methods.values():
-                fs.append(f)
+                if f.cls == ci.name:
+                    fs.append(f)
         for f in fs:
             for d in f.defaults:
                 if not is_const(d):
@@ -10280,11 +11102,13 @@ class Gen:
             bany = fl.bany
             bwas = fl.bwas
             bnew = fl.bnew
+            unb = fl.unb
             fl.btrue = k == "while" and n.kids[0].kind == "True"
             fl.bjoin = {}
             fl.bany = False
             fl.bwas = {}
             fl.bnew = {}
+            fl.unb = []
             if k == "for":
                 self.fl_target(fl, n.kids[0])
             self.fl_stmts(fl, n.kids[2 if k == "for" else 1].kids)
@@ -10297,6 +11121,7 @@ class Gen:
             fl.bany = bany
             fl.bwas = bwas
             fl.bnew = bnew
+            fl.unb = unb
             if n.kids[-1].s == "else":
                 # (after the loop only what was assigned before it is surely assigned, less what
                 # the else block unbinds: the loop is left at its end or, from a break, in a state
@@ -10319,6 +11144,8 @@ class Gen:
                     else:
                         fl.drop(x)
         elif k == "break":
+            for nm in fl.unb:
+                fl.drop(nm)
             if fl.btrue and " dead" not in fl.defd:
                 fl.fold()
             fl.put(" dead")
@@ -10345,6 +11172,65 @@ class Gen:
                 if len(it.kids) == 2:
                     self.fl_target(fl, it.kids[1])
             self.fl_stmts(fl, n.kids[-1].kids)
+        elif k == "try":
+            # an except clause starts from the state before the statement less what the body may
+            # have unbound, the else block goes on from the body, and the statement ends in the
+            # join of those that end, then the finally block. A copy of that runs as an exception,
+            # a break or a return leaves too: it is looked at once more, from the state before the
+            # statement less everything the statement may unbind (which a break that runs it may
+            # have left too, so what it unbinds is unbound from the start)
+            orelse: list[Node] = []
+            fin: list[Node] = []
+            hasfin = False
+            for b in n.kids[1:]:
+                if b.kind == "block" and b.s == "else":
+                    orelse = b.kids
+                elif b.kind == "block":
+                    fin = b.kids
+                    hasfin = True
+            fdels: dict[str, bool] = {}
+            deleted(fin, fdels)
+            for nm in fdels:
+                fl.drop(nm)
+                fl.unb.append(nm)  # (a break out of the statement runs the finally block first)
+            mark = len(fl.log)
+            bdels: dict[str, bool] = {}
+            deleted(n.kids[0].kids, bdels)
+            self.fl_stmts(fl, n.kids[0].kids)
+            self.fl_stmts(fl, orelse)
+            for h in n.kids[1:]:
+                if h.kind != "except":
+                    continue
+                st = fl.since(mark)
+                fl.undo(mark)
+                for nm in bdels:
+                    fl.drop(nm)
+                self.fl_expr(fl, h.kids[0])  # (its classes are read when an exception gets to it)
+                if h.s != "":
+                    fl.put(h.s)
+                    fl.unb.append(h.s)
+                self.fl_stmts(fl, h.kids[1].kids)
+                if h.s != "":
+                    fl.unb.pop()
+                    fl.drop(h.s)
+                fl.join(st, mark)
+            for nm in fdels:
+                fl.unb.pop()
+            if hasfin:
+                st = fl.since(mark)
+                fl.undo(mark)
+                dels: dict[str, bool] = {}
+                deleted([n], dels)
+                for nm in dels:
+                    fl.drop(nm)
+                self.fl_stmts(fl, fin)
+                fl.undo(mark)
+                for nm in st:
+                    if st[nm]:
+                        fl.put(nm)
+                    else:
+                        fl.drop(nm)
+                self.fl_stmts(fl, fin)
 
     def fl_target(self, fl: Flow, t: Node) -> None:
         if t.kind == "name":
@@ -10366,6 +11252,7 @@ class Gen:
                 fl.marks[e.s] = True
             if e.s == fl.me:
                 fl.exposed()
+                fl.escaped = True
         elif k == "attr" and fl.me != "" and e.kids[0].kind == "name" and e.kids[0].s == fl.me:
             if "." + e.s not in fl.defd and " dead" not in fl.defd:
                 fl.unsafe[e.s] = True
@@ -10387,8 +11274,16 @@ class Gen:
             elif (c.s in self.funcs or c.s in self.classes) and c.s in fl.tracked and c.s not in fl.defd and " dead" not in fl.defd:
                 c.chk = True
                 fl.marks[c.s] = True
-            for i in range(1, len(e.kids)):
+            # super().__init__(...) in an exception class's __init__ (fl_fields), or Base.__init__(self, ...)
+            sup = fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "call" and c.kids[0].kids[0].kind == "name" and c.kids[0].kids[0].s == "super"
+            based = fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "name" and c.kids[0].s == fl.base and len(e.kids) > 1 and e.kids[1].kind == "name" and e.kids[1].s == fl.me
+            for i in range(2 if based else 1, len(e.kids)):
                 self.fl_expr(fl, e.kids[i])
+            if sup or based:
+                for f in fl.sup:
+                    fl.put("." + f)
+                if fl.leak:
+                    fl.exposed()
         else:
             for c in e.kids:
                 self.fl_expr(fl, c)
@@ -10482,6 +11377,8 @@ class Gen:
             for k in st.kids:
                 if k.kind == "block":
                     self.scan_imports(k.kids)
+                elif k.kind == "except":
+                    self.scan_imports(k.kids[1].kids)
             if st.kind == "def" or st.kind == "class":
                 self.scan_imports(st.kids[-1].kids if st.kind == "class" else st.kids[2].kids)
 
@@ -10507,20 +11404,8 @@ class Gen:
         elif mod == "dataclasses":
             if x != "dataclass":
                 self.err(f"dataclasses.{x} is not supported")
-        elif mod == "builtins":
-            return  # a builtin function, checked where it is called
-        elif not self.known_path(tgt):
-            self.err(f"cannot import name '{x}' from '{mod}' (not supported by Pystachy)")
-
-    def known_path(self, p: str) -> bool:
-        # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
-        # a function builtin() handles itself
-        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or p == "os.path.join" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
-            return True
-        for k in CALLS:
-            if k.startswith(p + "(") or k.startswith(p + "."):
-                return True
-        return False
+        elif not builtin_has(mod, x):
+            self.err(f"cannot import name '{x}' from '{mod}': Pystachy's {mod} module has no '{x}'")
 
     def hidden(self, name: str, v: Val) -> str:
         # a compiler-made global, assigned here
@@ -10623,7 +11508,7 @@ class Gen:
             self.class_effect(self.cnodes[ci.node.line], ci.bad)
             return
         bound: dict[str, bool] = {}
-        init = ci.methods["__init__"]
+        syn = "__init__" in ci.methods and ci.methods["__init__"].node.kids[0].kind == "noann"  # (a dataclass's)
         later = ""
         for st in ci.node.kids[0].kids:
             self.line = st.line
@@ -10654,9 +11539,10 @@ class Gen:
                 for d in f.defaults:
                     self.no_class_names(d, bound, ci)
                 bound[st.s] = True
-                if f.name != "__init__" or init.node.kids[0].kind != "noann":
+                if f.name != "__init__" or not syn:
                     self.hoist(f)
-        if init.node.kids[0].kind == "noann":
+        if syn:
+            init = ci.methods["__init__"]
             for j in range(1, len(init.params)):
                 init.dglob[j] = ci.fglob.get(init.params[j], "")
         ci.bad = later  # (an imported module's class: an error where the program uses it)
@@ -10704,7 +11590,7 @@ class Gen:
         if body is self.elsekids:
             lp.exit = self.elsebrk  # the loop of a for/while ... else: break skips the else block
         self.loops.append(lp)
-        self.wdepth.append(len(self.withs))
+        self.wdepth.append(len(self.exits))
         self.brks.append([])
         self.branch += 1
         self.stmts(body)
@@ -10716,10 +11602,482 @@ class Gen:
             self.elsebrks = r
         return r
 
-    def close_withs(self, depth: int) -> None:
-        # leaving with blocks (break, continue, return): their files close, innermost first
-        for i in range(len(self.withs) - 1, depth - 1, -1):
-            self.rt("pys_file_close", "void", [f"ptr {self.withs[i]}"])
+    def leave(self, depth: int) -> bool:
+        # leaving the code inside exits[depth:] (break, continue, return, the end of a with block):
+        # what each exit requires, innermost first, each in a block that the landing block around
+        # its construct covers. A with block's file closes (its unwind action forgotten first); an
+        # except clause restores the exception being handled before it, and unbinds its name; a
+        # finally block runs as where its try statement is: in its loops, within the exits
+        # outside it (where its own break or return goes). True if one of those took the way out
+        # over (its own return, break, continue or raise), so that the caller's is not compiled
+        here = self.handler
+        cv = self.carried
+        ended = False
+        for i in range(len(self.exits) - 1, depth - 1, -1):
+            if ended:
+                break
+            x = self.exits[i]
+            self.handler = x.handler
+            if self.blk.handler != x.handler:
+                self.place(self.label())
+            if x.kind == "with":
+                if self.eh:
+                    self.rt("pys_unwind_pop", "void", [])
+                self.rt("pys_file_close", "void", [f"ptr {x.v}"])
+            elif x.kind == "handler":
+                self.rt("pys_exc_restore", "void", [f"ptr {x.v}"])
+                self.unbind(x.name)
+            elif x.entry != "":
+                # a finally block compiled once (try_): it goes on here, by its index in conts; a
+                # return's value is kept in a slot, as other ways out reach the code after it too
+                sl = ""
+                if cv.v.startswith("%"):
+                    sl = self.alloca(cv.t, "")
+                    self.emit(f"store {lt(cv.t)} {cv.v}, ptr {sl}")
+                self.emit(f"store i64 {len(x.conts)}, ptr {x.sel}")
+                x.conts.append(self.label())
+                self.br(x.entry)
+                self.place(x.conts[-1])
+                self.narrowed = self.unnarrowed([x.body])  # (what the block may bind on the way)
+                if sl != "":
+                    cv = Val(self.ins(f"load {lt(cv.t)}, ptr {sl}"), cv.t)
+            else:
+                exits = self.exits
+                loops = self.loops
+                wdepth = self.wdepth
+                excs = self.excs
+                self.exits = exits[:i]
+                self.loops = loops[: x.nloops]
+                self.wdepth = wdepth[: x.nloops]
+                self.excs = excs[: x.nexcs]
+                t0 = self.term
+                self.branch += 1
+                self.stmts(x.body)
+                self.branch -= 1
+                ended = self.term and not t0
+                self.exits = exits
+                self.loops = loops
+                self.wdepth = wdepth
+                self.excs = excs
+        self.handler = here
+        self.carried = cv
+        return ended
+
+    def try_(self, n: Node) -> None:
+        # try: B / except C1 as e: H1 / ... / else: L / finally: F. An exception raised in B goes to
+        # the landing block of the except clauses (hE), one raised in a clause or L to that of F
+        # (hF): from a call that may raise through the unwinder (an invoke), from a raise of this
+        # function directly (see eh_ir). hE tests the clauses in order (exc.match) and throws again
+        # what none catches; hF runs a copy of F and throws again. B and L, and each clause that
+        # ends, go on to one copy of F; a break, continue or return out of the statement runs one
+        # of its own (see leave), as CPython compiles F once for each way out. A clause whose name
+        # may be read after it has a landing block of its own, which unbinds the name
+        if n.s == "*":
+            self.err("'except*' is not supported")
+        hs: list[Node] = []
+        orelse: list[Node] = []
+        fin: list[Node] = []
+        hasfin = False
+        for k in n.kids[1:]:
+            if k.kind == "except":
+                k.kids[0] = self.clause_or(k.kids[0])
+                hs.append(k)
+            elif k.s == "else":
+                orelse = k.kids
+            else:
+                fin = k.kids
+                hasfin = True
+        sets = [self.catches(h) for h in hs]
+        self.line = n.line
+        # what narrowed holds (see narrow_by) where an exception may come from: in a clause, what
+        # held before the statement but for the names B binds; in F on the way out of an
+        # exception, but for those that B, L and the clauses bind; after the statement, what holds
+        # at the end of each way that goes on (ends)
+        hst = self.unnarrowed([n.kids[0].kids])
+        fst = self.unnarrowed([n.kids[0].kids, orelse] + [h.kids[1].kids for h in hs])
+        ends: list[dict[str, bool]] = []
+        # the try notes the depth of the unwind actions (pys_exc_begin runs those added since) and
+        # the exception being handled, which every way out of its clauses restores
+        mark = Val(self.rt("pys_try_mark", "i64", []), "int")
+        old = self.rt("pys_exc_handled", "ptr", [])
+        slot = self.alloca("exc", "")
+        outer = self.handler
+        he = self.label() if len(hs) > 0 else ""
+        hf = self.label() if hasfin else ""
+        done = self.label()
+        tr = Try(self.label())
+        tr.landing = he
+        tr.final = hf
+        tr.exit = done
+        self.fn.tries.append(tr)
+        self.branch += 1
+        fx = Exit("finally", "", outer)
+        if hasfin:
+            fx.body = fin
+            fx.nloops = len(self.loops)
+            fx.nexcs = len(self.excs)
+            if has_finally(fin):
+                # a finally block that holds one: compiled once, after the rest of the statement,
+                # where each way out stores its index and jumps (leave), else the copies of copies
+                # would grow exponentially with the nesting (CPython's bytecode does)
+                fx.entry = self.label()
+                fx.sel = self.alloca("int", "")
+            self.exits.append(fx)
+        self.handler = he if he != "" else hf
+        self.place(tr.body)
+        self.stmts(n.kids[0].kids)
+        self.handler = hf if hasfin else outer
+        if len(orelse) > 0 and not (self.term and self.curfn.inst):
+            tr.orelse = self.label()
+            self.place(tr.orelse)
+            self.stmts(orelse)
+        live = not self.term  # (does any path go on to done)
+        if live:
+            ends.append(self.narrowed)
+        self.br(done)
+        if he != "":
+            e = self.landing(he, slot, mark)
+            nxt = ""
+            for j in range(len(hs)):
+                h = hs[j]
+                self.line = h.line
+                if h.s != "" and not self.modlevel and h.s in self.gdecl:
+                    self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
+                for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else h.kids[:0]:
+                    if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
+                        # a class whose class statement may not have run yet
+                        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c.s}.def')}, true"), self.unbound(c.s))
+                if sets[j] != "":
+                    l = self.label()
+                    nxt = self.label()
+                    self.cbr(self.exc_match(e, sets[j]), l, nxt)
+                    self.place(l)
+                self.narrowed = dict(hst)
+                if h.s != "":
+                    self.bind_as(h.s, e, self.as_type(h))
+                x = Exit("handler", old, self.handler)
+                x.name = h.s
+                up = self.handler
+                hu = ""
+                if h.s != "" and self.unbinds(h.s) and up != "":
+                    # an exception that leaves the clause unbinds its name too, where something may
+                    # read it after (CPython deletes it in a finally block of its own): the clause
+                    # has a landing block of its own, which unbinds the name and throws again (an
+                    # imported module's code is in a landing block's region, see function)
+                    hu = self.label()
+                    self.handler = hu
+                    self.place(self.label())
+                self.exits.append(x)
+                self.excs.append(e)
+                self.stmts(h.kids[1].kids)
+                self.excs.pop()
+                self.exits.pop()
+                if not self.term:
+                    self.rt("pys_exc_restore", "void", [f"ptr {old}"])
+                    self.unbind(h.s)
+                    live = True
+                    ends.append(self.narrowed)
+                    self.br(done)
+                self.handler = up
+                if hu != "":
+                    ue = self.landing(hu, slot, mark)
+                    self.unbind(h.s)
+                    self.throw(ue)
+                if len(self.shadows) > 0 and self.shadows[-1][0] == h.s:
+                    self.unshadow()
+                if sets[j] == "":
+                    nxt = ""
+                    break  # (it catches everything: the clauses after it never run)
+                self.place(nxt)
+            if nxt != "":
+                self.throw(e)
+        if hasfin:
+            self.exits.pop()
+            self.handler = outer
+            e = self.landing(hf, slot, mark)
+            if fx.entry != "":
+                # (the exception goes on after the finally block, from a slot of its own)
+                sl = self.alloca("exc", "")
+                self.emit(f"store ptr {e.v}, ptr {sl}")
+                self.emit(f"store i64 {len(fx.conts)}, ptr {fx.sel}")
+                fx.conts.append(self.label())
+                self.br(fx.entry)
+                self.place(fx.conts[-1])
+                self.throw(Val(self.ins(f"load ptr, ptr {sl}"), "exc"))
+            else:
+                self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
+                self.excs.append(e)
+                self.narrowed = dict(fst)
+                self.stmts(fin)
+                self.excs.pop()
+                self.exits.pop()
+                if not self.term:
+                    self.throw(e)
+        self.handler = outer
+        self.branch -= 1
+        if live and fx.entry != "":
+            self.place(done)
+            self.emit(f"store i64 {len(fx.conts)}, ptr {fx.sel}")
+            fx.conts.append(self.label())
+            self.br(fx.entry)
+        if fx.entry != "":
+            # the finally block, once: the exception being handled is the one in flight on the way
+            # out of an exception (a bare raise raises it: pys_reraise), else the one before the
+            # statement, which a break or return in it restores; then each way out goes on
+            self.place(fx.entry)
+            self.exits.append(Exit("handler", old, outer))
+            self.excs.append(Val("", "exc"))
+            self.branch += 1
+            self.narrowed = dict(fst)  # (each way in: fst holds on all of them)
+            self.stmts(fin)
+            self.branch -= 1
+            self.excs.pop()
+            self.exits.pop()
+            disp = self.label()
+            self.place(disp)
+            ksel = self.ins(f"load i64, ptr {fx.sel}")
+            for j in range(len(fx.conts) - 1):
+                nx = self.label()
+                self.cbr(self.ins(f"icmp eq i64 {ksel}, {j}"), fx.conts[j], nx)
+                self.place(nx)
+            self.br(fx.conts[-1])
+            if live:
+                self.place(fx.conts[-1])
+        elif live:
+            self.place(done)
+            self.narrowed = meet(ends)
+            self.stmts(fin)
+        if not live:
+            self.narrowed = {}  # (no code follows)
+
+    def assert_fails(self, n: Node) -> None:
+        # the AssertionError of assert statement n, whose test is false: with its message
+        v = self.expr(n.kids[1], "") if len(n.kids) > 1 else Val(self.sconst(""), "str")
+        if self.eh and v.t != "str":
+            self.throw(self.exc_value("AssertionError", [v]))  # (repr(e) shows the repr of v)
+        else:
+            self.raise_("AssertionError", self.to_str(v).v)
+
+    def unnarrowed(self, bodies: list[list[Node]]) -> dict[str, bool]:
+        # a copy of narrowed without the names that the code of bodies binds or deletes: what
+        # holds wherever an exception may come from in them
+        out: dict[str, bool] = {}
+        if len(self.narrowed) > 0:
+            names: dict[str, bool] = {}
+            for b in bodies:
+                collect(b, names)
+                deleted(b, names)
+            for nm in self.narrowed:
+                if nm not in names:
+                    out[nm] = True
+        return out
+
+    def clause_or(self, t: Node) -> Node:
+        # except A or B: the class that the clause's expression gives where each operand names an
+        # exception class (a class is true: A for or, B for and), as CPython evaluates it
+        todo = [t]
+        while len(todo) > 0:
+            c = todo.pop()
+            if c.kind == "boolop":
+                todo += c.kids
+            elif not self.exc_classes(c):
+                return t
+        while t.kind == "boolop":
+            t = t.kids[0] if t.s == "or" else t.kids[1]
+        return t
+
+    def catches(self, h: Node) -> str:
+        # the classes except clause h catches: "" for every one (a bare except, BaseException), else
+        # "\1A\1B\1" (pys_exc_in): the exception classes, builtin or the program's, deriving
+        # from those it names (a class of the program by its qualified name, its ExcClass's)
+        self.line = h.line
+        return self.catch_set(h.kids[0])
+
+    def exc_classes(self, t: Node) -> bool:
+        # does t, isinstance's second argument, name exception classes only (a name, or a tuple of names)
+        for c in t.kids if t.kind == "tuple" else [t]:
+            if c.kind != "name" or self.bound(c.s) and not (c.s in self.classes and self.classes[c.s].exc != ""):
+                return False
+            if not is_excname(c.s) and c.s not in self.classes:
+                return False
+        return True
+
+    def exc_isinst(self, v: Val, t: Node) -> Val:
+        # isinstance(v, t) of an exception (or an exception object, which may be None), t naming
+        # exception classes: decided by v's class where its type decides it, else by its ExcClass
+        names = t.kids if t.kind == "tuple" else [t]
+        if v.t != "exc":
+            yes = False
+            maybe = False
+            for c in names:
+                yes = yes or self.derives(v.t, c.s)
+                maybe = maybe or self.derives(c.s, v.t)
+            if yes or not maybe:
+                return Val(self.ins(f"icmp ne ptr {v.v}, null") if yes and v.v not in self.nn else "true" if yes else "false", "bool")
+        sets = self.catch_set(t)
+        if v.t == "exc":
+            return Val("true" if sets == "" else self.exc_match(v, sets), "bool")
+        e0 = self.cur
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(self.isnull(v), l2, l1)
+        self.place(l1)
+        r = self.exc_match(Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), sets)
+        e1 = self.cur
+        self.br(l2)
+        self.place(l2)
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, "false", e0)
+        self.incoming(ph, r, e1)
+        return Val(self.phi(ph), "bool")
+
+    def catch_set(self, t: Node) -> str:
+        # the classes that t, the classes an except clause names, catches (catches)
+        names: list[str] = []
+        for c in t.kids if t.kind == "tuple" else [t] if t.kind != "omit" else t.kids:
+            if c.kind == "attr" and (self.dotted(c) == "builtins." + c.s or self.dotted(c) == "os.error"):
+                c = mk("name", "OSError" if c.s == "error" else c.s, c.line, [])  # (builtins.ValueError, os.error)
+            if c.kind != "name" or c.s in self.ltype or c.s in self.gtypes or c.s in self.funcs or c.s in self.assigned:
+                self.err("an except clause needs exception classes: a name, or a tuple of names")
+            if c.s in self.unsupported:
+                self.err(self.unsupported[c.s])
+            if c.s in self.classes and self.classes[c.s].exc == "":
+                self.err("catching classes that do not inherit from BaseException is not allowed")
+            if c.s in self.classes:
+                names.append(c.s)
+                continue
+            x = "OSError" if c.s == "IOError" or c.s == "EnvironmentError" else c.s
+            if x not in EXCBASES:
+                self.err(f"name '{short(c.s)}' is not defined" if c.s not in PYBUILTINS else "catching classes that do not inherit from BaseException is not allowed")
+            names.append(x)
+        if t.kind == "tuple" and len(names) == 0:
+            return "\x01\x01"  # (an empty tuple catches nothing)
+        if len(names) == 0 or "BaseException" in names:
+            return ""
+        out: list[str] = []
+        for k in EXCBASES:
+            for b in names:
+                if b in EXCBASES and exc_derives(k, b):
+                    out.append(k)
+                    break
+        for k in self.classes:
+            for b in names:
+                if self.classes[k].exc != "" and self.derives(k, b):
+                    out.append(k)
+                    break
+        return "\x01" + "\x01".join(out) + "\x01"
+
+    def as_type(self, h: Node) -> str:
+        # the type of the name except clause h binds: the nearest exception class of the program
+        # that every class it names derives from (the name is the exception's object), else exc
+        t = h.kids[0]
+        cs = t.kids if t.kind == "tuple" else [t]
+        c = cs[0].s if t.kind != "omit" and len(cs) > 0 else ""
+        while c in self.classes:
+            ok = True
+            for x in cs:
+                ok = ok and self.derives(x.s, c)
+            if ok:
+                return c
+            c = self.classes[c].base
+        return "exc"
+
+    def bind_as(self, name: str, e: Val, t: str) -> None:
+        # except ... as name: name is exception e, or its object (of class t of the program). Where
+        # name has another type, or no type yet but another binding in its scope (which may give it
+        # one), it gets a variable of its own for the clause (the end of which unbinds both, see
+        # unbind, as CPython deletes the name). Not a module's global that a function reads, which
+        # would not see the exception
+        v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
+        self.nn[v.v] = True
+        had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
+        node = self.curfn.node
+        if (had != "" and had != t) or (had == "" and binds_other(node.kids if node.kind == "block" else node.kids[2].kids, name)):
+            f = self.global_reader(name) if self.modlevel else ""
+            if f != "":
+                self.err(f"except ... as {short(name)} is not supported here: the module's global '{short(name)}' has another type, so the clause binds a variable of its own, which {f}() would not see (use another name)")
+            self.shadows.append([name, self.ltype.get(name, ""), self.lreg.get(name, ""), self.lflag.get(name, "")])
+            if name in self.lflag:
+                del self.lflag[name]
+            self.alloca(t, name)
+        self.store_name(name, v)
+
+    def global_reader(self, name: str) -> str:
+        # a function or method of the program that reads module global name, or ""
+        fs = list(self.funcs.values())
+        for ci in self.classes.values():
+            fs += list(ci.methods.values())
+        for f in fs:
+            if f.mod != owner(name) or f.node.kind != "def" or name in f.params:
+                continue
+            body = f.node.kids[2].kids
+            decl: dict[str, bool] = {}
+            globals_in(body, decl)
+            if name in decl or not (binds_other(body, name) or binds_as(body, name)):
+                for st in body:
+                    if reads(st, name):
+                        return short(f.name)
+        return ""
+
+    def unbinds(self, name: str) -> bool:
+        # does unbind(name) clear an "is assigned" flag (a read that may follow tests it)
+        if name in self.ltype and name in self.lflag or name not in self.ltype and name in self.gflag:
+            return True
+        for s in self.shadows:
+            if s[0] == name and (s[3] != "" or (s[1] == "" and name in self.gflag)):
+                return True
+        return False
+
+    def unshadow(self) -> None:
+        # the end of the except clause whose name has a variable of its own (bind_as): the name is the other again
+        s = self.shadows.pop()
+        if s[1] == "":
+            del self.ltype[s[0]]
+            del self.lreg[s[0]]
+        else:
+            self.ltype[s[0]] = s[1]
+            self.lreg[s[0]] = s[2]
+        if s[3] != "":
+            self.lflag[s[0]] = s[3]
+        elif s[0] in self.lflag:
+            del self.lflag[s[0]]
+
+    def landing(self, l: str, slot: str, mark: Val) -> Val:
+        # landing block l of a try statement, where an exception comes through the unwinder: its
+        # landing op stores the exception in slot, as a raise in this function that goes there does
+        # (see eh_ir), and both go on to the code after it, which takes the exception up: the
+        # unwind actions since the try's mark run, and it becomes the exception being handled
+        j = self.label()
+        self.place(l)
+        i = Ins("landing", "exc", "")
+        i.a = [Val(slot, "%addr")]
+        i.b = [j]
+        self.put(i, 2)
+        self.term = True
+        self.place(j)
+        x = self.ins(f"load ptr, ptr {slot}")
+        return Val(self.rt("pys_exc_begin", "ptr", [f"ptr {x}", f"i64 {mark.v}"]), "exc")
+
+    def exc_match(self, e: Val, names: str) -> str:
+        # does exception e belong to the classes names ("\1A\1B\1")
+        i = Ins("exc.match", "bool", "")
+        i.a = [e, Val(self.sconst(names), "str")]
+        self.runtime("pys_exc_in")
+        self.put(i, 2)
+        return f"%t{i.r[1]}"
+
+    def unbind(self, name: str) -> None:
+        # the end of except ... as name: name is unbound, as after del name (but nothing is read),
+        # and so are the variables of that name around it (bind_as)
+        if name in self.ltype and name in self.lflag:
+            self.emit(f"store i1 false, ptr {self.lflag[name]}")
+        elif name != "" and name not in self.ltype and name in self.gflag:
+            self.emit(f"store i1 false, ptr @g.{name}.def")
+        for s in self.shadows:
+            if s[0] == name and s[3] != "":
+                self.emit(f"store i1 false, ptr {s[3]}")
+            elif s[0] == name and s[1] == "" and name in self.gflag:
+                self.emit(f"store i1 false, ptr @g.{name}.def")
 
     def exc_args(self, e: Node) -> list[Node]:
         # the arguments of raise E / raise E(args), checking that E is a builtin exception
@@ -10731,34 +12089,109 @@ class Gen:
             args = []
         else:
             self.err("raise needs an exception class or a call of one, such as raise ValueError(msg)")
-        if name in self.classes:
-            self.err(f"'{name}' is not an exception class: only the builtin exceptions can be raised (there is no inheritance)")
         if name in self.ltype or name in self.gtypes or name in self.funcs:
             self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
         if name not in EXCEPTIONS:
             self.err(f"name '{name}' is not defined")
         if EXCEPTIONS[name] == "-":
             self.err(f"raising {name} is not supported")
+        self.exc_kw(name, args, name + "()")
+        npos = 0
+        for a in args:
+            npos += 1 if a.kind != "kw" else 0
+        oe = exc_base_of(name, "OSError")
+        if npos > 1 and EXCEPTIONS[name] != "" and not (oe and npos <= 3):
+            self.err(f"{name}() with more than {'three arguments' if oe else 'one argument'} is not supported")
+        return args
+
+    def exc_kw(self, c: str, args: list[Node], what: str) -> None:
+        # the keyword arguments of a call of builtin exception class c (or of its __init__, what):
+        # those CPython's takes (an ImportError's name and path, ...), which set attributes that
+        # only CPython reads (exc_vals evaluates and drops them)
+        ok = (EXCKW["ImportError"] if exc_base_of(c, "ImportError") else EXCKW["AttributeError"] if exc_base_of(c, "AttributeError")
+              else EXCKW["NameError"] if exc_base_of(c, "NameError") else "").split()
+        for a in args:
+            if a.kind == "kw" and len(ok) == 0:
+                self.err(f"{what} takes no keyword arguments")
+            if a.kind == "kw" and a.s not in ok:
+                self.err(f"{what} got an unexpected keyword argument '{a.s}'")
+
+    def exc_vals(self, args: list[Node]) -> list[Val]:
+        # the positional arguments of a call of a builtin exception class, its keyword arguments
+        # evaluated in order too (exc_kw)
+        vals: list[Val] = []
         for a in args:
             if a.kind == "kw":
-                self.err(f"{name}() takes no keyword arguments")
-        if len(args) > 1 and EXCEPTIONS[name] != "":
-            self.err(f"{name}() with more than one argument is not supported")
-        return args
+                self.expr(a.kids[0], "")
+            else:
+                vals.append(self.expr(a, ""))
+        return vals
+
+    def exc_class(self, e: Node) -> str:
+        # the class that e, the exception of a raise statement, names or calls: a builtin exception
+        # class (EXCEPTIONS) or a class of the program; "" for any other expression (a variable,
+        # a call of a function), whose value is the exception
+        c = e.kids[0] if e.kind == "call" else e
+        if c.kind != "name" or c.s in self.funcs or c.s in self.ltype or c.s in self.gtypes:
+            return ""
+        return c.s if c.s in self.classes or c.s in EXCEPTIONS else ""
+
+    def cause(self, c: Node) -> None:
+        # raise ... from c: c is evaluated and checked (an exception class, a call of one, an
+        # exception or None: else CPython's TypeError is raised instead), and otherwise ignored:
+        # only a traceback would show it
+        if c.kind == "None":
+            return
+        k = self.exc_class(c)
+        if k == "" or k in self.classes:
+            v = self.exc_value_of(c, k)
+            if v.t != "exc" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
+                self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
+                self.place(self.label())  # (what follows, the raise itself, is never reached)
+            return
+        self.exc_vals(self.exc_args(c))
+
+    def exc_value_of(self, e: Node, k: str) -> Val:
+        # the value of e, the exception of a raise statement, unless it is a builtin exception class
+        # or a call of one: a class of the program k (or a call of it) makes an object of it
+        if k == "":
+            return self.expr(e, "")
+        if self.classes[k].exc == "":
+            self.err(f"'{short(k)}' is not an exception class: exceptions must derive from BaseException")
+        return self.exc_object(k, e.kids[1:] if e.kind == "call" else [])
 
     def raise_stmt(self, n: Node) -> None:
         # raise E(args) [from C]: CPython's last traceback line, "E: str(arg)" (KeyError: repr(arg);
-        # several arguments: their tuple's repr); SystemExit ends the program like sys.exit
+        # several arguments: their tuple's repr); SystemExit ends the program like sys.exit. In a
+        # program that has a try, it throws the exception CPython makes (exc_value), which the
+        # program ends with as before if nothing catches it
         if len(n.kids) == 0:
-            self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
+            # a bare raise: the exception the except clause around it handles, or else the one
+            # being handled where it runs (in a function an except clause calls)
+            if len(self.excs) > 0 and self.excs[-1].v != "":
+                self.throw(self.excs[-1])
+            elif self.eh:
+                self.rt("pys_reraise", "void", [])
+                self.unreachable()
+            else:
+                self.raise_("RuntimeError", self.sconst("No active exception to reraise"))
             return
         e = n.kids[0]
-        args = self.exc_args(e)
+        k = self.exc_class(e)
+        if k == "" or k in self.classes:
+            v = self.exc_value_of(e, k)
+            if v.t in self.classes and self.classes[v.t].exc != "":
+                v = self.exc_of(v)
+            if v.t != "exc":
+                self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
+            if len(n.kids) > 1:
+                self.cause(n.kids[1])
+            self.throw(v)
+            return
         name = e.kids[0].s if e.kind == "call" else e.s
-        vals = [self.expr(a, "") for a in args]
-        if len(n.kids) > 1 and n.kids[1].kind != "None":
-            for a in self.exc_args(n.kids[1]):
-                self.expr(a, "")
+        vals = self.exc_vals(self.exc_args(e))
+        if len(n.kids) > 1:
+            self.cause(n.kids[1])
         if n.s == "init":
             # a module's raise of ImportError at its top level (Loader.init_raise()): under an optional
             # import (a "guard" in a uimport) the module returns, not imported, so that the importer's
@@ -10775,6 +12208,9 @@ class Gen:
         if name == "SystemExit":
             self.exit_(vals)
             return
+        if self.eh:
+            self.throw(self.exc_value("OSError" if name == "IOError" or name == "EnvironmentError" else name, vals))
+            return
         if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
             # CPython's traceback takes str(e), which is str(msg), then prints "E: " and str(msg or
             # "<no detail available>"), the ": " even before an empty str(msg), which pys_raise leaves
@@ -10790,17 +12226,77 @@ class Gen:
                 self.place(l2)
             self.raise_(name, self.sconst("<no detail available>"))
             return
+        name = "OSError" if name == "IOError" or name == "EnvironmentError" else name
+        if len(vals) > 1 and exc_base_of(name, "OSError"):
+            oe = self.os_error(name, vals)
+            self.raise_(name, oe[1], oe[0])
+            return
         if len(vals) > 1:
             msg = self.repr(self.tuple_(vals)).v
         elif len(vals) == 1:
             msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
         else:
             msg = self.sconst("")
-        self.raise_("OSError" if name == "IOError" or name == "EnvironmentError" else name, msg)
+        self.raise_(name, msg)
+
+    def os_error(self, name: str, vals: list[Val]) -> list[str]:
+        # OSError(errno, strerror[, filename]) of builtin class name, as CPython's makes it: str(e)
+        # "[Errno n] strerror" (then ": " and repr(filename), unless it is None), args (errno,
+        # strerror) (and None), of the subclass the errno names where name is OSError itself.
+        # Gives its kind, str(e) and what repr(e) shows between its parentheses
+        no = vals[0]
+        kind = self.sconst(name) if name in EXCBASES else ""  # (an exception class of the program's is its own)
+        if name == "OSError" and (no.t == "int" or no.t == "bool"):
+            kind = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(no).v}"])
+        msg = self.cat(Val(self.sconst("[Errno "), "str"), self.to_str(no))
+        msg = self.cat(self.cat(msg, Val(self.sconst("] "), "str")), self.to_str(vals[1]))
+        args = self.cat(self.cat(self.repr(no), Val(self.sconst(", "), "str")), self.repr(vals[1]))
+        if len(vals) == 3 and vals[2].t == "None":
+            args = self.cat(args, Val(self.sconst(", None"), "str"))
+        elif len(vals) == 3:
+            msg = self.cat(self.cat(msg, Val(self.sconst(": "), "str")), self.repr(vals[2]))
+        return [kind, msg.v, args.v]
+
+    def exc_value(self, name: str, vals: list[Val]) -> Val:
+        # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
+        # shows between its parentheses (null: the repr of str(e), as for one str argument)
+        args = "null"
+        detail = ""
+        if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
+            # str(e) is str(msg) ("None" without), but its traceback shows "E: " and str(msg or
+            # "<no detail available>")
+            msg = self.to_str(vals[0]).v if len(vals) == 1 else self.sconst("None")
+            no = Val(self.sconst("<no detail available>"), "str")
+            detail = self.select(self.truth(vals[0]), Val(msg, "str"), no) if len(vals) == 1 else no.v
+            if len(vals) == 0:
+                args = self.sconst("")
+            elif vals[0].t != "str":
+                args = self.repr(vals[0]).v
+        elif len(vals) > 1 and exc_base_of(name, "OSError"):
+            oe = self.os_error(name, vals)
+            return Val(self.rt("pys_exc_new", "ptr", [f"ptr {oe[0]}", f"ptr {oe[1]}", f"ptr {oe[2]}"]), "exc")
+        elif len(vals) > 1:
+            msg = self.repr(self.tuple_(vals)).v
+            args = self.rt("pys_str_slice", "ptr", [f"ptr {msg}", "i64 1", "i64 -1"])
+        elif len(vals) == 1:
+            msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
+            if vals[0].t != "str" and name != "KeyError":
+                args = self.repr(vals[0]).v  # (a KeyError's message is its argument's repr already)
+        else:
+            msg = self.sconst("")
+        e = self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {msg}", f"ptr {args}"])
+        if detail != "":
+            e = self.rt("pys_exc_detail", "ptr", [f"ptr {e}", f"ptr {detail}"])
+        return Val(e, "exc")
 
     def exit_(self, vals: list[Val]) -> None:
         # sys.exit(code) and raise SystemExit(code): None is status 0, an int is the status, and
-        # anything else is printed to stderr with status 1
+        # anything else is printed to stderr with status 1. In a program that has a try, a code
+        # whose str() or repr() the runtime would not show as CPython's (None, a bool, several
+        # arguments, anything but an int or a str) is thrown as the exception exit_value makes
+        if self.eh and (len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str" and vals[0].t not in self.classes)):
+            self.throw(self.exit_value(vals))
+            return
         if len(vals) > 1:
             self.rt("pys_exit_msg", "void", [f"ptr {self.repr(self.tuple_(vals)).v}"])
         elif len(vals) == 0 or vals[0].t == "None":
@@ -10814,14 +12310,191 @@ class Gen:
                 l2 = self.label()
                 self.cbr(self.isnull(vals[0]), l1, l2)
                 self.place(l1)
-                self.rt("pys_exit", "void", ["i64 0"])
-                self.unreachable()
+                if self.eh:
+                    self.throw(self.no_code())
+                else:
+                    self.rt("pys_exit", "void", ["i64 0"])
+                    self.unreachable()
                 self.place(l2)
             if is_sopt(vals[0].t):
                 self.exit_([self.deref(vals[0])])  # (an int is the status)
                 return
+            if self.eh and vals[0].t != "str":
+                self.throw(self.exc_value("SystemExit", vals))
+                return
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
         self.unreachable()
+
+    def no_code(self) -> Val:
+        # SystemExit(None): status 0, str(e) ""
+        e = self.sconst("")
+        return Val(self.rt("pys_exc_exit", "ptr", ["i64 0", f"ptr {e}", f"ptr {e}"]), "exc")
+
+    def exit_value(self, vals: list[Val]) -> Val:
+        # SystemExit(*vals): an int or bool code is the status the program ends with if nothing
+        # catches it, None (or none) status 0; anything else is shown, with status 1. (sys.exit(None)
+        # is SystemExit(), but SystemExit(None) shows its None: str(e) "None")
+        if len(vals) == 0:
+            return self.no_code()
+        if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None"):
+            s = self.to_str(vals[0]).v
+            return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
+        return self.exc_value("SystemExit", vals)
+
+    def exc_object(self, c: str, args: list[Node]) -> Val:
+        # c(args), c an exception class: an object made as BaseException.__new__ makes it (its
+        # ExcClass, and the args kept as str(e) and repr(e) show them, see exc_keep), with the
+        # class-body defaults, then given to the __init__ of c or of the nearest base that has
+        # one; without one, the class takes any positional arguments
+        ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
+        line = self.line
+        init = ci.methods["__init__"] if "__init__" in ci.methods else None
+        vals: list[Val] = []
+        kws: list[Node] = []
+        for a in args:
+            if a.kind == "kw" and init is None:
+                # (the keywords its builtin base's __init__ takes, ImportError's name and path, ...)
+                self.exc_kw(ci.exc, [a], f"{short(c)}()")
+                self.expr(a.kids[0], "")
+            elif a.kind == "kw":
+                kws.append(a)
+            else:
+                j = len(vals) + 1
+                vals.append(self.expr(a, init.ptypes[j] if init is not None and j < init.npos else ""))
+        if init is not None and len(vals) >= init.npos:
+            self.err(f"{short(init.cls)}.__init__() takes {init.npos} positional argument{'s' if init.npos > 1 else ''} but {len(vals) + 1} were given")
+        size = f"ptrtoint (ptr getelementptr (%C.{c}, ptr null, i32 1) to i64)"
+        o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), c)
+        self.nn[o.v] = True
+        self.xcls[c] = True
+        self.setfield(o, self.field(o, " cls"), " cls", Val(f"@x.{c}", "str"))
+        # (with an __init__ of the program, an OSError's args are left empty, and a SystemExit's
+        # code None, until its super().__init__() sets them, as OSError.__new__ and SystemExit.__init__ do)
+        self.exc_keep(o, vals if init is None or not self.derives(c, "OSError") else vals[:0], init is None)
+        for fl in ci.fields:
+            if fl in ci.fdefault:
+                h = self.default_home(ci, fl)
+                t = ci.ftypes[fl]
+                if not is_const(ci.fdefault[fl]):
+                    self.class_default(h, fl)
+                v = Val(self.ins(f"load {lt(t)}, ptr {h.fglob[fl]}"), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+                self.setfield(o, self.field(o, fl), fl, v)
+        self.line = line
+        if init is not None:
+            self.call_fn(init, [o] + vals, kws)
+        return o
+
+    def exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
+        # what exception object o keeps of its args vals (BaseException.__new__, and its __init__
+        # through super().__init__): str(e) (a KeyError's: the repr of its one argument) and the
+        # text between repr(e)'s parentheses; a SystemExit's status and whether its code is one
+        # (unless coded is False: its code is None)
+        c = o.t
+        if len(vals) > 3 and self.derives(c, "OSError"):
+            self.err(f"{short(c)}() with more than three arguments is not supported")
+        if len(vals) > 1 and self.derives(c, "OSError"):
+            oe = self.os_error(c, vals)  # ("[Errno n] text")
+            sv = oe[1]
+            av = oe[2]
+        elif len(vals) == 0:
+            sv = self.sconst("")
+            av = sv
+        elif len(vals) == 1:
+            av = self.repr(vals[0]).v
+            sv = av if self.derives(c, "KeyError") else self.to_str(vals[0]).v
+        else:
+            sv = self.repr(self.tuple_(vals)).v
+            av = self.rt("pys_str_slice", "ptr", [f"ptr {sv}", "i64 1", "i64 -1"])
+        self.setfield(o, self.field(o, " str"), " str", Val(sv, "str"))
+        self.setfield(o, self.field(o, " args"), " args", Val(av, "str"))
+        if self.derives(c, "SystemExit"):
+            code = "0"
+            hc = "true" if len(vals) == 0 or not coded else "false"
+            if len(vals) == 1 and coded:
+                t = vals[0].t
+                if t == "int" or t == "bool":
+                    code = self.as_int(vals[0]).v
+                hc = "true" if t == "int" or t == "bool" or t == "None" else self.isnull(vals[0]) if t in self.classes else "false"
+            self.setfield(o, self.field(o, " code"), " code", Val(code, "int"))
+            self.setfield(o, self.field(o, " hc"), " hc", Val(hc, "bool"))
+
+    def exc_of(self, v: Val) -> Val:
+        # the exception that raises exception object v
+        self.notnone(v, "TypeError: exceptions must derive from BaseException")
+        return Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc")
+
+    def exc_brepr(self, o: Val) -> Val:
+        # BaseException.__repr__ of exception object o: the name of its class, and its args
+        a = self.getfield(o, self.field(o, " args"), " args")
+        return Val(self.rt("pys_exc_brepr", "ptr", [f"ptr {o.v}", f"ptr {a.v}"]), "str")
+
+    def super_call(self, sc: Node, m: str, args: list[Node]) -> Val:
+        # super().m(args) in a method of an exception class: the base's method m, or what
+        # BaseException's __init__ (keep the args), __str__ and __repr__ do
+        cls = self.curfn.cls
+        me0 = self.curfn.params[0] if cls != "" else ""
+        # (super(C, self), in a method of class C, is super())
+        same = len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s == shown(cls) and sc.kids[2].kind == "name" and sc.kids[2].s == me0
+        if (len(sc.kids) > 1 and not same) or cls == "" or self.classes[cls].exc == "":
+            self.err("super() is only supported without arguments, in the methods of exception classes (super(C, self) in a method of C is super())")
+        me = self.expr(mk("name", self.curfn.params[0], sc.line, []), "")
+        b = self.classes[cls].base
+        if b in self.classes and m in self.classes[b].methods:
+            return self.call_fn(self.classes[b].methods[m], [me], args)
+        if m == "__init__":
+            self.exc_kw(b, args, f"{short(b)}.__init__()")
+            vals = self.exc_vals(args)
+            self.exc_keep(me, vals)
+            return Val("null", "None")
+        if (m == "__str__" or m == "__repr__") and len(args) == 0:
+            return self.getfield(me, self.field(me, " str"), " str") if m == "__str__" else self.exc_brepr(me)
+        self.err(f"super().{m}() is not supported: only __init__, __str__, __repr__ and the methods of a base class of the program")
+        return me
+
+    def exc_helpers(self, c: str) -> None:
+        # the ExcClass of exception class c (runtime.c's exceptions): its name, which an except
+        # clause matches, the name an uncaught exception's line shows, and its str, repr and (for
+        # a SystemExit) exit functions: those of the class, or BaseException's
+        ci = self.classes[c]
+        line = ci.node.line
+        me = mk("name", "self", line, [])
+        noann = mk("noann", "", line, [])
+        bodies: list[list[Node]] = []
+        for m in ["__str__", "__repr__"]:
+            if m in ci.methods:
+                r = mk("call", "", line, [mk("attr", m, line, [me])])
+            elif m == "__str__":
+                r = mk("attr", " str", line, [me])
+            else:
+                r = mk("call", "", line, [mk("name", "__pys_exc_repr", line, []), me])
+            bodies.append([mk("return", "", line, [r])])
+        if self.derives(c, "SystemExit"):
+            # the SystemExit that ends the program as this one does (exit_value)
+            sysexit = mk("name", "SystemExit", line, [])
+            code = mk("block", "", line, [mk("return", "", line, [mk("call", "", line, [sysexit, mk("attr", " code", line, [me])])])])
+            bodies.append([mk("if", "", line, [mk("attr", " hc", line, [me]), code, mk("block", "", line, [])]),
+                           mk("return", "", line, [mk("call", "", line, [sysexit, mk("attr", " str", line, [me])])])])
+        names = ["str", "repr", "exit"]
+        for i in range(len(bodies)):
+            f = FnInfo(names[i], f"@x.{names[i]}.{c}", ci.node, c)
+            f.params = ["self"]
+            f.ptypes = [c]
+            f.defaults = [noann]
+            f.dglob = [""]
+            f.ret = "exc" if i == 2 else "str"
+            self.function(f, bodies[i])
+        ex = f"ptr @x.exit.{c}" if len(bodies) == 3 else "ptr null"
+        self.consts.append(f"@x.{c} = private constant {{ptr, ptr, ptr, ptr, ptr}} {{ptr {self.sconst(c)}, ptr {self.sconst(shown(c))}, ptr @x.str.{c}, ptr @x.repr.{c}, {ex}}}")
+
+    def throw(self, e: Val) -> None:
+        # raise exception e: to the landing block around, or out of the function (pys_throw)
+        i = Ins("throw", "", "")
+        i.a = [e]
+        self.runtime("pys_throw")
+        self.add(i)
+        self.term = True
 
     def raise_(self, name: str, msg: str, kind: str = "") -> None:
         # raise exception name: the error line is "<kind>: <msg>", where kind is name unless given
@@ -10835,8 +12508,8 @@ class Gen:
         self.line = n.line
         k = n.kind
         if k == "expr":
-            if n.kids[0].kind != "str":
-                self.expr(n.kids[0], "")
+            if n.kids[0].kind != "str" and n.kids[0].kind != "ellipsis":
+                self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
         elif k == "assign":
             val = n.kids[-1]
             t0 = n.kids[0]
@@ -10952,23 +12625,30 @@ class Gen:
                 # the first return of a template's function with a value decides what the function
                 # returns; a return of None before it is lowered from what that decided
                 v = self.retval(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
-                self.close_withs(0)
-                if v.t == "None":
-                    self.add(Ins("ret.none", "", ""))
-                else:
+                if v.t != "None":
                     t = v.t
                     if self.optional(t) != t and self.optional(t) != "" and self.returned_none():
                         t = self.optional(t)  # after a return of None: T | None (before it calls itself)
                     self.ret = t
                     self.curfn.ret = t
-                    self.ret_(self.coerce(v, t))
+                    v = self.coerce(v, t)
+                self.carried = v
+                ended = self.leave(0)
+                v = self.carried
+                self.carried = Val("", "")
+                if ended:
+                    pass  # (a finally block returned instead)
+                elif v.t == "None":
+                    self.add(Ins("ret.none", "", ""))
+                else:
+                    self.ret_(v)
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
                     self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
                 if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes) and not is_opt(self.ret):
                     self.err(self.nonemix(self.curfn, self.ret) if self.curfn.infer else f"missing return value of type {self.ret}")
-                self.close_withs(0)
-                self.ret_(Val("null", self.ret))
+                if not self.leave(0):
+                    self.ret_(Val("null", self.ret))
             elif self.ret == "None":
                 # return f() where f returns None
                 v = self.expr(n.kids[0], "")
@@ -10976,8 +12656,8 @@ class Gen:
                     self.err(self.nonemix(self.curfn, v.t))
                 if v.t != "None":
                     self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
-                self.close_withs(0)
-                self.ret_(Val("null", "None"))
+                if not self.leave(0):
+                    self.ret_(Val("null", "None"))
             else:
                 v = self.iter_ret(n.kids[0]) if self.curfn.iters else self.retval(n.kids[0], self.ret)
                 if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
@@ -10990,13 +12670,17 @@ class Gen:
                         self.err(self.nonemix(self.curfn, self.ret))
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
-                self.close_withs(0)
-                self.ret_(Val(v.v, self.ret))
+                self.carried = v  # (the value first: a finally block runs after it is computed)
+                ended = self.leave(0)
+                v = self.carried
+                self.carried = Val("", "")
+                if not ended:
+                    self.ret_(Val(v.v, self.ret))
             self.term = True
         elif k == "break" or k == "continue":
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
-            self.close_withs(self.wdepth[-1])
+            self.leave(self.wdepth[-1])
             if k == "break" and not self.term:
                 self.brks[-1].append(dict(self.narrowed))
             self.br(self.loops[-1].exit if k == "break" else self.loops[-1].step)
@@ -11006,7 +12690,7 @@ class Gen:
         elif k == "assert" and (self.static(n.kids[0]) == 0 or n.kids[0].kind == "False"):
             # an assertion that cannot hold (assert x is not None with x None, assert False): code
             # after it never runs
-            self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
+            self.assert_fails(n)
             self.term = True
         elif k == "assert" and self.static(n.kids[0]) == 1:
             pass
@@ -11015,11 +12699,13 @@ class Gen:
             l2 = self.label()
             self.cbr(self.cond(n.kids[0]), l2, l1)
             self.place(l1)
-            self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
+            self.assert_fails(n)
             self.place(l2)
             self.narrow_by(n.kids[0], True)
         elif k == "raise":
             self.raise_stmt(n)
+        elif k == "try":
+            self.try_(n)
         elif k == "del":
             for dt in n.kids:
                 if dt.kind == "name":
@@ -11050,19 +12736,28 @@ class Gen:
                     self.err("only 'del list[i]' and 'del dict[key]' are supported")
         elif k == "with":
             # with open(p) as f: the file closes when the block is left, at its end or through
-            # break, continue or return (an error ends the program, and exit flushes every file)
-            n0 = len(self.withs)
+            # break, continue or return. In a program that has a try, an exception that leaves
+            # the block closes it too: it is an unwind action while the block runs (a landing pad
+            # runs it, and so does an exception that nothing catches); in another, an error ends
+            # the program, and exit flushes every file
+            n0 = len(self.exits)
             for it in n.kids[:-1]:
                 v = self.expr(it.kids[0], "")
                 if v.t != "file":
                     self.err(f"'with' is supported for files only (with open(...) as f:), not {v.t}")
+                if not self.open_call(it.kids[0]):
+                    # (a file's __enter__ raises if it is closed)
+                    c = self.rt("pys_file_closed", "i64", [f"ptr {v.v}"])
+                    self.guard(self.ins(f"icmp ne i64 {c}, 0"), "ValueError: I/O operation on closed file.")
+                if self.eh:
+                    self.rt("pys_unwind_file", "void", [f"ptr {v.v}"])
                 if len(it.kids) == 2:
                     self.assign(it.kids[1], v)
-                self.withs.append(v.v)
+                self.exits.append(Exit("with", v.v, self.handler))
             self.stmts(n.kids[-1].kids)
             if not self.term:
-                self.close_withs(n0)
-            self.withs = self.withs[:n0]
+                self.leave(n0)
+            self.exits = self.exits[:n0]
         elif k == "anyall":
             hit = self.label()
             go = self.label()
@@ -11104,7 +12799,9 @@ class Gen:
                     self.emit(f"store i1 false, ptr @init.{x.s}.guard")
                 else:
                     self.add(Ins("init", "", x.s))
-        elif k == "def" or k == "class":
+        elif k == "def" or k == "class" or k == "subclass":
+            if self.modlevel:
+                self.err(f"a {'class' if k == 'subclass' else k} statement inside a block of a module's code (if, try, for, while, with) is not supported: only at its top level")
             self.err("nested functions and classes are not supported")
         elif k == "badimport":
             self.err(n.s)
@@ -11756,7 +13453,9 @@ class Gen:
         if c.kind != "name":
             return -1
         if c.s in self.classes:
-            return -1 if t == c.s else 0
+            # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
+            xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t))))
+            return -1 if t == c.s or xc else 0
         if self.bound(c.s):
             return -1
         if c.s == "object":
@@ -11850,6 +13549,7 @@ class Gen:
         if k == "float":
             return Val(fbits(n.s), "float")
         if k == "str":
+            self.modchk(n)
             return Val(self.sconst(n.s), "str")
         if k == "True" or k == "False":
             return Val(k.lower(), "bool")
@@ -11864,6 +13564,7 @@ class Gen:
         if k == "name":
             if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
                 self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
+            self.modchk(n)
             return self.read(n)
         if k == "badattr":
             self.err(n.s)  # a module attribute that does not exist, or a module used as a value
@@ -11888,6 +13589,15 @@ class Gen:
             path = self.dotted(n)
             if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.modattr(path)
+            tc = n.kids[0]
+            if n.s == "__name__" and tc.kind == "call" and len(tc.kids) == 2 and tc.kids[0].kind == "name" and tc.kids[0].s == "type" and not self.bound("type"):
+                # type(e).__name__ of an exception: its class's name
+                v = self.expr(tc.kids[1], "")
+                if v.t == "exc":
+                    return Val(self.rt("pys_exc_name", "ptr", [f"ptr {v.v}"]), "str")
+                if v.t in self.classes and self.classes[v.t].exc != "":
+                    return Val(self.rt("pys_exc_cls", "ptr", [f"ptr {v.v}"]), "str")
+                self.err("type(x).__name__ is only supported for exceptions")
             c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
             if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
                 return self.class_attr(n.kids[0], n.s)
@@ -11951,6 +13661,12 @@ class Gen:
                     et = self.wider(et, v.t) or et
             if et == "" or et == "None":
                 self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
+            for v in items if not is_list(want) and et in self.classes else items[:0]:
+                e0 = et
+                while et in self.classes and self.classes[et].exc != "" and v.t in self.classes and not self.derives(v.t, et):
+                    et = self.classes[et].base  # (exception objects of several classes: a base of them all)
+                if e0 in self.classes and et not in self.classes:
+                    self.err(f"objects of the exception classes {short(e0)} and {short(v.t)} in one list are not supported: no class of the program is a base of both (give them one: class Base(Exception), class {short(e0)}(Base), ...)")
             items = [self.coerce(v, et) for v in items]
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
             for v in items:
@@ -12281,7 +13997,7 @@ class Gen:
                 self.err(f"unsupported format string passed to {tname(unopt(v.t))}.__format__")
             sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
             return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
-        if v.t in self.classes or v.t == "file":
+        if v.t in self.classes or v.t == "file" or v.t == "exc":
             if spec.kind == "str":
                 self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
             # a computed spec: str(v) when it turns out empty, TypeError otherwise
@@ -12399,7 +14115,8 @@ class Gen:
             if j < 0:
                 j += len(ts)
             if j < 0 or j >= len(ts):
-                self.err("tuple index out of range")
+                # (rather than CPython's IndexError where it runs: the item would have no type)
+                self.err(f"tuple index out of range: {i.v} for a tuple of {len(ts)} item{'s' if len(ts) != 1 else ''} (a constant index is checked at compile time)")
             if t in self.nts:
                 self.notnone(o, sub)
                 return self.getfield(o, self.field(o, ts[j]), ts[j])
@@ -12464,12 +14181,16 @@ class Gen:
             self.err(f"iter() of {typestr(v.t)} in __iter__ is not supported: return iter(xs) of a list xs of the items")
         return v
 
-    def listcomp(self, n: Node, want: str, mode: str = "") -> Val:
-        # [e for t in it if c] runs as a loop appending to a fresh list; t is scoped to it.
-        # mode any/all: any(e for ...) / all(...) instead, stopping at the deciding element.
+    def listcomp(self, n: Node, want: str, mode: str = "", into: str = "") -> Val:
+        # [e for t in it if c] runs as a loop appending to a fresh list (or to list into, of type
+        # want, as xs.extend(e for ...) does item by item); t is scoped to it. mode any/all:
+        # any(e for ...) / all(...) instead, stopping at the deciding element.
+        h = Ins("", "", "")
         if mode != "":
             res = self.alloca("bool", "")
             self.emit(f"store i1 {'false' if mode == 'any' else 'true'}, ptr {res}")
+        elif into != "":
+            res = into
         else:
             h = self.hole("list")
             res = f"%t{h.r[0]}"
@@ -12505,7 +14226,8 @@ class Gen:
             return Val(self.ins(f"load i1, ptr {res}"), "bool")
         if et == "":
             self.err("cannot infer the element type of this comprehension")
-        self.holes[h.k] = f"list[{et}]"
+        if into == "":
+            self.holes[h.k] = f"list[{et}]"
         return Val(res, f"list[{et}]")
 
     def ifexp(self, n: Node, want: str) -> Val:
@@ -12928,10 +14650,44 @@ class Gen:
         self.place(l3)
         return Val(self.phi(ph), "bool")
 
+    def exc_id(self, v: Val) -> Val:
+        # what an exception is, for is and ==: the object of an exception class it raises, if it
+        # raises one (each raise of it makes an exception of its own), else itself
+        return Val(self.rt("pys_exc_id", "ptr", [f"ptr {v.v}"]), "exc") if v.t == "exc" else v
+
+    def exc_eq(self, t: str, what: str = "") -> None:
+        # == compares exceptions (of type t, or inside t) by identity: not where an exception
+        # class defines __eq__ or __ne__, which CPython calls for one that an exception may be
+        if "E" in self.desc(t, "repr"):
+            for c in self.classes.values():
+                if c.exc != "" and ("__eq__" in c.methods or "__ne__" in c.methods):
+                    m = "__eq__" if "__eq__" in c.methods else "__ne__"
+                    what = what if what != "" else "between exceptions" if t == "exc" else f"between values of type {typestr(t)}"
+                    self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
+
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
-        if (op == "==" or op == "!=") and a.t == "file" and b.t == "file":
+        if (op == "==" or op == "!=") and a.t == b.t and a.t == "file":
             # files compare by identity, as CPython's do
             return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+        xa = a.t == "exc" or (a.t in self.classes and self.classes[a.t].exc != "")
+        xb = b.t == "exc" or (b.t in self.classes and self.classes[b.t].exc != "")
+        if xa and xb and a.t != b.t and a.t in self.classes and b.t in self.classes and (op == "==" or op == "!="):
+            # objects of exception classes with a base class in common: as objects of that base,
+            # whose __eq__ a class deriving from it cannot define again
+            cb = a.t
+            while cb in self.classes and not self.derives(b.t, cb):
+                cb = self.classes[cb].base
+            if cb in self.classes:
+                a = self.coerce(a, cb)
+                b = self.coerce(b, cb)
+        if xa and xb and (a.t != b.t or a.t == "exc") and (op == "==" or op == "!=" or op == "is" or op == "is not"):
+            # exceptions, builtin or objects of exception classes of different classes: by identity
+            # (an exception class's object is an exception of its own that each raise of it makes)
+            if op == "==" or op == "!=":
+                x = "an exception" if a.t == "exc" else f"an object of {short(a.t)}"
+                y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
+                self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
+            return Val(self.ins(f"icmp {'eq' if op == '==' or op == 'is' else 'ne'} ptr {self.exc_id(a).v}, {self.exc_id(b).v}"), "bool")
         if op == "is" or op == "is not":
             if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
                 # a number or bool is never None
@@ -13014,6 +14770,7 @@ class Gen:
                 if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                     et = self.optional(elem(b.t))
                 s = self.to_slot(self.coerce(a, et))
+                self.exc_eq(et)
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et, '=='))}"])
                 r = self.ins(f"add i64 {r}, 1")
                 if ok != "true":
@@ -13051,7 +14808,8 @@ class Gen:
             a = self.boxto(a, ct)
             b = self.boxto(b, ct)
         u = unopt(ct)
-        if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u))):
+        if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u)) or u == "exc"):
+            self.exc_eq(ct)
             d = f"ptr {self.sconst(self.desc(ct, '==' if eq else op))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
@@ -13060,7 +14818,9 @@ class Gen:
                 return Val(self.ins(f"icmp {'ne' if op == '==' else 'eq'} i64 {r}, 0"), "bool")
             r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
             return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
-        self.err(f"cannot compare {a.t} {op} {b.t}")
+        x = "an exception" if a.t == "exc" else a.t
+        y = "an exception" if b.t == "exc" else b.t
+        self.err(f"cannot compare {x} {op} {y}")
         return a
 
     def optcmp(self, op: str, a: Val, b: Val) -> Val:
@@ -13109,6 +14869,8 @@ class Gen:
         for a in args:
             if a.kind == "starred" or a.kind == "dstar":
                 self.err("star arguments are not supported")
+        if f.kind == "name":
+            self.modchk(f)
         if f.kind == "name" and f.s not in self.ltype:
             if self.unbound_local(f.s):
                 self.err(f"local variable '{f.s}' is read before its first assignment; declare it first ({f.s}: T)")
@@ -13121,6 +14883,8 @@ class Gen:
             if f.s in self.aliases and f.s not in self.gtypes:
                 return self.builtin(self.aliases[f.s], args, want)
             if f.s in self.classes:
+                if self.classes[f.s].exc != "":
+                    return self.exc_object(f.s, args)
                 if self.classes[f.s].bad != "":
                     self.err(self.classes[f.s].bad)
                 o = self.new_obj(f.s)
@@ -13130,11 +14894,25 @@ class Gen:
                 self.not_callable(f.s, self.gtypes.get(f.s, ""))
             if f.s in self.unsupported:
                 self.err(self.unsupported[f.s])
+            if f.s in EXCEPTIONS and EXCEPTIONS[f.s] != "-":
+                # an exception made, not raised (raise e raises it)
+                vals = self.exc_vals(self.exc_args(n))
+                if f.s == "SystemExit":
+                    return self.exit_value(vals)
+                return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
             return self.builtin(f.s, args, want)
         if f.kind == "attr":
+            c = self.curfn.cls
+            if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
+                # Base.m(self, args) in a method of an exception class: super().m(args) for its base
+                if f.kids[0].s != self.classes[c].base and not (self.classes[c].base == "OSError" and (f.kids[0].s == "IOError" or f.kids[0].s == "EnvironmentError")):
+                    self.err(f"{f.kids[0].s}.{f.s}(self, ...) in a method of {short(c)} is supported only for its base, {short(self.classes[c].base)} (as super().{f.s}(...))")
+                return self.super_call(mk("call", "", f.line, [mk("name", "super", f.line, [])]), f.s, args[1:])
             path = self.dotted(f)
             if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.builtin(path, args, want)
+            if f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
+                return self.super_call(f.kids[0], f.s, args)
             if f.kids[0].kind == "name" and "?" in self.rtype(f.kids[0].s):
                 return self.fill(f.kids[0], f.s, args, want)
             if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
@@ -13228,8 +15006,18 @@ class Gen:
     def method(self, o: Val, m: str, args: list[Node]) -> Val:
         if is_opt(o.t):
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+        if (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")) and (m == "__str__" or m == "__repr__") and len(args) == 0 and not self.curfn.ll.startswith("@x."):
+            # e.__str__() is str(e): that of the class of e's object, which may derive from o.t's
+            # (but for the ExcClass's own functions, see exc_helpers)
+            return self.to_str(o) if m == "__str__" else self.repr(o)
+        if o.t in self.classes and m == "__init__" and self.classes[o.t].exc != "":
+            for c in self.classes.values():
+                if c.name != o.t and self.derives(c.name, o.t) and "__init__" in c.methods and c.methods["__init__"].cls == c.name:
+                    self.err(f"a call of __init__ on an object of {short(o.t)} is not supported where {short(c.name)}, deriving from it, defines __init__ again (calls are not dispatched on the object's class)")
         if o.t in self.classes:
             ci = self.classes[o.t]
+            if m not in ci.methods and ci.exc != "" and m in HASATTR["any"].split() + ["add_note", "with_traceback"]:
+                self.err(f"{short(o.t)} has no method {m}() of its own, and BaseException.{m}() is not supported" + (" (call super().__init__(...) in __init__)" if m == "__init__" else ""))
             if m not in ci.methods and not ((m == "_replace" or m == "_asdict") and o.t in self.nts):
                 self.err(f"'{o.t}' object has no method '{m}'")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
@@ -13345,6 +15133,13 @@ class Gen:
             f = self.instance(f, [v.t for v in vals], nnp)
         c = Ins("call", f.ret, f.ll)
         c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+        if f.noret:
+            # it never returns: the code after the call is not reached, and the call's value has the
+            # type its context expects (return fail("bad") in a function returning int)
+            self.add(c)
+            self.unreachable()
+            t = want if want != "" and "?" not in want else "None"
+            return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
         if f.ret == "None":
             self.add(c)
             return Val("null", "None")
@@ -13514,6 +15309,8 @@ class Gen:
         return Val("", "")
 
     def builtin(self, name: str, args: list[Node], want: str) -> Val:
+        if name == "__pys_exc_repr":
+            return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
         if name == "__pys_repr_enter" or name == "__pys_repr_leave":
             o = self.expr(args[0], "")
             r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])
@@ -13570,6 +15367,8 @@ class Gen:
         if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
             # decided by the static types, or for an object by whether it is None
             v = self.expr(args[0], "")
+            if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
+                return self.exc_isinst(v, args[1])
             known = self.isinst(v.t, args[1])
             if known < 0 and ((v.t in self.classes and self.only_class(v.t, args[1])) or (is_opt(v.t) and self.isinst(unopt(v.t), args[1]) == 1)):
                 return Val(self.ins(f"icmp ne ptr {v.v}, null"), "bool")
@@ -13666,7 +15465,10 @@ class Gen:
         if name == "sys.exit" or name == "exit" or name == "quit":
             if len(vals) > 1:
                 self.err(f"sys.exit() takes at most 1 argument ({len(vals)} given)")
-            self.exit_(vals)
+            if len(vals) == 1 and vals[0].t in self.classes and self.derives(vals[0].t, "SystemExit"):
+                self.throw(self.exc_of(vals[0]))  # (a SystemExit itself is raised as it is)
+                return Val("null", "None")
+            self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [])
             return Val("null", "None")
         if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
             return vals[0]  # a str path is its own file system path
@@ -13681,6 +15483,9 @@ class Gen:
                 return self.as_int(vals[0])
             nd = self.coerce(self.as_int(vals[1]), "int")
             return Val(self.rt("pys_round_int", "i64", [f"i64 {self.as_int(vals[0]).v}", f"i64 {nd.v}"]), "int")
+        if key not in CALLS and name == "math.ldexp" and len(vals) == 2:
+            vals = [self.as_float(self.as_int(vals[0])), self.as_int(vals[1])]
+            key = f"{name}({','.join([v.t for v in vals])})"
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"
@@ -13767,6 +15572,8 @@ class Gen:
             self.err(f"'{name}' is not callable")
         if t in self.classes and name in NONEARG:
             self.err(NONEARG[name].replace("NoneType", tname(t)))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
+        if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
+            self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err(f"unsupported call {key}")
         return v
 
@@ -13942,6 +15749,11 @@ class Gen:
         for a in args:
             if a.kind == "kw":
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
+        if is_list(o.t) and m == "extend" and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
+            # each item is appended as the generator yields it: the items before a raise stay, and
+            # the generator sees those it added (xs.extend(f(x) for x in xs))
+            self.listcomp(args[0], o.t, "", o.v)
+            return Val("null", "None")
         if is_dict(o.t) and m == "pop" and len(args) == 2:
             kv = targs(o.t)
             kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
@@ -13964,6 +15776,8 @@ class Gen:
             K = kv[0]
             V = kv[1]
         key = base + "." + m
+        if key not in METHODS and o.t == "exc":
+            self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
         if key not in METHODS:
             self.err(f"'{o.t}' has no method '{m}'")
         # d.get(k) and d.get(k, None): the value or None, for values that can be None
@@ -13987,6 +15801,7 @@ class Gen:
             if p == "":
                 continue
             if p == "#":
+                self.exc_eq(dt)
                 av.append(f"ptr {self.sconst(self.desc(dt, '=='))}")  # (count, index, remove)
                 continue
             dflt = ""
@@ -14185,15 +16000,21 @@ class Gen:
             return self.obj_str(v, "__str__")
         if t == "opt[str]":
             return Val(self.select(self.ins(f"icmp eq ptr {v.v}, null"), Val(self.sconst("None"), "str"), Val(v.v, "str")), "str")
+        if t == "exc":
+            return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
         return self.repr(v)
 
     def obj_str(self, v: Val, m: str) -> Val:
-        # str()/repr() of an object through __str__/__repr__; None prints as "None"
+        # str()/repr() of an object through __str__/__repr__; None prints as "None". An exception
+        # object's are those of its class (its ExcClass's: exc_helpers)
         ms = self.classes[v.t].methods
-        if m not in ms:
+        exc = self.classes[v.t].exc != ""
+        if m not in ms and not exc:
             m = "__repr__"
         if m in ms and ms[m].bad != "" and self.lenient:
             m = ""  # (see desc)
+        if v.v in self.nn and exc:
+            return Val(self.rt("pys_exc_ostr" if m == "__str__" else "pys_exc_orepr", "ptr", [f"ptr {v.v}"]), "str")
         if v.v in self.nn and m in ms:
             return self.call_fn(ms[m], [v], [])
         l1 = self.label()
@@ -14203,7 +16024,9 @@ class Gen:
         self.place(l1)
         self.br(l3)
         self.place(l2)
-        if m in ms:
+        if exc:
+            r = Val(self.rt("pys_exc_ostr" if m == "__str__" else "pys_exc_orepr", "ptr", [f"ptr {v.v}"]), "str")
+        elif m in ms:
             r = self.call_fn(ms[m], [v], [])
         else:
             # object.__repr__: <__main__.Name object at 0x...>, <module.Name object at 0x...>
@@ -14224,6 +16047,8 @@ class Gen:
             return Val(self.sconst("None"), "str")
         if v.t == "file":
             self.err(f"cannot convert {v.t} to str")
+        if v.t == "exc":
+            return Val(self.rt("pys_exc_repr", "ptr", [f"ptr {v.v}"]), "str")
         return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")
 
 
@@ -14305,13 +16130,16 @@ def main() -> None:
     rtc = home + "/runtime.c"
     if not os.path.exists(rtc):
         fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
-    # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link;
-    # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags
+    # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link.
+    # The runtime is compiled with them and then -fexceptions (so they cannot drop it): a raise unwinds
+    # through runtime functions to compiled code's landing pads, which -O2 would turn back into calls
+    # if clang marked them nounwind. Each such set of flags caches its own runtime, named by a 32-bit
+    # FNV-1a hash of it, so a runtime cached without -fexceptions is never used
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
     key = 2166136261
-    for c in " ".join(flags):
+    for c in " ".join(flags + ["-fexceptions"]):
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
-    rtb = home + ("/build/runtime.bc" if len(flags) == 0 else f"/build/runtime-{key:08x}.bc")
+    rtb = home + f"/build/runtime-{key:08x}.bc"
     cflags = "".join([" " + q(a) for a in flags])
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
@@ -14333,9 +16161,9 @@ def main() -> None:
     f.write(ir)
     f.close()
     msg = ""
-    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
+    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
     if code == 0 and cmd == "run":
-        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} && mv -f {q(part)} {q(rto)})")
+        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} -fexceptions && mv -f {q(part)} {q(rto)})")
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
     if code != 0:
         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
@@ -14348,7 +16176,15 @@ def main() -> None:
         # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
-        code = sh(f"{fast} {q(ll)} -o {q(bc)} && PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
+        code = sh(f"{fast} {q(ll)} -o {q(bc)}")
+        if code == 0:
+            # then this process becomes lli, through a shell that opens the bitcode for it and removes
+            # the files: the program's end is pystachy run's own, a signal that kills it too
+            for p in [ll, obj, rll, part]:
+                if os.path.exists(p):
+                    os.remove(p)
+            run = f"PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli -extra-object={q(rto)} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} && rm -f {q(bc)} && rmdir {q(tmp)} && {run}"])
     for p in [ll, bc, obj, rll, part]:
         if os.path.exists(p):
             os.remove(p)

@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+3 4 z 2.5 abc 3 14
+a.ini ParseError('a.ini')
+c.ini:2: bad ParseError('c.ini', 1, 'bad') c.ini 1 bad
+[exit 1]

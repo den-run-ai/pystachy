@@ -1,0 +1,13 @@
+('leaf 3', 3) [Base('made', 0), Base('made', 1), Leaf('leaf 3', 3)]
+('leaf 3', 3) [3] h
+('a', 1) [1]  ('b', 5) [5] x mid ('m', 1) [1] 
+[1, 2] None mid ('leaf 4', 4) [4] h
+('root', 1)
+init raised: negative code
+template: ('leaf 7', 7) Leaf('leaf 7', 7)
+template: v ValueError('v')
+param shadowed: 9
+unbound: cannot access local variable 'e' where it is not associated with a value
+global shadow: 1
+name error: name 'e' is not defined
+[exit 0]

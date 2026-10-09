@@ -10,12 +10,16 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - coverage: every runtime function pystachy.py names (METHODS, CALLS, IRT, FRT, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
+  - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
+    with the same bases; every builtin exception class of this Python is one of them, and so is
+    every class a raise statement accepts (EXCEPTIONS);
   - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
-    C call graph reaches pys_fail, pys_raise, oserr or kbint_exit (not counting the allocator's
-    MemoryError: that is A), A if it reaches the allocator's slow path (gc_slow), U or U? if it
-    reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it has a #
-    parameter and reaches eqv, opv or repr (which walk a value of any type by its descriptor:
-    the lists and dicts in it), and N if the C function is noreturn;
+    C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
+    is A), A if it reaches the allocator's slow path (gc_slow) other than on the way out of a
+    raise (through a raise funnel, or the exception it builds, EXC_MAKERS: R stands for that),
+    U or U? if it reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it
+    has a # parameter and reaches eqv, opv or repr (which walk a value of any type by its
+    descriptor: the lists and dicts in it), and N if the C function is noreturn;
   - it has rL or wL if it reads or writes the memory of a list parameter (S of a list.* entry,
     or list[...]), rD or wD a dict's (S of dict.*, dict[...]) and rF or wF a file's (S of
     file.*, file), which loads and stores through addresses derived from the parameter show:
@@ -23,16 +27,19 @@ disagrees with its entry is an internal error. This tool checks the table itself
     the locals they are stored in, and the parameters of the runtime functions they are passed
     to (from clang -O1, whose SSA form leaves few locals; a C library function other than
     READS_ONLY counts as both, and user code as neither: that is U);
-  - it has I if its call graph, outside the end of the program (R) and the allocator (A),
-    reads or writes a mutable static of the runtime other than NO_STATE's or calls a C library
-    function other than PURE_C's (I/O, the process, the time). The passes rely on these: an
-    op with wL or wD may change a list or a dict, and an op whose letters are at most R
-    computes its result from its arguments alone (Gen.canon).
+  - it has I if its call graph, outside a raise (R: the funnels, which end the program or
+    unwind to a handler) and the allocator (A), reads or writes a mutable static of the runtime
+    other than NO_STATE's or calls a C library function other than PURE_C's (I/O, the process,
+    the time). The passes rely on these: an op with wL or wD may change a list or a dict, and
+    an op whose letters are at most R computes its result from its arguments alone (Gen.canon).
     More letters than runtime.c shows are allowed (an entry may be conservative); -v lists
-    those of R, N, A, I and of the letters derived from parameters.
+    those of R, N, A, I and of the letters derived from parameters. A function that only stores
+    another's address (STORES) does not reach it.
 The exit status is 1 if a check fails. Clang and llvm-as come from PATH, or PYSTACHY_LLVM.
 """
+import builtins
 import importlib.util
+import io
 import os
 import re
 import subprocess
@@ -47,7 +54,14 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # which compare and print without user code
 NO_USER = {"dict.has", "dict.find", "dict.getitem", "dict.entry", "dict.get", "dict.set", "dict.pop", "dict.pop_default",
            "dict.setdefault", "dict.getbox", "dict.popbox"}
-RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit"}
+RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
+# what the raise funnels build their exception with: in a program that has a try, a raise allocates
+# its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
+# so these do not make an entry A
+EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
+# functions that store another's address rather than call it: pys_eh_on the funnels' thrower,
+# pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
+STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
 BY_DESC = {"eqv", "opv", "repr"}
@@ -56,10 +70,10 @@ BY_DESC = {"eqv", "opv", "repr"}
 END = RAISES | {"oom"}
 ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic"}
 # C library functions that use no state but the memory their arguments point to
-PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 log1p expm1 exp2 cbrt fmod
-    atan2 pow ldexp frexp atoi memcmp bcmp memchr memmem strlen strchr strstr strcmp strncasecmp snprintf
-    sprintf vsnprintf strtod __isoc23_strtol __isoc23_strtoll __ctype_b_loc __ctype_tolower_loc
-    __errno_location""".split())
+PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh exp log log2 log10 log1p expm1
+    exp2 cbrt fmod atan2 pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
+    strchr strstr strcmp strncasecmp snprintf sprintf vsnprintf strtod __isoc23_strtol __isoc23_strtoll
+    __ctype_b_loc __ctype_tolower_loc __errno_location""".split())
 # and those that only read the memory their pointer arguments point to
 READS_ONLY = set("""memcmp bcmp memchr memmem strlen strchr strstr strcmp strncasecmp strtod __isoc23_strtol
     __isoc23_strtoll fwrite fputs fprintf snprintf sprintf vsnprintf write""".split())
@@ -150,6 +164,11 @@ def instruction(ins):
     # alloca, rmw (address), and phi (its values; also select's, and a cast's operand)
     m = re.match(r"(%[\w.]+) = (?:(?:tail|musttail|notail) )?(\w+)", ins)
     dest, op = (m.group(1), m.group(2)) if m else (None, re.sub(r"^(?:(?:tail|musttail|notail) )", "", ins).split()[0])
+    if op == "call" and re.match(r"[^(]* asm ", ins[ins.find("call ") + 5 :]):
+        # inline asm: the optimization barrier pys_eh_on hides an address behind, whose result
+        # is its operand ("=r,0")
+        rest = ins[ins.find('"(') + 2 :]
+        return ("phi", dest, tuple(ssa(a) for a in split_top(rest[: rest.rfind(")")])))
     if op == "call":
         rest = ins[ins.find("call ") + 5 :]
         c = re.search(r"([@%][\w.]+)\(", rest)
@@ -346,6 +365,8 @@ def main():
     note = []
     ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c")
     fns = functions(ll)
+    for f, g in STORES.items():
+        fns[f][3].discard(g)
     used = state(ll)
     eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1"))
     with tempfile.TemporaryDirectory() as tmp:
@@ -397,6 +418,20 @@ def main():
     for s in sorted(pys.RTSYM):
         if s not in named:
             bad.append(f"{pys.RTSYM[s]}: RUNTIME's entry is for {s}, which pystachy.py never names")
+    # exceptions
+    for k, v in pys.EXCBASES.items():
+        c = io.UnsupportedOperation if k == "io.UnsupportedOperation" else getattr(builtins, k, None)
+        if not (isinstance(c, type) and issubclass(c, BaseException) and c.__name__ == k.split(".")[-1]):
+            bad.append(f"EXCBASES: {k} is no builtin exception class of this Python")
+        elif ",".join(b.__name__ for b in c.__bases__ if b is not object) != v:
+            bad.append(f"EXCBASES gives {k} the bases {v or '(none)'}, this Python {', '.join(b.__name__ for b in c.__bases__)}")
+    for n in dir(builtins):
+        c = getattr(builtins, n)
+        if isinstance(c, type) and issubclass(c, BaseException) and c.__name__ == n and not n.startswith("_") and n not in pys.EXCBASES:
+            bad.append(f"EXCBASES has no entry for the builtin exception class {n}")
+    for k in pys.EXCEPTIONS:
+        if k not in pys.EXCBASES and k != "IOError" and k != "EnvironmentError":
+            bad.append(f"EXCEPTIONS: {k} is not in EXCBASES")
     # effects
     for k in rt:
         sym = pys.rtsym(k)
@@ -412,7 +447,7 @@ def main():
             derived.append("R")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, {"gc_slow"}, set()):
+        if reaches(fns, sym, {"gc_slow"}, EXC_MAKERS | RAISES):
             derived.append("A")
         if reaches(fns, sym, USER, set()) and k not in NO_USER:
             derived.append("U")
@@ -435,7 +470,7 @@ def main():
     if verbose:
         for n in note:
             print("note:", n)
-    print(f"{len(rt)} RUNTIME entries: " + (f"{len(bad)} problems" if bad else "signatures, coverage and effects agree with runtime.c"))
+    print(f"{len(rt)} RUNTIME entries, {len(pys.EXCBASES)} exception classes: " + (f"{len(bad)} problems" if bad else "signatures, coverage and effects agree with runtime.c, the classes with this Python"))
     sys.exit(1 if bad else 0)
 
 

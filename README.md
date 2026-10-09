@@ -115,9 +115,10 @@ and string forward references work (also inside `list["Node"]`), as does `typing
 `os.PathLike` (also `os.PathLike[str]`) in a union with `str` is dropped, as a path of
 another type cannot exist in Pystachy: `str | os.PathLike[str]` is `str` (with `None`,
 `str | None`), and `os.fspath()` returns the `str` it is given.
-`x: Final = v` is `x = v` (outside class bodies), `x: Final[T]` is `x: T`, and a `def`
-decorated with `@overload` (also a method) is the stub CPython replaces with the `def` after
-it: it is dropped.
+`x: Final = v` is `x = v` outside class bodies (in one, a field typed by its constant),
+`x: Final[T]` is `x: T`, `x: Final` alone does nothing, and a `def` decorated with
+`@overload` (also a method) is the stub CPython replaces with the `def` after it: it is
+dropped.
 As in CPython 3.13, the annotations of a def's parameters and return, of a class body and of
 module-level code are evaluated when the statement runs, also in an imported module whether
 or not the program uses the def: one that raises there is a compile-time error with CPython's
@@ -149,7 +150,8 @@ imports `annotations` from `__future__`.
   argument is `None` reads as `None`, and outside if branches and loops may get a value of
   another type (`if hi is None: hi = len(a)`, `if acc is None: acc = []`). A template that
   returns objects or `T | None` returns `None` where it ends without a `return`, as CPython
-  does. A
+  does, and one that cannot end (it always raises) may be called where a value is expected
+  (`return fail("bad")`): the call has the type its context expects. A
   function with `*args` is a template too: each call arity compiles it with `args` a tuple
   of the extra arguments' types (iterating it needs one item type; `()` is the empty
   tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is
@@ -236,7 +238,8 @@ imports `annotations` from `__future__`.
   constructor, method or function call, or a list, tuple or dict display of those (by its first
   item), `[x] * n`, `list(range(n))`, `list(xs)` or `sorted(xs)` (not a call of a template,
   whose result type is known only once it is compiled, nor of a function that returns `None`:
-  annotate the field).
+  annotate the field). An exception class (below) also has its base's fields, and an object
+  of it is an object of its bases too.
 - A `typing.NamedTuple` class (annotated fields with defaults, a docstring, methods) is a
   dataclass whose fields only its `__init__` assigns, read like the tuple of them: unpacking
   (also as a `for` target), constant indexing, iteration, `in`, `len()`, `%` formatting,
@@ -251,9 +254,9 @@ imports `annotations` from `__future__`.
   NamedTuple, where it would be no field).
 - A method decorated with `@staticmethod` or `@classmethod` is called through its class
   (`C.m(...)`) or through an object (`o.m(...)`, `self.m(...)`, which only checks that `o` is
-  not `None`). There is no inheritance, so a class method's `cls` is always its own class:
-  `cls(...)` makes one, `cls.x` reads a class attribute and `cls.m(...)` calls a static or
-  class method.
+  not `None`). There is no inheritance (but for exception classes), so a class method's `cls`
+  is always its own class: `cls(...)` makes one, `cls.x` reads a class attribute and
+  `cls.m(...)` calls a static or class method.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
@@ -261,15 +264,71 @@ augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honour
 files, tuples (and NamedTuples) of one item type, objects (below), `.items()`/`.keys()`/`.values()`,
 `enumerate` (with `start`), `zip` and
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
-that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
+that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass` (and `...`), `global`,
 `del` of a list item, a dict key or an object's item, `assert`, `with open(...) as f:` (also several items, in
-parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
+parentheses or not), `try` (below), `raise` of an exception class, a call of one or an
+exception, a bare `raise` and `raise ... from ...` (if nothing catches it, it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass` (also `@dataclass(kw_only=True)`), `class P(NamedTuple)`, `@staticmethod`, `@classmethod`, docstrings, `del` of a variable (later reads raise `NameError` or
+`class`, `@dataclass` (also `@dataclass(kw_only=True)`; its `__init__` calls `__post_init__`), `class P(NamedTuple)`, `@staticmethod`, `@classmethod`, docstrings, `del` of a variable (later reads raise `NameError` or
 `UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
 `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `collections.abc`,
 `dataclasses`, `builtins` and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
 (`/`) parameters.
+
+**Exceptions.** `try` with `except` clauses (an exception class, a tuple of them, with `as
+NAME` or not, or a bare `except:`; `builtins.ValueError` and `os.error` too, and `A or B` of
+classes, which is `A`), `else` and
+`finally`, in every combination CPython accepts but `except*`. A clause catches its classes
+and those deriving from them, in CPython 3.13's hierarchy and the program's (`except
+LookupError` catches a `KeyError`, `except Exception`
+does not catch `SystemExit`; `IOError` is `OSError`): what a `raise` raises, and what the
+runtime raises, also in other functions and modules and in code the runtime calls back
+(`sort()` with a `__lt__` that raises leaves the list whole): a missing dict key, an index out
+of range, `int("x")`, a division by zero, `open()` of a missing file and the other `OSError`
+subclasses, unpacking, `sys.exit()` as `SystemExit`, and the checked arithmetic's
+`OverflowError`. A clause's classes are looked up when an exception gets to it (one whose
+`class` statement has not run raises `NameError`). The name bound by `as` is unbound after its
+clause, however the clause is left, and may be bound to a value of another type before or after
+it. A builtin exception, which
+calling a builtin exception class makes too (`err = ValueError("x")`), is a value of its own
+type, which `Exception`, `BaseException` or any builtin exception class names in annotations
+(`errors: list[Exception]`; `OSError(errno, strerror[, filename])` is CPython's `[Errno n]
+strerror` of the subclass the errno names, and `ImportError(msg, name=..., path=...)` takes
+its keywords, as do `AttributeError`'s and `NameError`'s): print it, `str()`, `repr()` or
+format it, store it, compare it (by identity: an exception that raised an object of an
+exception class is that object, so `e is x` after `raise x`), `raise` it, test it with
+`isinstance()` or `type(e).__name__`; its
+attributes such as `e.args` are not supported. `raise ... from` a cause that is not an
+exception raises CPython's `TypeError`. `finally` runs on every way out of the statement: at
+its end, as an exception passes, and at `return` (whose value is computed first), `break` and
+`continue`; a `return`, `break` or `continue` in it drops the exception in flight. A bare
+`raise` re-raises the exception being handled, which every way out of an except clause
+restores, and an exception that leaves a `with` block closes its file (a close that fails
+raises its `OSError` in its place, inside the `try` statement around, as `__exit__` does). A
+module whose code raises is not imported: the name its import binds is unbound, and a later
+import runs its code again.
+
+**Exception classes.** A class whose one base is a builtin exception class (also
+`builtins.ValueError`, `os.error`), or an exception class of the program, is an exception
+class: fields, `__init__`, `__str__`, `__repr__`, other methods, class-body fields with or
+without defaults and docstrings, as for any class. Its objects keep the positional arguments of
+the call that makes them, as CPython's `args`, for
+`str()` (`''`, `str(arg)` or the tuple's repr; a `KeyError`'s repr of its argument) and
+`repr()` (`E('a', 2)`), and `super().__init__(...)` sets them again; without an `__init__` of
+its own or of a base, a class takes any positional arguments. A subclass has its base's
+fields and methods and may define `__init__`, `__str__` and `__repr__` again: `str()`,
+`repr()`, `print` and an uncaught exception's line always use those of the object's class,
+`super().__str__()` and the others those of the base (also written `Base.__str__(self)` and
+`super(E, self)`), and `e.__str__()` is `str(e)`; `==` between objects of classes with a
+base in common calls that base's `__eq__`. Deriving from `OSError` or `SystemExit`, a
+class with an `__init__` of its own (or of a base) keeps no args, and has the code `None`,
+until `super().__init__(...)` sets them, as CPython's do. `except E as e` binds the object,
+typed as the nearest class of the program that the clause's classes derive from (else as a
+builtin exception, whose `str()` and `repr()` still are the object's). One that nothing
+catches prints `module.E: str(e)` (`E` alone in the main program, without `: ` when `str(e)` is
+empty) and ends with status 1; one that derives from `SystemExit` ends the program as its
+code says, as `SystemExit` does. `except SystemExit` catches those, `except Exception` does
+not.
 
 **Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` in the
 directory of the main program's real file (symbolic links resolved, as for CPython's
@@ -309,15 +368,18 @@ C accelerators), runs its imports in order until one fails: its module is not fo
 module's code surely raises `ImportError` at its top level (`if sys.platform != "win32":
 raise ImportError(...)`), or a from-import names what its module has not bound by then and does not have as a
 submodule (a module still being imported has bound only what its code has run so far; a
-`del`, also in a branch or loop, may unbind). The imports before it run their code and bind their names, a failing module's
+`del`, also in a branch or loop, may unbind; of a builtin module, what Pystachy's lacks). The imports before it run their code and bind their names, a failing module's
 code runs up to its raise, and then the handler runs; a module that failed is not imported,
-so a later import runs its code again. An import inside a function of an imported module
+so a later import runs its code again. Another `try` around imports (with `finally`, or
+clauses naming other classes) imports its modules as any import does: a module that is not
+found is an error. An import inside a function of an imported module
 that the program's module-level imports do not load is an error only where that function is
 compiled. `import pkg.util as u` binds `u` to the attribute `util` of `pkg`, as CPython
 does: the submodule, unless the package binds `util` itself after its own code imported the
 submodule (`from .util import util`). A class or function of an
-imported module that Pystachy cannot compile (inheritance, unannotated methods, an annotation
-it does not support such as `Iterable[int]`, `int | None` or `dict[float, X]`, a `bytes` or
+imported module that Pystachy cannot compile (inheritance other than an exception class's,
+unannotated methods, an annotation it does not support such as `Iterable[int]`, `int | None`
+or `dict[float, X]`, a `bytes` or
 `**kwargs` parameter, a field whose type cannot be inferred, ...) is an error only where the
 program uses it, and the message names it (`m.total() is not supported: parameter 'xs':
 unsupported type annotation`), but its `def` or `class` statement still runs where the
@@ -353,7 +415,8 @@ indices, slicing of strings and lists, tuple `+` and `*` by a constant, list/dic
 displays, list comprehensions, generator expressions and
 `range()`/`reversed()`/`enumerate()`/`zip()` as the argument of `list()`, `sorted()`,
 `sum()`, `min()`, `max()`, `any()`, `all()`, `str.join()` or `list.extend()` (`any()` and
-`all()` stop at the deciding item, as they do over files), `x in range(...)`, and operator
+`all()` stop at the deciding item, as they do over files, and `list.extend()` appends each
+item of a generator expression as it is made), `x in range(...)`, and operator
 overloading resolved statically:
 `__add__` & co, the in-place forms, `__eq__`, rich comparisons with CPython's reflection
 rules (`a < b` tries `b.__gt__(a)`), `__len__`, `__bool__`, `__str__`, `__repr__` and
@@ -384,18 +447,18 @@ with inverses), `any`, `all`, `input`, `format`; the common `str`, `list` and `d
 translation and positions for `"+"` modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
 `sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
-are files), `os.system/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+are files), `os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
-constants, which raise CPython's domain and range errors.
+constants, which raise CPython's domain and range errors (but `dist`, `fsum`, `gamma`,
+`isclose`, `lgamma`, `prod` and `sumprod`, which are rejected).
 
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
-feature: exception handling (`try`; `with` works for files), generator functions
-(`yield`), generator expressions other than the consumer arguments above, lambdas and
-closures, inheritance (so user exception classes), `**kwargs` and `*args` in methods, star
-arguments in calls (`f(*xs)`) and starred targets (`a, *rest = xs`), sets, dict and
-multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
-`isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
+feature: generator functions (`yield`), generator expressions other than the consumer
+arguments above, lambdas and closures, inheritance other than an exception class's, `**kwargs` and
+`*args` in methods, star arguments in calls (`f(*xs)`) and starred targets (`a, *rest = xs`),
+sets, dict and multi-clause comprehensions, slice steps, first-class
+functions (`map`, `key=`), `isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
 are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
 files, complex numbers, arbitrary-precision integers, `async`, `match` and `:=`. The parser
 accepts all of them, and the compiler rejects each where it compiles it, so an imported
@@ -443,10 +506,13 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   `ord()` count characters, as `strip()` (also of given characters), `split()`,
   `rsplit()`, `splitlines()` and `isspace()` read them (CPython's Unicode whitespace and
   line breaks). Files hold the
-  same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
-  when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
-  three-byte form and printed or written as it is, where CPython raises
-  `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
+  same bytes, read as UTF-8 or Latin-1, without checking them (invalid UTF-8 is read as it
+  is, where CPython raises `UnicodeDecodeError`); any other `encoding=` computed at run time
+  raises `NotImplementedError` when the file opens. A surrogate (`chr(0xD800)` to
+  `chr(0xDFFF)`) is held in its three-byte form and printed or written as it is, where
+  CPython raises `UnicodeEncodeError` (`sys.stderr`, which an uncaught exception's line and
+  `sys.exit()`'s message go to, writes it as `\udcff`, as CPython's does); its `repr()`,
+  `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does), and neither do `in`, `min()` and `max()` over
@@ -454,9 +520,12 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   raises `RuntimeError`; they print as lists and compare equal to lists.
 - A type error that CPython raises only when the code runs (`<` between dicts, a constant
   index outside a tuple) is a compile-time error, so the output before it is not printed.
-- A runtime error prints only the last line of CPython's traceback (without `NameError`'s
-  "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
-  compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
+- An exception that nothing catches prints only the last line of CPython's traceback (without
+  `NameError`'s "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
+  compile-time `SyntaxWarning`s are not printed. Running out of memory (`MemoryError`), a
+  Ctrl-C (`KeyboardInterrupt`) and running out of stack (below) end the program at once: no
+  `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
+  an exception like the others). Recursion is limited only by the native
   stack: it goes past CPython's limit of 1,000 calls (`sys.setrecursionlimit()` checks its
   argument as CPython does and records it for `sys.getrecursionlimit()`, but bounds nothing and
   is not compared with the current depth),
@@ -470,7 +539,13 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
 - An import of a builtin module binds its names for the whole program, wherever it appears
   (an import of a Python module in a function binds its names in that function only, as in
   CPython, also where the name is a builtin module it re-exports: `from helper import os`). A program that reads a module's attribute before the import of the module has
-  run reads its zero value instead of raising `NameError`.
+  run reads its zero value instead of raising `NameError` (but after an import in a `try`
+  statement that raised, as CPython does).
+- An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made
+  (their `__str__` and `__repr__` run then), where CPython computes them from `args` each time:
+  an argument changed afterwards (a list) is not seen, and an argument whose `__str__` or
+  `__repr__` raises makes the call of the exception class (`raise KeyError(obj)`) raise that
+  exception instead, so that an `except KeyError` does not run.
 - A function declared or inferred to return a value that ends without a `return` raises
   `RuntimeError` there, where CPython returns `None` (a function declared to return
   `T | None` for a `str`, `list`, `dict` or `tuple` T, and a template that returns objects or
@@ -496,16 +571,18 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   rejected when it is compiled.
 - An optional import of a module that Pystachy does not find runs its handler, also where
   CPython would find the module (a standard library module Pystachy lacks, or a package
-  installed for CPython); a handler that may end the program is rejected instead (below). A
-  module whose code raises `ImportError` at its top level keeps the globals that code set
-  before the raise, where CPython discards the half-run module; a later import runs the
-  code again over them.
+  installed for CPython), and so does one of a name that a builtin module of Pystachy lacks
+  (`from math import fsum`); a handler that may end the program is rejected instead (below). A
+  module whose code raises keeps the globals that code set before the raise, where CPython
+  discards the half-run module; a later import runs the code again over them.
 - A global (a function or class included) that its module's code has not bound when it is
   read (assigned in a branch that did not run, or read while the module is still being
   imported: a circular import) raises `AttributeError: module 'm' has no attribute 'x'`, read
-  as `m.x` or taken by a `from m import x` that is not an optional import. CPython 3.13 raises
-  `ImportError: cannot import name 'x' from 'm' (FILE)` for the from-import, and its
-  `AttributeError` says the module is partially initialized or suggests renaming its file.
+  as `m.x`, where CPython 3.13's says that the module is partially initialized or suggests
+  renaming its file. `from m import x` where `x` is unbound (`m`'s code left it so, or has not
+  bound it yet) raises CPython's `ImportError: cannot import name 'x' from 'm' (path)`, naming
+  the real path of `m`'s file where the program was compiled, where CPython names the file it
+  found (and suggests renaming it in a circular import).
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
   drops without closing is closed when a collection finds it unreachable, or at exit, not at
@@ -520,7 +597,13 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   early, CPython 3.13 keeps its read-ahead across a write, so the next `read()` returns the
   text from before the write.
 
-**Rejected rather than miscompiled** (CPython would run these): a function, class,
+**Rejected rather than miscompiled** (CPython would run these): a call whose arguments do not
+fit the function's parameters (CPython raises `TypeError` where it runs; also `raise E` of an
+exception class whose `__init__` needs arguments); a read of a name that nothing binds, and an
+attribute, operation or format spec that the static types rule out (`unicode`, `obj.missing`,
+`1 + "a"`, `f"{obj:>6}"` of an object without `__format__`), where CPython raises `NameError`,
+`AttributeError` or `TypeError` as it runs, also in a `try` whose clause catches it (a feature
+test such as `try: unicode / except NameError:`); a function, class,
 method or import name bound twice, or a name that is both a variable and a function,
 class or import; a class-body default that names an earlier class attribute (Pystachy
 has no class scope), also one named like a builtin or `__name__`, also in an imported module; a local read textually before its first assignment (declare it
@@ -570,11 +653,16 @@ sorting objects in a container when the `__eq__` or ordering method the operatio
 annotated to take another class, which CPython calls anyway; a syntax error in
 a module that one of the program's import statements names, also where that import never
 runs; an optional import (`try: import m / except ImportError:`) in which what runs in the
-`try` may raise `ImportError` other than by a module's top-level raise reached for sure, whose
+`try` may raise `ImportError` other than by a module's top-level raise reached for sure (also
+a from-import of a name that its module's code may leave unbound), whose
 handler names (`as e`) or re-raises the exception, whose handler may end the program where
 the module is not found, or whose failing module imports the module of the `try` back; an optional `from m import x` where
 Pystachy cannot tell whether m has bound x when it runs (m binds it in a branch, deletes it,
 only annotates it, binds it in a function or by a star import); a
+`def` or `class` statement inside a block of a module's code (`if`, `try`, a loop), and a
+class body statement other than fields, methods, a docstring, `pass` and `...`; a constant
+tuple index out of range (CPython raises `IndexError` where it runs); an `encoding=` constant
+other than UTF-8 and Latin-1; an empty `[]` or `{}` that nothing gives a type (`{}["k"]` alone); a
 read of a function's local that only code dropped at compile time binds; a name a package
 binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
 with `from pkg import util` or in the package's functions, when which of the two it is
@@ -594,8 +682,8 @@ keys hold an `int` (`d[True] = v`, `d[True] += v`, `setdefault()`, a display: CP
 key it adds as the `bool`; a lookup, `pop()` and `del` take it); `typing.ClassVar`, `os.PathLike` other than in a
 union with `str`, a `TypeVar` named other than by a module-level function's parameters and
 return (in a method, a field, a variable's annotation, or as a value), a `TypeVar`'s
-constraints and a bound other than a string, a bare `Final` without a value or in a class
-body, an `@overload` stub that the `def` implementing it does not follow in its block past
+constraints and a bound other than a string, a bare `Final` but in an assignment (in a class
+body, of a constant), an `@overload` stub that the `def` implementing it does not follow in its block past
 other `def`s only (in an imported module, one that no `def` of its name follows, also a
 method, is an error where it is called; also one after that `def`: CPython keeps the stub,
 whose calls raise `NotImplementedError`), and a stub's default other than a constant;
@@ -643,7 +731,40 @@ docstring), a name such code reads that is not bound by then or that an import o
 only on some path, a decorator that is not a dotted name or a call of one (PEP 614), an
 evaluated annotation that is not a type as above, a class attribute whose class defines
 `__set_name__`, and `class C(object)` or a builtin decorator where the module may have
-rebound the name by then; `raise` of anything but a builtin exception.
+rebound the name by then; `raise` of anything
+but an exception; an `except` clause that names something other than exception classes (a
+variable), and `except*`; `except ... as x` in a function where `x` is a global (the end of
+the clause deletes it, as `del` would), and at a module's top level where `x` is a global of
+another type that a function reads (the function would not see the exception); `==` between
+exceptions where an exception class defines `__eq__` or `__ne__` (`is` works), but between
+objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
+an object of an exception class may be); an object of an exception class where a builtin
+exception is expected (`list[Exception]`: annotate it with the class or a base of the
+program), objects of exception classes with no base in common in the program in one list, and
+a builtin exception where an object of an exception class is expected (`except Exception as e:
+log(e)` where `log` takes an `E`: catch it as `except E as e`); an exception class with two
+bases, one deriving from `SyntaxError` and its subclasses, from `UnicodeDecodeError`,
+`UnicodeEncodeError` or `UnicodeTranslateError`, or from an exception group, a decorated one,
+one defining again a method of its base
+other than `__init__`, `__str__` and `__repr__` (methods are not dispatched on the object's
+class), a field its base declares, or one that would be its builtin base's own attribute
+(`args`, `code` of `SystemExit`, `errno`, `strerror`, `filename` and `filename2` of `OSError`,
+`msg` of `ImportError`), or one that the builtin base's `__init__` sets where it may run after
+the class's code assigns the field (`value` of `StopIteration`, `name` and `obj` of
+`AttributeError`, `name` of `NameError`, `name` and `path` of `ImportError`: assign it after
+`super().__init__(...)`, or give it a default in the class body, which CPython's objects keep
+apart from the base's attribute); reading those attributes where the class has no such field
+(`self.args`, `S(5).value`), `BaseException`'s methods other than `__str__` and `__repr__`
+(`e.add_note()`, `e.with_traceback()`), a field of a class deriving from a value's class read
+after `isinstance()` tested the value (`isinstance()` does not change the type of a value), a
+call `x.__init__(...)` on an object of a class that a class deriving from it defines
+`__init__` again for, `Base.method(self, ...)` naming a base other than the
+class's own, one whose `__init__` may leave a field of the base
+unassigned where the base's code reads it (call `super().__init__()` first), keyword
+arguments where no class of its line has an `__init__` (but those its builtin base's takes,
+such as `ImportError`'s `name` and `path`), more than three arguments for one
+deriving from `OSError` (or for `OSError` itself), and `super()` outside the methods of
+exception classes.
 
 ## How it works
 
@@ -710,7 +831,8 @@ rebound the name by then; `raise` of anything but a builtin exception.
   the function it calls loads that function's non-constant default values from the global
   the statement fills when it runs, so they are still evaluated once.
 - **Definite assignment.** Before code generation, `Flow` walks every scope with the set
-  of variables assigned on every path (merging `if` branches, and a loop's `else` block with
+  of variables assigned on every path (merging `if` branches, a `try` statement's body with
+  its except clauses, which start from the state before it, and a loop's `else` block with
   the state before the loop, leaving `while True` only through what its breaks have in
   common). Reads it cannot prove are marked, and only those test an "is
   assigned" flag that LLVM removes again where it can; fields that `__init__` may leave
@@ -727,8 +849,41 @@ rebound the name by then; `raise` of anything but a builtin exception.
   leaves uncompiled, and those reads are checked where the statement runs.
 - **Checked arithmetic, cheap errors.** `+`, `-` and `*` use LLVM's `*.with.overflow`
   intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
-  one cold block per function and message. `self` is marked `nonnull`, so the `None`
-  checks vanish inside methods.
+  one cold block per function and message (and `try` statement around it). `self` is marked
+  `nonnull`, so the `None` checks vanish inside methods.
+- **Exceptions by table-driven unwinding.** A program whose modules hold a `try` (decided
+  before code generation; any other keeps its code) calls `pys_eh_on` as it starts. From then
+  on the runtime's error funnels (`pys_fail`, `pys_raise`, `sys.exit`) build an exception and
+  unwind with the Itanium ABI's `_Unwind_ForcedUnwind`, in one phase (every landing pad catches
+  everything, so the first one found is the handler; C++'s `_Unwind_RaiseException` walks the
+  frames twice); if nothing catches it,
+  the stack is untouched and the program ends as before. Each IR block names the landing
+  block of the innermost `try` around it in its function. Once the whole program is built, a
+  pass reads the effect summaries: a call that may raise in a covered block becomes an LLVM
+  `invoke` whose unwind edge goes to that block's `landingpad`, a `raise` there becomes a
+  branch carrying the exception (no unwinder), and a landing block that no invoke reaches is
+  dropped. Every landing pad catches everything; the code after it tests the clauses' classes
+  and throws again what none catches, and `runtime.c`'s own personality routine,
+  `pys_personality`, reads the call-site tables LLVM emits. Code that does not raise pays
+  nothing for a `try` (under the JIT, two runtime calls as it is entered); a raise in the
+  `try`'s own function costs tens of nanoseconds, one from a call about a microsecond, and
+  half a microsecond more for each frame with a `try` it passes through.
+  `finally` is compiled once for each way out, as in CPython, but one that holds a `try` with a
+  `finally` of its own is compiled once, where each way out stores its index and jumps, so that
+  nested ones grow linearly, not as 3^depth. What a raise leaves half done in
+  the runtime (a list being sorted, a `with` block's open file) is put right by unwind actions
+  that the landing pad runs; one that raises (a close that fails) gives the landing its own
+  exception instead, through a `siglongjmp` back into `pys_exc_begin` over runtime frames only.
+  A module's code runs in the region of a landing block that marks the module not run and
+  throws again; a read through a name that an import in a `try` statement binds checks that
+  mark. `runtime.c` is compiled with `-fexceptions` in both tiers. An
+  object of an exception class begins with a pointer to its class's `ExcClass`, a constant the
+  compiler generates for each class whose objects the program makes: the name an `except`
+  clause matches (the class's qualified name, in the sets of names each clause catches, which
+  the closed world makes complete), the name an uncaught exception's line shows, and functions
+  for `str()`, `repr()` and, for a `SystemExit`, the exit; `str(e)` of any exception goes
+  through it. Then come what it keeps of its arguments, its base's fields with their "is
+  assigned" flags (so the base's methods work on it), and its own.
 - **SSA by delegation.** Locals live in `alloca` slots; LLVM's `mem2reg` turns them into
   SSA registers. Short-circuit operators, conditional expressions and comparison chains
   use `phi` nodes directly.
@@ -824,8 +979,9 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHECK=1`: the
 compiler then checks the IR it built before lowering it (every op is known, each block ends
 with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
-defines the numbers its lowering prints, branches go to blocks of the function, and a phi's
-predecessors branch to it). The optimizations that run on the IR before it is lowered
+defines the numbers its lowering prints, branches go to blocks of the function, a phi's
+predecessors branch to it, only unwind edges reach a landing pad, and inside a `try` no call
+that may raise is left without one). The optimizations that run on the IR before it is lowered
 (`docs/typed-ir.md` §7.1) can be turned off for a differential run: `PYSTACHY_OPT=-listget`
 (a for loop's reads of the list it steps through, without a bounds check) or `-dictfuse` (one
 hash lookup for `if k in d: d[k] += 1` and the like), comma-separated, or `-all`; the tests
@@ -949,8 +1105,9 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   of them (None checks, bounds-check hoisting) and further backends.
 - **A WebAssembly GC backend**, Ouro v2's design: the engine supplies memory management
   and tiered compilation, and the runtime can be written in the subset itself.
-- Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and
-  `set`/`frozenset` on top of the existing dict table.
+- Single inheritance with vtables (exception classes have it, without dispatching methods on
+  the object's class), and `set`/`frozenset` on top
+  of the existing dict table.
 - More of the standard library: `docs/stdlib.md` ranks the compiler and runtime features
   by how much of CPython's standard library and of popular packages each would let compile
   unmodified (exceptions, properties, single inheritance, `bytes`, functions as values,

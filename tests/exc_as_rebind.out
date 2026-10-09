@@ -1,0 +1,11 @@
+v
+5
+KeyError('k')
+UnboundLocalError cannot access local variable 'e' where it is not associated with a value
+7
+w
+str
+h
+h
+NameError name 'h' is not defined
+[exit 0]

@@ -1,0 +1,33 @@
+1
+probed 0
+2
+probed 1
+z
+probed 2
+C(1) True False True
+AttributeError: 'C' object has no attribute 'a'
+probed 0
+2
+probed 1
+AttributeError: 'C' object has no attribute 'c'
+probed 2
+C(0) True False True
+1
+probed 0
+AttributeError: 'C' object has no attribute 'b'
+probed 1
+q
+probed 2
+C(1) True False True
+AttributeError: 'C' object has no attribute 'a'
+probed 0
+AttributeError: 'C' object has no attribute 'b'
+probed 1
+AttributeError: 'C' object has no attribute 'c'
+probed 2
+C(0) True False True
+C a
+B 2
+A 3
+again A(5)
+[exit 0]

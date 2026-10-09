@@ -1,0 +1,7 @@
+unbound: cannot access local variable 'e' where it is not associated with a value
+unbound: cannot access local variable 'e' where it is not associated with a value
+321
+unbound: name 'x' is not defined
+unbound: cannot access local variable 'w' where it is not associated with a value
+finally
+[exit 1]

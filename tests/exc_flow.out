@@ -1,0 +1,13 @@
+mods: init mods
+mods.shapes: init mods.shapes
+12 done 2 | failed at parse after 1
+v is 4
+unbound: cannot access local variable 'v' where it is not associated with a value
+inside KeyError('k')
+after: cannot access local variable 'err' where it is not associated with a value
+3 9 a z
+too big: 300 is above 100
+21 7
+80 42 -1
+from the module: OverflowError('1000 is above 100')
+[exit 0]

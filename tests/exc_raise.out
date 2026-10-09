@@ -1,0 +1,21 @@
+re-raising
+lookup KeyError('k')
+value ValueError('v', 1) ('v', 1)
+from the caller's handler inner
+no active No active exception to reraise
+the handled one again: first
+from wrapped
+no cause
+class alone: IndexError() []
+KeyError(3) 3
+ValueError(3.5, 'x', True) (3.5, 'x', True)
+ValueError(7) 7 7|ValueError(7) 7 ValueError(7)
+OSError('io')
+subclass NotImplementedError('later')
+ModuleNotFoundError('nope')
+SyntaxError('bad syntax') bad syntax
+TabError() None
+kept: AssertionError('kept')
+raised again: kept
+assert: too short
+[exit 0]

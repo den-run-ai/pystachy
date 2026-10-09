@@ -1,0 +1,6 @@
+unbound: cannot access local variable 'y' where it is not associated with a value
+unbound: name 'z' is not defined
+5
+inner
+unbound: name 'v' is not defined
+[exit 1]

@@ -1,4 +1,4 @@
-# error: 'E' is not an exception class: only the builtin exceptions can be raised (there is no inheritance)
+# error: 'E' is not an exception class: exceptions must derive from BaseException
 class E:
     pass
 

@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+selfcatch handled its own ImportError
+no no_such_module_zz
+imported 5
+[exit 0]

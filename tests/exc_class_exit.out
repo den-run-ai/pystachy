@@ -1,0 +1,15 @@
+finally 0
+exit: Quit() ''
+finally 1
+exit: Quit(3) '3'
+finally 2
+abort: disk Abort(4) 4
+finally 3
+exit: Quit('message') 'message'
+finally 4
+exit: Quit(True) 'True'
+finally 5
+exit: Quit(1, 2) '(1, 2)'
+sys.exit of one: Quit(5)
+on the way out
+[exit 6]
