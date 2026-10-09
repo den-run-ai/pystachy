@@ -613,7 +613,8 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 `HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
 `./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
 every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; an internal
-error fails it as a rejected IR does. `tests/ir/*.py` probe code-generation
+error fails it as a rejected IR does, and so do effect summaries of a `tests/ir/NAME.py` other
+than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1` prints them). `tests/ir/*.py` probe code-generation
 paths the other programs never take (dead code after `return`, templates instantiated during
 a look-ahead, nested templates, guards repeated in one function): these two tools compile
 them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
@@ -660,7 +661,8 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   instructions whose control flow, checks, calls, runtime calls and empty-container holes are
   ops, and the LLVM text is printed from them once the whole program is built
   (`PYSTACHY_IRCHECK=1` checks the IR first). A `RUNTIME` table gives every runtime function
-  its signature and effects, from which each function gets an effect summary. Loads, stores
+  its signature and effects, from which each function gets an effect summary (computed when
+  `PYSTACHY_IRCHECK=1` or `PYSTACHY_IRFX=1`, until a pass needs it). Loads, stores
   and arithmetic are still LLVM text; converting them, then a second lowering, would allow
   language-level optimizations (redundant dict lookups, bounds-check hoisting) and further
   backends.

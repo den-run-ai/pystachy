@@ -4749,12 +4749,16 @@ def runtime_decl(k: str) -> str:
     return f"declare {rtll(ps[0])} @{rtsym(k)}({', '.join([rtll(p) for p in ps[1:]])})"
 
 
+# every effect letter but N (it is no summary's): U's, and a summary not computed yet
+FXALL = (1 << len(FX)) - 1 - FXBIT["N"]
+
+
 def fxmask(letters: str) -> int:
-    # effect letters (FX) as bits; U has every other letter, N none (it is no summary's)
+    # effect letters (FX) as bits (U: FXALL)
     m = 0
     for x in letters.split():
         if x == "U":
-            return (1 << len(FX)) - 1 - FXBIT["N"]
+            return FXALL
         m |= FXBIT[x]
     return m
 
@@ -5315,9 +5319,11 @@ class IFn:
         # message "Kind: text" -> the label of the block that raises it: one per function and
         # message, numbered at the first check of it, and placed after the function's code
         self.cold: dict[str, str] = {}
-        self.fx = 0  # its effect summary (FX bits), once the whole program is built (Gen.effects)
+        # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
+        # the whole program is built
+        self.fx: int = FXALL
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
-        # adds values or blocks numbers them after it
+        # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
 
 
@@ -7289,15 +7295,20 @@ class Gen:
         # effects are known), no phi and no terminator, and call and init ops call compiled
         # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
         # starts its block, and its predecessors branch there; each op holds exactly the numbers
-        # its lowering prints (Ins.r)
+        # its lowering prints (Ins.r), and no number or label is above IFn.n
         at: dict[str, int] = {}
         for i in fn.slots:
             if i.op != "slot" or len(i.r) != 1:
                 self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
+            if i.r[0] > fn.n:
+                self.bad_ir(fn, fn.blocks[0], f"the slot of {i.s} numbered {i.r[0]}, above IFn.n ({fn.n})")
         for j in range(len(fn.blocks)):
-            if fn.blocks[j].label in at:
+            l = fn.blocks[j].label
+            if l in at:
                 self.bad_ir(fn, fn.blocks[j], "a second block of that name")
-            at[fn.blocks[j].label] = j
+            if l.startswith("L") and int(l[1:]) > fn.n:
+                self.bad_ir(fn, fn.blocks[j], f"a label above IFn.n ({fn.n})")
+            at[l] = j
         succ: list[list[str]] = []
         for b in fn.blocks:
             out: list[str] = []
@@ -7313,6 +7324,9 @@ class Gen:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
                 if len(i.r) != self.nums(i):
                     self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {self.nums(i)}")
+                for x in i.r:
+                    if x > fn.n:
+                        self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
                 if i.op == "raw":
                     # one LLVM instruction that loads, stores or computes: not a call, a phi, a
                     # terminator or a label (its first word, after the "%x = " of a value it defines)
@@ -7386,14 +7400,14 @@ class Gen:
                     more = True
 
     def opfx(self, i: Ins) -> int:
-        # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx,
-        # once effects has computed it), and every letter if the callee is not compiled
+        # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx:
+        # every letter until effects has computed it, and if the callee is not compiled)
         if i.op == "call" or i.op == "init":
             c = i.s if i.op == "call" else "@init." + i.s
-            return self.fns[self.fll[c]].fx if c in self.fll else fxmask("U")
+            return self.fns[self.fll[c]].fx if c in self.fll else FXALL
         if i.op == "rt":
             f = self.rtfns[i.s]
-            return fxmask("U") if f.q and "O" in i.x else f.fx
+            return FXALL if f.q and "O" in i.x else f.fx
         return self.opfxs[i.op]
 
     def class_problem(self, st: Node) -> str:
@@ -7589,10 +7603,18 @@ class Gen:
             self.fll[self.fns[j].f.ll] = j
         if len(NONUMS) + len(NOVALS) + len(NOLABELS) > 0:
             fail("internal error: an op changed the lists all ops start with", 0)
-        if os.getenv("PYSTACHY_IRCHECK", "") == "1":
+        chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
+        dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        if chk:
             for fn in self.fns:
                 self.verify(fn)
-        self.effects()
+        if chk or dump:
+            # no pass reads the effect summaries yet: the IR check computes them, so that the
+            # tests run effects, and PYSTACHY_IRFX=1 prints them (tests/ir/*.fx pin them)
+            self.effects()
+        if dump:
+            for fn in self.fns:
+                print(f"{fn.f.ll}: {fxs(fn.fx)}", file=sys.stderr)
         for fn in self.fns:
             self.lower(fn)
             # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)

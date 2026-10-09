@@ -26,9 +26,12 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
 >     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
 >     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
->     U and I. `IFn.fx` holds each function's summary, computed by `Gen.effects`
->     once the program is built (`Gen.opfx` gives one op's letters, `fxs` spells them), and
->     `IFn.n` the last number its builder gave, for passes that add values or blocks;
+>     U and I. `IFn.fx` holds each function's summary: every letter until `Gen.effects`
+>     computes it, once the program is built (`Gen.opfx` gives one op's letters). No pass reads
+>     the summaries yet, so only `PYSTACHY_IRCHECK=1` computes them, and `PYSTACHY_IRFX=1`, which
+>     prints them (`fxs` spells them): `tests/ir/effects.fx` lists those of the `effects.py` probe, and
+>     `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
+>     add values or blocks; the verifier checks that no number or label is above it;
 >   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
 >     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
 >     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
