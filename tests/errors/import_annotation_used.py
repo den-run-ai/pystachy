@@ -1,4 +1,4 @@
-# error: import_annotation_used.py:5: error: dict keys must be int or str
+# error: import_annotation_used.py:5: error: emods.anns.keys() is not supported: parameter 'd': dict keys must be int or str
 # An imported function whose annotation Pystachy does not support is an error where the program
 # calls it, with the error typeof() reports (the program's calls of count() compile).
 import emods.anns

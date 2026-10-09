@@ -5557,7 +5557,7 @@ class Gen:
                     self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
                 f.ptypes.append("")
             elif self.lib and self.ann_problem(p.kids[0], False) != "":
-                bad = self.ann_problem(p.kids[0], False)
+                bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: parameter '{p.s}': {self.ann_problem(p.kids[0], False)}"
                 f.ptypes.append("")  # (any type: the def statement evaluates its default, see hoist)
             else:
                 f.ptypes.append(self.vtype(p.kids[0]))
@@ -5571,8 +5571,8 @@ class Gen:
             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
         if bad == "" and has_kind(d.kids[2], "yield"):
             bad = UNSUPPORTED["yield"]  # a generator function
-        if bad == "" and self.lib and d.kids[1].kind != "noann":
-            bad = self.ann_problem(d.kids[1], True)
+        if bad == "" and self.lib and d.kids[1].kind != "noann" and self.ann_problem(d.kids[1], True) != "":
+            bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: return annotation: {self.ann_problem(d.kids[1], True)}"
         if bad != "" and not f.generic and not self.lib:
             self.err(bad)
         f.bad = bad
@@ -5729,8 +5729,8 @@ class Gen:
             return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
         if k == "call" and e.kids[0].kind == "name":
             c = e.kids[0].s
-            if c in self.classes:
-                return c
+            if c in self.classes or c in self.unsupported:
+                return c if c in self.classes else "!" + self.unsupported[c]
             if c in self.funcs:
                 return self.funcs[c].ret if self.funcs[c].bad == "" else "!" + self.funcs[c].bad
             if c == "str" or c == "int" or c == "float" or c == "bool":
@@ -8756,6 +8756,9 @@ class Gen:
             return Val(self.ins(f"fneg double {v.v}"), "float")
         if (v.t == "int" or v.t == "float") and op == "+":
             return v
+        m = "__neg__" if op == "-" else "__pos__" if op == "+" else "__invert__"
+        if v.t in self.classes and m in self.classes[v.t].methods:
+            self.err(f"unary {op} on an object ({m}) is not supported")
         self.err(f"bad operand type for unary {op}: {v.t}")
         return v
 

@@ -28,3 +28,18 @@ class Holder:
     def __init__(self) -> None:
         self.x = self.helper()
         self.y = 1
+
+
+class Base:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+
+class Derived(Base):
+    pass
+
+
+class Owner:
+    def __init__(self) -> None:
+        self.d = Derived(1)
+        self.n = 2
