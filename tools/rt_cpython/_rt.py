@@ -20,8 +20,8 @@ def byte(s, i):
 
 
 def str_new(n):
-    if n < 0:
-        raise MemoryError("negative size")
+    if not 0 <= n <= (1 << 63) - 10:
+        raise MemoryError()
     return bytearray(n)
 
 
@@ -97,3 +97,9 @@ def urem(a, b):
 
 def mul_ovf(a, b):
     return not -(1 << 63) <= a * b < 1 << 63
+
+
+def find_sub(h, n, st, en):
+    if not 0 <= st <= en <= len(h):
+        raise IndexError("search out of range")
+    return h.find(n, st, en)

@@ -4430,12 +4430,13 @@ CALLS: dict[str, str] = {
 # s[st:en] or -1 (memchr). A str's length and its bytes are told apart for LLVM's alias analysis
 # (TBAA), so that a loop that builds one str keeps the lengths it reads in registers. udiv and
 # urem divide 64-bit patterns as unsigned ints, and mul_ovf tells whether a * b would overflow.
+# find_sub(h, n, st, en) is the first index of n in h[st:en], or -1 (memmem, linear in glibc).
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
     "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
-    "urem": "int,int:int", "mul_ovf": "int,int:bool",
+    "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int",
 }
 TBAA_LEN = 3
 TBAA_BYTES = 4
@@ -5551,9 +5552,23 @@ class Gen:
             f = self.ins(f"call ptr @memchr(ptr {p0}, i32 {self.ins(f'trunc i64 {a[1]} to i32')}, i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')})")
             d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
             return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
+        if name == "find_sub":
+            # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+            for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
+                self.guard(self.ins(x), "IndexError: search out of range")
+            self.decls["memmem"] = "declare ptr @memmem(ptr, i64, ptr, i64)"
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
+            p1 = self.ins(f"getelementptr i8, ptr {a[1]}, i64 8")
+            m = self.ins(f"load i64, ptr {a[1]}, !tbaa !{TBAA_LEN}")
+            f = self.ins(f"call ptr @memmem(ptr {p0}, i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}, ptr {p1}, i64 {m})")
+            d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
+            return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
         if name == "str_new":
-            self.guard(self.ins(f"icmp slt i64 {a[0]}, 0"), "MemoryError: negative size")
-            r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.iop('sadd', a[0], '9')}"])  # zeroed: the NUL is there
+            # a size the allocator cannot serve (negative, or past 2**63 with the header and NUL)
+            # is CPython's MemoryError, as in runtime.c
+            self.guard(self.ins(f"icmp ugt i64 {a[0]}, 9223372036854775798"), "MemoryError: ")
+            r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.ins(f'add nuw nsw i64 {a[0]}, 9')}"])  # zeroed: the NUL is there
             self.emit(f"store i64 {a[0]}, ptr {r}, !tbaa !{TBAA_LEN}")
             return Val(r, "str")
         # the others index a str: an unsigned compare with its length also rejects a negative index

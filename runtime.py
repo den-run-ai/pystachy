@@ -154,13 +154,17 @@ def scan_ws(s: str, i: int, n: int, want: bool) -> int:
 
 def search(h: str, n: str, st: int, en: int) -> int:
     # the first i from st on where n occurs in h[:en], or -1: the next occurrence of n's first
-    # byte, looked for inline over 16 bytes (dense matches) and then with memchr (sparse ones)
+    # byte, looked for inline over 16 bytes (dense matches) and then with memchr (sparse ones),
+    # and checked. A candidate that fails costs up to len(n) comparisons, so once those exceed
+    # the bytes passed so far, the rest goes to memmem, which is linear: the work stays below
+    # about twice the text's length (Go's strings.Index makes a similar cutover)
     m = len(n)
     if m == 0:
         return st if st <= en else -1
     first = _rt.byte(n, 0)
     last = en - m  # the last place n can start
     i = st
+    work = 0
     while i <= last:
         stop = i + 16 if i + 16 <= last else last + 1
         k = scan(h, first, i, stop)
@@ -172,17 +176,20 @@ def search(h: str, n: str, st: int, en: int) -> int:
                 return -1
         if match(h, k, n):
             return k
+        work += m
+        if work > k - st + 64:
+            return _rt.find_sub(h, n, k + 1, en)
         i = k + 1
     return -1
 
 
 def rsearch(h: str, n: str, st: int, en: int) -> int:
-    # the last such i, or -1
-    i = en - len(n)
-    while i >= st:
-        if match(h, i, n):
-            return i
-        i -= 1
+    # the last i from st on where n occurs in h[:en], or -1: runtime.c's loop, right to left,
+    # with memcmp, which LLVM expands where the needle is a constant
+    m = len(n)
+    for k in range(en - m, st - 1, -1):
+        if _rt.same(h, k, n, 0, m):
+            return k
     return -1
 
 
@@ -287,10 +294,7 @@ def stripped(c: int, cs: str) -> bool:
     # whether strip() removes byte c: one of cs, or whitespace if cs was omitted (null)
     if _rt.null(cs):
         return ws(c)
-    for i in range(len(cs)):
-        if _rt.byte(cs, i) == c:
-            return True
-    return False
+    return _rt.find_byte(cs, c, 0, len(cs)) >= 0
 
 
 def strip(s: str, cs: str, m: int) -> str:

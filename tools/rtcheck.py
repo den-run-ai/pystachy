@@ -227,7 +227,31 @@ def fuzz_format():
         same("format_str", outcome(rt.pys_format_str, b(t), b(sp)), ref(lambda: format(t, sp)), (t, sp))
 
 
+def fuzz_search():
+    # long needles in repetitive text, where search() gives up its candidate checks for memmem;
+    # first a needle right after each number of failed candidates, around the cutover
+    for pre in range(40):
+        h = "a" * pre + "a" * 10 + "b" + "ab" * 3
+        n = "a" * 10 + "b"
+        same("find", outcome(rt.pys_str_find, h, n, 0, len(h)), outcome(h.find, n), (h, n))
+        same("count", outcome(rt.pys_str_count, h, n, 0, len(h)), outcome(h.count, n), (h, n))
+    for _ in range(N // 10):
+        unit = "".join(R.choice("ab") for _ in range(R.randrange(1, 4)))
+        h = unit * R.randrange(1, 120) + text("ab", 6)
+        n = R.choice([h[R.randrange(len(h)) :][: R.randrange(1, 40)], "a" * R.randrange(5, 30) + "b", text("ab", 20)])
+        st, en = R.choice([0, 0, 3, -50]), R.choice([len(h), len(h), len(h) - 2, 200])
+        for name, mine, ref in [
+            ("find", rt.pys_str_find, lambda: h.find(n, st, en)),
+            ("rfind", rt.pys_str_rfind, lambda: h.rfind(n, st, en)),
+            ("count", rt.pys_str_count, lambda: h.count(n, st, en)),
+        ]:
+            same(name, outcome(mine, h, n, st, en), outcome(ref), (h, n, st, en))
+        same("split", outcome(rt.pys_str_split, h, n, -1), outcome(h.split, n), (h, n))
+        same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
+
+
 fuzz_str()
+fuzz_search()
 fuzz_math()
 fuzz_hash()
 fuzz_format()
