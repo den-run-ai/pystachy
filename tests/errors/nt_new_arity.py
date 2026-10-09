@@ -1,4 +1,4 @@
-# error: nt_new_arity.py:10: error: missing argument 'x' in call to P.__new__()
+# error: nt_new_arity.py:10: error: P.__new__() missing 1 required positional argument: 'x'
 from typing import NamedTuple
 
 

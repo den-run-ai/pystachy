@@ -1,4 +1,4 @@
-# error: f() got a positional-only argument passed as a keyword argument: 'a'
+# error: f() got some positional-only arguments passed as keyword arguments: 'a'
 def f(a: int, /) -> int:
     return a * 2
 

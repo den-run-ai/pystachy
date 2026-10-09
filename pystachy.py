@@ -11678,6 +11678,7 @@ class Gen:
         if f.ll not in self.called and f.ll in self.lazyat:
             hpush(self.wake, self.lazyat[f.ll])
         self.called[f.ll] = True
+        self.arity(f, len(pre), args)
         line = self.line
         np = len(f.params)
         vals: list[Val] = []
@@ -11694,30 +11695,16 @@ class Gen:
                 extra.append(self.pcoerce(self.expr(a, f.varelem), f.varelem, f, j))
                 pos += 1
                 continue
-            if a.kind == "kw" and f.vararg >= 0 and a.s == f.params[f.vararg]:
-                self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
             if a.kind == "kw":
-                if a.s not in f.params:
-                    self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
                 j = f.params.index(a.s)
-                if j < f.posonly:
-                    self.err(f"{self.fname(f)}() got a positional-only argument passed as a keyword argument: '{a.s}'")
                 e = a.kids[0]
             else:
                 pos += 1
-                if j >= f.npos and f.npos >= 0 and j < np:
-                    self.err(f"{self.fname(f)}() takes {f.npos} positional argument{'s' if f.npos != 1 else ''} but more were given")
-            if j >= np:
-                self.err(f"too many arguments in call to {self.fname(f)}()")
-            if vals[j].t != "":
-                self.err(f"{self.fname(f)}() got multiple values for argument '{f.params[j]}'")
             vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j], f, j)
         if f.vararg >= 0:
             vals[f.vararg] = self.tuple_(extra)
         for j in range(np):
             if vals[j].t == "":
-                if f.defaults[j].kind == "noann":
-                    self.err(f"missing argument '{f.params[j]}' in call to {self.fname(f)}()")
                 t = f.ptypes[j]
                 if f.dglob[j] == "" and not is_const(f.defaults[j]):
                     self.early_default(f, j)
@@ -11747,8 +11734,60 @@ class Gen:
         return Val(f"%t{c.r[0]}", f.ret)
 
     def fname(self, f: FnInfo) -> str:
-        # f as CPython's errors about a call's arguments name it: a NamedTuple's is P.__new__
-        return f"{short(f.cls)}.__new__" if f.name == "__init__" and f.cls in self.nts else f.name
+        # f as CPython's errors about a call's arguments name it, by its qualified name: a
+        # NamedTuple's is P.__new__
+        if f.name == "__init__" and f.cls in self.nts:
+            return f"{short(f.cls)}.__new__"
+        return f"{short(f.cls)}.{f.name}" if f.cls != "" else short(f.name)
+
+    def arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
+        # CPython's TypeError for a call of f whose arguments do not fit its parameters, in the order
+        # its frame setup finds them: a keyword that names no parameter (or a positional-only one)
+        # or one already given, too many positional arguments, then the missing positional and
+        # keyword-only ones; npre values (the object of a method) come before args
+        np = len(f.params)
+        last = f.vararg if f.vararg >= 0 else f.npos if f.npos >= 0 else np  # (the positional parameters end there)
+        given = npre
+        filled: list[bool] = [False] * np
+        for j in range(min(npre, last)):
+            filled[j] = True
+        for a in args:
+            if a.kind != "kw":
+                if given < last:
+                    filled[given] = True
+                given += 1
+        kws = [a.s for a in args if a.kind == "kw"]
+        for a in args:
+            if a.kind != "kw":
+                continue
+            j = f.params.index(a.s) if a.s in f.params and a.s != (f.params[f.vararg] if f.vararg >= 0 else "") else -1
+            if j < 0 or j < f.posonly:
+                po = [k for k in kws if k in f.params and f.params.index(k) < f.posonly]
+                if len(po) > 0:
+                    self.err(f"{self.fname(f)}() got some positional-only arguments passed as keyword arguments: '{', '.join(po)}'")
+                self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
+            if filled[j]:
+                self.err(f"{self.fname(f)}() got multiple values for argument '{a.s}'")
+            filled[j] = True
+        off = 1 if f.deco == "classmethod" else 0  # (cls, which CPython counts and f.params leaves out)
+        if f.vararg < 0 and given > last:
+            if f.name == "__init__" and f.node.kids[0].kind == "noann" and not self.is_dc(f.cls):
+                self.err(f"{short(f.cls)}() takes no arguments")
+            dflt = len([j for j in range(last) if f.defaults[j].kind != "noann"])
+            kwg = len([j for j in range(last, np) if filled[j]])
+            takes = f"from {last + off - dflt} to {last + off}" if dflt > 0 else str(last + off)
+            plural = "s" if dflt > 0 or last + off != 1 else ""
+            kwonly = f" positional argument{'s' if given + off != 1 else ''} (and {kwg} keyword-only argument{'s' if kwg != 1 else ''})" if kwg > 0 else ""
+            self.err(f"{self.fname(f)}() takes {takes} positional argument{plural} but {given + off}{kwonly} {'was' if given + off == 1 and kwg == 0 else 'were'} given")
+        for kind in ["positional", "keyword-only"]:
+            miss = [f.params[j] for j in range(np) if not filled[j] and f.defaults[j].kind == "noann" and j != f.vararg and (j < last) == (kind == "positional")]
+            if len(miss) > 0:
+                names = "'" + "', '".join(miss) + "'"
+                if len(miss) == 2:
+                    names = f"'{miss[0]}' and '{miss[1]}'"
+                elif len(miss) > 2:
+                    names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
+                self.err(f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}")
 
     def instance(self, f: FnInfo, ts: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first
