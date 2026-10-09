@@ -9880,8 +9880,10 @@ class Gen:
         kws: list[Node] = []
         for a in args:
             if a.kind == "kw" and init is None:
-                self.err(f"{short(c)}() takes no keyword arguments")
-            if a.kind == "kw":
+                # (the keywords its builtin base's __init__ takes, ImportError's name and path, ...)
+                self.exc_kw(ci.exc, [a], f"{short(c)}()")
+                self.expr(a.kids[0], "")
+            elif a.kind == "kw":
                 kws.append(a)
             else:
                 j = len(vals) + 1
