@@ -965,7 +965,7 @@ static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__
 static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
-  if (nbusy == cbusy) { cbusy = cbusy * 2 + 8; busy = realloc(busy, cbusy * sizeof(void *)); if (!busy) pys_fail("MemoryError"); }
+  if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
   busy[nbusy++] = p;
   if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
   return 1;
