@@ -139,3 +139,17 @@ class Tagged:
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Tagged) and other.x == self.x
+
+
+class Ranked:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __lt__(self, other: "Ranked") -> bool:
+        return self.x < other.x
+
+    def __le__(self):
+        return True
+
+    def __gt__(self, other: int) -> bool:
+        return self.x > other
