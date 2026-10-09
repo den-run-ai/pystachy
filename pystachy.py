@@ -8345,7 +8345,8 @@ class Gen:
             return
         if name == "SyntaxError" or name == "IndentationError" or name == "TabError":
             # CPython's traceback takes str(e), which is str(msg), then prints "E: " and str(msg or
-            # "<no detail available>"), the ": " even before an empty str(msg)
+            # "<no detail available>"), the ": " even before an empty str(msg), which pys_raise leaves
+            # out: the raise op's kind operand is then that whole line, and its message empty
             if len(vals) == 1:
                 self.to_str(vals[0])
                 l1 = self.label()

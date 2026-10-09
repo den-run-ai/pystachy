@@ -51,13 +51,20 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     its one terminator.
 >   - `IFn.ps` holds the indices of the parameters passed, and lowering spells the `define` line
 >     from them (`ptr nonnull %a0` for a method's receiver).
+>   - a `raise` of `SyntaxError`, `IndentationError` or `TabError` whose message is true has the
+>     whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
+>     message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
+>     leaves out. Its `s` is the kind, but its operands are not (kind, message): the exception
+>     lowering of §7.2 must mark such a raise (a flag in `k`) before it reads them so.
+>   - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
+>     (R5), so only debug information or the traceback lines of §7.7 will, and they can add it.
 >   - an `Ins` starts with shared empty lists (`NONUMS`, `NOVALS`, `NOLABELS`) and gets lists of
 >     its own when it has numbers, operands or labels; `Gen.program` checks that the shared ones
 >     stayed empty. Raw ops, most of the IR, so need none. `Gen.program` also drops each
 >     function's IR (blocks, slots, loops, cold blocks) once it is lowered, keeping its summary.
 >     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
->     before the IR; 40.8 while the IR was kept to the end), its peak 77.2 MiB (71.6), and its
->     time 1.15 to 1.2 times what it was.
+>     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
+>     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -1169,7 +1176,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 | **Merge conflicts** with the compatibility work in the same code (the PR stack and the M0 fixes). The conversions touch about 105 `rt`, 126 `ins` and 69 `place` lines. | Small PRs, one construct each, never mixed with behaviour changes. `make irsame` makes a rebase verifiable in seconds. |
 | **Unsound effects make the optimizations unsound.** For example, forgetting that `pys_list_find`, `sort_r`, `minmax`, `pys_eq`, `pys_repr` and `pys_format` can call user code. | Unknown callees count as all effects. `check_runtime.py` and the call-site check validate the table. Each pass can be switched off. The tests of loops that change what they iterate run under GC stress and UBSan. |
 | **Typing stays coupled to emission** while `Val.v` holds spellings. | Accepted. Steps 1 to 4 remove every typing decision that reads text, the lint keeps it out, and step 16 removes the spellings. |
-| **Holes resolved after use.** A hole lowered before it is resolved would print the wrong key kind. | Lowering runs after the whole program, and the verifier rejects a `?` type outside a hole's creation site. |
+| **Holes resolved after use.** A hole lowered before it is resolved would print the wrong key kind. | Lowering runs after the whole program, when no use is left to resolve a hole: a dict hole that nothing filled lowers with int keys, and a list hole lowers as it was built. Other ops may still carry a `?` type (a call of a function that returns a container nothing has typed, a comprehension's list before `listcomp` types it), which the verifier does not check. |
 
 ## 9. Open questions
 
@@ -1178,6 +1185,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 3. **Speculative instances.** Template instances and `called` marks made only inside `dry` are compiled and emitted although nothing calls them. Pruning them by the reachability of lowered calls changes output. Should it be part of the re-baseline?
 4. **Late reads of holes.** #17's case 2 reads a global dict before the function that fills it has been compiled. Its case 4 builds a list that nothing fills. Some operations do not depend on the element type at elaboration time: `print`, `repr`, `len`, truth, `return`. These could take a hole-typed value and leave the descriptor to lowering, once all holes are resolved. Is that sound for every reader, and what type should a hole that nothing fills get?
 5. **Program end or per function.** Should lowering stay at the program's end, which global holes and exact effect summaries need, or move to each function's end with a patch for the remaining global holes, which roughly halves memory?
+   Measured at `7fce954` on the native self-compile: lowering a function when it completes (unless one of its dict holes is still open) and dropping its IR there leaves the output identical, takes the instructions executed from 1,704M to 1,645M (the reference compiler's: 1,541M), the heap peak from 78.2 to 72.3 MiB and the collector's time from about 40 to 35.5 ms, while the wall time stays within noise (1.08 to 1.09 times the reference's). It would need each function's own letters and callees kept for the summaries, and a pass that needs the summaries of callees compiled after their caller, such as the error tests of §7.2, could not run on that caller. Lowering stays at the end while the 1.3× gate holds.
 6. **Flow per instance.** Should Flow run per template instance on the IR, after folding, so that a branch the instance never compiles no longer forces a check?
 7. **Nullability in the type.** When does `C` stop meaning "C or None"? WasmGC wants `(ref $C)` versus `(ref null $C)` in signatures, and M4 needs `C|None`. Is a per-value fact enough until then?
 8. **Structure for Wasm.** Are the reducible CFG and the `Loop` records enough for structured control flow, or should `if` and `with` regions be recorded too?
