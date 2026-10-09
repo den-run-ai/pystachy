@@ -11152,7 +11152,9 @@ class Gen:
                 return Val(self.ins(f"icmp {'ne' if op == '==' else 'eq'} i64 {r}, 0"), "bool")
             r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
             return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
-        self.err(f"cannot compare {a.t} {op} {b.t}")
+        x = "an exception" if a.t == "exc" else a.t
+        y = "an exception" if b.t == "exc" else b.t
+        self.err(f"cannot compare {x} {op} {y}")
         return a
 
     def comparable(self, t: str, u: str) -> bool:
