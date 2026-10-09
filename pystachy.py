@@ -2939,6 +2939,28 @@ def builtin_module(path: str) -> bool:
     return path in MODULES or root in MODULES
 
 
+def known_path(p: str) -> bool:
+    # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
+    # a function builtin() handles itself
+    if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or (p.startswith("errno.") and p[6:] in ERRNO):
+        return True
+    for k in CALLS:
+        if k.startswith(p + "(") or k.startswith(p + "."):
+            return True
+    return False
+
+
+def builtin_has(mod: str, x: str) -> bool:
+    # may from mod import x name x, of Pystachy's builtin module mod
+    if mod == "__future__":
+        return x in FUTURE
+    if mod == "typing":
+        return x in TYPING
+    if mod == "dataclasses":
+        return x == "dataclass"
+    return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
+
+
 def accel_try(st: Node) -> bool:
     # try: <import statements, then others> / except ImportError: (or ModuleNotFoundError),
     # without finally
@@ -3564,6 +3586,10 @@ class Loader:
                 else:
                     subs.append(j)
                     site.kids.append(mk("str", p + "." + xn, line, []))
+            for j in range(len(x.kids) if x.s != "" and bad == "" and builtin_module(p) else 0):
+                # a name that Pystachy's builtin module lacks: as one that a module does not bind
+                if x.kids[j].s != "*" and not builtin_has(p, x.kids[j].kids[0].s[len(p) + 1 :]):
+                    gone = min(gone, j)
             if bad == "" and gone < len(x.kids):
                 bad = p
                 exc = "ImportError"
@@ -3610,14 +3636,15 @@ class Loader:
             if named != "":
                 msg = f"cannot import name '{named}' from '{bad}', and an except clause that re-raises or names the exception is not supported"
             elif missing:
-                msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path"
+                why = "names the exception (as " + short(st.kids[h].s) + ")" if st.kids[h].s != "" else "re-raises the exception" if may_end(b, True) else "may end the program"
+                msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path; an optional import whose except clause {why} needs its module"
             else:
                 msg = f"module '{bad}' raises {exc} as it initializes, and an except clause that re-raises or names the exception is not supported"
             out.append(mk("badimport", msg, line, []))
             return True
         out.extend(run)
         par = bad if named != "" else bad[: bad.rfind(".")] if missing and "." in bad else "" if missing else bad
-        if par != "":
+        if par != "" and not builtin_module(par):
             # the code of the failing module's packages runs (and its own until its raise), binding nothing
             al = mk("alias", "", line, [mk("str", par, line, []), mk("str", par, line, [])])
             if not missing and named == "":
@@ -8821,20 +8848,8 @@ class Gen:
         elif mod == "dataclasses":
             if x != "dataclass":
                 self.err(f"dataclasses.{x} is not supported")
-        elif mod == "builtins":
-            return  # a builtin function, checked where it is called
-        elif not self.known_path(tgt):
-            self.err(f"cannot import name '{x}' from '{mod}' (not supported by Pystachy)")
-
-    def known_path(self, p: str) -> bool:
-        # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, or
-        # a function builtin() handles itself
-        if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "os.fspath" or (p.startswith("errno.") and p[6:] in ERRNO):
-            return True
-        for k in CALLS:
-            if k.startswith(p + "(") or k.startswith(p + "."):
-                return True
-        return False
+        elif not builtin_has(mod, x):
+            self.err(f"cannot import name '{x}' from '{mod}': Pystachy's {mod} module has no '{x}'")
 
     def hidden(self, name: str, v: Val) -> str:
         # a compiler-made global, assigned here

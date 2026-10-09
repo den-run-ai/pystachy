@@ -253,7 +253,7 @@ An optional import, `try: <imports> / except ImportError:` (the standard library
 C accelerators), runs its imports in order until one fails: its module is not found, its
 module's code surely raises `ImportError` at its top level (`if sys.platform != "win32":
 raise ImportError(...)`), or a from-import names what its module neither binds nor has as a
-submodule. The imports before it run their code and bind their names, a failing module's
+submodule (of a builtin module, what Pystachy's lacks). The imports before it run their code and bind their names, a failing module's
 code runs up to its raise, and then the handler runs; a module that failed is not imported,
 so a later import runs its code again. Another `try` around imports (with `finally`, or clauses
 naming other classes) imports its modules as any import does: a module that is not found is an
@@ -401,7 +401,8 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   rejected when it is compiled.
 - An optional import of a module that Pystachy does not find runs its handler, also where
   CPython would find the module (a standard library module Pystachy lacks, or a package
-  installed for CPython); a handler that may end the program is rejected instead (below). A
+  installed for CPython), and so does one of a name that a builtin module of Pystachy lacks
+  (`from math import fsum`); a handler that may end the program is rejected instead (below). A
   module whose code raises keeps the globals that code set before the raise, where CPython
   discards the half-run module; a later import runs the code again over them.
 - Reading `m.x`, or `from m import x`, while `m`'s code is still running (a circular import)
