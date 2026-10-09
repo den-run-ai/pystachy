@@ -209,10 +209,12 @@ def seek(h: str, n: str, i: int, en: int, st: int) -> int:
 def toll(m: int) -> int:
     # the cost of a failed candidate for a needle of m bytes, in bytes of memmem's work: memmem
     # skips about m - 1 bytes a step, and a candidate's scan, call and check cost about as much as
-    # its steps over 12 times that, in instructions and in time; it covers the up to m comparisons
-    # too. (Wrapping, as m is a str's length, far below 2**59: LLVM computes toll() and reach() at
-    # the start of every search, where overflow tests would cost each call.)
-    return _rt.wrap_mul(_rt.wrap_sub(m, 1), 12)
+    # its steps over 12 times that where candidates are evenly spaced; at the irregular distances
+    # of real text they mispredict, and 20 times that keeps the most text near memmem's time (a
+    # sweep over real HTML and prose, docs/runtime-in-subset.md 2.10). It covers the up to m
+    # comparisons too. (Wrapping, as m is a str's length, far below 2**59: LLVM computes toll()
+    # and reach() at the start of every search, where overflow tests would cost each call.)
+    return _rt.wrap_mul(_rt.wrap_sub(m, 1), 20)
 
 
 def reach(i: int, st: int, m: int) -> int:
