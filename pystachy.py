@@ -5339,6 +5339,7 @@ class Gen:
         self.late: dict[str, bool] = {}
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
+        self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
@@ -5486,7 +5487,17 @@ class Gen:
         tys: list[str] = []
         for a in args:
             tys.append(a[: a.find(" ")])
-        self.decls[name] = f"declare {ret} @{name}({', '.join(tys)})"
+        if name in self.rtdefs:
+            # runtime mode: an operation that runtime.py itself defines is called, not declared, and
+            # with the types of its definition
+            d = self.rtdefs[name]
+            want: list[str] = []
+            for t in d.ptypes:
+                want.append(lt(t))
+            if lt(d.ret) != ret or want != tys:
+                self.err(f"{name}() is called as {ret}({', '.join(tys)}) but defined as {lt(d.ret)}({', '.join(want)})")
+        else:
+            self.decls[name] = f"declare {ret} @{name}({', '.join(tys)})"
         call = f"call {ret} @{name}({', '.join(args)})"
         if ret == "void":
             self.emit(call)
@@ -5826,12 +5837,15 @@ class Gen:
         f = FnInfo(d.s, f"@f.{d.s}" if cls == "" else f"@m.{cls}.{d.s}", d, cls)
         body = d.kids[2].kids
         if self.rtmode and cls == "" and len(body) == 1 and body[0].kind == "expr" and body[0].kids[0].kind == "ellipsis":
-            # def name(...) -> T: ... is runtime.c's function (or libc's) of that name
+            # def name(...) -> T: ... is runtime.c's function of that name
+            if not d.s.startswith("pys_"):
+                self.err(f"'{d.s}' declares a C function: in runtime.py that is one of runtime.c's, named pys_*")
             f.ll = "@" + d.s
             f.extern = True
         elif self.rtmode and cls == "" and d.s.startswith("pys_"):
             f.ll = "@" + d.s
             f.export = True
+            self.rtdefs[d.s] = f
         ps = d.kids[0].kids
         deco = ""
         for x in d.kids[3:]:
@@ -5884,6 +5898,13 @@ class Gen:
                 f.ptypes.append(self.vtype(p.kids[0]))
         if int(marks[0]) == len(ps) and len(ps) > 0:
             f.posonly = len(f.params)  # def f(a, b, /)
+        if self.rtmode and (f.export or f.extern) and f.generic:
+            self.err(f"runtime function {d.s}() needs an annotation on every parameter, and no *args")
+        for x in f.defaults if self.rtmode else []:
+            if not is_const(x):
+                # a computed default is stored by module code, which runtime mode never runs
+                self.line = x.line
+                self.err(f"in runtime.py, a parameter's default value must be a literal (in {d.s}())")
         if f.npos < 0:
             f.npos = len(f.params)
         if f.vararg >= 0:
@@ -6986,8 +7007,6 @@ class Gen:
             for t in f.ptypes + [f.ret]:
                 if t == "bool" or t == "":
                     self.err(f"runtime function {f.name}() takes or returns {typestr(t) if t != '' else 'an untyped value'}: the runtime ABI passes bools as int")
-            if f.generic or f.vararg >= 0:
-                self.err(f"runtime function {f.name}() needs an annotation on every parameter")
         self.out.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
         self.out.append("entry:")
         self.out.extend(self.allocas)
@@ -8110,6 +8129,9 @@ class Gen:
             self.close_withs(self.wdepth[-1])
             self.br(self.loops[-1] if k == "break" else self.loops[-2])
         elif k == "global":
+            if self.rtmode:
+                # module globals would be garbage collector roots that runtime mode does not register
+                self.err("runtime.py's functions cannot use global variables")
             for nm in n.kids:
                 self.gdecl[nm.s] = True
         elif k == "assert" and self.static(n.kids[0]) == 0:
@@ -10247,15 +10269,17 @@ def main() -> None:
             f.close()
         return
     rtc = home + "/runtime.c"
-    if not os.path.exists(rtc):
-        fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
+    rtpy = home + "/runtime.py"
+    if not os.path.exists(rtc) or not os.path.exists(rtpy):
+        fail("cannot find runtime.c and runtime.py next to the compiler; set PYSTACHY_HOME to the directory that holds them", 0)
     # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link;
-    # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags
+    # each flag set caches its own runtime bitcode, named by a 32-bit FNV-1a hash of the flags. The
+    # names say runtime-py: a compiler from before runtime.py keeps its runtime.c-only cache apart
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
     key = 2166136261
     for c in " ".join(flags):
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
-    rtb = home + ("/build/runtime.bc" if len(flags) == 0 else f"/build/runtime-{key:08x}.bc")
+    rtb = home + ("/build/runtime-py.bc" if len(flags) == 0 else f"/build/runtime-py-{key:08x}.bc")
     cflags = "".join([" " + q(a) for a in flags])
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
@@ -10265,54 +10289,55 @@ def main() -> None:
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
+    # runtime.py, the runtime's part written in the subset, is compiled by the compiler that runs
+    # and linked to runtime.c's bitcode. The cache is rebuilt when runtime.c, runtime.py or that
+    # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
+    # compile runtime.py differently, and the bootstrap checks that its stages do not
+    me = argv[0]
+    if "/" not in me:
+        # run through PATH: the first directory that holds it, as the shell searched ("" is the current
+        # directory); under CPython, the script in the current directory
+        for d in os.getenv("PATH", "").split(":"):
+            if os.path.exists((d if d != "" else ".") + "/" + me):
+                me = (d if d != "" else ".") + "/" + me
+                break
+    fresh = f"test {q(rtb)} -nt {q(rtc)} && test {q(rtb)} -nt {q(rtpy)}"
+    if os.path.exists(me):
+        fresh = fresh + f" && test {q(rtb)} -nt {q(me)}"
+    rtir = ""
+    if sh(f"mkdir -p {q(home + '/build')} && {fresh}") != 0:
+        # (before the temporary directory exists: an error in runtime.py exits)
+        src = SRC
+        SRC = rtpy
+        rtir = runtime_ir(rtpy)
+        SRC = src
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
     tmp = tempfile.mkdtemp()
     ll = tmp + "/prog.ll"
     bc = tmp + "/prog.bc"
     obj = tmp + "/prog.o"
     rll = tmp + "/runtime.ll"
+    rsl = tmp + "/runtime-s.ll"
+    rcb = tmp + "/runtime-c.bc"
+    rpl = tmp + "/rtpy.ll"
+    lnk = tmp + "/runtime-l.bc"
     part = f"{rtb}.{os.getpid()}"  # renamed over the cache only once complete
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
     f = open(ll, "w", encoding="latin-1")
     f.write(ir)
     f.close()
     msg = ""
-    # runtime.py, the runtime's part written in the subset, is compiled by the compiler that runs
-    # and linked to runtime.c's bitcode. The cache is rebuilt when runtime.c, runtime.py or that
-    # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
-    # compile runtime.py differently, and the bootstrap checks that its stages do not
-    rtpy = home + "/runtime.py"
-    rpl = tmp + "/rtpy.ll"
-    rcb = tmp + "/runtime-c.bc"
-    fresh = f"test {q(rtb)} -nt {q(rtc)}"
-    me = argv[0]
-    if "/" not in me and not os.path.exists(me):
-        # run through PATH: the first directory that holds it, as the shell found it
-        for d in os.getenv("PATH", "").split(":"):
-            if d != "" and os.path.exists(d + "/" + me):
-                me = d + "/" + me
-                break
-    if os.path.exists(rtpy):
-        fresh = fresh + f" && test {q(rtb)} -nt {q(rtpy)}"
-        if os.path.exists(me):
-            fresh = fresh + f" && test {q(rtb)} -nt {q(me)}"
-    code = sh(f"mkdir -p {q(home + '/build')} && {fresh}")
-    if code != 0:
-        code = sh(f"{llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(rcb if os.path.exists(rtpy) else part)}")
-        if code == 0 and os.path.exists(rtpy):
-            src = SRC
-            SRC = rtpy
-            f = open(rpl, "w", encoding="latin-1")
-            f.write(runtime_ir(rtpy))
-            f.close()
-            SRC = src
-            # one module, optimized once: LLVM inlines runtime.c's helpers into runtime.py's code
-            code = sh(f"{llvm}llvm-link {q(rpl)} {q(rcb)} | {llvm}opt -O2 -o {q(part)}")
-        if code == 0:
-            code = sh(f"mv -f {q(part)} {q(rtb)}")
+    code = 0
+    if rtir != "":
+        f = open(rpl, "w", encoding="latin-1")
+        f.write(rtir)
+        f.close()
+        # one module, optimized once: LLVM inlines runtime.c's helpers into runtime.py's code. No
+        # pipes: a step that fails must fail the build, not hand the next one an empty module
+        code = sh(f"{llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} > {q(rsl)} && {llvm}llvm-as {q(rsl)} -o {q(rcb)} && {llvm}llvm-link {q(rpl)} {q(rcb)} -o {q(lnk)} && {llvm}opt -O2 {q(lnk)} -o {q(part)} && mv -f {q(part)} {q(rtb)}")
     if code == 0 and cmd == "run":
         # (from the bitcode, so runtime.py's part is in it; sanitizer flags instrumented runtime.c already)
-        code = sh(f"test {q(rto)} -nt {q(rtb)} || ({llvm}clang -O2 -fPIC -c {q(rtb)} -o {q(part)} -Wno-unused-command-line-argument && mv -f {q(part)} {q(rto)})")
+        code = sh(f"test {q(rto)} -nt {q(rtb)} || ({llvm}clang -O2 -fPIC -c {q(rtb)} -o {q(part)} -Wno-unused-command-line-argument{ccflags} && mv -f {q(part)} {q(rto)})")
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
     if code != 0:
         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
@@ -10326,7 +10351,7 @@ def main() -> None:
         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
         fast = f"{llvm}opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg'"
         code = sh(f"{fast} {q(ll)} -o {q(bc)} && PYSTACHY_ARGV0={q(SRC)} {llvm}lli -extra-object={q(rto)} {q(bc)} {' '.join([q(a) for a in rest])}")
-    for p in [ll, bc, obj, rll, part, rpl, rcb]:
+    for p in [ll, bc, obj, rll, rsl, rcb, rpl, lnk, part]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

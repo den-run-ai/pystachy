@@ -141,7 +141,7 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" "$V/pystachy2" build pystachy.py -o "$V/pystachy-ubsan" &&
     "$V/pystachy-ubsan" ir pystachy.py -o "$V/stage-ubsan.ll" &&
     cmp "$V/stage1.ll" "$V/stage-ubsan.ll" && echo "sanitized compiler emits the stage1 IR" &&
-    ls "$V/ubsan-home/build" && test ! -f "$V/ubsan-home/build/runtime.bc" &&
+    ls "$V/ubsan-home/build" && test ! -f "$V/ubsan-home/build/runtime-py.bc" &&
     grep -q __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc && echo "cached runtime bitcode is instrumented" && built=1
   if [ $built = 1 ]; then
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy-ubsan" aot > "$V/ubsan-aot.log" 2>&1

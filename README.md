@@ -536,8 +536,8 @@ but a builtin exception.
 - **A runtime partly written in the subset.** `runtime.py` holds runtime functions written in
   the subset itself. `pystachy rt runtime.py` compiles it in a runtime mode: its `pys_*`
   functions keep runtime.c's C names and types, `def f(...) -> T: ...` declares a C function,
-  and `import _rt` gives a few primitives (byte reads, an in-place string builder, `memchr` and
-  `memcmp`, wrapping and unsigned arithmetic), each a few checked LLVM instructions. The
+  and `import _rt` gives a few primitives (byte reads, an in-place string builder, `memchr`,
+  `memcmp` and `memmem`, wrapping and unsigned arithmetic), each a few checked LLVM instructions. The
   driver links it to runtime.c's bitcode when it rebuilds the cached runtime, which it does
   when `runtime.c`, `runtime.py` or the running compiler is newer; programs' IR does not
   change. `tools/rtcheck.py` runs `runtime.py` on CPython against CPython's own str methods,

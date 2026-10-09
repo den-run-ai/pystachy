@@ -4,7 +4,8 @@
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
 # tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
-# Every tests/errors/*.py must be rejected with the message in its first line, and every
+# Every tests/errors/*.py must be rejected with the message in its first line (rt_*.py as
+# "pystachy rt" compiles runtime.py), and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
 # tests/errors/syntax_*.py whose error is in its own file.
@@ -61,7 +62,9 @@ deviation() { # tests/deviations/NAME.py
 rejection() { # tests/errors/NAME.py
   n=$(basename "$1" .py)
   want=$(head -1 "$1" | sed 's/^# error: //')
-  if $PYS ir "$1" > /dev/null 2> "$T/rej.$n" || ! grep -qF "$want" "$T/rej.$n"; then
+  how=ir
+  case $n in rt_*) how=rt ;; esac  # compiled as runtime.py is
+  if $PYS $how "$1" > /dev/null 2> "$T/rej.$n" || ! grep -qF "$want" "$T/rej.$n"; then
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got: $(cat "$T/rej.$n")"
   else pass=$((pass + 1)); fi
   case $n:$want in
@@ -93,6 +96,8 @@ worker() {
     i=$((i + 1))
   done
 }
+# the cached runtime is built once, before the workers start (each would rebuild a stale one)
+echo pass > "$T/warm.py" && $PYS run "$T/warm.py" > /dev/null 2>&1
 k=1
 while [ $k -lt "$JOBS" ]; do
   worker $k &

@@ -2,7 +2,7 @@
 
 `pystachy rt runtime.py` compiles it like a program, but each `pys_*` function is defined under
 its C name with runtime.c's types (bools cross as int), and the driver links it to runtime.c's
-bitcode into the cached runtime (build/runtime.bc and runtime.o). runtime.c keeps a prototype of
+bitcode into the cached runtime (build/runtime-py.bc and its .o). runtime.c keeps a prototype of
 each function moved here. Programs call these functions exactly as they call runtime.c's, so
 their IR does not change.
 

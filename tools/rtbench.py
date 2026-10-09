@@ -1,12 +1,13 @@
 """Time the runtime's functions under two compilers: tools/rtbench/*.py, small loops over the
 functions runtime.py implements, built AOT and run JIT with each compiler (each uses the runtime
-beside it, or its PYSTACHY_HOME), best of REPS runs, outputs checked against CPython's. Use it to
+beside it: PYSTACHY_HOME is ignored, as one home would give both the same runtime), best of REPS runs, outputs checked against CPython's. Use it to
 measure a function before and after it moves between runtime.c and runtime.py.
 
 usage: python3 tools/rtbench.py OLD_COMPILER NEW_COMPILER [NAME...]   (env REPS, default 7)
 e.g.   python3 tools/rtbench.py build/ref/pystachy ./pystachy   (make ref REF=<commit> builds the first)
 """
 import os
+import shutil
 import statistics
 import subprocess
 import sys
@@ -21,13 +22,14 @@ COMP = {"old": os.path.abspath(sys.argv[1]), "new": os.path.abspath(sys.argv[2])
 REPS = int(os.environ.get("REPS", "7"))
 names = sys.argv[3:] or sorted(f[:-3] for f in os.listdir(D) if f.endswith(".py"))
 tmp = tempfile.mkdtemp()
+ENV = {k: v for k, v in os.environ.items() if k != "PYSTACHY_HOME"}
 
 
 def best(cmd, want):
     ts = []
     for _ in range(REPS):
         t = time.perf_counter()
-        r = subprocess.run(cmd, capture_output=True, text=True)
+        r = subprocess.run(cmd, capture_output=True, text=True, env=ENV)
         ts.append(time.perf_counter() - t)
         if r.returncode != 0 or r.stdout != want:
             sys.exit(f"{' '.join(cmd)}: wrong output or status {r.returncode}: {r.stdout[:200]}{r.stderr[-300:]}")
@@ -42,10 +44,11 @@ for p in names:
     t = {}
     for k, c in COMP.items():
         exe = os.path.join(tmp, f"{p}.{k}")
-        subprocess.run([c, "build", src, "-o", exe], check=True)
+        subprocess.run([c, "build", src, "-o", exe], check=True, env=ENV)
         t["aot", k] = best([exe], want)
         t["jit", k] = best([c, "run", src], want)
     ra.append(t["aot", "new"] / t["aot", "old"])
     rj.append(t["jit", "new"] / t["jit", "old"])
     print(f"| {p} | {t['aot', 'old']:.3f} | {t['aot', 'new']:.3f} | {ra[-1]:.2f} | {t['jit', 'old']:.3f} | {t['jit', 'new']:.3f} | {rj[-1]:.2f} |", flush=True)
+shutil.rmtree(tmp)
 print(f"\nmedian ratio: AOT {statistics.median(ra):.2f}, JIT {statistics.median(rj):.2f}")
