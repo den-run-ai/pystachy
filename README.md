@@ -504,7 +504,8 @@ does not fill), or that calls itself before a return statement decides its type 
 return of a `T`, before a return of `None` makes it return `T | None`); `is` between two
 `int | None` values (an `int` has no identity here), a `list[int]` or `dict[K, int]` where a
 container of `int | None` items is expected, compared or added (also for `float` and `bool`:
-an `int` item is no box), and `int | None` arguments of the builtins other than those above
+an `int` item is no box; a tuple's items are copied into boxes, so `(1, 2) == t` works for a
+`tuple[int | None, int]`), and `int | None` arguments of the builtins other than those above
 (`divmod()`, `sum()` of a `list[int | None]`); dict key types that may be `None`, and tuple
 keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython

@@ -6606,6 +6606,41 @@ class Gen:
             ws.append(w)
         return f"tuple[{','.join(ws)}]"
 
+    def boxwider(self, a: str, b: str) -> str:
+        # wider(a, b) for tuple types whose items differ also where one is an int, float or bool and
+        # the other an int | None, float | None or bool | None: the tuple of the latter, which the
+        # tuple that is not optional itself can become (coerce boxes its items); "" if there is none
+        if is_opt(a) and is_opt(b):
+            return ""
+        if is_opt(a) or is_opt(b):
+            w = self.boxwider(unopt(a), unopt(b))
+            return self.optional(w) if w != "" and unopt(a if is_opt(a) else b) == w else ""
+        if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+            return ""
+        bs = targs(b)
+        ws: list[str] = []
+        for x in targs(a):
+            y = bs[len(ws)]
+            w = self.wider(x, y)
+            if w == "" and (is_sopt(y) and x == unopt(y) or y == "None" and self.isnum(x)):
+                w = self.optional(x)
+            elif w == "" and (is_sopt(x) and y == unopt(x) or x == "None" and self.isnum(y)):
+                w = self.optional(y)
+            elif w == "":
+                w = self.boxwider(x, y)
+            if w == "":
+                return ""
+            ws.append(w)
+        return f"tuple[{','.join(ws)}]"
+
+    def boxto(self, v: Val, t: str) -> Val:
+        # v as a value of tuple type t = boxwider(v.t, ...), boxing its items where it needs to
+        if v.t == t:
+            return v
+        if is_opt(t) and not is_opt(v.t):
+            return Val(self.coerce(v, unopt(t)).v, t)
+        return self.coerce(v, t)
+
     def widens(self, a: str, b: str) -> bool:
         # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
         # type), and a tuple item by item (tuples cannot change, so their items can widen)
@@ -11298,6 +11333,11 @@ class Gen:
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
         # T and T | None (also as items): None == None, None == x is False, and None < x raises
         ct = self.wider(a.t, b.t)
+        if ct == "" and self.boxwider(a.t, b.t) != "":
+            # a tuple with an int where the other's item may be None: compared as a new tuple of boxes
+            ct = self.boxwider(a.t, b.t)
+            a = self.boxto(a, ct)
+            b = self.boxto(b, ct)
         u = unopt(ct)
         if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u))):
             d = f"ptr {self.sconst(self.desc(ct))}"
