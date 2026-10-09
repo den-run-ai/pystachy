@@ -12141,8 +12141,12 @@ class Gen:
                 p = p[:e]
             slot = p.startswith("*")
             pt = subst(p[1:] if slot else p, T, K, V, o.t)
+            # a str method's start or end (find, count, startswith, ...) that is None is omitted
+            span = base == "str" and p == "int" and (dflt == "0" or dflt == "9223372036854775807")
             if i < len(args) and dflt == "null" and args[i].kind == "None":
                 av.append(rtt(pt) + " null")  # an explicit None: the default
+            elif i < len(args) and span and args[i].kind == "None":
+                av.append("i64 " + dflt)
             elif i < len(args):
                 v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
                 if is_opt(v.t) and (key == "str.join" or key == "list.extend" or key == "file.writelines"):
@@ -12153,6 +12157,8 @@ class Gen:
                     v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
                 if key == "list.extend" and is_list(v.t) and v.t != pt and self.wider(v.t, pt) == pt:
                     v = Val(v.v, pt)  # (its items are copied: list[str] extends a list[str | None])
+                if span and is_sopt(v.t) and unopt(v.t) != "float":
+                    v = Val(self.optint(v, dflt), "int")
                 if p == "int":
                     v = self.as_int(v)  # an index or a count may be a bool, as in CPython
                 if base == "dict" and i == 0 and is_opt(v.t) and unopt(v.t) == K and (m == "get" or m == "pop"):

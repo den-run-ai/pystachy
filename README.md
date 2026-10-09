@@ -323,7 +323,7 @@ subscriptable`), and an object that is `None` raises CPython's error when it run
 `int`, `float`, `bool`, `ord`, `chr`, `abs`, `min`, `max`, `sum`, `sorted` (and
 `list.sort`, with `reverse=`), `list`, `dict`, `round`, `divmod`, `pow` (also modular,
 with inverses), `any`, `all`, `input`; the common `str`, `list` and `dict` methods
-(`find`/`index`/`count` with start and end, `split`/`rsplit`, `partition`/`rpartition`,
+(`find`/`index`/`count` with start and end, also `None`, `split`/`rsplit`, `partition`/`rpartition`,
 `splitlines`, `removeprefix`/`removesuffix`, `center`/`ljust`/`rjust` with a fill character,
 `zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default; not
 `str.format()`, `dict.update()`, `popitem()` and `fromkeys()`, `dict()` of pairs, or tuple's
