@@ -1,0 +1,11 @@
+SubErr True False code 5 SubErr('code 5') 5
+base code 7 7
+sub code 7 7
+leaf code 7 7 [1, 2, 3]
+['SubErr', 'BaseErr', 'SubErr', 'Leaf'] True
+BaseErr/base/k:base SubErr/sub/k:sub Leaf/sub/k:sub
+4 6 8
+Leaf [1, 2, 3] m
+static BaseErr at 3 3
+Leaf/sub/k:sub k:sub BaseErr Leaf
+[exit 0]

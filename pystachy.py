@@ -6452,6 +6452,8 @@ class FnInfo:
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+        self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
+        self.orig = node  # and then its def statement as it was, before cls was renamed (see inherit)
         # a template's function: the parameters whose arguments are objects known not to be None
         # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
         self.nnp: dict[str, bool] = {}
@@ -6460,6 +6462,16 @@ class FnInfo:
 def takes_self(f: FnInfo) -> bool:
     # is f a method that takes its object as its first parameter (not a static or class method)
     return f.cls != "" and f.deco == ""
+
+
+def clone(n: Node) -> Node:
+    # a copy of tree n (a class method's def, compiled again for a class that inherits it)
+    c = Node(n.kind, n.s, n.line)
+    c.kids = [clone(k) for k in n.kids]
+    c.chk = n.chk
+    c.mchk = n.mchk
+    c.depth = n.depth
+    return c
 
 
 def rename(n: Node, name: str, to: str) -> None:
@@ -7939,6 +7951,9 @@ class Gen:
             local_names(d.kids[2].kids, asg)
             if ps[0].s in asg:
                 bad = f"class method {d.s}() assigns its parameter '{ps[0].s}', which names the class: not supported"
+            f.clsuse = mentions(d.kids[2], [ps[0].s])
+            if f.clsuse:
+                f.orig = clone(d)
             rename(d.kids[2], ps[0].s, cls)
         if bad == "" and has_kind(d.kids[2], "yield"):
             bad = UNSUPPORTED["yield"]  # a generator function
@@ -8068,7 +8083,10 @@ class Gen:
         for st in ci.node.kids[0].kids:
             self.line = st.line
             if st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
-                self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported)")
+                # (a class attribute of the base bound again, with the same type: as x = v is)
+                b = self.classes[ci.base]
+                if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or self.vtype(st.kids[1]) != b.ftypes[st.kids[0].s]:
+                    self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported" + (", but for a class attribute of the same type" if st.kids[0].s in b.fdefault else "") + ")")
             if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
                 # an imported module's class: an error only where the program uses it
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {self.ann_problem(st.kids[1], False)}"
@@ -8087,6 +8105,9 @@ class Gen:
             elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
                 # x = v: a class attribute, typed by v as a field is (and from here on read as x: T = v)
                 t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
+                bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
+                if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt)):
+                    t = bt  # (a class attribute of the base bound again, with a value of its type)
                 if t == "" and ci.mod == "":
                     self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
                 if t == "":
@@ -10275,15 +10296,29 @@ class Gen:
 
     def inherit(self, ci: ClassInfo) -> None:
         # an exception class has the methods of its base that it does not define: the same
-        # functions, compiled for the base (its objects begin as the base's do). It may define
-        # __init__, __str__ and __repr__ again (str() and repr() call those of the object's class,
-        # see exc_helpers), but no other method: calls are not dispatched on the object's class
+        # functions, compiled for the base (its objects begin as the base's do), but for a class
+        # method that uses cls, which is compiled again with cls naming this class (unless a
+        # default value of it needs evaluating when its def runs, or the base is another
+        # module's: cls_bound rejects its calls).
+        # It may define __init__, __str__ and __repr__ again (str() and repr() call those of the
+        # object's class, see exc_helpers), but no other method: calls are not dispatched on the
+        # object's class
         if ci.base not in self.classes:
             return
         b = self.classes[ci.base]
         for m in b.methods:
-            if m not in ci.methods:
-                ci.methods[m] = b.methods[m]
+            f = b.methods[m]
+            if m not in ci.methods and f.clsuse and f.mod == ci.mod and len([x for x in f.defaults if not is_const(x) and x.kind != "noann"]) == 0:
+                self.line = f.node.line
+                self.lib = f.mod != ""
+                self.selfcls = ci.name
+                ci.methods[m] = self.declare_fn(clone(f.orig), ci.name)
+                self.selfcls = ""
+                self.lib = False
+                ci.methods[m].mod = f.mod
+                self.lazy[ci.methods[m].ll] = ci.methods[m]  # (compiled only if called: cls(...) may not fit this class)
+            elif m not in ci.methods:
+                ci.methods[m] = f
             elif m != "__init__" and m != "__str__" and m != "__repr__":
                 self.line = ci.methods[m].node.line
                 self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
@@ -10986,8 +11021,10 @@ class Gen:
                 ci.nflag += 1
 
     def default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
-        # the class whose class-body default field fl has (an exception class's base's, or its own)
-        while ci.base in self.classes and fl in self.classes[ci.base].fdefault:
+        # the class whose class body binds class attribute fl of ci: ci's, or the base's that an
+        # exception class inherits it from (the same default, which declare_fields copies down;
+        # a class body that binds fl again has a default of its own)
+        while fl in ci.fdefault and ci.base in self.classes and fl in self.classes[ci.base].fdefault and self.classes[ci.base].fdefault[fl] is ci.fdefault[fl]:
             ci = self.classes[ci.base]
         return ci
 
@@ -11454,11 +11491,15 @@ class Gen:
         self.global_var(f.dglob[j], lt(t))
 
     def class_default(self, ci: ClassInfo, fl: str) -> None:
-        # a class-body default read before the class statement runs (see early_default)
-        if fl not in ci.fglob:
-            ci.fglob[fl] = f"@d.c.{ci.name}.{fl}"
-            self.global_var(ci.fglob[fl], lt(ci.ftypes[fl]))
-            self.pending[ci.fglob[fl]] = True
+        # a class-body default read before the class statement runs (see early_default), or a
+        # class variable's global: that of the class whose body binds it (default_home), which an
+        # exception class deriving from it shares
+        h = self.default_home(ci, fl)
+        if fl not in h.fglob:
+            h.fglob[fl] = f"@d.c.{h.name}.{fl}"
+            self.global_var(h.fglob[fl], lt(h.ftypes[fl]))
+            self.pending[h.fglob[fl]] = True
+        ci.fglob[fl] = h.fglob[fl]
 
     def hoist(self, f: FnInfo) -> None:
         # Python evaluates default values once, when the def statement runs
@@ -12388,7 +12429,7 @@ class Gen:
         # code None, until its super().__init__() sets them, as OSError.__new__ and SystemExit.__init__ do)
         self.exc_keep(o, vals if init is None or not self.derives(c, "OSError") else vals[:0], init is None)
         for fl in ci.fields:
-            if fl in ci.fdefault:
+            if fl in ci.fdefault and c + "." + fl not in self.cvars:  # (a class variable is read from the class, see getfield)
                 h = self.default_home(ci, fl)
                 t = ci.ftypes[fl]
                 if not is_const(ci.fdefault[fl]):
@@ -13615,6 +13656,9 @@ class Gen:
             c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
             if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
                 return self.class_attr(n.kids[0], n.s)
+            if c in self.classes and n.s == "__name__":
+                self.class_ready(n.kids[0])
+                return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
             if c in self.classes:
                 self.no_class_attr(c, n.s)
             o = self.expr(n.kids[0], "")
@@ -13779,6 +13823,11 @@ class Gen:
                     c = t.kids[0].s
                     if not self.is_dc(c) and t.s in self.classes[c].fdefault:
                         self.cvars[c + "." + t.s] = True
+                        # (and of the exception classes that share it, see cvar)
+                        h = self.default_home(self.classes[c], t.s)
+                        for x in self.classes.values():
+                            if t.s in x.fdefault and self.default_home(x, t.s) is h:
+                                self.cvars[x.name + "." + t.s] = True
             self.cvar_stores(n.kids)
 
     def cvar(self, cn: Node, a: str) -> ClassInfo:
@@ -13788,6 +13837,16 @@ class Gen:
             self.err(f"assigning to a class attribute of {'NamedTuple' if c in self.nts else 'dataclass'} {short(c)} ({short(c)}.{a} = ...) is not supported")
         if c + "." + a not in self.cvars:
             self.err(f"type object '{short(c)}' has no attribute '{a}': adding a class attribute by assigning it is not supported (declare it in the class body, {a}: T = ...)")
+        # an exception class shares the class variables it inherits with its base (default_home):
+        # one global each, which the objects of both read
+        ci = self.classes[c]
+        h = self.default_home(ci, a)
+        if h is not ci:
+            how = f" (cls in class method {self.curfn.name}(), which {short(c)} inherits)" if self.curfn.deco == "classmethod" and self.curfn.cls == c and self.curfn.name not in self.body_names(ci.node) else ""
+            self.err(f"assigning class attribute '{a}' through {short(c)}{how}, which inherits it from {short(h.name)}, is not supported (CPython would give {short(c)} an attribute of its own; {short(h.name)}.{a} = ... changes the one they share)")
+        for x in self.classes.values():
+            if a in x.fdefault and x is not ci and (self.derives(x.name, c) or self.derives(c, x.name)) and self.default_home(x, a) is not h:
+                self.err(f"assigning class attribute {short(c)}.{a} is not supported where {short(x.name)} binds '{a}' in its class body too: an object's class attribute is read through the class of its static type (no dispatch on the object's class)")
         return self.class_ready(cn)
 
     def class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
@@ -13829,7 +13888,20 @@ class Gen:
             self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
         if f.deco == "":
             self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
+        self.cls_bound(f, cn.s, False)
         return self.call_fn(f, [], args, want)
+
+    def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
+        # a class method that uses cls, called through class c (obj: through an object of c, which
+        # may be of a class deriving from c): it is compiled for each class that has it, whose
+        # name its cls reads (see inherit), so the call's class must be f's
+        if f.deco != "classmethod" or not f.clsuse:
+            return
+        subs = [x.name for x in self.classes.values() if obj and x.name != c and self.derives(x.name, c)]
+        if f.cls != c:
+            self.err(f"calling class method {short(c)}.{f.name}() is not supported: it uses cls, and is compiled only for {short(f.cls)}, which defines it (a class that inherits it has its own only where no default value of it is evaluated when its def runs, and in the same module)")
+        if len(subs) > 0:
+            self.err(f"calling class method {f.name}() on an object of {short(c)}, which may be one of {short(subs[0])}, is not supported: it uses cls, which would be {short(c)} (calls are not dispatched on the object's class; call {short(c)}.{f.name}() or {short(subs[0])}.{f.name}())")
 
     def percent(self, fmt: str, rhs: Node) -> Val:
         # "format" % args with a constant format: each conversion becomes what format() or
@@ -15041,6 +15113,7 @@ class Gen:
                 return self.replace(o, args)
             if ci.methods[m].iters:
                 self.err(f"calling {short(o.t)}.__iter__() is not supported (its iterator is the list it steps through here): iterate over the object")
+            self.cls_bound(ci.methods[m], o.t, True)
             return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args)  # (a static or class method gets no o)
         return self.bmethod(o, m, args)
 

@@ -251,12 +251,18 @@ imports `annotations` from `__future__`.
   they assign `x`), also a `Final` one. `C.x = v` (also `cls.x += 1` in a class method) assigns
   it, which `C.x` and the objects that have not assigned `x` then read. A class-body `x = v`
   without an annotation is `x: T = v`, `T` given by `v` as for a field (but in a dataclass or
-  NamedTuple, where it would be no field).
+  NamedTuple, where it would be no field). An exception class shares the class attributes it
+  inherits with its base: `S.x`, `E.x` and the objects of both read one variable, which the
+  class body that binds it evaluates once, and `E.x = v` changes it for both; a class body
+  that binds `x` again (`x = v`, or `x: T = v` with the base's type `T`) gives the class its
+  own. `C.__name__` is the class's name.
 - A method decorated with `@staticmethod` or `@classmethod` is called through its class
   (`C.m(...)`) or through an object (`o.m(...)`, `self.m(...)`, which only checks that `o` is
   not `None`). There is no inheritance (but for exception classes), so a class method's `cls`
   is always its own class: `cls(...)` makes one, `cls.x` reads a class attribute and
-  `cls.m(...)` calls a static or class method.
+  `cls.m(...)` calls a static or class method. A class method that uses `cls` and that an
+  exception class of the same module inherits is compiled again for that class, so
+  `S.make()` makes an `S`.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
@@ -319,10 +325,12 @@ its own or of a base, a class takes any positional arguments. A subclass has its
 fields and methods and may define `__init__`, `__str__` and `__repr__` again: `str()`,
 `repr()`, `print` and an uncaught exception's line always use those of the object's class,
 `super().__str__()` and the others those of the base (also written `Base.__str__(self)` and
-`super(E, self)`), and `e.__str__()` is `str(e)`; `==` between objects of classes with a
-base in common calls that base's `__eq__`. Deriving from `OSError` or `SystemExit`, a
-class with an `__init__` of its own (or of a base) keeps no args, and has the code `None`,
-until `super().__init__(...)` sets them, as CPython's do. `except E as e` binds the object,
+`super(E, self)`), and `e.__str__()` is `str(e)`; a class method that uses `cls` is compiled
+again for each class that inherits it, and class attributes are shared as above; `==`
+between objects of classes with a base in common calls that base's `__eq__`. Deriving from
+`OSError` or `SystemExit`, a class with an `__init__` of its own (or of a base) keeps no
+args, and has the code `None`, until `super().__init__(...)` sets them, as CPython's do.
+`except E as e` binds the object,
 typed as the nearest class of the program that the clause's classes derive from (else as a
 builtin exception, whose `str()` and `repr()` still are the object's). One that nothing
 catches prints `module.E: str(e)` (`E` alone in the main program, without `: ` when `str(e)` is
@@ -747,7 +755,13 @@ bases, one deriving from `SyntaxError` and its subclasses, from `UnicodeDecodeEr
 `UnicodeEncodeError` or `UnicodeTranslateError`, or from an exception group, a decorated one,
 one defining again a method of its base
 other than `__init__`, `__str__` and `__repr__` (methods are not dispatched on the object's
-class), a field its base declares, or one that would be its builtin base's own attribute
+class), a class method that uses `cls` called through an object of a class that another
+class derives from (`e.k()`, where `e` may be an `S`: `cls` would be the object's static
+class), or through a class that inherits it where a default value of it is evaluated when its
+`def` runs or the class is in another module, `S.x = v` of a class attribute that `S`
+inherits (CPython would give `S` one of its own) and `C.x = v` of one that a class deriving
+from `C`, or a base of it, binds again in its class body, a field its base declares (but a
+class attribute bound again with its type), or one that would be its builtin base's own attribute
 (`args`, `code` of `SystemExit`, `errno`, `strerror`, `filename` and `filename2` of `OSError`,
 `msg` of `ImportError`), or one that the builtin base's `__init__` sets where it may run after
 the class's code assigns the field (`value` of `StopIteration`, `name` and `obj` of
