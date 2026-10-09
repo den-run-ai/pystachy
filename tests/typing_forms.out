@@ -1,0 +1,8 @@
+mods: init mods
+mods.shapes: init mods.shapes
+4 ['x', 'hello']
+{'a': 3, 'b': 1} {'a': 3, 'b': 1} [1, 2, 3]
+ABC 5 c 21
+3 ['a', 'b'] 7 23 ['a', 'b', 'z', '3']
+n 42 hello
+[exit 0]

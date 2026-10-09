@@ -2932,7 +2932,7 @@ for _k in ("name str int float None True False list tuple dict attr assign annas
 
 def builtin_module(path: str) -> bool:
     root = path[: path.find(".")] if "." in path else path
-    return path in MODULES or root in MODULES
+    return path in MODULES or root in MODULES or path == "collections.abc"
 
 
 def accel_try(st: Node) -> bool:
@@ -4459,6 +4459,13 @@ for _k in ("List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Ite
            "LiteralString Required NotRequired Unpack TypeVarTuple override final get_type_hints no_type_check runtime_checkable "
            "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString").split():
     TYPING[_k] = True
+# collections.abc: imported as typing's names are (Mapping[K, V] is dict[K, V], see typeof)
+ABCS: dict[str, bool] = {}
+for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hashable Iterable Iterator Generator Reversible Sized "
+           "Container Callable Collection Set MutableSet Mapping MutableMapping MappingView KeysView ItemsView ValuesView Sequence "
+           "MutableSequence ByteString Buffer").split():
+    ABCS[_k] = True
+CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
     FUTURE[_k] = True
@@ -5762,6 +5769,12 @@ class Gen:
                 base = self.typing_attr(n.kids[0]).lower()  # typing.List[int]
             elif base != "list" and base != "dict" and base != "tuple":
                 base = self.typing_name(base).lower()
+            if base == "mapping" or base == "mutablemapping":
+                base = "dict"  # (collections.abc's and typing's: what a dict is)
+            elif base == "sequence" or base == "mutablesequence":
+                base = "list"
+            elif base == "classvar":
+                self.err(CLASSVAR)
             a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
             ts = [self.typeof(x) for x in a]
             if base == "list" and len(ts) == 1:
@@ -5776,6 +5789,8 @@ class Gen:
                 return self.opt(ts[0])
             if base == "union" and len(ts) == 2 and (ts[0] == "None" or ts[1] == "None"):
                 return self.opt(ts[0] if ts[1] == "None" else ts[1])  # Union[T, None]
+        if self.typing_ref(n) == "Final":
+            self.err("Final without a type is only supported where a value gives it (x: Final = v, outside class bodies); write Final[T]")
         self.err("unsupported type annotation")
         return ""
 
@@ -5795,6 +5810,8 @@ class Gen:
             return self.ann_problem(n.kids[0] if n.kids[1].kind == "None" else n.kids[1], False)
         if k == "attr" and self.typing_attr(n) == "TextIO":
             return ""
+        if k == "index" and self.typing_ref(n.kids[0]) == "ClassVar":
+            return CLASSVAR
         if k == "index" and (n.kids[0].kind == "name" or (n.kids[0].kind == "attr" and self.typing_attr(n.kids[0]) != "")):
             for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
                 r = self.ann_problem(x, False)
@@ -5817,13 +5834,52 @@ class Gen:
             p = "." + n.s + p
             n = n.kids[0]
         p = self.imported(n.s + p) if n.kind == "name" else ""
-        return p[7:] if p.startswith("typing.") else ""
+        return p[7:] if p.startswith("typing.") else p[16:] if p.startswith("collections.abc.") else ""
+
+    def typing_ref(self, n: Node) -> str:
+        # the typing (or collections.abc) name that a name or attribute n refers to, or "" (no error)
+        if n.kind == "attr":
+            return self.typing_attr(n)
+        if n.kind != "name":
+            return ""
+        p = self.imported(n.s)
+        if p.startswith("typing.") or p.startswith("collections.abc."):
+            return p[p.rfind(".") + 1 :]
+        return n.s if n.s in TYPING and "__future__.annotations" in self.imports.values() else ""
+
+    def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
+        # what typing decides before any code runs, in the statements of body (a class body if cls)
+        # and in those they hold: a def decorated with @overload is a stub that the def after it
+        # replaces, so it is dropped; x: Final = v is x = v outside class bodies, x: Final[T] is x: T
+        out: list[Node] = []
+        for st in body:
+            stub = False
+            for d in st.kids[3:] if st.kind == "def" else []:
+                root = d.s[: d.s.find(".")] if "." in d.s else d.s
+                stub = stub or (self.imported(m.q + root) or self.imported(root)) + d.s[len(root) :] == "typing.overload"
+            if stub:
+                continue
+            a = st.kids[1] if st.kind == "annassign" else st
+            if a.kind == "index" and self.typing_ref(a.kids[0]) == "Final":
+                st.kids[1] = a.kids[1]
+            elif a is not st and len(st.kids) == 3 and not cls and self.typing_ref(a) == "Final":
+                st.kind = "assign"
+                st.kids = [st.kids[0], st.kids[2]]
+            for k in st.kids:
+                if k.kind == "block":
+                    k.kids = self.typing_forms(m, k.kids, st.kind == "class")
+                elif k.kind == "class":
+                    k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
+            out.append(st)
+        return out
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
         # evaluated (from __future__ import annotations)
         if self.imported(s).startswith("typing."):
             return self.imported(s)[7:]
+        if self.imported(s).startswith("collections.abc."):
+            return self.imported(s)[16:]
         if s in TYPING and "__future__.annotations" in self.imports.values():
             return s
         if s in TYPING:
@@ -7200,6 +7256,8 @@ class Gen:
         for m in mods:
             self.scan_imports(m.body.kids)
         for m in mods:
+            m.body.kids = self.typing_forms(m, m.body.kids, False)
+        for m in mods:
             for st in m.body.kids:
                 self.line = st.line
                 why = ""
@@ -7844,7 +7902,7 @@ class Gen:
     def check_import(self, a: Node) -> None:
         mod = a.kids[1].s
         tgt = a.kids[0].s
-        if mod not in MODULES:
+        if mod not in MODULES and mod != "collections.abc":
             self.err(f"module '{mod}' is not supported (available: {', '.join(MODULES.keys())})")
         if tgt == mod or tgt == mod[: mod.find(".")] or (tgt + ".") == mod[: len(tgt) + 1]:
             return
@@ -7852,9 +7910,9 @@ class Gen:
         if mod == "__future__":
             if x not in FUTURE:
                 self.err(f"future feature {x} is not defined")
-        elif mod == "typing":
-            if x not in TYPING:
-                self.err(f"cannot import name '{x}' from 'typing'")
+        elif mod == "typing" or mod == "collections.abc":
+            if x not in (TYPING if mod == "typing" else ABCS):
+                self.err(f"cannot import name '{x}' from '{mod}'")
         elif mod == "dataclasses":
             if x != "dataclass":
                 self.err(f"dataclasses.{x} is not supported")
