@@ -5473,6 +5473,7 @@ class Gen:
         self.qused: dict[str, bool] = {}
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
+        self.nts: dict[str, bool] = {}  # the typing.NamedTuple classes: a dataclass whose fields cannot be assigned (see nt_class)
 
     # ---- emission helpers
     def err(self, msg: str) -> None:
@@ -5699,7 +5700,7 @@ class Gen:
         return v
 
     def is_dc(self, t: str) -> bool:
-        return t in self.classes and len(self.classes[t].node.kids) > 1
+        return t in self.classes and (len(self.classes[t].node.kids) > 1 or t in self.nts)
 
     def isnum(self, t: str) -> bool:
         return t == "int" or t == "float" or t == "bool"
@@ -6085,10 +6086,14 @@ class Gen:
                 if len(st.kids) == 3:
                     ci.fdefault[st.kids[0].s] = st.kids[2]
                     last = st.kids[0].s
+                elif last != "" and ci.name in self.nts:
+                    self.err(f"Non-default namedtuple field {st.kids[0].s} cannot follow default field {last}")
                 elif last != "" and self.is_dc(ci.name):
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
                 self.err("a class body may only contain annotated fields and methods")
+        if ci.name in self.nts:
+            self.nt_class(ci)
         if self.is_dc(ci.name):
             self.dc_methods(ci)
         if "__init__" in ci.methods:
@@ -6103,7 +6108,7 @@ class Gen:
         f.ptypes.append(ci.name)
         f.defaults.append(noann)
         f.dglob.append("")
-        if len(ci.node.kids) > 1:
+        if self.is_dc(ci.name):
             for fl in ci.fields:
                 f.params.append(fl)
                 f.ptypes.append(ci.ftypes[fl])
@@ -6112,6 +6117,29 @@ class Gen:
                 me = mk("name", "self", d.line, [])
                 body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [me]), mk("name", fl, d.line, [])]))
         ci.methods["__init__"] = f
+
+    def nt_class(self, ci: ClassInfo) -> None:
+        # class P(NamedTuple): a dataclass (its __init__, __repr__ and __eq__) whose fields are
+        # never assigned after __init__, read in order where it is unpacked or indexed, and ordered
+        # as the tuple of its fields (see richcmp); CPython's tuple methods are not there
+        self.line = ci.node.line
+        for m in "__new__ __init__ __slots__ __getnewargs__ _fields _field_defaults _make _replace _asdict _source".split():
+            if m in ci.methods:
+                self.err(f"Cannot overwrite NamedTuple attribute {m}")
+        for fl in ci.fields:
+            if fl.startswith("_"):
+                self.err(f"Field names cannot start with an underscore: '{fl}'")
+        if len(ci.fields) == 0:
+            self.err("a NamedTuple without fields is not supported")
+
+    def nt_base(self, n: Node) -> bool:
+        # does a class's base n name typing.NamedTuple
+        return (n.kind == "name" and self.imported(n.s) == "typing.NamedTuple") or (n.kind == "attr" and self.typing_attr(n) == "NamedTuple")
+
+    def frozen(self, t: str, name: str) -> None:
+        # a NamedTuple's fields are assigned only by its __init__
+        if t in self.nts and not (self.curfn.name == "__init__" and self.curfn.cls == t):
+            self.err(f"cannot assign to field '{name}' of NamedTuple {short(t)} (AttributeError: can't set attribute); make a new one with _replace({name}=...)")
 
     def synth(self, ci: ClassInfo, name: str, ret: str, body: list[Node]) -> None:
         # a method the compiler writes for a dataclass, generated only if the program calls it
@@ -6147,10 +6175,14 @@ class Gen:
             enter = mk("call", "", line, [mk("name", "__pys_repr_enter", line, []), me])
             busy = mk("block", "", line, [mk("return", "", line, [mk("str", "...", line, [])])])
             r = mk("name", "r", line, [])
-            self.synth(ci, "__repr__", "str", [mk("if", "", line, [mk("unary", "not", line, [enter]), busy, mk("block", "", line, [])]),
-                                              mk("assign", "", line, [r, mk("fstr", "", line, parts)]),
-                                              mk("expr", "", line, [mk("call", "", line, [mk("name", "__pys_repr_leave", line, []), me])]),
-                                              mk("return", "", line, [r])])
+            if ci.name in self.nts:
+                # (a tuple's repr has no guard: a cycle through a field shows where a list's repr stops it)
+                self.synth(ci, "__repr__", "str", [mk("return", "", line, [mk("fstr", "", line, parts)])])
+            else:
+                self.synth(ci, "__repr__", "str", [mk("if", "", line, [mk("unary", "not", line, [enter]), busy, mk("block", "", line, [])]),
+                                                  mk("assign", "", line, [r, mk("fstr", "", line, parts)]),
+                                                  mk("expr", "", line, [mk("call", "", line, [mk("name", "__pys_repr_leave", line, []), me])]),
+                                                  mk("return", "", line, [r])])
         if "__eq__" not in ci.methods:
             test = mk("True", "", line, [])
             for i in range(len(ci.fields)):
@@ -7084,7 +7116,9 @@ class Gen:
             self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
         elif k == "attr":
             o = self.expr(t.kids[0], "")
-            self.setfield(o, self.field(o, t.s, True), t.s, v)
+            p = self.field(o, t.s, True)
+            self.frozen(o.t, t.s)
+            self.setfield(o, p, t.s, v)
         elif k == "index" and t.kids[0].kind == "name" and "?" in self.rtype(t.kids[0].s):
             # d[k] = v or xs[i] = v on an empty dict or list without a type: k and v decide it
             self.allowq = True
@@ -7123,6 +7157,14 @@ class Gen:
                     self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
                 else:
                     self.assign(t.kids[i], self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
+        elif k == "tuple" and v.t in self.nts:
+            # a, b = p: a NamedTuple's fields in order
+            fs = self.classes[v.t].fields
+            if len(fs) != len(t.kids):
+                self.err(f"cannot unpack {short(v.t)} ({len(fs)} fields) into {len(t.kids)} targets")
+            self.notnone(v, "TypeError: cannot unpack non-iterable NoneType object")
+            for i in range(len(fs)):
+                self.assign(t.kids[i], self.getfield(v, self.field(v, fs[i]), fs[i]))
         elif k == "tuple":
             if not is_tuple(v.t) or len(targs(v.t)) != len(t.kids):
                 self.err(f"cannot unpack {v.t} into {len(t.kids)} targets")
@@ -7275,6 +7317,11 @@ class Gen:
             self.scan_imports(m.body.kids)
         for m in mods:
             m.body.kids = self.typing_forms(m, m.body.kids, False)
+            for i in range(len(m.body.kids)):
+                st = m.body.kids[i]
+                if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
+                    m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
+                    self.nts[st.s] = True
         for m in mods:
             for st in m.body.kids:
                 self.line = st.line
@@ -8053,7 +8100,7 @@ class Gen:
                 bound[fl] = True
                 t = ci.ftypes[fl]
                 u = unopt(t)  # (a default of a T | None field that is not None is a T)
-                if self.is_dc(ci.name) and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.is_dc(u) or self.unhashable(u)):
+                if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.is_dc(u) or self.unhashable(u)):
                     self.err(f"mutable default {u} for dataclass field '{fl}' is not allowed")
                 if not is_const(st.kids[2]) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                     # code compiled before this statement declared its global (class_default)
@@ -8563,6 +8610,7 @@ class Gen:
         elif t.kind == "attr":
             o = self.expr(t.kids[0], "")
             p = self.field(o, t.s, False)
+            self.frozen(o.t, t.s)
             cur = self.getfield(o, p, t.s)
             self.setfield(o, p, t.s, self.inplace(op, cur, n.kids[1]))
         elif t.kind == "index":
@@ -8724,6 +8772,8 @@ class Gen:
     def iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
         # a tuple is iterated as a list of its items, which must then share one type; None raises msg
         v = self.unwrap(v, msg)
+        if v.t in self.nts:
+            self.err(f"iterating over a NamedTuple ({short(v.t)}) is not supported: unpack it, or read its fields")
         if not is_tuple(v.t) or v.t == "tuple[]":
             return v
         ts = targs(v.t)
@@ -9002,7 +9052,11 @@ class Gen:
             ci = self.classes[t]
             if a in ci.fflag:
                 return -2
-            if a in ci.methods or a in ci.ftypes or a in HASATTR["obj"].split():
+            if a in ci.methods or a in ci.ftypes:
+                return -1
+            if t in self.nts:
+                self.err(f"hasattr() of '{a}' on a NamedTuple is not supported")
+            if a in HASATTR["obj"].split():
                 return -1
             return -1 if self.is_dc(t) and a in "__dataclass_fields__ __dataclass_params__ __match_args__".split() else 0
         b = "list" if is_list(t) else "dict" if is_dict(t) else "tuple" if is_tuple(t) else "int" if t == "bool" else t
@@ -9070,6 +9124,8 @@ class Gen:
             return 1 if t == "int" or t == "bool" else 0
         if c.s == "bool" or c.s == "float" or c.s == "str":
             return 1 if t == c.s else 0
+        if c.s == "tuple" and t in self.nts:
+            self.err("isinstance() of a NamedTuple and tuple is not supported")
         if c.s == "list" or c.s == "dict" or c.s == "tuple":
             return 1 if t.startswith(c.s + "[") else 0
         if c.s in "bytes bytearray memoryview set frozenset complex range slice type".split():
@@ -9510,8 +9566,8 @@ class Gen:
             kx = self.dkey(self.expr(n.kids[1], kv[0]), kv[0])
             o = self.unwrap(o, sub)
             return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"]), kv[1])
-        if is_tuple(t):
-            ts = targs(t)
+        if is_tuple(t) or t in self.nts:
+            ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
             i = self.expr(n.kids[1], "int")
             if i.t == "bool" and (i.v == "true" or i.v == "false"):
                 i = Val("1" if i.v == "true" else "0", "int")
@@ -9522,6 +9578,9 @@ class Gen:
                 j += len(ts)
             if j < 0 or j >= len(ts):
                 self.err("tuple index out of range")
+            if t in self.nts:
+                self.notnone(o, sub)
+                return self.getfield(o, self.field(o, ts[j]), ts[j])
             return self.tget(self.unwrap(o, sub), j)
         self.err(f"'{t}' object is not subscriptable")
         return o
@@ -9676,6 +9735,8 @@ class Gen:
     def dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         # operator overloading, resolved statically: a + b -> A.__add__(a, b)
         m = DUNDER.get(op, "")
+        if m != "" and ((a.t in self.nts and is_tuple(b.t)) or (b.t in self.nts and is_tuple(a.t))):
+            self.err(f"comparing a NamedTuple with a tuple ({typestr(a.t)} {op} {typestr(b.t)}) is not supported")
         if op in REFL and (a.t in self.classes or b.t in self.classes):
             return self.richcmp(op, a, b)
         if (op == "==" or op == "!=") and a.t == "None" and b.t in self.classes:
@@ -9722,12 +9783,23 @@ class Gen:
         # b.__gt__(a), else TypeError naming both run-time types (None defines neither)
         fw = self.cmp_method(a.t, DUNDER[op], b.t)
         rf = self.cmp_method(b.t, DUNDER[REFL[op]], a.t)
-        if fw == "" and rf == "" and not self.lenient:
+        nt = fw == "" and rf == "" and a.t == b.t and a.t in self.nts  # (as the tuples of their fields)
+        if fw == "" and rf == "" and not self.lenient and not nt:
             self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
         if fw != "" and a.v in self.nn:
             return self.call_fn(self.classes[a.t].methods[fw], [a, b], [])
         lend = self.label()
         phis: list[str] = []
+        if nt:
+            lcall = self.label()
+            lnone = self.label()
+            self.cbr(self.ins(f"or i1 {self.isnull(a)}, {self.isnull(b)}"), lnone, lcall)
+            self.place(lcall)
+            fs = self.classes[a.t].fields
+            r = self.cmp2(op, self.tuple_([self.getfield(a, self.field(a, x), x) for x in fs]), self.tuple_([self.getfield(b, self.field(b, x), x) for x in fs]))
+            phis.append(f"[{r.v}, %{self.cur}]")
+            self.br(lend)
+            self.place(lnone)
         if fw != "":
             lcall = self.label()
             lnone = self.label()
@@ -10013,9 +10085,7 @@ class Gen:
             if f.s in self.classes:
                 if self.classes[f.s].bad != "":
                     self.err(self.classes[f.s].bad)
-                size = f"ptrtoint (ptr getelementptr (%C.{f.s}, ptr null, i32 1) to i64)"
-                o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), f.s)
-                self.nn[o.v] = True
+                o = self.new_obj(f.s)
                 self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
                 return o
             if f.s in self.mvars:
@@ -10107,11 +10177,36 @@ class Gen:
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
         if o.t in self.classes:
             ci = self.classes[o.t]
-            if m not in ci.methods:
+            if m not in ci.methods and not (m == "_replace" and o.t in self.nts):
                 self.err(f"'{o.t}' object has no method '{m}'")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            if m not in ci.methods:
+                return self.replace(o, args)
             return self.call_fn(ci.methods[m], [o], args)
         return self.bmethod(o, m, args)
+
+    def replace(self, o: Val, args: list[Node]) -> Val:
+        # p._replace(f=v, ...): a new NamedTuple with the fields given, and p's others
+        ci = self.classes[o.t]
+        given: dict[str, Val] = {}
+        for a in args:
+            if a.kind != "kw":
+                self.err("_replace() takes only keyword arguments")
+            if a.s not in ci.ftypes:
+                self.err(f"Got unexpected field names: ['{a.s}']")
+            given[a.s] = self.expr(a.kids[0], ci.ftypes[a.s])
+        vals: list[Val] = [self.new_obj(o.t)]
+        for fl in ci.fields:
+            vals.append(given[fl] if fl in given else self.getfield(o, self.field(o, fl), fl))
+        self.call_fn(ci.methods["__init__"], vals, [])
+        return vals[0]
+
+    def new_obj(self, c: str) -> Val:
+        # a new object of class c, not initialized
+        size = f"ptrtoint (ptr getelementptr (%C.{c}, ptr null, i32 1) to i64)"
+        o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), c)
+        self.nn[o.v] = True
+        return o
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         # argument j of f for a parameter of type t ("": a template's unannotated parameter takes any type)
@@ -10427,6 +10522,9 @@ class Gen:
             if t in self.classes and "__len__" in self.classes[t].methods:
                 self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
                 return self.objlen(v)
+            if t in self.nts:
+                self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
+                return Val(str(len(self.classes[t].fields)), "int")
             if t == "str" or is_list(t) or is_dict(t):
                 return Val(self.ins(f"load i64, ptr {v.v}"), "int")
             if is_tuple(t):
