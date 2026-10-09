@@ -6931,7 +6931,7 @@ class Gen:
         for st in body:
             self.line = st.line
             k = st.kind
-            if (k == "assign" or k == "annassign") and st.kids[0].kind == "attr" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == "self":
+            if (k == "assign" or k == "annassign") and st.kids[0].kind == "attr" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == f.params[0]:
                 name = st.kids[0].s
                 if name not in ci.ftypes:
                     why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
@@ -6993,6 +6993,20 @@ class Gen:
         if k == "list" and len(e.kids) > 0:
             t = self.guess(e.kids[0], f)
             return f"list[{t}]" if t != "" else ""
+        if k == "tuple" and 0 < len(e.kids) <= 9:
+            ts = [self.guess(x, f) for x in e.kids if x.kind != "starred"]
+            return f"tuple[{','.join(ts)}]" if "" not in ts and len(ts) == len(e.kids) else ""
+        if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
+            kt = self.guess(e.kids[0], f)
+            vt = self.guess(e.kids[1], f)
+            return f"dict[{kt},{vt}]" if kt != "" and vt != "" and key_problem(kt) == "" else ""
+        if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "list" or e.kids[0].s == "sorted") and len(e.kids) == 2 and not self.bound(e.kids[0].s):
+            # list(range(n)), list(xs), sorted(xs): a list of the items
+            arg = e.kids[1]
+            if arg.kind == "call" and arg.kids[0].kind == "name" and arg.kids[0].s == "range" and not self.bound("range"):
+                return "list[int]"
+            t = self.guess(arg, f)
+            return t if is_list(t) else ""
         if k == "binop":
             a = self.guess(e.kids[0], f)
             b = self.guess(e.kids[1], f)
@@ -7002,6 +7016,10 @@ class Gen:
                 return "bool" if a == "bool" and b == "bool" and e.s in IOPS else "int"
             if a == b and (a == "str" or is_list(a)):
                 return a
+            if e.s == "*" and (is_list(a) or a == "str") and (b == "int" or b == "bool"):
+                return a  # [n] * n
+            if e.s == "*" and (is_list(b) or b == "str") and (a == "int" or a == "bool"):
+                return b
         return ""
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
