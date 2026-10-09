@@ -213,7 +213,8 @@ its own or of a base, a class takes any positional arguments. A subclass has its
 fields and methods and may define `__init__`, `__str__` and `__repr__` again: `str()`,
 `repr()`, `print` and an uncaught exception's line always use those of the object's class,
 `super().__str__()` and the others those of the base (also written `Base.__str__(self)` and
-`super(E, self)`), and `e.__str__()` is `str(e)`. Deriving from `OSError` or `SystemExit`, a
+`super(E, self)`), and `e.__str__()` is `str(e)`; `==` between objects of classes with a
+base in common calls that base's `__eq__`. Deriving from `OSError` or `SystemExit`, a
 class with an `__init__` of its own (or of a base) keeps no args, and has the code `None`,
 until `super().__init__(...)` sets them, as CPython's do. `except E as e` binds the object,
 typed as the nearest class of the program that the clause's classes derive from (else as a
@@ -475,7 +476,7 @@ than by `+=`, `append` and `extend`, for `import *`; `del` of another module's a
 but an exception; an `except` clause that names something other than exception classes (a
 variable), and `except*`; `except ... as x` in a function where `x` is a global (the end of
 the clause deletes it, as `del` would); `==` between exceptions where an exception class
-defines `__eq__` or `__ne__` (`is` works); an exception that may be `None` (`Exception | None`;
+defines `__eq__` or `__ne__` (`is` works), but for objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
 an object of an exception class may be), and an object of an exception class where a
 builtin exception is expected (`list[Exception]`: annotate it with the class or a base of
 the program); an exception class with two bases, one deriving from `SyntaxError` and its

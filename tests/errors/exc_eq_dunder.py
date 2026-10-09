@@ -1,4 +1,4 @@
-# error: == between exceptions (of type exc) is not supported where an exception class defines __eq__ (E does)
+# error: == between exceptions is not supported where an exception class defines __eq__ (E does)
 class E(Exception):
     def __eq__(self, o: "E") -> bool:
         return True

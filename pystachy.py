@@ -11205,14 +11205,15 @@ class Gen:
         # raises one (each raise of it makes an exception of its own), else itself
         return Val(self.rt("pys_exc_id", "ptr", [f"ptr {v.v}"]), "exc") if v.t == "exc" else v
 
-    def exc_eq(self, t: str) -> None:
+    def exc_eq(self, t: str, what: str = "") -> None:
         # == compares exceptions (of type t, or inside t) by identity: not where an exception
         # class defines __eq__ or __ne__, which CPython calls for one that an exception may be
         if "E" in self.desc(t):
             for c in self.classes.values():
                 if c.exc != "" and ("__eq__" in c.methods or "__ne__" in c.methods):
                     m = "__eq__" if "__eq__" in c.methods else "__ne__"
-                    self.err(f"== between exceptions (of type {typestr(t)}) is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
+                    what = what if what != "" else "between exceptions" if t == "exc" else f"between values of type {typestr(t)}"
+                    self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
         if (op == "==" or op == "!=") and a.t == b.t and a.t == "file":
@@ -11220,11 +11221,22 @@ class Gen:
             return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
         xa = a.t == "exc" or (a.t in self.classes and self.classes[a.t].exc != "")
         xb = b.t == "exc" or (b.t in self.classes and self.classes[b.t].exc != "")
+        if xa and xb and a.t != b.t and a.t in self.classes and b.t in self.classes and (op == "==" or op == "!="):
+            # objects of exception classes with a base class in common: as objects of that base,
+            # whose __eq__ a class deriving from it cannot define again
+            cb = a.t
+            while cb in self.classes and not self.derives(b.t, cb):
+                cb = self.classes[cb].base
+            if cb in self.classes:
+                a = self.coerce(a, cb)
+                b = self.coerce(b, cb)
         if xa and xb and (a.t != b.t or a.t == "exc") and (op == "==" or op == "!=" or op == "is" or op == "is not"):
             # exceptions, builtin or objects of exception classes of different classes: by identity
             # (an exception class's object is an exception of its own that each raise of it makes)
             if op == "==" or op == "!=":
-                self.exc_eq("exc")
+                x = "an exception" if a.t == "exc" else f"an object of {short(a.t)}"
+                y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
+                self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
             return Val(self.ins(f"icmp {'eq' if op == '==' or op == 'is' else 'ne'} ptr {self.exc_id(a).v}, {self.exc_id(b).v}"), "bool")
         if op == "is" or op == "is not":
             if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
