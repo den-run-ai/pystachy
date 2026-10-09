@@ -4,7 +4,7 @@
 import sys
 import typing
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Protocol, overload, runtime_checkable
+from typing import Callable, ClassVar, List, NamedTuple, Protocol, TypedDict, overload, runtime_checkable
 
 LIMIT = 3
 
@@ -104,6 +104,29 @@ class Base:
 
 class Derived(Base):
     "no __init_subclass__ runs"
+    where = __module__
+    path = (__name__, __qualname__, __debug__)
+
+
+class Pair(NamedTuple):
+    left: int
+    right: int = 0
+
+
+class Options(TypedDict, total=False):
+    verbose: bool
+
+
+class Counts(dict[str, int]):
+    pass
+
+
+class Ints(List[int]):
+    pass
+
+
+class Shape(Protocol):
+    sides: int
 
 
 class Plain(object):

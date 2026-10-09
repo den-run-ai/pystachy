@@ -1,4 +1,4 @@
-# error: class inheritance is not supported (the module binds the name 'object', so it is not the builtin object here)
+# error: class inheritance is not supported (the module may have rebound the name 'object' by then
 object = 1
 
 
