@@ -919,7 +919,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
-   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
+   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it;
+   ?<e> None (null) or a value of <e> */
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
@@ -938,7 +939,7 @@ void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] ==
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
-  if (c == 'L') return skip(d);
+  if (c == 'L' || c == '?') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   return d;
@@ -989,6 +990,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
+  case '?': if (v) return repr(b, v, d); put(b, "None", 4); return skip(d);
   }
   return d;
 }
@@ -1020,6 +1022,7 @@ static int eqv(I a, I b, const char *d) {
     return 1;
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
+  case '?': return a && b ? eqv(a, b, d + 1) : a == b;          /* None equals only None */
   }
   return a == b;
 }
@@ -1028,6 +1031,7 @@ I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
+static const char *tyname(char d);
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -1045,6 +1049,10 @@ static int opv(I a, I b, const char *d, I op) {
   }
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case '?':
+    if (a && b) return opv(a, b, d + 1, op);
+    failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
+          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -1600,7 +1608,11 @@ static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   
 }
 Str *pys_format(I v, Str *desc, Str *spec) {
   const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
-  char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
+  char d = desc->s[desc->s[0] == '?'], align = 0, sign = 0, type = 0, sep = 0;   /* ?: None or a value */
+  if (desc->s[0] == '?' && !v) {
+    if (spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
+    return cstr("None");
+  }
   int alt = 0, zneg = 0, fillset = 0;
   I fl = 1, width = 0, prec = -1;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
