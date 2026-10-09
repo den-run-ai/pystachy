@@ -6330,15 +6330,17 @@ class Gen:
         return True
 
     def dry(self, e: Node) -> str:
-        # the type of e, compiled into code that is dropped
+        # the type of e, compiled into code that is dropped (an error after it is still the read's)
         body = self.body
         cur = self.cur
         term = self.term
+        line = self.line
         self.body = []
         t = self.expr(e, "").t
         self.body = body
         self.cur = cur
         self.term = term
+        self.line = line
         return t
 
     def fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
