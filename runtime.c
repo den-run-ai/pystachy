@@ -1170,20 +1170,24 @@ void pys_list_reverse(List *l) { rev(l->a, l->len); }
    raises into a try leaves the list with all its items, in the order reached, as in CPython: an
    unwind action (sort_undo) copies back the items that are only in the merge buffer, from where
    the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
-   reversal and gives the list its array back. Speed: the common item types compare inline, and
-   binary insertion and the one-at-a-time merging of ints and floats use selects, as random data
-   makes their branches unpredictable (merging strings or objects keeps the branches, which let
-   the CPU fetch their data early). */
+   reversal and gives the list its array back. What it needs is in a record on the heap (Undo),
+   so that it can run when the sort's frame is gone. Speed: the common item types compare
+   inline, and binary insertion and the one-at-a-time merging of ints and floats use selects, as
+   random data makes their branches unpredictable (merging strings or objects keeps the
+   branches, which let the CPU fetch their data early). */
 #define MIN_GALLOP 7
 typedef struct { I s, n; int power; } Run;          /* a pending run: start, length, powersort power */
 typedef struct {
   const char *d; int kind; I cls;                   /* element descriptor; its kind (below) and class id */
   I *volatile a, *volatile t;                       /* item array and merge buffer: roots for the collector */
   I n, nt, min_gallop; int np; Run p[64];           /* items; buffer size; the stack of pending runs */
-  List *l; I cap; int rev, keep;                    /* for sort_undo: the list, its capacity, reverse=; */
-  I *volatile fd, *volatile fs; volatile I fn;      /* keep: KEEP notes fs[:fn], the items only in the */
-} MS;                                               /* buffer, and fd, where they go back */
-#define KEEP(dst, src, k) do { if (keep) { ms->fd = (dst); ms->fs = (src); ms->fn = (k); } } while (0)
+  struct Undo *u;                                   /* keep: sort_undo's record, else NULL */
+} MS;
+typedef struct Undo {                               /* for sort_undo: the list, its item array, length, */
+  List *l; I *a, n, cap; int rev;                   /* capacity and reverse=; KEEP notes fs[:fn], the */
+  I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back */
+} Undo;
+#define KEEP(dst, src, k) do { if (keep) { Undo *u_ = ms->u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } } while (0)
 static I sorting[1];                                /* the items of a list while it is being sorted */
 enum { INT = 1, FLOAT, STR, OBJ };                  /* kinds of items whose ISLT is inline */
 static inline int islt(MS *ms, I x, I y) {          /* ISLT: opv(x, y, d, 0), its common cases inline */
@@ -1333,9 +1337,8 @@ static void merge_at(MS *ms, int i) {               /* merge pending runs i and 
   k = gallop(ms, *b, a, na, 0, 1);                  /* a[:k] and then b[nb:] are in place already */
   a += k;
   if (!(na -= k) || !(nb = gallop(ms, a[na - 1], b, nb, nb - 1, 0))) return;
-  if (ms->keep) merge_keep(ms, a, na, b, nb);
+  if (ms->u) { merge_keep(ms, a, na, b, nb); ms->u->fn = 0; }   /* every item is in the array again */
   else if (na <= nb) merge_lo(ms, a, na, b, nb, 0); else merge_hi(ms, a, na, b, nb, 0);
-  ms->fn = 0;                                       /* every item is in the array again */
 }
 static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs below of greater power */
   if (!ms->np) return;
@@ -1350,17 +1353,20 @@ static void found_new_run(MS *ms, I n2) {           /* powersort: merge the runs
   ms->p[ms->np - 1].power = power;
 }
 static void sort_undo(void *p) {
-  MS *ms = p; I *a = ms->a, k = ms->fn;
-  if (k) memcpy(ms->fd, ms->fs, k * 8);
-  if (ms->rev) rev(a, ms->n);
-  ms->l->len = ms->n; ms->l->cap = ms->cap; ms->l->a = a;
+  Undo *u = p;
+  if (u->fn) memcpy(u->fd, u->fs, u->fn * 8);
+  if (u->rev) rev(u->a, u->n);
+  u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
 }
 void pys_list_sort_r(List *l, Str *d, I reverse) {
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
-           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP, .l = l, .cap = cap, .rev = reverse != 0};
-  ms.keep = top && n > 1 && (ms.kind == OBJ || !ms.kind);   /* a comparison may raise into a try */
-  if (ms.keep) pys_unwind_push(sort_undo, &ms);
+           .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
+  if (top && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
+    Undo *u = ms.u = pys_alloc(sizeof(Undo));
+    u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0;
+    pys_unwind_push(sort_undo, u);
+  }
   l->len = l->cap = 0; l->a = sorting;
   if (n > 1) {
     if (reverse) rev(a, n);                         /* reverse=True: reverse, sort stably, reverse back */
@@ -1379,7 +1385,7 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     }
     if (reverse) rev(a, n);
   }
-  if (ms.keep) pys_unwind_pop();
+  if (ms.u) pys_unwind_pop();
   int bad = l->a != sorting;                        /* items added meanwhile are dropped, as in CPython */
   l->len = n; l->cap = cap; l->a = a;
   if (bad) pys_fail("ValueError: list modified during sort");
