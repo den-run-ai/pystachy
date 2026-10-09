@@ -2252,6 +2252,18 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    the same function may instead branch to it with the Exc itself, the same address). The
    exception being handled (a bare raise's, CPython's exc_info) is a global: pys_exc_begin sets
    it, and every way out of a handler restores the one its try noted (pys_exc_restore).
+   What compiled code raises. The funnels raise what they always ended the program with:
+   pys_fail("Kind: message"), pys_raise(kind, msg) for kind(msg) of a str msg (kind() when it
+   is empty), pys_exit(c) for sys.exit(c) of an int c, pys_exit_msg(m) for one of a str m.
+   Anything else is pys_throw of an Exc that pys_exc_new(kind, str(e), args) makes, args being
+   what repr(e) shows in its parentheses ("" for no argument, "5", "'a', 'b'"): ValueError(5),
+   KeyError('a', 'b'), ValueError(''). A SystemExit whose code is None, a bool or an int is
+   pys_exc_exit(status, str(code), repr(code)), so that nothing catching it ends the program
+   with that status and no output: pys_exc_exit(0, "", "") for sys.exit() and sys.exit(None)
+   (str(e) "", repr SystemExit()), (1, "True", "True") for sys.exit(True). Another code is
+   pys_exc_new("SystemExit", str(code), args): str(code) and status 1. A user exception
+   object is pys_exc_user(obj); its class's exit function makes a SystemExit subclass end
+   the program as the builtin one its code makes.
    What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
    which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
    and the unwind actions registered since the try's mark run, the latest first, each popped
@@ -2268,13 +2280,15 @@ typedef struct ExcClass {              /* a user exception class: compiled code 
   Str *kind;                           /* unique name, which pys_exc_in matches */
   Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
   Str *(*str)(void *obj), *(*repr)(void *obj);
+  Exc *(*exit)(void *obj);             /* a class deriving from SystemExit: the builtin SystemExit (pys_exc_exit,
+                                          pys_exc_new) its object's code ends the program as; else NULL */
 } ExcClass;
 struct Exc {                           /* GC-allocated, 16-byte aligned (exc_alloc); a user object's first */
   struct _Unwind_Exception ue;         /* field points to its ExcClass. First: the unwinder's header */
   Str *kind;                           /* "KeyError", or the user class's ExcClass->kind */
   Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
   void *obj;                           /* the user exception object, or NULL */
-  I code, has_code;                    /* SystemExit: its status (msg holds a non-int code's text) */
+  I code, has_code;                    /* SystemExit: its status (has_code 0: msg is a code's str, status 1) */
   Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
 };
 _Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
@@ -2295,8 +2309,9 @@ Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)ob
 Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
   Exc *e = exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
 }
-static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c), or sys.exit(m): message m, status 1 */
-  return m ? exc_new(cstr("SystemExit"), m, 0) : pys_exc_exit(c, pys_str_int(c), 0);
+static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) of a str: status 1 */
+  if (!m) { Str *s = pys_str_int(c); return pys_exc_exit(c, s, s); }
+  Buf b = {0}; repr_str(&b, m); return exc_new(cstr("SystemExit"), m, done(&b));
 }
 static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args of its tuple and errno forms */
   const char *c = strstr(m, ": "), *t, *q;
@@ -2360,14 +2375,16 @@ static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m
   exit(1);
 }
 static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+  if (e->obj) {                        /* compiled code runs: what it raises and nothing catches ends in throw_ */
+    xr.shown = e; xthrow = hide(throw_);
+    if (XCLS(e)->exit) e = XCLS(e)->exit(e->obj);   /* SystemExit's subclasses end the program as it does */
+  }
   if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
     if (e->has_code) { pys_finish(); exit((int)e->code); }
     out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
   }
   out_flush();
-  if (!e->obj) exc_report(e, e->msg);
-  xr.shown = e; xthrow = hide(throw_); /* its __str__ may raise, also in a program without try: throw_ */
-  exc_report(e, XCLS(e)->str(e->obj));
+  exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->msg);
 }
 static _Noreturn void throw_(Exc *e) {
   xr.cur = e;
