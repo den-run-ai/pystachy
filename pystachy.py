@@ -4589,9 +4589,10 @@ METHODS: dict[str, str] = {
 }
 # the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7, and FX below): T ends
 # a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
-# summary (IFn.fx); a raw op is LLVM text that loads, stores or computes (never a call)
+# summary (IFn.fx); a raw op is LLVM text that loads, stores or computes (never a call), whose
+# letters its text gives (rawfx)
 IROPS: dict[str, str] = {
-    "raw": "rL rD wD rO wO rG wG", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
+    "raw": "*", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
@@ -4753,6 +4754,10 @@ def runtime_decl(k: str) -> str:
 
 # every effect letter but N (it is no summary's): U's, and a summary not computed yet
 FXALL = (1 << len(FX)) - 1 - FXBIT["N"]
+# what a raw op that loads or stores through an address other than a slot's or a global's may
+# read or write: a list's or a dict's header or items, an object's fields and flags
+RAWR = FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"]
+RAWW = FXBIT["wL"] | FXBIT["wD"] | FXBIT["wO"]
 
 
 def fxmask(letters: str) -> int:
@@ -4768,6 +4773,22 @@ def fxmask(letters: str) -> int:
 def fxs(m: int) -> str:
     # bits of effect letters as letters
     return " ".join([x for x in FX if m & FXBIT[x] != 0])
+
+
+def rawfx(s: str) -> int:
+    # the effects (FX bits) of a raw op, whose LLVM text s loads, stores or computes: a load or a
+    # store of a slot (%name.N, an alloca, which is never address-taken) has none, of a global
+    # (@name) rG or wG; one through another address may read (RAWR) or write (RAWW) a list, a
+    # dict or an object (or a tuple, which needs no letter, but the text does not tell them apart)
+    st = s.startswith("store ")
+    if not st and " = load " not in s:
+        return 0
+    a = s[s.rfind(" ") + 1 :]  # the address, the last word of "load T, ptr A" and "store T V, ptr A"
+    if a.startswith("@"):
+        return FXBIT["wG"] if st else FXBIT["rG"]
+    if "." in a:
+        return 0  # (a temporary, %tN, has no dot)
+    return RAWW if st else RAWR
 
 
 class RtFn:
@@ -5524,7 +5545,7 @@ class Gen:
         # the runtime functions declared, by RUNTIME key, in the order of their first use (which
         # the program's declare lines keep)
         self.rtfns: dict[str, RtFn] = {}
-        self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but rt, call and init
+        self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but raw, rt, call and init
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []
@@ -7376,14 +7397,13 @@ class Gen:
         # each function's effect summary (IFn.fx): the letters of its ops, where a call or an init
         # counts with its callee's summary; a fixpoint over the call graph, from no letters
         calls: list[list[int]] = []
-        raw = self.opfxs["raw"]
         for fn in self.fns:
             m = 0
             cs: list[int] = []
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "raw":
-                        m |= raw
+                        m |= rawfx(i.s)
                     elif i.op == "call" and i.s in self.fll:
                         cs.append(self.fll[i.s])
                     elif i.op == "init" and "@init." + i.s in self.fll:
@@ -7405,13 +7425,16 @@ class Gen:
 
     def opfx(self, i: Ins) -> int:
         # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx:
-        # every letter until effects has computed it, and if the callee is not compiled)
+        # every letter until effects has computed it, and if the callee is not compiled), a raw
+        # op's what its text does (rawfx)
         if i.op == "call" or i.op == "init":
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else FXALL
         if i.op == "rt":
             f = self.rtfns[i.s]
             return FXALL if f.q and "O" in i.x else f.fx
+        if i.op == "raw":
+            return rawfx(i.s)
         return self.opfxs[i.op]
 
     def class_problem(self, st: Node) -> str:
@@ -7618,7 +7641,7 @@ class Gen:
             self.effects()
         if dump:
             for fn in self.fns:
-                print(f"{fn.f.ll}: {fxs(fn.fx)}", file=sys.stderr)
+                print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
         for fn in self.fns:
             self.lower(fn)
             # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
