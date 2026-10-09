@@ -336,7 +336,8 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   fractional power (CPython returns a complex).
 - `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`
   and `write()`'s result count bytes, case mapping, the `is*()` tests and `split()` know
-  only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8; `"%c" % i` is the character's
+  only ASCII, `strip()`'s characters and `replace("", s)`'s gaps are bytes (`"é".strip("è")`
+  strips a byte of the `é`), and `chr(i)` for `i < 256` is that byte (above, its UTF-8; `"%c" % i` is the character's
   UTF-8 for every `i`).
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
@@ -344,7 +345,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
   when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
   three-byte form and printed or written as it is, where CPython raises
-  `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
+  `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's. A format width or
+  precision above 10**8 raises `ValueError: Too many decimal digits in format string`, which
+  CPython raises only above 2**63 - 1.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).
