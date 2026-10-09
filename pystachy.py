@@ -10661,6 +10661,8 @@ class Gen:
         ms = self.classes[t].methods
         if m not in ms:
             self.err(missing)
+        if ms[m].bad != "":
+            self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
         return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
 
     def protocol(self, o: Val, m: str, args: list[Val]) -> Val:
@@ -10681,6 +10683,8 @@ class Gen:
         if "__iter__" not in ms:
             self.err(missing)
         f = ms["__iter__"]
+        if f.bad != "":
+            self.err(f.bad)  # (an imported module's generator __iter__: its own error, not its type's)
         if not f.iters:
             self.err(f"iter() returned non-iterator of type '{tname(f.ret)}': {short(v.t)}.__iter__ must return an iterator, as iter(xs) of a list xs makes one (-> Iterator[T])")
         self.notnone(v, none)
