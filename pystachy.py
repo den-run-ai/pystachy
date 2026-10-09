@@ -10365,6 +10365,10 @@ class Gen:
                         bd = "-9223372036854775807"
                     bnd.append(bd)
             o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
+            if o.t in self.classes and o.t not in self.nts and "__getitem__" not in self.classes[o.t].methods:
+                self.err(f"'{tname(o.t)}' object is not subscriptable")
+            if o.t in self.classes and o.t not in self.nts:
+                self.err(f"slicing an object is not supported: {short(o.t)}.__getitem__ would take a slice object, which Pystachy does not have")
             if o.t != "str" and not is_list(o.t):
                 self.err(f"'{o.t}' cannot be sliced")
             fn = "pys_str_slice" if o.t == "str" else "pys_list_slice"

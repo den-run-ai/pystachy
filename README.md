@@ -528,7 +528,8 @@ those); `from <builtin module> import *`; a NamedTuple without fields, assigned 
 outside its `__init__`, whose class defines `__getitem__` or `__iter__`, compared or added
 through its own operator method with another type, given to `hasattr()` of a name it does
 not define, `_make()`, `_asdict()` of fields of different types, the functional
-`NamedTuple("P", [...])`, slicing a tuple or NamedTuple, a
+`NamedTuple("P", [...])`, slicing a tuple, a NamedTuple or an object (whose `__getitem__`
+would take a slice object), a
 tuple `*` a number that is not a constant, and CPython's class-creation errors of a
 NamedTuple (a field after a default, an underscored field, an overwritten `__init__`) and of
 a dataclass (a field without a default after one with it); a value that may be `None` where
