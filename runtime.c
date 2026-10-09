@@ -1177,12 +1177,24 @@ List *pys_list_mul(List *a, I n) {
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqv(l->a[i], v, d->s)) return i; return -1; }
-I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
-  I i = -1;
+static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
-  for (I j = st; j < en && j < l->len; j++) if (eqv(l->a[j], v, d->s)) { i = j; break; }
-  if (i < 0) { Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, v, d->s); put(&b, " is not in list", 16); pys_fail(b.p); }
+  for (I j = st; j < en && j < l->len; j++) if (eqv(l->a[j], v, d)) return j;
+  return -1;
+}
+static _Noreturn void not_in_list(I x, const char *xd) {
+  Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, x, xd); put(&b, " is not in list", 16); pys_fail(b.p);
+}
+I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
+  I i = index_in(l, v, d->s, st, en);
+  if (i < 0) not_in_list(v, d->s);
+  return i;
+}
+I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* list.index(x, start, stop) of a number x
+                                     of another type than the items: v is the item equal to x, if there is one (ok) */
+  I i = ok ? index_in(l, v, d->s, st, en) : -1;
+  if (i < 0) not_in_list(x, xd->s);
   return i;
 }
 I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += eqv(l->a[i], v, d->s); return c; }

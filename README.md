@@ -208,7 +208,8 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   its own, and do not change what is narrowed outside it. Module globals and fields are not
   narrowed, as a call may change them: copy one to a local, and test that.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
-  keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
+  keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely, and so
+  do `in`, `count()`, `index()` and `remove()` of a list of numbers (`1 in [1.0]`).
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
 - Class fields come from class-body annotations or from `self.x = ...` in `__init__`,
   typed by annotation, parameter, literal, constructor, method or function call (not a call

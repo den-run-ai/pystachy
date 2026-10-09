@@ -4676,7 +4676,7 @@ RUNTIME: dict[str, str] = {
     "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
     "list.copy": "S:S|A rL|", "list.clear": "None:S|wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL rD U?|",
-    "list.index": "int:S,*T,#,int,int|R A rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
+    "list.index": "int:S,*T,#,int,int|R A rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
     "list.sort_r": "None:S,#,bool|R A rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
@@ -10682,6 +10682,33 @@ class Gen:
         self.incoming(ph, n, e1)
         return self.phi(ph)
 
+    def numkey(self, v: Val, t: str) -> list[str]:
+        # number v (an int, float or bool) as the item of a list[t] (t another of them) that equals it,
+        # for in, count(), index() and remove(): [its value, whether there is one ("true": always)].
+        # No int equals 2.5 or nan, no float 2**53 + 1, no bool 2
+        if v.t == "bool":
+            return [self.as_float(v).v if t == "float" else self.as_int(v).v, "true"]
+        if t == "float":
+            fv = self.as_float(v).v
+            if not v.v.startswith("%") and -9007199254740992 <= int(v.v) <= 9007199254740992:
+                return [fv, "true"]
+            inr = self.ins(f"fcmp olt double {fv}, 0x43E0000000000000")  # (2**63, where an int's float may round to)
+            back = self.select(inr, Val(self.ins(f"fptosi double {fv} to i64"), "int"), Val("0", "int"))
+            return [fv, self.ins(f"and i1 {inr}, {self.ins(f'icmp eq i64 {back}, {v.v}')}")]
+        iv = v.v
+        ok = "true"
+        if v.t == "float":
+            lo = self.ins(f"fcmp oge double {v.v}, 0xC3E0000000000000")
+            inr = self.ins(f"and i1 {lo}, {self.ins(f'fcmp olt double {v.v}, 0x43E0000000000000')}")
+            iv = self.select(inr, Val(self.ins(f"fptosi double {v.v} to i64"), "int"), Val("0", "int"))
+            back = self.ins(f"sitofp i64 {iv} to double")
+            ok = self.ins(f"and i1 {inr}, {self.ins(f'fcmp oeq double {back}, {v.v}')}")
+        if t == "bool":
+            b01 = self.ins(f"icmp ult i64 {iv}, 2")
+            ok = b01 if ok == "true" else self.ins(f"and i1 {ok}, {b01}")
+            iv = self.ins(f"trunc i64 {iv} to i1")
+        return [iv, ok]
+
     def tuple_(self, vals: list[Val]) -> Val:
         p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
         ts: list[str] = []
@@ -11262,7 +11289,7 @@ class Gen:
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
         if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
             return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict, and no number
-        if (op == "in" or op == "not in") and is_opt(a.t) and ((is_dict(b.t) and unopt(a.t) == targs(b.t)[0]) or (is_sopt(a.t) and is_list(b.t) and unopt(a.t) == elem(b.t))):
+        if (op == "in" or op == "not in") and is_opt(a.t) and ((is_dict(b.t) and unopt(a.t) == targs(b.t)[0]) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
             # None is no key of the dict (and no int of a list[int])
             nn = self.ins(f"icmp ne ptr {a.v}, null")
             e0 = self.cur
@@ -11307,12 +11334,19 @@ class Gen:
             if b.t == "str":
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
+                ok = "true"
+                if self.isnum(a.t) and self.isnum(unopt(elem(b.t))) and a.t != unopt(elem(b.t)):
+                    nk = self.numkey(a, unopt(elem(b.t)))  # (1 in [1.0]: the item that equals it)
+                    a = Val(nk[0], unopt(elem(b.t)))
+                    ok = nk[1]
                 et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
                 if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                     et = self.optional(elem(b.t))
                 s = self.to_slot(self.coerce(a, et))
                 r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et))}"])
                 r = self.ins(f"add i64 {r}, 1")
+                if ok != "true":
+                    r = self.select(ok, Val(r, "int"), Val("0", "int"))
             elif is_dict(b.t):
                 s = self.to_slot(self.dkey(a, targs(b.t)[0]))
                 r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"])
@@ -12181,6 +12215,8 @@ class Gen:
         nmsg: list[str] = []
         dt = T  # the item type the # descriptor describes
         kx = Val("", "")  # a dict's key that may be None (see nonekey)
+        numx = Val("", "")  # xs.index(x), count(x) or remove(x) of a number x of another type
+        numok = "true"  # (whether an item can equal it, see numkey)
         i = 0
         for p in spec[c + 1 :].split(","):
             if p == "":
@@ -12223,6 +12259,11 @@ class Gen:
                 elif key == "dict.get" and i == 1 and self.optdefault(v, V) != V:
                     pt = self.optdefault(v, V)  # d.get(k, default) with a default that may be None: V | None
                     optget = True
+                if base == "list" and p == "*T" and self.isnum(v.t) and self.isnum(unopt(T)) and v.t != unopt(T) and (m == "index" or m == "count" or m == "remove"):
+                    numx = v
+                    nk = self.numkey(v, unopt(T))
+                    v = Val(nk[0], unopt(T))
+                    numok = nk[1]
                 if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":
                     v = Val(v.v, pt)  # None is the default
                 elif is_opt(v.t) and not slot and unopt(v.t) == pt == "str":
@@ -12251,10 +12292,17 @@ class Gen:
         fn = f"pys_{base}_{m}"
         if optget and is_sopt(rtype) and not is_sopt(V):
             fn = "pys_dict_getbox"  # (the value's box: an int | None)
+        if numok != "true" and m == "remove":
+            self.guard(self.ins(f"xor i1 {numok}, true"), "ValueError: list.remove(x): x not in list")
+        if numx.t != "" and m == "index":
+            fn = "pys_list_index_as"  # (its ValueError names x, not the item)
+            av = av + ["i64 " + self.to_slot(Val(numok, "bool")), "i64 " + self.to_slot(numx), f"ptr {self.sconst(self.desc(numx.t))}"]
         if kx.t != "":
             res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av)
         else:
             res = self.rt(fn, "i64" if slot else rtt(rtype), av)
+        if numok != "true" and m == "count":
+            res = self.select(numok, Val(res, "int"), Val("0", "int"))
         if slot:
             return self.from_slot(res, rtype)
         return self.rres(res, rtype)
