@@ -5681,8 +5681,9 @@ class Gen:
             return "bool"
         if k == "fstr":
             return "str"
-        if k == "unary" and e.s == "-":
-            return self.guess(e.kids[0], f)
+        if k == "unary" and e.s != "not":
+            t = self.guess(e.kids[0], f)
+            return "int" if t == "bool" else t  # (-True is -1, as unary() computes it)
         if k == "name" and e.s in f.params:
             return f.ptypes[f.params.index(e.s)]
         if k == "call" and e.kids[0].kind == "name":
