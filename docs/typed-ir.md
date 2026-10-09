@@ -232,6 +232,13 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     getitem that raised KeyError ends its block knowing its key is in the dict, so a handler's
 >     `d[k] = 0` would have reused an entry that is not there). The handler's code then knows
 >     only its own lookups, and so does the code after its try statement, where its end joins.
+>     `canon`'s walk back from a load (`Gen.reaching`) stops at a landing block too: a covered
+>     block is its predecessor where one of its ops raised, not from its end, so a store after
+>     that op (`k = "b"` after `int(s)` in the try body) is not what the handler's load of `k`
+>     reads. Walking on, the handler's `k in d` and a later `d["b"]` had been fused (one
+>     lookup of `"a"`, then `d["b"]` read from its entry: a wrong value, or past the entries
+>     of another dict); `tests/opt_exc_canon.py` runs those shapes (locals, globals, a dict
+>     rebound in the try body, a finally block's exceptional copy, nested tries, loops).
 >     `listget` follows only branches to blocks that one branch leads to, never a landing op's,
 >     so a handler's path joins its own only where paths meet: after the try statement or at a
 >     loop's test, which the next pass runs again. Run after `eh_ir`, both went wrong:

@@ -10111,7 +10111,9 @@ class Gen:
     def reaching(self, vs: Values, a: str, j: int, x: int) -> str:
         # the value that the load at position x of block j reads from canonical address a: the
         # value stored or read by the last store or load of a before it, on the one path back
-        # through blocks that a single branch leads to, or "" if an op between may write a's
+        # through blocks that a single branch leads to (not to a landing block's predecessor, which
+        # an unwind edge leaves at an op that raised, before the ops after it, as a store to a
+        # that the walk would find from its end: preds), or "" if an op between may write a's
         # memory (a slot's: only a store to it; a global's: a store to it, or an op with wG;
         # another's: a store that may alias it, or an op with wL wD wO), or no such op is found
         # within REACH ops (each load would otherwise walk back over the whole function: a
@@ -10148,8 +10150,8 @@ class Gen:
                 if st and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
                     return ""
             ps = vs.pl[vs.fn.blocks[j].label]
-            if len(ps) != 1 or ps[0] >= j:
-                return ""
+            if len(ps) != 1 or ps[0] >= j or (len(code) > 0 and code[0].op == "landing"):
+                return ""  # (a landing block's predecessors reach it where an op raised, not from their end)
             j = ps[0]
             x = len(vs.fn.blocks[j].code)
 
