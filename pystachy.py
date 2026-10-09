@@ -9395,7 +9395,9 @@ class Gen:
         self.nn[o.v] = True
         self.xcls[c] = True
         self.setfield(o, self.field(o, " cls"), " cls", Val(f"@x.{c}", "str"))
-        self.exc_keep(o, vals)
+        # (with an __init__ of the program, an OSError's args are left empty, and a SystemExit's
+        # code None, until its super().__init__() sets them, as OSError.__new__ and SystemExit.__init__ do)
+        self.exc_keep(o, vals if init is None or not self.derives(c, "OSError") else vals[:0], init is None)
         for fl in ci.fields:
             if fl in ci.fdefault:
                 h = self.default_home(ci, fl)
@@ -9409,10 +9411,11 @@ class Gen:
             self.call_fn(init, [o] + vals, kws)
         return o
 
-    def exc_keep(self, o: Val, vals: list[Val]) -> None:
+    def exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
         # what exception object o keeps of its args vals (BaseException.__new__, and its __init__
         # through super().__init__): str(e) (a KeyError's: the repr of its one argument) and the
         # text between repr(e)'s parentheses; a SystemExit's status and whether its code is one
+        # (unless coded is False: its code is None)
         c = o.t
         if len(vals) > 1 and self.derives(c, "OSError"):
             self.err(f"{short(c)}() with more than one argument is not supported")  # (str(e) would be "[Errno n] text")
@@ -9429,8 +9432,8 @@ class Gen:
         self.setfield(o, self.field(o, " args"), " args", Val(av, "str"))
         if self.derives(c, "SystemExit"):
             code = "0"
-            hc = "true" if len(vals) == 0 else "false"
-            if len(vals) == 1:
+            hc = "true" if len(vals) == 0 or not coded else "false"
+            if len(vals) == 1 and coded:
                 t = vals[0].t
                 if t == "int" or t == "bool":
                     code = self.as_int(vals[0]).v
