@@ -5416,6 +5416,15 @@ def binds_other(body: list[Node], name: str) -> bool:
     return False
 
 
+def binds_as(body: list[Node], name: str) -> bool:
+    # does an except clause in code body bind name (not in the functions and classes it defines)
+    for st in body:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if (k.kind == "block" and binds_as(k.kids, name)) or (k.kind == "except" and (k.s == name or binds_as(k.kids[1].kids, name))):
+                return True
+    return False
+
+
 def assigns(st: Node, name: str) -> bool:
     # is name a target of assignment st itself (not inside a tuple)
     for t in st.kids[:-1]:
@@ -9446,14 +9455,12 @@ class Gen:
         for ci in self.classes.values():
             fs += list(ci.methods.values())
         for f in fs:
-            if f.mod != owner(name) or f.node.kind != "def":
+            if f.mod != owner(name) or f.node.kind != "def" or name in f.params:
                 continue
             body = f.node.kids[2].kids
-            loc: dict[str, bool] = {}
             decl: dict[str, bool] = {}
-            local_names(body, loc)
             globals_in(body, decl)
-            if name not in loc or name in decl:
+            if name in decl or not (binds_other(body, name) or binds_as(body, name)):
                 for st in body:
                     if reads(st, name):
                         return short(f.name)
