@@ -106,11 +106,15 @@ for a class type or for `str`, `list`, `dict` and `tuple` (wherever a type goes,
 containers too), and `None` as a return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
-`collections.abc` imports as `typing` does, and `Mapping[K, V]` and `MutableMapping[K, V]`
-(from either) are `dict[K, V]`, `Sequence[T]` and `MutableSequence[T]` are `list[T]`.
+`collections.abc` imports as `typing` does (also `from collections import abc`), and
+`Mapping[K, V]` and `MutableMapping[K, V]` (from either) are `dict[K, V]`, `Sequence[T]` and
+`MutableSequence[T]` are `list[T]` (so they are invariant, and a tuple or `str` is no
+`Sequence`); `isinstance(x, Sequence)` and its siblings are decided by `x`'s type.
 `x: Final = v` is `x = v` (outside class bodies), `x: Final[T]` is `x: T`, and a `def`
 decorated with `@overload` (also a method) is the stub CPython replaces with the `def` after
-it: it is dropped.
+it: it is dropped. As in CPython 3.13, the annotations of a `def`'s parameters and return and
+of the module's and class bodies' variables name only what is bound where they run (a later
+class is quoted, `"Node"`), unless `from __future__ import annotations` makes them lazy.
 
 **Typing rules.**
 - A function whose parameters are annotated has those types; a missing return annotation
@@ -158,15 +162,16 @@ it: it is dropped.
   order the code is compiled, takes the type of the first such value in the function's source
   whose type is known there, or else the type expected where it is read (a return, an
   argument, an item), and a local that only `None` is ever assigned to reads as `None` (until
-  then only comparisons with `None` may read it). So is module code's global for the values
-  module code assigns it, where they can be typed at its first assignment. `x if c else
-  None` (also nested: `x if c else y if d else None`), `x or None`, a template that returns
-  `None` and a `T` (in either order) and a display that holds `None` among `T` items give
-  `T | None`; `None or x` is `x`. `d.get(k)` and `os.getenv(name)` without a default return
-  `V | None` and `str | None`, and so do `d.get(k, d)` and `d.pop(k, d)` with a default `d`
-  that may be `None`. A `T` or `None` goes where a `T | None` is expected (a tuple item by
-  item). Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`, `<`,
-  unpacking, a builtin's argument) the value is checked when it runs, and `None` raises
+  then only comparisons with `None` may read it), as does a global that module code only
+  assigns `None` and no function's `global` statement binds. So is module code's global for
+  the values module code assigns it, where they can be typed at its first assignment.
+  `x if c else None` (also nested: `x if c else y if d else None`), `x or None`, a template
+  that returns `None` and a `T` (in either order) and a display that holds `None` among `T`
+  items give `T | None`; `None or x` is `x`. `d.get(k)` and `os.getenv(name)` without a
+  default return `V | None` and `str | None`, and so do `d.get(k, d)` and `d.pop(k, d)` with a
+  default `d` that may be `None`. A `T` or `None` goes where a `T | None` is expected (a tuple
+  item by item). Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`,
+  `<`, unpacking, a builtin's argument) the value is checked when it runs, and `None` raises
   CPython's error; `==`, `is`, truth tests, `str()`, `repr()`, f-strings, `%` (a
   `tuple | None` is its items or one `None`), `print()`'s `sep` and `end`, and `sys.exit()`
   treat `None` as CPython does, and so do the repr, comparisons and sorting of containers
@@ -174,20 +179,22 @@ it: it is dropped.
   list[str]`; `+` of the two makes a `list[str | None]`, which `extend()` and `+=` also
   take a `list[str]` into); `join()` and `writelines()` check each `str | None` item. A key
   that may be `None` is in no dict: `in` is `False`, `get()` and `pop()` give their default,
-  and `d[k]` raises `KeyError: None`; `None in xs` and `xs.count(None)` look for it in a
-  list. Where CPython would pass the `None` on (an assignment to a `T` variable or field, a
-  `T` argument of a user function or of a list method, a return from a function declared to
-  return a `T`), the value must be known not to be `None`: a local or parameter is, as mypy
-  narrows it, in the body of `if x is not None:`, `if x:` and `while x is not None:` (and
-  the `elif` and `else` blocks of the tests that show it), in the right operand of
-  `x is not None and`, in the arms of a conditional expression, after `if x is None: return`
-  (or `raise`, `continue`, `break`, `sys.exit()`, `assert False`), after
-  `assert x is not None`, after `x = <a T>`, and after a loop where it holds at each way out
-  (its test is false, which never happens for `while True:`, or a `break`; after a loop with
-  an `else` block: the end of that block, or a `break`), until a value that may be `None` is
-  assigned to it (in a loop's body: anywhere in it). A comprehension's variables are its own,
-  and do not change what is narrowed outside it. Module globals and fields are not narrowed,
-  as a call may change them: copy one to a local, and test that.
+  and `d[k]` raises `KeyError: None`; so is a tuple whose item may be `None` where the dict's
+  keys hold a `str` (a `None` item of a tuple key that nothing else types is a `str | None`),
+  and a `bool` looks up the `int` key it equals (`d[True, 2]`); `None in xs` and
+  `xs.count(None)` look for it in a list. Where CPython would pass the `None` on (an
+  assignment to a `T` variable or field, a `T` argument of a user function or of a list
+  method, a return from a function declared to return a `T`), the value must be known not to
+  be `None`: a local or parameter is, as mypy narrows it, in the body of `if x is not None:`,
+  `if x:` and `while x is not None:` (and the `elif` and `else` blocks of the tests that show
+  it), in the right operand of `x is not None and`, in the arms of a conditional expression,
+  after `if x is None: return` (or `raise`, `continue`, `break`, `sys.exit()`,
+  `assert False`), after `assert x is not None`, after `x = <a T>`, and after a loop where it holds at
+  each way out (its test is false, which never happens for `while True:`, or a `break`; after
+  a loop with an `else` block: the end of that block, or a `break`), until a value that may be
+  `None` is assigned to it (in a loop's body: anywhere in it). A comprehension's variables are
+  its own, and do not change what is narrowed outside it. Module globals and fields are not
+  narrowed, as a call may change them: copy one to a local, and test that.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
@@ -195,14 +202,20 @@ it: it is dropped.
   typed by annotation, parameter, literal, constructor, method or function call (not a call
   of a template, whose result type is known only once it is compiled: annotate the field).
 - A `typing.NamedTuple` class (annotated fields with defaults, a docstring, methods) is a
-  dataclass whose fields only its `__init__` assigns, read like a tuple of them: unpacking
-  (also as a `for` target), constant indexing, `len()`, `p._replace(f=v)`, `==`, and
-  ordering as the tuples of its fields; its `repr()` is a dataclass's.
+  dataclass whose fields only its `__init__` assigns, read like the tuple of them: unpacking
+  (also as a `for` target), constant indexing, iteration, `in`, `len()`, `%` formatting,
+  `+` and `*` (which make a tuple), `p._replace(f=v)`, `_fields`, `_asdict()` (of fields of
+  one type), and `==`, `!=` and ordering as tuple's methods do them (also with plain tuples
+  and other NamedTuples), except an operator that its class defines; its `repr()` is a
+  dataclass's.
+- `C.x` reads the class attribute that a class-body default binds (instances read it until
+  they assign `x`), also a `Final` one.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
 `if`/`elif`/`else`, `while`, `for` (both with `else`) over `range`, lists, strings, dicts,
-files, tuples of one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and
+files, tuples (and NamedTuples) of one item type, `.items()`/`.keys()`/`.values()`,
+`enumerate` (with `start`), `zip` and
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
 that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
 `del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
@@ -269,7 +282,8 @@ widths and precisions, but not `%(name)s`, `*` or a precision on integers), arit
 `/` is correctly rounded true division, exact int/float comparison), bitwise ops,
 chained comparisons, `in`/`not in`, `is`/`is not` (not on numbers and bools), `and`/`or`
 returning operands, `not`, conditional expressions, keyword and default arguments, negative
-indices, slicing, list/dict/tuple displays, list comprehensions, generator expressions and
+indices, slicing of strings and lists, tuple `+` and `*` by a constant, list/dict/tuple
+displays, list comprehensions, generator expressions and
 `range()`/`reversed()`/`enumerate()`/`zip()` as the argument of `list()`, `sorted()`,
 `sum()`, `min()`, `max()`, `any()`, `all()`, `str.join()` or `list.extend()` (`any()` and
 `all()` stop at the deciding item, as they do over files), `x in range(...)`, and operator
@@ -285,9 +299,10 @@ their own methods.
 with inverses), `any`, `all`, `input`; the common `str`, `list` and `dict` methods
 (`find`/`index`/`count` with start and end, `split`/`rsplit`, `partition`/`rpartition`,
 `splitlines`, `removeprefix`/`removesuffix`, `center`/`ljust`/`rjust` with a fill character,
-`zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default); `open()` with
-CPython's modes, errors, `buffering=`, `newline=` translation and positions for `"+"`
-modes, and files' `read`/`readline`/
+`zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default; not
+`str.format()`, `dict.update()`, `popitem()` and `fromkeys()`, `dict()` of pairs, or tuple's
+`index()` and `count()`); `open()` with CPython's modes, errors, `buffering=`, `newline=`
+translation and positions for `"+"` modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
 `sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
 are files), `os.system/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
@@ -298,7 +313,8 @@ constants, which raise CPython's domain and range errors.
 **Removed on purpose** — each would require a dynamic runtime or a large compiler
 feature: exception handling (`try`; `with` works for files), generator functions
 (`yield`), generator expressions other than the consumer arguments above, lambdas and
-closures, inheritance (so user exception classes), `**kwargs` and `*args` in methods, sets, dict and
+closures, inheritance (so user exception classes), `**kwargs` and `*args` in methods, star
+arguments in calls (`f(*xs)`) and starred targets (`a, *rest = xs`), sets, dict and
 multi-clause comprehensions, slice steps, first-class functions (`map`, `key=`),
 `isinstance`/`hasattr` other than the static cases above, `getattr`/`eval`, `bytes` (literals
 are rejected; a binary mode computed at run time raises `NotImplementedError`) and binary
@@ -350,7 +366,10 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
-  `d.items()` steps the dict itself and does).
+  `d.items()` steps the dict itself and does), and they print as lists and compare equal to
+  lists.
+- A type error that CPython raises only when the code runs (`<` between dicts, a constant
+  index outside a tuple) is a compile-time error, so the output before it is not printed.
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
   "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
   compile-time `SyntaxWarning`s are not printed. Recursion is limited only by the native
@@ -448,15 +467,24 @@ template whose returns have different types (or `None` and an `int`, `float` or 
 return statement decides its type (or, after a return of a `T`, before a return of `None`
 makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
 boxing), dict key types that may be `None`, and tuple keys holding other items (a `float`,
-a `list`, an object); `typing.ClassVar`, a bare `Final` in a class body, an `@overload` stub after the
-definition it would replace, a NamedTuple without
-fields, assigned a field outside its `__init__`, iterated, compared with a plain tuple, or
-given to `isinstance(p, tuple)` or `hasattr()` of a name it does not define, and CPython's
-class-creation errors of a NamedTuple (a field after a default, an underscored field, an
-overwritten `__init__`); a value that may be `None` where CPython
-would pass it on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed or
-assigned where a `list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the
-container could then be given a `None` that its other references do not expect), and an
+a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
+keeps the `bool`, which prints as `True`); `typing.ClassVar`, a bare `Final` without a value or
+in a class body, an `@overload` stub that the `def` implementing it does not follow in its
+block (also one after that `def`: CPython keeps the stub, whose calls raise
+`NotImplementedError`), a stub's default other than a constant, and a name in a stub's
+annotation that nothing binds; typing's names in a function's local variable annotations
+that are not imported (CPython never evaluates those); `from <builtin module> import *`; a
+NamedTuple without fields, assigned a field outside its `__init__`, whose class defines
+`__getitem__` or `__iter__`, compared or added through its own operator method with another
+type, given to `hasattr()` of a name it does not define, `_make()`, `_asdict()` of fields of
+different types, the functional `NamedTuple("P", [...])`, slicing a tuple or NamedTuple, a
+tuple `*` a number that is not a constant, and CPython's class-creation errors of a
+NamedTuple (a field after a default, an underscored field, an overwritten `__init__`) and of
+a dataclass (a field without a default after one with it); a value that may be `None` where
+CPython would pass it on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed
+or assigned where a `list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the
+container could then be given a `None` that its other references do not expect; mypy takes
+it for a `Sequence[T | None]` or `Mapping[K, T | None]`, a list and a dict here), and an
 argument that may be `None` of a builtin function other than `len()`, `int()`, `float()`,
 `ord()`, `dict()`, `sum()`, `os.system()`, `os.path.exists()` and those that take `None`; a
 read that needs the type of a local that only `None` has been assigned so far, where no
@@ -599,7 +627,9 @@ exception.
   bits of the hash), over a hash that costs one multiply: one round of SplitMix64's mixer
   for an int, FNV-1a with the high half folded into the low for a str; a dict of tuple keys
   holds their type descriptor, by which a key's hash mixes its items' hashes and keys compare
-  as `==` compares the tuples. Keys that differ only
+  as `==` compares the tuples (a `None` item hashes and compares as `None` also where the
+  descriptor says `str`, which is how a looked-up tuple whose item may be `None` finds no
+  key). Keys that differ only
   in their high bits (`i << 46`, which used to form one cluster) probe as random keys do; the
   price is about 2 ns per lookup in tables larger than the cache, whose second slot is in
   another cache line. Files wrap C stdio with CPython's open() rules: argument checks in its
@@ -655,7 +685,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1185 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1211 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
