@@ -344,7 +344,7 @@ Str *pys_chr(I c) {                    /* below 256 the byte itself (str holds b
 }
 static I u8char(const char *p, I n, I *cp) {   /* the character at p (n > 0 bytes left): its code point and byte
                                                   count; a UTF-8 sequence as chr() writes it, else one byte */
-  unsigned char c = p[0]; I k = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC2 ? 2 : 1, v = c & (0x7F >> k);
+  unsigned char c = p[0]; I k = c > 0xF4 ? 1 : c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC2 ? 2 : 1, v = c & (0x7F >> k);
   *cp = c;
   if (k == 1 || k > n) return 1;
   for (I i = 1; i < k; i++) { if ((p[i] & 0xC0) != 0x80) return 1; v = v << 6 | (p[i] & 0x3F); }
@@ -369,15 +369,10 @@ Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded
 }
 Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
   Buf b = {0}; char t[16];
-  for (I i = 0; i < r->len;) {
-    unsigned char c = r->s[i]; I n = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1, cp = c;
-    if (c < 128) { put(&b, (char *)&c, 1); i++; continue; }
-    if (n > 1 && i + n <= r->len) {          /* a UTF-8 sequence; anything else is a lone byte */
-      cp = c & (0x7F >> n);
-      for (I k = 1; k < n; k++) { if ((r->s[i + k] & 0xC0) != 0x80) { n = 1; cp = c; break; } cp = cp << 6 | (r->s[i + k] & 0x3F); }
-    } else n = 1;
-    put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
-    i += n;
+  for (I i = 0, n, cp; i < r->len; i += n) {   /* the characters u8char sees, as repr() did */
+    n = u8char(r->s + i, r->len - i, &cp);
+    if (cp < 128) put(&b, r->s + i, 1);
+    else put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
   }
   return pys_str(b.p, b.n);
 }
@@ -511,15 +506,13 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
   while (i < s->len && !(s->s[i] & 0x80)) i++;
   if (i == s->len) return s;
   Buf b = {0}; put(&b, s->s, i);
-  while (i < s->len) {
-    unsigned char c = s->s[i]; I n = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1, cp = c & (0x7F >> n);
-    if (c < 0x80) { put(&b, s->s + i++, 1); continue; }
-    if (n == 1 || i + n > s->len) cp = -1;
-    for (I k = 1; cp >= 0 && k < n; k++) cp = (s->s[i + k] & 0xC0) == 0x80 ? cp << 6 | (s->s[i + k] & 0x3F) : -1;
+  while (i < s->len) {                 /* the characters u8char sees: a lone byte is chr() of it, as in CPython */
+    I cp, n = u8char(s->s + i, s->len - i, &cp);
+    if (cp < 0x80) { put(&b, s->s + i++, 1); continue; }
     char o = '?';
     if (cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 ||
         cp == 0x202F || cp == 0x205F || cp == 0x3000) o = ' ';
-    for (I r = 0; o == '?' && cp >= 0 && r < (I)(sizeof decruns / sizeof *decruns); r++)
+    for (I r = 0; o == '?' && r < (I)(sizeof decruns / sizeof *decruns); r++)
       if (cp >= decruns[r] && cp < decruns[r] + 10) o = (char)('0' + cp - decruns[r]);
     put(&b, &o, 1);
     if (o == '?') break;

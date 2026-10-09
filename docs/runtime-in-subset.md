@@ -42,7 +42,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
   - **Five more pre-existing bugs**, outside the moved code, turned up during the evaluation and are reproduced in §2.2:
     - undefined behaviour in integer division;
     - a stale length in list `==`;
-    - two lax UTF-8 decoders;
+    - two lax UTF-8 decoders, since fixed;
     - class ids that overflow their three digits.
   - **Safety by default.** Ported code gets checked arithmetic and checked indexing. Two of the three integer overflows fixed in commit `452f29c` are in moved functions; in the subset both would have failed loudly instead of computing a wrong value. The moved code no longer uses fixed-size buffers: one of them, the format code's, did truncate messages.
   - **The roadmap's runtime code in Python.** The open issues imply about 9k to 18k lines of new runtime code, 3.5 to 7 times today's runtime.c (§2.5). Under the current architecture all of it would be C.
@@ -250,11 +250,11 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 - **Another bug found during this evaluation**, outside the moved code: class ids in type descriptors are written with `{:03d}` by the compiler and read as exactly three digits by runtime.c's `ocls`. With more than 1,000 classes in containers, `repr([C1000()])` calls `C100.__repr__`.
   - The repro is 1,002 classes, each put in a list and printed. It prints `[C100]` where CPython prints `[C1000]`.
   - It is not fixed here, because the fix changes descriptors in programs' IR.
-- **Two more bugs, in code not moved yet.** runtime.c has three UTF-8 decoders. The strict one is `u8char`. The lax copies in `pys_ascii` and `asciinum` accept overlong forms and code points above U+10FFFF:
-  - `ascii(chr(0xC1) + chr(0xBF))` prints `'\x7f'`, where CPython prints `'\xc1\xbf'`;
-  - `int(chr(0xE0) + chr(0x99) + chr(0xA0) + "7")` returns 7, reading the overlong bytes as U+0660 ARABIC-INDIC ZERO, where CPython raises `ValueError`.
+- **Two more bugs, in code not moved yet, since fixed.** runtime.c had three UTF-8 decoders. The strict one is `u8char`. The lax copies in `pys_ascii` and `asciinum` accepted overlong forms and code points above U+10FFFF:
+  - `ascii(chr(0xC1) + chr(0xBF))` printed `'\x7f'`, where CPython prints `'\xc1\xbf'`;
+  - `int(chr(0xE0) + chr(0x99) + chr(0xA0) + "7")` returned 7, reading the overlong bytes as U+0660 ARABIC-INDIC ZERO, where CPython raises `ValueError`.
 
-  Both were reproduced with the compiler of `30b51d9`. One decoder in `runtime.py`, tested on CPython, would fix them by construction. `int()`, `float()` and `ascii()` are next on the list (§5).
+  Both were reproduced with the compiler of `30b51d9`. Both functions now step with `u8char`, so a byte outside a valid sequence is the character `chr()` made it from, as in CPython: `int(chr(0xA0) + "7")` is 7, where it raised. `u8char` itself took a lead byte from 0xF8 to 0xFC as 0xF0 to 0xF4, so `ord(chr(0xF8) + chr(0x90) + chr(0x80) + chr(0x80))` was 65536; no sequence now starts above 0xF4. `tests/rt_utf8_strict.py`, `tests/rt_int_overlong.py` and `tests/rt_ord_lead_f8.py` cover the three. `runtime.py`'s character counts (`ulen`, `uoff`, `ucode`, `expandtabs`) are still lax: they count each byte that does not continue a sequence, so `f"{chr(0x80):>3}"` pads with three spaces where CPython pads with two. One decoder in `runtime.py`, tested on CPython, would serve all of them. `int()`, `float()` and `ascii()` are next on the list (§5).
 - **Two more, which the subset would make impossible or loud.** Both were reproduced with the compiler of `30b51d9`.
   - **Undefined behaviour in `pys_idiv`.** It calls `__builtin_clzll(0)` when the dividend is 0 and the divisor is above 2**53. With UBSan, `k / (1 << 60)` for `k == 0` aborts: "passing zero to clz(), which is not a valid argument". Without it, the result is right by luck. No test reaches it, so `make verify`'s UBSan step did not see it. Fixed since: a zero dividend takes the exact path, and `tests/idiv_zero_big.py` reaches the case.
   - **A stale length in list `==`.** `eqv` compared the two lengths once, then read both lists' slots. If an `__eq__` emptied the other list, it read zeroed slots and passed a null object to the next `__eq__`. The program died with `AttributeError: 'NoneType' object has no attribute 'v'` where CPython prints `False`. If an `__eq__` grew the first list, it read past the end of the second.
@@ -601,7 +601,7 @@ Sources and line counts: the research notes behind this table measured each repo
    - On the typed IR: `RUNTIME` keys bound to `runtime.py` functions, and `check_runtime.py`'s checks of them: signatures, effects, and no recursion through runtime.c (§2.8).
 2. **Next leaf moves, independent of the typed IR.**
    - `int()` and `float()` parsing. They need wrapping arithmetic; the digit tables would use a `str` as a table.
-   - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which fixes §2.2's two decoder bugs; `pys_str_list`; `str(int)`.
+   - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which the lax character counts of §2.2 should use too; `pys_str_list`; `str(int)`.
    - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`, `dict.update`/`popitem`/`fromkeys` over the C dict API. Write them in `runtime.py` from the start.
 3. **Small language and compiler work that runtime code needs.**
    - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule.
