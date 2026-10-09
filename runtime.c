@@ -442,12 +442,38 @@ Str *pys_str_replace(Str *s, Str *a, Str *b) {
   for (I j; (j = find(s, a, i)) >= 0; i = j + a->len) { put(&o, s->s + i, j - i); put(&o, b->s, b->len); }
   put(&o, s->s + i, s->len - i); return done(&o);
 }
-static int ws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
-static int instr(unsigned char c, Str *cs) { return cs ? memchr(cs->s, c, cs->len) != 0 : ws(c); }
-static Str *strip(Str *s, Str *cs, int m) {
-  I i = 0, j = s->len;
-  if (m & 1) while (i < j && instr(s->s[i], cs)) i++;
-  if (m & 2) while (j > i && instr(s->s[j - 1], cs)) j--;
+static int aspace(I c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
+static int uspace(I cp) {              /* str.isspace() (Unicode 15.1, CPython 3.13): ASCII's and these */
+  return cp < 0x80 ? aspace(cp) : cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) ||
+                                  cp == 0x2028 || cp == 0x2029 || cp == 0x202F || cp == 0x205F || cp == 0x3000;
+}
+/* ws: the character at p (n > 0 bytes left) is whitespace: its byte count, else minus that. back: the
+   byte count of the character that ends at p + j (j > 0), as u8char reads it from the start (a UTF-8
+   sequence that ends there, else one byte), and wsback its ws. Only a non-ASCII byte calls out */
+__attribute__((noinline)) static I uws(const char *p, I n) { I cp, k = u8char(p, n, &cp); return uspace(cp) ? k : -k; }
+__attribute__((noinline)) static I uback(const char *p, I j) {
+  I i = j - 1, cp;
+  while (i > 0 && j - i < 4 && (p[i] & 0xC0) == 0x80) i--;
+  return u8char(p + i, j - i, &cp) == j - i ? j - i : 1;
+}
+static inline __attribute__((always_inline)) I ws(const char *p, I n) { return *p & 0x80 ? uws(p, n) : aspace(*p) ? 1 : -1; }
+static inline __attribute__((always_inline)) I back(const char *p, I j) { return p[j - 1] & 0x80 ? uback(p, j) : 1; }
+static inline __attribute__((always_inline)) I wsback(const char *p, I j) {
+  I b;
+  return p[j - 1] & 0x80 ? (b = uback(p, j), uws(p + j - b, b)) : aspace(p[j - 1]) ? 1 : -1;
+}
+static I instr(const char *p, I n, Str *cs) {   /* as ws, for the characters of cs (whitespace if cs is None) */
+  I cp, m, k;
+  if (!cs) return ws(p, n);
+  if (!(*p & 0x80)) return memchr(cs->s, *p, cs->len) ? 1 : -1;
+  k = u8char(p, n, &cp);
+  for (I i = 0; i < cs->len; i += m) if ((m = u8char(cs->s + i, cs->len - i, &cp)) == k && !memcmp(cs->s + i, p, m)) return k;
+  return -k;
+}
+static Str *strip(Str *s, Str *cs, int m) {   /* character by character, as CPython strips code points */
+  I i = 0, j = s->len, k, b;
+  if (m & 1) while (i < j && (k = instr(s->s + i, j - i, cs)) > 0) i += k;
+  if (m & 2) while (j > i && (b = back(s->s, j), instr(s->s + j - b, b, cs) > 0)) j -= b;
   return pys_str(s->s + i, j - i);
 }
 Str *pys_str_strip(Str *s, Str *cs) { return strip(s, cs, 3); }
@@ -455,10 +481,10 @@ Str *pys_str_lstrip(Str *s, Str *cs) { return strip(s, cs, 1); }
 Str *pys_str_rstrip(Str *s, Str *cs) { return strip(s, cs, 2); }
 static I all(Str *s, int k) {                  /* 0 digit, 1 alpha, 2 alnum, 3 space */
   if (!s->len) return 0;
-  for (I i = 0; i < s->len; i++) {
+  for (I i = 0, n = 1; i < s->len; i += n) {
     unsigned char c = s->s[i];
     int d = c >= '0' && c <= '9', a = (c | 32) >= 'a' && (c | 32) <= 'z';
-    if (!(k == 0 ? d : k == 1 ? a : k == 2 ? d || a : ws(c))) return 0;
+    if (!(k == 0 ? d : k == 1 ? a : k == 2 ? d || a : (n = ws(s->s + i, s->len - i)) > 0)) return 0;
   }
   return 1;
 }
@@ -648,8 +674,7 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
     if (n == 1 || i + n > s->len) cp = -1;
     for (I k = 1; cp >= 0 && k < n; k++) cp = (s->s[i + k] & 0xC0) == 0x80 ? cp << 6 | (s->s[i + k] & 0x3F) : -1;
     char o = '?';
-    if (cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 ||
-        cp == 0x202F || cp == 0x205F || cp == 0x3000) o = ' ';
+    if (uspace(cp)) o = ' ';
     for (I r = 0; o == '?' && cp >= 0 && r < (I)(sizeof decruns / sizeof *decruns); r++)
       if (cp >= decruns[r] && cp < decruns[r] + 10) o = (char)('0' + cp - decruns[r]);
     put(&b, &o, 1);
@@ -1399,11 +1424,11 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
   List *l = pys_list_new(0); I i = 0, n = s->len;
   if (maxsplit < 0) maxsplit = INT64_MAX;     /* no limit: counting down from it cannot reach 0, or overflow */
   if (!sep) {
-    for (;;) {
-      while (i < n && ws(s->s[i])) i++;
+    for (I k;;) {
+      while (i < n && (k = ws(s->s + i, n - i)) > 0) i += k;
       if (i >= n) return l;
       if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s + i, n - i)); return l; }   /* the rest, as it is */
-      I j = i; while (j < n && !ws(s->s[j])) j++;
+      I j = i; while (j < n && (k = ws(s->s + j, n - j)) < 0) j -= k;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
     }
   }
@@ -1435,11 +1460,11 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
   List *l = pys_list_new(0); I j = s->len;
   if (maxsplit < 0) maxsplit = INT64_MAX;
   if (!sep) {
-    for (;;) {
-      while (j > 0 && ws(s->s[j - 1])) j--;
+    for (I k;;) {
+      while (j > 0 && (k = wsback(s->s, j)) > 0) j -= k;
       if (j <= 0) break;
       if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s, j)); break; }
-      I i = j; while (i > 0 && !ws(s->s[i - 1])) i--;
+      I i = j; while (i > 0 && (k = wsback(s->s, i)) < 0) i += k;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); j = i;
     }
   } else {

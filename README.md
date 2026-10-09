@@ -355,11 +355,13 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
 - `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`
-  and `write()`'s result count bytes, case mapping, the `is*()` tests and `split()` know
-  only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
+  and `write()`'s result count bytes, case mapping and the `is*()` tests but `isspace()`
+  know only ASCII, and `chr(i)` for `i < 256` is that byte (above, its UTF-8).
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
-  `ord()` count characters. Files hold the
+  `ord()` count characters, as `strip()` (also of given characters), `split()`,
+  `rsplit()`, `splitlines()` and `isspace()` read them (CPython's Unicode whitespace and
+  line breaks). Files hold the
   same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
   when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
   three-byte form and printed or written as it is, where CPython raises
