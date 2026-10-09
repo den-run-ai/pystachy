@@ -408,27 +408,33 @@ def as_target(n: Node) -> Node:
     return n
 
 
-# the nodes that open blocks or start a count of their own (see nesting)
+# the nodes that open blocks, start a count of their own or hold what is not compiled (see nesting)
 NESTS: dict[str, bool] = {}
-for _k in "while for with withitem try except listcomp nestedcomp asynccomp lambda def class".split():
+for _k in "while for with withitem try except listcomp nestedcomp asynccomp lambda def class subclass annassign".split():
     NESTS[_k] = True
 
 
-def nesting(body: list[Node]) -> None:
+def nesting(body: list[Node], lazy: bool) -> None:
     # CPython's limit of 21 statically nested blocks in a module, class or function: loops, the
     # items of with statements, try statements and list comprehensions (not generator
-    # expressions or lambdas, which start a count of their own) open blocks, and the 22nd is a
-    # SyntaxError. The walk keeps a stack (an elif chain nests as deep as it is long) and takes
-    # the kids in the order CPython compiles them, so that the error names the line CPython
-    # names, but in some finally blocks, which CPython compiles twice
+    # expressions or lambdas, which start a count of their own) open blocks, as does the body of
+    # a generator function or coroutine, and the 22nd is a SyntaxError. Annotations count where
+    # CPython compiles them: not in a function's body, nor anywhere under from __future__ import
+    # annotations (lazy), and def f[T]'s in a scope of their own (see funcdef). The walk keeps a
+    # stack (an elif chain nests as deep as it is long) and takes the kids in the order CPython
+    # compiles them, so that the error names the line CPython names, but in some finally blocks,
+    # which CPython compiles twice
     todo: list[Node] = []
     at: list[int] = []  # the depth of each node on todo
+    infn: list[bool] = []  # and whether it is in a function's body
     for i in range(len(body) - 1, -1, -1):
         todo.append(body[i])
         at.append(0)
+        infn.append(False)
     while len(todo) > 0:
         n = todo.pop()
         d = at.pop()
+        fn = infn.pop()
         k = n.kind
         if k not in NESTS:
             # (most nodes: the kids at the same depth, and those without kids need no look)
@@ -436,13 +442,46 @@ def nesting(body: list[Node]) -> None:
                 if len(n.kids[i].kids) > 0:
                     todo.append(n.kids[i])
                     at.append(d)
+                    infn.append(fn)
             continue
         ds: list[int] = []  # the depth of each kid
         seq: list[int] = []  # the kids in the order they are compiled
         for i in range(len(n.kids)):
             ds.append(d)
             seq.append(i)
-        if k == "while" or k == "for":
+        if k == "def":
+            # the decorators, the default values, the annotations, then the body (a function of
+            # its own, inside a block if it is a generator or coroutine)
+            kids: list[Node] = []
+            for dc in n.kids[3:]:
+                kids.append(dc)
+            for p in n.kids[0].kids:
+                kids.append(p.kids[1])
+            if not lazy and not n.kids[0].s.endswith(",T"):
+                for p in n.kids[0].kids:
+                    kids.append(p.kids[0])
+                kids.append(n.kids[1])
+            gen = has_kind(n.kids[2], "yield")
+            for dc in n.kids[3:]:
+                if dc.s == "async" and len(dc.kids) == 0:
+                    gen = True
+            todo.append(n.kids[2])
+            at.append(1 if gen else 0)
+            infn.append(True)
+            for i in range(len(kids) - 1, -1, -1):
+                todo.append(kids[i])
+                at.append(d)
+                infn.append(fn)
+            continue
+        if k == "annassign":
+            # the value, the target, then the annotation, if it is compiled
+            seq = []
+            for i in range(2, len(n.kids)):
+                seq.append(i)
+            seq.append(0)
+            if not lazy and not fn:
+                seq.append(1)
+        elif k == "while" or k == "for":
             d += 1
             for i in range(len(n.kids)):
                 if n.kids[i].kind != "block" or n.kids[i].s != "else":
@@ -488,17 +527,25 @@ def nesting(body: list[Node]) -> None:
             if n.s != "gen":
                 d += 1
         elif k == "lambda":
+            # (its parameters' default values are evaluated outside it)
             for i in range(len(n.kids)):
-                ds[i] = 0
-        elif k == "def":
-            ds[2] = 0
+                if n.kids[i].kind != "ldefault":
+                    ds[i] = 0
         elif k == "class":
+            # the decorators, then the body
             ds[0] = 0
+            seq.append(0)
+            seq = seq[1:]
+        elif k == "subclass" and n.kids[1].kind == "typeparams":
+            # class C[T](bases): the bases are evaluated in a scope of their own
+            for i in range(1, len(n.kids)):
+                ds[i] = 0
         if d > 21:
             fail("too many statically nested blocks", n.line)
         for i in range(len(seq) - 1, -1, -1):
             todo.append(n.kids[seq[i]])
             at.append(ds[seq[i]])
+            infn.append(fn if k != "class" or seq[i] != 0 else False)
 
 
 STARTS: dict[str, bool] = {}
@@ -518,6 +565,7 @@ class Parser:
         self.early = True  # only a docstring and from __future__ imports so far
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
+        self.lazy = False  # from __future__ import annotations: annotations are not compiled
 
     def peek(self) -> str:
         return self.toks[self.p].kind
@@ -547,7 +595,7 @@ class Parser:
         while self.peek() != "eof":
             if not self.eat("nl"):
                 self.stmt(body)
-        nesting(body)
+        nesting(body, self.lazy)
         return mk("block", "", 1, body)
 
     def scope(self, fn: bool) -> Node:
@@ -626,6 +674,7 @@ class Parser:
             self.loops -= 1
         elif k == "@":
             # a decorator: s is its dotted name, a decorator with arguments keeps the call as its kid
+            # (one that is not a dotted name, "?" at its root, keeps its expression)
             self.p += 1
             e = self.test()
             self.expect("nl")
@@ -641,7 +690,7 @@ class Parser:
                 name = "." + fn.s + name
                 fn = fn.kids[0]
             name = (fn.s if fn.kind == "name" else "?") + name
-            d.kids.append(mk("deco", name, line, [e] if e.kind == "call" else []))
+            d.kids.append(mk("deco", name, line, [e] if e.kind == "call" or name.startswith("?") else []))
         elif k == "with":
             # with open(p) as f, ...: kids are the items (expression [, target]) and the block
             self.p += 1
@@ -697,7 +746,8 @@ class Parser:
             else:
                 out.append(mk("async", "", line, inner))
         elif k == "id" and self.toks[self.p].text == "match" and self.soft_match():
-            # match subject: case pattern [if guard]: ... -- kept as a "match" node (patterns skipped)
+            # match subject: case pattern [if guard]: ... -- kept as a "match" node: the subject, then
+            # each case's guard (if any) and block (patterns skipped)
             self.p += 1
             n = mk("match", "", line, [self.exprlist()])
             self.expect(":")
@@ -710,6 +760,10 @@ class Parser:
                     fail("expected 'case'", self.line())
                 depth = 0
                 while not (depth == 0 and self.peek() == ":"):
+                    if depth == 0 and self.peek() == "if":
+                        self.p += 1
+                        n.kids.append(self.test())
+                        continue
                     if self.peek() == "(" or self.peek() == "[" or self.peek() == "{":
                         depth += 1
                     elif self.peek() == ")" or self.peek() == "]" or self.peek() == "}":
@@ -721,7 +775,12 @@ class Parser:
                 n.kids.append(self.block())
             out.append(n)
         elif k == "id" and self.toks[self.p].text == "type" and self.ahead() == "id" and (self.toks[self.p + 2].kind == "=" or self.toks[self.p + 2].kind == "["):
-            # type X = ... (PEP 695)
+            # type X = ... (PEP 695): the value is evaluated in a scope of its own, when it is used
+            self.p += 2
+            if self.peek() == "[":
+                self.typeparams([])
+            self.expect("=")
+            nesting([self.test()], False)
             while self.peek() != "nl" and self.peek() != "eof":
                 self.p += 1
             self.expect("nl")
@@ -793,7 +852,8 @@ class Parser:
             self.typeparams(tps)
         self.expect("(")
         # params: s is "<number of positional-only parameters>,<index of the first keyword-only one>"
-        # (-1: none); *args and **kwargs are "starparam" and "dstarparam" kids
+        # (-1: none), followed by ",T" for def f[T](...); *args and **kwargs are "starparam" and
+        # "dstarparam" kids
         params = mk("params", "", line, [])
         seen: dict[str, bool] = {}
         posonly = 0
@@ -860,6 +920,15 @@ class Parser:
         if self.eat("->"):
             ret = self.test()
         self.expect(":")
+        if len(tps) > 0:
+            # (the annotations are evaluated in a scope of their own: nesting does not count them,
+            # as ",T" at the end of params.s says)
+            params.s += ",T"
+            if not self.lazy:
+                anns = [ret]
+                for p in params.kids:
+                    anns.append(p.kids[0])
+                nesting(anns, False)
         # def f[T](x: T) -> T: what mentions a type parameter is left unannotated (a template)
         for p in params.kids:
             if mentions(p.kids[0], tps):
@@ -869,16 +938,17 @@ class Parser:
         return mk("def", name, line, [params, ret, self.scope(True)])
 
     def typeparams(self, out: list[str]) -> None:
-        # [T, U: bound, *Ts, **P, V = default] after a def's or class's name
+        # [T, U: bound, *Ts, **P, V = default] after a def's or class's name (a bound or default
+        # is evaluated in a scope of its own, when it is used)
         self.expect("[")
         while not self.eat("]"):
             if not self.eat("**"):
                 self.eat("*")
             out.append(self.expect("id").text)
             if self.eat(":"):
-                self.test()
+                nesting([self.test()], False)
             if self.eat("="):
-                self.test()
+                nesting([self.test()], False)
             if not self.eat(","):
                 self.expect("]")
                 break
@@ -923,7 +993,12 @@ class Parser:
                 if not self.eat(","):
                     return n
         if k == "import" or k == "from":
-            return self.import_(line)
+            n = self.import_(line)
+            if future:
+                for a in n.kids:
+                    if a.kids[0].s == "__future__.annotations":
+                        self.lazy = True
+            return n
         if k == "assert":
             self.p += 1
             n = mk("assert", "", line, [self.test()])
@@ -1053,14 +1128,15 @@ class Parser:
     def test(self) -> Node:
         line = self.line()
         if self.eat("lambda"):
-            # lambda params: body (kids: the parameter names, then the body)
+            # lambda params: body (kids: the parameter names, each followed by its default value in
+            # an "ldefault" node if it has one, then the body)
             n = mk("lambda", "", line, [])
             while not self.eat(":"):
                 if self.eat("*") or self.eat("**") or self.eat("/") or self.eat(","):
                     continue
                 n.kids.append(mk("name", self.expect("id").text, line, []))
                 if self.eat("="):
-                    self.test()
+                    n.kids.append(mk("ldefault", "", line, [self.test()]))
             n.kids.append(self.test())
             return n
         e = self.or_test()
@@ -1332,7 +1408,8 @@ class Parser:
                         self.p += 1
                         d.kids.append(self.test())
                 if self.compnext():
-                    c = self.comp(d.kids[-1], line)
+                    # (a dict comprehension's element is the tuple of its key and value)
+                    c = self.comp(d.kids[-1] if d.kind != "dict" else mk("tuple", "", line, d.kids[-2:]), line)
                     d = mk("dictcomp" if d.kind == "dict" else "setcomp", "", line, [c])
                     self.expect("}")
                     break
