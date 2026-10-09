@@ -163,31 +163,40 @@ that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`,
 parentheses or not), `try` (below), `raise` of an exception class, a call of one or an
 exception, a bare `raise` and `raise ... from ...` (if nothing catches it, it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass`, docstrings, `del` of a variable (later reads raise `NameError` or
-`UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
+`class`, `@dataclass` (its `__init__` calls `__post_init__`), docstrings, `del` of a variable
+(later reads raise `NameError` or `UnboundLocalError`; not of a global in a function),
+`import`/`from` of the builtin modules
 `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `dataclasses`, `builtins`
 and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
 (`/`) parameters.
 
 **Exceptions.** `try` with `except` clauses (an exception class, a tuple of them, with `as
-NAME` or not, or a bare `except:`), `else` and `finally`, in every combination CPython accepts
-but `except*`. A clause catches its classes and those deriving from them, in CPython 3.13's
-hierarchy and the program's (`except LookupError` catches a `KeyError`, `except Exception`
+NAME` or not, or a bare `except:`; `builtins.ValueError` and `os.error` too), `else` and
+`finally`, in every combination CPython accepts but `except*`. A clause catches its classes
+and those deriving from them, in CPython 3.13's hierarchy and the program's (`except
+LookupError` catches a `KeyError`, `except Exception`
 does not catch `SystemExit`; `IOError` is `OSError`): what a `raise` raises, and what the
 runtime raises, also in other functions and modules and in code the runtime calls back
 (`sort()` with a `__lt__` that raises leaves the list whole): a missing dict key, an index out
 of range, `int("x")`, a division by zero, `open()` of a missing file and the other `OSError`
 subclasses, unpacking, `sys.exit()` as `SystemExit`, and the checked arithmetic's
-`OverflowError`. The name bound by `as` is unbound after its clause. A builtin exception, which
+`OverflowError`. A clause's classes are looked up when an exception gets to it (one whose
+`class` statement has not run raises `NameError`). The name bound by `as` is unbound after its
+clause, however the clause is left. A builtin exception, which
 calling a builtin exception class makes too (`err = ValueError("x")`), is a value of its own
 type, which `Exception`, `BaseException` or any builtin exception class names in annotations
 (`errors: list[Exception]`): print it, `str()`, `repr()` or format it, store it, compare it
-(by identity), `raise` it, test it with `isinstance()` or `type(e).__name__`; its attributes
-such as `e.args` are not supported. `finally` runs on every way out of the statement: at its
-end, as an exception passes, and at `return` (whose value is computed first), `break` and
+(by identity: an exception that raised an object of an exception class is that object, so
+`e is x` after `raise x`), `raise` it, test it with `isinstance()` or `type(e).__name__`; its
+attributes such as `e.args` are not supported. `raise ... from` a cause that is not an
+exception raises CPython's `TypeError`. `finally` runs on every way out of the statement: at
+its end, as an exception passes, and at `return` (whose value is computed first), `break` and
 `continue`; a `return`, `break` or `continue` in it drops the exception in flight. A bare
 `raise` re-raises the exception being handled, which every way out of an except clause
-restores, and an exception that leaves a `with` block closes its file.
+restores, and an exception that leaves a `with` block closes its file (a close that fails
+raises its `OSError` in its place, inside the `try` statement around, as `__exit__` does). A
+module whose code raises is not imported: the name its import binds is unbound, and a later
+import runs its code again.
 
 **Exception classes.** A class whose one base is a builtin exception class, or an exception
 class of the program, is an exception class: fields, `__init__`, `__str__`, `__repr__`, other
@@ -198,12 +207,16 @@ objects keep the positional arguments of the call that makes them, as CPython's 
 its own or of a base, a class takes any positional arguments. A subclass has its base's
 fields and methods and may define `__init__`, `__str__` and `__repr__` again: `str()`,
 `repr()`, `print` and an uncaught exception's line always use those of the object's class,
-`super().__str__()` and the others those of the base. `except E as e` binds the object, typed
-as the nearest class of the program that the clause's classes derive from (else as a builtin
-exception, whose `str()` and `repr()` still are the object's). One that nothing catches prints
-`module.E: str(e)` (`E` alone in the main program, without `: ` when `str(e)` is empty) and
-ends with status 1; one that derives from `SystemExit` ends the program as its code says, as
-`SystemExit` does. `except SystemExit` catches those, `except Exception` does not.
+`super().__str__()` and the others those of the base (also written `Base.__str__(self)` and
+`super(E, self)`), and `e.__str__()` is `str(e)`. Deriving from `OSError` or `SystemExit`, a
+class with an `__init__` of its own (or of a base) keeps no args, and has the code `None`,
+until `super().__init__(...)` sets them, as CPython's do. `except E as e` binds the object,
+typed as the nearest class of the program that the clause's classes derive from (else as a
+builtin exception, whose `str()` and `repr()` still are the object's). One that nothing
+catches prints `module.E: str(e)` (`E` alone in the main program, without `: ` when `str(e)` is
+empty) and ends with status 1; one that derives from `SystemExit` ends the program as its
+code says, as `SystemExit` does. `except SystemExit` catches those, `except Exception` does
+not.
 
 **Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` in the
 directory of the main program's real file (symbolic links resolved, as for CPython's
@@ -239,7 +252,9 @@ module's code surely raises `ImportError` at its top level (`if sys.platform != 
 raise ImportError(...)`), or a from-import names what its module neither binds nor has as a
 submodule. The imports before it run their code and bind their names, a failing module's
 code runs up to its raise, and then the handler runs; a module that failed is not imported,
-so a later import runs its code again. An import inside a function of an imported module
+so a later import runs its code again. Another `try` around imports (with `finally`, or clauses
+naming other classes) imports its modules as any import does: a module that is not found is an
+error. An import inside a function of an imported module
 that the program's module-level imports do not load is an error only where that function is
 compiled. `import pkg.util as u` binds `u` to the attribute `util` of `pkg`, as CPython
 does: the submodule, unless the package binds `util` itself after its own code imported the
@@ -334,10 +349,11 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
   `ord()` count characters. Files hold the
-  same bytes, read as UTF-8 or Latin-1; any other `encoding=` raises `NotImplementedError`
-  when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is held in its
-  three-byte form and printed or written as it is, where CPython raises
-  `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
+  same bytes, read as UTF-8 or Latin-1, without checking them (invalid UTF-8 is read as it
+  is, where CPython raises `UnicodeDecodeError`); any other `encoding=` computed at run time
+  raises `NotImplementedError` when the file opens. A surrogate (`chr(0xD800)` to
+  `chr(0xDFFF)`) is held in its three-byte form and printed or written as it is, where
+  CPython raises `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does).
@@ -359,7 +375,8 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
 - An import of a builtin module binds its names for the whole program, wherever it appears
   (an import of a Python module in a function binds its names in that function only, as in
   CPython). A program that reads a module's attribute before the import of the module has
-  run reads its zero value instead of raising `NameError`.
+  run reads its zero value instead of raising `NameError` (but after an import in a `try`
+  statement that raised, as CPython does).
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made
   (their `__str__` and `__repr__` run then), where CPython computes them from `args` each time:
   an argument changed afterwards (a list) is not seen.
@@ -380,9 +397,8 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
 - An optional import of a module that Pystachy does not find runs its handler, also where
   CPython would find the module (a standard library module Pystachy lacks, or a package
   installed for CPython); a handler that may end the program is rejected instead (below). A
-  module whose code raises `ImportError` at its top level keeps the globals that code set
-  before the raise, where CPython discards the half-run module; a later import runs the
-  code again over them.
+  module whose code raises keeps the globals that code set before the raise, where CPython
+  discards the half-run module; a later import runs the code again over them.
 - Reading `m.x`, or `from m import x`, while `m`'s code is still running (a circular import)
   and has not bound `x`, and `from m import x` of a global that m declares (`x: int`) but has
   not assigned yet, raise `AttributeError: module 'm' has no attribute 'x'`; CPython 3.13 says
@@ -402,7 +418,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   early, CPython 3.13 keeps its read-ahead across a write, so the next `read()` returns the
   text from before the write.
 
-**Rejected rather than miscompiled** (CPython would run these): a function, class,
+**Rejected rather than miscompiled** (CPython would run these): a call whose arguments do not
+fit the function's parameters (CPython raises `TypeError` where it runs; also `raise E` of an
+exception class whose `__init__` needs arguments); a function, class,
 method or import name bound twice, or a name that is both a variable and a function,
 class or import; a class-body default that names an earlier class attribute (Pystachy
 has no class scope); a local read textually before its first assignment (declare it
@@ -430,6 +448,12 @@ runs; an optional import (`try: import m / except ImportError:`) in which what r
 `try` may raise `ImportError` other than by a module's top-level raise reached for sure, whose
 handler names (`as e`) or re-raises the exception, whose handler may end the program where
 the module is not found, or whose failing module imports the module of the `try` back; a
+`def` or `class` statement inside a block of a module's code (`if`, `try`, a loop), and a
+class body statement other than fields, methods, a docstring, `pass` and `...`; a constant
+tuple index out of range (CPython raises `IndexError` where it runs); an `encoding=` constant
+other than UTF-8 and Latin-1; an empty `[]` or `{}` that nothing gives a type (`{}["k"]` alone);
+a tuple holding `None` where it is printed or compared (`print((1, None))`, also an exception
+made with several arguments, one of them `None`); a
 read of a function's local that only code dropped at compile time binds; a name a package
 binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
 with `from pkg import util` or in the package's functions, when which of the two it is
@@ -441,13 +465,19 @@ alias (`f = g`) that module-level code uses before its assignment; `__all__` cha
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
 `os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
 but an exception; an `except` clause that names something other than exception classes (a
-variable, `os.error`), and `except*`; an exception that may be `None` (`Exception | None`;
+variable), and `except*`; `except ... as x` in a function where `x` is a global (the end of
+the clause deletes it, as `del` would); `==` between exceptions where an exception class
+defines `__eq__` or `__ne__` (`is` works); an exception that may be `None` (`Exception | None`;
 an object of an exception class may be), and an object of an exception class where a
 builtin exception is expected (`list[Exception]`: annotate it with the class or a base of
 the program); an exception class with two bases, one deriving from `SyntaxError` and its
 subclasses or an exception group, a decorated one, one defining again a method of its base
 other than `__init__`, `__str__` and `__repr__` (methods are not dispatched on the object's
-class), or a field its base declares, one whose `__init__` may leave a field of the base
+class), a field its base declares, or one that would be its builtin base's own attribute
+(`args`, `code` of `SystemExit`, `errno`, `strerror`, `filename` and `filename2` of `OSError`,
+`msg` of `ImportError`), a call `x.__init__(...)` on an object of a class that a class deriving
+from it defines `__init__` again for, `Base.method(self, ...)` naming a base other than the
+class's own, one whose `__init__` may leave a field of the base
 unassigned where the base's code reads it (call `super().__init__()` first), keyword
 arguments where no class of its line has an `__init__`, more than one argument for one
 deriving from `OSError` (whose `str()` would be `[Errno n] text`), and `super()` outside the
@@ -542,7 +572,11 @@ methods of exception classes.
   `try`'s own function costs tens of nanoseconds, one from a call one to three microseconds.
   `finally` is compiled once for each way out, as in CPython. What a raise leaves half done in
   the runtime (a list being sorted, a `with` block's open file) is put right by unwind actions
-  that the landing pad runs. `runtime.c` is compiled with `-fexceptions` in both tiers. An
+  that the landing pad runs; one that raises (a close that fails) gives the landing its own
+  exception instead, through a `longjmp` back into `pys_exc_begin` over runtime frames only.
+  A module's code runs in the region of a landing block that marks the module not run and
+  throws again; a read through a name that an import in a `try` statement binds checks that
+  mark. `runtime.c` is compiled with `-fexceptions` in both tiers. An
   object of an exception class begins with a pointer to its class's `ExcClass`, a constant the
   compiler generates for each class whose objects the program makes: the name an `except`
   clause matches (the class's qualified name, in the sets of names each clause catches, which
@@ -651,7 +685,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1073 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1128 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
