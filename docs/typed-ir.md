@@ -13,9 +13,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 > - A `Symtable` pass now mirrors CPython's symbol table on every parsed module (#15). It is the
 >   natural starting point for the resolver track of §6.4.
 > - Step 0's tooling has landed: `tools/irsame.sh` (`make irsame REF=<commit>`), `make check-ir`
->   (also a `make verify` step) and the `tests/ir/` probes, with bug B's probe in `tests/ir/pending/`.
+>   (also a `make verify` step) and the `tests/ir/` probes.
 > - #17's cases 2 and 4 (§9, question 4) now compile.
-> - Bugs A to F of §1.3 are fixed in their own commits (wf/defects), outside the IR steps.
+> - Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
+>   program is now a compile-time error asking to annotate the field.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
