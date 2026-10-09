@@ -6830,7 +6830,7 @@ class Gen:
                 # an imported module's constants (NAME = literal) are typed before any module code
                 # compiles: a module it imports, which imports it back, may read them first
                 if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s not in self.gtypes and st.kids[0].s not in self.noneglobals:
-                    k = st.kids[1].kind
+                    k = st.kids[1].kids[0].kind if st.kids[1].kind == "unary" and is_const(st.kids[1]) else st.kids[1].kind  # (-1, -2.5)
                     if k == "int" or k == "float" or k == "str":
                         self.declare(st.kids[0].s, k)
                     elif k == "True" or k == "False":
