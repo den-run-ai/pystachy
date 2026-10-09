@@ -24,7 +24,7 @@
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
 typedef struct { I len, cap; I *a; } List;
-typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 1: str keys; see dicts */
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
@@ -919,7 +919,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
-   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
+   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it;
+   ?<e> None (null) or a value of <e> */
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
@@ -938,7 +939,7 @@ void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] ==
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
-  if (c == 'L') return skip(d);
+  if (c == 'L' || c == '?') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   return d;
@@ -968,27 +969,33 @@ static const char *repr(Buf *b, I v, const char *d) {
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
-  case 's': repr_str(b, (Str *)v); return d;
-  case 'L': {
-    List *l = (List *)v; put(b, "[", 1);
+  case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
+  case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
+    List *l = (List *)v;
+    if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
+    put(b, "[", 1);
     for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr(b, l->a[i], d); }
-    put(b, "]", 1); return skip(d);
+    put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
-    Dict *m = (Dict *)v; const char *dv = skip(d); put(b, "{", 1);
+    Dict *m = (Dict *)v; const char *dv = skip(d);
+    if (!pys_repr_enter(m)) { put(b, "{...}", 5); return skip(dv); }
+    put(b, "{", 1);
     for (I e = 0, k = 0; e < m->n; e++) {
       if (!m->hs[e]) continue;
       if (k++) put(b, ", ", 2);
       repr(b, m->keys[e], d); put(b, ": ", 2); repr(b, m->vals[e], dv);
     }
-    put(b, "}", 1); return skip(dv);
+    put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
   case 'T': {
+    if (!v) { put(b, "None", 4); return skip(d - 1); }
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
+  case '?': if (v) return repr(b, v, d); put(b, "None", 4); return skip(d);
   }
   return d;
 }
@@ -997,7 +1004,7 @@ static I entry(Dict *d, I k);
 static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'f': return dbl(a) == dbl(b);
-  case 's': return pys_str_eq((Str *)a, (Str *)b);
+  case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {
     List *x = (List *)a, *y = (List *)b;
     if (x->len != y->len) return 0;
@@ -1016,10 +1023,12 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'T': {
     I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+    if (!x || !y) return x == y;
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqv(x[i], y[i], e)) return 0;
     return 1;
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
+  case '?': return a && b ? eqv(a, b, d + 1) : a == b;          /* None equals only None */
   }
   return a == b;
 }
@@ -1028,6 +1037,7 @@ I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
+static const char *tyname(char d);
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -1045,6 +1055,10 @@ static int opv(I a, I b, const char *d, I op) {
   }
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case '?':
+    if (a && b) return opv(a, b, d + 1, op);
+    failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
+          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -1369,7 +1383,10 @@ List *pys_range_list(I a, I b, I s) {
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
 Str *pys_str_join(Str *sep, List *l) {
   I n = 0;
-  for (I i = 0; i < l->len; i++) n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) failf("TypeError: sequence item %lld: expected str instance, NoneType found", (long long)i);   /* a str | None item */
+    n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  }
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
   for (I i = 0; i < l->len; i++) {
     Str *s = (Str *)l->a[i];
@@ -1445,7 +1462,9 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
    first shift folds the key's high bits into its low ones, the multiply spreads them up and
    the last shift brings the product's high bits down, so keys that differ only in their high
    bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
-   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A lookup
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A tuple key
+   (kind is its type descriptor: items int, bool, str, None or a str, and such tuples) mixes
+   its items' hashes, None's a constant, and its keys are equal as == compares them. A lookup
    in a table that fits in the cache takes a few ns, so each costs only one multiply (per
    byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
    each step mixes five more of its bits in (perturb), so keys whose hashes share their low
@@ -1455,9 +1474,19 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
 #ifndef DICT_PROBE
 #define DICT_PROBE()
 #endif
+static uint64_t hsh(Dict *d, I k);
+static uint64_t hval(I k, const char *d) {           /* a tuple key's hash (or its item's), by its descriptor */
+  if ((*d == '?' || *d == 's' || *d == 'T') && !k) return 0x9E3779B97F4A7C15ULL;   /* None (also a looked-up key's) */
+  if (*d == '?') d++;
+  if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }
+  uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
+  for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) h = (h ^ hval(((I *)k)[i], e)) * 0x100000001B3ULL;
+  return h ^ h >> 29;
+}
 static uint64_t hsh(Dict *d, I k) {
   uint64_t h = (uint64_t)k;
-  if (d->kind) {
+  if (d->kind > 1) h = hval(k, ((Str *)d->kind)->s);
+  else if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
     h ^= h >> 29;
@@ -1476,7 +1505,8 @@ static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *f
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)))) return i;
+    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind == 1 && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)) ||
+                                   (d->kind > 1 && eqv(d->keys[e - 1], k, ((Str *)d->kind)->s)))) return i;
   }
 }
 static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
@@ -1496,7 +1526,9 @@ Dict *pys_dict_new(I kind, I n) {                     /* a display of n items is
   if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
   return d;
 }
-static _Noreturn void keyerr(Dict *d, I k) { Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p); }
+static _Noreturn void keyerr(Dict *d, I k) {
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? ((Str *)d->kind)->s : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+}
 static I entry(Dict *d, I k) { I i = dfind(d, k, hsh(d, k), 0); return i < 0 ? -1 : d->idx[i] - 1; }
 I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
 I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
@@ -1600,7 +1632,11 @@ static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   
 }
 Str *pys_format(I v, Str *desc, Str *spec) {
   const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
-  char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
+  char d = desc->s[desc->s[0] == '?'], align = 0, sign = 0, type = 0, sep = 0;   /* ?: None or a value */
+  if (desc->s[0] == '?' && !v) {
+    if (spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
+    return cstr("None");
+  }
   int alt = 0, zneg = 0, fillset = 0;
   I fl = 1, width = 0, prec = -1;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
@@ -2111,7 +2147,12 @@ I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as t
   io_out();
   return s->len;
 }
-void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
+void pys_file_writelines(File *f, List *l) {
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) pys_fail("TypeError: write() argument must be str, not None");   /* a str | None item */
+    pys_file_write(f, (Str *)l->a[i]);
+  }
+}
 void pys_file_flush(File *f) {
   if (f->closed) closed_err();
   io_in(); int e = flush1(f); io_out();

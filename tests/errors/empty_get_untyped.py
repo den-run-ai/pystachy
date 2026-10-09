@@ -1,4 +1,4 @@
-# error: dict.get(key) needs a default value unless the values are objects
+# error: dict.get(key) needs values that can be None (str, list, dict, tuple or objects), not bool: give another default (bool | None would need boxing)
 seen = {}
 for w in ["a", "b", "a"]:
     if seen.get(w):

@@ -667,6 +667,7 @@ class Node:
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
         self.depth = 1  # levels of nodes from this one down, as mk counted them
+        self.quoted = False  # an annotation parsed from a string (Loader.qann), which CPython does not evaluate
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
@@ -1632,6 +1633,11 @@ class Parser:
                 self.fail("trailing comma not allowed without surrounding parentheses", self.line())
         if paren:
             self.expect(")")
+        if path == "collections" and len([a for a in n.kids if a.kids[0].s != "collections.abc"]) == 0:
+            # from collections import abc: import collections.abc as abc (a builtin module)
+            n.s = ""
+            for a in n.kids:
+                a.kids[1].s = "collections.abc"
         return n
 
     # ---- expressions
@@ -2932,7 +2938,7 @@ for _k in ("name str int float None True False list tuple dict attr assign annas
 
 def builtin_module(path: str) -> bool:
     root = path[: path.find(".")] if "." in path else path
-    return path in MODULES or root in MODULES
+    return path in MODULES or root in MODULES or path == "collections.abc"
 
 
 def accel_try(st: Node) -> bool:
@@ -4300,6 +4306,7 @@ class Loader:
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
+            n.quoted = True
         if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
                 self.qann(m, k, loc)
@@ -4377,6 +4384,9 @@ class Loader:
 # A type is a canonical string: int float bool str None file, list[T], dict[K,V],
 # tuple[A,B], or a class name. LLVM view: i64, double, i1, void, everything else ptr.
 HEX = "0123456789ABCDEF"
+# the type of a local that only None has been assigned so far (see none_type): a pointer, which
+# only comparisons with None may read until a binding of another value types it
+NONEVAR = "opt[None]"
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -4454,8 +4464,18 @@ for _k in ("List Dict Tuple Optional TextIO Any Union Callable Set FrozenSet Ite
            "Counter Deque ChainMap Hashable Sized Collection Container Reversible MutableMapping MutableSequence MutableSet "
            "AbstractSet KeysView ItemsView ValuesView SupportsInt SupportsFloat SupportsIndex SupportsAbs SupportsRound TypedDict "
            "LiteralString Required NotRequired Unpack TypeVarTuple override final get_type_hints no_type_check runtime_checkable "
-           "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString").split():
+           "NewType assert_never reveal_type dataclass_transform Pattern Match Text ByteString AsyncContextManager AsyncGenerator "
+           "ContextManager ForwardRef MappingView NoDefault ParamSpecArgs ParamSpecKwargs ReadOnly SupportsBytes SupportsComplex "
+           "TypeAliasType TypeIs assert_type clear_overloads get_args get_origin get_overloads get_protocol_members is_protocol "
+           "is_typeddict no_type_check_decorator").split():
     TYPING[_k] = True
+# collections.abc: imported as typing's names are (Mapping[K, V] is dict[K, V], see typeof)
+ABCS: dict[str, bool] = {}
+for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hashable Iterable Iterator Generator Reversible Sized "
+           "Container Callable Collection Set MutableSet Mapping MutableMapping MappingView KeysView ItemsView ValuesView Sequence "
+           "MutableSequence ByteString Buffer").split():
+    ABCS[_k] = True
+CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
     FUTURE[_k] = True
@@ -4505,6 +4525,19 @@ HASATTR: dict[str, str] = {
     "dict": "__class_getitem__ __contains__ __delitem__ __getitem__ __ior__ __iter__ __len__ __or__ __reversed__ __ror__ __setitem__ "
             "clear copy fromkeys get items keys pop popitem setdefault update values",
 }
+# what builtins raise for a None argument (an optional value that is None); OPTARG: builtins that
+# take None (or an optional value) themselves
+NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dict": "'NoneType' object is not iterable",
+                           "int": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'",
+                           "float": "float() argument must be a string or a real number, not 'NoneType'",
+                           "ord": "ord() expected string of length 1, but NoneType found",
+                           "os.system": "expected str, bytes or os.PathLike object, not NoneType",
+                           "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
+OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# what those return (for None itself, which always raises)
+NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
+# builtins whose own code (not CALLS) takes a str, list, dict or tuple
+OPTCALLS: list[str] = "sorted list dict min max sum any all".split()
 # builtins that keep no reference to their arguments
 PURE: list[str] = "print str repr len bool sum sorted list tuple min max any all enumerate reversed zip isinstance hash".split()
 
@@ -4632,7 +4665,9 @@ RUNTIME: dict[str, str] = {
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
-    # dicts (a KeyError's message is the repr of an int or str key: no user code)
+    # dicts: keys are ints, strs, or tuples of int, bool, str, None and such tuples (Dict.kind 0, 1,
+    # or the tuple's descriptor, passed as an int), which hash, compare and print (a KeyError's
+    # message) without user code
     "dict.new": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD|", "dict.getitem": "*V:S,*K|R A rD|",
     "dict.get": "*V:S,*K,*V|rD|", "dict.set": "None:S,*K,*V|A rD wD|", "dict.pop": "*V:S,*K|R A rD wD|",
     "dict.pop_default": "*V:S,*K,*V|R A rD wD|", "dict.setdefault": "*V:S,*K,*V|A rD wD|", "dict.clear": "None:S|wD|",
@@ -4641,7 +4676,7 @@ RUNTIME: dict[str, str] = {
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
-    "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
     "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|A|", "str.strip": "str:S,str|A|",
     "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int||",
     "str.endswith": "bool:S,str,int,int||", "str.find": "int:S,str,int,int||", "str.rfind": "int:S,str,int,int||",
@@ -4675,13 +4710,13 @@ RUNTIME: dict[str, str] = {
     "m.isqrt": "int:int|R|", "m.factorial": "int:int|R|", "m.comb": "int:int,int|R|", "m.perm": "int:int,int|R|",
     "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||",
     # any type, by its descriptor
-    "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A rL rD U?|",
-    "format": "str:*T,#,str|R A rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
+    "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R A I rL rD U?|",
+    "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "getpid": "int:|I|", "exists": "bool:str|I|",
-    "realpath": "str:str|R A I|", "getenv": "str:str,str|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
@@ -4710,6 +4745,8 @@ def lt(t: str) -> str:
         return "i1"
     if t == "None":
         return "void"
+    if t == "%slot":
+        return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
     return "ptr"
 
 
@@ -4789,6 +4826,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "file":
         return "TextIOWrapper"
+    if t.startswith("opt["):
+        return tname(t[4:-1]) + " | None"
     b = t.find("[")
     return t[:b] if b >= 0 else short(t)
 
@@ -4824,14 +4863,62 @@ def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
 
 
+def is_opt(t: str) -> bool:
+    # opt[T]: T | None for T str, list, dict or tuple (a class type includes None already)
+    return t.startswith("opt[")
+
+
+def unopt(t: str) -> str:
+    # the type an optional value has when it is not None
+    return t[4:-1] if t.startswith("opt[") else t
+
+
+def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
+    # the names in every one of states (narrowed where paths join)
+    r: dict[str, bool] = {}
+    for nm in states[0]:
+        ok = True
+        for st in states[1:]:
+            ok = ok and nm in st
+        if ok:
+            r[nm] = True
+    return r
+
+
+def nones(e: Node) -> bool:
+    # is e a list display of None items, or a dict display of constant keys and None values
+    for i in range(len(e.kids)):
+        x = e.kids[i]
+        if (e.kind == "list" or i % 2 == 1) and x.kind != "None":
+            return False
+        if e.kind == "dict" and i % 2 == 0 and x.kind != "str" and x.kind != "int":
+            return False
+    return True
+
+
 def same_kind(a: str, b: str) -> bool:
     # are types a and b both lists or both dicts (a class may be named listing)
     return (is_list(a) and is_list(b)) or (is_dict(a) and is_dict(b))
 
 
 def typestr(t: str) -> str:
-    # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict"
-    return t.replace("[?,?]", "").replace("[?]", "")
+    # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
+    # and opt[T] is T | None
+    return optnames(t.replace("[?,?]", "").replace("[?]", ""))
+
+
+def optnames(t: str) -> str:
+    # t (a type, or a message that names types) with each opt[T] written T | None
+    while "opt[" in t:
+        a = t.find("opt[")
+        b = a + 4
+        depth = 1
+        while depth > 0 and b < len(t):
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            b += 1
+        x = t[a + 4 : b - 1]
+        t = t[:a] + (x if x == "None" else x + " | None") + t[b:]
+    return t
 
 
 def empty_display(e: Node) -> bool:
@@ -4843,6 +4930,44 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
     if n.kind != "call" or len(n.kids) != 3 or n.kids[0].kind != "attr" or n.kids[0].s != "setdefault":
         return False
     return n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == name and n.kids[2].kind == kind and len(n.kids[2].kids) == 0
+
+
+def key_problem(t: str) -> str:
+    # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
+    # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor)
+    if t == "int" or t == "str" or (is_tuple(t) and key_items(t)):
+        return ""
+    if is_opt(t):
+        return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
+    return f"dict keys must be int or str, or tuples of int, bool, str and str | None items, not {typestr(t)}"
+
+
+def lookable(a: str, b: str) -> bool:
+    # can a value of type a be looked up among dict keys of type b, as CPython compares them: True
+    # is 1, and None (a tuple's item) is no str
+    if a == b or (a == "bool" and b == "int") or (b == "str" and (a == "None" or a == "opt[str]")):
+        return True
+    if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+        return False
+    for i in range(len(targs(a))):
+        if not lookable(targs(a)[i], targs(b)[i]):
+            return False
+    return True
+
+
+def none_items(t: str) -> str:
+    # a tuple key type with str | None for its None items (a key's None says no more of the type)
+    if t == "None":
+        return "opt[str]"
+    return f"tuple[{','.join([none_items(x) for x in targs(t)])}]" if is_tuple(t) else t
+
+
+def key_items(t: str) -> bool:
+    for x in targs(t):
+        u = unopt(x)
+        if x != "int" and x != "bool" and u != "str" and not (is_tuple(u) and key_items(u)):
+            return False
+    return True
 
 
 def elem(t: str) -> str:
@@ -5162,6 +5287,25 @@ def stmt_binds(st: Node, name: str) -> bool:
     return name in names
 
 
+def only_none(body: list[Node], name: str) -> bool:
+    # do the statements in body (into blocks, not into defs and classes) bind variable name only
+    # to None, by name = None
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if stmt_binds(st, name) and not (st.kind == "assign" and nonexpr(st.kids[-1]) and assigns(st, name)):
+            return False  # (also a, name = None, None)
+        for kid in st.kids:
+            if kid.kind == "block" and not only_none(kid.kids, name):
+                return False
+    return True
+
+
+def nonexpr(e: Node) -> bool:
+    # is e None, or a conditional expression of None in both arms
+    return e.kind == "None" or (e.kind == "ifexp" and nonexpr(e.kids[1]) and nonexpr(e.kids[2]))
+
+
 def assigns(st: Node, name: str) -> bool:
     # is name a target of assignment st itself (not inside a tuple)
     for t in st.kids[:-1]:
@@ -5351,6 +5495,7 @@ class Frame:
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
         self.nonevars: dict[str, bool] = {}
+        self.narrowed: dict[str, bool] = {}
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
@@ -5562,6 +5707,15 @@ class Gen:
         self.fn = IFn(self.curfn)  # the function being built
         self.blk: Blk = self.fn.blocks[0]  # and its block that code goes to
         self.nonevars: dict[str, bool] = {}  # parameters of a template's function whose argument is None
+        # optional locals (and parameters) known not to be None here, as mypy narrows them: a read
+        # of one has the type it holds (see narrows)
+        self.narrowed: dict[str, bool] = {}
+        self.nonecmp = False  # the read being compiled is compared with None (see none_type)
+        self.anyopt = False  # a local of an optional type exists: narrows has something to look for
+        self.building: dict[str, bool] = {}  # the functions being compiled
+        self.wide: dict[str, bool] = {}  # optional values read from a global or a field (function + register), which no test narrows
+        self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
+        self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
@@ -5576,6 +5730,8 @@ class Gen:
         self.flowmod = ""
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
+        self.brks: list[list[dict[str, bool]]] = []  # for each loop being compiled, what narrowed holds at its breaks
+        self.elsebrks: list[dict[str, bool]] = []  # those of the last loop with an else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
         # what the container holds (see fill). The op that makes one holds a hole, which gets that
         # type (lowering prints a dict's key kind from it)
@@ -5605,6 +5761,7 @@ class Gen:
         self.qused: dict[str, bool] = {}
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
+        self.nts: dict[str, bool] = {}  # the typing.NamedTuple classes: a dataclass whose fields cannot be assigned (see nt_class)
 
     # ---- emission helpers
     def err(self, msg: str) -> None:
@@ -5613,7 +5770,7 @@ class Gen:
             for i in range(len(self.making) - 1, -1, -1):
                 msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
             msg += ")"
-        fail(msg, self.line)
+        fail(optnames(msg) if "opt[" in msg else msg, self.line)
 
     def save(self) -> Frame:
         fr = Frame(self.curfn, self.fn, self.blk)
@@ -5634,6 +5791,7 @@ class Gen:
         fr.uflags = self.uflags
         fr.lflag = self.lflag
         fr.nonevars = self.nonevars
+        fr.narrowed = self.narrowed
         fr.lkk = self.lkk
         fr.branch = self.branch
         fr.modlevel = self.modlevel
@@ -5665,6 +5823,7 @@ class Gen:
         self.uflags = fr.uflags
         self.lflag = fr.lflag
         self.nonevars = fr.nonevars
+        self.narrowed = fr.narrowed
         self.lkk = fr.lkk
         self.branch = fr.branch
         self.modlevel = fr.modlevel
@@ -5737,6 +5896,15 @@ class Gen:
             i.a = [v]
         self.add(i)
         self.term = True
+
+    def returned_none(self) -> bool:
+        # has the template's function being compiled returned None before it was known what it
+        # returns (a ret.none op)
+        for b in self.fn.blocks:
+            for x in b.code:
+                if x.op == "ret.none":
+                    return True
+        return False
 
     def unreachable(self) -> None:
         self.add(Ins("unreachable", "", ""))
@@ -5840,6 +6008,13 @@ class Gen:
         if v.t in self.classes and v.v not in self.nn:
             self.guard(self.ins(f"icmp eq ptr {v.v}, null"), msg)
 
+    def unwrap(self, v: Val, msg: str) -> Val:
+        # an optional value used where only the type it holds works: None raises msg ("Kind: text")
+        if not is_opt(v.t):
+            return v
+        self.guard(self.ins(f"icmp eq ptr {v.v}, null"), msg)
+        return Val(v.v, unopt(v.t))
+
     def sconst(self, s: str) -> str:
         if s in self.strs:
             return self.strs[s]
@@ -5852,11 +6027,12 @@ class Gen:
 
     def alloca(self, t: str, name: str) -> str:
         if t == "None":
-            self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+            self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
         if t == "":
             self.err(f"cannot infer the type of '{name}'; add a type annotation")
         self.n += 1
         r = f"%{name or 'h'}.{self.n}"
+        self.anyopt = self.anyopt or is_opt(t)
         i = Ins("slot", t, name)
         i.r = [self.n]
         self.fn.slots.append(i)
@@ -5916,7 +6092,7 @@ class Gen:
         return v
 
     def is_dc(self, t: str) -> bool:
-        return t in self.classes and len(self.classes[t].node.kids) > 1
+        return t in self.classes and (len(self.classes[t].node.kids) > 1 or t in self.nts)
 
     def isnum(self, t: str) -> bool:
         return t == "int" or t == "float" or t == "bool"
@@ -5924,11 +6100,21 @@ class Gen:
     def isref(self, t: str) -> bool:
         return t == "None" or lt(t) == "ptr"
 
-    def coerce(self, v: Val, t: str) -> Val:
+    def coerce(self, v: Val, t: str, what: str = "") -> Val:
+        # v as a value of type t; what names v for the error when v may be None and t may not
         if v.t == t:
             return v
         if v.t == "None" and t in self.classes:
             return Val("null", t)
+        if self.widens(v.t, t):
+            return Val(v.v, t)
+        if is_opt(v.t) and self.widens(unopt(v.t), t):
+            # (CPython would pass the None on: there is nothing here that could hold it)
+            if what == "":
+                what = "a value used as " + typestr(t)
+            if self.curfn.ll + v.v in self.wide:
+                self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
+            self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
         hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
         if hint == "" and self.curfn.ll in self.guessed:
             hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
@@ -5945,6 +6131,10 @@ class Gen:
             return "b"
         if t == "str":
             return "s"
+        if is_opt(t) and t != NONEVAR:
+            return "?" + self.desc(unopt(t))  # None or the value
+        if t == "None":
+            return "?s"  # (always None: a tuple's item)
         if is_list(t):
             return "L" + self.desc(elem(t))
         if is_dict(t):
@@ -5982,24 +6172,36 @@ class Gen:
             return "file"
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
             return self.opt(self.typeof(n.kids[0]))
+        elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
+            return self.opt(self.typeof(n.kids[1]))  # None | T
         elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = n.kids[0].s
             if n.kids[0].kind == "attr":
                 base = self.typing_attr(n.kids[0]).lower()  # typing.List[int]
             elif base != "list" and base != "dict" and base != "tuple":
                 base = self.typing_name(base).lower()
+            if base == "mapping" or base == "mutablemapping":
+                base = "dict"  # (collections.abc's and typing's: what a dict is)
+            elif base == "sequence" or base == "mutablesequence":
+                base = "list"
+            elif base == "classvar":
+                self.err(CLASSVAR)
             a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
             ts = [self.typeof(x) for x in a]
             if base == "list" and len(ts) == 1:
                 return f"list[{ts[0]}]"
             if base == "dict" and len(ts) == 2:
-                if ts[0] != "int" and ts[0] != "str":
-                    self.err("dict keys must be int or str")
+                if key_problem(ts[0]) != "":
+                    self.err(key_problem(ts[0]))
                 return f"dict[{ts[0]},{ts[1]}]"
-            if base == "tuple" and len(ts) > 0:
-                return f"tuple[{','.join(ts)}]"
+            if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple"):
+                return f"tuple[{','.join(ts)}]"  # (tuple[()] is the empty tuple's)
             if base == "optional" and len(ts) == 1:
                 return self.opt(ts[0])
+            if base == "union" and len(ts) == 2 and (ts[0] == "None" or ts[1] == "None"):
+                return self.opt(ts[0] if ts[1] == "None" else ts[1])  # Union[T, None]
+        if self.typing_ref(n) == "Final":
+            self.err("a bare Final needs a value to give its type (x: Final = v), outside class bodies; write Final[T]")
         self.err("unsupported type annotation")
         return ""
 
@@ -6008,17 +6210,19 @@ class Gen:
         # reference, which is checked where it is used)
         k = n.kind
         if k == "None":
-            return "" if ret else "None is only supported as a return type; annotate an optional object as C | None"
+            return "" if ret else "None is only supported as a return type; annotate an optional value as T | None"
         if k == "str":
             return ""
         if k == "name":
             if n.s == "int" or n.s == "float" or n.s == "bool" or n.s == "str" or n.s in self.classes or self.imported(n.s) == "typing.TextIO":
                 return ""
             return self.unsupported[n.s] if n.s in self.unsupported else "unsupported type annotation"
-        if k == "binop" and n.s == "|" and n.kids[1].kind == "None":
-            return self.ann_problem(n.kids[0], False)
+        if k == "binop" and n.s == "|" and (n.kids[1].kind == "None" or n.kids[0].kind == "None"):
+            return self.ann_problem(n.kids[0] if n.kids[1].kind == "None" else n.kids[1], False)
         if k == "attr" and self.typing_attr(n) == "TextIO":
             return ""
+        if k == "index" and self.typing_ref(n.kids[0]) == "ClassVar":
+            return CLASSVAR
         if k == "index" and (n.kids[0].kind == "name" or (n.kids[0].kind == "attr" and self.typing_attr(n.kids[0]) != "")):
             for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
                 r = self.ann_problem(x, False)
@@ -6031,7 +6235,7 @@ class Gen:
         # the annotation of a variable, parameter or field: None alone is only a return type
         t = self.typeof(n)
         if t == "None":
-            self.err("None is only supported as a return type; annotate an optional object as C | None")
+            self.err("None is only supported as a return type; annotate an optional value as T | None")
         return t
 
     def typing_attr(self, n: Node) -> str:
@@ -6041,13 +6245,108 @@ class Gen:
             p = "." + n.s + p
             n = n.kids[0]
         p = self.imported(n.s + p) if n.kind == "name" else ""
-        return p[7:] if p.startswith("typing.") else ""
+        return p[7:] if p.startswith("typing.") else p[16:] if p.startswith("collections.abc.") else ""
+
+    def typing_ref(self, n: Node) -> str:
+        # the typing (or collections.abc) name that a name or attribute n refers to, or "" (no error)
+        if n.kind == "attr":
+            return self.typing_attr(n)
+        if n.kind != "name":
+            return ""
+        p = self.imported(n.s)
+        if p.startswith("typing.") or p.startswith("collections.abc."):
+            return p[p.rfind(".") + 1 :]
+        return n.s if n.s in TYPING and "__future__.annotations" in self.imports.values() else ""
+
+    def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
+        # what typing decides before any code runs, in the statements of body (a class body if cls)
+        # and in those they hold: a def decorated with @overload is a stub that the def after it
+        # replaces, so it is dropped (unless no def of its name follows in its block, past other
+        # defs, or a default is more than a constant); x: Final = v is x = v outside class bodies,
+        # x: Final[T] is x: T
+        out: list[Node] = []
+        defs: dict[str, bool] = {}
+        for i in range(len(body)):
+            st = body[i]
+            stub = self.stub(m, st)
+            self.line = st.line
+            if stub and st.s in defs:
+                self.err(f"an @overload stub after the definition of '{short(st.s)}' is not supported (it would replace it)")
+            if stub:
+                # (one that nothing replaces is what a call finds, which raises NotImplementedError;
+                # other defs between them run nothing that could call it)
+                j = i + 1
+                while j < len(body) and body[j].kind == "def" and (body[j].s != st.s or self.stub(m, body[j])):
+                    j += 1
+                if j == len(body) or body[j].kind != "def":
+                    self.err(f"an @overload stub of '{short(st.s)}' must be followed by the def that implements it (calling a stub raises NotImplementedError)")
+                for p in st.kids[0].kids:
+                    if p.kids[1].kind != "ellipsis" and not is_const(p.kids[1]):
+                        self.err("a default of an @overload stub that is not a constant (or ...) is not supported (CPython evaluates it where the def runs)")
+                continue
+            if st.kind == "def":
+                defs[st.s] = True
+            a = st.kids[1] if st.kind == "annassign" else st
+            if a.kind == "index" and self.typing_ref(a.kids[0]) == "Final":
+                st.kids[1] = a.kids[1]
+            elif a is not st and len(st.kids) == 3 and not cls and self.typing_ref(a) == "Final":
+                st.kind = "assign"
+                st.kids = [st.kids[0], st.kids[2]]
+            for k in st.kids:
+                if k.kind == "block":
+                    k.kids = self.typing_forms(m, k.kids, st.kind == "class")
+                elif k.kind == "class":
+                    k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
+            out.append(st)
+        return out if len(out) < len(body) else body
+
+    def stub(self, m: Mod, st: Node) -> bool:
+        # is st a def decorated with typing.overload
+        r = False
+        for d in st.kids[3:] if st.kind == "def" else []:
+            root = d.s[: d.s.find(".")] if "." in d.s else d.s
+            r = r or (self.imported(m.q + root) or self.imported(root)) + d.s[len(root) :] == "typing.overload"
+        return r
+
+    def ann_names(self, m: Mod, body: list[Node], later: dict[str, bool]) -> None:
+        # CPython 3.13 evaluates the annotations of a def's parameters and return, and of the
+        # module's and class bodies' variables, where the statement runs (unless annotations are
+        # lazy): a class the module defines only further on is a NameError there (later holds
+        # their names), and so is, in an @overload stub (which Pystachy drops), a name nothing binds
+        for st in body:
+            anns: list[Node] = [st.kids[1]] if st.kind == "annassign" else []
+            if st.kind == "def":
+                anns = [p.kids[0] for p in st.kids[0].kids] + [st.kids[1]]
+            for a in anns:
+                self.ann_name(m, a, later, self.stub(m, st))
+            if st.kind == "class" or st.kind == "subclass":
+                self.ann_names(m, (st if st.kind == "class" else st.kids[0]).kids[0].kids, later)
+                later[st.s] = False
+            elif st.kind != "def":
+                for k in st.kids:
+                    if k.kind == "block":
+                        self.ann_names(m, k.kids, later)
+
+    def ann_name(self, m: Mod, a: Node, later: dict[str, bool], stub: bool) -> None:
+        # the names annotation a evaluates (not those in a string), checked as ann_names says
+        if a.kind == "str" or a.quoted:
+            return
+        x = a.s
+        known = "$" in x or x in PYBUILTINS or x in m.kinds or self.imported(x) != ""
+        if a.kind == "name" and (later.get(x, False) or (stub and not known)):
+            self.line = a.line
+            why = f"the annotation runs before class {short(x)} is defined: quote it, '{short(x)}'" if later.get(x, False) else "in an @overload stub, which CPython evaluates where the def runs"
+            self.err(f"name '{short(x)}' is not defined ({why})")
+        for k in a.kids:
+            self.ann_name(m, k, later, stub)
 
     def typing_name(self, s: str) -> str:
         # List/Dict/Tuple/Optional/TextIO must come from typing, unless annotations are never
         # evaluated (from __future__ import annotations)
         if self.imported(s).startswith("typing."):
             return self.imported(s)[7:]
+        if self.imported(s).startswith("collections.abc."):
+            return self.imported(s)[16:]
         if s in TYPING and "__future__.annotations" in self.imports.values():
             return s
         if s in TYPING:
@@ -6055,9 +6354,87 @@ class Gen:
         return ""
 
     def opt(self, t: str) -> str:
-        if t not in self.classes:
-            self.err(f"None/Optional is only supported for class types, not {t}")
-        return t
+        # T | None: a class type includes None already; str, list, dict and tuple become opt[T]
+        r = self.optional(t)
+        if r == "":
+            why = f" ({'an' if t == 'int' else 'a'} {t} is a machine value, which has no room for None)" if self.isnum(t) else ""
+            self.err(f"None/Optional is only supported for class types, str, list, dict and tuple, not {typestr(t)}{why}")
+        return r
+
+    def optional(self, t: str) -> str:
+        # the type of a value that is a t or None, "" if there is none
+        if t in self.classes or is_opt(t):
+            return t
+        if (t == "str" or is_list(t) or is_dict(t) or is_tuple(t)) and "?" not in t:
+            return f"opt[{t}]"
+        return ""
+
+    def join(self, a: str, b: str) -> str:
+        # the type of a value that is an a or a b, where None and optional types meet (T and None
+        # make T | None), or ""
+        if a == b or self.widens(b, a):
+            return a
+        if self.widens(a, b):
+            return b
+        if a == "None" or b == "None":
+            return self.optional(b if a == "None" else a)
+        if is_opt(a) or is_opt(b):
+            j = self.join(unopt(a), unopt(b))
+            return self.optional(j) if j != "" else ""
+        if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+            js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
+            return f"tuple[{','.join(js)}]" if "" not in js else ""
+        return ""
+
+    def wider(self, a: str, b: str) -> str:
+        # the type of values of types a and b as they are, where they differ only in what may be
+        # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
+        # containers made of both; "" if there is none
+        if a == b:
+            return a
+        if "?" in a or "?" in b:
+            return ""
+        if a == "None" or b == "None":
+            return self.optional(b if a == "None" else a)
+        if is_opt(a) or is_opt(b):
+            w = self.wider(unopt(a), unopt(b))
+            return self.optional(w) if w != "" else ""
+        if is_list(a) and is_list(b):
+            w = self.wider(elem(a), elem(b))
+            return f"list[{w}]" if w != "" else ""
+        if is_dict(a) and is_dict(b):
+            k = self.wider(targs(a)[0], targs(b)[0])  # (tuple keys whose items may be None)
+            w = self.wider(targs(a)[1], targs(b)[1])
+            return f"dict[{k},{w}]" if k != "" and w != "" else ""
+        if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+            return ""
+        bs = targs(b)
+        ws: list[str] = []
+        for x in targs(a):
+            w = self.wider(x, bs[len(ws)])
+            if w == "":
+                return ""
+            ws.append(w)
+        return f"tuple[{','.join(ws)}]"
+
+    def widens(self, a: str, b: str) -> bool:
+        # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
+        # type), and a tuple item by item (tuples cannot change, so their items can widen)
+        if a == b:
+            return True
+        if is_opt(b):
+            return a == "None" or self.widens(unopt(a), unopt(b))
+        if b in self.classes:
+            return a == "None"
+        if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
+            return False
+        bs = targs(b)
+        i = 0
+        for x in targs(a):
+            if not self.widens(x, bs[i]):
+                return False
+            i += 1
+        return True
 
     def declare_fn(self, d: Node, cls: str) -> FnInfo:
         # a function or method. A module-level function with a parameter that has no annotation
@@ -6072,6 +6449,8 @@ class Gen:
                 deco = x.s
         if deco != "" and not self.lib:
             # (CPython applies a decorator when the def runs, called or not)
+            if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
+                self.err(f"name '{deco}' is not defined (import it from typing)")
             self.err(f"unsupported decorator @{deco}")
         if cls != "" and len(ps) == 0:
             self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
@@ -6161,10 +6540,14 @@ class Gen:
                 if len(st.kids) == 3:
                     ci.fdefault[st.kids[0].s] = st.kids[2]
                     last = st.kids[0].s
+                elif last != "" and ci.name in self.nts:
+                    self.err(f"Non-default namedtuple field {st.kids[0].s} cannot follow default field {last}")
                 elif last != "" and self.is_dc(ci.name):
                     self.err(f"non-default argument '{st.kids[0].s}' follows default argument '{last}'")
             elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
                 self.err("a class body may only contain annotated fields and methods")
+        if ci.name in self.nts:
+            self.nt_class(ci)
         if self.is_dc(ci.name):
             self.dc_methods(ci)
         if "__init__" in ci.methods:
@@ -6175,19 +6558,46 @@ class Gen:
         body: list[Node] = []
         d = mk("def", "__init__", ci.node.line, [noann, noann, mk("block", "", ci.node.line, body)])
         f = FnInfo("__init__", f"@m.{ci.name}.__init__", d, ci.name)
-        f.params.append("self")
+        me = "self" if "self" not in ci.ftypes else "__pys_self"  # (a field may be named self)
+        f.params.append(me)
         f.ptypes.append(ci.name)
         f.defaults.append(noann)
         f.dglob.append("")
-        if len(ci.node.kids) > 1:
+        if self.is_dc(ci.name):
             for fl in ci.fields:
                 f.params.append(fl)
                 f.ptypes.append(ci.ftypes[fl])
                 f.defaults.append(ci.fdefault[fl] if fl in ci.fdefault else noann)
                 f.dglob.append("")
-                me = mk("name", "self", d.line, [])
-                body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [me]), mk("name", fl, d.line, [])]))
+                body.append(mk("assign", "", d.line, [mk("attr", fl, d.line, [mk("name", me, d.line, [])]), mk("name", fl, d.line, [])]))
         ci.methods["__init__"] = f
+
+    def nt_class(self, ci: ClassInfo) -> None:
+        # class P(NamedTuple): a dataclass (its __init__ and __repr__) whose fields are never
+        # assigned after __init__, read in order where it is unpacked, indexed or iterated, and
+        # compared, concatenated and %-formatted as the tuple of its fields (see ntop); tuple's
+        # other methods are not there
+        self.line = ci.node.line
+        for m in "__new__ __init__ __slots__ __getnewargs__ _fields _field_defaults _make _replace _asdict _source".split():
+            if m in ci.methods:
+                self.err(f"Cannot overwrite NamedTuple attribute {m}")
+        for m in ["__getitem__", "__iter__"]:
+            if m in ci.methods:
+                self.err(f"a NamedTuple that defines {m} is not supported (Pystachy reads its fields where CPython would call it)")
+        for fl in ci.fields:
+            if fl.startswith("_"):
+                self.err(f"Field names cannot start with an underscore: '{fl}'")
+        if len(ci.fields) == 0:
+            self.err("a NamedTuple without fields is not supported")
+
+    def nt_base(self, n: Node) -> bool:
+        # does a class's base n name typing.NamedTuple
+        return (n.kind == "name" and self.imported(n.s) == "typing.NamedTuple") or (n.kind == "attr" and self.typing_attr(n) == "NamedTuple")
+
+    def frozen(self, t: str, name: str) -> None:
+        # a NamedTuple's fields are assigned only by its __init__
+        if t in self.nts and not (self.curfn.name == "__init__" and self.curfn.cls == t):
+            self.err(f"cannot assign to field '{name}' of NamedTuple {short(t)} (AttributeError: can't set attribute); make a new one with _replace({name}=...)")
 
     def synth(self, ci: ClassInfo, name: str, ret: str, body: list[Node]) -> None:
         # a method the compiler writes for a dataclass, generated only if the program calls it
@@ -6223,11 +6633,15 @@ class Gen:
             enter = mk("call", "", line, [mk("name", "__pys_repr_enter", line, []), me])
             busy = mk("block", "", line, [mk("return", "", line, [mk("str", "...", line, [])])])
             r = mk("name", "r", line, [])
-            self.synth(ci, "__repr__", "str", [mk("if", "", line, [mk("unary", "not", line, [enter]), busy, mk("block", "", line, [])]),
-                                              mk("assign", "", line, [r, mk("fstr", "", line, parts)]),
-                                              mk("expr", "", line, [mk("call", "", line, [mk("name", "__pys_repr_leave", line, []), me])]),
-                                              mk("return", "", line, [r])])
-        if "__eq__" not in ci.methods:
+            if ci.name in self.nts:
+                # (a tuple's repr has no guard: a cycle through a field shows where a list's repr stops it)
+                self.synth(ci, "__repr__", "str", [mk("return", "", line, [mk("fstr", "", line, parts)])])
+            else:
+                self.synth(ci, "__repr__", "str", [mk("if", "", line, [mk("unary", "not", line, [enter]), busy, mk("block", "", line, [])]),
+                                                  mk("assign", "", line, [r, mk("fstr", "", line, parts)]),
+                                                  mk("expr", "", line, [mk("call", "", line, [mk("name", "__pys_repr_leave", line, []), me])]),
+                                                  mk("return", "", line, [r])])
+        if "__eq__" not in ci.methods and ci.name not in self.nts:  # (a NamedTuple's is tuple's, see ntop)
             test = mk("True", "", line, [])
             for i in range(len(ci.fields)):
                 c = mk("cmp", "==", line, [mk("attr", ci.fields[i], line, [me]), mk("attr", ci.fields[i], line, [other])])
@@ -6314,10 +6728,11 @@ class Gen:
 
     def field(self, o: Val, name: str, store: bool = False) -> Val:
         if o.t not in self.classes:
-            base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else o.t
+            t = unopt(o.t)
+            base = "list" if is_list(t) else "dict" if is_dict(t) else t
             if base + "." + name in METHODS:
-                self.err(f"{tname(o.t)}.{name} is a method: call it, {name}(...) (methods are not values)")
-            self.err(f"type {o.t} has no attribute '{name}'")
+                self.err(f"{tname(t)}.{name} is a method: call it, {name}(...) (methods are not values)")
+            self.err(f"type {typestr(o.t)} has no attribute '{name}'")
         ci = self.classes[o.t]
         if name not in ci.ftypes:
             if name in ci.methods:
@@ -6334,10 +6749,14 @@ class Gen:
         if name in ci.fflag:
             f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
             self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
-        return Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+        r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
+        if is_opt(p.t):
+            self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+        return Val(r, p.t)
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
-        self.emit(f"store {lt(p.t)} {self.coerce(v, p.t).v}, ptr {p.v}")
+        what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
+        self.emit(f"store {lt(p.t)} {self.coerce(v, p.t, what).v}, ptr {p.v}")
         ci = self.classes[o.t]
         if name in ci.fflag:
             self.emit(f"store i1 true, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
@@ -6383,15 +6802,24 @@ class Gen:
                 self.no_type(name)
         if name in self.ltype:
             t = self.ltype[name]
+            if t == NONEVAR:
+                t = self.none_read(name)
+                if t == "None":
+                    return Val("null", "None")
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
+            if name in self.narrowed and is_opt(t) and t != NONEVAR:
+                t = unopt(t)  # known not to be None here
             return Val(r, t)
         if self.unbound_local(name):
             self.err(f"local variable '{name}' is read before its first assignment; declare it first ({name}: T)")
         if name in self.gtypes:
             t = self.gtypes[name]
-            return Val(self.ins(f"load {lt(t)}, ptr @g.{name}"), t)
+            r = self.ins(f"load {lt(t)}, ptr @g.{name}")
+            if is_opt(t):
+                self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+            return Val(r, t)
         if name == "__name__":
             return Val(self.sconst("__main__"), "str")
         if name in self.aliases:
@@ -6418,6 +6846,63 @@ class Gen:
             self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
         self.err(f"name '{short(name)}' is not defined")
         return Val("", "")
+
+    def none_read(self, name: str) -> str:
+        # a read of local name, which only None has been assigned so far: a binding of another value
+        # in the function's source that can be typed here gives it its type, else only a comparison
+        # with None may read it
+        t = self.none_type(name)
+        if t != "":
+            self.ltype[name] = t
+            return t
+        body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        if only_none(body, name):
+            return "None"  # (it is None wherever it is assigned)
+        if not self.nonecmp:
+            self.err(f"cannot infer the type of '{name}' from None here, before a value of another type is assigned to it; annotate it ({name}: T | None)")
+        return NONEVAR
+
+    def none_type(self, name: str) -> str:
+        # the type of variable name, first assigned None: T | None for the first other value that
+        # the code of its function (or module) assigns it, also by unpacking, that can be typed here
+        # (as lookahead does); "" if there is none
+        body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        found: list[Node] = []
+        self.none_values(body, name, found)
+        for e in found:
+            if e.kind != "None" and not empty_display(e) and self.typed_now(e) and not self.calls_open(e, {}):
+                # (typed as where it is assigned, under tests of the optional locals it reads)
+                pre = self.narrowed
+                self.narrowed = dict(pre)
+                for nm in self.ltype:
+                    self.narrowed[nm] = True
+                t = self.dry(e)
+                self.narrowed = pre
+                if t != "None" and t != "" and "?" not in t and t != NONEVAR:
+                    if self.optional(t) == "":
+                        self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                    return self.optional(t)
+        return ""
+
+    def none_values(self, body: list[Node], name: str, out: list[Node]) -> None:
+        # the values that statements in body (into blocks, in order) assign to variable name: of
+        # a, b = e the item of e (an index node if e is not a display)
+        for st in body:
+            if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+                continue
+            if st.kind == "assign":
+                e = st.kids[-1]
+                for t in st.kids[:-1]:
+                    if t.kind == "name" and t.s == name:
+                        out.append(e)
+                    elif t.kind == "tuple" or t.kind == "list":
+                        for i in range(len(t.kids)):
+                            if t.kids[i].kind == "name" and t.kids[i].s == name:
+                                disp = (e.kind == "tuple" or e.kind == "list") and len(e.kids) == len(t.kids)
+                                out.append(e.kids[i] if disp else mk("index", "", e.line, [e, mk("int", str(i), e.line, [])]))
+            for kid in st.kids:
+                if kid.kind == "block":
+                    self.none_values(kid.kids, name, out)
 
     def read(self, n: Node) -> Val:
         # a variable read; if flow analysis found it may be unassigned, check at run time
@@ -6715,6 +7200,8 @@ class Gen:
         # global name if glob), and so do its twins
         if "?" in t or "None" in targs(t):
             self.err(f"cannot infer the type of '{name}' from this use; annotate it")
+        if is_dict(t):
+            t = f"dict[{none_items(targs(t)[0])},{targs(t)[1]}]"  # (d[k, None] = v)
         toks = ""
         if name in self.ltype and not glob:
             self.ltype[name] = t
@@ -6727,10 +7214,12 @@ class Gen:
             for tw in self.twins.get(name, "").split():
                 if "?" in self.gtypes[tw]:
                     self.refine(tw, t, True)
-        if is_dict(t) and targs(t)[0] != "int" and targs(t)[0] != "str":
-            self.err("dict keys must be int or str")
+        if is_dict(t) and key_problem(targs(t)[0]) != "":
+            self.err(key_problem(targs(t)[0]))
         for h in toks.split():
             self.holes[int(h)] = t
+            if is_dict(t):
+                self.key_kind(targs(t)[0])  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
     def lookahead(self, name: str, ahead: bool = False) -> str:
         # an empty list or dict read before the code that fills it: the first use in this
@@ -6822,7 +7311,7 @@ class Gen:
         if t != want:
             self.guessed[self.curfn.ll] = f"{short(f.name)}() at line {self.line} returns an empty {tname(t)} taken as {typestr(t)}: give it a type first, as in v: {'list[T]' if is_list(t) else 'dict[K, V]'} = {short(f.name)}()"
         if is_dict(t):
-            self.emit(f"store i64 {1 if targs(t)[0] == 'str' else 0}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
+            self.emit(f"store i64 {self.key_kind(targs(t)[0])}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
         return Val(v.v, t)
 
     def fills(self, body: list[Node], name: str, found: list[Node]) -> None:
@@ -6896,7 +7385,7 @@ class Gen:
                 return True
             t = self.rtype(e.s)
             if t != "":
-                return "?" not in t
+                return "?" not in t and t != NONEVAR
             return not (e.s in self.assigned or e.s in self.mvars or e.s in self.nonevars)
         if e.kind == "listcomp":
             # [x for t in it if c]: x and c read the variables in t too, which the items of it type
@@ -7009,16 +7498,18 @@ class Gen:
             return
         if self.is_global(name):
             if name not in self.gtypes:
-                if v.t == "None":
-                    self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+                t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
+                if v.t == "None" and t0 == "":
+                    # (module code's other values for it are typed here, as far as they can be)
+                    self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
                 if v.t == "":
                     self.err(f"cannot infer the type of '{name}'; add a type annotation")
-                self.declare(name, v.t)
+                self.declare(name, t0 if t0 != "" else v.t)
             t = self.gtypes[name]
             if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
                 t = v.t
-            self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr @g.{name}")
+            self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr @g.{name}")
             if name in self.gflag:
                 self.emit(f"store i1 true, ptr @g.{name}.def")
         else:
@@ -7030,15 +7521,32 @@ class Gen:
                 if self.branch > 0:
                     self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
                 del self.nonevars[name]
-            if name not in self.ltype:
+            if name not in self.ltype and v.t == "None":
+                # first None: T | None, typed by the first store of another value, or by a read
+                # that needs the type before it (see none_read)
+                self.alloca(NONEVAR, name)
+            elif name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
+            if t == NONEVAR and v.t != "None":
+                if self.optional(v.t) == "":
+                    self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                t = self.optional(v.t)
+                self.ltype[name] = t
             if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
                 t = v.t
-            self.emit(f"store {lt(t)} {self.coerce(v, t).v}, ptr {self.lreg[name]}")
+            self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr {self.lreg[name]}")
             if name in self.lflag and name not in self.compvars:
                 self.emit(f"store i1 true, ptr {self.lflag[name]}")
+            if is_opt(t) and (is_opt(v.t) or v.t == "None"):
+                self.narrowed.pop(name, False)
+            elif is_opt(t):
+                self.narrowed[name] = True  # (it holds a value)
+
+    def assigned_to(self, v: Val, t: str, name: str) -> str:
+        # what names value v assigned to variable name of type t, for coerce's error
+        return f"the value assigned to '{short(name)}' ({typestr(t)})" if is_opt(v.t) else ""
 
     def target_type(self, n: Node, base: bool = False) -> str:
         # expected type of an assignment target (types empty [] / {} literals): a name, or a
@@ -7066,13 +7574,17 @@ class Gen:
             self.err(t.s)
         if k in UNSUPPORTED:
             self.err(UNSUPPORTED[k])
+        if k == "tuple" and len([x for x in t.kids if x.kind == "starred"]) > 0:
+            self.err(UNSUPPORTED["starred"])  # (before the number of targets is checked)
         if k == "name":
             self.store_name(t.s, v)
         elif k == "attr" and self.dotted(t) != "":
             self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
         elif k == "attr":
             o = self.expr(t.kids[0], "")
-            self.setfield(o, self.field(o, t.s, True), t.s, v)
+            p = self.field(o, t.s, True)
+            self.frozen(o.t, t.s)
+            self.setfield(o, p, t.s, v)
         elif k == "index" and t.kids[0].kind == "name" and "?" in self.rtype(t.kids[0].s):
             # d[k] = v or xs[i] = v on an empty dict or list without a type: k and v decide it
             self.allowq = True
@@ -7088,16 +7600,21 @@ class Gen:
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", "i64 " + self.to_slot(v)])
         elif k == "index":
             o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
-            if is_list(o.t):
+            nosub = "TypeError: 'NoneType' object does not support item assignment"
+            if is_list(unopt(o.t)):
                 ix = self.ival(t.kids[1])
+                o = self.unwrap(o, nosub)
                 s = self.to_slot(self.coerce(v, elem(o.t)))
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", f"i64 {s}"])
-            elif is_dict(o.t):
-                kv = targs(o.t)
+            elif is_dict(unopt(o.t)):
+                kv = targs(unopt(o.t))
                 key = self.to_slot(self.coerce(self.expr(t.kids[1], kv[0]), kv[0]))
+                o = self.unwrap(o, nosub)
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))])
             else:
                 self.err(f"'{o.t}' does not support item assignment")
+        elif k == "tuple" and is_opt(v.t):
+            self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
         elif k == "tuple" and (is_list(v.t) or v.t == "str"):
             # a, b = xs: the length is checked when it runs, as CPython does
             self.rt("pys_unpack_check", "void", [f"i64 {self.ins(f'load i64, ptr {v.v}')}", f"i64 {len(t.kids)}"])
@@ -7106,6 +7623,14 @@ class Gen:
                     self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
                 else:
                     self.assign(t.kids[i], self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
+        elif k == "tuple" and v.t in self.nts:
+            # a, b = p: a NamedTuple's fields in order
+            fs = self.classes[v.t].fields
+            if len(fs) != len(t.kids):
+                self.err(f"cannot unpack {short(v.t)} ({len(fs)} fields) into {len(t.kids)} targets")
+            self.notnone(v, "TypeError: cannot unpack non-iterable NoneType object")
+            for i in range(len(fs)):
+                self.assign(t.kids[i], self.getfield(v, self.field(v, fs[i]), fs[i]))
         elif k == "tuple":
             if not is_tuple(v.t) or len(targs(v.t)) != len(t.kids):
                 self.err(f"cannot unpack {v.t} into {len(t.kids)} targets")
@@ -7139,6 +7664,7 @@ class Gen:
         self.lcs = []
         self.lct = []
         self.nonevars = {}
+        self.narrowed = {}
         self.lkk = {}
         self.branch = 0
         self.curfn = f
@@ -7153,6 +7679,7 @@ class Gen:
         if f.bad != "" and not f.generic:
             self.err(f.bad)
         self.compiled[f.ll] = True
+        self.building[f.ll] = True
         self.enter(f, body)
         if f.cls != "":
             # callers check the receiver, so self is never None inside a method
@@ -7167,6 +7694,8 @@ class Gen:
                 continue
             self.fn.ps.append(i)
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
+            if f.params[i] in self.lflag:
+                self.emit(f"store i1 true, ptr {self.lflag[f.params[i]]}")  # (a parameter that del unbinds)
         if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
             # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
             ci = self.classes[f.cls]
@@ -7196,14 +7725,19 @@ class Gen:
         if f.ret == "":
             f.ret = "None"  # a template's function without a return statement that has a value
         if f.infer:
-            # its returns of None, before it was known what it returns: None for an object
+            # its returns of None, before it was known what it returns: None for an object, and
+            # str, list, dict or tuple T make it return T | None (ret.none is lowered from f.ret)
             for b in self.fn.blocks:
                 for x in b.code:
-                    if x.op == "ret.none" and f.ret != "None" and f.ret not in self.classes:
-                        self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
+                    if x.op == "ret.none":
+                        if f.ret != "None" and self.optional(f.ret) == "":
+                            self.err(self.nonemix(f, f.ret))
+                        if f.ret != self.optional(f.ret) and f.ret != "None":
+                            self.reopt(self.optional(f.ret))
         if not self.term:
-            if f.ret == "None" or (f.infer and f.ret in self.classes):
-                self.ret_(Val("null", f.ret))  # (a template's function that ends without a return: None)
+            if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret):
+                # (a template's function that ends without a return, or one returning T | None: None)
+                self.ret_(Val("null", f.ret))
                 if len(self.fn.cold) > 0:
                     # the jump to the first cold block that follows is a block of its own, which
                     # LLVM starts after a terminator, without a label
@@ -7216,6 +7750,7 @@ class Gen:
             self.place(self.fn.cold[msg])
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
+        del self.building[f.ll]
         self.fn.n = self.n
         self.fns.append(self.fn)
 
@@ -7278,9 +7813,10 @@ class Gen:
             ll = f.ll
             vs = [ll[j + 1] + " " + i.a[j].v for j in range(len(i.a))]
             if i.k > 0 and i.s == "dict.new":
-                # the key kind of a dict created empty: what its first use showed (0 if nothing did)
+                # the key kind of a dict created empty: what its first use showed (0 if nothing
+                # did; refine made a tuple key's descriptor a string constant)
                 h = self.holes[i.k]
-                vs[0] = f"i64 {1 if h != '' and targs(h)[0] == 'str' else 0}"
+                vs[0] = f"i64 {self.key_kind(targs(h)[0]) if h != '' else '0'}"
             c = f"call {ll[0]} @{f.sym}({', '.join(vs)})"
             o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
         elif op == "call":
@@ -7441,6 +7977,21 @@ class Gen:
         for m in mods:
             self.scan_imports(m.body.kids)
         for m in mods:
+            fwd: dict[str, bool] = {}
+            lazy = False
+            for st in m.body.kids:
+                if st.kind == "class" or st.kind == "subclass":
+                    fwd[st.s] = True
+                lazy = lazy or (st.kind == "import" and "__future__.annotations" in [a.kids[0].s for a in st.kids])
+            if not lazy:
+                self.ann_names(m, m.body.kids, fwd)
+            m.body.kids = self.typing_forms(m, m.body.kids, False)
+            for i in range(len(m.body.kids)):
+                st = m.body.kids[i]
+                if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
+                    m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
+                    self.nts[st.s] = True
+        for m in mods:
             for st in m.body.kids:
                 self.line = st.line
                 why = ""
@@ -7524,20 +8075,20 @@ class Gen:
             if nm in self.funcs or nm in self.classes:
                 self.global_var(f"@g.{nm}.def", "i1")
         for m in mods:
-            if m.name != "":
-                # a module global that module code only sets to None (an optional accelerator's
-                # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
-                # assigned before any read is the constant None; a compiled function that gives
-                # it another value is an error
-                vals: dict[str, list[Node]] = {}
-                none_assigns(m.body.kids, vals)
-                for nm in vals:
-                    nones = True
-                    for v in vals[nm]:
-                        if v.kind != "None":
-                            nones = False
-                    if nones and nm not in self.gflag and nm in self.mvars:
-                        self.noneglobals[nm] = True
+            # a module global that module code only sets to None (an optional accelerator's
+            # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
+            # assigned before any read is the constant None; a compiled function that gives it
+            # another value is an error (in the program's module, one whose global statement
+            # binds it is left to the advice to annotate it)
+            vals: dict[str, list[Node]] = {}
+            none_assigns(m.body.kids, vals)
+            for nm in vals:
+                nones = True
+                for v in vals[nm]:
+                    if v.kind != "None":
+                        nones = False
+                if nones and nm not in self.gflag and nm in self.mvars and (m.name != "" or nm not in m.fnglobal):
+                    self.noneglobals[nm] = True
         for m in mods:
             for st in m.body.kids if m.name != "" else []:
                 # an imported module's constants (NAME = literal) are typed before any module code
@@ -7737,12 +8288,16 @@ class Gen:
                     tracked[nm] = True
                 if nm in gl and nm in safe and nm not in dels and (nm not in loc or nm in decl):
                     defd[nm] = True
+            fdels: dict[str, bool] = {}
+            deleted(body, fdels)
             for nm in f.params:
                 defd[nm] = True
+                if nm in fdels:
+                    tracked[nm] = True  # (a parameter that del unbinds)
             fl = Flow(tracked, defd)
             self.fl_stmts(fl, body)
             for nm in fl.marks:
-                if nm in loc and nm not in decl:
+                if (nm in loc or nm in fdels) and nm not in decl:
                     f.uflags[nm] = True
                 else:
                     self.gflag[nm] = True
@@ -8098,7 +8653,7 @@ class Gen:
     def check_import(self, a: Node) -> None:
         mod = a.kids[1].s
         tgt = a.kids[0].s
-        if mod not in MODULES:
+        if mod not in MODULES and mod != "collections.abc":
             self.err(f"module '{mod}' is not supported (available: {', '.join(MODULES.keys())})")
         if tgt == mod or tgt == mod[: mod.find(".")] or (tgt + ".") == mod[: len(tgt) + 1]:
             return
@@ -8106,9 +8661,9 @@ class Gen:
         if mod == "__future__":
             if x not in FUTURE:
                 self.err(f"future feature {x} is not defined")
-        elif mod == "typing":
-            if x not in TYPING:
-                self.err(f"cannot import name '{x}' from 'typing'")
+        elif mod == "typing" or mod == "collections.abc":
+            if x not in (TYPING if mod == "typing" else ABCS):
+                self.err(f"cannot import name '{x}' from '{mod}'")
         elif mod == "dataclasses":
             if x != "dataclass":
                 self.err(f"dataclasses.{x} is not supported")
@@ -8230,8 +8785,9 @@ class Gen:
                 self.no_class_names(st.kids[2], bound, ci.name)
                 bound[fl] = True
                 t = ci.ftypes[fl]
-                if self.is_dc(ci.name) and not is_const(st.kids[2]) and (is_list(t) or is_dict(t) or self.is_dc(t) or self.unhashable(t)):
-                    self.err(f"mutable default {t} for dataclass field '{fl}' is not allowed")
+                u = unopt(t)  # (a default of a T | None field that is not None is a T)
+                if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.unhashable(u) or (self.is_dc(u) and u not in self.nts)):
+                    self.err(f"mutable default {u} for dataclass field '{fl}' is not allowed")
                 if not is_const(st.kids[2]) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                     # code compiled before this statement declared its global (class_default)
                     del self.pending[ci.fglob[fl]]
@@ -8256,8 +8812,9 @@ class Gen:
             self.no_class_names(k, bound, cls)
 
     def unhashable(self, t: str) -> bool:
-        # a class that defines __eq__ without __hash__ has __hash__ = None in CPython
-        return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods
+        # a class that defines __eq__ without __hash__ has __hash__ = None in CPython (a NamedTuple
+        # has a tuple's)
+        return t in self.classes and "__eq__" in self.classes[t].methods and "__hash__" not in self.classes[t].methods and t not in self.nts
 
     def while_(self, n: Node) -> None:
         l1 = self.label()
@@ -8265,24 +8822,42 @@ class Gen:
         l3 = self.label()
         lp = Loop("while", l1, l2, l1, l3)
         self.fn.loops.append(lp)
+        after = self.forget(n.kids[1].kids, n.kids[1])
         self.place(l1)
         self.cbr(self.cond(n.kids[0]), l2, l3)
         self.place(l2)
-        self.loop(n.kids[1].kids, lp)
+        self.narrow_by(n.kids[0], True)
+        brks = self.loop(n.kids[1].kids, lp)
         self.br(l1)
+        self.narrowed = after
+        # after the loop: what holds where its test is false (never for while True) and at each
+        # break that leaves it here (a loop with an else block breaks past it)
+        self.narrow_by(n.kids[0], False)
+        ends: list[dict[str, bool]] = []
+        if n.kids[0].kind != "True":
+            ends.append(self.narrowed)
+        if n.kids[1].kids is not self.elsekids:
+            ends.extend(brks)
+        self.narrowed = meet(ends) if len(ends) > 0 else after
         self.place(l3)
 
-    def loop(self, body: list[Node], lp: Loop) -> None:
-        # the body of loop lp: continue jumps to lp.step, break to lp.exit
+    def loop(self, body: list[Node], lp: Loop) -> list[dict[str, bool]]:
+        # the body of loop lp: continue jumps to lp.step, break to lp.exit; what narrowed holds at
+        # its breaks is returned (see while_)
         if body is self.elsekids:
             lp.exit = self.elsebrk  # the loop of a for/while ... else: break skips the else block
         self.loops.append(lp)
         self.wdepth.append(len(self.withs))
+        self.brks.append([])
         self.branch += 1
         self.stmts(body)
         self.branch -= 1
         self.wdepth.pop()
         self.loops.pop()
+        r = self.brks.pop()
+        if body is self.elsekids:
+            self.elsebrks = r
+        return r
 
     def close_withs(self, depth: int) -> None:
         # leaving with blocks (break, continue, return): their files close, innermost first
@@ -8376,7 +8951,7 @@ class Gen:
         elif vals[0].t == "int" or vals[0].t == "bool":
             self.rt("pys_exit", "void", [f"i64 {self.as_int(vals[0]).v}"])
         else:
-            if vals[0].t in self.classes:
+            if vals[0].t in self.classes or is_opt(vals[0].t):
                 # an object that is None at run time is status 0 too
                 l1 = self.label()
                 l2 = self.label()
@@ -8406,6 +8981,8 @@ class Gen:
             val = n.kids[-1]
             t0 = n.kids[0]
             self.copying = n.s == "from" and self.foreign(val.s)
+            if len(n.kids) == 2 and t0.kind == "name" and empty_display(val) and self.ltype.get(t0.s, "") == NONEVAR and not self.is_global(t0.s):
+                self.err(f"cannot infer the type of '{t0.s}' from None and an empty {val.kind}; annotate it ({t0.s}: {val.kind}[{'T' if val.kind == 'list' else 'K, V'}] | None = None)")
             if len(n.kids) == 2 and t0.kind == "name" and (val.kind == "list" or val.kind == "dict") and len(val.kids) == 0 and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
                 self.assign(t0, self.empty(val.kind, t0.s))
             elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or val.s in self.twins.get(t0.s, "").split()) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
@@ -8436,7 +9013,9 @@ class Gen:
             if n.kids[0].kind == "name":
                 self.declare(n.kids[0].s, t)
             if len(n.kids) == 3:
-                self.assign(n.kids[0], self.coerce(self.expr(n.kids[2], t), t))
+                v = self.expr(n.kids[2], t)
+                # (x: T | None = <a T> knows x holds a T, see narrowed)
+                self.assign(n.kids[0], v if n.kids[0].kind == "name" and is_opt(t) and self.widens(v.t, t) else self.coerce(v, t))
         elif k == "augassign":
             self.augassign(n)
         elif k == "if":
@@ -8453,12 +9032,27 @@ class Gen:
             self.cbr(c, l1, l2)
             self.branch += 1
             self.place(l1)
+            pre = self.narrow_by(n.kids[0], True)
             self.stmts(n.kids[1].kids)
+            yes = self.narrowed
+            ygo = not self.term
             self.br(l3)
             self.place(l2)
+            self.narrowed = pre
+            self.narrow_by(n.kids[0], False)
             self.stmts(n.kids[2].kids)
+            ngo = not self.term
             self.branch -= 1
             self.place(l3)
+            # after the if: what holds at the end of each branch that goes on
+            if ygo and not ngo:
+                self.narrowed = yes
+            elif ygo and ngo and len(yes) + len(self.narrowed) > 0:
+                no = self.narrowed
+                self.narrowed = {}
+                for both in yes:
+                    if both in no:
+                        self.narrowed[both] = True
         elif k == "while" and self.static(n.kids[0]) == 0:
             # a loop whose test is false from the start (while x: with x None): only its else block runs
             if n.kids[-1].s == "else":
@@ -8469,6 +9063,7 @@ class Gen:
             eb = self.elsebrk
             self.elsekids = n.kids[2 if k == "for" else 1].kids
             self.elsebrk = self.label()
+            self.elsebrks = []  # (a loop over () has no body to compile)
             lb = self.elsebrk
             if k == "for":
                 self.for_(n, [])
@@ -8476,9 +9071,15 @@ class Gen:
                 self.while_(n)
             self.elsekids = ek
             self.elsebrk = eb
+            brks = self.elsebrks
             self.branch += 1
             self.stmts(n.kids[-1].kids)
             self.branch -= 1
+            # after it: what holds at the end of the else block (if it goes on) and at each break
+            if not self.term:
+                brks.append(self.narrowed)
+            if len(brks) > 0:
+                self.narrowed = meet(brks)
             self.place(lb)
         elif k == "while":
             self.while_(n)
@@ -8495,19 +9096,24 @@ class Gen:
                 if v.t == "None":
                     self.add(Ins("ret.none", "", ""))
                 else:
-                    self.ret = v.t
-                    self.curfn.ret = v.t
-                    self.ret_(v)
+                    t = v.t
+                    if self.optional(t) != t and self.optional(t) != "" and self.returned_none():
+                        t = self.optional(t)  # after a return of None: T | None (before it calls itself)
+                    self.ret = t
+                    self.curfn.ret = t
+                    self.ret_(Val(v.v, t))
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
-                if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes):
-                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
+                if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
+                    self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
+                if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes) and not is_opt(self.ret):
+                    self.err(self.nonemix(self.curfn, self.ret) if self.curfn.infer else f"missing return value of type {self.ret}")
                 self.close_withs(0)
                 self.ret_(Val("null", self.ret))
             elif self.ret == "None":
                 # return f() where f returns None
                 v = self.expr(n.kids[0], "")
                 if v.t != "None" and self.curfn.infer:
-                    self.err(f"{short(self.curfn.name)}() returns both None and {v.t}, and None/Optional is only supported for class types")
+                    self.err(self.nonemix(self.curfn, v.t))
                 if v.t != "None":
                     self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
                 self.close_withs(0)
@@ -8516,9 +9122,14 @@ class Gen:
                 v = self.retval(n.kids[0], self.ret)
                 if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
                     self.adopt(v.t)  # (it returned an empty container without a type before)
-                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes):
+                j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
+                if j != self.ret and j != "" and is_opt(j):
+                    self.reopt(j)  # a template's function returns T and None (or T | None): T | None
+                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret):
+                    if v.t == "None":
+                        self.err(self.nonemix(self.curfn, self.ret))
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
-                v = self.coerce(v, self.ret)
+                v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
                 self.close_withs(0)
                 self.ret_(Val(v.v, self.ret))
             self.term = True
@@ -8526,12 +9137,15 @@ class Gen:
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
             self.close_withs(self.wdepth[-1])
+            if k == "break" and not self.term:
+                self.brks[-1].append(dict(self.narrowed))
             self.br(self.loops[-1].exit if k == "break" else self.loops[-1].step)
         elif k == "global":
             for nm in n.kids:
                 self.gdecl[nm.s] = True
-        elif k == "assert" and self.static(n.kids[0]) == 0:
-            # an assertion that cannot hold (assert x is not None, x None): code after it never runs
+        elif k == "assert" and (self.static(n.kids[0]) == 0 or n.kids[0].kind == "False"):
+            # an assertion that cannot hold (assert x is not None with x None, assert False): code
+            # after it never runs
             self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
             self.term = True
         elif k == "assert" and self.static(n.kids[0]) == 1:
@@ -8543,6 +9157,7 @@ class Gen:
             self.place(l1)
             self.raise_("AssertionError", self.to_str(self.expr(n.kids[1], "")).v if len(n.kids) > 1 else self.sconst(""))
             self.place(l2)
+            self.narrow_by(n.kids[0], True)
         elif k == "raise":
             self.raise_stmt(n)
         elif k == "del":
@@ -8551,11 +9166,14 @@ class Gen:
                     self.del_name(dt)
                     continue
                 o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
-                if is_list(o.t):
-                    self.rt("pys_list_del", "void", [f"ptr {o.v}", f"i64 {self.ival(dt.kids[1]).v}"])
-                elif is_dict(o.t):
-                    kt = targs(o.t)[0]
-                    self.rt("pys_dict_pop", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))])
+                nodel = "TypeError: 'NoneType' object does not support item deletion"
+                if is_list(unopt(o.t)):
+                    ix = self.ival(dt.kids[1])
+                    self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
+                elif is_dict(unopt(o.t)):
+                    kt = targs(unopt(o.t))[0]
+                    key = self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))
+                    self.rt("pys_dict_pop", "i64", [f"ptr {self.unwrap(o, nodel).v}", "i64 " + key])
                 else:
                     self.err("only 'del list[i]' and 'del dict[key]' are supported")
         elif k == "with":
@@ -8620,6 +9238,21 @@ class Gen:
         elif k != "pass":
             self.err(f"unsupported statement '{k}'")
 
+    def nonemix(self, f: FnInfo, t: str) -> str:
+        # why template f, which returns None and a t, cannot return t | None
+        if "?" in t:
+            k = tname(t)
+            return f"{short(f.name)}() returns None and an empty {k} whose items' type it does not show; annotate its return type (-> {k}[{'T' if k == 'list' else 'K, V'}] | None)"
+        why = f" ({'an' if t == 'int' else 'a'} {t} is a machine value, which has no room for None)" if self.isnum(t) else ""
+        return f"{short(f.name)}() returns both None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple{why}"
+
+    def reopt(self, t: str) -> None:
+        # the template's function being compiled, which returned a T, returns None too: T | None
+        if self.curfn.ll in self.retseen:
+            self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a return of None shows that it returns {typestr(t)}; annotate its return type")
+        self.ret = t
+        self.curfn.ret = t
+
     def del_name(self, n: Node) -> None:
         # del x: x is unbound afterwards. Reads that may follow test its "is assigned" flag
         # (definite assignment marks them), so clearing the flag is all it takes.
@@ -8633,7 +9266,10 @@ class Gen:
             self.err(f"del of the global '{name}' in a function is not supported")
         if owner(name) != self.curfn.mod:
             self.err(f"del of module {owner(name)}'s attribute '{short(name)}' is not supported")
+        self.nonecmp = True  # (a local only None was assigned to may be deleted)
         self.read(n)  # del of a name that is not bound raises as its read does
+        self.nonecmp = False
+        self.narrowed.pop(name, False)
         if name in self.ltype and name in self.lflag:
             self.emit(f"store i1 false, ptr {self.lflag[name]}")
         elif name not in self.ltype and name in self.gflag:
@@ -8661,19 +9297,23 @@ class Gen:
         elif t.kind == "attr":
             o = self.expr(t.kids[0], "")
             p = self.field(o, t.s, False)
+            self.frozen(o.t, t.s)
             cur = self.getfield(o, p, t.s)
             self.setfield(o, p, t.s, self.inplace(op, cur, n.kids[1]))
         elif t.kind == "index":
             o = self.expr(t.kids[0], "")
-            if is_list(o.t):
-                et = elem(o.t)
+            sub = "TypeError: 'NoneType' object is not subscriptable"
+            if is_list(unopt(o.t)):
+                et = elem(unopt(o.t))
                 i = self.ival(t.kids[1])
+                o = self.unwrap(o, sub)
                 cur = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), et)
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
-            elif is_dict(o.t):
-                kv = targs(o.t)
+            elif is_dict(unopt(o.t)):
+                kv = targs(unopt(o.t))
                 key = self.to_slot(self.coerce(self.expr(t.kids[1], kv[0]), kv[0]))
+                o = self.unwrap(o, sub)
                 cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)])
@@ -8685,11 +9325,22 @@ class Gen:
     def inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         # the new value of cur op= rhs: lists change in place (+= extends, *= repeats), objects
         # use __iadd__ & co when they define them, anything else is cur op rhs
-        if is_list(cur.t) and op == "+":
-            self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(self.expr(rhs, cur.t), cur.t).v}"])
+        if is_list(unopt(cur.t)) and op == "+":
+            b = self.expr(rhs, cur.t)
+            if is_opt(cur.t) or is_opt(b.t):
+                self.none_operands(op, cur, b, "+=")
+                cur = Val(cur.v, unopt(cur.t))
+                b = Val(b.v, unopt(b.t))
+            if is_list(b.t) and b.t != cur.t and self.wider(b.t, cur.t) == cur.t:
+                b = Val(b.v, cur.t)  # (as extend: the items are copied)
+            self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(b, cur.t).v}"])
             return cur
-        if is_list(cur.t) and op == "*":
-            self.rt("pys_list_imul", "void", [f"ptr {cur.v}", f"i64 {self.coerce(self.as_int(self.expr(rhs, 'int')), 'int').v}"])
+        if is_list(unopt(cur.t)) and op == "*":
+            b = self.as_int(self.expr(rhs, 'int'))
+            if is_opt(cur.t):
+                self.none_operands(op, cur, b, "*=")
+                cur = Val(cur.v, unopt(cur.t))
+            self.rt("pys_list_imul", "void", [f"ptr {cur.v}", f"i64 {self.coerce(b, 'int').v}"])
             return cur
         im = "__i" + DUNDER.get(op, "__?")[2:]
         if cur.t in self.classes and im in self.classes[cur.t].methods:
@@ -8712,9 +9363,32 @@ class Gen:
         self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
         self.place(lerr)
         m1 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and 'NoneType'")
-        m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(b.t)}'")
+        m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(unopt(b.t))}'")
         self.raise_("TypeError", self.select(self.isnull(b), Val(m1, "str"), Val(m2, "str")))
         self.place(lok)
+
+    def none_operands(self, op: str, a: Val, b: Val, shown: str) -> None:
+        # a op b with an optional operand that is None: CPython's TypeError, which names the other
+        # operand's run-time type, or for str + None and list + None its own message
+        sh = shown if shown != "" else op
+        x = unopt(a.t)
+        y = unopt(b.t)
+        if is_opt(a.t):
+            m1 = self.sconst(f"unsupported operand type(s) for {sh}: 'NoneType' and 'NoneType'")
+            m2 = self.sconst(f"unsupported operand type(s) for {sh}: 'NoneType' and '{tname(y)}'")
+            lerr = self.label()
+            lok = self.label()
+            self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
+            self.place(lerr)
+            self.raise_("TypeError", self.select(self.ins(f"icmp eq ptr {b.v}, null"), Val(m1, "str"), Val(m2, "str")) if is_opt(b.t) else m2)
+            self.place(lok)
+        if is_opt(b.t):
+            msg = f"unsupported operand type(s) for {sh}: '{tname(x)}' and 'NoneType'"
+            if op == "+" and x == y and (x == "str" or is_list(x)):
+                msg = "'NoneType' object is not iterable" if sh == "+=" and is_list(x) else f'can only concatenate {tname(x)} (not "NoneType") to {tname(x)}'
+            elif op == "*" and (x == "str" or is_list(x)):
+                msg = "can't multiply sequence by non-int of type 'NoneType'"
+            self.guard(self.ins(f"icmp eq ptr {b.v}, null"), "TypeError: " + msg)
 
     def hide(self, names: list[str]) -> None:
         # comprehension variables shadow outer names once the iterable has been evaluated
@@ -8748,21 +9422,29 @@ class Gen:
                 if a.kind == "kw" and fn == "zip":
                     self.err(f"zip({a.s}=...) is not supported")
             if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 0):
-                seqs = [self.iterable(self.expr(a, "")) for a in args]
+                evs: list[Val] = []
+                for a in args:
+                    v = self.expr(a, "")
+                    evs.append(v if is_opt(v.t) else self.iterable(v))  # (None raises once all are evaluated)
+                notit = "TypeError: 'NoneType' object is not reversible" if fn == "reversed" else "TypeError: 'NoneType' object is not iterable"
+                seqs = [self.iterable(v, notit) for v in evs]
                 self.for_seq(tgt, seqs, fn, body, "0", hide)
                 for i in range(len(args)):
                     self.close_temp(args[i], seqs[i])
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
-                seq = self.iterable(self.expr(args[0], ""))
+                seq = self.expr(args[0], "")
+                seq = seq if is_opt(seq.t) else self.iterable(seq)
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-                self.for_seq(tgt, [seq], fn, body, self.ival(a1).v, hide)
+                st = self.ival(a1).v
+                seq = self.iterable(seq)
+                self.for_seq(tgt, [seq], fn, body, st, hide)
                 self.close_temp(args[0], seq)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
             m = it.kids[0].s
             if m == "items" or m == "keys" or m == "values":
-                o = self.expr(it.kids[0].kids[0], "")
+                o = self.unwrap(self.expr(it.kids[0].kids[0], ""), f"AttributeError: 'NoneType' object has no attribute '{m}'")
                 if is_dict(o.t):
                     self.for_seq(tgt, [o], m, body, "0", hide)
                 else:
@@ -8774,8 +9456,12 @@ class Gen:
         self.for_seq(tgt, [seq], "", body, "0", hide)
         self.close_temp(it, seq)
 
-    def iterable(self, v: Val) -> Val:
-        # a tuple is iterated as a list of its items, which must then share one type
+    def iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
+        # a tuple is iterated as a list of its items, which must then share one type; None raises msg
+        v = self.unwrap(v, msg)
+        if v.t in self.nts:
+            self.notnone(v, msg)
+            v = self.ntup(v, True)  # (the tuple of its fields)
         if not is_tuple(v.t) or v.t == "tuple[]":
             return v
         ts = targs(v.t)
@@ -8802,6 +9488,7 @@ class Gen:
 
     def for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str]) -> None:
         self.hide(hide)
+        after = self.forget(body, tgt)
         if step.startswith("%") or int(step) == 0:
             self.guard(self.ins(f"icmp eq i64 {step}, 0"), "ValueError: range() arg 3 must not be zero")
         ctr = self.alloca("int", "")
@@ -8833,11 +9520,13 @@ class Gen:
         self.emit(f"store i64 {r[0]}, ptr {ctr}")
         self.cbr(r[1], le, lc)
         self.place(le)
+        self.narrowed = after
 
     def for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[str]) -> None:
         # reversed(range(a, b, s)): the range's items from the last, a + k*s for k = len-1 .. 0
         # (the length is unsigned, and the arithmetic wraps: every result is an item of the range)
         self.hide(hide)
+        after = self.forget(body, tgt)
         n = self.rt("pys_range_len", "i64", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
         ctr = self.alloca("int", "")
         self.emit(f"store i64 {n}, ptr {ctr}")
@@ -8859,9 +9548,11 @@ class Gen:
         self.place(ls)
         self.br(lc)
         self.place(le)
+        self.narrowed = after
 
     def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str]) -> None:
         self.hide(hide)
+        after = self.forget(body, tgt)
         # One loop serves lists, strings, dicts, enumerate, zip and reversed. Each round takes
         # the next item of every sequence, in order, the way its CPython iterator would: lists
         # and strings by index, checked against their current length (reversed: counting down
@@ -8960,6 +9651,59 @@ class Gen:
         self.emit(f"store i64 {nx2}, ptr {ctr}")
         self.br(lc)
         self.place(le)
+        self.narrowed = after
+
+    # ---- narrowing: optional locals known not to be None
+    def narrows(self, n: Node, truth: bool, out: list[str]) -> None:
+        # the optional locals that test n shows are not None when its value is truth, as mypy
+        # narrows them: x, x is not None, x != None, isinstance(x, T), and not/and/or of those
+        if not self.anyopt:
+            return
+        k = n.kind
+        if k == "unary" and n.s == "not":
+            self.narrows(n.kids[0], not truth, out)
+        elif k == "boolop" and (n.s == "and") == truth:
+            self.narrows(n.kids[0], truth, out)
+            self.narrows(n.kids[1], truth, out)
+        elif k == "name" and truth and self.narrowable(n.s):
+            out.append(n.s)
+        elif k == "cmp" and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (n.s == "is not" or n.s == "!=" or n.s == "is" or n.s == "==") and self.narrowable(n.kids[0].s):
+            if (n.s == "is not" or n.s == "!=") == truth:
+                out.append(n.kids[0].s)
+        elif k == "call" and truth and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and n.kids[1].kind == "name" and self.narrowable(n.kids[1].s):
+            if not self.bound("isinstance") and self.isinst(unopt(self.ltype[n.kids[1].s]), n.kids[2]) == 1:
+                out.append(n.kids[1].s)
+
+    def narrowable(self, name: str) -> bool:
+        # a local (or parameter) of an optional type: a global or a field may change in a call
+        return is_opt(self.ltype.get(name, "")) and not self.is_global(name)
+
+    def narrow_by(self, test: Node, truth: bool) -> dict[str, bool]:
+        # narrowed becomes a copy narrowed by test being truth; the state before is returned
+        pre = self.narrowed
+        self.narrowed = dict(pre)
+        found: list[str] = []
+        self.narrows(test, truth, found)
+        for nm in found:
+            self.narrowed[nm] = True
+        return pre
+
+    def forget(self, body: list[Node], tgt: Node) -> dict[str, bool]:
+        # a loop: what it binds (in body, and its target tgt) may be None on its later passes, and
+        # after it; a copy of the state after it is returned
+        if len(self.narrowed) > 0:
+            names: dict[str, bool] = {}
+            collect(body, names)
+            deleted(body, names)
+            tn: list[str] = []
+            names_in(tgt, tn)
+            for nm in tn:
+                names[nm] = True
+            self.narrowed = dict(self.narrowed)
+            for nm in names:
+                if nm in self.narrowed:
+                    del self.narrowed[nm]
+        return dict(self.narrowed)
 
     # ---- tests the static types decide
     def static(self, n: Node) -> int:
@@ -8982,7 +9726,7 @@ class Gen:
             return self.static(n.kids[1])
         if k == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[1].kind == "None":
             t = self.static_type(n.kids[0])
-            r = -1 if t == "" or t in self.classes else 1 if t == "None" else 0
+            r = -1 if t == "" or t in self.classes or is_opt(t) else 1 if t == "None" else 0
             return r if r < 0 or n.s == "is" else 1 - r
         if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
             t = self.static_type(n.kids[1])
@@ -9000,11 +9744,20 @@ class Gen:
             return 1
         if t == "None":
             return 1 if a == "__bool__" else 0
+        if is_opt(t):
+            r = self.has(unopt(t), a)
+            if r != 1 and a == "__bool__":
+                self.err(f"hasattr() of '{a}' on a {typestr(t)} is not supported")
+            return -1 if r == 1 else 0  # (unless it is None)
         if t in self.classes:
             ci = self.classes[t]
             if a in ci.fflag:
                 return -2
-            if a in ci.methods or a in ci.ftypes or a in HASATTR["obj"].split():
+            if a in ci.methods or a in ci.ftypes:
+                return -1
+            if t in self.nts:
+                self.err(f"hasattr() of '{a}' on a NamedTuple is not supported")
+            if a in HASATTR["obj"].split():
                 return -1
             return -1 if self.is_dc(t) and a in "__dataclass_fields__ __dataclass_params__ __match_args__".split() else 0
         b = "list" if is_list(t) else "dict" if is_dict(t) else "tuple" if is_tuple(t) else "int" if t == "bool" else t
@@ -9020,7 +9773,8 @@ class Gen:
         if (n.s in self.nonevars or n.s in self.noneglobals) and n.s not in self.ltype:
             return "None"
         if n.s in self.ltype:
-            return self.ltype[n.s]
+            t = self.ltype[n.s]
+            return unopt(t) if n.s in self.narrowed and is_opt(t) and t != NONEVAR else t
         if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
             return self.gtypes[n.s]
         return ""
@@ -9030,8 +9784,9 @@ class Gen:
         # types x cannot have
         if c.kind == "binop" and c.s == "|":
             return self.only_class(t, mk("tuple", "", c.line, c.kids))
-        if c.kind == "name":
-            return c.s == t
+        if c.kind == "name" or c.kind == "attr":
+            # (or tuple and Sequence for a NamedTuple)
+            return (c.kind == "name" and c.s == t) or (t in self.nts and (c.s == "tuple" or c.s == "Sequence") and self.isinst(t, c) < 0)
         if c.kind != "tuple":
             return False
         n = 0
@@ -9047,6 +9802,9 @@ class Gen:
         # which may be None) or c is not a type Pystachy knows
         if c.kind == "binop" and c.s == "|":
             return self.isinst(t, mk("tuple", "", c.line, c.kids))
+        if is_opt(t):
+            r = self.isinst(unopt(t), c)
+            return -1 if r == 1 else r  # (unless it is None)
         if c.kind == "tuple":
             r = 0
             for x in c.kids:
@@ -9056,6 +9814,14 @@ class Gen:
                 if y < 0:
                     r = -1
             return r
+        abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
+        if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
+            # (collections.abc's: str and tuple, also a NamedTuple, are Sequences, list is a mutable one)
+            if abc.endswith("Mapping"):
+                return 1 if is_dict(t) else 0
+            if is_list(t) or (abc == "Sequence" and (t == "str" or is_tuple(t))):
+                return 1
+            return -1 if abc == "Sequence" and t in self.nts else 0
         if c.kind != "name":
             return -1
         if c.s in self.classes:
@@ -9068,6 +9834,8 @@ class Gen:
             return 1 if t == "int" or t == "bool" else 0
         if c.s == "bool" or c.s == "float" or c.s == "str":
             return 1 if t == c.s else 0
+        if c.s == "tuple" and t in self.nts:
+            return -1  # (a tuple, unless it is None)
         if c.s == "list" or c.s == "dict" or c.s == "tuple":
             return 1 if t.startswith(c.s + "[") else 0
         if c.s in "bytes bytearray memoryview set frozenset complex range slice type".split():
@@ -9101,6 +9869,22 @@ class Gen:
             return "false"
         if is_tuple(t):
             return "false" if t == "tuple[]" else "true"
+        if is_opt(t):
+            # not None, and then the value's own truth
+            nn = self.ins(f"icmp ne ptr {v.v}, null")
+            e0 = self.cur
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(nn, l1, l2)
+            self.place(l1)
+            r = self.truth(Val(v.v, unopt(t)))
+            e1 = self.cur
+            self.br(l2)
+            self.place(l2)
+            ph = Ins("phi", "bool", "")
+            self.incoming(ph, "false", e0)
+            self.incoming(ph, r, e1)
+            return self.phi(ph)
         nz = self.ins(f"icmp ne ptr {v.v}, null")
         if t in self.classes and ("__bool__" in self.classes[t].methods or "__len__" in self.classes[t].methods):
             # None is false; otherwise __bool__, else __len__() != 0
@@ -9140,6 +9924,12 @@ class Gen:
             return Val(k.lower(), "bool")
         if k == "None":
             return Val("null", "None")
+        if k == "name" and (is_opt(want) or want in self.classes) and want != NONEVAR and self.ltype.get(n.s, "") == NONEVAR:
+            # a local only None has been assigned so far, where a T | None is expected
+            t0 = self.none_type(n.s)
+            self.ltype[n.s] = t0 if t0 != "" else want
+        if is_opt(want) and k != "ifexp" and k != "boolop":
+            want = unopt(want)  # (what types an empty display is the type a value would hold)
         if k == "name":
             if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
                 self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
@@ -9167,7 +9957,13 @@ class Gen:
             path = self.dotted(n)
             if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.modattr(path)
+            c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+            if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
+                return self.class_attr(n.kids[0], n.s)
             o = self.expr(n.kids[0], "")
+            if o.t in self.nts and n.s == "_fields":
+                self.notnone(o, "AttributeError: 'NoneType' object has no attribute '_fields'")
+                return self.tuple_([Val(self.sconst(x), "str") for x in self.classes[o.t].fields])
             if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
                 r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
                 return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if n.s == "closed" else Val(r, "str")
@@ -9190,18 +9986,28 @@ class Gen:
                     elif bd == "-9223372036854775808":
                         bd = "-9223372036854775807"
                     bnd.append(bd)
+            o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
             if o.t != "str" and not is_list(o.t):
                 self.err(f"'{o.t}' cannot be sliced")
             fn = "pys_str_slice" if o.t == "str" else "pys_list_slice"
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}"]), o.t)
         if k == "list":
             et = elem(want) if is_list(want) and "?" not in want else ""
+            soft = n is self.soft  # (an operand of ==: as its items are, see compare)
             items: list[Val] = []
+            given = et != ""
+            jt = ""
             for e in n.kids:
                 v = self.expr(e, et)
                 if et == "" and v.t != "None":
                     et = v.t
+                jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
                 items.append(v)
+            if not given and (is_opt(jt) or is_tuple(jt)):
+                et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+            if given and soft:
+                for v in items:
+                    et = self.wider(et, v.t) or et
             if et == "" or et == "None":
                 self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
             items = [self.coerce(v, et) for v in items]
@@ -9211,8 +10017,13 @@ class Gen:
             return Val(r, f"list[{et}]")
         if k == "dict":
             kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
+            soft = n is self.soft
             ks: list[Val] = []
             vs: list[Val] = []
+            given = kv[1] != ""
+            kgiven = kv[0] != ""
+            jt = ""
+            kj = ""
             for i in range(0, len(n.kids), 2):
                 a = self.expr(n.kids[i], kv[0])
                 if kv[0] == "":
@@ -9220,14 +10031,24 @@ class Gen:
                 b = self.expr(n.kids[i + 1], kv[1])
                 if kv[1] == "" and b.t != "None":
                     kv[1] = b.t
-                ks.append(self.coerce(a, kv[0]))
+                jt = b.t if jt == "" else self.join(jt, b.t) or "-"
+                kj = a.t if kj == "" else self.join(kj, a.t) or "-"
+                ks.append(a)
                 vs.append(b)
+            if not given and (is_opt(jt) or is_tuple(jt)):
+                kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+            if not kgiven and is_tuple(kj):
+                kv[0] = none_items(kj)
+            ks = [self.coerce(x, kv[0]) for x in ks]
+            if given and soft:
+                for b in vs:
+                    kv[1] = self.wider(kv[1], b.t) or kv[1]
             if kv[0] == "" or kv[1] == "":
                 self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
             vs = [self.coerce(x, kv[1]) for x in vs]
-            if kv[0] != "int" and kv[0] != "str":
-                self.err("dict keys must be int or str")
-            r = self.rt("pys_dict_new", "ptr", [f"i64 {1 if kv[0] == 'str' else 0}", f"i64 {len(ks)}"])
+            if key_problem(kv[0]) != "":
+                self.err(key_problem(kv[0]))
+            r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ks)}"])
             for i in range(len(ks)):
                 self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])])
             return Val(r, f"dict[{kv[0]},{kv[1]}]")
@@ -9236,8 +10057,8 @@ class Gen:
             vals: list[Val] = []
             for i in range(len(n.kids)):
                 v = self.expr(n.kids[i], ws[i] if i < len(ws) else "")
-                if v.t == "None" and i < len(ws) and ws[i] in self.classes:
-                    v = self.coerce(v, ws[i])
+                if i < len(ws) and v.t != ws[i] and self.widens(v.t, ws[i]):
+                    v = Val(v.v, ws[i])  # (None as an object, T as T | None)
                 vals.append(v)
             return self.tuple_(vals)
         if k == "listcomp":
@@ -9259,6 +10080,23 @@ class Gen:
         self.err(f"unsupported expression '{k}'")
         return Val("", "")
 
+    def class_attr(self, cn: Node, a: str) -> Val:
+        # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
+        # (instances read it until they assign the field; C.a = v is not supported)
+        c = cn.s
+        ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
+        if (cn.chk or self.foreign(c)) and c in self.gflag:
+            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c}.def')}, true"), self.unbound(c))
+        if a == "_fields":
+            return self.tuple_([Val(self.sconst(x), "str") for x in ci.fields])
+        t = ci.ftypes[a]
+        if is_const(ci.fdefault[a]):
+            return self.coerce(self.expr(ci.fdefault[a], t), t)
+        self.class_default(ci, a)
+        return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+
     def percent(self, fmt: str, rhs: Node) -> Val:
         # "format" % args with a constant format: each conversion becomes what format() or
         # str()/repr() of its argument gives, as CPython's printf-style formatting does
@@ -9267,14 +10105,48 @@ class Gen:
             for x in rhs.kids:
                 items.append(self.expr(x, ""))
         else:
-            v = self.expr(rhs, "")
+            v = self.ntup(self.expr(rhs, ""))  # (a NamedTuple is a tuple: its fields are the arguments)
+            if is_tuple(unopt(v.t)) and is_opt(v.t):
+                return self.percent_opt(fmt, v)
             if is_tuple(v.t):
                 for i in range(len(targs(v.t))):
                     items.append(self.tget(v, i))
-            elif is_dict(v.t) and "%(" in fmt:
+            elif is_dict(unopt(v.t)) and "%(" in fmt:
                 self.err("% formatting with a mapping (%(name)s) is not supported")
             else:
                 items.append(v)
+        return self.pformat(fmt, items, False)
+
+    def percent_opt(self, fmt: str, v: Val) -> Val:
+        # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), l1, l2)
+        self.place(l1)
+        a = self.pformat(fmt, [Val("null", "None")], True)
+        ph = Ins("phi", "str", "")
+        if not self.term:
+            self.incoming(ph, a.v, self.cur)
+        self.br(l3)
+        self.place(l2)
+        tv = Val(v.v, unopt(v.t))
+        items: list[Val] = []
+        for i in range(len(targs(tv.t))):
+            items.append(self.tget(tv, i))
+        b = self.pformat(fmt, items, False)
+        if not self.term:
+            self.incoming(ph, b.v, self.cur)
+        self.br(l3)
+        self.place(l3)
+        if len(ph.a) == 0:
+            self.unreachable()
+            return Val(self.sconst(""), "str")
+        return Val(self.phi(ph), "str")
+
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
+        # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
+        # (it is a tuple's place, see percent_opt), as CPython's error
         acc = Val(self.sconst(""), "str")
         lit: list[str] = []
         used = 0
@@ -9321,6 +10193,13 @@ class Gen:
             if len(lit) > 0:
                 acc = self.cat(acc, Val(self.sconst("".join(lit)), "str"))
                 lit = []
+            if rtnone and v.t == "None" and t not in "sra":
+                bad = "must be real number, not NoneType"
+                if t == "c":
+                    bad = "%c requires int or char"
+                elif t in "diuxXo":
+                    bad = f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not NoneType"
+                return self.fmt_error(bad)
             acc = self.cat(acc, self.conversion(v, flags, width, prec, t))
         if used < len(items):
             return self.fmt_error("not all arguments converted during string formatting")
@@ -9346,8 +10225,8 @@ class Gen:
                 return sv
             return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
         if t == "c":
-            if v.t == "str":
-                return v
+            if unopt(v.t) == "str":
+                return self.unwrap(v, "TypeError: %c requires int or char")
             v = self.coerce(self.as_int(v), "int")
             cv = Val(self.rt("pys_chr", "ptr", [f"i64 {v.v}"]), "str")
             return cv if width == "" else self.format_(cv, mk("str", ("<" if "-" in flags else ">") + width, self.line, []))
@@ -9383,6 +10262,12 @@ class Gen:
             if not empty and spec.kind == "str":
                 self.err("unsupported format string passed to NoneType.__format__")
             return self.to_str(v)
+        if is_opt(v.t):
+            # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
+            if spec.kind == "str" and unopt(v.t) != "str":
+                self.err(f"unsupported format string passed to {tname(unopt(v.t))}.__format__")
+            sv = self.expr(spec, "str")
+            return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t))}", f"ptr {sv.v}"]), "str")
         if v.t in self.classes or v.t == "file":
             if spec.kind == "str":
                 self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
@@ -9412,18 +10297,21 @@ class Gen:
 
     def index(self, n: Node) -> Val:
         o = self.expr(n.kids[0], "")
-        t = o.t
+        t = unopt(o.t)
+        sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
         if is_list(t) or t == "str":
             i = self.ival(n.kids[1])
+            o = self.unwrap(o, sub)
             if t == "str":
                 return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
             return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(t))
         if is_dict(t):
             kv = targs(t)
-            key = self.to_slot(self.coerce(self.expr(n.kids[1], kv[0]), kv[0]))
-            return self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
-        if is_tuple(t):
-            ts = targs(t)
+            kx = self.dkey(self.expr(n.kids[1], kv[0]), kv[0])
+            o = self.unwrap(o, sub)
+            return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"]), kv[1])
+        if is_tuple(t) or t in self.nts:
+            ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
             i = self.expr(n.kids[1], "int")
             if i.t == "bool" and (i.v == "true" or i.v == "false"):
                 i = Val("1" if i.v == "true" else "0", "int")
@@ -9434,7 +10322,10 @@ class Gen:
                 j += len(ts)
             if j < 0 or j >= len(ts):
                 self.err("tuple index out of range")
-            return self.tget(o, j)
+            if t in self.nts:
+                self.notnone(o, sub)
+                return self.getfield(o, self.field(o, ts[j]), ts[j])
+            return self.tget(self.unwrap(o, sub), j)
         self.err(f"'{t}' object is not subscriptable")
         return o
 
@@ -9458,7 +10349,9 @@ class Gen:
             body = [mk("if", "", n.line, [n.kids[3], mk("block", "", n.line, [app]), mk("block", "", n.line, [])])]
         self.lcs.append(res)
         self.lct.append(elem(want) if is_list(want) else "")
+        pre = self.narrowed  # (its variables are its own: the loop binds no outer local)
         self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names)
+        self.narrowed = pre
         et = self.lct.pop()
         self.lcs.pop()
         for i in range(len(names)):
@@ -9490,23 +10383,32 @@ class Gen:
         l3 = self.label()
         self.cbr(c, l1, l2)
         self.place(l1)
+        pre = self.narrow_by(n.kids[0], True)
         a = self.expr(n.kids[1], want)
         # an arm that ends the program (sys.exit()) has no edge to the join, and no value
         e1 = "" if self.term else self.cur
         self.br(l3)
         self.place(l2)
-        b = self.expr(n.kids[2], want if want != "" else a.t)
+        self.narrowed = pre
+        self.narrow_by(n.kids[0], False)
+        wb = want if want != "" else a.t
+        if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
+            wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
+        b = self.expr(n.kids[2], wb)
+        self.narrowed = pre
         e2 = "" if self.term else self.cur
         t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
+        if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
+            t = self.join(a.t, b.t)  # x if c else None: T | None
         ph = Ins("phi", t, "")
         if e1 != "":
             self.incoming(ph, self.coerce(a, t).v, e1)
         if e2 != "":
             self.incoming(ph, self.coerce(b, t).v, e2)
-        if t == "None":
-            self.err("conditional expression has no value")
         self.br(l3)
         self.place(l3)
+        if t == "None":
+            return Val("null", "None")  # (None either way)
         return Val(self.phi(ph), t)
 
     def boolop(self, n: Node, ascond: bool, want: str) -> Val:
@@ -9527,7 +10429,7 @@ class Gen:
         if a.t == "None":
             # None is false: `None and b` is None without evaluating b, `None or b` is b
             if n.s == "or":
-                self.coerce(self.expr(n.kids[1], "None"), "None")
+                return self.expr(n.kids[1], want)
             return Val("null", "None")
         c = self.truth(a)
         if self.term:
@@ -9540,15 +10442,23 @@ class Gen:
         else:
             self.cbr(c, l3, l2)
         self.place(l2)
+        pre = self.narrow_by(n.kids[0], n.s == "and")
         b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t)
+        self.narrowed = pre
         # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
-        ph = Ins("phi", a.t, "")
+        rt = a.t
+        if not ascond and (is_opt(a.t) or is_opt(b.t) or b.t == "None"):
+            # x or y with x T | None: a true x is a T; x or None, x and y: T | None
+            rt = unopt(a.t) if n.s == "or" else a.t
+            if not self.term and self.join(rt, b.t) != "":
+                rt = self.join(rt, b.t)
+        ph = Ins("phi", rt, "")
         self.incoming(ph, a.v, e1)
         if not self.term:
-            self.incoming(ph, self.coerce(b, a.t).v, self.cur)
+            self.incoming(ph, self.coerce(b, rt).v, self.cur)
         self.br(l3)
         self.place(l3)
-        return Val(self.phi(ph), a.t)
+        return Val(self.phi(ph), rt)
 
     def unary(self, n: Node) -> Val:
         op = n.s
@@ -9572,6 +10482,10 @@ class Gen:
     def dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         # operator overloading, resolved statically: a + b -> A.__add__(a, b)
         m = DUNDER.get(op, "")
+        if m != "" and (a.t in self.nts or b.t in self.nts):
+            r = self.ntop(op, a, b, shown)
+            if r.t != "":
+                return r
         if op in REFL and (a.t in self.classes or b.t in self.classes):
             return self.richcmp(op, a, b)
         if (op == "==" or op == "!=") and a.t == "None" and b.t in self.classes:
@@ -9596,6 +10510,56 @@ class Gen:
             return Val(self.ins(f"xor i1 {self.dunder('==', a, b).v}, true"), "bool")
         return Val("", "")
 
+    def ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        # a op b with a NamedTuple operand: tuple's methods, which compare it (with tuples and
+        # other NamedTuples), concatenate and repeat it as the tuple of its fields, unless its class
+        # defines the operator; Val("", "") where the class's own method or no method applies
+        m = DUNDER[op]
+        rm = DUNDER[REFL[op]] if op in REFL else m if op == "==" or op == "!=" else "__r" + m[2:]
+        tl = (a.t in self.nts or is_tuple(a.t)) and (b.t in self.nts or is_tuple(b.t))
+        if a.t in self.nts and m in self.classes[a.t].methods:
+            if tl and a.t != b.t:
+                self.err(f"{short(a.t)}.{m} with a {typestr(b.t)} operand is not supported")
+            return Val("", "")
+        cmp = op in REFL or op == "==" or op == "!="
+        if b.t in self.nts and rm in self.classes[b.t].methods and (is_tuple(a.t) if cmp else a.t != b.t):
+            # (CPython asks a tuple's subclass first, and b's __radd__ & co where a has no __add__)
+            self.err(f"{short(b.t)}.{rm} with a {typestr(a.t)} operand is not supported")
+        if tl and (op == "==" or op == "!="):
+            return self.cmp2(op, self.ntup(a), self.ntup(b))
+        if tl and cmp:
+            return self.richcmp(op, a, b)
+        if (op == "+" and tl) or (op == "*" and (a.t == "int" or b.t == "int")):
+            sh = shown if shown != "" else op
+            self.none_operand(sh, a, b)  # (None on the left)
+            self.notnone(b, 'TypeError: can only concatenate tuple (not "NoneType") to tuple' if op == "+" else f"TypeError: unsupported operand type(s) for {sh}: 'int' and 'NoneType'")
+            return self.arith(op, self.ntup(a, True), self.ntup(b, True), shown)
+        return Val("", "")
+
+    def ntup(self, v: Val, known: bool = False) -> Val:
+        # a NamedTuple as tuple's methods see it: the tuple of its fields (a tuple | None if it
+        # may be None and is not known not to be here); any other value as it is
+        if v.t not in self.nts:
+            return v
+        ci = self.classes[v.t]
+        maybe = v.v not in self.nn and not known
+        l0 = self.cur
+        lread = self.label() if maybe else ""
+        lend = self.label() if maybe else ""
+        if maybe:
+            self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lread)
+            self.place(lread)
+        t = self.tuple_([self.getfield(v, Val(self.ins(f"getelementptr %C.{v.t}, ptr {v.v}, i32 0, i32 {ci.fpos[x]}"), ci.ftypes[x]), x) for x in ci.fields])
+        if not maybe:
+            return t
+        l1 = self.cur
+        self.br(lend)
+        self.place(lend)
+        ph = Ins("phi", self.opt(t.t), "")
+        self.incoming(ph, "null", l0)
+        self.incoming(ph, t.v, l1)
+        return Val(self.phi(ph), ph.t)
+
     def cmp_method(self, t: str, m: str, other: str) -> str:
         # m, if class t defines it as a binary method that accepts an operand of type other
         if t not in self.classes or m not in self.classes[t].methods:
@@ -9609,7 +10573,7 @@ class Gen:
         # i1: is v None at run time
         if v.t == "None":
             return "true"
-        if v.t in self.classes and v.v not in self.nn:
+        if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t):
             return self.ins(f"icmp eq ptr {v.v}, null")
         return "false"
 
@@ -9618,12 +10582,24 @@ class Gen:
         # b.__gt__(a), else TypeError naming both run-time types (None defines neither)
         fw = self.cmp_method(a.t, DUNDER[op], b.t)
         rf = self.cmp_method(b.t, DUNDER[REFL[op]], a.t)
-        if fw == "" and rf == "" and not self.lenient:
+        # a NamedTuple without the method compares as the tuple of its fields (see ntop): b's
+        # reflected method runs only where a is None
+        nt = fw == "" and (a.t in self.nts or b.t in self.nts) and (a.t in self.nts or is_tuple(a.t)) and (b.t in self.nts or is_tuple(b.t))
+        if fw == "" and rf == "" and not self.lenient and not nt:
             self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
         if fw != "" and a.v in self.nn:
             return self.call_fn(self.classes[a.t].methods[fw], [a, b], [])
         lend = self.label()
         ph = Ins("phi", "bool", "")
+        if nt:
+            lcall = self.label()
+            lnone = self.label()
+            self.cbr(self.ins(f"or i1 {self.isnull(a)}, {self.isnull(b)}"), lnone, lcall)
+            self.place(lcall)
+            r = self.cmp2(op, self.ntup(a, True), self.ntup(b, True))
+            self.incoming(ph, r.v, self.cur)
+            self.br(lend)
+            self.place(lnone)
         if fw != "":
             lcall = self.label()
             lnone = self.label()
@@ -9645,8 +10621,8 @@ class Gen:
         an = self.isnull(a)
         bn = self.isnull(b)
         ms: list[str] = []
-        for x in ["NoneType", tname(a.t)]:
-            for y in ["NoneType", tname(b.t)]:
+        for x in ["NoneType", tname(unopt(a.t))]:
+            for y in ["NoneType", tname(unopt(b.t))]:
                 ms.append(self.sconst(f"'{op}' not supported between instances of '{x}' and '{y}'"))
         mn = self.select(bn, Val(ms[0], "str"), Val(ms[1], "str"))
         mf = self.select(bn, Val(ms[2], "str"), Val(ms[3], "str"))
@@ -9693,6 +10669,9 @@ class Gen:
         du = self.dunder(op, a, b, shown)
         if du.t != "":
             return du
+        if is_opt(a.t) or is_opt(b.t):
+            self.none_operands(op, a, b, shown)
+            return self.arith(op, Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)), shown)
         if a.t == "bool" and b.t == "bool" and (op == "&" or op == "|" or op == "^"):
             return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
         a = self.as_int(a)
@@ -9716,23 +10695,37 @@ class Gen:
         seq = a.t == "str" or is_list(a.t)
         if op == "+" and seq and a.t == b.t:
             return Val(self.rt("pys_str_add" if a.t == "str" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), a.t)
+        if op == "+" and is_list(a.t) and is_list(b.t) and self.wider(a.t, b.t) != "":
+            return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), self.wider(a.t, b.t))  # (a new list)
         if op == "*" and seq and b.t == "int":
             return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
-        if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t)):
+        if op == "+" and is_tuple(a.t) and is_tuple(b.t):
+            return self.tuple_([self.tget(a, i) for i in range(len(targs(a.t)))] + [self.tget(b, i) for i in range(len(targs(b.t)))])
+        if op == "*" and is_tuple(a.t) and b.t == "int":
+            if b.v.startswith("%"):
+                self.err(f"{typestr(a.t)} * n needs a constant n (its length is part of its type)")
+            return self.tuple_([self.tget(a, i % len(targs(a.t))) for i in range(len(targs(a.t)) * max(0, int(b.v)))])
+        if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t) or is_tuple(b.t)):
             return self.arith(op, b, a)
         self.err(f"unsupported operand types for {op}: {a.t} and {b.t}")
         return a
 
     def compare(self, n: Node) -> Val:
         ops = n.s.split(",")
-        if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and len(n.kids[0].kids) == 0:
-            # [] == xs, {} in ds: an empty display takes its type from the other side
+        if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and (len(n.kids[0].kids) == 0 or nones(n.kids[0])):
+            # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
+            # from the other side (it has nothing to evaluate first)
             b = self.expr(n.kids[1], "")
             w = b.t
             if ops[0] == "in" or ops[0] == "not in":
                 w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+            if len(n.kids[0].kids) > 0:
+                self.soft = n.kids[0]
             return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
+        # (x is None reads a local that only None was assigned to so far, see none_type)
+        self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
         a = self.expr(n.kids[0], "")
+        self.nonecmp = False
         if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
             # x in range(...): arithmetic, as CPython's range.__contains__ does for ints
             if a.t != "int" and a.t != "bool":
@@ -9741,7 +10734,11 @@ class Gen:
             hit = self.rt("pys_range_has", "i64", [f"i64 {self.as_int(a).v}", f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
             return Val(self.ins(f"icmp {'ne' if ops[0] == 'in' else 'eq'} i64 {hit}, 0"), "bool")
         if len(ops) == 1:
-            return self.cmp2(ops[0], a, self.expr(n.kids[1], a.t))
+            w = a.t
+            if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "list" and (is_list(a.t) or is_dict(a.t)):
+                w = f"list[{a.t}]"  # (xs in [[1], [2]]: a list of such)
+            self.soft = n.kids[1]  # (a display there may hold what may be None where a holds none)
+            return self.cmp2(ops[0], a, self.expr(n.kids[1], w))
         l3 = self.label()
         ph = Ins("phi", "bool", "")
         r = a
@@ -9773,6 +10770,32 @@ class Gen:
         du = self.dunder(op, a, b)
         if du.t != "":
             return du
+        if (op == "in" or op == "not in") and is_opt(b.t):
+            b = self.unwrap(b, "TypeError: argument of type 'NoneType' is not iterable")
+        if (op == "in" or op == "not in") and b.t in self.nts and "__contains__" not in self.classes[b.t].methods:
+            self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
+            b = self.ntup(b, True)  # (tuple's __contains__)
+        if (op == "in" or op == "not in") and b.t == "str":
+            a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
+        if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and self.optional(elem(b.t)) == "" and elem(b.t) not in self.classes)):
+            return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict, and no number
+        if (op == "in" or op == "not in") and is_dict(b.t) and is_opt(a.t) and unopt(a.t) == targs(b.t)[0]:
+            # None is no key of the dict
+            nn = self.ins(f"icmp ne ptr {a.v}, null")
+            e0 = self.cur
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(nn, l1, l2)
+            self.place(l1)
+            hv = self.cmp2("in", Val(a.v, unopt(a.t)), b)
+            e1 = self.cur
+            self.br(l2)
+            self.place(l2)
+            ph = Ins("phi", "bool", "")
+            self.incoming(ph, "false", e0)
+            self.incoming(ph, hv.v, e1)
+            hv = Val(self.phi(ph), "bool")
+            return hv if op == "in" else Val(self.ins(f"xor i1 {hv.v}, true"), "bool")
         if (op == "in" or op == "not in") and is_tuple(b.t):
             # CPython: for each item in order, item is x or item == x; stop at the first match
             lend = self.label()
@@ -9801,11 +10824,14 @@ class Gen:
             if b.t == "str":
                 r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
             elif is_list(b.t):
-                s = self.to_slot(self.coerce(a, elem(b.t)))
-                r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(elem(b.t)))}"])
+                et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
+                if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "":
+                    et = self.optional(elem(b.t))
+                s = self.to_slot(self.coerce(a, et))
+                r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et))}"])
                 r = self.ins(f"add i64 {r}, 1")
             elif is_dict(b.t):
-                s = self.to_slot(self.coerce(a, targs(b.t)[0]))
+                s = self.to_slot(self.dkey(a, targs(b.t)[0]))
                 r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"])
             else:
                 self.err(f"'in' is not supported for {b.t}")
@@ -9827,8 +10853,11 @@ class Gen:
         eq = op == "==" or op == "!="
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
             return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
-        if a.t == b.t and (a.t == "str" or is_list(a.t) or is_tuple(a.t) or (eq and is_dict(a.t))):
-            d = f"ptr {self.sconst(self.desc(a.t))}"
+        # T and T | None (also as items): None == None, None == x is False, and None < x raises
+        ct = self.wider(a.t, b.t)
+        u = unopt(ct)
+        if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u))):
+            d = f"ptr {self.sconst(self.desc(ct))}"
             sa = self.to_slot(a)
             sb = self.to_slot(b)
             if eq:
@@ -9841,9 +10870,9 @@ class Gen:
 
     def comparable(self, t: str, u: str) -> bool:
         # can t == u be true at all? (otherwise CPython just answers False)
-        if t == u or (self.isnum(t) and self.isnum(u)):
+        if t == u or (self.isnum(t) and self.isnum(u)) or self.wider(t, u) != "":
             return True
-        return (t == "None" and u in self.classes) or (u == "None" and t in self.classes)
+        return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
     # ---- calls
     def call(self, n: Node, want: str) -> Val:
@@ -9868,9 +10897,7 @@ class Gen:
             if f.s in self.classes:
                 if self.classes[f.s].bad != "":
                     self.err(self.classes[f.s].bad)
-                size = f"ptrtoint (ptr getelementptr (%C.{f.s}, ptr null, i32 1) to i64)"
-                o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), f.s)
-                self.nn[o.v] = True
+                o = self.new_obj(f.s)
                 self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
                 return o
             if f.s in self.mvars:
@@ -9884,6 +10911,8 @@ class Gen:
                 return self.builtin(path, args, want)
             if f.kids[0].kind == "name" and "?" in self.rtype(f.kids[0].s):
                 return self.fill(f.kids[0], f.s, args, want)
+            if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
+                self.err(f"{short(f.kids[0].s)}._make() is not supported: call {short(f.kids[0].s)}(...) with the fields")
             o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
             r = self.method(o, f.s, args)
             if f.s != "close":
@@ -9933,6 +10962,8 @@ class Gen:
             self.err(f"only UTF-8 and Latin-1 files are supported, not encoding='{e.s}'")
         # every argument is evaluated in the order written, then the file is opened
         vals: dict[str, str] = {"mode": self.sconst("r"), "buffering": "-1", "encoding": "null", "newline": "null"}
+        nones: list[str] = []  # optional arguments that may not be None, and what None raises
+        nmsg: list[str] = []
         pos = 0
         for a in args:
             nm = a.s if a.kind == "kw" else names[pos]
@@ -9943,22 +10974,81 @@ class Gen:
             v = self.expr(x, want)
             if v.t == "None" and (nm == "encoding" or nm == "errors" or nm == "newline"):
                 continue
+            if is_opt(v.t) and (nm == "encoding" or nm == "newline"):
+                v = Val(v.v, "str")  # None is the default
+            elif is_opt(v.t) and (nm == "file" or nm == "mode"):
+                nones.append(v.v)
+                nmsg.append("TypeError: expected str, bytes or os.PathLike object, not NoneType" if nm == "file" else "TypeError: open() argument 'mode' must be str, not None")
+                v = Val(v.v, "str")
             vals[nm] = self.coerce(v, want).v
+        for j in range(len(nones)):
+            self.guard(self.ins(f"icmp eq ptr {nones[j]}, null"), nmsg[j])
         return Val(self.rt("pys_open", "ptr", [f"ptr {vals['file']}", f"ptr {vals['mode']}", f"ptr {vals['encoding']}", f"ptr {vals['newline']}",
                                                f"i64 {vals['buffering']}"]), "file")
 
     def method(self, o: Val, m: str, args: list[Node]) -> Val:
+        if is_opt(o.t):
+            o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
         if o.t in self.classes:
             ci = self.classes[o.t]
-            if m not in ci.methods:
+            if m not in ci.methods and not ((m == "_replace" or m == "_asdict") and o.t in self.nts):
                 self.err(f"'{o.t}' object has no method '{m}'")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            if m == "_asdict" and m not in ci.methods:
+                return self.asdict(o, args)
+            if m not in ci.methods:
+                return self.replace(o, args)
             return self.call_fn(ci.methods[m], [o], args)
         return self.bmethod(o, m, args)
 
-    def pcoerce(self, v: Val, t: str) -> Val:
-        # an argument for a parameter of type t ("": a template's unannotated parameter takes any type)
-        return v if t == "" else self.coerce(v, t)
+    def replace(self, o: Val, args: list[Node]) -> Val:
+        # p._replace(f=v, ...): a new NamedTuple with the fields given, and p's others
+        ci = self.classes[o.t]
+        given: dict[str, Val] = {}
+        npos = len([a for a in args if a.kind != "kw"])
+        for a in args:
+            if a.kind != "kw":
+                self.err(f"{short(o.t)}._replace() takes 1 positional argument but {npos + 1} were given")
+            if a.s not in ci.ftypes:
+                self.err(f"Got unexpected field names: ['{a.s}']")
+            given[a.s] = self.expr(a.kids[0], ci.ftypes[a.s])
+        vals: list[Val] = [self.new_obj(o.t)]
+        for fl in ci.fields:
+            vals.append(given[fl] if fl in given else self.getfield(o, self.field(o, fl), fl))
+        self.call_fn(ci.methods["__init__"], vals, [])
+        return vals[0]
+
+    def asdict(self, o: Val, args: list[Node]) -> Val:
+        # p._asdict(): a dict from its fields' names to their values, which must then share one type
+        ci = self.classes[o.t]
+        if len(args) > 0:
+            self.err(f"{short(o.t)}._asdict() takes 1 positional argument but {len(args) + 1} were given")
+        vt = ci.ftypes[ci.fields[0]]
+        for fl in ci.fields:
+            vt = self.wider(vt, ci.ftypes[fl])
+            if vt == "":
+                self.err(f"_asdict() of a NamedTuple whose fields have different types is not supported (a dict's values have one type): {short(o.t)}")
+        r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind('str')}", f"i64 {len(ci.fields)}"])
+        for fl in ci.fields:
+            v = self.coerce(self.getfield(o, self.field(o, fl), fl), vt)
+            self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(fl), "str")), "i64 " + self.to_slot(v)])
+        return Val(r, f"dict[str,{vt}]")
+
+    def new_obj(self, c: str) -> Val:
+        # a new object of class c, not initialized
+        size = f"ptrtoint (ptr getelementptr (%C.{c}, ptr null, i32 1) to i64)"
+        o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), c)
+        self.nn[o.v] = True
+        return o
+
+    def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
+        # argument j of f for a parameter of type t ("": a template's unannotated parameter takes any type)
+        if t == "":
+            return v
+        what = ""
+        if is_opt(v.t):
+            what = f"argument {j if f.cls != '' else j + 1} of {short(f.name)}()" if j < f.npos else f"argument '{f.params[j]}' of {short(f.name)}()"
+        return self.coerce(v, t, what)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "") -> Val:
         if f.bad != "" and not f.generic:
@@ -9970,7 +11060,7 @@ class Gen:
         np = len(f.params)
         vals: list[Val] = []
         for i in range(np):
-            vals.append(self.pcoerce(pre[i], f.ptypes[i]) if i < len(pre) else Val("", ""))
+            vals.append(self.pcoerce(pre[i], f.ptypes[i], f, i) if i < len(pre) else Val("", ""))
         pos = len(pre)
         extra: list[Val] = []
         for a in args:
@@ -9979,33 +11069,33 @@ class Gen:
             if a.kind == "starred" or a.kind == "dstar":
                 self.err("star arguments are not supported")
             if a.kind != "kw" and f.vararg >= 0 and j >= f.vararg:
-                extra.append(self.pcoerce(self.expr(a, f.varelem), f.varelem))
+                extra.append(self.pcoerce(self.expr(a, f.varelem), f.varelem, f, j))
                 pos += 1
                 continue
             if a.kind == "kw" and f.vararg >= 0 and a.s == f.params[f.vararg]:
-                self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
+                self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
             if a.kind == "kw":
                 if a.s not in f.params:
-                    self.err(f"{f.name}() got an unexpected keyword argument '{a.s}'")
+                    self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
                 j = f.params.index(a.s)
                 if j < f.posonly:
-                    self.err(f"{f.name}() got a positional-only argument passed as a keyword argument: '{a.s}'")
+                    self.err(f"{self.fname(f)}() got a positional-only argument passed as a keyword argument: '{a.s}'")
                 e = a.kids[0]
             else:
                 pos += 1
                 if j >= f.npos and f.npos >= 0 and j < np:
-                    self.err(f"{f.name}() takes {f.npos} positional argument{'s' if f.npos != 1 else ''} but more were given")
+                    self.err(f"{self.fname(f)}() takes {f.npos} positional argument{'s' if f.npos != 1 else ''} but more were given")
             if j >= np:
-                self.err(f"too many arguments in call to {f.name}()")
+                self.err(f"too many arguments in call to {self.fname(f)}()")
             if vals[j].t != "":
-                self.err(f"{f.name}() got multiple values for argument '{f.params[j]}'")
-            vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j])
+                self.err(f"{self.fname(f)}() got multiple values for argument '{f.params[j]}'")
+            vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j], f, j)
         if f.vararg >= 0:
             vals[f.vararg] = self.tuple_(extra)
         for j in range(np):
             if vals[j].t == "":
                 if f.defaults[j].kind == "noann":
-                    self.err(f"missing argument '{f.params[j]}' in call to {f.name}()")
+                    self.err(f"missing argument '{f.params[j]}' in call to {self.fname(f)}()")
                 t = f.ptypes[j]
                 if f.dglob[j] == "" and not is_const(f.defaults[j]):
                     self.early_default(f, j)
@@ -10017,7 +11107,7 @@ class Gen:
                     t = t if t != "" else f.dtypes[j]
                     vals[j] = Val(self.ins(f"load {lt(t)}, ptr {f.dglob[j]}"), t)
                 else:
-                    vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t)
+                    vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
         self.line = line
         if f.generic:
             f = self.instance(f, [v.t for v in vals])
@@ -10034,6 +11124,10 @@ class Gen:
             return self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
         return Val(f"%t{c.r[0]}", f.ret)
 
+    def fname(self, f: FnInfo) -> str:
+        # f as CPython's errors about a call's arguments name it: a NamedTuple's is P.__new__
+        return f"{short(f.cls)}.__new__" if f.name == "__init__" and f.cls in self.nts else f.name
+
     def instance(self, f: FnInfo, ts: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first
         # needed, in the middle of the function that calls it: its first return statement
@@ -10043,6 +11137,8 @@ class Gen:
             g = f.insts[key]
             if g.ret == "":
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
+            if g.ll in self.building:
+                self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
             return g
         if f.bad != "":
             self.err(f.bad)
@@ -10121,6 +11217,8 @@ class Gen:
             name = name[6:]
         if name.startswith("builtins."):
             name = name[9:]
+        if name == "typing.NamedTuple":
+            self.err("the functional NamedTuple form is not supported: write a class, class P(NamedTuple): with annotated fields")
         if "." not in name and name not in PYBUILTINS:
             self.err(f"name '{short(name)}' is not defined")
         # builtins and module functions ("os.system"); most are one call listed in CALLS
@@ -10156,7 +11254,7 @@ class Gen:
             # decided by the static types, or for an object by whether it is None
             v = self.expr(args[0], "")
             known = self.isinst(v.t, args[1])
-            if known < 0 and v.t in self.classes and self.only_class(v.t, args[1]):
+            if known < 0 and ((v.t in self.classes and self.only_class(v.t, args[1])) or (is_opt(v.t) and self.isinst(unopt(v.t), args[1]) == 1)):
                 return Val(self.ins(f"icmp ne ptr {v.v}, null"), "bool")
             if known < 0:
                 self.err("isinstance() is only supported with the builtin types and classes as its second argument")
@@ -10186,6 +11284,8 @@ class Gen:
             # these iterate their argument at once, so range(), reversed(), enumerate() and zip() may be it
             fresh = self.iterator_call(args[0]) or args[0].kind == "listcomp"
             v0 = self.consume(args[0], w)
+            if is_opt(v0.t):
+                v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
             if name == "any" and v0.t == "file":
                 # any(f) reads one line: lines are never empty
                 first = self.rt("pys_file_readline", "ptr", [f"ptr {v0.v}"])
@@ -10208,6 +11308,25 @@ class Gen:
                 rev = self.reverse_arg(a.kids[0], name)
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
+        for i in range(len(vals)):
+            if vals[i].t == "None" and name in NONERET and len(vals) == 1:
+                # None itself (a template's parameter whose argument is None): CPython's error
+                self.raise_("TypeError", self.sconst(NONEARG[name]))
+                return Val("0" if NONERET[name] == "int" else "false" if NONERET[name] == "bool" else fbits("0.0"), NONERET[name])
+            if not is_opt(vals[i].t):
+                continue
+            bad = NONEARG[name] if name in NONEARG else ""
+            if name == "int" and len(vals) == 2:
+                bad = "int() can't convert non-string with explicit base"
+            elif name == "sum" and i == 0:
+                bad = "'NoneType' object is not iterable"
+            if bad != "":
+                vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
+            elif name not in OPTARG:
+                if f"{name}({','.join([unopt(v.t) for v in vals])})" not in CALLS and name not in OPTCALLS:
+                    # (not for the value it holds either)
+                    self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
+                self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
         key = f"{name}({','.join([v.t for v in vals])})"
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
@@ -10225,8 +11344,9 @@ class Gen:
             return Val("null", "None")
         if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
             return vals[0]  # a str path is its own file system path
-        if name == "os.getenv" and len(vals) == 1:
-            self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
+        if name == "os.getenv" and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
+            # without a default the result is the variable's value or None
+            return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
         if key not in CALLS and name.startswith("math."):
@@ -10246,6 +11366,9 @@ class Gen:
             if t in self.classes and "__len__" in self.classes[t].methods:
                 self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
                 return self.objlen(v)
+            if t in self.nts:
+                self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
+                return Val(str(len(self.classes[t].fields)), "int")
             if t == "str" or is_list(t) or is_dict(t):
                 return Val(self.ins(f"load i64, ptr {v.v}"), "int")
             if is_tuple(t):
@@ -10274,6 +11397,9 @@ class Gen:
         elif (name == "min" or name == "max") and len(vals) == 1:
             self.err(f"'{tname(t)}' object is not iterable")
         elif name == "min" or name == "max":
+            for b in vals[1:]:
+                t = t if self.join(t, b.t) == "" else self.join(t, b.t)  # (T and T | None: the comparison raises for None)
+            v = self.coerce(v, t)
             for b in vals[1:]:
                 b = self.coerce(b, t)
                 gt = self.cmp2(">" if name == "max" else "<", b, v)
@@ -10364,7 +11490,10 @@ class Gen:
         return self.listcomp(mk("listcomp", "", n.line, [it, mk("name", "__item", n.line, []), n]), want)
 
     def as_list(self, v: Val, name: str) -> Val:
-        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple of one item type, as a list
+        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item type, as a list
+        if v.t in self.nts:
+            self.notnone(v, "TypeError: 'NoneType' object is not iterable")
+            v = self.ntup(v, True)
         if is_dict(v.t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
         if is_tuple(v.t):
@@ -10409,7 +11538,11 @@ class Gen:
             x = a.kids[0]
             if a.s == "sep" or a.s == "end":
                 if x.kind != "None":
-                    sv = self.coerce(self.expr(x, "str"), "str").v
+                    v = self.expr(x, "str")
+                    if is_opt(v.t):
+                        # None is the default
+                        v = Val(self.select(self.isnull(v), Val(sep if a.s == "sep" else end, "str"), Val(v.v, "str")), "str")
+                    sv = self.coerce(v, "str").v
                     if a.s == "sep":
                         sep = sv
                     else:
@@ -10468,9 +11601,12 @@ class Gen:
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
         if is_dict(o.t) and m == "pop" and len(args) == 2:
             kv = targs(o.t)
-            k = self.to_slot(self.coerce(self.expr(args[0], kv[0]), kv[0]))
-            dv = self.to_slot(self.coerce(self.expr(args[1], kv[1]), kv[1]))
-            return self.from_slot(self.rt("pys_dict_pop_default", "i64", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), kv[1])
+            kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
+            k = self.to_slot(kx)
+            d = self.expr(args[1], kv[1])
+            vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
+            dv = self.to_slot(self.coerce(d, vt))
+            return self.from_slot(self.nonekey(kx, dv, "pys_dict_pop_default", [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"]), vt)
         base = o.t
         T = ""
         K = ""
@@ -10486,17 +11622,25 @@ class Gen:
         key = base + "." + m
         if key not in METHODS:
             self.err(f"'{o.t}' has no method '{m}'")
-        if key == "dict.get" and len(args) == 1 and V not in self.classes:
-            self.err("dict.get(key) needs a default value unless the values are objects")
+        # d.get(k) and d.get(k, None): the value or None, for values that can be None
+        optget = key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and self.optional(V) != ""
+        if optget:
+            args = args[:1]
+        if key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and not optget:
+            self.err(f"dict.get(key{', None' if len(args) == 2 else ''}) needs values that can be None (str, list, dict, tuple or objects), not {typestr(V)}: give another default ({typestr(V)} | None would need boxing)")
         spec = METHODS[key]
         c = spec.find(":")
         av = [f"{lt(o.t)} {o.v}"]
+        nones: list[str] = []  # optional str arguments: None raises (nmsg) once all are evaluated
+        nmsg: list[str] = []
+        dt = T  # the item type the # descriptor describes
+        kx = Val("", "")  # a dict's key that may be None (see nonekey)
         i = 0
         for p in spec[c + 1 :].split(","):
             if p == "":
                 continue
             if p == "#":
-                av.append(f"ptr {self.sconst(self.desc(T))}")
+                av.append(f"ptr {self.sconst(self.desc(dt))}")
                 continue
             dflt = ""
             e = p.find("=")
@@ -10509,11 +11653,34 @@ class Gen:
                 av.append(rtt(pt) + " null")  # an explicit None: the default
             elif i < len(args):
                 v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
+                if is_opt(v.t) and (key == "str.join" or key == "list.extend" or key == "file.writelines"):
+                    v = self.unwrap(v, "TypeError: can only join an iterable" if key == "str.join" else "TypeError: 'NoneType' object is not iterable")
                 if key == "str.join":
                     v = self.as_list(v, "join")
+                if (key == "str.join" or key == "file.writelines") and v.t == "list[opt[str]]":
+                    v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
+                if key == "list.extend" and is_list(v.t) and v.t != pt and self.wider(v.t, pt) == pt:
+                    v = Val(v.v, pt)  # (its items are copied: list[str] extends a list[str | None])
                 if p == "int":
                     v = self.as_int(v)  # an index or a count may be a bool, as in CPython
-                v = self.coerce(v, pt)
+                if base == "dict" and i == 0 and is_opt(v.t) and unopt(v.t) == K and (m == "get" or m == "pop"):
+                    kx = v
+                    pt = v.t
+                elif base == "dict" and i == 0 and (m == "get" or m == "pop"):
+                    v = self.dkey(v, K)
+                elif key == "dict.get" and i == 1 and self.optdefault(v, V) != V:
+                    pt = self.optdefault(v, V)  # d.get(k, default) with a default that may be None: V | None
+                    optget = True
+                if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":
+                    v = Val(v.v, pt)  # None is the default
+                elif is_opt(v.t) and not slot and unopt(v.t) == pt == "str":
+                    nones.append(v.v)
+                    nmsg.append(self.none_arg(m, i + 1))
+                    v = Val(v.v, pt)
+                elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and base == "list" and m != "append" and m != "insert" and self.optional(T) != "":
+                    pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
+                    dt = pt
+                v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
                 av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
             elif dflt != "":
                 av.append(("i64 " if slot else rtt(pt) + " ") + dflt)
@@ -10522,13 +11689,79 @@ class Gen:
             i += 1
         if i < len(args):
             self.err(f"too many arguments for {m}()")
+        for j in range(len(nones)):
+            self.guard(self.ins(f"icmp eq ptr {nones[j]}, null"), nmsg[j])
         r = spec[:c]
         slot = r.startswith("*")
         rtype = subst(r[1:] if slot else r, T, K, V, o.t)
-        res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
+        if optget:
+            rtype = self.optional(V)
+        if kx.t != "":
+            res = self.nonekey(kx, av[2][4:] if m == "get" else "", f"pys_{base}_{m}", av)
+        else:
+            res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
         if slot:
             return self.from_slot(res, rtype)
         return self.rres(res, rtype)
+
+    def optdefault(self, d: Val, t: str) -> str:
+        # the type of d.get(k, d) and d.pop(k, d) for values of type t: t | None for a default
+        # that may be None
+        if (d.t == "None" or (is_opt(d.t) and unopt(d.t) == t)) and t not in self.classes and self.optional(t) != "":
+            return self.optional(t)
+        return t
+
+    def key_kind(self, kt: str) -> str:
+        # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
+        # or a tuple key's type descriptor
+        if kt == "int" or kt == "str":
+            return "1" if kt == "str" else "0"
+        return f"ptrtoint (ptr {self.sconst(self.desc(kt))} to i64)"
+
+    def dkey(self, k: Val, kt: str) -> Val:
+        # a key to look up in a dict whose keys have type kt: one that may be None stays optional
+        # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
+        if is_opt(k.t) and unopt(k.t) == kt:
+            return k
+        if k.t == "bool" and kt == "int":
+            return self.as_int(k)  # (True is the key 1)
+        if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
+            return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+        return self.coerce(k, kt)
+
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str]) -> str:
+        # the slot fn(av) returns, a dict lookup of key k; a key that is None is in no dict: the
+        # result is then the slot none, or with none "" KeyError: None
+        if not is_opt(k.t):
+            return self.rt(fn, "i64", av)
+        if none == "":
+            self.guard(self.ins(f"icmp eq ptr {k.v}, null"), "KeyError: None")
+            return self.rt(fn, "i64", av)
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {k.v}, null"), l1, l2)
+        self.place(l2)
+        r = self.rt(fn, "i64", av)
+        e2 = self.cur
+        self.br(l3)
+        self.place(l1)
+        self.br(l3)
+        self.place(l3)
+        ph = Ins("phi", "%slot", "")
+        self.incoming(ph, none, l1)
+        self.incoming(ph, r, e2)
+        return self.phi(ph)
+
+    def none_arg(self, m: str, k: int) -> str:
+        # what str method m (or file.write) raises for None as its argument k
+        if m == "startswith" or m == "endswith":
+            return f"TypeError: {m} first arg must be str or a tuple of str, not NoneType"
+        if m == "partition" or m == "rpartition":
+            return "TypeError: must be str, not NoneType"
+        if m == "removeprefix" or m == "removesuffix" or m == "write":
+            return f"TypeError: {m}() argument must be str, not None"
+        return f"TypeError: {m}() argument {k} must be str, not None"
 
     def to_str(self, v: Val) -> Val:
         t = v.t
@@ -10544,6 +11777,8 @@ class Gen:
             return Val(self.sconst("None"), "str")
         if t in self.classes:
             return self.obj_str(v, "__str__")
+        if t == "opt[str]":
+            return Val(self.select(self.ins(f"icmp eq ptr {v.v}, null"), Val(self.sconst("None"), "str"), Val(v.v, "str")), "str")
         return self.repr(v)
 
     def obj_str(self, v: Val, m: str) -> Val:
