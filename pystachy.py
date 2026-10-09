@@ -11155,6 +11155,14 @@ class Gen:
                                                f"i64 {vals['buffering']}"]), "file")
 
     def method(self, o: Val, m: str, args: list[Node]) -> Val:
+        if (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")) and (m == "__str__" or m == "__repr__") and len(args) == 0 and not self.curfn.ll.startswith("@x."):
+            # e.__str__() is str(e): that of the class of e's object, which may derive from o.t's
+            # (but for the ExcClass's own functions, see exc_helpers)
+            return self.to_str(o) if m == "__str__" else self.repr(o)
+        if o.t in self.classes and m == "__init__" and self.classes[o.t].exc != "":
+            for c in self.classes.values():
+                if c.name != o.t and self.derives(c.name, o.t) and "__init__" in c.methods and c.methods["__init__"].cls == c.name:
+                    self.err(f"a call of __init__ on an object of {short(o.t)} is not supported where {short(c.name)}, deriving from it, defines __init__ again (calls are not dispatched on the object's class)")
         if o.t in self.classes:
             ci = self.classes[o.t]
             if m not in ci.methods:
