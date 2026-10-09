@@ -225,11 +225,11 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
 `if`/`elif`/`else`, `while`, `for` (both with `else`) over `range`, lists, strings, dicts,
-files, tuples (and NamedTuples) of one item type, `.items()`/`.keys()`/`.values()`,
+files, tuples (and NamedTuples) of one item type, objects (below), `.items()`/`.keys()`/`.values()`,
 `enumerate` (with `start`), `zip` and
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
 that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
-`del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
+`del` of a list item, a dict key or an object's item, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
 `class`, `@dataclass`, `class P(NamedTuple)`, docstrings, `del` of a variable (later reads raise `NameError` or
@@ -302,7 +302,16 @@ overloading resolved statically:
 `__add__` & co, the in-place forms, `__eq__`, rich comparisons with CPython's reflection
 rules (`a < b` tries `b.__gt__(a)`), `__len__`, `__bool__`, `__str__`, `__repr__` and
 `__format__`. Objects inside lists, dicts and tuples compare, sort and print through
-their own methods.
+their own methods. The container protocol is resolved statically too: `o[k]` calls
+`__getitem__`, `o[k] = v` `__setitem__` (`o[k] += v` both), `del o[k]` `__delitem__`, and
+`x in o` `__contains__`, whose result counts as its truth does; without `__contains__`, `x in
+o` looks for `x` among the items `__iter__` steps through. An `__iter__` annotated `->
+Iterator[T]` (or `Iterable[T]`) that returns `iter(xs)` of a list, a tuple, a `str` or another
+such object steps through `xs` as a list's iterator does, wherever the object is iterated:
+`for` loops, comprehensions, unpacking, `enumerate()`, `zip()`, `list()`, `sorted()`, `min()`,
+`max()`, `sum()`, `any()`, `all()`, `str.join()` and `list.extend()`. A method the operation
+needs and the class does not define is an error with CPython's message (`'C' object is not
+subscriptable`), and an object that is `None` raises CPython's error when it runs.
 
 **Library.** `print` (with `sep`, `end`, `file`, `flush`), `len`, `str`, `repr`, `ascii`,
 `int`, `float`, `bool`, `ord`, `chr`, `abs`, `min`, `max`, `sum`, `sorted` (and
@@ -456,7 +465,12 @@ other than a constant, read while that module is still being imported; an empty 
 whose first use stores an empty `[]` or `{}` into it (`d[k] = []`); an empty list or dict
 that a template's function returns empty, used where the `list[int]` / `dict[int, int]` guess
 does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders that do not return `bool`, `__str__`/`__repr__`
-that do not return `str`, methods without `self`; an `==` or `!=` between objects of
+that do not return `str`, methods without `self`; an `__iter__` that is a generator, or
+that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
+`__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
+non-iterator of type 'list'`), and a call of it (`o.__iter__()`); iterating over an object,
+or `x in o`, by its `__getitem__` alone (CPython's old sequence protocol), and `reversed()`
+of an object; an `==` or `!=` between objects of
 different classes, which CPython would reflect to the right operand's `__eq__`; calling a
 builtin whose name the module also binds as a variable (`sum = 0` ... `sum(xs)`, which
 CPython would reject at run time); `range()`, `enumerate()`, `zip()` or `reversed()` nested

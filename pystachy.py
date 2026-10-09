@@ -5413,6 +5413,7 @@ class FnInfo:
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
+        self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
 
 
 # ---------------------------------------------------------------- the IR
@@ -6680,6 +6681,8 @@ class Gen:
             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
         if bad == "" and has_kind(d.kids[2], "yield"):
             bad = UNSUPPORTED["yield"]  # a generator function
+            if cls != "" and d.s == "__iter__":
+                bad += ": __iter__ can return iter(xs) of a list xs of the items"
         if bad == "" and self.lib and d.kids[1].kind != "noann":
             bad = self.ann_problem(d.kids[1], True)
         if tv != "" and cls != "":
@@ -6689,11 +6692,23 @@ class Gen:
         f.bad = bad
         if bad != "" and self.lib:
             f.ret = "None"
+        elif d.kids[1].kind != "noann" and cls != "" and d.s == "__iter__" and self.iter_ann(d.kids[1]) != "":
+            f.ret = self.iter_ann(d.kids[1])
+            f.iters = True
         elif d.kids[1].kind != "noann":
             f.ret = self.typeof(d.kids[1])
         elif f.generic:
             f.ret = ""
         return f
+
+    def iter_ann(self, n: Node) -> str:
+        # an __iter__'s return annotation Iterator[T] or Iterable[T] (typing's or collections.abc's):
+        # list[T], the list that the iterator it returns steps through (see iter_ret); else ""
+        if n.kind == "str":
+            n = self.parse_expr(n.s)
+        if n.kind != "index" or (self.typing_ref(n.kids[0]) != "Iterator" and self.typing_ref(n.kids[0]) != "Iterable"):
+            return ""
+        return f"list[{self.vtype(n.kids[1])}]"
 
     def add_field(self, ci: ClassInfo, name: str, t: str) -> None:
         if name in ci.ftypes:
@@ -7748,6 +7763,8 @@ class Gen:
                 return elem(t)
             if n.kind == "index" and is_dict(t):
                 return targs(t)[1]
+            if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
+                return self.classes[t].methods["__setitem__"].ptypes[2]
         return ""
 
     def assign(self, t: Node, v: Val) -> None:
@@ -7793,6 +7810,11 @@ class Gen:
                 key = self.to_slot(self.coerce(self.expr(t.kids[1], kv[0]), kv[0]))
                 o = self.unwrap(o, nosub)
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))])
+            elif o.t in self.classes:
+                # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated
+                ik = self.expr(t.kids[1], self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment"))
+                self.notnone(o, nosub)
+                self.protocol(o, "__setitem__", [ik, v])
             else:
                 self.err(f"'{o.t}' does not support item assignment")
         elif k == "tuple" and is_opt(v.t):
@@ -7813,6 +7835,9 @@ class Gen:
             self.notnone(v, "TypeError: cannot unpack non-iterable NoneType object")
             for i in range(len(fs)):
                 self.assign(t.kids[i], self.getfield(v, self.field(v, fs[i]), fs[i]))
+        elif k == "tuple" and v.t in self.classes:
+            # a, b = o: what o's __iter__ steps through
+            self.assign(t, self.obj_iter(v, "TypeError: cannot unpack non-iterable NoneType object", f"cannot unpack non-iterable {tname(v.t)} object"))
         elif k == "tuple":
             if not is_tuple(v.t) or len(targs(v.t)) != len(t.kids):
                 self.err(f"cannot unpack {v.t} into {len(t.kids)} targets")
@@ -9307,7 +9332,7 @@ class Gen:
                 self.close_withs(0)
                 self.ret_(Val("null", "None"))
             else:
-                v = self.retval(n.kids[0], self.ret)
+                v = self.iter_ret(n.kids[0]) if self.curfn.iters else self.retval(n.kids[0], self.ret)
                 if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
                     self.adopt(v.t)  # (it returned an empty container without a type before)
                 j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
@@ -9362,6 +9387,11 @@ class Gen:
                     kt = targs(unopt(o.t))[0]
                     key = self.to_slot(self.coerce(self.expr(dt.kids[1], kt), kt))
                     self.rt("pys_dict_pop", "i64", [f"ptr {self.unwrap(o, nodel).v}", "i64 " + key])
+                elif o.t in self.classes:
+                    # del o[k]: o.__delitem__(k)
+                    ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
+                    self.notnone(o, nodel)
+                    self.protocol(o, "__delitem__", [ik])
                 else:
                     self.err("only 'del list[i]' and 'del dict[key]' are supported")
         elif k == "with":
@@ -9509,6 +9539,13 @@ class Gen:
                 cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
                 r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)])
+            elif o.t in self.classes:
+                # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once
+                ik = self.expr(t.kids[1], self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable"))
+                self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
+                self.notnone(o, sub)
+                cur = self.protocol(o, "__getitem__", [ik])
+                self.protocol(o, "__setitem__", [ik, self.inplace(op, cur, n.kids[1])])
             else:
                 self.err(f"'{o.t}' does not support item assignment")
         else:
@@ -9619,7 +9656,10 @@ class Gen:
                 evs: list[Val] = []
                 for a in args:
                     v = self.expr(a, "")
-                    evs.append(v if is_opt(v.t) else self.iterable(v))  # (None raises once all are evaluated)
+                    if fn == "reversed" and v.t in self.classes and v.t not in self.nts:
+                        # (CPython calls __reversed__, or __len__ and __getitem__, never __iter__)
+                        self.err(f"'{tname(v.t)}' object is not reversible" if "__getitem__" not in self.classes[v.t].methods else f"reversed() of {short(v.t)} by its __len__ and __getitem__ is not supported")
+                    evs.append(v if is_opt(v.t) or v.t in self.classes else self.iterable(v))  # (None raises, and __iter__ runs, once all are evaluated)
                 notit = "TypeError: 'NoneType' object is not reversible" if fn == "reversed" else "TypeError: 'NoneType' object is not iterable"
                 seqs = [self.iterable(v, notit) for v in evs]
                 self.for_seq(tgt, seqs, fn, body, "0", hide)
@@ -9628,7 +9668,7 @@ class Gen:
                 return
             if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
                 seq = self.expr(args[0], "")
-                seq = seq if is_opt(seq.t) else self.iterable(seq)
+                seq = seq if is_opt(seq.t) or seq.t in self.classes else self.iterable(seq)
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
                 st = self.ival(a1).v
                 seq = self.iterable(seq)
@@ -9651,11 +9691,14 @@ class Gen:
         self.close_temp(it, seq)
 
     def iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
-        # a tuple is iterated as a list of its items, which must then share one type; None raises msg
+        # a tuple is iterated as a list of its items, which must then share one type, an object as
+        # the list its __iter__ steps through; None raises msg
         v = self.unwrap(v, msg)
         if v.t in self.nts:
             self.notnone(v, msg)
             v = self.ntup(v, True)  # (the tuple of its fields)
+        if v.t in self.classes:
+            return self.obj_iter(v, msg, f"'{tname(v.t)}' object is not iterable")
         if not is_tuple(v.t) or v.t == "tuple[]":
             return v
         ts = targs(v.t)
@@ -10553,8 +10596,57 @@ class Gen:
                 self.notnone(o, sub)
                 return self.getfield(o, self.field(o, ts[j]), ts[j])
             return self.tget(self.unwrap(o, sub), j)
+        if t in self.classes:
+            # o[k]: o.__getitem__(k), once k is evaluated
+            ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
+            self.notnone(o, sub)
+            return self.protocol(o, "__getitem__", [ik])
         self.err(f"'{t}' object is not subscriptable")
         return o
+
+    def argtype(self, t: str, m: str, j: int, missing: str) -> str:
+        # the type of parameter j of the special method m of class t, which an operator calls (its
+        # argument is evaluated for that type); missing: the error where t does not define m
+        ms = self.classes[t].methods
+        if m not in ms:
+            self.err(missing)
+        return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
+
+    def protocol(self, o: Val, m: str, args: list[Val]) -> Val:
+        # the call of the special method m of o's class that an operator makes (o[k] calls
+        # __getitem__), with the arguments it has evaluated; o is known not to be None
+        f = self.classes[o.t].methods[m]
+        if f.npos < len(args) + 1:
+            self.err(f"{m} must take {len(args)} argument{'s' if len(args) != 1 else ''} besides self")
+        return self.call_fn(f, [o] + args, [])
+
+    def obj_iter(self, v: Val, none: str, missing: str) -> Val:
+        # what iterating over object v steps through: the list its __iter__ returns the iterator of
+        # (see iter_ret). v None raises none ("Kind: text"); missing is the error where v's class
+        # does not define __iter__ (CPython iterates by __getitem__ then, which is not supported)
+        ms = self.classes[v.t].methods
+        if "__iter__" not in ms and "__getitem__" in ms:
+            self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
+        if "__iter__" not in ms:
+            self.err(missing)
+        f = ms["__iter__"]
+        if not f.iters:
+            self.err(f"iter() returned non-iterator of type '{tname(f.ret)}': {short(v.t)}.__iter__ must return an iterator, as iter(xs) of a list xs makes one (-> Iterator[T])")
+        self.notnone(v, none)
+        return self.protocol(v, "__iter__", [])
+
+    def iter_ret(self, e: Node) -> Val:
+        # return iter(x) in an __iter__ that returns an Iterator[T]: the list[T] that iterator steps
+        # through, as a for loop over x would: x for a list, a new list of the items of a tuple or
+        # str, the list of an object's own __iter__; an iterator other than iter()'s is not supported
+        if e.kind != "call" or e.kids[0].kind != "name" or e.kids[0].s != "iter" or self.bound("iter") or len(e.kids) != 2 or e.kids[1].kind == "kw":
+            self.err(f"{short(self.curfn.cls)}.__iter__ must return iter(xs) here, where xs is a list, a tuple, a str or an object with __iter__")
+        v = self.iterable(self.consume(e.kids[1], self.ret))
+        if v.t == "str":
+            v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
+        if not is_list(v.t):
+            self.err(f"iter() of {typestr(v.t)} in __iter__ is not supported: return iter(xs) of a list xs of the items")
+        return v
 
     def listcomp(self, n: Node, want: str, mode: str = "") -> Val:
         # [e for t in it if c] runs as a loop appending to a fresh list; t is scoped to it.
@@ -11011,6 +11103,15 @@ class Gen:
         if (op == "in" or op == "not in") and b.t in self.nts and "__contains__" not in self.classes[b.t].methods:
             self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
             b = self.ntup(b, True)  # (tuple's __contains__)
+        if (op == "in" or op == "not in") and b.t in self.classes:
+            # x in o: o.__contains__(x), true as its result is; else x is among what o's __iter__
+            # steps through
+            if "__contains__" not in self.classes[b.t].methods:
+                b = self.obj_iter(b, "TypeError: argument of type 'NoneType' is not iterable", f"argument of type '{tname(b.t)}' is not iterable")
+            else:
+                self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
+                r = self.truth(self.protocol(b, "__contains__", [a]))
+                return Val(r if op == "in" else self.ins(f"xor i1 {r}, true"), "bool")
         if (op == "in" or op == "not in") and b.t == "str":
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
         if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
@@ -11267,6 +11368,8 @@ class Gen:
                 return self.asdict(o, args)
             if m not in ci.methods:
                 return self.replace(o, args)
+            if ci.methods[m].iters:
+                self.err(f"calling {short(o.t)}.__iter__() is not supported (its iterator is the list it steps through here): iterate over the object")
             return self.call_fn(ci.methods[m], [o], args)
         return self.bmethod(o, m, args)
 
@@ -11759,10 +11862,14 @@ class Gen:
         return self.listcomp(mk("listcomp", "", n.line, [it, mk("name", "__item", n.line, []), n]), want)
 
     def as_list(self, v: Val, name: str) -> Val:
-        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item type, as a list
+        # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item
+        # type, as a list, or the list an object's __iter__ steps through (which list() copies)
         if v.t in self.nts:
             self.notnone(v, "TypeError: 'NoneType' object is not iterable")
             v = self.ntup(v, True)
+        if v.t in self.classes:
+            return self.obj_iter(v, "TypeError: can only join an iterable" if name == "join" else "TypeError: 'NoneType' object is not iterable",
+                                 "can only join an iterable" if name == "join" else f"'{tname(v.t)}' object is not iterable")
         if is_dict(v.t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
         if is_tuple(v.t):
@@ -11925,8 +12032,8 @@ class Gen:
                 v = self.consume(args[i], pt) if key == "str.join" or key == "list.extend" else self.expr(args[i], pt)
                 if is_opt(v.t) and (key == "str.join" or key == "list.extend" or key == "file.writelines"):
                     v = self.unwrap(v, "TypeError: can only join an iterable" if key == "str.join" else "TypeError: 'NoneType' object is not iterable")
-                if key == "str.join":
-                    v = self.as_list(v, "join")
+                if key == "str.join" or (key == "list.extend" and v.t in self.classes):
+                    v = self.as_list(v, "join" if key == "str.join" else "extend")
                 if (key == "str.join" or key == "file.writelines") and v.t == "list[opt[str]]":
                     v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
                 if key == "list.extend" and is_list(v.t) and v.t != pt and self.wider(v.t, pt) == pt:
