@@ -141,6 +141,33 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 | I/O, process, signals, time, errno, tempfile | none | stdio, `errno`, signal handlers, system calls |
 | the collector | none | stack and register scanning, the page map, raw memory |
 
+### 1.7 How much more could move
+
+Four inventories made for this evaluation classified every function and table of runtime.c at `30b51d9` (2,472 lines, by area) into four tiers:
+- **A**: expressible in the subset as it was before this prototype.
+- **B**: needs the kind of extension this prototype adds, or one like it: byte access, a builder, wrapping or unsigned arithmetic, `extern` declarations of libc, module-level constant tables.
+- **C**: needs raw memory: addresses, struct layouts, pointer-free allocation of non-str data.
+- **D**: must stay native: stack and register scanning, signal handlers, exit paths.
+
+| area | A | B | C | D |
+|---|---:|---:|---:|---:|
+| strings | 247 | 223 | 6 | |
+| timsort | 158 | | 26 | |
+| lists | 46 | | 47 | |
+| dicts | 31 | 75 | | |
+| formatting | 15 | 119 | | |
+| arithmetic | 59 | 139 | | |
+| repr, `==`, ordering | 4 | 10 | 92 | |
+| I/O, process, time, tempfile, errno | 84 | 339 | 40 | 60 |
+| tables (`errno`, `isprintable`) | 5 | 378 | | |
+| the collector | 17 | 4 | 189 | 37 |
+| other | 7 | 10 | 5 | |
+| **total** | **673 (27%)** | **1,297 (52%)** | **405 (16%)** | **97 (4%)** |
+
+So about four fifths of runtime.c could be written in the subset with extensions of the size of `_rt`. Tier B is mostly I/O over libc and the two large constant tables. Tiers C and D, a fifth, are the collector, the list core and the descriptor-driven generic helpers. The classification is a judgment per function, so the split is approximate.
+
+One inventory prototyped the dict in the subset, over `list[int]` tables. Lookups took 3.7 ns against C's 3.6 ns at 1,000 keys, and 13.8 ns against 8.9 ns at 100,000 keys. The gap at 100,000 keys comes from 8-byte index slots where C uses 32-bit ones, from an extra indirection, and from bounds checks. So the dict table is portable, but it needs 32-bit arrays and generic classes first.
+
 ## 2. Evaluation
 
 ### 2.1 Robustness
@@ -160,7 +187,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 **Worse, or different.**
 - **UBSan.** `make verify`'s UBSan stage instruments C only. `clang -fsanitize=undefined` adds no checks to `.ll` input, so it no longer covers the moved code.
   - The moved code cannot have the undefined behaviour UBSan looks for. Its arithmetic is checked or explicitly wrapping, and its memory accesses go through checked primitives.
-  - The remaining risk is a bug in a primitive's lowering, which is about 75 lines of `Gen.primitive`.
+  - The remaining risk is a bug in a primitive's lowering, which is about 70 lines of `Gen.primitive`.
 - **A compiler bug can now break the runtime.** Before, a code generation bug miscompiled programs; now it can also miscompile the runtime they link. Three things contain it:
   - the fixed point covers `runtime.py`'s IR;
   - `rtcheck` tests the same code without the compiler;
