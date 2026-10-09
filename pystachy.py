@@ -10094,8 +10094,9 @@ class Gen:
             return Val("null", "None")
         if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
             return vals[0]  # a str path is its own file system path
-        if name == "os.getenv" and len(vals) == 1:
-            self.err("os.getenv(name) needs a default here, os.getenv(name, default): the result would be str or None")
+        if name == "os.getenv" and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
+            # without a default the result is the variable's value or None
+            return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
         if key not in CALLS and name.startswith("math."):
@@ -10354,7 +10355,11 @@ class Gen:
         key = base + "." + m
         if key not in METHODS:
             self.err(f"'{o.t}' has no method '{m}'")
-        if key == "dict.get" and len(args) == 1 and V not in self.classes:
+        # d.get(k) and d.get(k, None): the value or None, for values that can be None
+        optget = key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and self.optional(V) != ""
+        if optget:
+            args = args[:1]
+        if key == "dict.get" and len(args) == 1 and V not in self.classes and not optget:
             self.err("dict.get(key) needs a default value unless the values are objects")
         spec = METHODS[key]
         c = spec.find(":")
@@ -10409,6 +10414,8 @@ class Gen:
         r = spec[:c]
         slot = r.startswith("*")
         rtype = subst(r[1:] if slot else r, T, K, V, o.t)
+        if optget:
+            rtype = self.optional(V)
         res = self.rt(f"pys_{base}_{m}", "i64" if slot else rtt(rtype), av)
         if slot:
             return self.from_slot(res, rtype)

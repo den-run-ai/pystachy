@@ -1,0 +1,8 @@
+[1] None None
+{'a': [1, 2]}
+x ex EX
+y None -
+x None None None
+None True None dflt
+FALLBACK
+[exit 0]
