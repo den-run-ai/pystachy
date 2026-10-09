@@ -43,7 +43,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
     - undefined behaviour in integer division;
     - a stale length in list `==`;
     - two lax UTF-8 decoders, since fixed;
-    - class ids that overflow their three digits.
+    - class ids that overflow their three digits, since fixed in runtime.c.
   - **Safety by default.** Ported code gets checked arithmetic and checked indexing. Two of the three integer overflows fixed in commit `452f29c` are in moved functions; in the subset both would have failed loudly instead of computing a wrong value. The moved code no longer uses fixed-size buffers: one of them, the format code's, did truncate messages.
   - **The roadmap's runtime code in Python.** The open issues imply about 9k to 18k lines of new runtime code, 3.5 to 7 times today's runtime.c (§2.5). Under the current architecture all of it would be C.
   - **Reuse.** The planned WebAssembly GC backend needs a runtime written in the subset (`docs/typed-ir.md` §7.3), and the typed IR's effects table can be inferred from it.
@@ -247,9 +247,9 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
     - `tests/rt_format_long_spec.py`;
     - `tests/rt_format_nul_spec.py`;
     - `tests/rt_format_type_code.py`.
-- **Another bug found during this evaluation**, outside the moved code: class ids in type descriptors are written with `{:03d}` by the compiler and read as exactly three digits by runtime.c's `ocls`. With more than 1,000 classes in containers, `repr([C1000()])` calls `C100.__repr__`.
-  - The repro is 1,002 classes, each put in a list and printed. It prints `[C100]` where CPython prints `[C1000]`.
-  - It is not fixed here, because the fix changes descriptors in programs' IR.
+- **Another bug found during this evaluation**, outside the moved code: class ids in type descriptors are written with `{:03d}` by the compiler, and runtime.c's `ocls` read exactly three digits. With more than 1,000 classes in containers, `repr([C1000()])` called `C100.__repr__`, and the rest of the descriptor was read from the id's fourth digit.
+  - The repro is 1,002 classes, each put in a list and printed. It printed `[C100]` where CPython prints `[C1000]`.
+  - Fixed without changing any program's IR. `{:03d}` already writes every digit of a larger id, and a descriptor letter or the end of the descriptor always follows them, so runtime.c now reads the id up to there. `tests/class_ids_wide.py` covers repr, `==`, ordering, `min`, `max` and sort of containers of classes 1000 and 1001.
 - **Two more bugs, in code not moved yet, since fixed.** runtime.c had three UTF-8 decoders. The strict one is `u8char`. The lax copies in `pys_ascii` and `asciinum` accepted overlong forms and code points above U+10FFFF:
   - `ascii(chr(0xC1) + chr(0xBF))` printed `'\x7f'`, where CPython prints `'\xc1\xbf'`;
   - `int(chr(0xE0) + chr(0x99) + chr(0xA0) + "7")` returned 7, reading the overlong bytes as U+0660 ARABIC-INDIC ZERO, where CPython raises `ValueError`.
@@ -457,7 +457,7 @@ The prototype was written against `30b51d9`, before the IR existed, and has sinc
      - The exceptions work has to change both, and needs a test that catches an exception raised inside `runtime.py`.
   2. **Generic helpers as templates.** `pys_eq`, `pys_repr`, `pys_list_find`, `minmax` and the sort interpret a type descriptor at run time and call back through `pys_obj_*`. As `runtime.py` templates, they would be instantiated per type:
      - the `U?` effect becomes exact;
-     - the descriptor-and-callback ABI goes away, and with it the class-id format of §2.2;
+     - the descriptor-and-callback ABI goes away;
      - the Wasm backend gets them for free.
   3. **One layout definition.** The compiler and runtime.c both hard-code `Str`, `List` and `Dict` layouts today. Moving the accessors into `runtime.py` is a step toward a single definition.
 - **Sequencing.**
@@ -612,7 +612,7 @@ Sources and line counts: the research notes behind this table measured each repo
    - Unchecked list access proven by the typed IR's bounds hoisting (§7.1 there). Then timsort can move without the 5× penalty.
 4. **After typed-IR step 13.**
    - `rt` keys are the binding point of every operation (`RUNTIME` already binds keys to `runtime.py` functions).
-   - The generic helpers (`pys_eq`, `pys_repr`, `list.find`, `minmax`, sort) become templates instantiated per type, without descriptors or `pys_obj_*` callbacks. That also fixes §2.2's class-id bug.
+   - The generic helpers (`pys_eq`, `pys_repr`, `list.find`, `minmax`, sort) become templates instantiated per type, without descriptors or `pys_obj_*` callbacks.
 5. **At the typed IR's re-baseline (step 16).**
    - Apply the nsw range step to programs.
    - Fuse `ord(s[i])` into a byte read for programs too.

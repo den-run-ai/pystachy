@@ -6747,7 +6747,8 @@ class Gen:
         if t in self.classes:
             # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
             # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
-            # class t (see obj_helpers): one that cannot take them is an error here
+            # class t (see obj_helpers): one that cannot take them is an error here. The id has
+            # three digits or more, which runtime.c reads up to the next descriptor's letter
             ms = self.classes[t].methods
             for op in use.split():
                 m = "__repr__" if op == "repr" else DUNDER[op]

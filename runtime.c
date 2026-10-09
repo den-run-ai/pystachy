@@ -754,12 +754,13 @@ I pys_floor(double d) { return pys_f2i(floor(d)); }
 I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
-   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
-   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
+   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<id> object
+   of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
+   has three digits or more (O007, O1234): a letter or the end of the descriptor follows it */
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
-static I ocls(const char *d) { return (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0'; }
+static I ocls(const char *d) { I c = 0; while (*d >= '0' && *d <= '9') c = c * 10 + *d++ - '0'; return c; }
 Str *pys_default_repr(Str *cls, void *p) {
   const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
@@ -773,7 +774,7 @@ I pys_repr_enter(void *p) {
 void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 static const char *skip(const char *d) {
   char c = *d++;
-  if (c == 'O') return d + 3;
+  if (c == 'O') while (*d >= '0' && *d <= '9') d++;
   if (c == 'L') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
@@ -824,7 +825,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
-  case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
+  case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
   }
   return d;
 }
