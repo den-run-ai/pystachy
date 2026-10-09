@@ -4991,6 +4991,7 @@ RTL: dict[str, str] = {
 }
 TBAA_LEN = 3
 TBAA_BYTES = 4
+STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 10 (_rt.str_new's limit)
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -5205,7 +5206,10 @@ for _j in range(len(FX)):
 # in an 8-byte slot (i64 in the LLVM binding), # the descriptor of the static type the operation
 # works on (Ins.x), %X an LLVM type X that has no spelling (%ovf: {i64, i1}). "" as symbol means
 # pys_<key, with . as _>. rt() checks each call against its entry, tools/check_runtime.py checks
-# the entries against runtime.c (their LLVM types, and the effects its call graph shows)
+# the entries against runtime.c and runtime.py (their LLVM types, and the effects their call
+# graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
+# statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
+# result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
     # lists
     "list.new": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
@@ -5227,12 +5231,12 @@ RUNTIME: dict[str, str] = {
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
-    "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|A rL|", "str.split": "list[str]:S,str,int|R A|",
-    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|A|", "str.strip": "str:S,str|A|",
-    "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int||",
-    "str.endswith": "bool:S,str,int,int||", "str.find": "int:S,str,int,int||", "str.rfind": "int:S,str,int,int||",
-    "str.count": "int:S,str,int,int||", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
-    "str.replace": "str:S,str,str|A|", "str.upper": "str:S|A|", "str.lower": "str:S|A|", "str.swapcase": "str:S|A|",
+    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
+    "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int|R|",
+    "str.endswith": "bool:S,str,int,int|R|", "str.find": "int:S,str,int,int|R|", "str.rfind": "int:S,str,int,int|R|",
+    "str.count": "int:S,str,int,int|R|", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
+    "str.replace": "str:S,str,str|R A|", "str.upper": "str:S|A|", "str.lower": "str:S|A|", "str.swapcase": "str:S|A|",
     "str.capitalize": "str:S|A|", "str.title": "str:S|A|", "str.casefold": "str:S|A|", "str.isdigit": "bool:S||",
     "str.isalpha": "bool:S||", "str.isalnum": "bool:S||", "str.isspace": "bool:S||", "str.isupper": "bool:S||",
     "str.islower": "bool:S||", "str.istitle": "bool:S||", "str.isascii": "bool:S||", "str.isdecimal": "bool:S||",
@@ -5335,6 +5339,35 @@ def rtsig(k: str) -> list[str]:
 def rtsym(k: str) -> str:
     s = RUNTIME[k][RUNTIME[k].rfind("|") + 1 :]
     return s if s != "" else "pys_" + k.replace(".", "_")
+
+
+def rt_subset(k: str, ts: list[str]) -> str:
+    # "" if a function with result and parameter types ts (as the subset spells them) has the types
+    # of RUNTIME entry k, else the entry's, spelt for a message. A bool is an int there (the ABI
+    # passes bools as i64); a type variable, a slot (*X), a descriptor (#) or an LLVM type (%X) is
+    # checked by its LLVM type only (rt and Gen.function), and so is the receiver S but of a str
+    # or file method
+    sig = rtsig(k)
+    ok = len(sig) == len(ts)
+    out: list[str] = []
+    for j in range(len(sig)):
+        w = sig[j]
+        if w == "S":
+            w = k[: k.find(".")] if k.startswith("str.") or k.startswith("file.") else ""
+        if w == "bool":
+            w = "int"
+        tok = ""
+        for c in w + ",":
+            if c == "[" or c == "]" or c == ",":
+                if tok != "" and tok not in ("int", "float", "str", "None", "list", "dict", "tuple", "file"):
+                    w = ""  # (a type variable, *X, # or %X)
+                tok = ""
+            else:
+                tok += c
+        out.append(typestr(w) if w != "" else "_")
+        if w != "" and j < len(ts) and ts[j] != w:
+            ok = False
+    return "" if ok else f"{out[0]}({', '.join(out[1:])})"
 
 
 def runtime_decl(k: str) -> str:
@@ -6234,6 +6267,7 @@ class Gen:
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
         self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
+        self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
         self.externs: dict[str, str] = {}  # runtime mode: runtime.c's functions runtime.py declares (def f(...) -> T: ...), by symbol: their declare line ("" if RUNTIME's)
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
@@ -6526,8 +6560,8 @@ class Gen:
             return Val(self.ins(f"icmp eq ptr {a[0]}, null"), "bool")
         if name == "same":
             # same(a, i, b, j, n): within both, and n >= 0
-            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
-            n1 = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}")
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            n1 = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
             for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n0}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n0}, {a[1]}')}",
                       f"icmp ugt i64 {a[3]}, {n1}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n1}, {a[3]}')}"]:
                 self.guard(self.ins(x), "IndexError: compare out of range")
@@ -6536,7 +6570,7 @@ class Gen:
             return Val(self.ins(f"icmp eq i32 {self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}'])}, 0"), "bool")
         if name == "find_byte":
             # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
-            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
             for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
                 self.guard(self.ins(x), "IndexError: search out of range")
             self.guard(self.ins(f"icmp ugt i64 {a[1]}, 255"), "ValueError: byte must be in range(0, 256)")
@@ -6546,12 +6580,12 @@ class Gen:
             return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
         if name == "find_sub":
             # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
-            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
             for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
                 self.guard(self.ins(x), "IndexError: search out of range")
             p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
             p1 = self.ins(f"getelementptr i8, ptr {a[1]}, i64 8")
-            m = self.ins(f"load i64, ptr {a[1]}, !tbaa !{TBAA_LEN}")
+            m = self.ins(f"load i64, ptr {a[1]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
             f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}", f"ptr {p1}", f"i64 {m}"])
             d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
             return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
@@ -6563,10 +6597,10 @@ class Gen:
             self.emit(f"store i64 {a[0]}, ptr {r}, !tbaa !{TBAA_LEN}")
             return Val(r, "str")
         # the others index a str: an unsigned compare with its length also rejects a negative index
-        n = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}")
+        n = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
         if name == "copy":
             # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
-            m = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}")
+            m = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
             for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n}, {a[1]}')}",
                       f"icmp ugt i64 {a[3]}, {m}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {m}, {a[3]}')}"]:
                 self.guard(self.ins(x), "IndexError: copy out of range")
@@ -8082,6 +8116,10 @@ class Gen:
             if f.ll[1:] in RTSYM and have != RtFn(RTSYM[f.ll[1:]]).ll:
                 e = RtFn(RTSYM[f.ll[1:]]).ll
                 self.err(f"{f.name}() is defined as {have[0]}({', '.join(have[1:])}), but the compiler calls it as {e[0]}({', '.join(e[1:])}) (RUNTIME's {RTSYM[f.ll[1:]]})")
+            ts = [f.ret] + [f.ptypes[j] for j in self.fn.ps]
+            if f.ll[1:] in RTSYM and rt_subset(RTSYM[f.ll[1:]], ts) != "":
+                # (the same LLVM types, but another layout: a tuple of two strs for one of three)
+                self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
         self.fn.n = self.n
         self.fns.append(self.fn)
 
@@ -8661,6 +8699,8 @@ class Gen:
                     e = RtFn(RTSYM[f.ll[1:]]).ll
                     if have != e:
                         self.err(f"{f.name}() is declared as {have[0]}({', '.join(have[1:])}), but the compiler calls it as {e[0]}({', '.join(e[1:])}) (RUNTIME's {RTSYM[f.ll[1:]]})")
+                    if rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes) != "":
+                        self.err(f"{f.name}() is declared as {typestr(f.ret)}({', '.join([typestr(t) for t in f.ptypes])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes)} (RUNTIME's {RTSYM[f.ll[1:]]})")
                     self.runtime(f.ll[1:])
                     self.externs[f.ll] = ""
                 else:
@@ -8714,7 +8754,7 @@ class Gen:
         if len(NONUMS) + len(NOVALS) + len(NOLABELS) > 0:
             fail("internal error: an op changed the lists all ops start with", 0)
         chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
-        dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
         if chk:
             for fn in self.fns:
                 self.verify(fn)
@@ -8761,6 +8801,7 @@ class Gen:
             hdr.append(f'!{TBAA_LEN - 1} = !{{!"str bytes", !{TBAA_LEN - 3}, i64 0}}')
             hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
             hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
+            hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775799}}")
             return "\n".join(hdr) + "\n"
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals
@@ -11421,6 +11462,10 @@ class Gen:
             if t in self.classes and "__len__" in self.classes[t].methods:
                 self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
                 return self.objlen(v)
+            if t == "str" and self.rtmode:
+                # (tagged as the primitives' loads are, and bounded: LLVM then sees that index
+                # arithmetic on lengths cannot overflow)
+                return Val(self.ins(f"load i64, ptr {v.v}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}"), "int")
             if t == "str" or is_list(t) or is_dict(t):
                 return Val(self.ins(f"load i64, ptr {v.v}"), "int")
             if is_tuple(t):
@@ -11766,7 +11811,7 @@ def compile_program(path: str, src: str, dirs: list[str]) -> str:
     return Gen().program(Loader(dirs).program(path, src))
 
 
-def runtime_ir(path: str) -> str:
+def runtime_ir(path: str, cache: bool) -> str:
     # runtime.py: the part of the runtime written in the subset. Its pys_* functions are defined
     # under their C names, with runtime.c's types, and llvm-link joins them to runtime.c's code
     # (runtime.c keeps a prototype of each). It imports only builtin modules, and nothing runs its
@@ -11776,6 +11821,7 @@ def runtime_ir(path: str) -> str:
     f.close()
     g = Gen()
     g.rtmode = True
+    g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
     MODULES["_rt"] = True
     ir = g.program(Loader([]).program(path, src))
     del MODULES["_rt"]
@@ -11814,7 +11860,7 @@ def main() -> None:
         f.close()
         return
     if cmd == "rt":
-        ir = runtime_ir(SRC)
+        ir = runtime_ir(SRC, False)
         if len(argv) == 5 and argv[3] == "-o":
             f = open(argv[4], "w", encoding="latin-1")
             f.write(ir)
@@ -11888,12 +11934,14 @@ def main() -> None:
     # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
     # compile runtime.py differently, and the bootstrap checks that its stages do not
     me = argv[0]
-    if "/" not in me:
-        # run through PATH: the first directory that holds it, as the shell searched ("" is the current
-        # directory); under CPython, the script in the current directory
+    if "/" not in me and not me.endswith(".py"):
+        # run through PATH: the first directory that holds it as a file, as the shell searched ("" is
+        # the current directory; p/. exists only for a directory p). CPython opens a script in the
+        # current directory, without a search
         for d in os.getenv("PATH", "").split(":"):
-            if os.path.exists((d if d != "" else ".") + "/" + me):
-                me = (d if d != "" else ".") + "/" + me
+            p = (d if d != "" else ".") + "/" + me
+            if os.path.exists(p) and not os.path.exists(p + "/."):
+                me = p
                 break
     fresh = f"test {q(rtb)} -nt {q(rtc)} && test {q(rtb)} -nt {q(rtpy)}"
     if os.path.exists(me):
@@ -11903,7 +11951,7 @@ def main() -> None:
         # (before the temporary directory exists: an error in runtime.py exits)
         src = SRC
         SRC = rtpy
-        rtir = runtime_ir(rtpy)
+        rtir = runtime_ir(rtpy, True)
         SRC = src
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
     tmp = tempfile.mkdtemp()
