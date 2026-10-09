@@ -4516,7 +4516,6 @@ for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException Keyboar
     EXCBASES[_k[: _k.find(":")]] = _k[_k.find(":") + 1 :]
 
 
-QUOTE = "'"
 # the hidden fields an exception class's objects begin with (see Gen.declare_fields), with their types
 EXCFIELDS = "cls:str str:str args:str code:int hc:bool"
 
@@ -6549,8 +6548,10 @@ class Gen:
                 self.cbr(bad, l1, l2)
                 self.place(l1)
                 c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
-                m = self.rt("pys_str_add", "ptr", [f"ptr {self.sconst(QUOTE)}", f"ptr {c}"])
-                m = self.rt("pys_str_add", "ptr", [f"ptr {m}", f"ptr {self.sconst(QUOTE + ' object has no attribute ' + QUOTE + name + QUOTE)}"])
+                q = self.sconst("'")
+                t = self.sconst("' object has no attribute '" + name + "'")
+                m = self.rt("pys_str_add", "ptr", [f"ptr {q}", f"ptr {c}"])
+                m = self.rt("pys_str_add", "ptr", [f"ptr {m}", f"ptr {t}"])
                 self.raise_("AttributeError", m)
                 self.place(l2)
             else:
