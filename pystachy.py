@@ -7489,9 +7489,9 @@ class Gen:
         elif k == "binop" and n.s == "|" and self.has_path(n):
             return self.path_union(self.union_members(n, []))
         elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
-            return self.opt(self.ann(n.kids[0]))
+            return self.opt(self.ann(n.kids[0]), n.kids[0])
         elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
-            return self.opt(self.ann(n.kids[1]))  # None | T
+            return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
         elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = n.kids[0].s
             if n.kids[0].kind == "attr":
@@ -7522,7 +7522,7 @@ class Gen:
             if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple"):
                 return f"tuple[{','.join(ts)}]"  # (tuple[()] is the empty tuple's)
             if base == "optional" and len(ts) == 1:
-                return self.opt(ts[0])
+                return self.opt(ts[0], a[0])
             if base == "union":
                 us: list[str] = []  # (Union[int, int, None] is Optional[int], as typing collapses it)
                 for t in ts:
@@ -7531,7 +7531,7 @@ class Gen:
                 if len(us) == 1:
                     return us[0]  # Union[T]
                 if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
-                    return self.opt(us[0] if us[1] == "None" else us[1])  # Union[T, None]
+                    return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
         if self.typing_ref(n) == "Final":
             return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
         if self.pathlike(n):
@@ -7733,13 +7733,14 @@ class Gen:
             return short(s)  # (also a module's name that only an if TYPE_CHECKING: block imports)
         return f"!name '{s}' is not defined (import it from typing)" if s in TYPING else ""
 
-    def opt(self, t: str) -> str:
-        # T | None, Optional[T]: a class type includes None already; str, int, float, bool, list,
-        # dict and tuple become opt[T] (or "!" and why not)
+    def opt(self, t: str, x: Node) -> str:
+        # T | None, Optional[T] (T annotated as x): a class type includes None already; str, int,
+        # float, bool, list, dict and tuple become opt[T] (or "!" and why not)
         if t.startswith("!"):
             return t
         if t == "exc":
-            return "!an exception that may be None (Exception | None) is not supported: only an object of an exception class of the program may be None"
+            c = short(x.s) if x.kind == "name" or x.kind == "attr" else "Exception"
+            return f"!an exception that may be None ({c} | None) is not supported: only an object of an exception class of the program may be None"
         r = self.optional(t)
         return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
@@ -13004,15 +13005,25 @@ class Gen:
             elif is_dict(unopt(o.t)):
                 # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
                 # so a key that may be None raises KeyError: None, past which it is a key of d's
-                # type; a bool where the keys are ints is rejected as any store of one is
-                # (store_key), since CPython adds it as a bool where the right operand deletes k
+                # type; a bool where the keys are ints finds the int key it equals (bool_find), whose
+                # value it sets, unless the right operand may change a dict or run code of the
+                # program: where it deletes k, CPython adds k as the bool it is (store_key rejects it)
                 kv = targs(unopt(o.t))
                 kval = self.expr(t.kids[1], kv[0])
-                if bool_for_int(kval.t, kv[0]):
-                    self.store_key(kval, kv[0])  # (rejected)
                 kx = self.dkey(kval, kv[0])
                 key = "" if is_sopt(kx.t) else self.to_slot(kx)
                 o = self.unwrap(o, sub)
+                if bool_for_int(kval.t, kv[0]):
+                    e = self.bool_find(o.v, kval, key)
+                    cur = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), kv[1])
+                    b0 = self.blk
+                    x0 = len(b0.code)
+                    n0 = len(self.fn.blocks)
+                    r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+                    if self.may_change(b0, x0, n0):
+                        self.store_key(kval, kv[0])  # (rejected)
+                    self.rt("pys_dict_entry_set", "void", [f"ptr {o.v}", f"i64 {e}", "i64 " + self.to_slot(r)])
+                    return
                 if is_opt(kx.t):
                     self.guard(self.ins(f"icmp eq ptr {kx.v}, null"), "KeyError: None")
                     if is_sopt(kx.t):
@@ -13031,6 +13042,20 @@ class Gen:
                 self.err(f"'{o.t}' does not support item assignment")
         else:
             self.err("invalid target for augmented assignment")
+
+    def may_change(self, b0: Blk, x0: int, n0: int) -> bool:
+        # may an op built since position x0 of block b0, or in a block placed after the first n0
+        # of the function, change a dict (wD) or run code of the program (U; every call, whose
+        # callee's effects are not known yet)
+        bad = FXBIT["wD"] | FXBIT["U"]
+        for i in b0.code[x0:]:
+            if self.opfx(i, self.fn.fa) & bad != 0:
+                return True
+        for b in self.fn.blocks[n0:]:
+            for i in b.code:
+                if self.opfx(i, self.fn.fa) & bad != 0:
+                    return True
+        return False
 
     def inplace(self, op: str, cur: Val, rhs: Node) -> Val:
         # the new value of cur op= rhs: lists change in place (+= extends, *= repeats), objects
@@ -14301,6 +14326,9 @@ class Gen:
         f = ms["__iter__"]
         if f.bad != "":
             self.err(f.bad)  # (an imported module's generator __iter__: its own error, not its type's)
+        if not f.iters and f.ret in self.classes and "__next__" in self.classes[f.ret].methods:
+            # (CPython's iterator protocol, which calls __next__ until StopIteration)
+            self.err(f"an iterator class is not supported: {short(v.t)}.__iter__ returns a {short(f.ret)}, whose __next__ CPython would call until it raises StopIteration; return iter(xs) of a list xs of the items (-> Iterator[T])")
         if not f.iters:
             self.err(f"iter() returned non-iterator of type '{tname(f.ret)}': {short(v.t)}.__iter__ must return an iterator, as iter(xs) of a list xs makes one (-> Iterator[T])")
         self.notnone(v, none)
@@ -14858,7 +14886,7 @@ class Gen:
             a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
         if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
             return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict, and no number
-        if (op == "in" or op == "not in") and is_opt(a.t) and ((is_dict(b.t) and unopt(a.t) == targs(b.t)[0]) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
+        if (op == "in" or op == "not in") and is_opt(a.t) and ((is_dict(b.t) and (unopt(a.t) == targs(b.t)[0] or (is_sopt(a.t) and bool_for_int(unopt(a.t), targs(b.t)[0])))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
             # None is no key of the dict (and no int of a list[int])
             nn = self.ins(f"icmp ne ptr {a.v}, null")
             e0 = self.cur
@@ -15976,8 +16004,8 @@ class Gen:
                     v = Val(self.optint(v, dflt), "int")
                 if p == "int":
                     v = self.as_int(v)  # an index or a count may be a bool, as in CPython
-                if base == "dict" and i == 0 and is_opt(v.t) and unopt(v.t) == K and (m == "get" or m == "pop"):
-                    kx = v
+                if base == "dict" and i == 0 and is_opt(v.t) and ((unopt(v.t) == K and (m == "get" or m == "pop")) or (bool_for_int(unopt(v.t), K) and is_sopt(v.t) and m == "get")):
+                    kx = v  # (a bool | None gets the int key it equals, raising no KeyError that would name it)
                     pt = v.t
                 elif base == "dict" and i == 0 and (m == "get" or m == "pop"):
                     if m == "pop" and bool_for_int(v.t, K):
@@ -16061,6 +16089,8 @@ class Gen:
             return self.as_int(k)  # (True is the key 1)
         if is_tuple(k.t) and k.t != kt and lookable(k.t, kt):
             return Val(k.v, kt)  # (a None where the keys hold a str finds none: runtime.c's hval)
+        if is_sopt(k.t) and bool_for_int(unopt(k.t), kt):
+            self.err(f"a {typestr(k.t)} key of a dict with {typestr(kt)} keys is supported by get() and in only, as CPython's KeyError would name it as the bool it is: test it with 'is not None' first")
         return self.coerce(k, kt)
 
     def bool_find(self, d: str, k: Val, key: str) -> str:

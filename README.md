@@ -636,7 +636,8 @@ these, `@dataclass` and `@overload`; `@dataclass` arguments other than `kw_only`
 annotation in a dataclass or NamedTuple, and an assignment through its class to a dataclass's or
 NamedTuple's class attribute, or to one its class body does not bind; an `__iter__` that is a generator, or
 that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
-`__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
+`__iter__` (an iterator class, whose `__iter__` returns an object with `__next__`, too; the
+list it returns as it is is rejected by CPython too: `iter() returned
 non-iterator of type 'list'`; and `iter(d.keys())`, `values()` or `items()`, whose iterator
 raises if the dict changes size: `iter(list(d.keys()))` copies them), and a call of it (`o.__iter__()`); iterating over an object,
 or `x in o`, by its `__getitem__` alone (CPython's old sequence protocol), and `reversed()`
@@ -686,8 +687,11 @@ an `int` item is no box; a tuple's items are copied into boxes, so `(1, 2) == t`
 keys holding other items (a `float`,
 a `list`, an object, a NamedTuple); a `bool` where an `int` is stored (`x: int = True`: CPython
 keeps the `bool`, which prints as `True`), also as a dict key or a tuple key's item where the
-keys hold an `int` (`d[True] = v`, `d[True] += v`, `setdefault()`, a display: CPython keeps a
-key it adds as the `bool`; a lookup, `pop()` and `del` take it); `typing.ClassVar`, `os.PathLike` other than in a
+keys hold an `int` (`d[True] = v`, `setdefault()`, a display: CPython keeps a key it adds as
+the `bool`; a lookup, `pop()`, `del` and `d[True] op= v` take it, but the last only where `v`
+runs no code of the program and changes no dict, since CPython adds the key as the `bool`
+where `v` deletes it; `get()` and `in` also take a `bool | None`, which other lookups
+reject); `typing.ClassVar`, `os.PathLike` other than in a
 union with `str`, a `TypeVar` named other than by a module-level function's parameters and
 return (in a method, a field, a variable's annotation, or as a value), a `TypeVar`'s
 constraints and a bound other than a string, a bare `Final` but in an assignment (in a class
@@ -724,7 +728,8 @@ other values in module code cannot be typed where it is first assigned
 (annotate it at module level: `last: str | None = None`); in a template's function, a use of
 a parameter whose argument is `None` as a value (`s.upper()`, `xs[0]`; `len()`, `int()`,
 `float()` and `ord()` of it raise CPython's error when they run), also in a branch that does
-not run for that call; a parameter whose argument is `None` given a value of another type in
+not run for that call, and in a `try` whose clause would catch CPython's `TypeError`; a
+parameter whose argument is `None` given a value of another type in
 an if branch or loop, or bound as a `for` target; an alias (`f = g`) that module-level code
 uses before its assignment; `__all__` changed other than by `+=`, `append` and `extend`, for
 `import *`; `del` of another module's attribute; in an imported module, uncompiled code
@@ -745,7 +750,8 @@ variable), and `except*`; `except ... as x` in a function where `x` is a global 
 the clause deletes it, as `del` would), and at a module's top level where `x` is a global of
 another type that a function reads (the function would not see the exception); `==` between
 exceptions where an exception class defines `__eq__` or `__ne__` (`is` works), but between
-objects of classes with a base in common; an exception that may be `None` (`Exception | None`;
+objects of classes with a base in common; an exception that may be `None`
+(`Exception | None`, `ValueError | None`;
 an object of an exception class may be); an object of an exception class where a builtin
 exception is expected (`list[Exception]`: annotate it with the class or a base of the
 program), objects of exception classes with no base in common in the program in one list, and
@@ -1014,7 +1020,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1807 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1832 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes

@@ -1,0 +1,9 @@
+{1: 24, 0: 1}
+{1: 25, 0: 1}
+KeyError True KeyError(True)
+{(1, 'a'): 3}
+KeyError (True, 'b')
+one one True False
+zero zero True False
+None dflt False True
+[exit 0]
