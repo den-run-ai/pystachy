@@ -5816,6 +5816,9 @@ class Gen:
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
         self.nts: dict[str, bool] = {}  # the typing.NamedTuple classes: a dataclass whose fields cannot be assigned (see nt_class)
+        # "C.x": class attribute x of plain class C, which the program assigns through the class
+        # (C.x = v, cls.x += 1): a global that objects read until they assign x (see cvar_stores)
+        self.cvars: dict[str, bool] = {}
         self.typevars: list[str] = []  # module globals bound to typing.TypeVar(...), which only annotations may name
 
     # ---- emission helpers
@@ -7072,6 +7075,15 @@ class Gen:
     def getfield(self, o: Val, p: Val, name: str) -> Val:
         # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
         ci = self.classes[o.t]
+        if o.t + "." + name in self.cvars:
+            # a class variable: the object's own value once it has assigned one, else the class's
+            own = self.ins(f"load i1, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
+            fv = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+            self.class_default(ci, name)
+            r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
+            if is_opt(p.t):
+                self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+            return Val(r, p.t)
         if name in ci.fflag:
             f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
             self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
@@ -7910,6 +7922,8 @@ class Gen:
             self.store_name(t.s, v)
         elif k == "attr" and self.dotted(t) != "":
             self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
+        elif k == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
+            self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
         elif k == "attr":
             o = self.expr(t.kids[0], "")
             p = self.field(o, t.s, True)
@@ -8047,7 +8061,7 @@ class Gen:
             ci = self.classes[f.cls]
             me = Val("%a0", f.cls)
             for fl in ci.fields:
-                if fl in ci.fdefault:
+                if fl in ci.fdefault and f.cls + "." + fl not in self.cvars:  # (a class variable is read from the class)
                     t = ci.ftypes[fl]
                     if not is_const(ci.fdefault[fl]):
                         self.class_default(ci, fl)  # (compiled before the class statement runs)
@@ -8405,6 +8419,8 @@ class Gen:
             for f in ci.methods.values():
                 self.check_special(f)
         for m in mods:
+            self.cvar_stores(m.body.kids)
+        for m in mods:
             imps: list[str] = []
             all_imports(m.body.kids, imps)
             self.deps[m.name] = " ".join(imps)
@@ -8680,7 +8696,7 @@ class Gen:
                 self.fl_stmts(fl, init.node.kids[2].kids)
             fl.exposed()
         for f in ci.fields:
-            if f in fl.unsafe:
+            if f in fl.unsafe or ci.name + "." + f in self.cvars:  # (a class variable's: has the object its own value)
                 ci.fflag[f] = len(ci.fields) + len(ci.fflag)
 
     def fl_defaults(self, n: Node) -> list[Node]:
@@ -9148,11 +9164,12 @@ class Gen:
                 u = unopt(t)  # (a default of a T | None field that is not None is a T)
                 if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or self.unhashable(u) or (self.is_dc(u) and u not in self.nts)):
                     self.err(f"mutable default {u} for dataclass field '{fl}' is not allowed")
-                if not is_const(st.kids[2]) and fl in ci.fglob and ci.fglob[fl] in self.pending:
+                cv = ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
+                if (cv or not is_const(st.kids[2])) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                     # code compiled before this statement declared its global (class_default)
                     del self.pending[ci.fglob[fl]]
                     self.emit(f"store {lt(t)} {self.coerce(self.expr(st.kids[2], t), t).v}, ptr {ci.fglob[fl]}")
-                elif not is_const(st.kids[2]) and fl not in ci.fglob:
+                elif (cv or not is_const(st.kids[2])) and fl not in ci.fglob:
                     ci.fglob[fl] = self.hidden(f"@d.c.{ci.name}.{fl}", self.coerce(self.expr(st.kids[2], t), t))
             elif st.kind == "def":
                 f = ci.methods[st.s]
@@ -9666,6 +9683,10 @@ class Gen:
             self.store_name(t.s, self.inplace(op, cur, n.kids[1]))
         elif t.kind == "attr" and self.dotted(t) != "":
             self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
+        elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
+            # C.x op= v: the class variable's value, then the new one stored back
+            ci = self.cvar(t.kids[0], t.s)
+            self.class_store(ci, t.s, self.inplace(op, self.class_attr(t.kids[0], t.s), n.kids[1]))
         elif t.kind == "attr":
             o = self.expr(t.kids[0], "")
             p = self.field(o, t.s, False)
@@ -10142,7 +10163,7 @@ class Gen:
             return -1 if r == 1 else 0  # (unless it is None)
         if t in self.classes:
             ci = self.classes[t]
-            if a in ci.fflag:
+            if a in ci.fflag and t + "." + a not in self.cvars:
                 return -2
             if a in ci.methods or a in ci.ftypes:
                 return -1
@@ -10490,10 +10511,40 @@ class Gen:
         if a == "_fields":
             return self.tuple_([Val(self.sconst(x), "str") for x in ci.fields])
         t = ci.ftypes[a]
-        if is_const(ci.fdefault[a]):
+        if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:
             return self.coerce(self.expr(ci.fdefault[a], t), t)
         self.class_default(ci, a)
         return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+
+    def cvar_stores(self, ns: list[Node]) -> None:
+        # the class attributes the program assigns through their class (C.x = v, C.x += v; a class
+        # method's cls.x is C.x): those of a plain class become class variables (self.cvars), read
+        # from their global by C.x and by the objects that have not assigned x themselves
+        for n in ns:
+            ts: list[Node] = n.kids[:-1] if n.kind == "assign" else [n.kids[0]] if (n.kind == "augassign" or n.kind == "annassign") and len(n.kids) > 0 else []
+            while len(ts) > 0:
+                t = ts.pop()
+                if t.kind == "tuple":
+                    ts.extend(t.kids)
+                elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
+                    c = t.kids[0].s
+                    if not self.is_dc(c) and t.s in self.classes[c].fdefault:
+                        self.cvars[c + "." + t.s] = True
+            self.cvar_stores(n.kids)
+
+    def cvar(self, cn: Node, a: str) -> ClassInfo:
+        # the class that C.a = ... assigns a class variable of (see cvar_stores), checked
+        c = cn.s
+        if self.is_dc(c):
+            self.err(f"assigning to a class attribute of {'NamedTuple' if c in self.nts else 'dataclass'} {short(c)} ({short(c)}.{a} = ...) is not supported")
+        if c + "." + a not in self.cvars:
+            self.err(f"type object '{short(c)}' has no attribute '{a}': adding a class attribute by assigning it is not supported (declare it in the class body, {a}: T = ...)")
+        return self.class_ready(cn)
+
+    def class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
+        # C.a = v through the class: its class variable's global
+        self.class_default(ci, a)
+        self.emit(f"store {lt(ci.ftypes[a])} {self.coerce(v, ci.ftypes[a]).v}, ptr {ci.fglob[a]}")
 
     def no_class_attr(self, c: str, a: str) -> None:
         # C.a where class C binds no class attribute a: CPython's AttributeError, or why it is not supported
