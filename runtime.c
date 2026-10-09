@@ -2116,6 +2116,10 @@ I pys_system(Str *c) {
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
 I pys_getpid(void) { return getpid(); }
+void pys_setrecursionlimit(I n) {      /* recursion is limited only by the native stack: nothing to set */
+  if (n != (int32_t)n) pys_fail("OverflowError: Python int too large to convert to C int");
+  if (n < 1) pys_fail("ValueError: recursion limit must be greater or equal than 1");
+}
 Str *pys_platform(void) {              /* sys.platform */
 #if defined(__linux__)
   return cstr("linux");
