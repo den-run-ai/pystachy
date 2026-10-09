@@ -99,12 +99,18 @@ whole); every divergence they found is now fixed, rejected at compile time, or l
 Pystachy is Python with types made static and the dynamic machinery removed.
 
 **Types.** `int` (64-bit), `float` (IEEE double), `bool`, `str`, `list[T]`, `dict[K, V]`
-(keys `int` or `str`), `tuple[A, B, ...]` (up to 9 elements, indexed by integer
+(keys `int`, `str`, or tuples of `int`, `bool`, `str`, `str | None` and such tuples),
+`tuple[A, B, ...]` (up to 9 elements, indexed by integer
 constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[T, None]`)
 for a class type or for `str`, `list`, `dict` and `tuple` (wherever a type goes, inside
 containers too), and `None` as a return type. The `typing`
 spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
+`collections.abc` imports as `typing` does, and `Mapping[K, V]` and `MutableMapping[K, V]`
+(from either) are `dict[K, V]`, `Sequence[T]` and `MutableSequence[T]` are `list[T]`.
+`x: Final = v` is `x = v` (outside class bodies), `x: Final[T]` is `x: T`, and a `def`
+decorated with `@overload` (also a method) is the stub CPython replaces with the `def` after
+it: it is dropped.
 
 **Typing rules.**
 - A function whose parameters are annotated has those types; a missing return annotation
@@ -188,6 +194,10 @@ and string forward references work (also inside `list["Node"]`), as does `typing
 - Class fields come from class-body annotations or from `self.x = ...` in `__init__`,
   typed by annotation, parameter, literal, constructor, method or function call (not a call
   of a template, whose result type is known only once it is compiled: annotate the field).
+- A `typing.NamedTuple` class (annotated fields with defaults, a docstring, methods) is a
+  dataclass whose fields only its `__init__` assigns, read like a tuple of them: unpacking
+  (also as a `for` target), constant indexing, `len()`, `p._replace(f=v)`, `==`, and
+  ordering as the tuples of its fields; its `repr()` is a dataclass's.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
@@ -198,10 +208,10 @@ that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`,
 `del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass`, docstrings, `del` of a variable (later reads raise `NameError` or
+`class`, `@dataclass`, `class P(NamedTuple)`, docstrings, `del` of a variable (later reads raise `NameError` or
 `UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
-`sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `dataclasses`, `builtins`
-and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
+`sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `collections.abc`,
+`dataclasses`, `builtins` and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
 (`/`) parameters.
 
 **Modules.** `import NAME` finds the package `NAME/__init__.py` or the file `NAME.py` in the
@@ -437,7 +447,12 @@ template whose returns have different types (or `None` and an `int`, `float` or 
 `None` and an empty `[]` or `{}` that it does not fill), or that calls itself before a
 return statement decides its type (or, after a return of a `T`, before a return of `None`
 makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
-boxing), and dict key types that may be `None`; a value that may be `None` where CPython
+boxing), dict key types that may be `None`, and tuple keys holding other items (a `float`,
+a `list`, an object); `typing.ClassVar`, a bare `Final` in a class body, a NamedTuple without
+fields, assigned a field outside its `__init__`, iterated, compared with a plain tuple, or
+given to `isinstance(p, tuple)` or `hasattr()` of a name it does not define, and CPython's
+class-creation errors of a NamedTuple (a field after a default, an underscored field, an
+overwritten `__init__`); a value that may be `None` where CPython
 would pass it on and that is not narrowed (above), a `list[T]` or `dict[K, T]` passed or
 assigned where a `list[T | None]` or `dict[K, T | None]` is expected (as mypy does: the
 container could then be given a `None` that its other references do not expect), and an
@@ -550,7 +565,8 @@ exception.
   `pys_obj_eq/cmp/repr`, a switch the compiler emits over the classes that occur in
   containers, with small per-class helpers built from each class's `__eq__`, rich
   comparisons and `__repr__`. Dataclass `__repr__` (cycle-safe) and `__eq__` are written
-  by the compiler and generated only if used.
+  by the compiler and generated only if used, and so are a NamedTuple's; the generic repr
+  prints a list or dict that it meets again while printing it as `[...]` or `{...}`.
 - **Memory.** `runtime.c` includes a conservative, non-moving mark-and-sweep collector
   that needs nothing beyond the C library. Small objects come from 64 KiB chunks in 40
   size classes, carved from 1 MiB arenas; larger objects get blocks of their own. A
@@ -580,7 +596,9 @@ exception.
   so deletion is O(1) and a loop that changes its dict, `reversed(d)` included, sees what
   CPython's would. The index follows CPython's probe sequence (each step mixes in five more
   bits of the hash), over a hash that costs one multiply: one round of SplitMix64's mixer
-  for an int, FNV-1a with the high half folded into the low for a str. Keys that differ only
+  for an int, FNV-1a with the high half folded into the low for a str; a dict of tuple keys
+  holds their type descriptor, by which a key's hash mixes its items' hashes and keys compare
+  as `==` compares the tuples. Keys that differ only
   in their high bits (`i << 46`, which used to form one cluster) probe as random keys do; the
   price is about 2 ns per lookup in tables larger than the cache, whose second slot is in
   another cache line. Files wrap C stdio with CPython's open() rules: argument checks in its
@@ -625,7 +643,9 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
 in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
-dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, optional values and
+dicts (also keys that collide in the hash table, and tuple keys), tuples, classes,
+dataclasses, NamedTuples, typing's forms (`collections.abc`, `Final`, `@overload`),
+`Optional` structures, optional values and
 their narrowing (with CPython's error for each use of `None` where only a value works), rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
 loader decides at import time (`tests/loader/`), a program run through a symbolic link
@@ -634,7 +654,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
 streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1009 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1182 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
