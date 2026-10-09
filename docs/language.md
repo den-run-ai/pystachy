@@ -535,9 +535,10 @@ In these cases the program compiles but can behave differently from CPython:
   `__repr__` raises makes the call of the exception class (`raise KeyError(obj)`) raise that
   exception instead, so that an `except KeyError` does not run.
 - A function declared or inferred to return a value that ends without a `return` raises
-  `RuntimeError` there, where CPython returns `None` (a function declared to return
-  `T | None` for a `str`, `list`, `dict` or `tuple` T, and a template that returns objects or
-  `T | None`, return `None`, as CPython does).
+  `RuntimeError` there, where CPython returns `None`, also when it is declared to return
+  `C | None` for a class `C` (a dataclass or `NamedTuple` too). A function declared to return
+  `T | None` for an `int`, `float`, `bool`, `str`, `list`, `dict` or `tuple` T, and a template
+  that returns objects or `T | None`, return `None` there, as CPython does.
 - An optional value that is `None`, passed to a builtin method's parameter that has a
   default (`s.split(sep)`, `s.strip(chars)`), means the default, as an explicit `None` does,
   also where CPython raises `TypeError` (the fill character of `ljust()`, `rjust()` and
