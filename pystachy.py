@@ -5248,27 +5248,41 @@ METHODS: dict[str, str] = {
 }
 # the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7, and FX below): T ends
 # a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
-# summary (IFn.fx); a raw op is LLVM text that loads, stores or computes (never a call)
+# summary (IFn.fx); a raw op is LLVM text that loads, stores or computes (never a call), whose
+# letters its text gives (rawfx)
 IROPS: dict[str, str] = {
-    "raw": "rL rD wD rO wO rG wG", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
+    "raw": "*", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
+    "list.load": "rL",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
 LLNOTRAW: dict[str, bool] = {}
 for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split():
     LLNOTRAW[_k] = True
+# the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1), which
+# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+OPTS: list[str] = ["listget", "dictfuse"]
+# what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
+# self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
+# hold at once (7)
+CANON_DEPTH = 1000
+REACH = 256
+LOOKUPS = 32
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
 # parameter, holds a class); I does I/O, or uses the process or global runtime state; rL wL,
 # rD wD, rO wO, rG wG, rF wF read or write lists, dicts, objects' fields and flags, globals and
-# their flags, files. Strings and tuples are immutable, slots are never address-taken, and dict
-# keys are int or str (no user code): they need no letter. N is a property of one op: an effect
-# summary (IFn.fx) leaves it out. The end of the program (an error, an exit) flushes stdout and
-# closes the open files: R and N stand for that. A collection closes the open files nothing refers
-# to any more (and reports a failed close on stderr), which A stands for, not I, rF or wF: when a
-# dropped file is closed is unspecified (README: at a collection or at exit, not at once as in
-# CPython), so moving an A op may change it, as any change to the program's allocations does.
+# their flags, files. Strings and tuples are immutable, slots are never address-taken, dict keys
+# are ints, strs, or tuples of ints, bools, strs and None (key_problem), whose hash and == run no
+# user code, and what an operation writes into an object it makes itself
+# (list.copy, str.split, init's argument list) no other code has seen: they need no letter. N is
+# a property of one op: an effect summary (IFn.fx) leaves it out. The end of the program (an
+# error, an exit) flushes stdout and closes the open files: R and N stand for that. A collection
+# closes the open files nothing refers to any more (and reports a failed close on stderr), which
+# A stands for, not I, rF or wF: when a dropped file is closed is unspecified (README: at a
+# collection or at exit, not at once as in CPython), so moving an A op may change it, as any
+# change to the program's allocations does.
 FX: list[str] = "R N A U I rL wL rD wD rO wO rG wG rF wF".split()
 FXBIT: dict[str, int] = {}
 for _j in range(len(FX)):
@@ -5284,23 +5298,24 @@ RUNTIME: dict[str, str] = {
     "list.new": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
     "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
-    "list.copy": "S:S|A rL|", "list.clear": "None:S|wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
+    "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL rD U?|",
-    "list.index": "int:S,*T,#,int,int|R A rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
+    "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
     "list.sort_r": "None:S,#,bool|R A rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
     # dicts: keys are ints, strs, or tuples of int, bool, str, None and such tuples (Dict.kind 0, 1,
     # or the tuple's descriptor, passed as an int), which hash, compare and print (a KeyError's
-    # message) without user code
-    "dict.new": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD|", "dict.getitem": "*V:S,*K|R A rD|",
-    "dict.get": "*V:S,*K,*V|rD|", "dict.set": "None:S,*K,*V|A rD wD|", "dict.pop": "*V:S,*K|R A rD wD|",
-    "dict.pop_default": "*V:S,*K,*V|R A rD wD|", "dict.setdefault": "*V:S,*K,*V|A rD wD|", "dict.clear": "None:S|wD|",
-    "dict.getbox": "*V:S,*K,*V|A rD|", "dict.popbox": "*V:S,*K,*V|R A rD wD|",
+    # message) without user code; that repr is runtime.c's, which can reach pys_repr_enter: I
+    "dict.new": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD|", "dict.getitem": "*V:S,*K|R A I rD|",
+    "dict.get": "*V:S,*K,*V|rD|", "dict.set": "None:S,*K,*V|A rD wD|", "dict.pop": "*V:S,*K|R A I rD wD|",
+    "dict.pop_default": "*V:S,*K,*V|R A I rD wD|", "dict.setdefault": "*V:S,*K,*V|A rD wD|", "dict.clear": "None:S|wD|",
+    "dict.getbox": "*V:S,*K,*V|A rD|", "dict.popbox": "*V:S,*K,*V|R A I rD wD|",
     "dict.copy": "S:S|A rD|", "dict.from": "S:S|A rD|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
+    "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A I rD|", "dict.entry_set": "None:S,int,*V|rD wD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
@@ -5417,6 +5432,11 @@ def runtime_decl(k: str) -> str:
 
 # every effect letter but N (it is no summary's): U's, and a summary not computed yet
 FXALL = (1 << len(FX)) - 1 - FXBIT["N"]
+# what a raw op that loads or stores through an address other than a slot's, a global's or a
+# field's may read or write: a list's or a dict's header or items (or a tuple's items, which need
+# no letter); and an object's fields, for an address the IR does not show to be a field's
+RAWR = FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"]
+RAWW = FXBIT["wL"] | FXBIT["wD"] | FXBIT["wO"]
 
 
 def fxmask(letters: str) -> int:
@@ -5432,6 +5452,42 @@ def fxmask(letters: str) -> int:
 def fxs(m: int) -> str:
     # bits of effect letters as letters
     return " ".join([x for x in FX if m & FXBIT[x] != 0])
+
+
+def optimizations() -> dict[str, bool]:
+    # the optimizations to run (OPTS): every one but those PYSTACHY_OPT turns off ("-name",
+    # comma-separated; "-all": every one), as name -> True
+    on: dict[str, bool] = {}
+    for o in OPTS:
+        on[o] = True
+    for w in os.getenv("PYSTACHY_OPT", "").split(","):
+        w = w.strip()
+        if w == "-all":
+            on = {}
+        elif w.startswith("-") and w[1:] in OPTS:
+            if w[1:] in on:
+                on.pop(w[1:])
+        elif w != "":
+            fail(f"PYSTACHY_OPT: no optimization {w} (it takes {', '.join(['-' + o for o in OPTS])} or -all, comma-separated)", 0)
+    return on
+
+
+def rawfx(s: str, fa: dict[str, bool]) -> int:
+    # the effects (FX bits) of a raw op, whose LLVM text s loads, stores or computes: a load or a
+    # store of a slot (%name.N, an alloca, which is never address-taken) has none, of a global
+    # (@name) rG or wG, of an object's field or flag (an address in fa, IFn.fa) rO or wO; one
+    # through another address may read (RAWR) or write (RAWW) a list or a dict
+    st = s.startswith("store ")
+    if not st and not s.startswith("load ", s.find(" = ") + 3):
+        return 0
+    a = s.rfind(" ") + 1  # where the address is: the last word of "load T, ptr A" and "store T V, ptr A"
+    if s.startswith("@", a):
+        return FXBIT["wG"] if st else FXBIT["rG"]
+    if s.find(".", a) >= 0:
+        return 0  # (a temporary, %tN, has no dot)
+    if len(fa) > 0 and s[a:] in fa:
+        return FXBIT["wO"] if st else FXBIT["rO"]
+    return RAWW if st else RAWR
 
 
 class RtFn:
@@ -6135,7 +6191,9 @@ class Ins:
         # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
         # exception a raise raises; ovf's operator + - *
         self.s = s
-        self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1)
+        # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1), the
+        # number of the value a raw op defines (%tN; 0: none)
+        self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
         # is U when it holds a class (O<id>)
         self.x = ""
@@ -6161,6 +6219,10 @@ class Loop:
         self.step = step  # continue's target
         self.exit = brk  # break's target, after the else block
         self.seqs: list[Val] = []  # what a seq loop steps through
+        # a seq loop's test of each of seqs leads to a block (tests) where the item it takes is the
+        # one at idx (a list's or a str's index: 0 <= idx < its length when it was tested)
+        self.tests: list[str] = []
+        self.idx: list[str] = []
         self.ctr = ""  # the slot of its counter or index
         self.stop = Val("", "")  # a range loop's stop, evaluated once
 
@@ -6182,6 +6244,42 @@ class IFn:
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
+        self.fa: dict[str, bool] = {}  # the values that are addresses of an object's field or flag (Gen.fgep)
+
+
+class Lookup:
+    # a dict.has or dict.getitem (op, at position x of block blk of its IFn) of key k in dict d,
+    # given as their canonical values (Gen.canon): a getitem or a set of the same d and k after
+    # it may reuse the entry it finds (Gen.dictfuse)
+    def __init__(self, op: Ins, blk: int, x: int, d: str, k: str):
+        self.op = op
+        self.blk = blk
+        self.x = x  # its position in the block
+        self.d = d
+        self.k = k
+        self.e = 0  # the number of the entry's index (%tN), once an op reuses it
+
+
+class Values:
+    # which values of an IFn are equal (Gen.canon), for dictfuse: each value's canonical value
+    def __init__(self, fn: IFn, pl: dict[str, list[int]]):
+        self.fn = fn
+        self.pl = pl  # the blocks that branch to each block (Gen.preds)
+        # by the number of the value a raw op or an rt op defines: its block * 2^20 + its position
+        # there (-1 for the other numbers)
+        self.at: list[int] = [-1] * (fn.n + 1)
+        self.cn: dict[str, str] = {}  # value -> its canonical value, once asked
+        self.same: dict[str, str] = {}  # a computation's text, with canonical operands -> the first value of it
+        self.text: dict[str, str] = {}  # and that value -> the text
+        self.depth = 0  # how many calls of Gen.canon are under way (at most CANON_DEPTH)
+        for j in range(len(fn.blocks)):
+            code = fn.blocks[j].code
+            for x in range(len(code)):
+                i = code[x]
+                if i.op == "raw" and i.k > 0:
+                    self.at[i.k] = j * 1048576 + x
+                elif i.op == "rt" and len(i.r) == 1:
+                    self.at[i.r[0]] = j * 1048576 + x
 
 
 class Frame:
@@ -6382,7 +6480,7 @@ class Gen:
         # the runtime functions declared, by RUNTIME key, in the order of their first use (which
         # the program's declare lines keep)
         self.rtfns: dict[str, RtFn] = {}
-        self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but rt, call and init
+        self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but raw, rt, call and init
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []
@@ -6590,7 +6688,9 @@ class Gen:
 
     def ins(self, s: str) -> str:
         r = self.tmp()
-        self.emit(f"{r} = {s}")
+        i = Ins("raw", "", f"{r} = {s}")
+        i.k = self.n
+        self.add(i)
         return r
 
     def place(self, l: str) -> None:
@@ -7742,8 +7842,13 @@ class Gen:
             self.err(f"'{o.t}' object has no attribute '{name}'")
         extra = " and no __dict__ for setting new attributes" if store else ""
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
-        i = ci.fpos[name]
-        return Val(self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}"), ci.ftypes[name])
+        return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
+
+    def fgep(self, o: Val, i: int) -> str:
+        # the address of field or flag i of object o (IFn.fa holds it, for rawfx)
+        r = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}")
+        self.fn.fa[r] = True
+        return r
 
     def getfield(self, o: Val, p: Val, name: str) -> Val:
         # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
@@ -7758,7 +7863,7 @@ class Gen:
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             return Val(r, p.t)
         if name in ci.fflag:
-            f = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}")
+            f = self.fgep(o, ci.fflag[name])
             self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true"), f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
         r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
         if is_opt(p.t):
@@ -7770,7 +7875,7 @@ class Gen:
         self.emit(f"store {lt(p.t)} {self.coerce(v, p.t, what).v}, ptr {p.v}")
         ci = self.classes[o.t]
         if name in ci.fflag:
-            self.emit(f"store i1 true, ptr {self.ins(f'getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {ci.fflag[name]}')}")
+            self.emit(f"store i1 true, ptr {self.fgep(o, ci.fflag[name])}")
 
     # ---- variables
     def global_var(self, g: str, ty: str) -> None:
@@ -8931,6 +9036,14 @@ class Gen:
             o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
         elif op == "init":
             o.append(f"  call void @init.{i.s}()")
+        elif op == "list.load":
+            # the item of a list at an index within its length (listget): l->a[index], as runtime.c
+            # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
+            r = i.r
+            o.append(f"  %t{r[1]} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+            o.append(f"  %t{r[2]} = load ptr, ptr %t{r[1]}")
+            o.append(f"  %t{r[3]} = getelementptr inbounds i64, ptr %t{r[2]}, i64 {i.a[1].v}")
+            o.append(f"  %t{r[0]} = load i64, ptr %t{r[3]}")
         else:
             fail(f"internal error: no lowering for IR op {op}", 0)
 
@@ -9004,6 +9117,8 @@ class Gen:
         # how many numbers op i defines (%tN): what its lowering prints
         if i.op == "ovf":
             return 3
+        if i.op == "list.load":
+            return 4
         if i.op == "phi" or i.op == "select":
             return 1
         if i.op == "rt":
@@ -9019,20 +9134,19 @@ class Gen:
         # each function's effect summary (IFn.fx): the letters of its ops, where a call or an init
         # counts with its callee's summary; a fixpoint over the call graph, from no letters
         calls: list[list[int]] = []
-        raw = self.opfxs["raw"]
         for fn in self.fns:
             m = 0
             cs: list[int] = []
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "raw":
-                        m |= raw
+                        m |= rawfx(i.s, fn.fa)
                     elif i.op == "call" and i.s in self.fll:
                         cs.append(self.fll[i.s])
                     elif i.op == "init" and "@init." + i.s in self.fll:
                         cs.append(self.fll["@init." + i.s])
                     else:
-                        m |= self.opfx(i)
+                        m |= self.opfx(i, fn.fa)
             fn.fx = m & ~FXBIT["N"]
             calls.append(cs)
         more = True
@@ -9046,16 +9160,368 @@ class Gen:
                     self.fns[j].fx = m
                     more = True
 
-    def opfx(self, i: Ins) -> int:
-        # the effects of op i (FX bits): a call's and an init's are its callee's summary (IFn.fx:
-        # every letter until effects has computed it, and if the callee is not compiled)
+    def opfx(self, i: Ins, fa: dict[str, bool]) -> int:
+        # the effects of op i (FX bits) of a function whose field addresses are fa (IFn.fa): a
+        # call's and an init's are its callee's summary (IFn.fx: every letter until effects has
+        # computed it, and if the callee is not compiled), a raw op's what its text does (rawfx)
         if i.op == "call" or i.op == "init":
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else FXALL
         if i.op == "rt":
             f = self.rtfns[i.s]
             return FXALL if f.q and "O" in i.x else f.fx
+        if i.op == "raw":
+            return rawfx(i.s, fa)
         return self.opfxs[i.op]
+
+    # ---- optimizations (OPTS): passes over an IFn, once the program is built and its effect
+    # summaries computed, that rewrite ops into cheaper ones (docs/typed-ir.md 7.1)
+    def optimize(self, fn: IFn, on: dict[str, bool]) -> int:
+        # run the passes on fn that on turns on; how many ops they rewrote
+        n = 0
+        if "listget" in on:
+            n += self.listget(fn)
+        if "dictfuse" in on:
+            n += self.dictfuse(fn)
+        return n
+
+    def preds(self, fn: IFn) -> dict[str, list[int]]:
+        # the blocks that branch to each block of fn, by label, as positions in fn.blocks, once
+        # each (a check's raising edge aside: its cold block ends the program)
+        pl: dict[str, list[int]] = {}
+        for b in fn.blocks:
+            pl[b.label] = []
+        for j in range(len(fn.blocks)):
+            code = fn.blocks[j].code
+            for l in code[len(code) - 1].b:
+                if j not in pl[l]:
+                    pl[l].append(j)
+        return pl
+
+    def listget(self, fn: IFn) -> int:
+        # Unchecked list reads in sequence loops. The test a seq loop makes of a list leads to a
+        # block (Loop.tests) where the loop's index (Loop.idx) is within the list's length. A
+        # list.get of that list at that index, on the one path from there with no op between
+        # that may shorten a list (wL, or U: user code), needs no bounds check: it becomes a
+        # list.load, which lowers to an inline load. The path goes only to blocks that one
+        # branch leads to, so that no other path (from a handler, say) reaches the read. How
+        # many reads it rewrote
+        some = False
+        for lp in fn.loops:
+            for s in lp.seqs:
+                some = some or is_list(s.t)
+        if not some:
+            return 0
+        at: dict[str, int] = {}
+        for j in range(len(fn.blocks)):
+            at[fn.blocks[j].label] = j
+        pl = self.preds(fn)
+        bad = FXBIT["wL"] | FXBIT["U"]
+        n = 0
+        for lp in fn.loops:
+            for k in range(len(lp.tests) if lp.kind == "seq" else 0):
+                s = lp.seqs[k]
+                l = lp.tests[k] if is_list(s.t) else ""
+                steps = 0
+                while l != "" and steps < len(fn.blocks):
+                    steps += 1
+                    code = fn.blocks[at[l]].code
+                    l = ""
+                    for j in range(len(code)):
+                        i = code[j]
+                        if i.op == "rt" and i.s == "list.get" and i.a[0].v == s.v and i.a[1].v == lp.idx[k]:
+                            i.op = "list.load"
+                            i.s = ""
+                            i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]  # (the inline load's address arithmetic)
+                            fn.n += 3
+                            n += 1
+                            break
+                        if self.opfx(i, fn.fa) & bad != 0:
+                            break
+                        if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1:
+                            l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
+        return n
+
+    def dictfuse(self, fn: IFn) -> int:
+        # Dict lookup fusion. A dict.has or a dict.getitem of key k in dict d finds k's entry; a
+        # dict.getitem or a dict.set of the same d and k after it, where k is known to be in d,
+        # can reuse that entry while no dict changes: the has or getitem becomes a dict.find
+        # (the entry, or -1) or a dict.entry (the entry, or a KeyError), the getitem after it a
+        # dict.val (the entry's value) and the set a dict.entry_set (which moves no entry). k is
+        # in d after a getitem, and where the test of a has's result is true. A forward pass over
+        # the blocks in order keeps the lookups that hold at the end of each block (Lookup, by
+        # position in looks: True where k is known to be in d), from the blocks that branch to a
+        # block, and none from a later one (a loop's back edge); an op with wD or U, and a set
+        # that reuses no entry, ends them all. d and k must be the same values (canon). At most
+        # LOOKUPS hold at once (the oldest gives way), and a block's state is dropped once the
+        # last block it branches to has read it, so that the work and the memory grow linearly
+        # with the function. How many ops it rewrote
+        some = False
+        for b in fn.blocks:
+            for i in b.code:
+                some = some or (i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem"))
+        if not some:
+            return 0
+        pl = self.preds(fn)
+        vs = Values(fn, pl)
+        looks: list[Lookup] = []
+        has: dict[str, int] = {}  # a has's result -> its lookup
+        cond: dict[str, int] = {}  # a test of it (icmp ne/eq 0, and xor true of one) -> the lookup
+        pos: dict[str, bool] = {}  # and whether it is true where k is in d
+        # (a block shares the state it starts with, and copies it before it changes it: own)
+        none: dict[int, bool] = {}
+        outs: list[dict[int, bool]] = []
+        last = [-1] * len(fn.blocks)  # the last block after it that each block branches to
+        for j in range(len(fn.blocks)):
+            for p in pl[fn.blocks[j].label]:
+                if p < j:
+                    last[p] = j
+        bad = FXBIT["wD"] | FXBIT["U"]
+        n = 0
+        for j in range(len(fn.blocks)):
+            b = fn.blocks[j]
+            st = none
+            own = False
+            ps = pl[b.label]
+            back = False
+            for p in ps:
+                back = back or p >= j  # (a loop's back edge: none holds)
+            for x in range(len(ps) if not back else 0):
+                if x > 0 and len(st) == 0:
+                    break
+                # what holds on the branch from block ps[x]: a cbr on a has's test tells whether k is in d
+                e = outs[ps[x]]
+                t = fn.blocks[ps[x]].code[len(fn.blocks[ps[x]].code) - 1]
+                if t.op == "cbr" and t.b[0] != t.b[1] and t.a[0].v in cond and cond[t.a[0].v] in e:
+                    c = cond[t.a[0].v]
+                    e = e.copy()
+                    if (b.label == t.b[0]) == pos[t.a[0].v]:
+                        e[c] = True
+                    else:
+                        e.pop(c)
+                if x == 0:
+                    st = e
+                else:
+                    if not own:
+                        st = st.copy()
+                        own = True
+                    for c in [c for c in st]:
+                        if c not in e:
+                            st.pop(c)
+                        elif not e[c]:
+                            st[c] = False
+            for x in range(len(b.code)):
+                i = b.code[x]
+                if i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem" or i.s == "dict.set"):
+                    d = self.canon(vs, i.a[0].v)
+                    k = self.canon(vs, i.a[1].v)
+                    m = -1
+                    for c in st:
+                        if st[c] and looks[c].d == d and looks[c].k == k:
+                            m = c
+                    if m >= 0 and i.s != "dict.has":
+                        # reuse the entry lookup m found
+                        if looks[m].e == 0:
+                            fn.n += 1
+                            looks[m].e = fn.n
+                        ev = Val(f"%t{looks[m].e}", "int")
+                        if i.s == "dict.getitem":
+                            self.runtime("pys_dict_val")
+                            i.s = "dict.val"
+                            i.a = [i.a[0], ev]
+                        else:
+                            self.runtime("pys_dict_entry_set")
+                            i.s = "dict.entry_set"
+                            i.a = [i.a[0], ev, i.a[2]]
+                        n += 1
+                    elif i.s == "dict.set":
+                        st = none
+                        own = False
+                    else:
+                        if not own:
+                            st = st.copy()
+                            own = True
+                        if len(st) >= LOOKUPS:
+                            o = len(looks)
+                            for c in st:
+                                o = c if c < o else o
+                            st.pop(o)
+                        st[len(looks)] = i.s == "dict.getitem"
+                        if i.s == "dict.has":
+                            has[f"%t{i.r[0]}"] = len(looks)
+                        looks.append(Lookup(i, j, x, d, k))
+                elif i.op == "raw" and i.k > 0:
+                    # %c = icmp ne i64 %r, 0 of a has's result (k in d; eq: k not in d), %c = xor i1 %t, true of one (not)
+                    s = i.s
+                    o = s.find(" = ") + 3 if len(cond) + len(has) > 0 else 0
+                    if len(has) > 0 and s.endswith(", 0") and (s.startswith("icmp ne i64 ", o) or s.startswith("icmp eq i64 ", o)):
+                        r = s[o + 12 : len(s) - 3]
+                        if r in has:
+                            cond[f"%t{i.k}"] = has[r]
+                            pos[f"%t{i.k}"] = s.startswith("icmp ne ", o)
+                    elif len(cond) > 0 and s.endswith(", true") and s.startswith("xor i1 ", o):
+                        r = s[o + 7 : len(s) - 6]
+                        if r in cond:
+                            cond[f"%t{i.k}"] = cond[r]
+                            pos[f"%t{i.k}"] = not pos[r]
+                elif len(st) > 0 and self.opfx(i, vs.fn.fa) & bad != 0:
+                    st = none
+                    own = False
+            outs.append(st if last[j] > j else none)
+            for p in ps:
+                if p < j and last[p] == j:
+                    outs[p] = none
+        # the lookups whose entry an op reuses: a has becomes a find (and k in d is its entry + 1,
+        # which is not 0), a getitem an entry and a val; each adds one op to its block, before
+        # the next lookup of the block (shift: how many it has added)
+        blk = -1
+        shift = 0
+        for f in looks:
+            if f.e == 0:
+                continue
+            if f.blk != blk:
+                blk = f.blk
+                shift = 0
+            code = fn.blocks[f.blk].code
+            x = f.x + shift
+            shift += 1
+            i = f.op
+            if code[x] is not i:
+                self.bad_ir(fn, fn.blocks[f.blk], f"dictfuse lost the lookup of %t{f.e}")
+            if i.s == "dict.has":
+                self.runtime("pys_dict_find")
+                fi = Ins("rt", "int", "dict.find")
+                fi.a = [i.a[0], i.a[1]]
+                fi.r = [f.e]
+                code[x] = fi
+                ad = Ins("raw", "", f"%t{i.r[0]} = add i64 %t{f.e}, 1")
+                ad.k = i.r[0]
+                code.insert(x + 1, ad)
+            else:
+                self.runtime("pys_dict_entry")
+                en = Ins("rt", "int", "dict.entry")
+                en.a = [i.a[0], i.a[1]]
+                en.r = [f.e]
+                code.insert(x, en)
+                self.runtime("pys_dict_val")
+                i.s = "dict.val"
+                i.a = [i.a[0], Val(f"%t{f.e}", "int")]
+            n += 1
+        return n
+
+    def canon(self, vs: Values, v: str) -> str:
+        # the canonical value of value v (Values): ops with the same canonical value compute
+        # equal values (as long as no back edge comes between them). A raw op's load reads what
+        # the store or load of the same address that comes last before it, on the one path back,
+        # stored or read; another raw op, or an rt op that only computes (it may raise, but reads
+        # no memory but strings', allocates nothing and does no I/O), computes what the first op
+        # of its text, with canonical operands, computed; any other value is its own. It recurses
+        # once for each link of the chain of values it follows, so a value it reaches below
+        # CANON_DEPTH calls is its own (a long chain, of k = k ^ 1 in straight-line code, would
+        # overflow the native compiler's stack)
+        if v in vs.cn:
+            return vs.cn[v]
+        if vs.depth >= CANON_DEPTH:
+            vs.cn[v] = v
+            return v
+        vs.depth += 1
+        r = v
+        w = vs.at[int(v[2:])] if v.startswith("%t") and v[2:].isdigit() else -1
+        if w >= 0:
+            i = vs.fn.blocks[w // 1048576].code[w % 1048576]
+            if i.op == "rt":
+                if self.rtfns[i.s].fx & ~FXBIT["R"] == 0 and not self.rtfns[i.s].q:
+                    r = self.same(vs, v, f"rt {i.s} {', '.join([self.canon(vs, a.v) for a in i.a])}")
+            else:
+                s = i.s[i.s.find(" = ") + 3 :]
+                if s.startswith("load "):
+                    x = self.reaching(vs, self.addr(vs, s[s.rfind(" ") + 1 :]), w // 1048576, w % 1048576)
+                    if x != "":
+                        r = self.canon(vs, x)
+                else:
+                    # the text with each operand %tN canonical
+                    t: list[str] = []
+                    a = 0
+                    b = s.find("%t")
+                    while b >= 0:
+                        e = b + 2
+                        while e < len(s) and s[e].isdigit():
+                            e += 1
+                        t.append(s[a:b])
+                        t.append(self.canon(vs, s[b:e]) if e > b + 2 and (e == len(s) or s[e] == "," or s[e] == " ") else s[b:e])
+                        a = e
+                        b = s.find("%t", a)
+                    t.append(s[a:])
+                    r = self.same(vs, v, "".join(t))
+        vs.depth -= 1
+        vs.cn[v] = r
+        return r
+
+    def same(self, vs: Values, v: str, t: str) -> str:
+        # the first value of the computation t (Values.same): v, if it is the first
+        if t in vs.same:
+            return vs.same[t]
+        vs.same[t] = v
+        vs.text[v] = t
+        return v
+
+    def addr(self, vs: Values, a: str) -> str:
+        # the canonical address of address a: a slot (%name.N) and a global (@name) are their own
+        return self.canon(vs, a) if a.startswith("%t") and a[2:].isdigit() else a
+
+    def reaching(self, vs: Values, a: str, j: int, x: int) -> str:
+        # the value that the load at position x of block j reads from canonical address a: the
+        # value stored or read by the last store or load of a before it, on the one path back
+        # through blocks that a single branch leads to, or "" if an op between may write a's
+        # memory (a slot's: only a store to it; a global's: a store to it, or an op with wG;
+        # another's: a store that may alias it, or an op with wL wD wO), or no such op is found
+        # within REACH ops (each load would otherwise walk back over the whole function: a
+        # value that is not found is only its own canonical value)
+        slot = a.startswith("%") and "." in a
+        glob = a.startswith("@")
+        heap = not slot and not glob
+        end = " " + a  # (how a slot's or a global's load or store ends)
+        stop = FXBIT["wG"] if glob else RAWW
+        steps = 0
+        while True:
+            code = vs.fn.blocks[j].code
+            for y in range(x - 1, -1, -1):
+                steps += 1
+                if steps > REACH:
+                    return ""
+                i = code[y]
+                if i.op != "raw":
+                    if not slot and self.opfx(i, vs.fn.fa) & stop != 0:
+                        return ""
+                    continue
+                s = i.s
+                st = s.startswith("store ")
+                if not st and (i.k == 0 or not s.startswith("load ", s.find(" = ") + 3)):
+                    continue
+                if not heap:
+                    if s.endswith(end):
+                        return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"  # (store T V, ptr A)
+                    continue
+                p = s[s.rfind(" ") + 1 :]
+                q = self.addr(vs, p)
+                if q == a:
+                    return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"
+                if st and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
+                    return ""
+            ps = vs.pl[vs.fn.blocks[j].label]
+            if len(ps) != 1 or ps[0] >= j:
+                return ""
+            j = ps[0]
+            x = len(vs.fn.blocks[j].code)
+
+    def disjoint(self, vs: Values, a: str, b: str) -> bool:
+        # whether canonical addresses a and b are fields of different classes or at different
+        # indices (getelementptr %C.<class>, ptr <object>, i32 0, i32 <index>): never the same memory
+        ta = vs.text.get(a, "")
+        tb = vs.text.get(b, "")
+        if not ta.startswith("getelementptr %C.") or not tb.startswith("getelementptr %C."):
+            return False
+        return ta[: ta.find(",")] != tb[: tb.find(",")] or ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
 
     def class_problem(self, m: Mod, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
@@ -9493,16 +9959,26 @@ class Gen:
             fail("internal error: an op changed the lists all ops start with", 0)
         chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
         dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        on = optimizations()
         if chk:
             for fn in self.fns:
                 self.verify(fn)
-        if chk or dump:
-            # no pass reads the effect summaries yet: the IR check computes them, so that the
-            # tests run effects, and PYSTACHY_IRFX=1 prints them (tests/ir/*.fx pin them)
+        if len(on) > 0 or chk or dump:
+            # the passes read the effect summaries (the IR check computes them too, so that the
+            # tests run effects even with every pass off)
             self.effects()
+        if len(on) > 0:
+            changed = False
+            for fn in self.fns:
+                if self.optimize(fn, on) > 0:
+                    changed = True
+                    if chk:
+                        self.verify(fn)
+            if changed and dump:
+                self.effects()  # (what the passes left: tests/ir/*.fx pin them)
         if dump:
             for fn in self.fns:
-                print(f"{fn.f.ll}: {fxs(fn.fx)}", file=sys.stderr)
+                print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
         for fn in self.fns:
             self.lower(fn)
             # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
@@ -9510,6 +9986,7 @@ class Gen:
             fn.slots = []
             fn.loops = []
             fn.cold = {}
+            fn.fa = {}
         for op in ["eq", "cmp", "repr"]:
             self.dispatch(op)
         hdr: list[str] = ["; generated by pystachy"]
@@ -11016,6 +11493,8 @@ class Gen:
             self.cbr(ok, go, le)
             self.place(go)
             lp.body = go
+            lp.tests.append(go)
+            lp.idx.append(j)
             if is_dict(s.t):
                 self.emit(f"store i64 {nx}, ptr {st[k]}")
             at.append(j)
@@ -13035,7 +13514,7 @@ class Gen:
                 l2 = self.label()
                 self.cbr("true" if hv.v in self.nn else self.ins(f"icmp ne ptr {hv.v}, null"), l1, l2)
                 self.place(l1)
-                fv = self.ins(f"load i1, ptr {self.ins(f'getelementptr %C.{hv.t}, ptr {hv.v}, i32 0, i32 {self.classes[hv.t].fflag[args[1].s]}')}")
+                fv = self.ins(f"load i1, ptr {self.fgep(hv, self.classes[hv.t].fflag[args[1].s])}")
                 e1 = self.cur
                 self.br(l2)
                 self.place(l2)
@@ -13262,10 +13741,12 @@ class Gen:
         le = self.label()
         lp = Loop("seq", lc, lb, ls, le)
         lp.seqs = [v]
+        lp.tests = [lb]
         lp.ctr = ctr
         self.fn.loops.append(lp)
         self.place(lc)
         i = self.ins(f"load i64, ptr {ctr}")
+        lp.idx = [i]
         self.cbr(self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {v.v}')}"), lb, le)
         self.place(lb)
         c = self.truth(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))

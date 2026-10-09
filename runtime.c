@@ -1595,6 +1595,13 @@ static _Noreturn void keyerr(Dict *d, I k) {
 static I entry(Dict *d, I k) { I i = dfind(d, k, hsh(d, k), 0); return i < 0 ? -1 : d->idx[i] - 1; }
 I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
 I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
+/* one lookup where a has or a getitem of a key comes before a getitem or a set of it, and no
+   dict changes between (the compiler's dictfuse): k's entry, or -1 (find) or a KeyError (entry);
+   pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
+   which moves no entry */
+I pys_dict_find(Dict *d, I k) { return entry(d, k); }
+I pys_dict_entry(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return e; }
+void pys_dict_entry_set(Dict *d, I e, I v) { d->vals[e] = v; }
 I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : d->vals[e]; }
 void pys_dict_set(Dict *d, I k, I v) {
   uint64_t h = hsh(d, k); I f = -1, i = dfind(d, k, h, &f);

@@ -446,8 +446,9 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   `UnicodeEncodeError`; its `repr()`, `ascii()` and `ord()` match CPython's.
 - `dict.keys()`, `.values()` and `.items()` return list snapshots, so `enumerate()`, `zip()`
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
-  `d.items()` steps the dict itself and does), and they print as lists and compare equal to
-  lists.
+  `d.items()` steps the dict itself and does), and neither do `in`, `min()` and `max()` over
+  `d.values()` when an `__eq__` or `__lt__` of the values changes the dict, where CPython
+  raises `RuntimeError`; they print as lists and compare equal to lists.
 - A type error that CPython raises only when the code runs (`<` between dicts, a constant
   index outside a tuple) is a compile-time error, so the output before it is not printed.
 - A runtime error prints only the last line of CPython's traceback (without `NameError`'s
@@ -819,7 +820,11 @@ in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHEC
 compiler then checks the IR it built before lowering it (every op is known, each block ends
 with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
 defines the numbers its lowering prints, branches go to blocks of the function, and a phi's
-predecessors branch to it). The programs cover arithmetic and overflow edges,
+predecessors branch to it). The optimizations that run on the IR before it is lowered
+(`docs/typed-ir.md` §7.1) can be turned off for a differential run: `PYSTACHY_OPT=-listget`
+(a for loop's reads of the list it steps through, without a bounds check) or `-dictfuse` (one
+hash lookup for `if k in d: d[k] += 1` and the like), comma-separated, or `-all`; the tests
+pass with each one off. The programs cover arithmetic and overflow edges,
 strings (also their Unicode whitespace), escapes and f-strings, a 400-case sample of the
 format-spec language, lists, dicts (also keys that collide in the hash table, and tuple keys), tuples, classes
 (also their container protocol, static and class methods, and class variables), dataclasses, NamedTuples, typing's forms (`collections.abc`, `Final`, `@overload`, `TypeVar`,
@@ -833,7 +838,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1590 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1600 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes
@@ -842,6 +847,8 @@ versions, platform, git commit and a timestamp:
 
 - **bootstrap** — stage1, stage2 and stage3 emit identical IR;
 - **tests-cpython / tests-native** — the differential tests with each compiler, JIT and AOT;
+- **tests-opt-off** — the differential tests with the native compiler and each optimization
+  on the IR turned off (`PYSTACHY_OPT=-listget`, `-dictfuse`), then all of them;
 - **python-free** — `PATH` holds only the LLVM tools, the system linker and a few POSIX
   tools (`python3` is checked to be unreachable); the native compiler rebuilds its runtime
   and itself, reproduces the IR and passes the tests;
@@ -854,7 +861,8 @@ versions, platform, git commit and a timestamp:
   entry's declaration has the types clang compiles the function to, every runtime function
   the compiler names has an entry, and an entry's effect letters are known ones and include
   what the function's C call graph shows (it may raise, allocate, call user code, read the
-  lists and dicts of a value it walks by its descriptor, or never return);
+  lists and dicts of a value it walks by its descriptor, read or write the list, dict or file
+  it is passed, use the runtime's state or the C library's I/O, or never return);
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
   (`PYSTACHY_GC_STRESS=1`);
@@ -865,9 +873,10 @@ versions, platform, git commit and a timestamp:
   sequential keys as the control, at 4k to 30k keys, and fails above 3 slots per lookup: the
   counts are the same on every machine, so no timing is compared with a threshold;
 - **scaling** — `tools/scaling.py --check` compiles generated programs of 500 and 1,000
-  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
-  comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
-  items its builtin calls copy or scan, must grow no faster than the programs.
+  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s,
+  comprehensions, links of a dict key's chain of values, dict lookups and global dicts with
+  both compilers; the lines the CPython-hosted compiler executes, and the items its builtin
+  calls copy or scan, must grow no faster than the programs.
 
 `tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both
 compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviations/*.py`,
@@ -878,9 +887,11 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; a program
 that does not compile fails it, as an internal error and a rejected IR do, and so do effect
 summaries of a `tests/ir/NAME.py` other than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1`
-prints them). `tests/ir/*.py` probe code-generation paths the other programs never take (dead
-code after `return`, templates instantiated during a look-ahead, nested templates, guards
-repeated in one function): these two tools compile them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
+prints them), and runtime calls other than its `NAME.calls` lists (for each function, the
+`pys_` functions it calls). `tests/ir/*.py` probe code-generation paths the other programs
+never take (dead code after `return`, templates instantiated during a look-ahead, nested
+templates, guards repeated in one function): these two tools compile them, but they never
+run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
 need only POSIX sh, run in `PYSTACHY_JOBS` workers, and take a few seconds.
 
 `tools/syntax_sweep.py` compares the syntax errors `pystachy check` reports with CPython's
@@ -924,11 +935,13 @@ earlier merge sort. The native compiler translates itself to LLVM IR in 0.11 s, 
   instructions whose control flow, checks, calls, runtime calls and empty-container holes are
   ops, and the LLVM text is printed from them once the whole program is built
   (`PYSTACHY_IRCHECK=1` checks the IR first). A `RUNTIME` table gives every runtime function
-  its signature and effects, from which each function gets an effect summary (computed when
-  `PYSTACHY_IRCHECK=1` or `PYSTACHY_IRFX=1`, until a pass needs it). Loads, stores
-  and arithmetic are still LLVM text; converting them, then a second lowering, would allow
-  language-level optimizations (redundant dict lookups, bounds-check hoisting) and further
-  backends.
+  its signature and effects, from which each function gets an effect summary. The first
+  language-level optimizations read them (§7.1): a for loop reads the items of a list it
+  steps through without a bounds check, and a dict lookup that a membership test or a read
+  of the same key made is reused (`if k in d: d[k] += 1` hashes `k` once; a dict-counting
+  benchmark, `bench/dictcount.py`, runs in 0.11 s instead of 0.16 s AOT). Loads, stores and
+  arithmetic are still LLVM text; converting them, then a second lowering, would allow more
+  of them (None checks, bounds-check hoisting) and further backends.
 - **A WebAssembly GC backend**, Ouro v2's design: the engine supplies memory management
   and tiered compilation, and the runtime can be written in the subset itself.
 - Exception handling via LLVM `invoke`/landing pads, single inheritance with vtables, and

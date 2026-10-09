@@ -6,8 +6,11 @@
 # compiles the tests/ir probes; so is an internal error (such as the IR check's), or an IR that llvm-as
 # rejects: each failure is listed with the first lines of its message. A tests/ir/NAME.py with a
 # NAME.fx is compiled with PYSTACHY_IRFX=1, which prints each function's effect summary: they must be
-# the ones NAME.fx lists. The programs run from the repository root in PYSTACHY_JOBS workers (default:
-# one per CPU). Exit status 0 only if every program compiled and passed its checks.
+# the ones NAME.fx lists. One with a NAME.calls must call the runtime functions it lists: for each
+# function its IR defines, the pys_ functions it calls, in the order of its text. Both are compiled
+# with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The programs run from
+# the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit status 0 only if every
+# program compiled and passed its checks.
 # usage: tools/check_ir.sh [COMPILER [FILE...]]   (default: ./pystachy and the corpus; make check-ir,
 #        or make check-ir FILES=tests/ir/pending/NAME.py for a probe outside the corpus)
 cd "$(dirname "$0")/.." || exit 1
@@ -28,15 +31,23 @@ rm -rf "$T"; mkdir -p "$T" || exit 1
 trap 'rm -rf "$T"' EXIT
 trap 'exit 130' INT TERM
 
+# calls IR: each function IR defines, and the runtime functions (pys_*) it calls in the order of its text
+calls() {
+  awk '/^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f); c = "" }
+    /^  .*call [^@]*@pys_/ { s = $0; sub(/^.*call [^@]*@/, "", s); sub(/\(.*/, "", s); c = c " " s }
+    /^}/ && f != "" { print f ":" c; f = "" }' "$1"
+}
 # check FILE DIR: DIR/result is ok, skip (does not compile), internal (an internal error, such as the
-# IR check's), fx (other effect summaries than FILE's .fx lists) or bad (llvm-as rejects the IR);
-# DIR/msg says why
+# IR check's), fx (other effect summaries than FILE's .fx lists), calls (other runtime calls than its
+# .calls lists) or bad (llvm-as rejects the IR); DIR/msg says why
 check() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
   fx=; [ -f "${1%.py}.fx" ] && fx=1
-  if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx $PYS ir "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
+  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] && opt=
+  if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS ir "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
+  elif [ -f "${1%.py}.calls" ] && ! calls "$2/ir.ll" | diff "${1%.py}.calls" - > "$2/calls" 2>&1; then r=calls; mv "$2/calls" "$2/msg"
   elif "${LLVM}llvm-as" -o /dev/null < "$2/ir.ll" > "$2/msg" 2>&1; then r=ok
   else r=bad; fi
   rm -f "$2/ir.ll"
@@ -65,6 +76,7 @@ for f; do
     skip) skip=$((skip + 1)); echo "FAIL $f: does not compile"; head -3 "$T/$n/msg" ;;
     internal) bad=$((bad + 1)); echo "INTERNAL ERROR $f"; head -5 "$T/$n/msg" ;;
     fx) bad=$((bad + 1)); echo "OTHER EFFECTS $f (than ${f%.py}.fx lists)"; head -10 "$T/$n/msg" ;;
+    calls) bad=$((bad + 1)); echo "OTHER CALLS $f (than ${f%.py}.calls lists)"; head -10 "$T/$n/msg" ;;
     bad) bad=$((bad + 1)); echo "REJECTED $f (by llvm-as)"; head -5 "$T/$n/msg" ;;
     *) bad=$((bad + 1)); echo "FAIL $f: no result (its worker died)" ;;
   esac

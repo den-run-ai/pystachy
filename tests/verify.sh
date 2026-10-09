@@ -5,6 +5,8 @@
 #   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR
 #   tests-cpython  tests/run.sh with the CPython-hosted compiler, JIT and AOT
 #   tests-native   tests/run.sh with the stage-2 native compiler, JIT and AOT
+#   tests-opt-off  tests/run.sh with the stage-2 compiler and each optimization on the IR turned off
+#                  (PYSTACHY_OPT=-<name> for each name of OPTS in pystachy.py), then all of them (-all)
 #   python-free    PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools that the
 #                  driver and tests/run.sh call (no python3): the native compiler rebuilds its runtime
 #                  and itself, reproduces the same IR and passes the tests
@@ -96,6 +98,14 @@ L=$V/tests-native.log; s=$(now)
 tests/run.sh "$V/pystachy2" > "$L" 2>&1
 x=$(tests "$L") && r=pass || r=fail
 step tests-native $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"]'"$x"
+L=$V/tests-opt-off.log; s=$(now); logs=""; offs=""
+for o in $(sed -n 's/^OPTS: list\[str\] = \[\(.*\)\]$/\1/p' pystachy.py | tr -d '",') all; do
+  PYSTACHY_OPT=-$o tests/run.sh "$V/pystachy2" > "$V/tests-opt-off-$o.log" 2>&1
+  logs="$logs $V/tests-opt-off-$o.log"; offs="$offs, \"-$o\""
+done
+for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
+x=$(tests $logs) && r=pass || r=fail
+step tests-opt-off $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"']'"$x"
 
 # ---- python-free: the native compiler and the tests with only LLVM + POSIX tools on PATH
 L=$V/python-free.log; s=$(now); r=fail; py=true

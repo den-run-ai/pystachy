@@ -39,17 +39,26 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
 >     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
 >     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
->     U and I. `IFn.fx` holds each function's summary: every letter until `Gen.effects`
->     computes it, once the program is built (`Gen.opfx` gives one op's letters). No pass reads
->     the summaries yet, so only `PYSTACHY_IRCHECK=1` computes them, and `PYSTACHY_IRFX=1`, which
->     prints them (`fxs` spells them): `tests/ir/effects.fx` lists those of the `effects.py` probe, and
+>     U and I. A raw op's letters are what its text shows (`rawfx`): none for a slot's load or
+>     store (an alloca is never address-taken), rG or wG for a global's, rO or wO for an object's
+>     field or flag (an address from `getelementptr %C.<class>`, `Gen.fields`), and rL rD rO or
+>     wL wD wO through any other address (a list's or a dict's header, or a new tuple's items,
+>     which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
+>     computes it, once the program is built (`Gen.opfx` gives one op's letters). The passes of
+>     §7.1 read the summaries, and so do `PYSTACHY_IRCHECK=1` and `PYSTACHY_IRFX=1`, which
+>     prints them (`fxs` spells them) as the passes left them: `tests/ir/effects.fx` lists those of the `effects.py` probe, and
 >     `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
 >     add values or blocks; the verifier checks that no number or label is above it;
 >   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
 >     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
 >     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
 >     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
->     descriptor) against runtime.c's call graph; `Gen.rtfns` holds one `RtFn` (symbol, signature,
+>     descriptor) against runtime.c's call graph, rL wL, rD wD and rF wF against the loads and
+>     stores through a list, dict or file parameter (clang -O1, following addresses through
+>     loads, getelementptr, phis, locals and callees' parameters), and I against the runtime's
+>     mutable statics and the C library functions it calls, outside the end of the program and
+>     the allocator (so an entry whose letters are at most R, which `canon` merges, reads
+>     nothing but its arguments); `Gen.rtfns` holds one `RtFn` (symbol, signature,
 >     LLVM types, declare line, effects) per runtime function declared, in the order of first use,
 >     and replaces R2's `decls`: the header prints their declare lines;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
@@ -78,6 +87,66 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
 >     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
 >     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
+>
+> - The optimizations of §7.1 are passes over each `IFn` (`OPTS`), which `Gen.program` runs once
+>   the effect summaries are computed, before lowering; `PYSTACHY_OPT=-name` turns one off for a
+>   differential run (comma-separated; `-all` turns off every one), and the tests pass with each
+>   off. `tools/check_ir.sh` checks a `tests/ir/NAME.calls`, the runtime functions each function
+>   of the probe calls, as lowered with every pass on.
+>   - `listget` (item 1): `for_seq` and `anyall` record in `Loop.tests` the block that each
+>     sequence's test leads to, and in `Loop.idx` the index of the item read there. From that
+>     block, the pass follows the one path through blocks that a single branch leads to (so that
+>     no other path, from a handler either, joins it) to the `list.get` of the list at that
+>     index, and stops at an op with wL or U. It makes the read a `list.load` op (letters rL),
+>     which lowers to the inline load of `l->a[i]` (three more numbers, from `IFn.n`). Every
+>     loop over a list qualifies: 376 of the 1,823 `pys_list_get` calls of the self-compile,
+>     and 262 more in 88 other programs of the corpus. `tests/ir/listget.py` pins it.
+>   - `dictfuse` (item 2): a `dict.has` or a `dict.getitem` finds a key's entry, which a later
+>     `dict.getitem` or `dict.set` of the same dict and key reuses where the key is known to be
+>     there: after a getitem, or on the branch where the has's test is true (the pass reads the
+>     raw `icmp ne`/`eq i64 %r, 0` of its result, and an `xor i1 %c, true` of that). A forward
+>     pass over the blocks in order keeps the lookups (`Lookup`) that hold at the end of each
+>     block; the blocks that branch to a block meet by intersection, a later one (a loop's back
+>     edge) brings none, and an op with wD or U, or a set that reuses no entry, ends them all
+>     (a reused entry's set moves no entry, as `pys_dict_set` overwrites). `Gen.canon` (with
+>     `Values`) finds equal dicts and keys: a raw load reads what the last store or load of the
+>     same slot, global or field wrote or read, on the path back through blocks that one branch
+>     leads to (fields of different classes or indices never alias); a raw computation, and an
+>     `rt` op that only computes (no letter but R), equals the first of the same text with
+>     canonical operands. The has becomes `dict.find` (the entry or -1; the has's number is then
+>     the raw `add %e, 1`), a reused getitem `dict.entry` (the entry, or CPython's KeyError) and
+>     `dict.val`, and the ops that reuse an entry `dict.val` (the loops' `pys_dict_val`, which
+>     serves as §7.1's `dict.entry_val`) and `dict.entry_set`. In the self-compile it rewrites
+>     73 of the 496 `pys_dict_has` calls, 91 of the 327 `pys_dict_getitem` and 2 of the 766
+>     `pys_dict_set`; in 7 other programs of the corpus, 14 has, 32 getitem and 21 set.
+>     `tests/ir/dictfuse.py` pins it, and where it does not apply: `if k not in d: d[k] = []`
+>     before `d[k].append(x)` (the set inserts, so no entry is known after the join), and a
+>     call that may change a dict. `d[k] = d.get(k, 0) + 1` (bench/words.py) is not fused.
+>     Its work is bounded: `canon` recurses once for each value of the chain it follows, so a
+>     value it reaches `CANON_DEPTH` (1,000) calls deep is its own canonical value (4,000 lines of
+>     `k = k ^ 1 ^ ... ^ 10` overflowed the native compiler's stack; the self-compile's deepest
+>     chain is 18). `reaching` walks back over at most `REACH` (256) ops, so that a load it does
+>     not find is its own (85 in the self-compile; the first loads of 12,000 globals, each after
+>     the last, took 4.3 s); the next load of the same address finds that one. At most `LOOKUPS`
+>     (32) lookups hold at once, the oldest giving way (the self-compile holds at most 7), and a
+>     block's state is dropped once the last block it branches to has read it: 12,000 reads of
+>     other keys in one function took 5.9 s and 3.6 GB. `tools/scaling.py` has the shapes
+>     (`chain`, `gdicts`, `lookups`).
+>   - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
+>     field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
+>     passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with
+>     `PYSTACHY_OPT=-all`, under callgrind).
+>   - Merged with the typed IR's optional values, NamedTuples, tuple keys and class protocol,
+>     the passes run unchanged over what those compile to: a tuple key is a value like an int or
+>     a str (its hash and `==` run no user code, so the dict entries stay without U), a
+>     NamedTuple's fields are an object's (rO wO), a boxed number is read through a pointer, and
+>     a container dunder (`__contains__`, `__getitem__`, `__iter__`, `__len__`) is a `call` with
+>     its callee's summary, never a dict or list op. The types work's repr can reach
+>     `pys_repr_enter`, so the entries whose error message holds the repr of a key or a value
+>     (`dict.getitem`, `dict.entry`, `dict.pop`, `dict.pop_default`, `dict.popbox`, `list.index`,
+>     `list.index_as`) have I. In the self-compile of the merge, listget rewrites 504 of the
+>     2,446 `pys_list_get` calls, and dictfuse 80 of the 728 `pys_dict_has`, 117 of the 444
+>     `pys_dict_getitem` and 3 of the 873 `pys_dict_set`.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -517,15 +586,16 @@ RUNTIME: dict[str, str] = {
 **What has no letter:**
 - Reading strings and tuples, which are immutable once built.
 - Loads and stores of slots, which are never address-taken.
-- Dict operations never call user code, because keys are only `int` or `str`.
+- Dict operations never call user code, because keys are only `int`, `str`, or tuples of `int`, `bool`, `str` and `str | None` items and such tuples (`key_problem` rejects any other key type, a NamedTuple or a tuple holding objects among them), whose hash and `==` runtime.c computes by the key's descriptor without user code. Keys of another type whose hash or `==` may run user code (a tuple holding objects) would need U? on the dict entries, and `tools/check_runtime.py` would have to drop them from `NO_USER`, its list of entries that reach user code only through comparing a key (`eqv`) or a `KeyError`'s repr of a key. That repr can reach `pys_repr_enter` (the guard of a recursive repr), so an entry that may raise a `KeyError` or a `ValueError` naming the value (`dict.getitem`, `dict.entry`, `dict.pop`, `list.index`) has I.
+- Writing an object the operation itself makes: `list.copy` and `str.split` fill new lists, and `init` (`pys_init`) the argument list, before any user code runs, so none has wL.
 
 **Rules that follow from the letters:**
 - An R op must not move across an I or a U op, because every error flushes stdout and exits.
 - A list length read is invalidated by any wL or U op. `for_seq` re-reads the length each round, because the loop body may change the list.
 
 **Summaries and checks.**
-- Each `IFn` gets a summary: the union of its ops' letters, where a call counts with its callee's summary. A callee that is unfinished or recursive counts as all letters.
-- Because lowering runs after the whole program has been built, a fixpoint over the call graph gives exact summaries.
+- Each `IFn` gets a summary: the union of its ops' letters, where a call or an `init` counts with its callee's summary.
+- Because lowering runs after the whole program has been built, every callee is complete when the summaries are computed, and the least fixpoint over the call graph, from no letters, gives exact summaries, recursion included (`Gen.effects`). Until it runs, every summary is all letters but N, and so is a call of a callee that is not compiled.
 - While the migration lasts, `rt` checks that each call site's declaration matches its `RUNTIME` entry, so the corpus verifies the table.
 - `tools/check_runtime.py` checks the table against the prototypes in `runtime.c`.
 
@@ -1089,13 +1159,16 @@ Each optimization is a behavioural step after step 14. Each is a function over a
 1. **Unchecked list reads in sequence loops.**
    - The pattern: a `list.get` at the loop's index, after the loop's own `cmp.i < len`, with no wL or U op between them.
    - Such a read lowers to an inline load.
-   - Measured: 223 of the 1,083 `pys_list_get` calls in the self-compile.
+   - Measured: 223 of the 1,083 `pys_list_get` calls in the self-compile (369 of 1,767 when it
+     landed).
 2. **Dict lookup fusion.**
    - The pattern: `dict.has`, then `dict.getitem` and/or `dict.set`, on the same dict and key, with no wD or U op between them.
    - Rewrite: one `dict.find`, which returns an entry index or -1, followed by `dict.entry_val` and `dict.entry_set`. These are three new runtime functions.
    - Writing an existing entry never moves entries.
    - `if k in d: d[k] += 1` drops from three hash lookups to one.
    - LLVM cannot do this: the calls are opaque, and stores lie between them.
+   - Measured when it landed: 73 of the 496 `pys_dict_has` calls of the self-compile, and 91
+     of its 327 `pys_dict_getitem`; `bench/dictcount.py` runs in 0.11 s instead of 0.16 s AOT.
 3. **None-check elimination.**
    - A forward dataflow over blocks tracks "this slot or value is not None". The facts come from `check`, `new`, `self`, and the true edge of `isnull`.
    - Joins intersect the facts. A store of a value that may be None kills them, and so does the head of a loop that stores the slot.
@@ -1119,6 +1192,7 @@ The README's next steps mention `invoke` and landing pads. This design proposes 
 - **Changes to the IR.**
   - `check`, `raise`, R-effect `rt` ops and `call` change only in their lowering.
   - Cold blocks are pooled per handler and message.
+  - The passes of §7.1 leave out a check's raising edge (`Gen.preds`: its cold block ends the program). Once an R op or a check can lead to a handler, that edge counts: `dictfuse` must meet, at the handler, the lookups that hold at the raising op (not at the end of its block), and `listget`'s path from a loop's test must not be joined by it.
   - `with` becomes a cleanup region.
   - `accel_try`'s import fallback (#4 §1 D and E) becomes a real handler around `init` calls.
 
