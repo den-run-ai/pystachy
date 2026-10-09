@@ -1,0 +1,153 @@
+'' ==
+  eq 1 1 3 3
+  eq 2 2 3 3
+  eq 3 3 3 3
+True [E1, E2, E3] [E1, E2, E3]
+'' !=
+  eq 1 1 3 3
+  eq 2 2 3 3
+  eq 3 3 3 3
+False
+'clear ys' ==
+  eq 1 1 3 3
+False [E1, E2, E3] []
+'clear ys' !=
+  eq 1 1 3 3
+True
+'clear both' ==
+  eq 1 1 3 3
+True [] []
+'clear both' !=
+  eq 1 1 3 3
+False
+'pop ys' ==
+  eq 1 1 3 3
+  eq 2 2 3 2
+False [E1, E2, E3] [E1, E2]
+'pop ys' !=
+  eq 1 1 3 3
+  eq 2 2 3 2
+True
+'grow xs' ==
+  eq 1 1 3 3
+  eq 2 2 9 3
+  eq 3 3 9 3
+False [E1, E2, E3, E100, E101, E102, E103, E104, E105] [E1, E2, E3]
+'grow xs' !=
+  eq 1 1 3 3
+  eq 2 2 9 3
+  eq 3 3 9 3
+True
+'grow ys' ==
+  eq 1 1 3 3
+  eq 2 2 3 9
+  eq 3 3 3 9
+False [E1, E2, E3] [E1, E2, E3, E100, E101, E102, E103, E104, E105]
+'grow ys' !=
+  eq 1 1 3 3
+  eq 2 2 3 9
+  eq 3 3 3 9
+True
+'grow both' ==
+  eq 1 1 3 3
+  eq 2 2 4 4
+  eq 3 3 4 4
+  eq 5 5 4 4
+True [E1, E2, E3, E5] [E1, E2, E3, E5]
+'grow both' !=
+  eq 1 1 3 3
+  eq 2 2 4 4
+  eq 3 3 4 4
+  eq 5 5 4 4
+False
+'clear ys' <
+  eq 1 1 2 2
+False [E1, E2] []
+'clear both' <
+  eq 1 1 2 2
+False [] []
+'pop ys' <
+  eq 1 1 2 2
+False [E1, E2] [E1]
+'grow xs' <
+  eq 1 1 2 2
+  eq 2 2 8 2
+False [E1, E2, E100, E101, E102, E103, E104, E105] [E1, E2]
+'grow ys' <
+  eq 1 1 2 2
+  eq 2 2 2 8
+True [E1, E2] [E1, E2, E100, E101, E102, E103, E104, E105]
+'replace' <
+  eq 1 1 2 2
+  lt 1 0 2 2
+False [E1, E2] [E0, E2]
+'clear ys' <=
+  eq 1 1 2 2
+False [E1, E2] []
+'clear both' <=
+  eq 1 1 2 2
+True [] []
+'pop ys' <=
+  eq 1 1 2 2
+False [E1, E2] [E1]
+'grow xs' <=
+  eq 1 1 2 2
+  eq 2 2 8 2
+False [E1, E2, E100, E101, E102, E103, E104, E105] [E1, E2]
+'grow ys' <=
+  eq 1 1 2 2
+  eq 2 2 2 8
+True [E1, E2] [E1, E2, E100, E101, E102, E103, E104, E105]
+'replace' <=
+  eq 1 1 2 2
+  le 1 0 2 2
+False [E1, E2] [E0, E2]
+'clear ys' >
+  eq 1 1 2 2
+True [E1, E2] []
+'clear both' >
+  eq 1 1 2 2
+False [] []
+'pop ys' >
+  eq 1 1 2 2
+True [E1, E2] [E1]
+'grow xs' >
+  eq 1 1 2 2
+  eq 2 2 8 2
+True [E1, E2, E100, E101, E102, E103, E104, E105] [E1, E2]
+'grow ys' >
+  eq 1 1 2 2
+  eq 2 2 2 8
+False [E1, E2] [E1, E2, E100, E101, E102, E103, E104, E105]
+'replace' >
+  eq 1 1 2 2
+  gt 1 0 2 2
+True [E1, E2] [E0, E2]
+'clear ys' >=
+  eq 1 1 2 2
+True [E1, E2] []
+'clear both' >=
+  eq 1 1 2 2
+True [] []
+'pop ys' >=
+  eq 1 1 2 2
+True [E1, E2] [E1]
+'grow xs' >=
+  eq 1 1 2 2
+  eq 2 2 8 2
+True [E1, E2, E100, E101, E102, E103, E104, E105] [E1, E2]
+'grow ys' >=
+  eq 1 1 2 2
+  eq 2 2 2 8
+False [E1, E2] [E1, E2, E100, E101, E102, E103, E104, E105]
+'replace' >=
+  eq 1 1 2 2
+  ge 1 0 2 2
+True [E1, E2] [E0, E2]
+  eq 1 1 2 2
+nested False 2 0
+  eq 1 1 2 2
+nested < False True
+  eq 1 1 2 2
+tuple False False
+[exit 0]

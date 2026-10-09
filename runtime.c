@@ -841,11 +841,12 @@ static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'f': return dbl(a) == dbl(b);
   case 's': return pys_str_eq((Str *)a, (Str *)b);
-  case 'L': {
-    List *x = (List *)a, *y = (List *)b;
+  case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
+                   lengths at every step, and once a list has no item left, compare them */
+    List *x = (List *)a, *y = (List *)b; I i = 0;
     if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++) if (!eqv(x->a[i], y->a[i], d + 1)) return 0;
-    return 1;
+    while (i < x->len && i < y->len && eqv(x->a[i], y->a[i], d + 1)) i++;
+    return (i >= x->len || i >= y->len) && x->len == y->len;
   }
   case 'D': {
     Dict *x = (Dict *)a, *y = (Dict *)b; const char *dv = skip(d + 1);
@@ -968,7 +969,7 @@ I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++)
 void pys_list_remove(List *l, I v, Str *d) {
   I i = pys_list_find(l, v, d);
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
-  pys_list_pop(l, i);
+  if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
 }
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
 void pys_list_reverse(List *l) { rev(l->a, l->len); }
@@ -1171,10 +1172,10 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
   l->len = n; l->cap = cap; l->a = a;
 }
 void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
-I pys_list_minmax(List *l, Str *d, I max) {
+I pys_list_minmax(List *l, Str *d, I max) {   /* keeps the item it compared, whatever the comparison did to l */
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
   I m = l->a[0];
-  for (I i = 1; i < l->len; i++) if (opv(l->a[i], m, d->s, max ? 2 : 0)) m = l->a[i];   /* item > max / item < min */
+  for (I i = 1; i < l->len; i++) { I v = l->a[i]; if (opv(v, m, d->s, max ? 2 : 0)) m = v; }   /* item > max / item < min */
   return m;
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
