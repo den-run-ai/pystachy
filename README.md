@@ -158,7 +158,7 @@ augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honour
 `if`/`elif`/`else`, `while`, `for` (both with `else`) over `range`, lists, strings, dicts,
 files, tuples of one item type, `.items()`/`.keys()`/`.values()`, `enumerate` (with `start`), `zip` and
 `reversed` (also of a `range`), stepping each sequence as its CPython iterator does (a dict
-that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`, `global`,
+that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass` (and `...`), `global`,
 `del` of a list item or a dict key, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `try` (below), `raise` of an exception class, a call of one or an
 exception, a bare `raise` and `raise ... from ...` (if nothing catches it, it ends the program

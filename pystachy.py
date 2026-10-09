@@ -9677,8 +9677,8 @@ class Gen:
         self.line = n.line
         k = n.kind
         if k == "expr":
-            if n.kids[0].kind != "str":
-                self.expr(n.kids[0], "")
+            if n.kids[0].kind != "str" and n.kids[0].kind != "ellipsis":
+                self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
         elif k == "assign":
             val = n.kids[-1]
             t0 = n.kids[0]
