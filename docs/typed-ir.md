@@ -30,9 +30,9 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     store (an alloca is never address-taken), rG or wG for a global's, and rL rD rO or wL wD wO
 >     through any other address, where the text does not tell a field from a list's or a dict's
 >     header (or a new tuple's items, which need no letter). `IFn.fx` holds each function's summary: every letter until `Gen.effects`
->     computes it, once the program is built (`Gen.opfx` gives one op's letters). No pass reads
->     the summaries yet, so only `PYSTACHY_IRCHECK=1` computes them, and `PYSTACHY_IRFX=1`, which
->     prints them (`fxs` spells them): `tests/ir/effects.fx` lists those of the `effects.py` probe, and
+>     computes it, once the program is built (`Gen.opfx` gives one op's letters). The passes of
+>     §7.1 read the summaries, and so do `PYSTACHY_IRCHECK=1` and `PYSTACHY_IRFX=1`, which
+>     prints them (`fxs` spells them) as the passes left them: `tests/ir/effects.fx` lists those of the `effects.py` probe, and
 >     `make check-ir` compares them. `IFn.n` is the last number its builder gave, for passes that
 >     add values or blocks; the verifier checks that no number or label is above it;
 >   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
@@ -68,6 +68,20 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     With that, the native self-compile's live heap at its last collection is 21.1 MiB (17.0
 >     before the IR; 40.8 while the IR was kept to the end), its peak 78.2 MiB (70.7 for the
 >     reference compiler on the same source), and its time 1.12 to 1.16 times the reference's.
+>
+> - The optimizations of §7.1 are passes over each `IFn` (`OPTS`), which `Gen.program` runs once
+>   the effect summaries are computed, before lowering; `PYSTACHY_OPT=-name` turns one off for a
+>   differential run (comma-separated; `-all` turns off every one), and the tests pass with each
+>   off. `tools/check_ir.sh` checks a `tests/ir/NAME.calls`, the runtime functions each function
+>   of the probe calls, as lowered with every pass on.
+>   - `listget` (item 1): `for_seq` and `anyall` record in `Loop.tests` the block that each
+>     sequence's test leads to, and in `Loop.idx` the index of the item read there. From that
+>     block, the pass follows the one path through blocks that a single branch leads to (so that
+>     no other path, from a handler either, joins it) to the `list.get` of the list at that
+>     index, and stops at an op with wL or U. It makes the read a `list.load` op (letters rL),
+>     which lowers to the inline load of `l->a[i]` (three more numbers, from `IFn.n`). Every
+>     loop over a list qualifies: 369 of the 1,767 `pys_list_get` calls of the self-compile,
+>     and 254 more in 86 other programs of the corpus. `tests/ir/listget.py` pins it.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -1079,7 +1093,8 @@ Each optimization is a behavioural step after step 14. Each is a function over a
 1. **Unchecked list reads in sequence loops.**
    - The pattern: a `list.get` at the loop's index, after the loop's own `cmp.i < len`, with no wL or U op between them.
    - Such a read lowers to an inline load.
-   - Measured: 223 of the 1,083 `pys_list_get` calls in the self-compile.
+   - Measured: 223 of the 1,083 `pys_list_get` calls in the self-compile (369 of 1,767 when it
+     landed).
 2. **Dict lookup fusion.**
    - The pattern: `dict.has`, then `dict.getitem` and/or `dict.set`, on the same dict and key, with no wD or U op between them.
    - Rewrite: one `dict.find`, which returns an entry index or -1, followed by `dict.entry_val` and `dict.entry_set`. These are three new runtime functions.

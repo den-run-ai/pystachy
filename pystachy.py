@@ -4594,11 +4594,15 @@ METHODS: dict[str, str] = {
 IROPS: dict[str, str] = {
     "raw": "*", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
+    "list.load": "rL",
 }
 # the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
 LLNOTRAW: dict[str, bool] = {}
 for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split():
     LLNOTRAW[_k] = True
+# the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1), which
+# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+OPTS: list[str] = ["listget"]
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -4773,6 +4777,24 @@ def fxmask(letters: str) -> int:
 def fxs(m: int) -> str:
     # bits of effect letters as letters
     return " ".join([x for x in FX if m & FXBIT[x] != 0])
+
+
+def optimizations() -> dict[str, bool]:
+    # the optimizations to run (OPTS): every one but those PYSTACHY_OPT turns off ("-name",
+    # comma-separated; "-all": every one), as name -> True
+    on: dict[str, bool] = {}
+    for o in OPTS:
+        on[o] = True
+    for w in os.getenv("PYSTACHY_OPT", "").split(","):
+        w = w.strip()
+        if w == "-all":
+            on = {}
+        elif w.startswith("-") and w[1:] in OPTS:
+            if w[1:] in on:
+                on.pop(w[1:])
+        elif w != "":
+            fail(f"PYSTACHY_OPT: no optimization {w} (it takes {', '.join(['-' + o for o in OPTS])} or -all, comma-separated)", 0)
+    return on
 
 
 def rawfx(s: str) -> int:
@@ -5327,6 +5349,10 @@ class Loop:
         self.step = step  # continue's target
         self.exit = brk  # break's target, after the else block
         self.seqs: list[Val] = []  # what a seq loop steps through
+        # a seq loop's test of each of seqs leads to a block (tests) where the item it takes is the
+        # one at idx (a list's or a str's index: 0 <= idx < its length when it was tested)
+        self.tests: list[str] = []
+        self.idx: list[str] = []
         self.ctr = ""  # the slot of its counter or index
         self.stop = Val("", "")  # a range loop's stop, evaluated once
 
@@ -7309,6 +7335,14 @@ class Gen:
             o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
         elif op == "init":
             o.append(f"  call void @init.{i.s}()")
+        elif op == "list.load":
+            # the item of a list at an index within its length (listget): l->a[index], as runtime.c
+            # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
+            r = i.r
+            o.append(f"  %t{r[1]} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+            o.append(f"  %t{r[2]} = load ptr, ptr %t{r[1]}")
+            o.append(f"  %t{r[3]} = getelementptr inbounds i64, ptr %t{r[2]}, i64 {i.a[1].v}")
+            o.append(f"  %t{r[0]} = load i64, ptr %t{r[3]}")
         else:
             fail(f"internal error: no lowering for IR op {op}", 0)
 
@@ -7382,6 +7416,8 @@ class Gen:
         # how many numbers op i defines (%tN): what its lowering prints
         if i.op == "ovf":
             return 3
+        if i.op == "list.load":
+            return 4
         if i.op == "phi" or i.op == "select":
             return 1
         if i.op == "rt":
@@ -7436,6 +7472,65 @@ class Gen:
         if i.op == "raw":
             return rawfx(i.s)
         return self.opfxs[i.op]
+
+    # ---- optimizations (OPTS): passes over an IFn, once the program is built and its effect
+    # summaries computed, that rewrite ops into cheaper ones (docs/typed-ir.md 7.1)
+    def optimize(self, fn: IFn, on: dict[str, bool]) -> int:
+        # run the passes on fn that on turns on; how many ops they rewrote
+        n = 0
+        if "listget" in on:
+            n += self.listget(fn)
+        return n
+
+    def preds(self, fn: IFn) -> dict[str, int]:
+        # how many branches lead to each block of fn, by label (a check's raising edge aside: its
+        # cold block ends the program)
+        np: dict[str, int] = {}
+        for b in fn.blocks:
+            np[b.label] = 0
+        for b in fn.blocks:
+            i = b.code[len(b.code) - 1]
+            for l in i.b:
+                np[l] += 1
+        return np
+
+    def listget(self, fn: IFn) -> int:
+        # Unchecked list reads in sequence loops. The test a seq loop makes of a list leads to a
+        # block (Loop.tests) where the loop's index (Loop.idx) is within the list's length. A
+        # list.get of that list at that index, on the one path from there with no op between
+        # that may shorten a list (wL, or U: user code), needs no bounds check: it becomes a
+        # list.load, which lowers to an inline load. The path goes only to blocks that one
+        # branch leads to, so that no other path (from a handler, say) reaches the read. How
+        # many reads it rewrote
+        at: dict[str, int] = {}
+        for j in range(len(fn.blocks)):
+            at[fn.blocks[j].label] = j
+        np = self.preds(fn)
+        bad = FXBIT["wL"] | FXBIT["U"]
+        n = 0
+        for lp in fn.loops:
+            for k in range(len(lp.tests) if lp.kind == "seq" else 0):
+                s = lp.seqs[k]
+                l = lp.tests[k] if is_list(s.t) else ""
+                steps = 0
+                while l != "" and steps < len(fn.blocks):
+                    steps += 1
+                    code = fn.blocks[at[l]].code
+                    l = ""
+                    for j in range(len(code)):
+                        i = code[j]
+                        if i.op == "rt" and i.s == "list.get" and i.a[0].v == s.v and i.a[1].v == lp.idx[k]:
+                            i.op = "list.load"
+                            i.s = ""
+                            i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]  # (the inline load's address arithmetic)
+                            fn.n += 3
+                            n += 1
+                            break
+                        if self.opfx(i) & bad != 0:
+                            break
+                        if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and np[i.b[0]] == 1:
+                            l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
+        return n
 
     def class_problem(self, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
@@ -7632,13 +7727,23 @@ class Gen:
             fail("internal error: an op changed the lists all ops start with", 0)
         chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
         dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        on = optimizations()
         if chk:
             for fn in self.fns:
                 self.verify(fn)
-        if chk or dump:
-            # no pass reads the effect summaries yet: the IR check computes them, so that the
-            # tests run effects, and PYSTACHY_IRFX=1 prints them (tests/ir/*.fx pin them)
+        if len(on) > 0 or chk or dump:
+            # the passes read the effect summaries (the IR check computes them too, so that the
+            # tests run effects even with every pass off)
             self.effects()
+        if len(on) > 0:
+            changed = False
+            for fn in self.fns:
+                if self.optimize(fn, on) > 0:
+                    changed = True
+                    if chk:
+                        self.verify(fn)
+            if changed and dump:
+                self.effects()  # (what the passes left: tests/ir/*.fx pin them)
         if dump:
             for fn in self.fns:
                 print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
@@ -8949,6 +9054,8 @@ class Gen:
             self.cbr(ok, go, le)
             self.place(go)
             lp.body = go
+            lp.tests.append(go)
+            lp.idx.append(j)
             if is_dict(s.t):
                 self.emit(f"store i64 {nx}, ptr {st[k]}")
             at.append(j)
@@ -10346,10 +10453,12 @@ class Gen:
         le = self.label()
         lp = Loop("seq", lc, lb, ls, le)
         lp.seqs = [v]
+        lp.tests = [lb]
         lp.ctr = ctr
         self.fn.loops.append(lp)
         self.place(lc)
         i = self.ins(f"load i64, ptr {ctr}")
+        lp.idx = [i]
         self.cbr(self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {v.v}')}"), lb, le)
         self.place(lb)
         c = self.truth(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))

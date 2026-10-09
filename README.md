@@ -560,7 +560,9 @@ in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHEC
 compiler then checks the IR it built before lowering it (every op is known, each block ends
 with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
 defines the numbers its lowering prints, branches go to blocks of the function, and a phi's
-predecessors branch to it). The programs cover arithmetic and overflow edges,
+predecessors branch to it). The optimizations that run on the IR before it is lowered
+(`docs/typed-ir.md` §7.1) can be turned off for a differential run: `PYSTACHY_OPT=-listget`
+(comma-separated names, or `-all`); the tests pass with each one off. The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
@@ -614,7 +616,8 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 `./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
 every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; an internal
 error fails it as a rejected IR does, and so do effect summaries of a `tests/ir/NAME.py` other
-than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1` prints them). `tests/ir/*.py` probe code-generation
+than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1` prints them), and runtime calls other than
+its `NAME.calls` lists (for each function, the `pys_` functions it calls). `tests/ir/*.py` probe code-generation
 paths the other programs never take (dead code after `return`, templates instantiated during
 a look-ahead, nested templates, guards repeated in one function): these two tools compile
 them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
