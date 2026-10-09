@@ -1,0 +1,20 @@
+16877 True False False False False False False False False False 493 16384
+False False 448 40 5
+33188 False True False False False False False False False False 420 32768
+False False 384 32 4
+41471 False False True False False False False False False False 511 40960
+False False 448 56 7
+8576 False False False True False False False False False False 384 8192
+False False 384 0 0
+4516 False False False False True False False False False False 420 4096
+False False 384 32 4
+49645 False False False False False True False False False False 493 49152
+False False 448 40 5
+25008 False False False False False False True False False False 432 24576
+False False 384 48 0
+35309 False True False False False False False False False False 2541 32768
+True False 448 40 5
+17407 True False False False False False False False False False 1023 16384
+False True 448 56 7
+448 32768 4294901760 1073741824 2 8 0
+[exit 0]

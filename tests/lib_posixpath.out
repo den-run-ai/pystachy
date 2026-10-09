@@ -1,0 +1,35 @@
+'/usr/lib/python3.13/os.py' /usr/lib/python3.13/os.py True ('/usr/lib/python3.13', 'os.py') ('/usr/lib/python3.13/os', '.py') ('', '/usr/lib/python3.13/os.py')
+    ('', '/', 'usr/lib/python3.13/os.py') os.py /usr/lib/python3.13 /usr/lib/python3.13/os.py
+'relative/dir/' relative/dir/ False ('relative/dir', '') ('relative/dir/', '') ('', 'relative/dir/')
+    ('', '', 'relative/dir/')  relative/dir relative/dir
+''  False ('', '') ('', '') ('', '')
+    ('', '', '')   .
+'/' / True ('/', '') ('/', '') ('', '/')
+    ('', '/', '')  / /
+'//' // True ('//', '') ('//', '') ('', '//')
+    ('', '//', '')  // //
+'///x//y/' ///x//y/ True ('///x//y', '') ('///x//y/', '') ('', '///x//y/')
+    ('', '/', '//x//y/')  ///x//y /x/y
+'a/./b/../c' a/./b/../c False ('a/./b/..', 'c') ('a/./b/../c', '') ('', 'a/./b/../c')
+    ('', '', 'a/./b/../c') c a/./b/.. a/c
+'../../up' ../../up False ('../..', 'up') ('../../up', '') ('', '../../up')
+    ('', '', '../../up') up ../.. ../../up
+'file.tar.gz' file.tar.gz False ('', 'file.tar.gz') ('file.tar', '.gz') ('', 'file.tar.gz')
+    ('', '', 'file.tar.gz') file.tar.gz  file.tar.gz
+'.hidden' .hidden False ('', '.hidden') ('.hidden', '') ('', '.hidden')
+    ('', '', '.hidden') .hidden  .hidden
+'..' .. False ('', '..') ('..', '') ('', '..')
+    ('', '', '..') ..  ..
+'.' . False ('', '.') ('.', '') ('', '.')
+    ('', '', '.') .  .
+'/a/b/.../c' /a/b/.../c True ('/a/b/...', 'c') ('/a/b/.../c', '') ('', '/a/b/.../c')
+    ('', '/', 'a/b/.../c') c /a/b/... /a/b/.../c
+'no_ext' no_ext False ('', 'no_ext') ('no_ext', '') ('', 'no_ext')
+    ('', '', 'no_ext') no_ext  no_ext
+'dir.d/file' dir.d/file False ('dir.d', 'file') ('dir.d/file', '') ('', 'dir.d/file')
+    ('', '', 'dir.d/file') file dir.d dir.d/file
+'C:\\\\win\\\\path' C:\\win\\path False ('', 'C:\\\\win\\\\path') ('C:\\\\win\\\\path', '') ('', 'C:\\\\win\\\\path')
+    ('', '', 'C:\\\\win\\\\path') C:\\win\\path  C:\\win\\path
+/ . .. . : /bin:/usr/bin /dev/null None
+False 42
+[exit 0]
