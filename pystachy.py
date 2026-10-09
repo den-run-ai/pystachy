@@ -5071,6 +5071,7 @@ for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hasha
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 OPTTYPES = "class types, str, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template"
+STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
 for _k in "annotations division absolute_import print_function generators nested_scopes with_statement unicode_literals generator_stop".split():
@@ -7159,7 +7160,7 @@ class Gen:
                     out.append(st)  # (an imported module's, which CPython calls: an error where it is used, see declare_fn)
                     continue
                 if j == len(body) or body[j].kind != "def":
-                    self.err(f"an @overload stub of '{short(st.s)}' must be followed by the def that implements it (calling a stub raises NotImplementedError)")
+                    self.err(STUB.replace("NAME", short(st.s)))
                 for p in st.kids[0].kids:
                     if p.kids[1].kind != "ellipsis" and not is_const(p.kids[1]):
                         self.err("a default of an @overload stub that is not a constant (or ...) is not supported (CPython evaluates it where the def runs)")
@@ -7333,6 +7334,7 @@ class Gen:
                 deco = x.s
         if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
             f.deco = deco  # (a method that takes no self, or its class as cls)
+        stub = self.imported(deco) == "typing.overload"  # (an imported module's that no def follows: see typing_forms)
         deco = short(deco)
         if deco != "" and f.deco == "" and not self.lib:
             # (CPython applies a decorator when the def runs, called or not: see decorators())
@@ -7403,6 +7405,7 @@ class Gen:
             f.npos = f.vararg
         if len(d.kids) > 3 and f.deco == "":
             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
+            bad = STUB.replace("NAME", short(d.s)) if stub else bad
         if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@{f.deco} on the special method {d.s} is not supported"
         if f.deco == "classmethod" and bad == "" and ps[0].kind == "param":
