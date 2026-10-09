@@ -2075,15 +2075,20 @@ class Loader:
                 self.qexpr(m, n.kids[0], loc)
         elif k == "listcomp":
             # [element for target in iterable if condition]: the target's names are the comprehension's
+            # (added to loc while the rest is qualified, not to a copy: loc has all of a function's locals)
             self.qexpr(m, n.kids[2], loc)
-            inner = dict(loc)
             names: list[str] = []
             names_in(n.kids[1], names)
+            added: list[str] = []
             for nm in names:
-                inner[nm] = True
+                if nm not in loc:
+                    loc[nm] = True
+                    added.append(nm)
             for i in range(len(n.kids)):
                 if i != 2:
-                    self.qexpr(m, n.kids[i], inner)
+                    self.qexpr(m, n.kids[i], loc)
+            for nm in added:
+                del loc[nm]
         else:
             for kid in n.kids:
                 self.qexpr(m, kid, loc)
