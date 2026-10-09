@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <unwind.h>
 
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
@@ -108,6 +109,7 @@ static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
 static Exc *xcur, *xhandled;           /* the exception raised last; the one being handled (see exceptions) */
+static int eh;                         /* raises go to pys_throw: the program has a try (see exceptions) */
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
@@ -313,14 +315,11 @@ static void gc_init(char *sb, I **roots, I nroots) {
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
-   CPython reports it, with status 120. Under a try (a handler record on the chain) they are
-   raised instead, and end the program only if nothing catches them; so they are when unwind
-   actions are registered, which run first (see exceptions). */
+   CPython reports it, with status 120. In a program that has a try (pys_eh_on) they are
+   raised instead, and end the program the same way if nothing catches them (see exceptions). */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
 static _Noreturn void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
-typedef struct Handler Handler;
-static Handler *top;                   /* the innermost handler record (see exceptions) */
 _Noreturn void pys_throw(Exc *e);
 Exc *pys_exc_new(Str *kind, Str *msg, Str *args);
 static Exc *exc_line(const char *m);
@@ -329,11 +328,11 @@ void pys_unwind_push(void (*fn)(void *), void *arg);
 void pys_unwind_pop(void);
 _Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
-  if (top || nunw) pys_throw(exc_line(m));
+  if (eh) pys_throw(exc_line(m));
   out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1);
 }
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
-  if (top || nunw) pys_throw(pys_exc_new(kind, msg, 0));
+  if (eh) pys_throw(pys_exc_new(kind, msg, 0));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
@@ -342,9 +341,9 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
   pys_finish();
   exit(1);
 }
-_Noreturn void pys_exit(I c) { if (top || nunw) pys_throw(exc_exit(c, 0)); pys_finish(); exit((int)c); }
+_Noreturn void pys_exit(I c) { if (eh) pys_throw(exc_exit(c, 0)); pys_finish(); exit((int)c); }
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
-  if (top || nunw) pys_throw(exc_exit(0, msg));
+  if (eh) pys_throw(exc_exit(0, msg));
   out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
@@ -955,12 +954,15 @@ Str *pys_default_repr(Str *cls, void *p) {
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
 }
 static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
+static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
   if (nbusy == cbusy) { cbusy = cbusy * 2 + 8; busy = realloc(busy, cbusy * sizeof(void *)); if (!busy) pys_fail("MemoryError"); }
-  busy[nbusy++] = p; return 1;
+  busy[nbusy++] = p;
+  if (eh) pys_unwind_push(unbusy, p);  /* a raise that leaves the __repr__ ends it too */
+  return 1;
 }
-void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
+void pys_repr_leave(void *p) { unbusy(p); if (eh) pys_unwind_pop(); }
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
@@ -1362,7 +1364,7 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
            .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
-  if (top && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
+  if (eh && n > 1 && (ms.kind == OBJ || !ms.kind)) {   /* a comparison may raise into a try */
     Undo *u = ms.u = pys_alloc(sizeof(Undo));
     u->l = l; u->a = a; u->n = n; u->cap = cap; u->rev = reverse != 0;
     pys_unwind_push(sort_undo, u);
@@ -2218,54 +2220,63 @@ Str *pys_platform(void) {              /* sys.platform */
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
 
-/* ---------- exceptions: a chain of handler records (setjmp/longjmp) ----------
-   A try statement pushes a handler record, which lives in its function's frame, on the chain
-   and calls _setjmp on it. A raise under a try (pys_fail, pys_raise, sys.exit, pys_throw)
-   notes the exception, restores the runtime state the innermost record saved, runs the unwind
-   actions registered since it was pushed, pops it and longjmps to it, where the landing reads
-   the exception (pys_exc_cur); with an empty chain the actions run and the exception is
-   reported as before, CPython's last traceback line and exit status. Code outside a try pays
-   nothing, a try one push, _setjmp and pop. Compiled code allocates the record as alloca
-   [512 x i8], align 16, and passes it to _setjmp as it is (jb comes first), declared and
-   called returns_twice; locals stored under a try and read after a longjmp are volatile. A
-   user exception object's first field points to its class's ExcClass, a constant compiled
-   code emits per class. The exception being handled (a bare raise's, CPython's exc_info) is
-   set by a handler when it starts and restored on every way out of it: a record saves it
-   when pushed and a raise restores it. Not catchable: an allocation that fails (oom), a
-   Ctrl-C (kbint_exit) and a stack overflow.
-   What a longjmp out of the runtime would leave half done is restored from the record (the
-   I/O layer's busy count, which defers a Ctrl-C, and the stack of objects whose generated
-   __repr__ runs, which nests) or undone by an unwind action: a with statement's file is
-   closed as its __exit__ would (a close that fails raises instead), and a list being sorted
-   gets its items back (list.sort). The rest raises before it changes anything (list and
-   dict operations; open() closes the file it opened first), builds new objects that become
-   garbage (strings, containers, formatting) or never raises (the collector and its closing
-   of unreachable files). */
-typedef struct ExcClass {
+/* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
+   A program that has a try calls pys_eh_on when it starts. From then on a raise (pys_fail,
+   pys_raise, sys.exit, pys_throw) makes an Exc, which begins with the unwinder's header,
+   notes it (a root of the collector) and calls _Unwind_RaiseException. Its search phase asks
+   pys_personality, the personality routine of every compiled function with landing pads,
+   whether the call that frame is in is covered by one; frames without (the runtime's, and
+   compiled code outside a try) are passed over. If one is, the second phase transfers
+   control to it. If none is, the stack is as it was, and the raise ends the program as it
+   always did: CPython's last traceback line and exit status, a SystemExit's status or
+   message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
+   ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
+   CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
+   not raise pays nothing, a try included; a raise costs about a microsecond.
+   Compiled code's side. A function with landing pads names `personality ptr @pys_personality`;
+   a call in a try that may raise is an invoke whose unwind label is a landing pad,
+   `landingpad { ptr, i32 } catch ptr null`: every pad catches everything, and the code tests
+   the exception with pys_exc_in and throws again what it does not handle. A try notes
+   pys_try_mark() and pys_exc_handled() as it starts; its landing pad first calls
+   pys_exc_begin(the pad's pointer, the mark), which returns the Exc (a throw to a landing of
+   the same function may instead branch to it with the Exc itself, the same address). The
+   exception being handled (a bare raise's, CPython's exc_info) is a global: pys_exc_begin sets
+   it, and every way out of a handler restores the one its try noted (pys_exc_restore).
+   What a raise leaves half done is put right in pys_exc_begin: the I/O layer's busy count,
+   which defers a Ctrl-C, goes back to zero (compiled code never runs inside a stdio call),
+   and the unwind actions registered since the try's mark run, the latest first, each popped
+   before it runs, so one that raises takes over with its own exception. A with statement's
+   file is closed as its __exit__ would close it (a close that fails raises instead), a list
+   being sorted gets its items back (list.sort), and an object whose generated __repr__ was
+   running leaves the repr guard. The frames between are gone by then, so what an action
+   needs is on the heap. When nothing catches a raise, every action runs before the report.
+   The rest raises before it changes anything (list and dict operations; open() closes the
+   file it opened first), builds new objects that become garbage (strings, containers,
+   formatting) or never raises (the collector and its closing of unreachable files).
+   Not catchable: an allocation that fails (oom), a Ctrl-C (kbint_exit), a stack overflow. */
+typedef struct ExcClass {              /* a user exception class: compiled code emits one constant each */
   Str *kind;                           /* unique name, which pys_exc_in matches */
   Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
   Str *(*str)(void *obj), *(*repr)(void *obj);
 } ExcClass;
-struct Exc {
+struct Exc {                           /* GC-allocated, 16-byte aligned (exc_alloc); a user object's first */
+  struct _Unwind_Exception ue;         /* field points to its ExcClass. First: the unwinder's header */
   Str *kind;                           /* "KeyError", or the user class's ExcClass->kind */
   Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
   void *obj;                           /* the user exception object, or NULL */
   I code, has_code;                    /* SystemExit: its status (msg holds a non-int code's text) */
   Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
 };
-struct Handler {
-  jmp_buf jb;                          /* first: _setjmp takes the record itself */
-  Handler *prev;
-  Exc *handled;                        /* when it was pushed: the exception being handled, */
-  I unwind, nbusy, io;                 /* unwind actions registered, reprs running, io_busy */
-};
-_Static_assert(offsetof(Handler, jb) == 0 && sizeof(Handler) <= 512 && _Alignof(Handler) <= 16,
-               "compiled code allocates a handler record as [512 x i8], align 16, and passes it to _setjmp");
+_Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
+#define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
 #define XCLS(e) (*(ExcClass **)(e)->obj)
-void pys_try_push(Handler *h) { h->prev = top; h->handled = xhandled; h->unwind = nunw; h->nbusy = nbusy; h->io = io_busy; top = h; }
-void pys_try_pop(void) { top = top->prev; }
-Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { Exc *e = pys_alloc(sizeof(Exc)); e->kind = kind; e->msg = msg; e->args = args; return e; }
-Exc *pys_exc_user(void *obj) { Exc *e = pys_alloc(sizeof(Exc)); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
+static _Unwind_Reason_Code (*unwinder)(struct _Unwind_Exception *);   /* set here alone: a program */
+void pys_eh_on(void) { eh = 1; unwinder = _Unwind_RaiseException; }   /* without try links no unwinder */
+static Exc *exc_alloc(void) {          /* at a slot's first 16-byte boundary (an interior pointer keeps the slot) */
+  return (Exc *)(((uintptr_t)pys_alloc(sizeof(Exc) + 15) + 15) & ~(uintptr_t)15);
+}
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { Exc *e = exc_alloc(); e->kind = kind; e->msg = msg; e->args = args; return e; }
+Exc *pys_exc_user(void *obj) { Exc *e = exc_alloc(); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
 Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
   Exc *e = pys_exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
 }
@@ -2301,15 +2312,34 @@ I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1
   return 0;
 }
 void *pys_exc_obj(Exc *e) { return e->obj; }
-Exc *pys_exc_cur(void) { return xcur; }
 Exc *pys_exc_handled(void) { return xhandled; }
-void pys_exc_set_handled(Exc *e) { xhandled = e; }
+void pys_exc_restore(Exc *e) { xhandled = e; }
+void pys_unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
+  if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
+  unw[nunw++] = (Unwind){fn, arg};
+}
+void pys_unwind_pop(void) { nunw--; }  /* the frame is left another way: forget the latest action */
+static void close_with(void *f) { pys_file_close(f); }
+void pys_unwind_file(File *f) { pys_unwind_push(close_with, f); }   /* with open(...) as f */
+static void unwind_to(I mark) { while (nunw > mark) { Unwind u = unw[--nunw]; u.fn(u.arg); } }
+I pys_try_mark(void) { return nunw; }
+Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the raise left, handle the Exc */
+  Exc *e = ue;
+  xcur = e; io_busy = 0;
+  atomic_signal_fence(memory_order_seq_cst);
+  if (io_intr) kbint_exit();           /* a Ctrl-C the I/O layer deferred */
+  unwind_to(mark);
+  xhandled = e;
+  return e;
+}
+static jmp_buf *strjb;                 /* the report's str(e) runs: a raise nothing catches comes back to it */
+static I strmark;
 static Str *safe_str(Exc *e) {         /* str(e) for the report: CPython's text if it raises */
-  Handler h;
-  pys_try_push(&h);
-  if (_setjmp(h.jb)) return cstr("<exception str() failed>");
+  jmp_buf jb; sig_atomic_t io = io_busy;
+  eh = 1; strjb = &jb; strmark = nunw;   /* a raise in __str__ unwinds to its own try, or comes back here */
+  if (setjmp(jb)) { strjb = 0; io_busy = io; return cstr("<exception str() failed>"); }
   Str *s = pys_exc_str(e);
-  pys_try_pop();
+  strjb = 0;
   return s;
 }
 static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
@@ -2326,37 +2356,99 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
   pys_finish();
   exit(1);
 }
-void pys_unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
-  if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
-  unw[nunw++] = (Unwind){fn, arg};
-}
-void pys_unwind_pop(void) { nunw--; }  /* the frame is left another way: forget the latest action */
-static void close_with(void *f) { pys_file_close(f); }
-void pys_unwind_file(File *f) { pys_unwind_push(close_with, f); }   /* with open(...) as f */
-/* a raise on its way to the innermost record: the state the record saved is restored, then the
-   actions registered since it was pushed run, the latest first, each popped before it runs (one
-   that raises comes back here with its own exception) */
-static Handler *settle(void) {
-  Handler *h = top;
-  if (h) {
-    xhandled = h->handled; nbusy = h->nbusy; io_busy = h->io;
-    atomic_signal_fence(memory_order_seq_cst);
-    if (io_intr && !io_busy) kbint_exit();   /* a Ctrl-C the I/O layer deferred */
-  }
-  for (I d = h ? h->unwind : 0; nunw > d;) { Unwind u = unw[--nunw]; u.fn(u.arg); }
-  return h;
-}
 _Noreturn void pys_throw(Exc *e) {
-  Handler *h = settle();
-  if (!h) uncaught(e);
-  top = h->prev; xcur = e;
-  longjmp(h->jb, 1);
+  xcur = e;
+  if (unwinder) {
+    e->ue.exception_class = PYS_EXC;
+    unwinder(&e->ue);                  /* comes back only if nothing catches e: the stack is as it was */
+  }
+  unwind_to(strmark);
+  if (strjb) longjmp(*strjb, 1);
+  uncaught(e);
 }
-/* a raise to a record in the caller's own frame: as pys_throw, but the caller branches to its landing */
-void pys_throw_local(Exc *e) { settle(); top = top->prev; xcur = e; }
 _Noreturn void pys_reraise(void) {     /* a bare raise */
   if (!xhandled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
   pys_throw(xhandled);
+}
+/* The personality routine. The LSDA (.gcc_except_table) of a function is a header (where the
+   landing pads' offsets start, the type table, the call-site encoding), a call-site table
+   (start, length, landing pad, action) sorted by start, and action records (a type filter,
+   the next record). Its numbers are DWARF pointer encodings: a format (enc & 15) and how
+   to apply it (enc & 0x70; 0x80: through a pointer). Pystachy's pads catch everything
+   (`catch ptr null`, a null type); a cleanup pad would work too. Another language's
+   exceptions, and forced unwinding, go past compiled frames untouched. */
+static const uint8_t *dw_val(const uint8_t *p, int enc, uint64_t *v) {   /* a number in format enc & 15 */
+  uint64_t r = 0; unsigned s = 0; uint8_t b;
+  switch (enc & 15) {
+  case 0: case 4: case 12: memcpy(&r, p, 8); p += 8; break;   /* absptr, udata8, sdata8 */
+  case 2: { uint16_t x; memcpy(&x, p, 2); r = x; p += 2; break; }
+  case 3: { uint32_t x; memcpy(&x, p, 4); r = x; p += 4; break; }
+  case 10: { int16_t x; memcpy(&x, p, 2); r = (uint64_t)(int64_t)x; p += 2; break; }
+  case 11: { int32_t x; memcpy(&x, p, 4); r = (uint64_t)(int64_t)x; p += 4; break; }
+  case 1: case 9:                      /* uleb128, sleb128 */
+    do { b = *p++; if (s < 64) r |= (uint64_t)(b & 127) << s; s += 7; } while (b & 128);
+    if ((enc & 15) == 9 && s < 64 && b & 64) r |= ~(uint64_t)0 << s;
+    break;
+  default: return 0;
+  }
+  *v = r; return p;
+}
+static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *ctx, uint64_t *v) {   /* a pointer */
+  uint64_t base = 0;
+  switch (enc & 0x70) {
+  case 0x00: break;                                       /* absptr */
+  case 0x10: base = (uintptr_t)p; break;                  /* pcrel: from where it is stored */
+  case 0x20: base = _Unwind_GetTextRelBase(ctx); break;   /* textrel */
+  case 0x30: base = _Unwind_GetDataRelBase(ctx); break;   /* datarel */
+  case 0x40: base = _Unwind_GetRegionStart(ctx); break;   /* funcrel */
+  case 0x50: p = (const uint8_t *)(((uintptr_t)p + 7) & ~(uintptr_t)7); break;   /* aligned */
+  default: return 0;
+  }
+  if (!(p = dw_val(p, enc, v))) return 0;
+  if (*v) { *v += base; if (enc & 0x80) memcpy(v, (const void *)(uintptr_t)*v, 8); }   /* indirect; 0 stays null */
+  return p;
+}
+_Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind_Exception_Class cls,
+                                    struct _Unwind_Exception *ue, struct _Unwind_Context *ctx) {
+  const uint8_t *p = _Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+  uint64_t start = _Unwind_GetRegionStart(ctx), lpbase = start, n, cs, len, lp, act;
+  int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
+  _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
+  if (version != 1) return bad;
+  if (cls != PYS_EXC || actions & _UA_FORCE_UNWIND || !p) return _URC_CONTINUE_UNWIND;
+  uint64_t ip = _Unwind_GetIPInfo(ctx, &before) - !before;   /* in the call instruction, not after it */
+  int lpenc = *p++;
+  if (lpenc != 0xff && !(p = dw_ptr(p, lpenc, ctx, &lpbase))) return bad;
+  if ((ttenc = *p++) != 0xff) { if (!(p = dw_val(p, 1, &n))) return bad; tt = p + n; }
+  csenc = *p++;
+  if (!(p = dw_val(p, 1, &n))) return bad;
+  for (at = p + n; p < at;) {          /* at: the action records, after the call sites */
+    if (!(p = dw_val(p, csenc, &cs)) || !(p = dw_val(p, csenc, &len)) || !(p = dw_val(p, csenc, &lp)) || !(p = dw_val(p, 1, &act)))
+      return bad;
+    if (ip < start + cs) break;        /* sorted: nothing covers ip */
+    if (ip >= start + cs + len) continue;
+    if (!lp) return _URC_CONTINUE_UNWIND;   /* a call that may raise, without a landing pad */
+    uint64_t sel = 0, cleanup = !act, f, next, ti;
+    for (const uint8_t *a = at + act - 1, *d; act;) {   /* catch clauses (filter > 0), cleanup (0) */
+      if (!(a = dw_val(a, 9, &f))) return bad;
+      d = a;
+      if (!(a = dw_val(a, 9, &next))) return bad;
+      if ((int64_t)f > 0) {            /* the filter-th type before tt: null catches everything */
+        int k = ttenc & 15, sz = k == 2 || k == 10 ? 2 : k == 3 || k == 11 ? 4 : k == 0 || k == 4 || k == 12 ? 8 : 0;
+        if (!tt || !sz || !dw_ptr(tt - f * sz, ttenc, ctx, &ti)) return bad;
+        if (!ti) { sel = f; break; }
+      } else if (!f) cleanup = 1;
+      if (!next) break;
+      a = d + next;
+    }
+    if (search) return sel ? _URC_HANDLER_FOUND : _URC_CONTINUE_UNWIND;
+    if (actions & _UA_HANDLER_FRAME ? !sel : !cleanup) return _URC_CONTINUE_UNWIND;
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(0), (uintptr_t)ue);
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(1), actions & _UA_HANDLER_FRAME ? sel : 0);
+    _Unwind_SetIP(ctx, lpbase + lp);
+    return _URC_INSTALL_CONTEXT;
+  }
+  return _URC_CONTINUE_UNWIND;         /* no entry: a call that cannot raise */
 }
 
 /* ---------- the time module: clocks and sleep ---------- */
