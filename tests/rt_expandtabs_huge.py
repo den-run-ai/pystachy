@@ -1,0 +1,5 @@
+# a tab size outside C's int is OverflowError, as in CPython (runtime.c grew memory without bound)
+print(len("a\tb".expandtabs(8)))
+print(len("a\tb".expandtabs(-2147483648)))
+print(len("ab".expandtabs(2147483647)))
+print(len("\t".expandtabs(4611686018427387904)))

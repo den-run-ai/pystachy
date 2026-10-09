@@ -17,10 +17,10 @@ requests list them.
 | 9 Oct | Linear-time compilation, and a dict hash without clustering | [#20](https://github.com/den-run-ai/pystachy/pull/20) |
 | 9 Oct | Typed-IR design, the IR-identity oracle (`make irsame`) and `make check-ir` | [#21](https://github.com/den-run-ai/pystachy/pull/21) |
 | 9 Oct | The typed IR itself (steps 4–8, byte-identical), optional types, `NamedTuple` and tuple dict keys, the first IR optimizations, exceptions by table-driven unwinding, and a port of iniconfig, pytest's INI parser | [#22](https://github.com/den-run-ai/pystachy/pull/22) |
-| in progress | Part of the runtime written in the subset (`runtime.py`) | [#19](https://github.com/den-run-ai/pystachy/pull/19) (draft) |
+| 9 Oct | Part of the runtime written in the subset (`runtime.py`), and the evaluation report [runtime-in-subset.md](runtime-in-subset.md) | [#19](https://github.com/den-run-ai/pystachy/pull/19) |
 
 #2, #3, #18, #20 and #21 were a stack, each based on the one before, and were merged in that
-order on 9 October.
+order on 9 October. #19 was stacked on #22, and merged after it.
 
 ## Decisions
 
@@ -45,6 +45,7 @@ Each row says what was decided, why, and where to read more.
 | A conservative mark-and-sweep collector with no dependencies | Ouro v1 never freed memory; the collector keeps peak memory near the live set (50 MiB instead of 1.5 GiB for fifty discarded 2M-element lists) and needs only the C library. | [internals.md](internals.md#memory), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
 | A port of CPython 3.13's timsort | It makes the same comparisons in the same order, which decides where NaNs end up and what an `__lt__` with side effects sees, and it beat the earlier merge sort (0.32 s instead of 0.53 s for 2M ints). | [internals.md](internals.md#python-semantics-in-the-runtime), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
 | CPython 3.13's compact dict layout and probe order, over a one-multiply hash | The layout makes deletion O(1) and a loop that changes its dict fail exactly as in CPython, and the probe order with SplitMix64 mixing stopped keys like `i << 46` from clustering, for about 2 ns more per lookup in tables larger than the cache. | [internals.md](internals.md#python-semantics-in-the-runtime), [#1](https://github.com/den-run-ai/pystachy/pull/1), [#20](https://github.com/den-run-ai/pystachy/pull/20) |
+| Part of the runtime in the subset | Runtime code can then be Python, tested on CPython itself, and a WebAssembly GC backend needs such a runtime; functions move one at a time into `runtime.py` under their C names, so programs call them as before, while the collector, memory layouts, files and signals stay in C. | [internals.md](internals.md#a-runtime-partly-written-in-the-subset), [runtime-in-subset.md](runtime-in-subset.md), [#19](https://github.com/den-run-ai/pystachy/pull/19) |
 
 ### Modules and the standard library
 
@@ -65,11 +66,10 @@ Each row says what was decided, why, and where to read more.
 | Lowering first, proven byte for byte | Of three designs written independently, the two reviewers who scored them chose lowering first because only it had working evidence (a prototype at the fixed point, 358 of 358 programs identical), and `make irsame` requires every migration step to leave the whole corpus's IR byte-identical. | [typed-ir.md](typed-ir.md#appendix-a-how-this-design-was-chosen), [testing.md](testing.md#ir-identity-for-refactors), [#21](https://github.com/den-run-ai/pystachy/pull/21) |
 | Exceptions through table-driven unwinding | v0.0.1 planned LLVM landing pads and typed-ir.md §7.2 then proposed an error flag; #22 answers that open question with measurements, using `invoke`/`landingpad` with Pystachy's own personality routine: code that does not raise pays nothing for a `try` in an AOT build, and programs without `try` keep their IR byte for byte. | [internals.md](internals.md#exceptions-by-table-driven-unwinding), [performance.md](performance.md#the-cost-of-exceptions), [typed-ir.md](typed-ir.md) §7.2 and §9, [#22](https://github.com/den-run-ai/pystachy/pull/22) |
 
-### In progress and open
+### Open
 
 | decision | why | where |
 |---|---|---|
-| Part of the runtime in the subset (in progress) | Runtime code can then be Python, tested on CPython itself, and a WebAssembly GC backend needs such a runtime; functions move one at a time into `runtime.py` with no program's IR changing, while the collector, memory layouts, files and signals stay in C. | [#19](https://github.com/den-run-ai/pystachy/pull/19) |
 | Standalone mode, or also a CPython-extension mode (open, nothing decided) | Broad package support needs an interoperability strategy as well as features: #5 estimates that even with every feature, standalone mode makes only 288 of 821 pure-Python top packages at least half usable, and #4 §4 recommends evaluating an AOT extension mode in which CPython keeps imports, dynamic objects and dependencies. | [#4](https://github.com/den-run-ai/pystachy/issues/4) §4, [#5](https://github.com/den-run-ai/pystachy/issues/5), [typed-ir.md](typed-ir.md) §7.4 |
 
 ## Where it comes from

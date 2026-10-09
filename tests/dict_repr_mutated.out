@@ -1,0 +1,36 @@
+  eq 1 1 2 2
+  eq 2 2 2 2
+'' True 2 2
+  eq 1 1 2 2
+  eq 2 2 2 2
+'' False 2 2
+  eq 1 1 2 2
+'clear d2' False 2 0
+  eq 1 1 2 2
+'clear d2' True 2 0
+  eq 1 1 2 2
+'clear d1' True 0 2
+  eq 1 1 2 2
+'clear d1' False 0 2
+  eq 1 1 2 2
+'del b' True 1 1
+  eq 1 1 2 2
+'del b' False 1 1
+  eq 1 1 2 2
+  eq 2 2 3 2
+'add' False 3 2
+  eq 1 1 2 2
+  eq 2 2 3 2
+'add' True 3 2
+  eq 1 1 2 2
+  eq 3 3 6 2
+regrow False ['b', 'c', 'd', 'e', 'f', 'g'] ['a', 'c']
+[V1] 2
+[V1, V2, V8] 2
+[V1, V2, V3] 0
+[[V1, V2]] 2
+{'a': V1, 'c': V3}
+{'a': V1}
+{'a': V1, 'b': V2, 'z': V26} {'a': V1, 'b': V2, 'z': V26}
+{'x': [V1], 'y': []} []
+[exit 0]

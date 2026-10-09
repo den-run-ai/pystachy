@@ -35,6 +35,27 @@ disagrees with its entry is an internal error. This tool checks the table itself
     More letters than runtime.c shows are allowed (an entry may be conservative); -v lists
     those of R, N, A, I and of the letters derived from parameters. A function that only stores
     another's address (STORES) does not reach it.
+A function that runtime.py defines instead (docs/runtime-in-subset.md) is checked from the IR the
+compiler builds for runtime.py, in this process:
+  - signatures: its definition has the entry's types (runtime.c may only declare it, with them);
+    the compiler also checks the subset types, which LLVM's do not tell apart (and keeps a
+    function that RUNTIME does not name to int, float, str and None, which LLVM's do);
+  - effects: R if it may raise in the runtime the driver builds (runtime.py linked with runtime.c
+    and optimized with opt -O2): a raise statement, or a raise it reaches there that opt could not
+    remove, but those of the subset's index, divisor, shift and conversion checks (BUG_ONLY),
+    which fire only on a bug of runtime.py, as runtime.c's unchecked indexing would misbehave; an
+    overflow check counts, as CPython raises OverflowError for a result too long too (replace,
+    join), and a MemoryError is A. A if it allocates, U if it runs user code, I if it does I/O or
+    uses state: through the runtime functions it calls (their entries, or runtime.c's call graph
+    for a function runtime.py declares, and the letters of runtime.py's functions that one calls).
+    runtime.c's functions that call runtime.py's (hsh calls pys_hash_str) get those letters too;
+  - recursion: no function of runtime.py reaches itself through an operation's lowering (an rt op)
+    or through runtime.c. The compiler rejects an operation that lowers to the function it is in;
+    a cycle through a helper (helper -> math.gcd -> pys_m_gcd -> helper) or through runtime.c
+    (pys_format_str formatting with a nested spec, which calls runtime.c's pys_format, which calls
+    pys_format_str) would recurse without end where nothing in the source shows a call. Recursion
+    by name stays allowed; the check is conservative, as it does not follow descriptors (a str ==
+    in pys_hash_str would be reported, through pys_eq's dict case).
 The exit status is 1 if a check fails. Clang and llvm-as come from PATH, or PYSTACHY_LLVM.
 """
 import builtins
@@ -65,6 +86,14 @@ STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
 BY_DESC = {"eqv", "opv", "repr"}
+# the messages of the subset's implicit checks that fire only on a bug of runtime.py: an index out
+# of range (its primitives' and s[i]'s), a zero divisor, a negative shift count, a float that does
+# not fit an int, a square root's domain (runtime.py raises what a caller may cause with raise)
+BUG_ONLY = ("IndexError: string index out of range", "IndexError: compare out of range", "IndexError: search out of range",
+            "IndexError: copy out of range", "IndexError: list index out of range", "IndexError: list assignment index out of range",
+            "ValueError: byte must be in range(0, 256)", "ZeroDivisionError: integer division or modulo by zero",
+            "ValueError: negative shift count", "OverflowError: cannot convert float infinity to integer",
+            "ValueError: cannot convert float NaN to integer", "ValueError: math domain error")
 # the end of the program (R and N stand for it; running out of memory, oom, for A) and the
 # allocator (A), which I does not look into
 END = RAISES | {"oom"}
@@ -101,7 +130,8 @@ def llvm_ir(src, name, opt="-O0"):
 
 
 def functions(ll):
-    # name -> (result, params, noreturn, callees) of every function ll defines or declares
+    # name -> (result, params, noreturn, callees, "define" or "declare") of every function ll
+    # defines or declares
     groups = {}
     for m in re.finditer(r"^attributes #(\d+) = \{(.*)\}$", ll, re.M):
         groups[m.group(1)] = m.group(2)
@@ -126,7 +156,7 @@ def functions(ll):
                 part += c
             attrs = m.group(5)
             noreturn = "noreturn" in attrs.split() or any(groups.get(g, "").split().count("noreturn") for g in re.findall(r"#(\d+)", attrs))
-            fns[m.group(3)] = (result, params, noreturn, set())
+            fns[m.group(3)] = (result, params, noreturn, set(), m.group(1))
             cur = m.group(3) if m.group(1) == "define" else None
             continue
         if line == "}":
@@ -357,6 +387,134 @@ def reaches(fns, f, targets, skip):
     return False
 
 
+def runtime_py(pys):
+    # the IR the compiler builds for runtime.py: (its LLVM text, symbol -> the ops of each function
+    # it compiles, as (op, text immediate, descriptor) triples, captured before they are lowered).
+    # The ops of its cold blocks, which raise what its implicit checks find, are left out
+    path = os.path.join(ROOT, "runtime.py")
+    ops = {}
+
+    class Capture(pys.Gen):
+        def lower(self, fn):
+            cold = set(fn.cold.values())
+            ops[fn.f.ll[1:]] = [(i.op, i.s, i.x) for b in fn.blocks if b.label not in cold for i in b.code]
+            pys.Gen.lower(self, fn)
+
+    sys.setrecursionlimit(pys.MAXNEST * 40)  # (as the compiler's main does)
+    pys.SRC = path
+    with open(path, encoding="latin-1") as f:
+        src = f.read()
+    g = Capture()
+    g.rtmode = True
+    pys.MODULES["_rt"] = True
+    ir = g.program(pys.Loader([]).program(path, src))
+    del pys.MODULES["_rt"]
+    return ir, ops
+
+
+def linked(rpy_ir, tmp):
+    # runtime.py's IR linked with runtime.c's and optimized, as the driver builds the cached
+    # runtime: (name -> its function (as functions gives it), name -> the messages of the raises in
+    # its body: "Kind: text" of a pys_raise or the format of a pys_fail, "?" if not a constant,
+    # the functions opt marked nounwind)
+    rpy = os.path.join(tmp, "rtpy.ll")
+    with open(rpy, "w", encoding="latin-1") as f:
+        f.write(rpy_ir)
+    rc = os.path.join(tmp, "runtime-c.ll")
+    out = subprocess.run([TOOL + "clang", "-O2", "-S", "-emit-llvm", os.path.join(ROOT, "runtime.c"), "-o", rc, "-fexceptions"], capture_output=True, text=True)
+    if out.returncode != 0:
+        sys.exit(f"check_runtime: clang cannot compile runtime.c:\n{out.stderr}")
+    with open(rc, encoding="latin-1") as f:
+        c = re.sub(r' "(target-cpu|target-features|tune-cpu)"="[^"]*"', "", f.read())  # (as the driver strips them)
+    with open(rc, "w", encoding="latin-1") as f:
+        f.write(c)
+    lk = os.path.join(tmp, "linked.bc")
+    opt = os.path.join(tmp, "opt.ll")
+    for cmd in ([TOOL + "llvm-link", rpy, rc, "-o", lk], [TOOL + "opt", "-O2", "-S", lk, "-o", opt]):
+        out = subprocess.run(cmd, capture_output=True, text=True)
+        if out.returncode != 0:
+            sys.exit(f"check_runtime: {' '.join(cmd)}:\n{out.stderr}")
+    with open(opt, encoding="latin-1") as f:
+        ll = f.read()
+    text = {}
+    for m in re.finditer(r'^(@[\w.]+) = .*?c"((?:[^"\\]|\\[0-9A-Fa-f]{2})*)\\00"', ll, re.M):
+        text[m.group(1)] = re.sub(r"\\([0-9A-Fa-f]{2})", lambda h: chr(int(h.group(1), 16)), m.group(2))
+    msgs = {}
+    cur = None
+    for line in ll.split("\n"):
+        m = re.match(r"define .*?@([\w.]+)\(", line)
+        if m:
+            cur = m.group(1)
+            msgs[cur] = set()
+        elif line == "}":
+            cur = None
+        elif cur is not None:
+            r = re.search(r"call void @pys_raise\(ptr (?:nonnull )?(@[\w.]+), ptr (?:nonnull )?(@[\w.]+)\)", line)
+            if r:
+                msgs[cur].add(f"{text.get(r.group(1), '?')}: {text.get(r.group(2), '?')}")
+            elif re.search(r"@(pys_raise|pys_fail|failf|oserr|kbint_exit)\b", line) and " call " in f" {line} ":
+                r = re.search(r"@(?:pys_fail|failf)\(ptr (?:noundef )?(?:nonnull )?(@[\w.]+)", line)
+                msgs[cur].add(text.get(r.group(1), "?") if r else "?")
+    groups = dict(re.findall(r"^attributes #(\d+) = \{ (.*) \}$", ll, re.M))
+    nounwind = {m.group(1) for m in re.finditer(r"^define [^\n]*?@([\w.]+)\(.*\)([^{\n]*)\{$", ll, re.M)
+                if "nounwind" in m.group(2) or any("nounwind" in groups.get(g, "").split() for g in re.findall(r"#(\d+)", m.group(2)))}
+    return functions(ll), msgs, nounwind
+
+
+def raises(fns, msgs, f):
+    # the messages of the raises f reaches in the linked runtime, the allocator's aside (gc_slow);
+    # the raising functions' own bodies too, as their callers' messages say what they raise
+    seen = set()
+    todo = [f]
+    out = set()
+    while todo:
+        g = todo.pop()
+        if g in seen or g in ("gc_slow", "pys_fail", "failf", "pys_raise"):
+            continue
+        seen.add(g)
+        out |= msgs.get(g, set())
+        if g in fns:
+            todo.extend(fns[g][3])
+    return out
+
+
+def cycle(graph, start, inner):
+    # a path from start back to start that goes through a node of inner, or None; graph: node ->
+    # its successors
+    def path(a, b):
+        # a shortest path from a to b, as a list of nodes, or None
+        prev = {a: None}
+        todo = [a]
+        while todo:
+            n = todo.pop(0)
+            for m in sorted(graph.get(n, ())):
+                if m == b:
+                    out = [b]
+                    while n is not None:
+                        out.append(n)
+                        n = prev[n]
+                    return out[::-1]
+                if m not in prev:
+                    prev[m] = n
+                    todo.append(m)
+        return None
+
+    for y in sorted(inner):
+        there = path(start, y)
+        back = path(y, start) if there else None
+        if there and back:
+            return there + back[1:]
+    return None
+
+
+# a cycle through a node of inner: found, the shortest way there and back; none without one
+assert cycle({"p": {"c"}, "c": {"p"}}, "p", {"c"}) == ["p", "c", "p"]
+assert cycle({"p": {"p", "c"}, "c": set()}, "p", {"c"}) is None
+assert cycle({"p": {"q"}, "q": {"c"}, "c": {"d"}, "d": {"q"}}, "p", {"c"}) is None
+# an rt edge between runtime.py's functions goes through a node of its own ("rt:" + callee)
+assert cycle({"h": {"rt:g"}, "rt:g": {"g"}, "g": {"h"}}, "g", {"rt:g"}) == ["g", "h", "rt:g", "g"]
+
+
 def main():
     verbose = "-v" in sys.argv[1:]
     pys = load_compiler()
@@ -367,13 +525,81 @@ def main():
     fns = functions(ll)
     for f, g in STORES.items():
         fns[f][3].discard(g)
+    rpy_ir, rpy_ops = runtime_py(pys)
+    # effects of runtime.py's functions (see the docstring): R from the linked runtime; A, U and I
+    # from the ops, through the functions they call, to a fixpoint
+    with tempfile.TemporaryDirectory() as tmp:
+        lfns, lmsgs, nounwind = linked(rpy_ir, tmp)
+    letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
+    writes = {}
     used = state(ll)
+    pure = set(PURE_C)
+    PURE_C.update(rpy_ops)  # (while runtime.py's own functions get their letters, below)
+    via = {}  # a function of runtime.c that runtime.py declares -> runtime.py's functions it calls
+    for f, ops in rpy_ops.items():
+        m = set()
+        if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f)):
+            m.add("R")
+        for op, x, d in ops:
+            if op == "raise":
+                m.add("R")  # (an explicit raise statement, whatever its message)
+            if op == "rt" and pys.rtsym(x) not in rpy_ops:
+                e = rt[x]
+                ls = e[e.find("|") + 1 : e.rfind("|")].split()
+                m.update(y for y in ls if y in ("A", "U", "I"))
+                if "U?" in ls and "O" in d:
+                    m.add("U")  # (as Gen.opfx: when the descriptor holds a class)
+            elif op == "call" and x[1:] not in rpy_ops:
+                # one of runtime.c's functions, which runtime.py declares: its entry, if RUNTIME
+                # names it, and what runtime.c's call graph shows
+                if x[1:] in pys.RTSYM:
+                    e = rt[pys.RTSYM[x[1:]]]
+                    m.update(y for y in e[e.find("|") + 1 : e.rfind("|")].split() if y in ("A", "U", "I"))
+                if reaches(fns, x[1:], {"gc_slow"}, set()):
+                    m.add("A")
+                if reaches(fns, x[1:], USER, set()):
+                    m.add("U")
+                if uses_state(fns, used, x[1:]):
+                    m.add("I")
+                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
+        letters[f] = m
+        # (whether it may write memory it did not allocate: an rt op that writes lists, dicts,
+        # objects, globals or files, or a function of runtime.c it declares)
+        writes[f] = any(op == "call" and x[1:] not in rpy_ops or op == "rt" and pys.rtsym(x) not in rpy_ops and
+                        any(w in rt[x][rt[x].find("|") + 1 : rt[x].rfind("|")].split() for w in ("wL", "wD", "wO", "wG", "wF")) for op, x, _ in ops)
+    more = True
+    while more:
+        more = False
+        for f, ops in rpy_ops.items():
+            for op, x, _ in ops:
+                g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
+                for h in via.get(g, set()) | {g}:
+                    if h in letters and h != f and (not letters[h] <= letters[f] or writes[h] and not writes[f]):
+                        letters[f] |= letters[h]
+                        writes[f] = writes[f] or writes[h]
+                        more = True
+    # runtime.c calls some of them (hsh calls pys_hash_str): to the analysis of runtime.c below,
+    # one that uses no state is as a pure C library function, and one that writes nothing it was
+    # given only reads its arguments (runtime mode has no globals)
+    # a function that may raise must stay unwindable: an invoke of one that opt marked nounwind
+    # (runtime.c built without -fexceptions, say) becomes a call, and the exception escapes the
+    # program's try (tests/rt_raise_unwinds.py)
+    for f in sorted(rpy_ops):
+        if "R" in letters[f] and f in nounwind:
+            bad.append(f"runtime.py's {f} may raise, but the linked runtime marks it nounwind")
+    PURE_C.clear()
+    PURE_C.update(pure)
+    for f in rpy_ops:
+        if "I" not in letters[f]:
+            PURE_C.add(f)
+        if not writes[f]:
+            READS_ONLY.add(f)
     eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1"))
     with tempfile.TemporaryDirectory() as tmp:
         libc = [pys.rtsym(k) for k in rt if not pys.rtsym(k).startswith(("pys_", "llvm."))]
         probe = os.path.join(tmp, "probe.c")
         with open(probe, "w") as f:
-            f.write("#include <math.h>\n#include <stdlib.h>\n#include <stdio.h>\n")
+            f.write("#define _GNU_SOURCE\n#include <math.h>\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n")
             f.write("".join(f"void *probe{i} = (void *)&{s};\n" for i, s in enumerate(libc)))
         cfns = functions(llvm_ir(probe, "a probe of the C library"))
         intrinsics = [pys.runtime_decl(k) for k in rt if pys.rtsym(k).startswith("llvm.")]
@@ -383,16 +609,28 @@ def main():
         out = subprocess.run([TOOL + "llvm-as", "-o", os.devnull, mod], capture_output=True, text=True)
         if out.returncode != 0:
             bad.append(f"llvm-as rejects the intrinsics' declarations: {out.stderr.strip()}")
+    pyfns = {n: v for n, v in functions(rpy_ir).items() if v[4] == "define"}
     # signatures
     for k in rt:
         sym = pys.rtsym(k)
         if sym.startswith("llvm."):
             continue
-        have = fns.get(sym) or cfns.get(sym)
-        if have is None:
-            bad.append(f"{k}: runtime.c has no function {sym}")
-            continue
         want = pys.runtime_decl(k)
+        if sym in pyfns:
+            # runtime.py's: runtime.c may declare it (and call it), with the same types
+            have = pyfns[sym]
+            got = f"declare {have[0]} @{sym}({', '.join(have[1])})"
+            if want != got:
+                bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.py defines {got[8:]}")
+            if sym in fns and fns[sym][4] == "define":
+                bad.append(f"{k}: both runtime.c and runtime.py define {sym}")
+            elif sym in fns and f"declare {fns[sym][0]} @{sym}({', '.join(fns[sym][1])})" != want:
+                bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.c declares {sym} as {fns[sym][0]}({', '.join(fns[sym][1])})")
+            continue
+        have = fns.get(sym) if sym in fns and fns[sym][4] == "define" else cfns.get(sym)
+        if have is None:
+            bad.append(f"{k}: neither runtime.c nor runtime.py defines {sym}" + (" (runtime.c only declares it)" if sym in fns else ""))
+            continue
         got = f"declare {have[0]} @{sym}({', '.join(have[1])})"
         if want != got:
             bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.c defines {got[8:]}")
@@ -412,6 +650,8 @@ def main():
     named.update(["pys_repr_enter", "pys_repr_leave"])
     named.update(f"pys_file_{a}" for a in ("closed", "name", "mode"))
     named.add("llvm.frameaddress.p0")
+    # (and what the compiler calls by its symbol, such as runtime mode's memchr)
+    named.update(re.findall(r"""self\.rt\(\s*["']([\w.]+)["']""", src))
     for s in sorted(named):
         if s not in pys.RTSYM:
             bad.append(f"{s}: pystachy.py names it, but RUNTIME has no entry for it")
@@ -435,21 +675,40 @@ def main():
     # effects
     for k in rt:
         sym = pys.rtsym(k)
-        if sym not in fns:
+        if sym not in rpy_ops:
             continue
         e = rt[k]
-        letters = e[e.find("|") + 1 : e.rfind("|")].split()
-        for x in letters:
+        have = e[e.find("|") + 1 : e.rfind("|")].split()
+        for x in sorted(letters[sym]):
+            if x not in have and not (x == "U" and "U?" in have):
+                bad.append(f"{k}: runtime.py's {sym} has effect {x}, which RUNTIME leaves out")
+        if "N" in have:
+            bad.append(f"{k}: RUNTIME says N, but runtime.py's {sym} returns")
+        for x in ("R", "A"):
+            if x in have and x not in letters[sym]:
+                note.append(f"{k}: {x}, which runtime.py's code does not show")
+    # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
+    # call included (with the letters derived above)
+    pyr = {f for f in letters if "R" in letters[f]}
+    pya = {f for f in letters if "A" in letters[f]}
+    pyu = {f for f in letters if "U" in letters[f]}
+    for k in rt:
+        sym = pys.rtsym(k)
+        if sym not in fns or sym in rpy_ops:
+            continue
+        e = rt[k]
+        have = e[e.find("|") + 1 : e.rfind("|")].split()
+        for x in have:
             if x not in pys.FX and x != "U?":
                 bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
-        if reaches(fns, sym, RAISES, {"gc_slow"}):
+        if reaches(fns, sym, RAISES | pyr, {"gc_slow"}):
             derived.append("R")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, {"gc_slow"}, EXC_MAKERS | RAISES):
+        if reaches(fns, sym, {"gc_slow"} | pya, EXC_MAKERS | RAISES):
             derived.append("A")
-        if reaches(fns, sym, USER, set()) and k not in NO_USER:
+        if reaches(fns, sym, USER | pyu, set()) and k not in NO_USER:
             derived.append("U")
         if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, set()):
             derived.extend(["rL", "rD"])
@@ -460,17 +719,34 @@ def main():
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 derived.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in derived:
-            if x not in letters and "U" not in letters and not (x == "U" and "U?" in letters):
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have):
                 bad.append(f"{k}: {sym} has effect {x} in runtime.c, which RUNTIME leaves out")
         for x in ("R", "N", "A", "I", "rL", "wL", "rD", "wD", "rF", "wF"):
-            if x in letters and x not in derived:
+            if x in have and x not in derived:
                 note.append(f"{k}: {x}, which runtime.c does not show")
+    # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so
+    # that a cycle through it, or through runtime.c, is found
+    graph = {n: v[3] for n, v in fns.items() if v[4] == "define"}
+    for f, ops in rpy_ops.items():
+        graph[f] = set()
+        for op, x, _ in ops:
+            g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
+            if op == "rt" and g in rpy_ops:
+                graph[f].add("rt:" + g)
+                graph["rt:" + g] = {g}
+            elif g != "":
+                graph[f].add(g)
+    inner = {n for n in graph if n not in rpy_ops}
+    for f in sorted(rpy_ops):
+        c = cycle(graph, f, inner)
+        if c:
+            bad.append(f"runtime.py's {f} reaches itself through an operation's lowering or runtime.c ({' -> '.join(c)}): it would recurse without end")
     for b in bad:
         print(b)
     if verbose:
         for n in note:
             print("note:", n)
-    print(f"{len(rt)} RUNTIME entries, {len(pys.EXCBASES)} exception classes: " + (f"{len(bad)} problems" if bad else "signatures, coverage and effects agree with runtime.c, the classes with this Python"))
+    print(f"{len(rt)} RUNTIME entries, {len(pys.EXCBASES)} exception classes: " + (f"{len(bad)} problems" if bad else f"signatures, coverage and effects agree with runtime.c and runtime.py ({len(rpy_ops)} functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python"))
     sys.exit(1 if bad else 0)
 
 

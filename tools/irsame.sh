@@ -2,9 +2,12 @@
 # IR oracle for refactors of the code generator: compilers OLD and NEW run `ir` on every program
 # of the corpus, from the repository root as tests/run.sh runs them, and must print the same LLVM
 # IR byte for byte, the same messages (all of a tests/errors/*.py rejection) and the same exit status.
-# The corpus is pystachy.py (first: it takes longest), tests/*.py, tests/deviations/*.py, bench/*.py,
-# tests/ir/*.py and tests/errors/*.py, with PYSTACHY_PATH from NAME.path where it exists, as
-# tests/run.sh runs them. tests/ir/*.py probe code-generation paths the others never
+# The corpus is pystachy.py (first: it takes longest), runtime.py, tests/*.py, tests/deviations/*.py,
+# bench/*.py, tests/ir/*.py and tests/errors/*.py, with PYSTACHY_PATH from NAME.path where it exists,
+# as tests/run.sh runs them. When both compilers have runtime mode (`pystachy rt`), runtime.py and
+# tests/errors/rtmode_*.py are compiled with `rt`, as the driver and tests/run.sh compile them
+# (every program's executable holds runtime.py's code); otherwise with `ir`, as programs, which
+# runtime.py is not, so it then fails alike with both. tests/ir/*.py probe code-generation paths the others never
 # take: they are only compiled (here and by tools/check_ir.sh), never run. tests/ir/pending/ holds
 # the probes of open compiler bugs, which are not part of the corpus until the fix moves them up.
 # The programs run in PYSTACHY_JOBS workers (default: one per CPU), each taking the next program
@@ -17,8 +20,10 @@ cd "$(dirname "$0")/.." || exit 1
 [ $# -ge 2 ] || { echo "usage: tools/irsame.sh OLD NEW [FILE...]" >&2; exit 2; }
 OLD=$1; NEW=$2; shift 2
 for f; do [ -f "$f" ] || { echo "tools/irsame.sh: no such program: $f" >&2; exit 2; }; done
+RT=0  # (whether both have runtime mode: their usage names it)
+{ $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1
 if [ $# = 0 ]; then
-  for f in pystachy.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py tests/errors/*.py; do
+  for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py tests/errors/*.py; do
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi
@@ -33,8 +38,10 @@ trap 'exit 130' INT TERM
 # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
 same() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
-  PYSTACHY_PATH=$mp $OLD ir "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
-  PYSTACHY_PATH=$mp $NEW ir "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
+  how=ir
+  case $RT:$1 in 1:runtime.py | 1:*/runtime.py | 1:*/rtmode_*.py) how=rt ;; esac
+  PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
+  PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
   {
     [ $a = $b ] || echo "  exit status $a -> $b"
     if ! cmp -s "$2/old.msg" "$2/new.msg"; then

@@ -15,13 +15,18 @@
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
 #   check-ir       tools/check_ir.sh: the compiler's IR check (PYSTACHY_IRCHECK=1) and llvm-as accept the
 #                  IR of every program of the corpus (the tests, the benchmarks, the tests/ir probes and
-#                  the compiler itself)
-#   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c (types,
-#                  coverage, and the effects its call graph shows)
+#                  the compiler itself) and of runtime.py
+#   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c and
+#                  runtime.py (types, coverage, and the effects their call graphs show), and no
+#                  function of runtime.py reaches itself through runtime.c
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 1000 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation of the
 #                  program (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by the compiler collecting every 1000
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
+#                  math functions give on random inputs
+#   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
+#                  signature in runtime.py, runtime.c and every program of the corpus
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
@@ -37,8 +42,8 @@ V=$ROOT/build/verify
 OUT=$ROOT/build/verification.json
 rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
-cp runtime.c "$V/home/"
-cp runtime.c "$V/ubsan-home/"
+cp runtime.c runtime.py "$V/home/"
+cp runtime.c runtime.py "$V/ubsan-home/"
 cp -R lib "$V/home/"
 cp -R lib "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
@@ -83,7 +88,10 @@ L=$V/bootstrap.log; s=$(now); r=fail
     t1=$(now) && "$V/pystachy1" ir pystachy.py -o "$V/stage2.ll" &&
     t2=$(now) && "$V/pystachy2" ir pystachy.py -o "$V/stage3.ll" && t3=$(now) &&
     cmp "$V/stage1.ll" "$V/stage2.ll" && cmp "$V/stage2.ll" "$V/stage3.ll" &&
-    echo "fixed point: stage1 == stage2 == stage3 ($(lines "$V/stage1.ll") lines of IR)" && r=pass
+    echo "fixed point: stage1 == stage2 == stage3 ($(lines "$V/stage1.ll") lines of IR)" &&
+    $PY pystachy.py rt runtime.py -o "$V/rt1.ll" && "$V/pystachy1" rt runtime.py -o "$V/rt2.ll" &&
+    "$V/pystachy2" rt runtime.py -o "$V/rt3.ll" && cmp "$V/rt1.ll" "$V/rt2.ll" && cmp "$V/rt2.ll" "$V/rt3.ll" &&
+    echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($(lines "$V/rt1.ll") lines)" && r=pass
 } > "$L" 2>&1
 x=""
 [ $r = pass ] && x=$(printf ', "ir_identical": true, "ir_lines": %s, "ir_sha256": "%s", "native_compiler_bytes": %s, "cpython_self_compile_seconds": %s, "native_self_compile_seconds": %s' \
@@ -131,6 +139,8 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
     nopy "$V/pystachy2" build pystachy.py -o "$V/pystachy-nopy" && ls "$V/home/build" &&
     nopy "$V/pystachy-nopy" ir pystachy.py -o "$V/stage-nopy.ll" &&
     cmp "$V/stage1.ll" "$V/stage-nopy.ll" && echo "rebuilt compiler emits the stage1 IR" &&
+    nopy "$V/pystachy-nopy" rt runtime.py -o "$V/rt-nopy.ll" && cmp "$V/rt1.ll" "$V/rt-nopy.ll" &&
+    echo "rebuilt compiler emits the rt1 IR of runtime.py" &&
     nopy sh tests/run.sh "$V/pystachy-nopy" && r=pass
 } > "$L" 2>&1
 x=$(tests "$L") || r=fail
@@ -147,7 +157,7 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" "$V/pystachy2" build pystachy.py -o "$V/pystachy-ubsan" &&
     "$V/pystachy-ubsan" ir pystachy.py -o "$V/stage-ubsan.ll" &&
     cmp "$V/stage1.ll" "$V/stage-ubsan.ll" && echo "sanitized compiler emits the stage1 IR" &&
-    ls "$V/ubsan-home/build" && test ! -f "$V/ubsan-home/build/runtime.bc" &&
+    ls "$V/ubsan-home/build" && test -z "$(grep -L __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc)" &&
     grep -q __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc && echo "cached runtime bitcode is instrumented" && built=1
   if [ $built = 1 ]; then
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy-ubsan" aot > "$V/ubsan-aot.log" 2>&1
@@ -166,7 +176,7 @@ L=$V/check-ir.log; s=$(now); r=fail
 tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
 step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
 
-# ---- runtime-table: the runtime functions the compiler declares, as runtime.c defines them
+# ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
 L=$V/runtime-table.log; s=$(now); r=fail
 $PY tools/check_runtime.py > "$L" 2>&1 && r=pass
 step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, "entries": \1/p' "$L")"
@@ -201,9 +211,21 @@ for b in bench/*.py; do
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
 
+# ---- rtcheck: runtime.py on CPython against CPython's own str methods and math functions
+L=$V/rtcheck.log; s=$(now); r=fail
+$PY tools/rtcheck.py > "$L" 2>&1 && r=pass
+step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
+
+# ---- rt-abi: one signature per runtime function across runtime.py, runtime.c and the corpus
+L=$V/rt-abi.log; s=$(now); r=fail
+$PY tools/rtabi.py "$V/pystachy2" > "$L" 2>&1 && r=pass
+step rt-abi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) functions of runtime.py, \([0-9]*\) uses in runtime.c and \([0-9]*\) programs, \([0-9]*\) mismatches$/, "functions": \1, "uses": \2, "programs": \3, "mismatches": \4/p' "$L")"
+
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
 L=$V/dict-probes.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 tools/dictprobe.c -o "$V/dictprobe" -lm && "$V/dictprobe" && r=pass; } > "$L" 2>&1
+{ "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
+  "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
+  "$V/dictprobe" && r=pass; } > "$L" 2>&1
 step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
@@ -224,8 +246,8 @@ ver() { "$@" 2>&1 | head -1; }
     "$(js "$("${LLVM}opt" --version 2>&1 | sed -n 's/^ *Host CPU: //p')")"
   printf '  "toolchain": {"python": %s, "clang": %s, "llvm": %s, "llvm_dir": %s},\n' "$(js "$(ver $PY --version)")" \
     "$(js "$(ver "${LLVM}clang" --version)")" "$(js "$(ver "${LLVM}opt" --version)")" "$(js "${PYSTACHY_LLVM:-PATH}")"
-  printf '  "sources": {"pystachy.py": {"lines": %s, "sha256": "%s"}, "runtime.c": {"lines": %s, "sha256": "%s"}, "test_programs": %s, "rejection_tests": %s},\n' \
-    "$(lines pystachy.py)" "$(sha pystachy.py)" "$(lines runtime.c)" "$(sha runtime.c)" \
+  printf '  "sources": {"pystachy.py": {"lines": %s, "sha256": "%s"}, "runtime.c": {"lines": %s, "sha256": "%s"}, "runtime.py": {"lines": %s, "sha256": "%s"}, "test_programs": %s, "rejection_tests": %s},\n' \
+    "$(lines pystachy.py)" "$(sha pystachy.py)" "$(lines runtime.c)" "$(sha runtime.c)" "$(lines runtime.py)" "$(sha runtime.py)" \
     "$(ls tests/*.py | wc -l | tr -d ' ')" "$(ls tests/errors/*.py | wc -l | tr -d ' ')"
   printf '  "steps": [\n'; cat "$V/steps.json"; printf '\n  ]\n}\n'
 } > "$OUT"

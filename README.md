@@ -33,7 +33,7 @@ flowchart LR
     comp["pystachy.py<br/>one file that compiles itself"]
     err["file:line: error:<br/>rejected before it runs"]
     ir["LLVM IR"]
-    rt["runtime.c<br/>own GC, str, list, dict"]
+    rt["runtime.c + runtime.py<br/>own GC, str, list, dict"]
     jit["pystachy run<br/>JIT"]
     aot["pystachy build<br/>native executable"]
     same["same stdout and exit status<br/>the contract, tested in CI"]
@@ -49,7 +49,7 @@ flowchart LR
 | | |
 |---|---|
 | **compiler** | `pystachy.py`, about 16,000 lines, written in the subset it compiles |
-| **runtime** | `runtime.c`, under 3,500 lines, with its own garbage collector; needs only the C library |
+| **runtime** | `runtime.c`, under 3,000 lines, with its own garbage collector, and `runtime.py`, its str methods, formatting and hashing written in the subset; needs only the C library |
 | **bootstrap** | the compiler running on CPython, the native compiler it builds, and the one that builds itself all emit byte-identical LLVM IR |
 | **tests** | about 500 programs that must print what CPython printed for them, JIT and AOT, and over 600 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
 | **standard library** | 9 unmodified CPython 3.13 modules compile as they are, for the functions the subset supports ([`lib/`](lib/README.md)) |
@@ -219,10 +219,10 @@ unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
 make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
 compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
 
-**In progress now** (a draft pull request, not merged yet): **part of the runtime in Python**
-([#19](https://github.com/den-run-ai/pystachy/pull/19)). 52 runtime functions, among them all
-the `str` methods and the format-spec mini-language, are written in the subset and compiled by
-Pystachy itself, with no change to any program's IR and the same speed on the benchmarks.
+**New in [#19](https://github.com/den-run-ai/pystachy/pull/19): part of the runtime in Python.**
+52 runtime functions, among them all the `str` methods and the format-spec mini-language, are
+written in the subset and compiled by Pystachy itself. Programs call them as before, at the same
+speed on the benchmarks.
 Follow-ups are tracked in [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
@@ -287,6 +287,7 @@ A few choices shape everything else. Each is explained, with the pull request th
 | [docs/performance.md](docs/performance.md) | benchmarks, start-up, memory and compile time |
 | [docs/stdlib.md](docs/stdlib.md) | how much of the standard library and of PyPI compiles, and what it would take to compile more |
 | [docs/typed-ir.md](docs/typed-ir.md) | the typed IR design (in progress) |
+| [docs/runtime-in-subset.md](docs/runtime-in-subset.md) | writing the runtime in the subset itself: the prototype (`runtime.py`), its measurements, and how other compilers do it |
 | [docs/history.md](docs/history.md) | the timeline, the design decisions and the Ouro v1 lineage |
 | [lib/README.md](lib/README.md) | the unmodified standard-library modules that ship with Pystachy |
 
@@ -307,9 +308,9 @@ How a test works: put a program in `tests/NAME.py`, record CPython's output with
 `tests/record.sh NAME`, and `make test` checks it under the JIT and AOT. A program that must be
 rejected goes in `tests/errors/`, with the expected message in a comment on its first line.
 Before a pull request, run `make verify`, which runs what CI runs; after a code-generator
-refactor, `make irsame REF=main` shows that no program's IR changed. The typed IR and runtime.py
-work touches the code generator and the runtime, so comment on [#22](https://github.com/den-run-ai/pystachy/pull/22) or
-[#19](https://github.com/den-run-ai/pystachy/pull/19) before starting something large there.
+refactor, `make irsame REF=main` shows that no program's IR changed. Work on the typed IR or
+`runtime.py` touches the code generator and the runtime, so open an issue (for `runtime.py`,
+comment on [#31](https://github.com/den-run-ai/pystachy/issues/31)) before starting something large there.
 
 ## License
 

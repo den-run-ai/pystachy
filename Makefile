@@ -2,7 +2,7 @@
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= python3
 
-pystachy: pystachy.py runtime.c
+pystachy: pystachy.py runtime.c runtime.py
 	mkdir -p build
 	$(PY) pystachy.py build pystachy.py -o build/pystachy1
 	build/pystachy1 build pystachy.py -o build/pystachy2
@@ -11,6 +11,11 @@ pystachy: pystachy.py runtime.c
 	build/pystachy2 ir pystachy.py -o build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
+	$(PY) pystachy.py rt runtime.py -o build/rt1.ll
+	build/pystachy1 rt runtime.py -o build/rt2.ll
+	build/pystachy2 rt runtime.py -o build/rt3.ll
+	cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+	@echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($$(wc -l < build/rt1.ll) lines)"
 	cp build/pystachy2 pystachy
 
 test: pystachy
@@ -24,9 +29,14 @@ bench: pystachy
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
-dictprobe: tools/dictprobe.c runtime.c
+# (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those)
+LLVMBIN = $(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)
+dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
-	$(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)clang -O2 tools/dictprobe.c -o build/dictprobe -lm
+	./pystachy rt runtime.py -o build/dictprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
+	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
+	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe
 
 # Full verification (bootstrap, both compilers, Python-free stage, UBSan, GC stress, IR check, benchmarks, dict probes,
@@ -53,6 +63,7 @@ ref:
 	  echo "build/ref: building the compiler of $(REF) ($$c)"; \
 	  rm -rf build/ref && mkdir -p build/ref && \
 	  git show $$c:pystachy.py > build/ref/pystachy.py && git show $$c:runtime.c > build/ref/runtime.c && \
+	  { ! git cat-file -e $$c:runtime.py 2> /dev/null || git show $$c:runtime.py > build/ref/runtime.py; } && \
 	  { ! git cat-file -e $$c:lib 2> /dev/null || git archive $$c lib | tar -xf - -C build/ref; } && \
 	  PYSTACHY_HOME= $(PY) build/ref/pystachy.py build build/ref/pystachy.py -o build/ref/pystachy1 && \
 	  PYSTACHY_HOME= build/ref/pystachy1 build build/ref/pystachy.py -o build/ref/pystachy && \
@@ -60,11 +71,12 @@ ref:
 	fi
 
 # the IR check (PYSTACHY_IRCHECK=1) and llvm-as must accept the IR of every corpus program that compiles,
-# or of FILES (tools/check_ir.sh)
+# and of runtime.py, or of FILES (tools/check_ir.sh)
 check-ir: pystachy
 	tools/check_ir.sh ./pystachy $(FILES)
 
-# the compiler's RUNTIME table must agree with runtime.c (tools/check_runtime.py)
+# the compiler's RUNTIME table must agree with runtime.c and runtime.py, and no function of runtime.py
+# may reach itself through runtime.c (tools/check_runtime.py)
 check-runtime:
 	$(PY) tools/check_runtime.py
 

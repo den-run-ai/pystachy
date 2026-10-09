@@ -16,7 +16,8 @@
    lookup: a hash that behaved randomly would average at most 1.5 per miss and 2 per lookup
    after the deletions, at the fullest table (a third of the slots in use). The times
    (nanoseconds per insertion or hit, best of three) are for information only.
-   usage: make dictprobe   (clang -O2 tools/dictprobe.c -o build/dictprobe -lm; build/dictprobe [N...]) */
+   runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
+   usage: make dictprobe   (build/dictprobe [N...]) */
 #include <time.h>
 static long long probes;
 #define DICT_PROBE() (probes++)

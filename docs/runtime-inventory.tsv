@@ -1,0 +1,314 @@
+# runtime.c at 30b51d9 (2,665 lines): each function and table, its first line, its size in lines, its area,
+# its tier and whether it is on a hot path, what porting it to the subset needs, and a note.
+# Tiers: A expressible in the subset as it was before runtime.py; B needs small extensions (byte access,
+# a builder, wrapping or unsigned ints, extern libc, constant tables); C needs raw memory; D must stay native.
+# Made by four inventories for docs/runtime-in-subset.md section 1.7; a judgment per item, so approximate.
+line	loc	area	tier	hot	name	needs	note
+24	5	other	C	yes	typedefs Str/List/Dict/Buf (value-model layouts)	struct layout; flexible array member char s[]; ABI shared with compiler sconst {i64,[n x i8]} at pystachy.py:5504	Str header layout is hard-coded in the compiler too; any port must keep it bit-identical
+29	1	strings	A	no	NONE (INT64_MIN omitted-slice sentinel)		compiler remaps an explicit -2**63 bound to -2**63+1 (pystachy.py:8608-8616), verified correct
+69	6	gc	A	no	GC constants PAGE/CHUNK/ARENA/SMALL/NK/GC_MIN		
+75	1	gc	C	yes	W (may_alias uintptr_t)	raw word type; TBAA/aliasing control	lets free-list links and scanned words alias every typed access
+77	16	gc	C	yes	struct Seg + HB macro	struct layout; flexible array mark[]; sizeof; page-aligned header placement	
+93	3	gc	A	no	csize[] size-class table		
+96	9	gc	C	yes	GC statics fl/sfl/avail/chunks/pool/bigs/pmap/gc_*/mstk	raw pointer globals not visible to the GC itself	
+105	2	gc	A	yes	ch1[256] chr cache + args (static roots)		as subset globals (list[str], list[str]) they would be GC roots automatically via @main's root table
+110	1	gc	D	no	oom	must not allocate; stdio flush; exit	internal; runs mid-allocation with the heap inconsistent
+111	6	gc	A	no	cls	clz or bit_length (loop works today)	internal, slow-path size-class computation; pure arithmetic, but only useful inside a C/D allocator; fast-path formula at 284 verified consistent
+117	11	gc	C	no	pmap_set	address arithmetic; raw calloc'd two-level table	assumes 48-bit VA: e>>48 -> oom (false MemoryError on LA57 systems)
+128	3	gc	C	no	mstk_grow	realloc of non-GC memory	
+131	17	gc	C	yes	scan	load word at arbitrary address; unsigned wraparound compare; 64-bit reciprocal multiply off*inv>>40; mark bit 1<<63 (OverflowError in subset); no_sanitize(address)	5.65% self of the compiler self-compile; reading stack/uninitialised words is formally UB in ISO C; tier D when applied to the stack range
+148	6	gc	D	no	mark_roots	__builtin_frame_address; stack scanning; static root ranges	
+154	15	gc	C	yes	rebuild	raw stores of complemented links; memset; ctz; loop pragmas	4.2% inclusive of the self-compile
+169	35	gc	C	no	sweep	intrusive linked lists of raw headers; free(); arena refcount stored in raw block word	
+206	18	gc	D	no	collect	__builtin_unwind_init register spill; clock_gettime; files_sweep hook	10.5% inclusive of the self-compile (3 collections)
+224	37	gc	C	no	refill	calloc arenas; page alignment; header formatting via memset; lazy free-list threading	warm: about once per page of slots
+261	21	gc	C	yes	gc_slow	calloc large blocks; pointer alignment; free-list pop	every allocation >=136 B or on free-list miss; 13% inclusive of the self-compile
+282	7	gc	C	yes	gc_alloc (inlined fast path)	raw load/store; always_inline; pointer-free vs scanned kinds	
+289	1	gc	C	yes	pys_alloc	malloc/returns_nonnull attrs for LLVM	called from generated code (objects, tuples: pystachy.py:8824, 9293)
+290	1	gc	C	yes	pys_alloc_atomic	pointer-free allocation	internal only (strings, buffers)
+291	4	gc	B	no	gc_report	read access to C GC counters	formatting itself is expressible as print(f..., file=sys.stderr)
+295	9	gc	C	no	gc_init	calloc page map; frame address of @main	getenv/atoll part is tier A
+307	3	process	D	no	io_intr / kbint statics	volatile sig_atomic_t shared with SIGINT handler	
+310	1	process	D	no	pys_fail	signal flag; stdio; exit	internal only (94 call sites); ported callers would just use raise X(msg)
+311	9	process	D	no	pys_raise	stderr fwrite; exit; kbint for SIGINT death	called from generated code (implements raise); strcmp relies on the Str NUL-termination invariant
+320	1	process	D	no	pys_exit	exit	called from generated code (sys.exit)
+321	3	process	D	no	pys_exit_msg	stderr; exit	called from generated code
+325	8	strings	B	yes	put (Buf append)	raw string builder	internal; cap*2+n+64 growth is unchecked, bounded only by gc_slow's 2^40 limit; list[str]+join is the slow tier-A substitute
+335	1	strings	C	yes	pys_str	pointer-free allocation; memcpy from raw char*	internal (exported); root Str constructor, about 34 internal uses
+336	1	strings	A	no	cstr		becomes a string literal (static constant, no allocation); the C allocates e.g. "0" on every zfill call
+337	1	strings	B	yes	done	raw string builder finish	
+339	6	strings	B	yes	pys_chr	1-byte str primitive (circular: chr is this function)	called from generated code (chr(), pystachy.py:4401, 8776) and via pys_str_get; UTF-8 path >255 is tier A on top of the byte path; 1.6% of the self-compile
+345	9	strings	A	yes	u8char	byte access (ord(s[i]) today); tuple return (allocates today)	internal; the strict UTF-8 decoder; slow without a byte intrinsic and allocation-free multi-return
+354	6	strings	B	yes	pys_ord	byte-load intrinsic on str (ord(s[i]) is circular); snprintf for error	called from generated code (ord); 1.56% of the self-compile
+360	14	strings	A	no	pys_ascii	byte access; hex format via f-string	called from generated code (8768). BUG: lax private decoder, so ascii(chr(0xC1)+chr(0xBF)) -> '\x7f' (CPython '\xc1\xbf'); F4 BF BF BF -> '\U0013ffff'
+374	1	strings	A	yes	idx		internal, inlined bounds check
+375	5	strings	A	yes	span	multi-value return without heap allocation	internal; as a tuple-returning subset function it measured 4-8 ns/call plus 24 B of GC garbage per call
+380	1	strings	B	yes	pys_str_get	byte-load intrinsic; 1-byte str cache	called from generated code (s[i], for c in s: 6755, 8368, 8843); 2.6% inclusive of the self-compile
+381	1	strings	C	yes	pys_str_slice	allocation + memcpy at interior offset (substring primitive)	called from generated code (8619); circular: it is slicing
+382	4	strings	C	yes	pys_str_add	pointer-free allocation; memcpy	called from generated code (+, f-strings: 7795, 8681, 8762); 5.4% inclusive of the self-compile; circular
+386	8	strings	A	no	pys_str_mul	explicit overflow check to keep CPython's message	called from generated code (9141); a port can double with +; the C makes n memcpy calls (slow for 'x'*10**8)
+394	1	strings	B	yes	pys_str_eq	memcmp extern or SIMD intrinsic	internal via eqv/pys_eq and the dict probe (1479); hottest string op: 12.2M calls, 31.5% inclusive of the self-compile in the non-LTO build; typed IR could call it directly
+395	4	strings	B	yes	pys_str_cmp	memcmp extern	internal (cmpop, sort at 1158)
+399	4	strings	B	yes	find	memmem extern (two-way, O(n+m))	internal (split, replace, contains, partition); a naive subset loop is O(n*m) and measured 66-78x slower
+403	4	strings	A	yes	adjust	multi-value return without allocation	internal; CPython's ADJUST_INDICES
+407	6	strings	B	yes	pys_str_find	memmem extern	called from generated code via METHODS/pys_{base}_{m} (9940); 2% of the self-compile
+413	5	strings	A	no	pys_str_rfind	byte access	called from generated code; already naive O(n*m) in C
+418	1	strings	A	no	pys_str_index		called from generated code; raise ValueError in the port
+419	1	strings	A	no	pys_str_rindex		called from generated code
+420	8	strings	B	no	pys_str_count	memmem extern	called from generated code; empty needle counts bytes+1 (documented byte-string deviation)
+428	1	strings	B	yes	pys_str_contains	memmem extern	called from generated code (in, 9223)
+429	5	strings	B	yes	tail	memcmp extern (or slice+== which allocates)	internal; CPython tailmatch
+434	1	strings	B	yes	pys_str_startswith	memcmp	called from generated code; 4.1% inclusive of the self-compile (lexer)
+435	1	strings	B	no	pys_str_endswith	memcmp	called from generated code
+436	9	strings	A	no	pys_str_replace	string builder for speed	called from generated code
+445	1	strings	A	no	ws		
+446	1	strings	A	no	instr	memchr for speed	chr(c) in cs has the same single-byte semantics
+447	6	strings	A	no	strip	str|None parameter or ABI change (C ABI passes NULL for None)	
+453	3	strings	A	no	pys_str_strip/lstrip/rstrip	str|None parameter	called from generated code (explicit None becomes null, pystachy.py:9920)
+456	9	strings	A	yes	all	byte access	internal backing for the is* methods; lexer per-token
+465	9	strings	A	no	cased	byte access	
+474	6	strings	A	yes	pys_str_isdigit/isalpha/isalnum/isspace/isupper/islower	byte-load intrinsic to avoid 9x slowdown	called from generated code; isdigit measured 8.8x slower via ord(s[i])
+480	9	strings	B	no	mapc	mutable byte buffer / raw builder	internal; copies then mutates in place; the list[str]+join version is 27-59x slower
+489	2	strings	B	no	pys_str_upper/lower	raw builder	called from generated code
+491	1	strings	A	no	ulen		
+492	13	strings	A	no	pad	str|None fill parameter; explicit overflow check (C calls oom)	
+505	3	strings	A	no	pys_str_ljust/rjust/center	str|None	called from generated code
+508	6	strings	A	no	pys_str_zfill		called from generated code; C mutates the fresh result in place and allocates "0" per call
+514	1	strings	A	no	triple		return (a, b, c); same 8-byte-slot tuple layout
+515	6	strings	A	no	pys_str_partition		called from generated code
+521	6	strings	A	no	pys_str_rpartition		called from generated code
+527	3	strings	A	no	pys_str_removeprefix		called from generated code
+530	3	strings	A	no	pys_str_removesuffix		called from generated code
+533	2	strings	A	no	lowc/upc		
+535	5	strings	B	no	pys_str_swapcase	raw builder	called from generated code
+540	5	strings	B	no	pys_str_capitalize	raw builder	called from generated code
+545	10	strings	B	no	pys_str_title	raw builder	called from generated code
+555	10	strings	A	no	pys_str_istitle		called from generated code
+565	3	strings	A	no	pys_str_isascii/isdecimal/isnumeric		called from generated code
+568	1	strings	B	no	pys_str_casefold	raw builder (via mapc)	called from generated code
+569	13	strings	A	no	pys_str_expandtabs	builder for speed	called from generated code; the C puts one byte per non-inlined call
+582	1	strings	A	yes	pys_str_int	raw builder to beat snprintf; care: never negate INT64_MIN under checked arithmetic	called from generated code (9950); 3.5% inclusive of the self-compile; subset list+join version 118 ns vs C 35 ns
+583	25	strings	B	no	pys_str_float	snprintf %.*e + strtod extern, or Ryu/Grisu needing float bit casts + 128-bit mul	called from generated code (9952) and repr; up to 17 snprintf+strtod round trips per call; fixed buffers safe for these formats
+608	6	strings	B	no	pys_float_hex	snprintf %a or float bit cast	called from generated code via METHODS float.hex (math.frexp is unsupported in the subset)
+614	1	arith	A	no	pys_float_is_integer		called from generated code; port as math.isfinite(d) and d % 1.0 == 0.0 (math.floor returns int and would overflow)
+620	8	strings	A	no	badlit	repr_str/u8char in the subset	internal; becomes raise ValueError(f'...{repr(s)[:200 chars]}')
+628	2	strings	A	no	digitv/aws		
+630	8	strings	A	no	decruns[] Unicode decimal-run table		module-level list[int]; tuples are capped at 9 elements
+638	23	strings	A	no	asciinum	byte access; builder	internal. BUG: lax private decoder accepts overlong forms: int(chr(0xE0)+chr(0x99)+chr(0xA0)+'7') returns 7 and float(...) 7.0; CPython raises ValueError
+661	28	strings	A	no	pys_int_str	accumulate negatively ((uint64)u up to 2^63 does not fit int64)	called from generated code (int(str), 4401); C (I)(0-u) is an implementation-defined conversion; checks follow CPython's order including the 4300-digit limit
+689	24	strings	B	no	pys_float_str	strtod extern (correct rounding) or Eisel-Lemire needing 128-bit mul + bit casts; strncasecmp	called from generated code (float(str), 4402)
+716	2	arith	A	no	ZDE/OVF message macros		String constants. OVF text equals the message generated code uses for checked + - * (pystachy.py:5490), so a ported function that uses the subset's checked ops raises the same error.
+718	5	arith	B	yes	pys_floordiv	raw truncating sdiv/srem intrinsic	Called from generated code for every int // (IRT table, pystachy.py:4382). It cannot be written in the subset because `//` lowers to this same function. The INT64_MIN // -1 case is handled. A better home is inline IR emitted by Gen, the way CHECKED + - * already are.
+723	5	arith	B	yes	pys_mod	raw srem intrinsic	Generated code calls it for every int % (IRT). Same circularity as pys_floordiv. The b == -1 shortcut avoids the INT64_MIN % -1 trap.
+728	11	arith	A	no	pys_pow		Generated code calls it for ** (IRT). Square-and-multiply with __builtin_mul_overflow, which the subset's checked * matches, message included. `b & 1` is inline in the subset; `b >>= 1` calls pys_shr, which is fine as long as pys_shr stays a primitive.
+739	18	arith	B	no	pys_powmod	128-bit mul/mod (__int128)	Generated code calls it for pow(a, b, m) (pystachy.py:9716). The modular inverse uses a 128-bit Euclid. It would become tier A with a shift-add mulmod in 64-bit checked ints, but that is about 64 times slower per multiply. Not hot.
+757	7	arith	B	yes	pys_shl	unsigned/raw shl; raw ashr	Generated code calls it for << (IRT), so the operator is circular. The overflow check `r >> b != a` relies on implementation-defined arithmetic right shift of a signed value. Hot in bit-twiddling code.
+764	1	arith	B	yes	pys_shr	raw ashr intrinsic	Generated code calls it for >> (IRT). The shift count is clamped to 63. This should be inline IR.
+765	1	arith	B	yes	pys_fdiv	raw fdiv intrinsic	Generated code calls it for float / (FRT). It is a zero test plus an fdiv instruction. Written in the subset, `a / b` would call itself, so it should be inline IR.
+766	9	arith	B	yes	pys_idiv	unsigned 64-bit ops; clz; 128-bit shift/div; ldexp; u64->double conversion	Generated code calls it for int / int (pystachy.py:9122). UB confirmed: when a == 0 and |b| > 2**53, line 770 passes 0 to __builtin_clzll. Running `0 / (1 << 60)` with an instrumented runtime (PYSTACHY_CFLAGS=-fsanitize=undefined) stops with 'passing zero to clz()'. The output is right only by luck. No test covers it, so `make verify`'s UBSan step misses it.
+775	8	arith	A	yes	pys_cmp_if		Generated code calls it for every int-vs-float comparison (pystachy.py:9244). In the subset: `d != d` for NaN, range guards, `j = int(d)`, then compare d with float(j), which is exact here.
+783	7	arith	B	no	pys_fpow	extern libm pow; floor	Generated code calls it for float ** (FRT). The error checks are tier A; only the pow() call needs FFI.
+792	5	arith	A	no	mchk		Internal domain/range classifier: NaN and Inf tests only (x != x, abs(x) == inf).
+797	3	arith	B	no	M1 macro instances: pys_m_sqrt sin cos tan asin acos atan sinh cosh tanh exp log log2 log10 fabs log1p expm1 exp2 cbrt	extern pure libm calls	19 one-line wrappers that the macro generates. Called from generated code through the CALLS loop at pystachy.py:4435-4436. A minimal `extern pure def` FFI covers all of them. fabs could be tier A.
+800	4	arith	B	no	pys_m_pow	extern libm pow	Generated code calls it for math.pow.
+804	1	arith	B	no	pys_m_fmod	extern libm fmod	Generated code calls it for math.fmod.
+805	1	arith	B	no	pys_m_atan2	extern libm atan2	Generated code calls it for math.atan2.
+809	2	arith	A	no	DL typedef / dl_fast_sum		Internal. Becomes a tuple[float, float] return. Pystachy emits plain fadd/fsub without contract flags, so the `fp contract(off)` semantics carry over for free.
+811	1	arith	B	no	dl_mul	fma (llvm.fma or libm)	Internal. The exact product depends on fma.
+812	18	arith	B	no	vnorm	frexp; ldexp; fma; sqrt	Internal. CPython's vector_norm, with a recursive rescale for subnormals. The double* array becomes list[float]. It needs `#pragma clang fp contract(off)`; Pystachy IR never contracts, so ported code would be safer than the C here.
+830	7	arith	B	no	pys_m_hypot	via vnorm	Generated code calls it for math.hypot.
+837	1	arith	B	no	pys_m_copysign	libm copysign or float bit cast	Generated code calls it. The sign of -0.0 can be found with 1/x, but the sign of a NaN needs a bit cast.
+838	5	arith	B	no	pys_m_logb	extern libm log	Generated code calls it for math.log(x, b).
+843	2	arith	A	no	pys_m_degrees / pys_m_radians		Generated code calls both. Each is one multiply by a constant.
+845	3	arith	A	no	pys_m_isfinite / pys_m_isinf / pys_m_isnan		Generated code calls all three. They are expressible as x != x and abs(x) == math.inf. They should be inline IR (fcmp).
+848	1	arith	A	no	pys_m_trunc		Generated code calls it. Equals int(x) (pys_f2i truncates), with the same messages.
+849	1	arith	B	no	pys_m_gcd	unsigned 64-bit ops	Called from generated code and from lcm. It uses uint64 to take |INT64_MIN|. Tier A is possible by special-casing INT64_MIN.
+850	6	arith	A	no	pys_m_lcm		Generated code calls it. Checked * already raises OVF.
+856	7	arith	A	no	pys_m_isqrt		Generated code calls it. The C version seeds with libm sqrt. A port can use integer Newton (tier A) or extern sqrt (tier B). The correction loops avoid overflow by dividing.
+863	5	arith	A	no	pys_m_factorial		Generated code calls it. Checked multiply.
+868	8	arith	B	no	pys_m_comb	unsigned 128-bit mul/div	Generated code calls it. The intermediate r*(n-k+i) can reach 2**126. Tier A needs gcd reduction first.
+876	6	arith	A	no	pys_m_perm		Generated code calls it. Checked multiply.
+883	6	arith	B	no	pymod	libm fmod; floor; copysign	Internal, CPython's float_divmod. The out-parameter becomes a tuple return.
+889	2	arith	B	yes	pys_fmod / pys_ffloordiv	via pymod	Generated code calls them for float % and // (FRT). Written in the subset they would call themselves.
+891	6	arith	B	yes	pys_f2i	raw fptosi intrinsic	Called from generated code for int(float), and internally at lines 619, 848, 897, 917 and 918. int() in the subset lowers to this function, hence circular.
+897	1	arith	B	no	pys_round	libm nearbyint	Generated code calls it for round(x).
+898	19	arith	B	no	pys_round_n	extern snprintf("%.*f"/"%.1080f"); strtod	Generated code calls it for round(x, n). Risks: two static 1500-byte buffers (not reentrant). Correctness rests on glibc printing the exact decimal expansion and strtod rounding correctly. The buffers are sized tightly but correctly: at most 1390 bytes. Porting without libc means writing exact decimal (bignum) conversion, which is large.
+917	2	arith	B	no	pys_floor / pys_ceil	libm floor/ceil or llvm intrinsics	Generated code calls them for math.floor and math.ceil.
+923	3	repr/cmp	A	yes	pys_obj_eq / pys_obj_cmp / pys_obj_repr (extern decls)		Declarations only. The compiler generates the definitions: a switch over class ids that calls back from the runtime into program code. They disappear if the generic functions are monomorphized as templates.
+926	1	repr/cmp	B	yes	ocls	byte access to str	Parsed exactly 3 digits of the descriptor. Bug, since fixed: desc() emits f"O{id:03d}" with no bound (pystachy.py:5612), so class ids of 1000 and above were truncated. With 1002 classes, repr([C1000(1000)]) printed [C100(1000)]: C100.__repr__ ran on a C1000 object. That was type confusion, and memory-unsafe when the field layouts differ. ocls and skip now read the 3 digits and any more, up to the next descriptor letter (tests/class_ids_wide.py). Monomorphization removes the parsing.
+927	4	repr/cmp	C	no	pys_default_repr	object address as int (id())	Generated code calls it (pystachy.py:9980). Prints the address with %p. Would be tier B with an id() intrinsic plus formatting.
+931	7	repr/cmp	C	no	busy/nbusy/cbusy + pys_repr_enter / pys_repr_leave	raw object identity; malloc outside GC	Generated dataclass __repr__ calls them through __pys_repr_enter/leave (pystachy.py:9534). They keep a realloc'd array of void* that the GC does not scan; this is safe only because the objects are also on the stack. Linear scan per call. Tier A is possible if the compiler gives each class a global list[C] tested with `is`.
+938	8	repr/cmp	B	yes	skip	byte access to str	Internal descriptor walker. Not needed if the generic code is monomorphized.
+946	1	repr/cmp	B	yes	dbl	i64<->double bit cast	Internal type pun of an untyped slot. Not needed in typed code.
+948	1	strings	A	no	rquote		Internal. Expressible as `"'" in s and '"' not in s`.
+949	11	strings	B	yes	resc	byte access to str; UTF-8 decode (u8char)	Internal; runs per character of a string repr. Writes a 12-byte stack buffer, whose sizes check out: at most 10 characters plus NUL. Hex escapes are tier A via format specs.
+960	6	strings	B	yes	repr_str	raw string builder	Internal; builds through Buf/put.
+966	29	repr/cmp	C	yes	repr	type punning of untyped slots by descriptor	As written, an interpreter that casts I to List*, Dict*, tuple I* or double from the descriptor. Ported as a template over T (static isinstance), it is tier A for lists and dicts (for k, v in d.items()). Tuples need static iteration over heterogeneous elements, which is tier B. Called by pys_repr, keyerr (line 1499), list.index and line 2553.
+995	1	repr/cmp	C	yes	pys_repr	see repr	Generated code calls it at 5 sites (for example pystachy.py:9993) and line 1608 calls it.
+997	29	repr/cmp	C	yes	eqv	type punning of untyped slots by descriptor	Robustness bug confirmed. Case 'L' (lines 1001-1006) compares lengths once, then reads y->a[i] up to x->len. An __eq__ that shrinks y makes it read zeroed slots and pass NULL as the object to generated __eq__. In scratch t_eqmut.py the result is 'AttributeError: NoneType' where CPython prints False. Tier A/B as a template, re-checking len() each step as CPython does.
+1026	1	repr/cmp	C	yes	pys_eq	see eqv	Generated code calls it for == on compound types (pystachy.py:9256).
+1030	1	repr/cmp	A	yes	cmpop		Internal.
+1031	20	repr/cmp	C	yes	opv	type punning of untyped slots by descriptor	Internal. Also used by minmax and the sort fallback. Its list loop re-checks lengths, so it is safe. As a template it is tier A, plus tier B for tuples.
+1051	1	repr/cmp	C	yes	pys_cmpop	see opv	Generated code calls it for < <= > >= on compound types (pystachy.py:9258).
+1053	7	other	A	no	pys_unpack_check		Generated code calls it (pystachy.py:6752). A port is an f-string plus raise ValueError. The 96-byte buffer can truncate only with 20-digit counts, which cannot happen.
+1062	4	lists	C	yes	pys_list_new	raw slot-array allocation; struct layout {len,cap,a}	Core primitive; generated code and many runtime functions call it. Writing it in the subset is circular because it is the list implementation.
+1066	5	lists	C	yes	reserve	raw alloc; memcpy	Internal growth (x2). Self-extend is safe because it copies before overwriting.
+1073	2	lists	C	yes	Slot / AT macro (TBAA trick)	TBAA metadata control	Lets LLVM hoist len and a loads out of loops. Other functions access l->a[i] as a plain I, which aliases conservatively, so this is sound. A Pystachy port would need the compiler to emit the same TBAA itself, which a typed IR could do well.
+1075	1	lists	C	yes	pys_list_append	raw store	Called from generated code at many sites and internally.
+1076	1	lists	C	yes	pys_list_get	raw load	Generated code calls it for every xs[i] (pystachy.py:8844) and in unpacking. In AOT, LTO inlines it. In JIT mode it is an out-of-line call: a scratch benchmark (b_idx.py, 300M xs[i] // and % operations) ran in 0.62s AOT and 1.27s JIT.
+1077	1	lists	C	yes	pys_list_set	raw store	Generated code calls it (pystachy.py:6737, 6743, 8113).
+1080	5	lists	C	yes	pys_list_pop	memmove; slot zeroing for GC	Called from generated code via METHODS 'list.pop' (the pys_{base}_{m} pattern at pystachy.py:9940) and by remove.
+1085	1	lists	C	no	pys_list_del	memmove	Generated code calls it (pystachy.py:7995).
+1086	5	lists	C	no	pys_list_insert	memmove	Called from generated code and via METHODS.
+1091	1	lists	C	yes	pys_list_extend	memcpy	Called from generated code (+=, list.extend) and by list_add.
+1092	4	lists	C	yes	pys_list_slice	memcpy	Generated code calls it (pystachy.py:8619). Tier A as an append loop, but slower.
+1096	1	lists	A	no	pys_list_copy		Called from generated code and via METHODS. It is xs[:].
+1097	1	lists	C	no	pys_list_clear	memset of slots	Called via METHODS 'list.clear'. Zeroes the slots so the GC does not retain the old items.
+1098	1	lists	A	no	pys_list_add		Generated code calls it for list + list. It is new plus two extends.
+1099	8	lists	C	no	pys_list_imul	memcpy into reserved space	Generated code calls it for xs *= n. The overflow guard `m > (INT64_MAX>>4)/n` is correct. Tier A as an extend loop.
+1107	8	lists	C	no	pys_list_mul	memcpy	Generated code calls it for list * n. Tier A as an extend loop.
+1115	1	lists	A	yes	pys_list_find	template instantiation instead of the descriptor ABI	Generated code calls it for `x in xs` (pystachy.py:9226). As a template over T: `x is v or x == v`. The call site changes from passing the '#' descriptor to calling an instantiation.
+1116	8	lists	A	no	pys_list_index	template	Called via METHODS. The error message is built with repr(v). put(..., 16) deliberately copies the NUL.
+1124	1	lists	A	no	pys_list_count	template	Called via METHODS.
+1125	5	lists	A	no	pys_list_remove	template	Called via METHODS. Uses find and pop.
+1130	1	lists	A	yes	rev		Internal; timsort applies it to subranges through raw pointers. A port takes (xs, lo, hi) and swaps by index, with bounds checks.
+1131	1	lists	A	no	pys_list_reverse		Called via METHODS 'list.reverse'.
+1147	9	timsort	A	yes	MIN_GALLOP / Run / MS struct / kind enum		MS becomes a class. Its `volatile` GC-root fields (line 1151) are a fragile invariant; in the subset, list locals are scanned roots automatically. Run p[64] becomes a list.
+1154	1	timsort	C	no	sorting (static sentinel)	raw write of List.a/len/cap	While sorting, the list points at a static non-heap array so that it looks empty. Every path that can touch it re-checks len 0 or calls reserve, so it is safe.
+1156	5	timsort	A	yes	islt	template over T	Runtime dispatch on kind, falling back to opv by descriptor. A monomorphized `x < y` is strictly better: __lt__ calls direct and inlinable, as with Rust's slice::sort or C++ std::sort.
+1162	7	timsort	A	yes	binarysort	(optional) select/unpredictable hint; memmove primitive for speed	Internal. __builtin_unpredictable forces selects. In the subset a conditional expression gives a phi, which SimplifyCFG may turn into a select. memmove becomes an index loop.
+1169	17	timsort	A	yes	count_run		Internal. Pointer offsets become indices.
+1186	18	timsort	A	yes	gallop		Internal. The PRE macro becomes a `right` flag or two instantiations. `(ofs << 1) + 1` calls the checked shl, but values stay below n.
+1204	4	timsort	A	no	getmem		Internal. The buffer becomes a list[T] (filled with any T item).
+1208	37	timsort	A	yes	merge_lo	memcpy/memmove slice-copy primitive (perf); goto -> structured loops	Internal. Pointer cursors pa, pb and d become indices into two lists. The gotos done and copyb become flags or breaks. Selects are used for ints and floats. Bounds checks on every access cost speed unless the compiler drops them.
+1245	37	timsort	A	yes	merge_hi	memcpy/memmove slice-copy primitive (perf); goto -> structured loops	Internal. Mirror of merge_lo.
+1282	11	timsort	A	yes	merge_at		Internal.
+1293	12	timsort	A	no	found_new_run		Internal powersort power computation. a and b stay below 4n, so checked << never overflows.
+1305	25	timsort	C	yes	pys_list_sort_r	raw write of List fields (sentinel)	Generated code calls it (pystachy.py:9701, 9876). Tier A as an approximation: copy, clear(), sort the copy, check len(xs) == 0, extend. That approximation misses an append followed by pop inside __lt__, which the C catches because reserve swaps l->a.
+1330	1	timsort	A	no	pys_list_sort		Dead code: nothing in pystachy.py or runtime.c calls it.
+1331	6	lists	A	no	pys_list_minmax	template	Generated code calls it for min/max (pystachy.py:9688). Re-reads len each step, so it is safe.
+1337	2	lists	A	no	pys_any / pys_all		Called from generated code (CALLS).
+1339	1	lists	A	no	pys_sum_int		Called from generated code. Checked += gives the same OVF message.
+1340	9	lists	A	yes	fsum		Internal Neumaier sum: abs and math.isfinite (both tier A).
+1349	3	lists	A	no	pys_sum_float / pys_sum_float_int / pys_sum_int_float		Generated code calls all three (CALLS).
+1353	5	other	B	no	pys_range_len	wrapping/unsigned sub and udiv	Generated code calls it for reversed(range) (pystachy.py:8277). The result is deliberately an unsigned count that is negative as an I above 2**63-1; generated code compares it with icmp ne.
+1358	5	other	B	no	pys_range_has	unsigned urem	Generated code calls it for `x in range(...)` (pystachy.py:9162).
+1363	6	lists	A	no	pys_range_list		Generated code calls it (pystachy.py:9774). __builtin_add_overflow followed by break becomes an explicit pre-check, `i > MAX - s`.
+1369	1	strings	A	no	pys_str_list		Called from generated code for list(s). It is `for c in s: l.append(c)`; pys_chr already interns 1-byte strings.
+1370	11	strings	B	yes	pys_str_join	raw string builder (alloc_atomic of known length + memcpy)	Called via METHODS 'str.join'. Circular in the subset because join is the builder.
+1381	17	strings	B	yes	pys_str_split	byte access to str without allocation	Called via METHODS. Slicing and find are tier A. Byte tests through s[i] work but cost a call per byte. maxsplit = INT64_MAX is a non-overflowing sentinel.
+1398	8	strings	B	yes	eol	byte access to str	Internal. Guarded lookahead reads of p[1] and p[2].
+1406	11	strings	B	yes	pys_str_splitlines	byte access to str	Called via METHODS.
+1417	19	strings	B	no	pys_str_rsplit	byte access to str	Called via METHODS. Uses pys_str_rfind and reverses its parts in place.
+1455	3	dicts	A	no	DICT_PROBE (macro)		Compiled to nothing normally. tools/dictprobe.c (138 lines) defines it as probes++ and textually #includes ../runtime.c, so a port would also have to rewrite that tool (as a subset program, or as a module-level counter behind a constant flag).
+1458	12	dicts	B	yes	hsh	wrapping u64 multiply; logical shift right; byte access to str without allocation; specialise on key kind at compile time (template on K) instead of d->kind	Internal; called by entry, pys_dict_set and dpop. It is SplitMix64 for int keys and FNV-1a for str keys, all unsigned, with no UB. Measured: a subset version that does the u64 multiply in 16-bit limbs gives the same hash as C on 20k random keys, but costs 4.5 ns against 0.78 ns in C. FNV over a 15-byte str through ord(s[i]) costs 103.5 ns against 5.65 ns (18x), because each byte goes through pys_str_get, the pys_chr cache and pys_ord. With the emulated hash, get on a 1000-entry dict takes 7.9 ns against 3.6 ns in C; with a hash as cheap as native it takes 3.7 ns.
+1470	1	dicts	A	no	keysize		Internal (pys_dict_new, pys_dict_set's growth path, pys_dict_from). It would only overflow for n > 2^62, which cannot happen; the subset's checked arithmetic would turn that into an OverflowError anyway.
+1471	11	dicts	B	yes	dfind	generic class Dict[K,V] (keys: list[K]) or slot->str cast (tier C); int32 array for idx (list[int] doubles the index memory); out-param *free -> object field (a returned tuple heap-allocates on every lookup); logical shift for perturb (can be emulated as (p>>5)&mask)	Internal. The algorithm itself is tier A: the prototype subdict.py runs it in the current subset for int keys and gives the same results. Lookups with a native-cost hash: 3.7 vs 3.6 ns at n=1000, 13.8 vs 8.9 ns at 100k, about 40 vs 25 ns at 4M; the large-table gap comes from 8-byte idx slots and the List indirection. PORT HAZARD: with signed ints, p >>= 5 is an arithmetic shift, so a negative hash drives p to -1 and the step becomes i = 5i mod 2^k, which never visits every slot (slot 0 maps to itself), so a lookup can loop forever. In the C, termination depends on the invariant that at most 1/3 of the 2*size idx slots are in use; the loop has no bound.
+1482	12	dicts	B	no	build	generic class Dict[K,V] (zero-filled typed key/value arrays); int32 arrays; pointer-free allocation for hs/idx (pys_alloc_atomic)	Internal: rebuild on growth, presizing, and dict(d). The cost is amortised per insert. Prototype (list[int] arrays, scanned by the GC): insert is 1.5-1.8x slower at 100k and 4M entries. Risk: (int32_t)++n truncates once there are more than 2^31 entries (implementation-defined, would corrupt the index). That is latent, needing about 16 GiB per array; CPython switches to int64 indices for large tables. build(d, d, size) aliases source and destination, which is safe because the new arrays are assigned only at the end.
+1494	5	dicts	B	no	pys_dict_new	generic class Dict[K,V]; ABI: len at word 0 and kind at word 1 (class field order)	Generated code calls it at pystachy.py:6365 and 8654 (displays presized as CPython does); internally from clone and pys_dict_from. The ABI is coupled: codegen inlines len(d) as `load i64` at word 0 (pystachy.py:9666) and stores kind at word 1 for typed empty dicts (6480). Subset classes are header-less LLVM structs (%C.Name), so a class whose fields are declared len, kind, ... keeps that layout. Dict repr (runtime.c:980) and eq (1011-1013) read the keys/vals/hs arrays directly and would need porting or adapting to the List* indirection.
+1499	1	dicts	A	no	keyerr		Internal and cold: raise KeyError(k), with repr chosen by the key type. It NUL-terminates the Buf for pys_fail's %s; repr escapes NULs, so nothing is truncated.
+1500	1	dicts	A	yes	entry		Internal. Also used by dict == at runtime.c:1012, outside this range, so it stays shared with C until that code is ported. In a port it is a template or method over the Dict class.
+1501	1	dicts	A	yes	pys_dict_has		Generated code: pystachy.py:9230 (`k in d`).
+1502	1	dicts	B	yes	pys_dict_getitem	generic class Dict[K,V] (returns a V slot)	Generated code: pystachy.py:8117 (augmented d[k] op= v) and 8848 (d[k]).
+1503	1	dicts	B	yes	pys_dict_get	generic class Dict[K,V]	Generated code through the METHODS table, "dict.get": "*V:*K,*V=0" (pystachy.py:4584 -> f"pys_{base}_{m}" at 9940), and from 6616.
+1504	6	dicts	B	yes	pys_dict_set	generic class Dict[K,V]; free slot from dfind passed through a field	Generated code: pystachy.py:6733, 6747, 8119, 8656; internally from setdefault. Works in the subset prototype for int/int. It calls dfind twice after a resize, the same as C.
+1510	7	dicts	B	no	dpop	generic class Dict[K,V]; a zero value of K and of V to clear the slots so the GC can reclaim them	Internal. Deletion is O(1) and leaves a hole (hs=0, idx=-1).
+1517	1	dicts	B	no	pys_dict_pop	generic class Dict[K,V]	Generated code: pystachy.py:7998 (`del d[k]`) and METHODS dict.pop.
+1518	1	dicts	B	no	pys_dict_pop_default	generic class Dict[K,V]	Generated code: pystachy.py:9885.
+1519	1	dicts	B	yes	pys_dict_setdefault	generic class Dict[K,V]	Generated code: pystachy.py:6616 and METHODS. Hot in the d.setdefault(k, []).append(v) idiom. It hashes twice on a miss (entry, then pys_dict_set).
+1520	1	dicts	A	no	pys_dict_clear		Generated code through METHODS dict.clear (pystachy.py:4585). In the subset it would reset the fields to empty lists.
+1525	1	dicts	B	yes	pys_dict_key	generic class Dict[K,V]	Generated code: pystachy.py:8374, in for-loops. RISK: e is not checked; correctness depends on codegen only passing indices returned by pys_dict_next or pys_dict_prev. A subset port would bounds-check it.
+1526	1	dicts	B	yes	pys_dict_val	generic class Dict[K,V]	Generated code: pystachy.py:8376. Unchecked index, same as pys_dict_key.
+1527	1	dicts	A	no	pys_dict_end		Generated code: pystachy.py:8320 (the start of a reversed loop). A field load.
+1528	1	dicts	A	yes	changed		Internal; raises RuntimeError on a size change, as CPython does.
+1529	7	dicts	A	yes	pys_dict_next		Generated code: pystachy.py:8343 (called on every iteration of a for loop over a dict). It reads only hs, len and n.
+1536	7	dicts	A	no	pys_dict_prev		Generated code: pystachy.py:8340 (reversed(d)). Matches CPython 3.13.16's end-past-entries behaviour.
+1543	1	dicts	B	no	col	generic class Dict[K,V]	Internal. RISK: writes l->a[l->len++] with no capacity check. It relies on the number of entries with hs != 0 equalling d->len; a subset port would use append, which is checked.
+1544	1	dicts	B	no	pys_dict_keys	generic class Dict[K,V]	Generated code: pystachy.py:9721, 9781 and METHODS dict.keys.
+1545	1	dicts	B	no	pys_dict_values	generic class Dict[K,V]	Generated code through METHODS dict.values.
+1546	5	dicts	B	no	pys_dict_items	generic class Dict[K,V]	Generated code through METHODS dict.items. It builds each tuple as a raw pys_alloc(16) with the same layout as Gen.tuple_ (pystachy.py:8823), which in the subset is just a (k, v) display. Same unchecked l->a[l->len++] writes as col.
+1556	7	dicts	B	no	clone	generic class Dict[K,V]; pointer-free allocation; bulk copy (memcpy -> list slice/copy)	Internal (pys_dict_from, pys_dict_copy). It copies the table holes and all, as CPython's clone does.
+1563	6	dicts	A	no	pys_dict_from		Generated code: pystachy.py:9719 (dict(d)). Only size heuristics (USABLE_FRACTION(size/2)); the real work is in clone and build.
+1569	1	dicts	A	no	pys_dict_copy		Generated code through METHODS dict.copy (pystachy.py:4585).
+1575	3	format	A	no	failf		As written it is tier D (varargs + vsnprintf), but its job maps directly onto `raise ValueError(f"...")` in the subset, so the varargs disappear. Other C code (forward declaration at 618, uses at 683, 1047, 1993, 2015, 2017) still calls it, so the C version stays until those are ported. RISK, confirmed: messages are cut at 511 bytes. f"{m:{'x'*600}}" prints a 512-byte line where CPython prints 665. A spec holding a NUL also cuts the %s short. It is safe against format-string injection because the spec is passed as an argument, never as the format.
+1578	5	strings	A	no	uoff	str byte access (ord(s[i]) works but goes through 2 runtime calls)	Internal: length of the fill character (1610, O(1)) and str precision (1645, O(prec)).
+1583	6	strings	A	no	u8enc		Internal; also used by pys_chr at 341 (outside the range). In the subset: chr(c) for c >= 256 (already UTF-8), and for 128..255 chr(0xC0|c>>6)+chr(0x80|c&63), because chr(<256) is a raw byte. It does no range check of its own (the caller checks at 1652); surrogates come out as 3 bytes, as the README documents.
+1589	3	format	A	no	tyname		Maps a desc char to a type name. With typed entry points it becomes a compile-time constant.
+1592	9	format	A	yes	group		Internal; runs for every integer and every finite float formatted through pys_format. It calls the noinline put() once per character. The zero-padding loop `while (len < minw) z++` takes O(width) steps, each with a division, and width can be up to 1e8; a port could compute z directly.
+1601	119	format	B	yes	pys_format	extern pure libc call: snprintf %.*e/%.*f/%#.*g/%.*E (or a correctly-rounded dtoa written from scratch on bignum limbs); typed entry points chosen by the compiler (format_int/format_float/format_str) instead of slot+desc, which needs an f64 bit cast via dbl(); unsigned negate for |INT64_MIN| (0-(uint64_t)v), or a special case/negative digit extraction; str byte access for spec parsing (strchr sets -> `in`)	Generated code: pystachy.py:8821. Both f-strings and %-formatting reach it: conversion() at ~8763 lowers "%.3f" etc. to format specs; the IR of `"%.3f|%5d|%-6s|" % (...)` plus one f"{x:.3f}" contains 4 calls to @pys_format. CIRCULARITY: a version written in the subset cannot use format specs or %-formatting itself, and must be compiled before any user of it. The spec parser, alignment, grouping, int bases, 'c' and every error message are tier A. Only float digit generation needs snprintf; repr's path (1673) can use repr(m), which is pys_str_float. RISKS: (1) the buffer sizing (tb[1100], or tsz = prec+400 on the heap) is argued non-locally from the 309-digit maximum, and the snprintf return value n is never compared with tsz before t[n++] (1686, 1698) and the memmoves (1675, 1684). (2) Line 1633 relies on strchr(set, 0) != NULL to accept a float with no type; elsewhere that trap is guarded with `&& type` (1634, 1646, 1667) or `*p &&` (1611, 1612). (3) width/prec over 1e8 raise ValueError where CPython succeeds (confirmed: f"{1:200000000}"). (4) A non-ASCII type char gives "Invalid format specifier 'é'" where CPython gives "Unknown format code '\xe9'" (confirmed). (5) snprintf/strtod depend on the locale; this is safe because the runtime only sets LC_CTYPE (1836). Matches CPython on INT64_MIN in b/x/, forms, '%' with inf, z with -0.0, inf with 0 padding, and euro fill/align (checked). A port could also parse constant specs at compile time (as Rust format_args! or Zig comptime std.fmt do), leaving only digit generation and padding at run time.
+1736	9	io	C	no	File (struct typedef)	opaque FILE* handle field; dev_t/ino_t from stat; raw malloc'd buffers pb/buf given to setvbuf	Could become a subset class only if FILE* is an opaque int handle and the buffers stay in C; generated code passes it as ptr and compares identity (pystachy.py:9184).
+1745	3	io	C	no	std_in/std_out/std_err, files, cfiles (statics)	weak references (files[] is malloc'd so the collector does not see it); globals readable from the C signal handler	As a subset list[File] global it would become a GC root and unreachable files would never be closed at collection, changing the semantics the README documents.
+1748	5	errno	A	no	errcls		Ported and checked in io_port.py using errno.X; internal only (ioerr, report, oserr, pys_finish).
+1753	3	io	B	no	ioerr	extern strerror -> str; extern pys_fail(str) to raise a class picked at run time	Internal. snprintf into a 160-byte buffer truncates safely.
+1764	4	process	D	yes	io_busy/io_in/io_out	volatile sig_atomic_t; atomic_signal_fence; no reordering across extern calls	Brackets every I/O call so the SIGINT handler only notes the signal; io_out may call kbint_exit. Runs on every print and read.
+1768	1	io	D	no	drain	fwrite/fflush from a signal handler	Called only from on_sigint.
+1769	10	process	D	no	on_sigint	signal handler ABI; sigprocmask/raise/_exit	Calls stdio (not async-signal-safe), guarded by io_busy; a SIGINT between kbint_exit's io_intr=0 and leaving() can re-enter drain.
+1779	1	process	B	no	leaving	extern signal(SIGINT, SIG_DFL)	Must run before any unbracketed stdio call at exit; that ordering keeps on_sigint safe.
+1780	3	process	B	no	die_sigint	extern signal/raise/exit	CPython's exit_sigint.
+1785	8	io	B	no	osflush	extern fflush/ferror/__fpurge/clearerr on an opaque FILE handle; errno accessor	Tied to stdio buffer state (__fpurge drops the data CPython keeps); a subset port gains nothing unless the write stack moves to write(2) over buffers the subset owns.
+1793	8	io	B	no	bput	extern fwrite with a (str/buffer, len) pointer; opaque FILE handle	BufferedWriter accounting is pure integer logic (modelled and checked in io_port.py Model.bput); the writes need FFI.
+1801	7	io	A	no	tflush		Pure logic over bput/osflush (checked in the Model).
+1808	10	io	B	yes	wput	mutable byte buffer / raw string builder (memcpy into the fixed 8 KiB pb); memchr (str.find is fine)	Every non-tty print goes through it; measured 130 ns per print to a file vs CPython's 472. Appending to a subset list[str] instead would allocate on every write.
+1818	4	io	B	no	flush1	extern __fpurge	Logic is trivial.
+1822	8	io	C	no	shut	extern fclose + errno; free() of the malloc'd setvbuf buffer	Called from files_sweep inside the GC as well as from close/drop/exit.
+1832	10	io	B	no	defenc	extern setlocale/nl_langinfo -> C string	Lazily resets LC_CTYPE to "C"; may first run inside a collection (report<-files_sweep).
+1842	9	io	C	no	EBuf/eput	fixed stack byte buffer; guaranteed no allocation (runs inside a collection)	Exists only because report can run inside the GC.
+1851	6	io	C	no	erepr	raw char* into resc/rquote; stack buffer	Same no-allocation constraint as eput.
+1857	11	io	D	no	report	no allocation inside collect(); snprintf/strerror	Reached from files_sweep mid-collection. It could drop to B only if the closes were deferred to after the sweep.
+1869	5	io	B	no	out_flush	calls leaving/flush1	On pys_fail/oom paths (runtime.c:110, 310): must not allocate.
+1874	7	process	B	no	kbint_exit	extern clearerr/fputs/exit	Reached from io_out, pys_fail and pys_sleep after a noted Ctrl-C.
+1881	19	process	B	no	pys_finish	extern fprintf/strerror/_exit; no allocation on the oom path	Called from generated @main (pystachy.py:7093) and from every exit path. A subset version that builds messages with f-strings would allocate during MemoryError handling.
+1900	6	gc	C	no	gc_marked	raw addresses, page-map loads, shifts	Collector internals; belongs with the GC.
+1906	12	gc	D	no	files_sweep	runs between mark and sweep; weak-reference semantics	Called from collect (runtime.c:217).
+1919	1	io	A	no	closed_err		raise ValueError("I/O operation on closed file.").
+1920	5	io	B	yes	put1	extern fwrite/ferror for stderr and tty	Dispatches to wput; runs on every write.
+1925	5	io	C	no	setbuf1	malloc + setvbuf with a raw pointer	Confirmed UB: `8192 + bs` at line 1926 overflows signed I when buffering is near 2**63 (UBSan report); CPython raises OverflowError for any buffering above C int.
+1930	17	process	D	no	pys_init	@main frame address for the GC stack bottom; char** argv; sigaction with a function pointer; isatty/fstat	Called by generated @main (pystachy.py:7091).
+1947	1	process	A	no	pys_argv		Generated code calls it for sys.argv.
+1948	1	io	A	no	pys_std		Body is trivial, but the std File objects must stay visible to C (signal handler, pys_finish). Generated code calls it (pystachy.py:9511, 9853).
+1949	1	io	B	yes	pys_write	extern io_in/io_out	print() to stdout/stderr calls it once per argument, separator and end (pystachy.py:9864).
+1951	1	io	A	no	pys_flush		Dead code: no reference in pystachy.py, runtime.c or lib/.
+1952	14	io	B	no	pys_input	extern getline with out-params + free, or reuse of the ported readline on std_in; feof/clearerr	Called from generated code.
+1966	1	io	A	no	nul		"\0" in s; checked in the prototype.
+1967	20	io	A	no	codec		Ported; matches C on 13 inputs. The fixed b[48] with its n>40 guard is safe (at most 43 bytes used).
+1987	46	io	B	no	pys_open	extern fopen/fclose/fseek/ftell/isatty/fileno; stat/fstat shim returning (dev, ino, mode, blksize); errno; extern collect(); registration in the C weak files table	Argument checks are A-level. Defects: buffering is not range-checked (3e9 accepted; 2**63-1 overflows in setbuf1); the file is created or truncated before later errors; the realloc at 2028 loses the old pointer on failure; ftell is -1 on FIFOs.
+2033	18	io	B	yes	use	extern feof/clearerr/ftell/fseek; pread 1-byte shim	Runs on every read/write call (fast path is two compares). ftell -1 on unseekable files flows silently into the position arithmetic.
+2051	1	io	B	yes	get	extern getc_unlocked (a glibc macro; as an extern call it cannot inline into the LTO module)	Called per byte. Macro vs real call measured 0.73 vs 0.80 ns/byte.
+2052	1	io	B	no	unget	extern ungetc	
+2053	4	io	A	yes	getnl		Logic over get/unget; runs per byte.
+2057	18	io	B	yes	read1	extern chunk read -> str (replaces fread into a 64 KiB stack array); per-char loop over get	Newline translation is A via replace (checked). read() measured 5.5 ns/byte vs CPython's 8.3.
+2075	1	io	B	no	pys_file_read	extern io_in/io_out	Generated code calls it through the METHODS dispatch (file.read, pystachy.py:4586/9940).
+2076	17	io	B	yes	pys_file_readline	raw string builder (Buf with a noinline put per byte); get/unget	`for line in f` path (pystachy.py:8334, 9607). Measured 4.52 ns/byte vs CPython's 1.84, i.e. 2.5x slower than CPython; chunked memchr scanning would fix that in either language.
+2093	5	io	A	no	pys_file_readlines		Loop over readline; generated code calls it (pystachy.py:9794).
+2098	16	io	B	yes	pys_file_write	extern io_in/io_out/put1	Body is A (s.replace("\n", ...); checked). print(file=) path (pystachy.py:9862).
+2114	1	io	A	no	pys_file_writelines		Generated code calls it through dispatch.
+2115	5	io	B	no	pys_file_flush	extern io_in/io_out/flush1	Generated code calls it.
+2120	5	io	B	no	pys_file_close	extern shut + io bracket	Generated code calls it (with-exit, pystachy.py:7729).
+2125	4	io	B	no	pys_file_drop	extern shut/report	Generated code calls it (pystachy.py:9327).
+2129	1	io	A	no	pys_file_closed		Generated code calls it (pystachy.py:8596).
+2130	1	io	A	no	pys_file_name		Generated code calls it; allocates a fresh str for std streams on every call.
+2131	1	io	A	no	pys_file_mode		Generated code calls it.
+2132	4	process	B	no	pys_system	extern system(const char*) taking a NUL-terminated str	Relies on Str being NUL-terminated by construction (runtime.c:25).
+2136	1	process	B	no	pys_getpid	extern getpid	
+2137	6	process	A	no	pys_setrecursionlimit (+recursion_limit)		Checked in the prototype.
+2143	1	process	A	no	pys_getrecursionlimit		
+2144	11	process	A	no	pys_platform		A compile-time constant; the compiler already decides platform tests and could emit a string constant instead of this allocating call (pystachy.py:9527).
+2155	1	process	B	no	pys_exists	extern access	
+2156	1	process	B	no	pys_getenv	extern getenv -> nullable C string -> str	The subset has no Optional[str]; the compiler requires a default.
+2159	1	time	B	no	clock_ns	clock_gettime shim (timespec out-param)	tv_sec*1e9 overflows only after the year 2262.
+2160	1	time	A	no	ns_secs		Checked; C truncating / and % agree with Python on this exact-division branch.
+2161	6	time	B	no	pys_time/pys_time_ns/pys_monotonic/pys_monotonic_ns/pys_process_time/pys_process_time_ns	platform CLOCK_* constants (Linux 0/1/2 vs macOS 0/6/12); clock_ns shim	Generated code calls them (table at pystachy.py:4417-4420).
+2167	8	time	B	no	pys_sleep	nanosleep shim with the EINTR loop; errno; read of the volatile io_intr	The argument checks are A; the EINTR/Ctrl-C loop should stay in C. No UB found.
+2175	1	time	A	no	pys_sleep_int		
+2178	269	tables	B	no	errnos[] table	platform macro values (#ifdef-guarded; differ between Linux and macOS); build-time generation or compile-time folding	89 entries; as a subset dict literal it becomes 89 inserts at init.
+2447	4	errno	A	no	pys_errno		dict lookup given the table. Today every errno.X evaluation runs a linear 89-way strcmp (pystachy.py:9529); it could be folded at compile time. Hand-counted lengths at 2449 (49, and "'",2) include the NUL.
+2453	6	io	B	no	oserr	errno accessor; extern strerror	repr_str and the formatting are A. Reads errno on entry; callers keep it intact.
+2459	1	tempfile	B	no	pys_remove	extern unlink; errno	
+2460	1	tempfile	B	no	pys_rmdir	extern rmdir; errno	
+2461	5	tempfile	A	no	Parts/parts_push		list[str] with a sentinel (NUL can never appear in a component) in place of the NULL marker.
+2466	5	tempfile	A	no	parts_split		Reversed s.split("/").
+2471	50	tempfile	B	no	pys_realpath	extern getcwd/lstat(S_ISLNK)/readlink -> str	CPython's posixpath.realpath is Python but uses try/except OSError, so lib/ cannot run it; this C version uses return codes. Pointer-identity compares can become indices. The loops terminate (paths are absolute).
+2521	10	tempfile	B	no	abspath	extern getcwd	Fixed cwd[4096]: when getcwd fails, a relative path loses its prefix, so mkdtemp's "." candidate becomes "/". Normalization is A (checked).
+2531	19	tempfile	B	no	pys_mkdtemp	extern getenv/getcwd/mkdir; getentropy shim; errno	Unseeded rand() fallback, r%37 bias, 10,000 tries vs os.TMP_MAX 238,328; hand-counted ("tmpXXXXXXXX",12) feeds b.n-9 at 2539.
+2556	109	tables	B	no	pchange[] table	constant int32 array in rodata	1,423 entries. As a subset list literal: 1,423 pys_list_append calls in init (checked in the IR), 11 KB heap, an extra GC root. Values checked against CPython 3.13 isprintable.
+2661	5	tables	A	no	printable		Binary search; ported and checked (149,530 printable code points, same as CPython). Called from resc (runtime.c:955) per non-ASCII character in repr().

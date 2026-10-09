@@ -1,7 +1,8 @@
 #!/bin/sh
 # IR validity: every program of the tools/irsame.sh corpus, tests/errors/*.py aside (they must not
-# compile), must compile and pass the compiler's own check of the IR it builds (PYSTACHY_IRCHECK=1,
-# unless set otherwise), and llvm-as must accept its `ir` output; llvm-as is run from PYSTACHY_LLVM if
+# compile), and runtime.py (compiled as `pystachy rt` compiles it), must compile and pass the
+# compiler's own check of the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise), and llvm-as
+# must accept its `ir` output; llvm-as is run from PYSTACHY_LLVM if
 # set, as the driver runs it. A program the compiler rejects is a failure too, since tests/run.sh never
 # compiles the tests/ir probes; so is an internal error (such as the IR check's), or an IR that llvm-as
 # rejects: each failure is listed with the first lines of its message. A tests/ir/NAME.py with a
@@ -18,7 +19,7 @@ PYS=${1:-./pystachy}
 [ $# = 0 ] || shift
 for f; do [ -f "$f" ] || { echo "tools/check_ir.sh: no such program: $f" >&2; exit 2; }; done
 if [ $# = 0 ]; then
-  for f in pystachy.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py; do
+  for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py; do
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi
@@ -44,8 +45,9 @@ calls() {
 check() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
   fx=; [ -f "${1%.py}.fx" ] && fx=1
+  how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
   opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] && opt=
-  if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS ir "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
+  if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS $how "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
   elif [ -f "${1%.py}.calls" ] && ! calls "$2/ir.ll" | diff "${1%.py}.calls" - > "$2/calls" 2>&1; then r=calls; mv "$2/calls" "$2/msg"

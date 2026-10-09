@@ -5137,6 +5137,26 @@ CALLS: dict[str, str] = {
     "time.sleep(bool)": "pys_sleep_int:None", "sys.setrecursionlimit(int)": "pys_setrecursionlimit:None",
     "sys.setrecursionlimit(bool)": "pys_setrecursionlimit:None", "sys.getrecursionlimit()": "pys_getrecursionlimit:int",
 }
+# runtime.py's primitives (import _rt, in runtime mode only): "name": "argument types:result type".
+# Each is a few LLVM instructions with its checks, no runtime call; tools/rt_cpython/_rt.py is their
+# CPython version, for running runtime.py there. str_new makes a zeroed str of n bytes that only
+# str_put and copy may change, before str_done hands it out (a no-op here). null(s) tests for the
+# null pointer that callers pass for an omitted str argument (s.strip()). same(a, i, b, j, n) is
+# a[i:i + n] == b[j:j + n] (memcmp) and find_byte(s, c, st, en) the first index of byte c in
+# s[st:en] or -1 (memchr). A str's length and its bytes are told apart for LLVM's alias analysis
+# (TBAA), so that a loop that builds one str keeps the lengths it reads in registers. udiv and
+# urem divide 64-bit patterns as unsigned ints, and mul_ovf tells whether a * b would overflow.
+# find_sub(h, n, st, en) is the first index of n in h[st:en], or -1 (memmem, linear in glibc).
+RTL: dict[str, str] = {
+    "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
+    "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+    "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
+    "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int",
+}
+TBAA_LEN = 3
+TBAA_BYTES = 4
+STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 10 (_rt.str_new's limit)
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -5462,7 +5482,10 @@ for _j in range(len(FX)):
 # in an 8-byte slot (i64 in the LLVM binding), # the descriptor of the static type the operation
 # works on (Ins.x), %X an LLVM type X that has no spelling (%ovf: {i64, i1}). "" as symbol means
 # pys_<key, with . as _>. rt() checks each call against its entry, tools/check_runtime.py checks
-# the entries against runtime.c (their LLVM types, and the effects its call graph shows)
+# the entries against runtime.c and runtime.py (their LLVM types, and the effects their call
+# graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
+# statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
+# result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
     # lists
     "list.new": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
@@ -5488,19 +5511,19 @@ RUNTIME: dict[str, str] = {
     "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A I rD|", "dict.entry_set": "None:S,int,*V|rD wD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
-    "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
-    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|A|", "str.strip": "str:S,str|A|",
-    "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int||",
-    "str.endswith": "bool:S,str,int,int||", "str.find": "int:S,str,int,int||", "str.rfind": "int:S,str,int,int||",
-    "str.count": "int:S,str,int,int||", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
-    "str.replace": "str:S,str,str|A|", "str.upper": "str:S|A|", "str.lower": "str:S|A|", "str.swapcase": "str:S|A|",
+    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
+    "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int|R|",
+    "str.endswith": "bool:S,str,int,int|R|", "str.find": "int:S,str,int,int|R|", "str.rfind": "int:S,str,int,int|R|",
+    "str.count": "int:S,str,int,int|R|", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
+    "str.replace": "str:S,str,str|R A|", "str.upper": "str:S|A|", "str.lower": "str:S|A|", "str.swapcase": "str:S|A|",
     "str.capitalize": "str:S|A|", "str.title": "str:S|A|", "str.casefold": "str:S|A|", "str.isdigit": "bool:S||",
     "str.isalpha": "bool:S||", "str.isalnum": "bool:S||", "str.isspace": "bool:S||", "str.isupper": "bool:S||",
     "str.islower": "bool:S||", "str.istitle": "bool:S||", "str.isascii": "bool:S||", "str.isdecimal": "bool:S||",
     "str.isnumeric": "bool:S||", "str.ljust": "str:S,int,str|R A|", "str.rjust": "str:S,int,str|R A|",
     "str.center": "str:S,int,str|R A|", "str.zfill": "str:S,int|R A|", "str.partition": "tuple[str,str,str]:S,str|R A|",
     "str.rpartition": "tuple[str,str,str]:S,str|R A|", "str.removeprefix": "str:S,str|A|", "str.removesuffix": "str:S,str|A|",
-    "str.expandtabs": "str:S,int|A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
+    "str.expandtabs": "str:S,int|R A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
     "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|", "pct_char": "str:str|R|", "pct_chr": "str:int|R A|",
     # numbers
     "floordiv": "int:int,int|R|", "mod": "int:int,int|R|", "pow": "int:int,int|R|", "powmod": "int:int,int,int|R|",
@@ -5553,6 +5576,11 @@ RUNTIME: dict[str, str] = {
     "file.write": "int:S,str|R A I rF wF|", "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|",
+    # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
+    # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
+    # _rt.str_done hands it out, so these need no letter either)
+    "alloc_atomic": "%ptr:int|A|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
+    "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
 # the last def has run, which spares the compiled functions a check that each callee is defined)
@@ -5607,6 +5635,35 @@ def rtsig(k: str) -> list[str]:
 def rtsym(k: str) -> str:
     s = RUNTIME[k][RUNTIME[k].rfind("|") + 1 :]
     return s if s != "" else "pys_" + k.replace(".", "_")
+
+
+def rt_subset(k: str, ts: list[str]) -> str:
+    # "" if a function with result and parameter types ts (as the subset spells them) has the types
+    # of RUNTIME entry k, else the entry's, spelt for a message. A bool is an int there (the ABI
+    # passes bools as i64); a type variable, a slot (*X), a descriptor (#) or an LLVM type (%X) is
+    # checked by its LLVM type only (rt and Gen.function), and so is the receiver S but of a str
+    # or file method
+    sig = rtsig(k)
+    ok = len(sig) == len(ts)
+    out: list[str] = []
+    for j in range(len(sig)):
+        w = sig[j]
+        if w == "S":
+            w = k[: k.find(".")] if k.startswith("str.") or k.startswith("file.") else ""
+        if w == "bool":
+            w = "int"
+        tok = ""
+        for c in w + ",":
+            if c == "[" or c == "]" or c == ",":
+                if tok != "" and tok not in ("int", "float", "str", "None", "list", "dict", "tuple", "file"):
+                    w = ""  # (a type variable, *X, # or %X)
+                tok = ""
+            else:
+                tok += c
+        out.append(typestr(w) if w != "" else "_")
+        if w != "" and j < len(ts) and ts[j] != w:
+            ok = False
+    return "" if ok else f"{out[0]}({', '.join(out[1:])})"
 
 
 def runtime_decl(k: str) -> str:
@@ -6450,6 +6507,8 @@ class FnInfo:
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
+        self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
+        self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
         self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
@@ -6924,6 +6983,10 @@ class Gen:
         # code calling back into the module
         self.late: dict[str, bool] = {}
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
+        self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
+        self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
+        self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
+        self.externs: dict[str, str] = {}  # runtime mode: runtime.c's functions runtime.py declares (def f(...) -> T: ...), by symbol: their declare line ("" if RUNTIME's)
         self.deps: dict[str, str] = {}  # the modules each module's top-level code imports, space-separated
         self.comp: dict[str, str] = {}  # each module's strongly connected component of that graph (one of its modules)
         self.flowmod = ""
@@ -7148,7 +7211,11 @@ class Gen:
 
     def rt(self, name: str, ret: str, args: list[str]) -> str:
         # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
-        # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says
+        # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says. (In
+        # runtime mode, a function that runtime.py defines is called the same way: it is defined,
+        # not declared, with RUNTIME's types, which Gen.function checks.)
+        if self.rtmode and "@" + name == self.curfn.ll:
+            self.err(f"{name}() implements an operation that it uses: write it without that operation")
         k = self.runtime(name)
         ts = self.rtfns[k].sig
         ll = self.rtfns[k].ll
@@ -7219,6 +7286,86 @@ class Gen:
         self.add(i)
         self.term = True
         self.place(l)
+
+    def primitive(self, name: str, vals: list[Val]) -> Val:
+        # runtime.py's _rt.<name>(...): see RTL
+        if name not in RTL:
+            self.err(f"_rt.{name} is not a runtime primitive")
+        sig = RTL[name].split(":")
+        if ",".join([v.t for v in vals]) != sig[0]:
+            self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
+        a = [v.v for v in vals]
+        if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
+            return Val(self.ins(f"{name[5:]} i64 {a[0]}, {a[1]}"), "int")
+        if name == "udiv" or name == "urem":
+            self.guard(self.ins(f"icmp eq i64 {a[1]}, 0"), "ZeroDivisionError: integer division or modulo by zero")
+            return Val(self.ins(f"{name} i64 {a[0]}, {a[1]}"), "int")
+        if name == "mul_ovf":
+            return Val(self.checked("*", a[0], a[1])[1], "bool")
+        if name == "shl" or name == "lshr":
+            # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
+            return Val(self.ins(f"{name} i64 {a[0]}, {self.ins(f'and i64 {a[1]}, 63')}"), "int")
+        if name == "str_done":
+            return vals[0]
+        if name == "null":
+            return Val(self.ins(f"icmp eq ptr {a[0]}, null"), "bool")
+        if name == "same":
+            # same(a, i, b, j, n): within both, and n >= 0
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            n1 = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n0}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n0}, {a[1]}')}",
+                      f"icmp ugt i64 {a[3]}, {n1}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n1}, {a[3]}')}"]:
+                self.guard(self.ins(x), "IndexError: compare out of range")
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+            p1 = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 8')}")
+            return Val(self.ins(f"icmp eq i32 {self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}'])}, 0"), "bool")
+        if name == "find_byte":
+            # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
+                self.guard(self.ins(x), "IndexError: search out of range")
+            self.guard(self.ins(f"icmp ugt i64 {a[1]}, 255"), "ValueError: byte must be in range(0, 256)")
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
+            f = self.rt("memchr", "ptr", [f"ptr {p0}", f"i32 {self.ins(f'trunc i64 {a[1]} to i32')}", f"i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}"])
+            d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
+            return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
+        if name == "find_sub":
+            # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
+            n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
+                self.guard(self.ins(x), "IndexError: search out of range")
+            p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 8')}")
+            p1 = self.ins(f"getelementptr i8, ptr {a[1]}, i64 8")
+            m = self.ins(f"load i64, ptr {a[1]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}", f"ptr {p1}", f"i64 {m}"])
+            d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
+            return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 8')}"), "int")
+        if name == "str_new":
+            # a size the allocator cannot serve (negative, or past 2**63 with the header and NUL)
+            # is CPython's MemoryError, as in runtime.c
+            self.guard(self.ins(f"icmp ugt i64 {a[0]}, 9223372036854775798"), "MemoryError: ")
+            r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.ins(f'add nuw nsw i64 {a[0]}, 9')}"])  # zeroed: the NUL is there
+            self.emit(f"store i64 {a[0]}, ptr {r}, !tbaa !{TBAA_LEN}")
+            return Val(r, "str")
+        # the others index a str: an unsigned compare with its length also rejects a negative index
+        n = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+        if name == "copy":
+            # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
+            m = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+            for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n}, {a[1]}')}",
+                      f"icmp ugt i64 {a[3]}, {m}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {m}, {a[3]}')}"]:
+                self.guard(self.ins(x), "IndexError: copy out of range")
+            dst = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+            src = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 8')}")
+            self.rt("llvm.memmove.p0.p0.i64", "void", [f"ptr {dst}", f"ptr {src}", f"i64 {a[4]}", "i1 false"])
+            return Val("null", "None")
+        self.guard(self.ins(f"icmp uge i64 {a[1]}, {n}"), "IndexError: string index out of range")
+        p = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+        if name == "byte":
+            return Val(self.ins(f"zext i8 {self.ins(f'load i8, ptr {p}, !tbaa !{TBAA_BYTES}')} to i64"), "int")
+        self.guard(self.ins(f"icmp ugt i64 {a[2]}, 255"), "ValueError: byte must be in range(0, 256)")
+        self.emit(f"store i8 {self.ins(f'trunc i64 {a[2]} to i8')}, ptr {p}, !tbaa !{TBAA_BYTES}")
+        return Val("null", "None")
 
     def iop(self, op: str, a: str, b: str) -> str:
         # checked 64-bit arithmetic (op: + - *): overflow raises OverflowError (CPython would grow the int)
@@ -7440,7 +7587,8 @@ class Gen:
         if t in self.classes:
             # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
             # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
-            # class t (see obj_helpers): one that cannot take them is an error here
+            # class t (see obj_helpers): one that cannot take them is an error here. The id has
+            # three digits or more, which runtime.c reads up to the next descriptor's letter
             ms = self.classes[t].methods
             for op in use.split():
                 m = "__repr__" if op == "repr" else DUNDER[op]
@@ -7863,6 +8011,17 @@ class Gen:
         # (see instance), and what cannot be compiled in it is an error only then
         self.line = d.line
         f = FnInfo(d.s, f"@f.{d.s}" if cls == "" else f"@m.{cls}.{d.s}", d, cls)
+        body = d.kids[2].kids
+        if self.rtmode and cls == "" and len(body) == 1 and body[0].kind == "expr" and body[0].kids[0].kind == "ellipsis":
+            # def name(...) -> T: ... is runtime.c's function of that name
+            if not d.s.startswith("pys_"):
+                self.err(f"'{d.s}' declares a C function: in runtime.py that is one of runtime.c's, named pys_*")
+            f.ll = "@" + d.s
+            f.extern = True
+        elif self.rtmode and cls == "" and d.s.startswith("pys_"):
+            f.ll = "@" + d.s
+            f.export = True
+            self.rtdefs[d.s] = f
         ps = d.kids[0].kids
         deco = ""
         stub = False  # (an imported module's that no def follows: see typing_forms)
@@ -7936,6 +8095,13 @@ class Gen:
                 f.ptypes.append(self.vtype(p.kids[0]))
         if int(marks[0]) == len(ps) and len(ps) > 0:
             f.posonly = len(f.params)  # def f(a, b, /)
+        if self.rtmode and (f.export or f.extern) and f.generic:
+            self.err(f"runtime function {d.s}() needs an annotation on every parameter, and no *args")
+        for x in f.defaults if self.rtmode else []:
+            if not is_const(x):
+                # a computed default is stored by module code, which runtime mode never runs
+                self.line = x.line
+                self.err(f"in runtime.py, a parameter's default value must be a literal (in {d.s}())")
         if f.npos < 0:
             f.npos = len(f.params)
         if f.vararg >= 0:
@@ -9574,9 +9740,34 @@ class Gen:
                 msg = key[len(self.fn.coldh[key]) + 1 :]
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
+        if f.export:
+            # the runtime's ABI: what runtime.c's prototype says, and what programs call: RUNTIME's
+            # types, for an operation the compiler lowers to it
+            for t in f.ptypes + [f.ret]:
+                if t == "bool" or t == "":
+                    self.err(f"runtime function {f.name}() takes or returns {typestr(t) if t != '' else 'an untyped value'}: the runtime ABI passes bools as int")
+            have = [lt(f.ret)] + [lt(f.ptypes[j]) for j in self.fn.ps]
+            if f.ll[1:] in RTSYM and have != RtFn(RTSYM[f.ll[1:]]).ll:
+                want = RtFn(RTSYM[f.ll[1:]]).ll
+                self.err(f"{f.name}() is defined as {have[0]}({', '.join(have[1:])}), but the compiler calls it as {want[0]}({', '.join(want[1:])}) (RUNTIME's {RTSYM[f.ll[1:]]})")
+            ts = [f.ret] + [f.ptypes[j] for j in self.fn.ps]
+            if f.ll[1:] in RTSYM and rt_subset(RTSYM[f.ll[1:]], ts) != "":
+                # (the same LLVM types, but another layout: a tuple of two strs for one of three)
+                self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
+            self.untold(f, ts, "defined")
         del self.building[f.ll]
         self.fn.n = self.n
         self.fns.append(self.fn)
+
+    def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
+        # a function of runtime mode that runtime.c calls or defines and RUNTIME does not name
+        # (the dict's string hash, the format of a str): only LLVM's types check it (rtabi,
+        # check_runtime), which tell int, float and a pointer apart, not a list from a str. So it
+        # passes those alone
+        if f.ll[1:] not in RTSYM:
+            for t in ts:
+                if t not in ("int", "float", "str", "None"):
+                    self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str or None")
 
     # ---- lowering: an IFn as LLVM text
     def lower(self, fn: IFn) -> None:
@@ -9584,7 +9775,7 @@ class Gen:
         f = fn.f
         # a method's receiver is never None (callers check it)
         ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
-        o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}){' personality ptr @pys_personality' if fn.pads else ''} {{")
+        o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' personality ptr @pys_personality' if fn.pads else ''} {{")
         o.append("entry:")
         for i in fn.slots:
             if i.k == 1:
@@ -9680,7 +9871,7 @@ class Gen:
         # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
         # a raw op is one LLVM instruction that is no call (calls are rt, call and init ops, whose
         # effects are known), no phi and no terminator, and call and init ops call compiled
-        # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
+        # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block ends with its one terminator; branches go to blocks of fn; a phi
         # starts its block, and its predecessors branch there; each op holds exactly the numbers
         # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
         # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
@@ -9739,7 +9930,7 @@ class Gen:
                     w = w[: w.find(" ")] if " " in w else w
                     if w in LLNOTRAW or w.endswith(":") or "\n" in i.s:
                         self.bad_ir(fn, b, f"LLVM text that must be an op: {i.s}")
-                if (i.op == "call" and i.s not in self.fll) or (i.op == "init" and "@init." + i.s not in self.fll):
+                if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                     self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
                 if i.op != "phi":
                     out.extend(i.b)
@@ -10629,6 +10820,9 @@ class Gen:
             top: list[Node] = []
             for st in m.body.kids:
                 self.line = st.line
+                if self.rtmode and m.name == "" and st.kind != "def" and st.kind != "import" and st.kind != "pass" and not (st.kind == "expr" and st.kids[0].kind == "str"):
+                    # nothing runs runtime.py's module code: pys_init comes before any program code
+                    self.err("runtime.py may hold only functions, imports and docstrings at module level")
                 if st.kind == "def":
                     if st.s in self.funcs or st.s in self.classes:
                         self.err(f"redefinition of '{st.s}' is not supported")
@@ -10730,6 +10924,24 @@ class Gen:
         for f in self.funcs.values():
             if f.mod != "" and not f.generic:
                 self.lazy[f.ll] = f
+            elif f.extern:
+                self.line = f.node.line
+                for t in f.ptypes + [f.ret]:
+                    if t == "bool" or t == "":
+                        self.err(f"C function {f.name}() takes or returns {typestr(t) if t != '' else 'an untyped value'}: the runtime ABI passes bools as int")
+                have = [lt(f.ret)] + [lt(t) for t in f.ptypes]
+                if f.ll[1:] in RTSYM:
+                    # one the compiler calls too: declared once, from RUNTIME, whose types it must have
+                    e = RtFn(RTSYM[f.ll[1:]]).ll
+                    if have != e:
+                        self.err(f"{f.name}() is declared as {have[0]}({', '.join(have[1:])}), but the compiler calls it as {e[0]}({', '.join(e[1:])}) (RUNTIME's {RTSYM[f.ll[1:]]})")
+                    if rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes) != "":
+                        self.err(f"{f.name}() is declared as {typestr(f.ret)}({', '.join([typestr(t) for t in f.ptypes])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], [f.ret] + f.ptypes)} (RUNTIME's {RTSYM[f.ll[1:]]})")
+                    self.runtime(f.ll[1:])
+                    self.externs[f.ll] = ""
+                else:
+                    self.untold(f, [f.ret] + f.ptypes, "declared")
+                    self.externs[f.ll] = f"declare {have[0]} {f.ll}({', '.join(have[1:])})"
             elif not f.generic and f.ll not in self.compiled:
                 self.function(f, f.node.kids[2].kids)
         for ci in self.classes.values():
@@ -10786,7 +10998,7 @@ class Gen:
         if len(NONUMS) + len(NOVALS) + len(NOLABELS) > 0:
             fail("internal error: an op changed the lists all ops start with", 0)
         chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
-        dump = os.getenv("PYSTACHY_IRFX", "") == "1"
+        dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
         on = optimizations()
         if chk:
             for fn in self.fns:
@@ -10822,8 +11034,8 @@ class Gen:
             fn.loops = []
             fn.cold = {}
             fn.fa = {}
-        for op in ["eq", "cmp", "repr"]:
-            self.dispatch(op)
+        for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
+            self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
         hdr: list[str] = ["; generated by pystachy"]
         for ci in self.classes.values():
             ts = [lt(ci.ftypes[x]) for x in ci.fields]
@@ -10832,11 +11044,27 @@ class Gen:
             hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
         hdr.extend(self.globs)
         roots = ", ".join([f"ptr {g}" for g in self.gcroots])
-        hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
+        if not self.rtmode:
+            hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
         hdr.extend(self.consts)
         hdr.extend(self.out)
         for k in self.rtfns:
-            hdr.append(self.rtfns[k].decl)
+            if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
+                hdr.append(self.rtfns[k].decl)  # (runtime mode: what runtime.py defines is not declared)
+        for x in self.externs.values():
+            if x != "":
+                hdr.append(x)
+        if self.rtmode:
+            for ci in self.classes.values():
+                self.err(f"runtime.py may not define classes ({ci.name})")
+            # TBAA: a str's length and its bytes never alias (see RTL); other accesses carry no tag
+            hdr.append(f'!{TBAA_LEN - 3} = !{{!"pystachy runtime.py"}}')
+            hdr.append(f'!{TBAA_LEN - 2} = !{{!"str length", !{TBAA_LEN - 3}, i64 0}}')
+            hdr.append(f'!{TBAA_LEN - 1} = !{{!"str bytes", !{TBAA_LEN - 3}, i64 0}}')
+            hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
+            hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
+            hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775799}}")
+            return "\n".join(hdr) + "\n"
         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
         # covers @main.init if inlined here) and the table of pointer-typed globals
         hdr.append(runtime_decl("init"))
@@ -12797,6 +13025,9 @@ class Gen:
                 self.brks[-1].append(dict(self.narrowed))
             self.br(self.loops[-1].exit if k == "break" else self.loops[-1].step)
         elif k == "global":
+            if self.rtmode:
+                # module globals would be garbage collector roots that runtime mode does not register
+                self.err("runtime.py's functions cannot use global variables")
             for nm in n.kids:
                 self.gdecl[nm.s] = True
         elif k == "assert" and (self.static(n.kids[0]) == 0 or n.kids[0].kind == "False"):
@@ -13262,6 +13493,14 @@ class Gen:
         self.assign(tgt, Val(i, "int"))
         self.loop(body, lp)
         self.place(ls)
+        if self.rtmode and (step == "1" or step == "-1"):
+            # i < stop (or i > stop), so i + 1 (i - 1) fits: an nsw add, which lets LLVM bound i
+            # and drop the index checks that compare it with a length. (This would hold for every
+            # program, but it changes their IR: see docs/runtime-in-subset.md.)
+            self.emit(f"store i64 {self.ins(f'add nsw i64 {i}, {step}')}, ptr {ctr}")
+            self.br(lc)
+            self.place(le)
+            return
         # a step that overflows 64 bits has passed any stop value: the loop is over
         r = self.checked("+", i, step)
         self.emit(f"store i64 {r[0]}, ptr {ctr}")
@@ -15624,6 +15863,8 @@ class Gen:
                     self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
                 self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
         key = f"{name}({','.join([v.t for v in vals])})"
+        if self.rtmode and name.startswith("_rt."):
+            return self.primitive(name[4:], vals)
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
@@ -15677,6 +15918,10 @@ class Gen:
             if t in self.nts:
                 self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
                 return Val(str(len(self.classes[t].fields)), "int")
+            if t == "str" and self.rtmode:
+                # (tagged as the primitives' loads are, and bounded: LLVM then sees that index
+                # arithmetic on lengths cannot overflow)
+                return Val(self.ins(f"load i64, ptr {v.v}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}"), "int")
             if t == "str" or is_list(t) or is_dict(t):
                 return Val(self.ins(f"load i64, ptr {v.v}"), "int")
             if is_tuple(t):
@@ -16230,6 +16475,23 @@ def compile_program(path: str, src: str, dirs: list[str]) -> str:
     return Gen().program(Loader(dirs).program(path, src))
 
 
+def runtime_ir(path: str, cache: bool) -> str:
+    # runtime.py: the part of the runtime written in the subset. Its pys_* functions are defined
+    # under their C names, with runtime.c's types, and llvm-link joins them to runtime.c's code
+    # (runtime.c keeps a prototype of each). It imports only builtin modules, and nothing runs its
+    # module code, so it holds only functions.
+    f = open(path, "r", encoding="latin-1")
+    src = f.read()
+    f.close()
+    g = Gen()
+    g.rtmode = True
+    g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
+    MODULES["_rt"] = True
+    ir = g.program(Loader([]).program(path, src))
+    del MODULES["_rt"]
+    return ir
+
+
 def q(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
@@ -16245,11 +16507,12 @@ def main() -> None:
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
     sys.setrecursionlimit(MAXNEST * 40)
     argv = sys.argv
-    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir" and argv[1] != "check"):
+    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
         print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
+        print("       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset", file=sys.stderr)
         sys.exit(2)
     cmd = argv[1]
     SRC = argv[2]
@@ -16259,6 +16522,15 @@ def main() -> None:
         f = open(SRC, "r", encoding="latin-1")
         Parser(Lexer(f.read(), 1).file()).module()
         f.close()
+        return
+    if cmd == "rt":
+        ir = runtime_ir(SRC, False)
+        if len(argv) == 5 and argv[3] == "-o":
+            f = open(argv[4], "w", encoding="latin-1")
+            f.write(ir)
+            f.close()
+        else:
+            print(ir, end="")
         return
     home = os.getenv("PYSTACHY_HOME", "")
     if home == "":
@@ -16301,18 +16573,20 @@ def main() -> None:
             f.close()
         return
     rtc = home + "/runtime.c"
-    if not os.path.exists(rtc):
-        fail("cannot find runtime.c next to the compiler; set PYSTACHY_HOME to the directory that holds it", 0)
+    rtpy = home + "/runtime.py"
+    if not os.path.exists(rtc) or not os.path.exists(rtpy):
+        fail("cannot find runtime.c and runtime.py next to the compiler; set PYSTACHY_HOME to the directory that holds them", 0)
     # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link.
     # The runtime is compiled with them and then -fexceptions (so they cannot drop it): a raise unwinds
     # through runtime functions to compiled code's landing pads, which -O2 would turn back into calls
     # if clang marked them nounwind. Each such set of flags caches its own runtime, named by a 32-bit
-    # FNV-1a hash of it, so a runtime cached without -fexceptions is never used
+    # FNV-1a hash of it, so a runtime cached without -fexceptions is never used; the names say
+    # runtime-py, so that a compiler from before runtime.py keeps its runtime.c-only cache apart
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
     key = 2166136261
     for c in " ".join(flags + ["-fexceptions"]):
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
-    rtb = home + f"/build/runtime-{key:08x}.bc"
+    rtb = home + f"/build/runtime-py-{key:08x}.bc"
     cflags = "".join([" " + q(a) for a in flags])
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
@@ -16322,21 +16596,53 @@ def main() -> None:
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
+    # runtime.py, the runtime's part written in the subset, is compiled by the compiler that runs
+    # and linked to runtime.c's bitcode. The cache is rebuilt when runtime.c, runtime.py or that
+    # compiler (its executable, or pystachy.py under CPython) is newer: another compiler may
+    # compile runtime.py differently, and the bootstrap checks that its stages do not
+    me = argv[0]
+    fresh = f"test {q(rtb)} -nt {q(rtc)} && test {q(rtb)} -nt {q(rtpy)}"
+    if "/" not in me and not me.endswith(".py"):
+        # run through PATH: the shell's own search finds the executable it ran (command -v; none
+        # found compares as older, so the cache is rebuilt). CPython opens a script in the current
+        # directory, without a search
+        fresh = fresh + f' && test {q(rtb)} -nt "$(command -v {q(me)})"'
+    elif os.path.exists(me):
+        fresh = fresh + f" && test {q(rtb)} -nt {q(me)}"
+    rtir = ""
+    if sh(f"mkdir -p {q(home + '/build')} && {fresh}") != 0:
+        # (before the temporary directory exists: an error in runtime.py exits)
+        src = SRC
+        SRC = rtpy
+        rtir = runtime_ir(rtpy, True)
+        SRC = src
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
     tmp = tempfile.mkdtemp()
     ll = tmp + "/prog.ll"
     bc = tmp + "/prog.bc"
     obj = tmp + "/prog.o"
     rll = tmp + "/runtime.ll"
+    rsl = tmp + "/runtime-s.ll"
+    rcb = tmp + "/runtime-c.bc"
+    rpl = tmp + "/rtpy.ll"
+    lnk = tmp + "/runtime-l.bc"
     part = f"{rtb}.{os.getpid()}"  # renamed over the cache only once complete
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
     f = open(ll, "w", encoding="latin-1")
     f.write(ir)
     f.close()
     msg = ""
-    code = sh(f"mkdir -p {q(home + '/build')} && (test {q(rtb)} -nt {q(rtc)} || ({llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} | {llvm}llvm-as -o {q(part)} && mv -f {q(part)} {q(rtb)}))")
+    code = 0
+    if rtir != "":
+        f = open(rpl, "w", encoding="latin-1")
+        f.write(rtir)
+        f.close()
+        # one module, optimized once: LLVM inlines runtime.c's helpers into runtime.py's code. No
+        # pipes: a step that fails must fail the build, not hand the next one an empty module
+        code = sh(f"{llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {llvm}llvm-as {q(rsl)} -o {q(rcb)} && {llvm}llvm-link {q(rpl)} {q(rcb)} -o {q(lnk)} && {llvm}opt -O2 {q(lnk)} -o {q(part)} && mv -f {q(part)} {q(rtb)}")
     if code == 0 and cmd == "run":
-        code = sh(f"test {q(rto)} -nt {q(rtc)} || ({llvm}clang -O2 -fPIC -c {q(rtc)} -o {q(part)}{cflags} -fexceptions && mv -f {q(part)} {q(rto)})")
+        # (from the bitcode, so runtime.py's part is in it; sanitizer flags instrumented runtime.c already)
+        code = sh(f"test {q(rto)} -nt {q(rtb)} || ({llvm}clang -O2 -fPIC -c {q(rtb)} -o {q(part)} -Wno-unused-command-line-argument{ccflags} && mv -f {q(part)} {q(rto)})")
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
     if code != 0:
         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
@@ -16356,14 +16662,14 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, rll, part]:
+            for p in [ll, obj, rll, rsl, rcb, rpl, lnk, part]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
             env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
             run = f"{env}PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli -extra-object={q(rto)} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} && rm -f {q(bc)} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, rll, part]:
+    for p in [ll, bc, obj, rll, rsl, rcb, rpl, lnk, part]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

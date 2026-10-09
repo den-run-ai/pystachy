@@ -18,26 +18,28 @@ flowchart TD
     fx --> opt["optimizations: listget, dictfuse (PYSTACHY_OPT turns them off)"]
     opt --> eh["exception lowering, in functions with a try: invoke, landingpad, throw"]
     eh --> lower["lowering: each IFn printed as LLVM text"]
-    rt["runtime.c: collector, str, list, dict, formatting, files, unwinding"] -->|clang| rtbc["runtime.bc and runtime.o (cached)"]
+    rt["runtime.c: collector, list and dict memory, files, float digits, unwinding"] -->|clang| rtbc["runtime-py bitcode and .o (cached): one module, opt -O2"]
+    rtpy["runtime.py: str methods, format specs, math, dict hashing, in the subset"] -->|pystachy rt| rtbc
     lower --> ir["LLVM IR"]
-    ir --> aot["pystachy build: llvm-link with runtime.bc, clang -O2 on the whole module"]
+    ir --> aot["pystachy build: llvm-link with the runtime bitcode, clang -O2 on the whole module"]
     ir --> jit["pystachy run: opt (mem2reg, instcombine, simplifycfg), then lli ORC JIT"]
     rtbc --> aot
     rtbc --> jit
     aot --> exe["native executable"]
-    jit --> run["runs at once, linked with runtime.o"]
+    jit --> run["runs at once, linked with the runtime's .o"]
 ```
 
 ## Repository layout
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 16,376 | lexer 611 · parser 1,724 · scopes (CPython's symbol-table errors) 685 · module loader 2,014 · types and tables (the `RUNTIME` table among them) 1,396 · the IR's classes and the definite-assignment pass 352 · type checker + IR generator, the IR's passes and its lowering 9,391 · driver 148 |
-| `runtime.c` | 3,263 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks, exceptions and their unwinding |
+| `pystachy.py` | 16,682 | lexer 611 · parser 1,724 · scopes (CPython's symbol-table errors) 685 · module loader 2,014 · types and tables (the `RUNTIME` table among them) 1,455 · the IR's classes and the definite-assignment pass 352 · type checker + IR generator, the IR's passes and its lowering 9,577 · driver 210 |
+| `runtime.c` | 2,920 | garbage collector, string, list and dict memory, timsort, dict tables, generic repr/compare, float digits, files and I/O, clocks, exceptions and their unwinding |
+| `runtime.py` | 1,276 | the runtime's part written in the subset: str methods, the format-spec mini-language, `math`'s integer functions, dict hashing ([runtime-in-subset.md](runtime-in-subset.md)) |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are ([`lib/README.md`](../lib/README.md)) |
-| `tests/` | 520 programs, 622 rejection cases, 16 deviation cases, 12 IR probes | each program must print exactly what CPython prints, JIT and AOT ([testing.md](testing.md)) |
+| `tests/` | 539 programs, 634 rejection cases, 16 deviation cases, 12 IR probes | each program must print exactly what CPython prints, JIT and AOT ([testing.md](testing.md)) |
 | `bench/` | 9 programs | the benchmarks of [performance.md](performance.md) |
-| `tools/` | | the IR oracle, the IR check over the corpus, the check of the `RUNTIME` table against `runtime.c`, the syntax and import sweeps, the scaling check, the dict probe counter and the stdlib census |
+| `tools/` | | the IR oracle, the IR check over the corpus, the check of the `RUNTIME` table against `runtime.c` and `runtime.py`, `runtime.py`'s fuzzer against CPython, ABI check and microbenchmarks, the syntax and import sweeps, the scaling check, the dict probe counter and the stdlib census |
 | `ports/` | 1 package | iniconfig 2.3.1, pytest's INI parser, with the few edits it needs to compile ([`ports/iniconfig/PORT.md`](../ports/iniconfig/PORT.md)); `tests/port_iniconfig_*.py` run its own test cases |
 
 ## Environment variables
@@ -287,17 +289,34 @@ For `build`, the runtime is linked into each program as
 bitcode and optimized together with it, so `xs[i]` inlines to a bounds check and a
 load. clang tags the runtime with `target-cpu`/`target-features`, which makes LLVM
 refuse to inline it into attribute-less generated code; the driver strips those
-attributes when building `runtime.bc`.
+attributes when building the cached runtime.
+
+### A runtime partly written in the subset
+
+`runtime.py` holds runtime functions written in the subset itself. `pystachy rt runtime.py`
+compiles it in a runtime mode: its `pys_*` functions keep runtime.c's C names and types,
+`def f(...) -> T: ...` declares a C function, and `import _rt` gives a few primitives (byte
+reads, an in-place string builder, `memchr`, `memcmp` and `memmem`, wrapping and unsigned
+arithmetic), each a few checked LLVM instructions. The driver links it to runtime.c's bitcode
+and optimizes the two as one module (`build/runtime-py-<hash>.bc` and its `.o`) when it
+rebuilds the cached runtime, which it does when `runtime.c`, `runtime.py` or the running
+compiler is newer; programs' IR does not change (but for an `invoke` inside a `try` where a
+moved function can raise). A raise in a `runtime.py` function unwinds to
+a program's handler like one in runtime.c. `tools/rtcheck.py` runs `runtime.py` on CPython
+against CPython's own str methods, `math` and `format()`.
+[runtime-in-subset.md](runtime-in-subset.md) evaluates the approach.
 
 ### Two tiers
 
 `run` favors latency: a three-pass pipeline over the program alone, then
-ORC JIT compilation linked against a cached, precompiled `runtime.o`. `build` favors
+ORC JIT compilation linked against a cached, precompiled runtime `.o`. `build` favors
 throughput: the full `-O2` pipeline over program and runtime together. The driver
 works in a private `tempfile.mkdtemp()` directory; `PYSTACHY_CFLAGS` adds clang flags
 (such as sanitizers) to the runtime and the AOT build, with a runtime cache per flag set.
-Sanitizer flags reach only the runtime's compilation and the final link, so the runtime is
-instrumented once; `pystachy run` then needs the sanitizer's runtime library in
+Sanitizer flags reach only the runtime's compilation and the final link, so runtime.c is
+instrumented once (`runtime.py`'s code is not: its primitives check its accesses, and ASan's
+interceptors still see the `memchr`/`memcmp`/`memmove` calls they make); `pystachy run` then
+needs the sanitizer's runtime library in
 `LD_PRELOAD` (as `make verify` does for UBSan). Run AddressSanitizer builds with
 `ASAN_OPTIONS=detect_stack_use_after_return=0`: LLVM 18 enables that check by default,
 and it moves address-taken locals to a "fake stack" that the collector does not scan.
@@ -308,4 +327,6 @@ The compiler is written in the subset, so CPython executes it directly
 (stage 0). `make` then checks the fixed point: the stage-1 binary (built by
 CPython-hosted Pystachy) and the stage-2 binary (built by stage 1) must emit IR
 identical to CPython-hosted Pystachy's, byte for byte. Any semantic divergence between
-Pystachy and CPython inside the compiler shows up as a diff.
+Pystachy and CPython inside the compiler shows up as a diff. The three stages must also
+emit the same IR for `runtime.py` (`pystachy rt`), which each compiles into the runtime it
+links.

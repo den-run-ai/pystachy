@@ -11,6 +11,9 @@ trap 'exit 143' TERM
 now() { date +%s.%N; }
 # t CMD...: run CMD with its output in $T/out, print the seconds it took
 t() { s=$(now); "$@" > "$T/out" 2>&1; awk -v a="$s" -v b="$(now)" 'BEGIN { printf "%.3f", b - a }'; }
+# (the runtime cache first: after a rebuild of the compiler, the first run rebuilds it, which the
+# first JIT time would count)
+echo pass > "$T/warm.py" && $PYS run "$T/warm.py" > /dev/null 2>&1
 printf "%-10s %10s %10s %10s %9s\n" bench cpython jit aot speedup
 for b in bench/*.py; do
   n=$(basename "$b" .py)

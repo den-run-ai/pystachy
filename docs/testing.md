@@ -48,7 +48,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1836 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1886 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 ## `make verify`
@@ -57,7 +57,7 @@ both the CPython-hosted and the self-compiled compiler.
 `build/verification.json` with each step's result, duration and counts, the toolchain
 versions, platform, git commit and a timestamp:
 
-- **bootstrap** — stage1, stage2 and stage3 emit identical IR;
+- **bootstrap** — stage1, stage2 and stage3 emit identical IR, for the compiler and for `runtime.py`;
 - **tests-cpython / tests-native** — the differential tests with each compiler, JIT and AOT;
 - **tests-opt-off** — the differential tests with the native compiler and every optimization
   on the IR turned off (`PYSTACHY_OPT=-all`): the passes change no output;
@@ -67,20 +67,33 @@ versions, platform, git commit and a timestamp:
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
 - **check-ir** — every program of the corpus below compiles, and the compiler's IR check
-  (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept its IR;
+  (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept its IR, and `runtime.py`'s, compiled as the
+  runtime is (`pystachy rt`);
 - **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
   `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
   entry's declaration has the types clang compiles the function to, every runtime function
   the compiler names has an entry, and an entry's effect letters are known ones and include
   what the function's C call graph shows (it may raise, allocate, call user code, read the
   lists and dicts of a value it walks by its descriptor, read or write the list, dict or file
-  it is passed, use the runtime's state or the C library's I/O, or never return);
+  it is passed, use the runtime's state or the C library's I/O, or never return). A function
+  that `runtime.py` defines is checked from the IR the compiler builds for it: its definition's
+  types, and the effects its code shows (R where a raise survives `opt -O2` in the linked
+  runtime, but for the subset's index and divisor checks, and then it must not be `nounwind`
+  there, so that a raise in it unwinds to a program's handler); and no function of
+  `runtime.py` may reach itself through an operation's lowering or through runtime.c, a
+  recursion that nothing in its source would show;
 - **gc-stress** — the native compiler, collecting every 1,000 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation of the program
   (`PYSTACHY_GC_STRESS_PROGRAM=1`), compiled by the compiler collecting every 1,000 (at every
   100, the compiler's collections, which mark the IR it keeps until the program is built, would
   take minutes);
 - **benchmarks** — output equal to CPython's, with timings;
+- **rtcheck** — `tools/rtcheck.py` runs `runtime.py` on CPython and compares each of its
+  functions with CPython's str methods, `math` functions and `format()` (and the dict hashes
+  with their formulas) on random inputs, about 275,000 cases;
+- **rt-abi** — `tools/rtabi.py`: every function `runtime.py` defines or declares has one LLVM
+  signature in `runtime.py`, in runtime.c and in every program of the corpus (`llvm-link`
+  would accept a mismatch silently);
 - **dict-probes** — `tools/dictprobe.c` counts the table slots that dict insertions and
   lookups visit for twelve key patterns that defeat a weak hash or probe sequence (`i << 46`,
   spaced ints, str keys sharing a long prefix or suffix, ...) and every shift `i << s`, with
@@ -97,10 +110,13 @@ versions, platform, git commit and a timestamp:
 `tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both
 compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviations/*.py`,
 `bench/*.py` and `tests/ir/*.py`) and must emit the same IR byte for byte, and for each
-`tests/errors/*.py` the same messages and exit status. `make irsame REF=<commit>` (default
+`tests/errors/*.py` the same messages and exit status; when both have runtime mode, they
+compile `runtime.py` and `tests/errors/rtmode_*.py` with `rt`, as the driver does, since every
+executable holds `runtime.py`'s code. `make irsame REF=<commit>` (default
 `HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
 `./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
-every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; a program
+every program of the corpus, and `runtime.py`, with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on
+its IR; a program
 that does not compile fails it, as an internal error and a rejected IR do, and so do effect
 summaries of a `tests/ir/NAME.py` other than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1`
 prints them), and runtime calls other than its `NAME.calls` lists (for each function, the
