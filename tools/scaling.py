@@ -17,11 +17,17 @@ Each shape is a family of programs whose size grows with N:
   breaks   one while True loop of N breaks, each after an assignment to a new variable
   exits    one while True loop of N ifs, each breaking after an assignment to a new variable,
            with another new variable assigned before each if
+  elifs    one function of an elif chain of N / 10 branches, whose else block assigns N new
+           variables (N / 10: the CPython-hosted compiler's recursion stops at about 490)
+  topelifs an elif chain of N / 10 branches in module code, before any call into user code
+  comps    one function of N variables and N list comprehensions
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
 the compiler's source lines executed in all ("lines") and inside Gen.flow_program, the
-definite-assignment pass ("flow"): counts that do not depend on the machine (sys.monitoring
+definite-assignment pass ("flow"), and the items its calls of dict(), list(), tuple(), sorted()
+and the copy() methods copy and those of list.index(), count(), insert() and remove() scan
+("items", work a line count misses): counts that do not depend on the machine (sys.monitoring
 counts them, so --ops needs Python 3.12 or later).
 A compiler that fails shows "failed", and its last line of stderr follows the table.
 --check makes the exit status 1 if a compiler fails, or if a count of --ops grows more than 1.1
@@ -134,8 +140,33 @@ def exits(n):
     return {"main.py": src}
 
 
+def elifs(n):
+    src = ["def big(c: int) -> int:", "    if c == 0:", "        r = 0"]
+    for i in range(1, n // 10):
+        src += [f"    elif c == {i}:", f"        r = {i}"]
+    src += ["    else:", "        r = -1"] + [f"        t{j} = c + {j}" for j in range(n)]
+    src += ["    return r", "print(big(3), big(-5))"]
+    return {"main.py": src}
+
+
+def topelifs(n):
+    src = ["import sys", "c = len(sys.argv)", "if c == 0:", "    r = 0"]
+    for i in range(1, n // 10):
+        src += [f"elif c == {i}:", f"    r = {i}"]
+    src += ["else:", "    r = -1", "print(r)"]
+    return {"main.py": src}
+
+
+def comps(n):
+    src = ["def big(c: int) -> int:", "    t = 0"] + [f"    v{i} = c + {i}" for i in range(n)]
+    src += [f"    t += len([x + v{i} for x in range({i % 3})])" for i in range(n)]
+    src += ["    return t", "print(big(1))"]
+    return {"main.py": src}
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
-          "fields": fields, "calls": calls, "imports": imports, "breaks": breaks, "exits": exits}
+          "fields": fields, "calls": calls, "imports": imports, "breaks": breaks, "exits": exits, "elifs": elifs,
+          "topelifs": topelifs, "comps": comps}
 
 
 def write(d, files):
@@ -176,6 +207,7 @@ def ops(cmd, prog):
 
 def count(out, script, args):
     # run the compiler script with args, counting its executed lines (all, and inside flow_program)
+    # and the items its calls of copying or scanning builtins go through
     with open(script) as f:
         code = compile(f.read(), script, "exec")
     flow = []
@@ -188,8 +220,9 @@ def count(out, script, args):
     mon = sys.monitoring
     tool = mon.PROFILER_ID
     mon.use_tool_id(tool, "scaling")
-    n = {"lines": 0, "flow": 0}
+    n = {"lines": 0, "flow": 0, "items": 0}
     depth = [0]
+    work = {id(f) for f in [dict, list, tuple, sorted, dict.copy, list.copy, list.index, list.count, list.insert, list.remove]}
 
     def line(c, _):
         if c.co_filename != script:
@@ -198,6 +231,13 @@ def count(out, script, args):
         if depth[0] > 0:
             n["flow"] += 1
 
+    def call(c, _, f, arg0):
+        # (a method's arg0 is the object it is called on)
+        if c.co_filename != script:
+            return mon.DISABLE
+        if id(f) in work and hasattr(arg0, "__len__"):
+            n["items"] += len(arg0)
+
     def enter(*_):
         depth[0] += 1
 
@@ -205,11 +245,12 @@ def count(out, script, args):
         depth[0] -= 1
 
     mon.register_callback(tool, mon.events.LINE, line)
+    mon.register_callback(tool, mon.events.CALL, call)
     mon.register_callback(tool, mon.events.PY_START, enter)
     mon.register_callback(tool, mon.events.PY_RETURN, leave)
     for c in flow:
         mon.set_local_events(tool, c, mon.events.PY_START | mon.events.PY_RETURN)
-    mon.set_events(tool, mon.events.LINE)
+    mon.set_events(tool, mon.events.LINE | mon.events.CALL)
     sys.argv = [script] + args
     try:
         exec(code, {"__name__": "__main__", "__file__": script})
@@ -266,8 +307,8 @@ def main():
     head = "| shape | N |"
     rule = "| --- | ---: |"
     for label, _, isops in cols:
-        head += f" {label} lines | x | flow | x |" if isops else f" {label} s | x |"
-        rule += " ---: | ---: | ---: | ---: |" if isops else " ---: | ---: |"
+        head += f" {label} lines | x | flow | x | items | x |" if isops else f" {label} s | x |"
+        rule += " ---: | ---: | ---: | ---: | ---: | ---: |" if isops else " ---: | ---: |"
     print(head)
     print(rule, flush=True)
     errors = {}
@@ -283,15 +324,15 @@ def main():
                     r = ops(cmd, prog) if isops else timed(cmd, prog, runs)
                     if isinstance(r, str):
                         errors[(label, s)] = f"{label} on {s} {n}: {r}"
-                        row += " failed | | | |" if isops else " failed | |"
+                        row += " failed | | | | | |" if isops else " failed | |"
                         prev.pop(k, None)
                         continue
-                    vals = [r["lines"], r["flow"]] if isops else [r]
+                    vals = [r["lines"], r["flow"], r["items"]] if isops else [r]
                     for j, v in enumerate(vals):
                         grow = f"{v / prev[k][j]:.1f}" if k in prev and prev[k][j] > 0 else ""
                         row += f" {v} | {grow} |" if isops else f" {v:.3f} | {grow} |"
                         if isops and grow and v / prev[k][j] > 1.1 * n / prevn:
-                            fast.append(f"{label} on {s}: {['lines', 'flow'][j]} grew {grow} times from N = {prevn} to {n}")
+                            fast.append(f"{label} on {s}: {['lines', 'flow', 'items'][j]} grew {grow} times from N = {prevn} to {n}")
                     prev[k] = vals
                 prevn = n
                 print(row, flush=True)

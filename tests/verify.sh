@@ -13,8 +13,9 @@
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
-#                  functions, globals, classes, modules, chained imports, breaks, ...), and the lines the
-#                  CPython-hosted compiler executes grow no faster than the programs
+#                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
+#                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
+#                  scan, grow no faster than the programs
 # usage: tests/verify.sh   (make verify)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
