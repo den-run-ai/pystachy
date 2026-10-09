@@ -594,7 +594,9 @@ exception classes.
 - **Exceptions by table-driven unwinding.** A program whose modules hold a `try` (decided
   before code generation; any other keeps its code) calls `pys_eh_on` as it starts. From then
   on the runtime's error funnels (`pys_fail`, `pys_raise`, `sys.exit`) build an exception and
-  unwind with the Itanium ABI's `_Unwind_RaiseException`, as C++ does; if nothing catches it,
+  unwind with the Itanium ABI's `_Unwind_ForcedUnwind`, in one phase (every landing pad catches
+  everything, so the first one found is the handler; C++'s `_Unwind_RaiseException` walks the
+  frames twice); if nothing catches it,
   the stack is untouched and the program ends as before. Each IR block names the landing
   block of the innermost `try` around it in its function. Once the whole program is built, a
   pass reads the effect summaries: a call that may raise in a covered block becomes an LLVM
@@ -604,7 +606,8 @@ exception classes.
   and throws again what none catches, and `runtime.c`'s own personality routine,
   `pys_personality`, reads the call-site tables LLVM emits. Code that does not raise pays
   nothing for a `try` (under the JIT, two runtime calls as it is entered); a raise in the
-  `try`'s own function costs tens of nanoseconds, one from a call one to three microseconds.
+  `try`'s own function costs tens of nanoseconds, one from a call about a microsecond, and
+  half a microsecond more for each frame with a `try` it passes through.
   `finally` is compiled once for each way out, as in CPython, but one that holds a `try` with a
   `finally` of its own is compiled once, where each way out stores its index and jumps, so that
   nested ones grow linearly, not as 3^depth. What a raise leaves half done in

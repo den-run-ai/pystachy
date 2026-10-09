@@ -2305,11 +2305,15 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
 /* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
    A program that has a try calls pys_eh_on when it starts. From then on a raise (pys_fail,
    pys_raise, sys.exit, pys_throw) makes an Exc, which begins with the unwinder's header,
-   notes it (a root of the collector) and calls _Unwind_RaiseException. Its search phase asks
+   notes it (a root of the collector) and calls _Unwind_ForcedUnwind, which asks
    pys_personality, the personality routine of every compiled function with landing pads,
    whether the call that frame is in is covered by one; frames without (the runtime's, and
-   compiled code outside a try) are passed over. If one is, the second phase transfers
-   control to it. If none is, the stack is as it was, and the raise ends the program as it
+   compiled code outside a try) are passed over. If one is, control goes to it. Every landing
+   pad catches everything, so the first one found is the handler: one phase finds and enters
+   it, where _Unwind_RaiseException would walk the frames twice (a search phase, then this),
+   which made each raise from a call cost about twice as much (CFI interpreting dominates). The
+   unwinding is virtual until a landing pad is entered: if none is, the stack is as it was, and
+   the raise ends the program as it
    always did: CPython's last traceback line and exit status, a SystemExit's status or
    message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
    ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
@@ -2500,12 +2504,17 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
   out_flush();
   exc_report(e, e->obj ? XCLS(e)->str(e->obj) : e->detail ? e->detail : e->msg);
 }
+static _Unwind_Reason_Code stop_none(int v, _Unwind_Action a, _Unwind_Exception_Class c, struct _Unwind_Exception *ue,
+                                     struct _Unwind_Context *ctx, void *arg) {   /* the forced unwind goes on to the end */
+  (void)v; (void)a; (void)c; (void)ue; (void)ctx; (void)arg;
+  return _URC_NO_REASON;
+}
 static _Noreturn void throw_(Exc *e) {
   xr.cur = e;
   if (xbegin) siglongjmp(*xbegin, 1);  /* raised by an unwind action that a landing runs (pys_exc_begin) */
   if (eh) {
     e->ue.exception_class = PYS_EXC;
-    _Unwind_RaiseException(&e->ue);    /* comes back only if nothing catches e: the stack is as it was */
+    _Unwind_ForcedUnwind(&e->ue, stop_none, 0);   /* comes back only if nothing catches e: the stack is as it was */
   }
   unwind_to(0);
   if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
@@ -2561,7 +2570,7 @@ _Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind
   int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
   _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
   if (version != 1) return bad;
-  if (cls != PYS_EXC || actions & _UA_FORCE_UNWIND || !p) return _URC_CONTINUE_UNWIND;
+  if (cls != PYS_EXC || !p) return _URC_CONTINUE_UNWIND;   /* (another forced unwind: thread cancellation) */
   uint64_t ip = _Unwind_GetIPInfo(ctx, &before) - !before;   /* in the call instruction, not after it */
   int lpenc = *p++;
   if (lpenc != 0xff && !(p = dw_ptr(p, lpenc, ctx, &lpbase))) return bad;
@@ -2588,9 +2597,10 @@ _Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind
       a = d + next;
     }
     if (search) return sel ? _URC_HANDLER_FOUND : _URC_CONTINUE_UNWIND;
-    if (actions & _UA_HANDLER_FRAME ? !sel : !cleanup) return _URC_CONTINUE_UNWIND;
+    int hf = (actions & (_UA_HANDLER_FRAME | _UA_FORCE_UNWIND)) != 0;   /* (pys_throw's forced unwind: a catch is the handler) */
+    if (hf ? !sel : !cleanup) return _URC_CONTINUE_UNWIND;
     _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(0), (uintptr_t)ue);
-    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(1), actions & _UA_HANDLER_FRAME ? sel : 0);
+    _Unwind_SetGR(ctx, __builtin_eh_return_data_regno(1), hf ? sel : 0);
     _Unwind_SetIP(ctx, lpbase + lp);
     return _URC_INSTALL_CONTEXT;
   }
