@@ -100,9 +100,10 @@ Pystachy is Python with types made static and the dynamic machinery removed.
 
 **Types.** `int` (64-bit), `float` (IEEE double), `bool`, `str`, `list[T]`, `dict[K, V]`
 (keys `int` or `str`), `tuple[A, B, ...]` (up to 9 elements, indexed by integer
-constants), user classes, `Optional[C]` / `C | None` for class types, and `None` as a
-return type. The `typing`
-spellings (`List`, `Dict`, `Tuple`, `Optional`, `TextIO`) work when imported from `typing`,
+constants), user classes, `T | None` (also `None | T`, `Optional[T]` and `Union[T, None]`)
+for a class type or for `str`, `list`, `dict` and `tuple` (wherever a type goes, inside
+containers too), and `None` as a return type. The `typing`
+spellings (`List`, `Dict`, `Tuple`, `Optional`, `Union`, `TextIO`) work when imported from `typing`,
 and string forward references work (also inside `list["Node"]`), as does `typing_extensions` in place of `typing`.
 
 **Typing rules.**
@@ -118,7 +119,8 @@ and string forward references work (also inside `list["Node"]`), as does `typing
   `and`/`or` and conditional expressions), and nothing after a `return`. A parameter whose
   argument is `None` reads as `None`, and outside if branches and loops may get a value of
   another type (`if hi is None: hi = len(a)`, `if acc is None: acc = []`). A template that
-  returns objects returns `None` where it ends without a `return`, as CPython does. A
+  returns objects or `T | None` returns `None` where it ends without a `return`, as CPython
+  does. A
   function with `*args` is a template too: each call arity compiles it with `args` a tuple
   of the extra arguments' types (iterating it needs one item type; `()` is the empty
   tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is
@@ -144,6 +146,27 @@ and string forward references work (also inside `list["Node"]`), as does `typing
   global that only functions assign (`global x; x = ...`). After `from m import X` (or
   `Y = X` at module level) of such a container, the two names hold one container, typed by
   the first use of either. `None` in a display takes the type of its neighbours.
+- Optional values: a `T | None` is a `T`'s pointer, and `None` is null (a class type includes
+  `None` already). A local first assigned `None` is `T | None` for the first other value its
+  function assigns it in its source (also by unpacking) whose type is known where the local is
+  read (until then only comparisons with `None` may read it); so is module code's global for
+  the values module code assigns it. `x if c else None`, `x or None`, a template that returns
+  `None` and a `T` (in either order) and a display that holds `None` among `T` items give
+  `T | None`, and `d.get(k)` and `os.getenv(name)` without a default return `V | None` and
+  `str | None`. A `T` or `None` goes where a `T | None` is expected (a tuple item by item).
+  Where only a `T` works (a method, `len()`, indexing, iteration, `in`, `+`, `<`, unpacking,
+  a builtin's argument) the value is checked when it runs, and `None` raises CPython's error;
+  `==`, `is`, truth tests, `str()`, `repr()`, f-strings and `%` treat `None` as CPython
+  does, and so do the repr, comparisons and sorting of containers of optional items. Where
+  CPython would pass the `None` on (an assignment to a `T` variable or field, a `T` argument
+  of a user function or of a list method, a return from a function declared to return a
+  `T`), the value must be known not to be `None`: a local or parameter is, as mypy narrows
+  it, in the body of `if x is not None:`, `if x:` and `while x is not None:` (and the `elif`
+  and `else` blocks of the tests that show it), in the right operand of `x is not None and`,
+  in the arms of a conditional expression, after `if x is None: return` (or `raise`,
+  `continue`, `break`, `sys.exit()`), after `assert x is not None` and after `x = <a T>`,
+  until a value that may be `None` is assigned to it (in a loop's body: anywhere in it).
+  Module globals and fields are not narrowed, as a call may change them.
 - No silent `int` → `float` conversion when assigning or passing arguments: CPython would
   keep an `int`, so `x: float = 1` is rejected (write `1.0`). Arithmetic mixes freely.
 - Python scoping: a name assigned in a function is local to it; `global` opts out.
@@ -320,8 +343,13 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   CPython). A program that reads a module's attribute before the import of the module has
   run reads its zero value instead of raising `NameError`.
 - A function declared or inferred to return a value that ends without a `return` raises
-  `RuntimeError` there, where CPython returns `None` (a template that returns objects
-  returns `None`, as CPython does).
+  `RuntimeError` there, where CPython returns `None` (a function declared to return
+  `T | None` for a `str`, `list`, `dict` or `tuple` T, and a template that returns objects or
+  `T | None`, return `None`, as CPython does).
+- An optional value that is `None`, passed to a builtin method's parameter that has a
+  default (`s.split(sep)`, `s.strip(chars)`), means the default, as an explicit `None` does,
+  also where CPython raises `TypeError` (the fill character of `ljust()`, `rjust()` and
+  `center()`).
 - The `lib/` modules behave as their pure-Python code, which CPython replaces with C
   accelerators: errors can be worded differently, the functions accept keyword arguments the
   C versions reject, `bisect`'s `hi=-1` is not `len(a)`, assigning to a `stat` constant
@@ -390,13 +418,19 @@ read of a function's local that only code dropped at compile time binds; a name 
 binds itself that is also the name of a submodule the program imports, read as `pkg.util`,
 with `from pkg import util` or in the package's functions, when which of the two it is
 depends on when the submodule is first imported; a
-template whose returns have different types (or `None` and a type other than a class), or
-that calls itself before a return statement decides its type; a parameter whose argument is
+template whose returns have different types (or `None` and an `int`, `float` or `bool`), or
+that calls itself before a return statement decides its type (or before a return of `None`
+makes it return `T | None`); `int | None`, `float | None` and `bool | None` (they would need
+boxing), and dict keys that may be `None`; a value that may be `None` where CPython would
+pass it on and that is not narrowed (above), and an argument that may be `None` of a builtin
+function other than `len()`, `int()`, `float()`, `ord()`, `dict()`, `os.system()`,
+`os.path.exists()` and those that take `None`; a read that needs the type of a local that
+only `None` has been assigned so far, where no other value assigned to it can be typed yet
+(annotate it: `x: T | None = None`); a parameter whose argument is
 `None` given a value of another type in an if branch or loop, or bound as a `for` target; an
 alias (`f = g`) that module-level code uses before its assignment; `__all__` changed other
 than by `+=`, `append` and `extend`, for `import *`; `del` of another module's attribute;
-`os.getenv()` without a default (its result would be `str` or `None`); `raise` of anything
-but a builtin exception.
+`raise` of anything but a builtin exception.
 
 ## How it works
 
@@ -438,8 +472,12 @@ but a builtin exception.
 - **One pass from AST to IR.** After a declaration pass collects classes, fields and
   function signatures, `Gen` walks each function once, inferring expression types
   bottom-up while emitting IR. An expected type (`want`) flows top-down to type empty
-  literals and `None`. Types are canonical strings (`dict[str,list[int]]`), so the
-  compiler needs no type objects.
+  literals and `None`. Types are canonical strings (`dict[str,list[int]]`, `opt[str]` for
+  `str | None`), so the compiler needs no type objects. Narrowing follows the code as it is
+  compiled: the set of optional locals known not to be `None` grows with the tests of an
+  `if`, `while`, `assert`, `and`/`or` or conditional expression for the code they guard,
+  an `if` keeps what holds at the end of each branch that goes on, and a loop drops what
+  its body binds.
 - **Templates.** A call to a template evaluates its arguments, then looks up the function
   compiled for their types, compiling it on the spot if there is none yet: `Gen` saves its
   state for the function it is in, compiles the template's body for the argument types (its
@@ -477,7 +515,8 @@ but a builtin exception.
   tuples and objects are pointers. Container elements are uniform 8-byte slots, so one C
   implementation of `list`/`dict`/`tuple` serves every element type.
 - **Type descriptors.** Generic operations (`repr`, `==`, ordering, `sort`, `in`) receive a
-  tiny string describing the static type — `LDsi` is `list[dict[str,int]]` — and the
+  tiny string describing the static type — `LDsi` is `list[dict[str,int]]`, `?s` is
+  `str | None` — and the
   runtime interprets it recursively, comparing sequences the way CPython does (first
   unequal pair, identity first). Objects appear as `O<id>`: the runtime calls back into
   `pys_obj_eq/cmp/repr`, a switch the compiler emits over the classes that occur in
@@ -558,7 +597,8 @@ output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
 in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
-dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
+dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, optional values and
+their narrowing (with CPython's error for each use of `None` where only a value works), rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
 loader decides at import time (`tests/loader/`), a program run through a symbolic link
 (`tests/linked/`), CPython's syntax errors and nesting limits, templates, empty containers typed by their first
