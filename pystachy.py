@@ -9878,7 +9878,9 @@ class Gen:
                     self.emit(f"store i1 false, ptr @init.{x.s}.guard")
                 else:
                     self.add(Ins("init", "", x.s))
-        elif k == "def" or k == "class":
+        elif k == "def" or k == "class" or k == "subclass":
+            if self.modlevel:
+                self.err(f"a {'class' if k == 'subclass' else k} statement inside a block of a module's code (if, try, for, while, with) is not supported: only at its top level")
             self.err("nested functions and classes are not supported")
         elif k == "badimport":
             self.err(n.s)
