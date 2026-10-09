@@ -8,6 +8,7 @@
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
 # tests/errors/syntax_*.py whose error is in its own file.
+# The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
 # The cases run in PYSTACHY_JOBS workers at once (default: one per CPU); the report lists them
 # in the same order whatever the number of workers. Worker 0 runs in this shell and takes the
 # cases about SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
@@ -15,6 +16,7 @@
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
 MODES=${2:-jit aot}
+export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 T=${TMPDIR:-/tmp}/pystachy-tests.$$

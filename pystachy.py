@@ -4587,6 +4587,13 @@ METHODS: dict[str, str] = {
     "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:",
     "float.hex": "str:", "float.is_integer": "bool:",
 }
+# the IR's ops (Ins.op) and their effects (docs/typed-ir.md 3.4 and 3.7): T ends a block, R may
+# raise, N never returns, U may run user code (and so has every effect); an rt op has its runtime
+# function's (RUNTIME); a raw op, LLVM text, may do anything
+IROPS: dict[str, str] = {
+    "raw": "U", "slot": "", "rt": "*", "br": "T", "cbr": "T", "check": "T R", "ret": "T", "ret.none": "T",
+    "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
+}
 
 
 def lt(t: str) -> str:
@@ -5089,11 +5096,15 @@ class FnInfo:
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
-        self.op = op  # "raw" "slot" "rt" "ret.none" ...
+        self.op = op  # a key of IROPS
         self.t = t  # its result type ("" if it defines no value), or a slot's type
-        self.s = s  # text immediate: for "raw", one line of LLVM text; a slot's name; a runtime operation
+        # text immediate: for "raw", one line of LLVM text; a slot's name; a runtime operation; a
+        # check's message "Kind: text"; the exception a raise raises; ovf's operator + - *
+        self.s = s
         self.k = 0  # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes)
         self.r: list[int] = []  # the numbers of the values it defines, given when it was built
+        self.a: list[Val] = []  # operands, in evaluation order
+        self.b: list[str] = []  # labels: the successors of br, cbr and check; a phi's predecessors
 
 
 class Blk:
@@ -5103,6 +5114,20 @@ class Blk:
         self.code: list[Ins] = []
 
 
+class Loop:
+    # the shape of one loop, for loop passes and structured backends; lowering ignores it
+    def __init__(self, kind: str, head: str, body: str, step: str, brk: str):
+        self.kind = kind  # "while" "range" "rrange" "seq"
+        self.mode = ""  # seq: "" enumerate zip reversed items keys values
+        self.head = head  # the block that tests whether to go on
+        self.body = body  # the block where its body starts
+        self.step = step  # continue's target
+        self.exit = brk  # break's target, after the else block
+        self.seqs: list[Val] = []  # what a seq loop steps through
+        self.ctr = ""  # the slot of its counter or index
+        self.stop = Val("", "")  # a range loop's stop, evaluated once
+
+
 class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
@@ -5110,6 +5135,10 @@ class IFn:
         self.ps: list[str] = []  # its parameters, as LLVM text (None-typed ones are not passed)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
+        self.loops: list[Loop] = []
+        # message "Kind: text" -> the label of the block that raises it: one per function and
+        # message, numbered at the first check of it, and placed after the function's code
+        self.cold: dict[str, str] = {}
 
 
 class Frame:
@@ -5487,20 +5516,59 @@ class Gen:
 
     def place(self, l: str) -> None:
         if not self.term:
-            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
+            self.jump(l)
         self.blk = Blk(l)
         self.fn.blocks.append(self.blk)
         self.cur = l
         self.term = False
 
+    def jump(self, l: str) -> None:
+        i = Ins("br", "", "")
+        i.b.append(l)
+        self.blk.code.append(i)
+
     def br(self, l: str) -> None:
         if not self.term:
-            self.blk.code.append(Ins("raw", "", f"br label %{l}"))
+            self.jump(l)
             self.term = True
 
     def cbr(self, c: str, a: str, b: str) -> None:
-        self.emit(f"br i1 {c}, label %{a}, label %{b}")
+        i = Ins("cbr", "", "")
+        i.a.append(Val(c, "bool"))
+        i.b.append(a)
+        i.b.append(b)
+        self.add(i)
         self.term = True
+
+    def ret_(self, v: Val) -> None:
+        # return v (of type None: return nothing)
+        i = Ins("ret", "", "")
+        if v.t != "None":
+            i.a.append(v)
+        self.add(i)
+        self.term = True
+
+    def unreachable(self) -> None:
+        self.add(Ins("unreachable", "", ""))
+        self.term = True
+
+    def incoming(self, ph: Ins, v: str, l: str) -> None:
+        # the value v of phi ph when control comes from block l
+        ph.a.append(Val(v, ph.t))
+        ph.b.append(l)
+
+    def phi(self, ph: Ins) -> str:
+        self.put(ph, 1)
+        return f"%t{ph.r[0]}"
+
+    def select(self, c: str, x: Val, y: Val) -> str:
+        # c ? x : y, where x and y have the same type
+        i = Ins("select", x.t, "")
+        i.a.append(Val(c, "bool"))
+        i.a.append(x)
+        i.a.append(y)
+        self.put(i, 1)
+        return f"%t{i.r[0]}"
 
     def rt(self, name: str, ret: str, args: list[str]) -> str:
         tys: list[str] = []
@@ -5529,22 +5597,29 @@ class Gen:
         return i
 
     def checked(self, op: str, a: str, b: str) -> list[str]:
-        # [result, overflowed] of llvm.<op>.with.overflow.i64
-        f = f"llvm.{op}.with.overflow.i64"
+        # [result, overflowed] of 64-bit a op b (op: + - *), from llvm.s<op>.with.overflow.i64
+        f = f"llvm.{CHECKED[op]}.with.overflow.i64"
         self.decls[f] = f"declare {{i64, i1}} @{f}(i64, i64)"
-        r = self.ins(f"call {{i64, i1}} @{f}(i64 {a}, i64 {b})")
-        return [self.ins(f"extractvalue {{i64, i1}} {r}, 0"), self.ins(f"extractvalue {{i64, i1}} {r}, 1")]
+        i = Ins("ovf", "int", op)
+        i.a.append(Val(a, "int"))
+        i.a.append(Val(b, "int"))
+        self.put(i, 3)  # (the call's {i64, i1}, then the two extractvalues)
+        return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
 
     def guard(self, bad: str, msg: str) -> None:
         # if bad, jump to a block (one per function and message) that raises msg ("Kind: text")
         if msg not in self.cold:
             self.cold[msg] = self.label()
         l = self.label()
-        self.cbr(bad, self.cold[msg], l)
+        i = Ins("check", "", msg)
+        i.a.append(Val(bad, "bool"))
+        i.b.append(l)
+        self.add(i)
+        self.term = True
         self.place(l)
 
     def iop(self, op: str, a: str, b: str) -> str:
-        # checked 64-bit arithmetic: overflow raises OverflowError (CPython would grow the int)
+        # checked 64-bit arithmetic (op: + - *): overflow raises OverflowError (CPython would grow the int)
         r = self.checked(op, a, b)
         self.guard(r[1], "OverflowError: integer result does not fit in 64 bits")
         return r[0]
@@ -6631,13 +6706,16 @@ class Gen:
         # the type of e, compiled into blocks that are dropped
         blk = self.blk
         blocks = self.fn.blocks
+        loops = self.fn.loops
         cur = self.cur
         term = self.term
         self.blk = Blk("")
         self.fn.blocks = []
+        self.fn.loops = []
         t = self.expr(e, "").t
         self.blk = blk
         self.fn.blocks = blocks
+        self.fn.loops = loops
         self.cur = cur
         self.term = term
         return t
@@ -6842,7 +6920,7 @@ class Gen:
         self.term = False
         self.ret = f.ret
         self.retann = f.node.kind == "def" and f.node.kids[1].kind != "noann"
-        self.cold = {}
+        self.cold = self.fn.cold
         self.nn = {}
         self.selfname = ""
         self.uflags = f.uflags
@@ -6901,8 +6979,7 @@ class Gen:
             l2 = self.label()
             self.cbr(self.ins(f"load i1, ptr {done}"), l1, l2)
             self.place(l1)
-            self.emit("ret void")
-            self.term = True
+            self.ret_(Val("null", "None"))
             self.place(l2)
             self.emit(f"store i1 true, ptr {done}")
         self.stmts(body)
@@ -6915,10 +6992,14 @@ class Gen:
                     if x.op == "ret.none" and f.ret != "None" and f.ret not in self.classes:
                         self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types")
         if not self.term:
-            if f.ret == "None":
-                self.emit("ret void")
-            elif f.infer and f.ret in self.classes:
-                self.emit("ret ptr null")  # a template's function that ends without a return: None
+            if f.ret == "None" or (f.infer and f.ret in self.classes):
+                self.ret_(Val("null", f.ret))  # (a template's function that ends without a return: None)
+                if len(self.cold) > 0:
+                    # the jump to the first cold block that follows is a block of its own, which
+                    # LLVM starts after a terminator, without a label
+                    self.blk = Blk("")
+                    self.fn.blocks.append(self.blk)
+                    self.term = False
             else:
                 self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
         for msg in self.cold:
@@ -6942,19 +7023,83 @@ class Gen:
                 o.append(f"  {r} = alloca {lt(i.t)}")
                 o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
         for b in fn.blocks:
-            if b.label != "entry":
+            if b.label != "entry" and b.label != "":
                 o.append(b.label + ":")
             for i in b.code:
                 self.lower_ins(fn, i)
         o.append("}")
+
+    def verify(self, fn: IFn) -> None:
+        # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS; every block ends with its
+        # one terminator; branches go to blocks of fn; a phi starts its block, and its
+        # predecessors are blocks that branch there
+        at: dict[str, int] = {}
+        for j in range(len(fn.blocks)):
+            if fn.blocks[j].label in at:
+                self.bad_ir(fn, fn.blocks[j], "a second block of that name")
+            at[fn.blocks[j].label] = j
+        succ: list[list[str]] = []
+        for b in fn.blocks:
+            out: list[str] = []
+            for j in range(len(b.code)):
+                i = b.code[j]
+                if i.op not in IROPS:
+                    self.bad_ir(fn, b, f"unknown op {i.op}")
+                if ("T" in IROPS[i.op]) != (j == len(b.code) - 1):
+                    self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")
+                if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
+                    self.bad_ir(fn, b, "a phi after other ops")
+                if i.op != "phi":
+                    out.extend(i.b)
+                if i.op == "check":
+                    out.append(fn.cold[i.s] if i.s in fn.cold else f"(none for {i.s})")
+            if len(b.code) == 0:
+                self.bad_ir(fn, b, "no terminator")
+            for l in out:
+                if l not in at or l == "entry":
+                    self.bad_ir(fn, b, f"a branch to {l}, which is no block of it")
+            succ.append(out)
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "phi":
+                    for l in i.b:
+                        if l not in at or b.label not in succ[at[l]]:
+                            self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+
+    def bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
+        fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)
 
     def lower_ins(self, fn: IFn, i: Ins) -> None:
         op = i.op
         o = self.out
         if op == "raw":
             o.append("  " + i.s)
+        elif op == "br":
+            o.append(f"  br label %{i.b[0]}")
+        elif op == "cbr":
+            o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
+        elif op == "check":
+            o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.s]}, label %{i.b[0]}")
+        elif op == "phi":
+            o.append(f"  %t{i.r[0]} = phi {lt(i.t)} {', '.join([f'[{i.a[j].v}, %{i.b[j]}]' for j in range(len(i.a))])}")
+        elif op == "ovf":
+            r = i.r
+            o.append(f"  %t{r[0]} = call {{i64, i1}} @llvm.{CHECKED[i.s]}.with.overflow.i64(i64 {i.a[0].v}, i64 {i.a[1].v})")
+            o.append(f"  %t{r[1]} = extractvalue {{i64, i1}} %t{r[0]}, 0")
+            o.append(f"  %t{r[2]} = extractvalue {{i64, i1}} %t{r[0]}, 1")
+        elif op == "select":
+            x = i.a[1]
+            y = i.a[2]
+            o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+        elif op == "ret":
+            o.append(f"  ret {lt(i.a[0].t)} {i.a[0].v}" if len(i.a) > 0 else "  ret void")
         elif op == "ret.none":
             o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
+        elif op == "raise":
+            o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v})")
+            o.append("  unreachable")
+        elif op == "unreachable":
+            o.append("  unreachable")
         elif op == "rt" and i.s == "list.new":
             o.append(f"  %t{i.r[0]} = call ptr @pys_list_new(i64 0)")
         elif op == "rt" and i.s == "dict.new":
@@ -7153,6 +7298,9 @@ class Gen:
             if len(done) + len(helped) == before:
                 break
         # the whole program is built: its functions are printed in the order they were completed
+        if os.getenv("PYSTACHY_IRCHECK", "") == "1":
+            for fn in self.fns:
+                self.verify(fn)
         for fn in self.fns:
             self.lower(fn)
         for op in ["eq", "cmp", "repr"]:
@@ -7791,18 +7939,21 @@ class Gen:
         l1 = self.label()
         l2 = self.label()
         l3 = self.label()
+        lp = Loop("while", l1, l2, l1, l3)
+        self.fn.loops.append(lp)
         self.place(l1)
         self.cbr(self.cond(n.kids[0]), l2, l3)
         self.place(l2)
-        self.loop(n.kids[1].kids, l1, l3)
+        self.loop(n.kids[1].kids, lp)
         self.br(l1)
         self.place(l3)
 
-    def loop(self, body: list[Node], cont: str, brk: str) -> None:
+    def loop(self, body: list[Node], lp: Loop) -> None:
+        # the body of loop lp: continue jumps to lp.step, break to lp.exit
         if body is self.elsekids:
-            brk = self.elsebrk  # the loop of a for/while ... else: break skips the else block
-        self.loops.append(cont)
-        self.loops.append(brk)
+            lp.exit = self.elsebrk  # the loop of a for/while ... else: break skips the else block
+        self.loops.append(lp.step)
+        self.loops.append(lp.exit)
         self.wdepth.append(len(self.withs))
         self.branch += 1
         self.stmts(body)
@@ -7865,8 +8016,7 @@ class Gen:
             self.cbr(self.ins(f"load i1, ptr {g}"), l1, l2)
             self.place(l1)
             self.emit(f"store i1 false, ptr {self.curfn.ll}.done")
-            self.emit("ret void")
-            self.term = True
+            self.ret_(Val("null", "None"))
             self.place(l2)
         if name == "SystemExit":
             self.exit_(vals)
@@ -7881,9 +8031,7 @@ class Gen:
                 self.cbr(self.truth(vals[0]), l1, l2)
                 self.place(l1)
                 line = self.rt("pys_str_add", "ptr", [f"ptr {self.sconst(name + ': ')}", f"ptr {self.to_str(vals[0]).v}"])
-                self.rt("pys_raise", "void", [f"ptr {line}", f"ptr {self.sconst('')}"])
-                self.emit("unreachable")
-                self.term = True
+                self.raise_(name, self.sconst(""), line)
                 self.place(l2)
             self.raise_(name, self.sconst("<no detail available>"))
             return
@@ -7912,16 +8060,18 @@ class Gen:
                 self.cbr(self.isnull(vals[0]), l1, l2)
                 self.place(l1)
                 self.rt("pys_exit", "void", ["i64 0"])
-                self.emit("unreachable")
-                self.term = True
+                self.unreachable()
                 self.place(l2)
             self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
-        self.emit("unreachable")
-        self.term = True
+        self.unreachable()
 
-    def raise_(self, name: str, msg: str) -> None:
-        self.rt("pys_raise", "void", [f"ptr {self.sconst(name)}", f"ptr {msg}"])
-        self.emit("unreachable")
+    def raise_(self, name: str, msg: str, kind: str = "") -> None:
+        # raise exception name: the error line is "<kind>: <msg>", where kind is name unless given
+        i = Ins("raise", "", name)
+        i.a.append(Val(kind if kind != "" else self.sconst(name), "str"))
+        i.a.append(Val(msg, "str"))
+        self.decl("pys_raise", "void", ["ptr", "ptr"])
+        self.add(i)
         self.term = True
 
     def stmt(self, n: Node) -> None:
@@ -8025,12 +8175,12 @@ class Gen:
                 else:
                     self.ret = v.t
                     self.curfn.ret = v.t
-                    self.emit(f"ret {lt(v.t)} {v.v}")
+                    self.ret_(v)
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes):
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
                 self.close_withs(0)
-                self.emit("ret void" if self.ret == "None" else "ret ptr null")
+                self.ret_(Val("null", self.ret))
             elif self.ret == "None":
                 # return f() where f returns None
                 v = self.expr(n.kids[0], "")
@@ -8039,7 +8189,7 @@ class Gen:
                 if v.t != "None":
                     self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
                 self.close_withs(0)
-                self.emit("ret void")
+                self.ret_(Val("null", "None"))
             else:
                 v = self.retval(n.kids[0], self.ret)
                 if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
@@ -8048,7 +8198,7 @@ class Gen:
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret)
                 self.close_withs(0)
-                self.emit(f"ret {lt(self.ret)} {v.v}")
+                self.ret_(Val(v.v, self.ret))
             self.term = True
         elif k == "break" or k == "continue":
             if len(self.loops) == 0:
@@ -8241,7 +8391,7 @@ class Gen:
         self.place(lerr)
         m1 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and 'NoneType'")
         m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(b.t)}'")
-        self.raise_("TypeError", self.ins(f"select i1 {self.isnull(b)}, ptr {m1}, ptr {m2}"))
+        self.raise_("TypeError", self.select(self.isnull(b), Val(m1, "str"), Val(m2, "str")))
         self.place(lok)
 
     def hide(self, names: list[str]) -> None:
@@ -8338,6 +8488,10 @@ class Gen:
         lb = self.label()
         ls = self.label()
         le = self.label()
+        lp = Loop("range", lc, lb, ls, le)
+        lp.ctr = ctr
+        lp.stop = Val(stop, "int")
+        self.fn.loops.append(lp)
         self.place(lc)
         i = self.ins(f"load i64, ptr {ctr}")
         if not step.startswith("%"):
@@ -8346,14 +8500,14 @@ class Gen:
             up = self.ins(f"icmp slt i64 {i}, {stop}")
             dn = self.ins(f"icmp sgt i64 {i}, {stop}")
             pos = self.ins(f"icmp sgt i64 {step}, 0")
-            c = self.ins(f"select i1 {pos}, i1 {up}, i1 {dn}")
+            c = self.select(pos, Val(up, "bool"), Val(dn, "bool"))
         self.cbr(c, lb, le)
         self.place(lb)
         self.assign(tgt, Val(i, "int"))
-        self.loop(body, ls, le)
+        self.loop(body, lp)
         self.place(ls)
         # a step that overflows 64 bits has passed any stop value: the loop is over
-        r = self.checked("sadd", i, step)
+        r = self.checked("+", i, step)
         self.emit(f"store i64 {r[0]}, ptr {ctr}")
         self.cbr(r[1], le, lc)
         self.place(le)
@@ -8369,6 +8523,9 @@ class Gen:
         lb = self.label()
         ls = self.label()
         le = self.label()
+        lp = Loop("rrange", lc, lb, ls, le)
+        lp.ctr = ctr
+        self.fn.loops.append(lp)
         self.place(lc)
         c = self.ins(f"load i64, ptr {ctr}")
         self.cbr(self.ins(f"icmp ne i64 {c}, 0"), lb, le)
@@ -8376,7 +8533,7 @@ class Gen:
         k = self.ins(f"sub i64 {c}, 1")
         self.emit(f"store i64 {k}, ptr {ctr}")
         self.assign(tgt, Val(self.ins(f"add i64 {vs[0]}, {self.ins(f'mul i64 {k}, {vs[2]}')}"), "int"))
-        self.loop(body, ls, le)
+        self.loop(body, lp)
         self.place(ls)
         self.br(lc)
         self.place(le)
@@ -8413,6 +8570,11 @@ class Gen:
         lc = self.label()
         ls = self.label()
         le = self.label()
+        lp = Loop("seq", lc, "", ls, le)
+        lp.mode = mode
+        lp.seqs = seqs
+        lp.ctr = ctr
+        self.fn.loops.append(lp)
         self.place(lc)
         i = self.ins(f"load i64, ptr {ctr}")
         at: list[str] = []
@@ -8441,12 +8603,13 @@ class Gen:
             go = self.label()
             self.cbr(ok, go, le)
             self.place(go)
+            lp.body = go
             if is_dict(s.t):
                 self.emit(f"store i64 {nx}, ptr {st[k]}")
             at.append(j)
         vals: list[Val] = []
         if mode == "enumerate":
-            vals.append(Val(i if start == "0" else self.iop("sadd", i, start), "int"))
+            vals.append(Val(i if start == "0" else self.iop("+", i, start), "int"))
         for k in range(len(seqs)):
             s = seqs[k]
             j = at[k]
@@ -8469,7 +8632,7 @@ class Gen:
                 self.assign(tgt.kids[k2], vals[k2])
         else:
             self.assign(tgt, self.tuple_(vals))
-        self.loop(body, ls, le)
+        self.loop(body, lp)
         self.place(ls)
         nx2 = self.ins(f"add i64 {i}, 1")
         self.emit(f"store i64 {nx2}, ptr {ctr}")
@@ -8632,7 +8795,10 @@ class Gen:
             e2 = self.cur
             self.br(l2)
             self.place(l2)
-            return self.ins(f"phi i1 [false, %{e1}], [{r}, %{e2}]")
+            ph = Ins("phi", "bool", "")
+            self.incoming(ph, "false", e1)
+            self.incoming(ph, r, e2)
+            return self.phi(ph)
         return nz
 
     def expr(self, n: Node, want: str) -> Val:
@@ -8698,7 +8864,7 @@ class Gen:
                     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
                     bd = self.ival(x).v
                     if bd.startswith("%"):
-                        bd = self.ins(f"select i1 {self.ins(f'icmp eq i64 {bd}, -9223372036854775808')}, i64 -9223372036854775807, i64 {bd}")
+                        bd = self.select(self.ins(f"icmp eq i64 {bd}, -9223372036854775808"), Val("-9223372036854775807", "int"), Val(bd, "int"))
                     elif bd == "-9223372036854775808":
                         bd = "-9223372036854775807"
                     bnd.append(bd)
@@ -9010,16 +9176,16 @@ class Gen:
         b = self.expr(n.kids[2], want if want != "" else a.t)
         e2 = "" if self.term else self.cur
         t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
-        phis: list[str] = []
+        ph = Ins("phi", t, "")
         if e1 != "":
-            phis.append(f"[{self.coerce(a, t).v}, %{e1}]")
+            self.incoming(ph, self.coerce(a, t).v, e1)
         if e2 != "":
-            phis.append(f"[{self.coerce(b, t).v}, %{e2}]")
+            self.incoming(ph, self.coerce(b, t).v, e2)
         if t == "None":
             self.err("conditional expression has no value")
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi {lt(t)} {', '.join(phis)}"), t)
+        return Val(self.phi(ph), t)
 
     def boolop(self, n: Node, ascond: bool, want: str) -> Val:
         # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
@@ -9054,12 +9220,13 @@ class Gen:
         self.place(l2)
         b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t)
         # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
-        phis = [f"[{a.v}, %{e1}]"]
+        ph = Ins("phi", a.t, "")
+        self.incoming(ph, a.v, e1)
         if not self.term:
-            phis.append(f"[{self.coerce(b, a.t).v}, %{self.cur}]")
+            self.incoming(ph, self.coerce(b, a.t).v, self.cur)
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi {lt(a.t)} {', '.join(phis)}"), a.t)
+        return Val(self.phi(ph), a.t)
 
     def unary(self, n: Node) -> Val:
         op = n.s
@@ -9070,7 +9237,7 @@ class Gen:
             return self.expr(mk(e.kind, "-" + e.s, e.line, []), "")
         v = self.as_int(self.expr(e, ""))
         if v.t == "int" and op == "-":
-            return Val(self.iop("ssub", "0", v.v), "int")
+            return Val(self.iop("-", "0", v.v), "int")
         if v.t == "int" and op == "~":
             return Val(self.ins(f"xor i64 {v.v}, -1"), "int")
         if v.t == "float" and op == "-":
@@ -9134,14 +9301,14 @@ class Gen:
         if fw != "" and a.v in self.nn:
             return self.call_fn(self.classes[a.t].methods[fw], [a, b], [])
         lend = self.label()
-        phis: list[str] = []
+        ph = Ins("phi", "bool", "")
         if fw != "":
             lcall = self.label()
             lnone = self.label()
             self.cbr(self.isnull(a), lnone, lcall)
             self.place(lcall)
             r = self.call_fn(self.classes[a.t].methods[fw], [a, b], [])
-            phis.append(f"[{r.v}, %{self.cur}]")
+            self.incoming(ph, r.v, self.cur)
             self.br(lend)
             self.place(lnone)
         if rf != "":
@@ -9150,7 +9317,7 @@ class Gen:
             self.cbr(self.isnull(b), lerr, lcall)
             self.place(lcall)
             r = self.call_fn(self.classes[b.t].methods[rf], [b, a], [])
-            phis.append(f"[{r.v}, %{self.cur}]")
+            self.incoming(ph, r.v, self.cur)
             self.br(lend)
             self.place(lerr)
         an = self.isnull(a)
@@ -9159,13 +9326,13 @@ class Gen:
         for x in ["NoneType", tname(a.t)]:
             for y in ["NoneType", tname(b.t)]:
                 ms.append(self.sconst(f"'{op}' not supported between instances of '{x}' and '{y}'"))
-        mn = self.ins(f"select i1 {bn}, ptr {ms[0]}, ptr {ms[1]}")
-        mf = self.ins(f"select i1 {bn}, ptr {ms[2]}, ptr {ms[3]}")
-        self.raise_("TypeError", self.ins(f"select i1 {an}, ptr {mn}, ptr {mf}"))
+        mn = self.select(bn, Val(ms[0], "str"), Val(ms[1], "str"))
+        mf = self.select(bn, Val(ms[2], "str"), Val(ms[3], "str"))
+        self.raise_("TypeError", self.select(an, Val(mn, "str"), Val(mf, "str")))
         self.place(lend)
-        if len(phis) == 0:
+        if len(ph.a) == 0:
             return Val("false", "bool")
-        return Val(self.ins(f"phi i1 {', '.join(phis)}"), "bool")
+        return Val(self.phi(ph), "bool")
 
     def eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
         # a == b via __eq__ (or != via __ne__). With None on the left CPython falls back to
@@ -9176,7 +9343,7 @@ class Gen:
         lnull = self.label()
         lcall = self.label()
         lend = self.label()
-        phis: list[str] = []
+        ph = Ins("phi", "bool", "")
         self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lnull, lcall)
         self.place(lnull)
         if b.t == a.t:
@@ -9184,21 +9351,21 @@ class Gen:
             lrefl = self.label()
             self.cbr(self.ins(f"icmp eq ptr {b.v}, null"), lboth, lrefl)
             self.place(lboth)
-            phis.append(f"[{same}, %{lboth}]")
+            self.incoming(ph, same, lboth)
             self.br(lend)
             self.place(lrefl)
             r = self.call_fn(f, [b, a], [])
-            phis.append(f"[{r.v}, %{self.cur}]")
+            self.incoming(ph, r.v, self.cur)
         else:
             # None == None is True; None == <anything else> is False
-            phis.append(f"[{same if b.t == 'None' else ('false' if iseq else 'true')}, %{lnull}]")
+            self.incoming(ph, same if b.t == "None" else ("false" if iseq else "true"), lnull)
         self.br(lend)
         self.place(lcall)
         r = self.call_fn(f, [a, b], [])
-        phis.append(f"[{r.v}, %{self.cur}]")
+        self.incoming(ph, r.v, self.cur)
         self.br(lend)
         self.place(lend)
-        return Val(self.ins(f"phi i1 {', '.join(phis)}"), "bool")
+        return Val(self.phi(ph), "bool")
 
     def arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         du = self.dunder(op, a, b, shown)
@@ -9212,7 +9379,7 @@ class Gen:
             return Val(self.rt("pys_idiv", "double", [f"i64 {a.v}", f"i64 {b.v}"]), "float")
         if a.t == "int" and b.t == "int" and op != "/":
             if op in CHECKED:
-                return Val(self.iop(CHECKED[op], a.v, b.v), "int")
+                return Val(self.iop(op, a.v, b.v), "int")
             if op in IOPS:
                 return Val(self.ins(f"{IOPS[op]} i64 {a.v}, {b.v}"), "int")
             if op in IRT:
@@ -9254,21 +9421,21 @@ class Gen:
         if len(ops) == 1:
             return self.cmp2(ops[0], a, self.expr(n.kids[1], a.t))
         l3 = self.label()
-        phis: list[str] = []
+        ph = Ins("phi", "bool", "")
         r = a
         for i in range(len(ops)):
             b = self.expr(n.kids[i + 1], a.t)
             r = self.cmp2(ops[i], a, b)
             if i < len(ops) - 1:
                 nx = self.label()
-                phis.append(f"[false, %{self.cur}]")
+                self.incoming(ph, "false", self.cur)
                 self.cbr(r.v, nx, l3)
                 self.place(nx)
             a = b
-        phis.append(f"[{r.v}, %{self.cur}]")
+        self.incoming(ph, r.v, self.cur)
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi i1 {', '.join(phis)}"), "bool")
+        return Val(self.phi(ph), "bool")
 
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
         if (op == "==" or op == "!=") and a.t == "file" and b.t == "file":
@@ -9287,25 +9454,25 @@ class Gen:
         if (op == "in" or op == "not in") and is_tuple(b.t):
             # CPython: for each item in order, item is x or item == x; stop at the first match
             lend = self.label()
-            phis: list[str] = []
+            ph = Ins("phi", "bool", "")
             for i in range(len(targs(b.t))):
                 item = self.tget(b, i)
                 if not self.comparable(item.t, a.t):
                     continue
                 if item.t in self.classes and self.isref(a.t):
                     nx = self.label()
-                    phis.append(f"[true, %{self.cur}]")
+                    self.incoming(ph, "true", self.cur)
                     self.cbr(self.ins(f"icmp eq ptr {item.v}, {a.v}"), lend, nx)
                     self.place(nx)
                 c = self.cmp2("==", item, a)
                 nx = self.label()
-                phis.append(f"[true, %{self.cur}]")
+                self.incoming(ph, "true", self.cur)
                 self.cbr(c.v, lend, nx)
                 self.place(nx)
-            phis.append(f"[false, %{self.cur}]")
+            self.incoming(ph, "false", self.cur)
             self.br(lend)
             self.place(lend)
-            r = self.ins(f"phi i1 {', '.join(phis)}")
+            r = self.phi(ph)
             return Val(r if op == "in" else self.ins(f"xor i1 {r}, true"), "bool")
         if op == "in" or op == "not in":
             r = ""
@@ -9333,7 +9500,7 @@ class Gen:
             fv = a if a.t == "float" else b
             r = self.rt("pys_cmp_if", "i64", [f"i64 {iv.v}", f"double {fv.v}"])
             if a.t == "float":
-                r = self.ins(f"select i1 {self.ins(f'icmp eq i64 {r}, 2')}, i64 2, i64 {self.ins(f'sub i64 0, {r}')}")
+                r = self.select(self.ins(f"icmp eq i64 {r}, 2"), Val("2", "int"), Val(self.ins(f"sub i64 0, {r}"), "int"))
             return Val(self.ins(MIXCMP[op].replace("R", r)), "bool")
         eq = op == "==" or op == "!="
         if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
@@ -9654,7 +9821,10 @@ class Gen:
                 e1 = self.cur
                 self.br(l2)
                 self.place(l2)
-                return Val(self.ins(f"phi i1 [false, %{e0}], [{fv}, %{e1}]"), "bool")
+                ph = Ins("phi", "bool", "")
+                self.incoming(ph, "false", e0)
+                self.incoming(ph, fv, e1)
+                return Val(self.phi(ph), "bool")
             if hy < 0:
                 return Val(self.ins(f"icmp ne ptr {hv.v}, null"), "bool")
             return Val("true" if hy == 1 else "false", "bool")
@@ -9771,8 +9941,8 @@ class Gen:
         elif name == "abs" and (t == "int" or t == "bool"):
             v = self.as_int(v)
             c = self.ins(f"icmp slt i64 {v.v}, 0")
-            neg = self.iop("ssub", "0", v.v)
-            return Val(self.ins(f"select i1 {c}, i64 {neg}, i64 {v.v}"), "int")
+            neg = self.iop("-", "0", v.v)
+            return Val(self.select(c, Val(neg, "int"), v), "int")
         elif (name == "min" or name == "max") and len(vals) == 1 and is_list(t):
             d = self.sconst(self.desc(elem(t)))
             r = self.rt("pys_list_minmax", "i64", [f"ptr {v.v}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"])
@@ -9783,7 +9953,7 @@ class Gen:
             for b in vals[1:]:
                 b = self.coerce(b, t)
                 gt = self.cmp2(">" if name == "max" else "<", b, v)
-                v = Val(self.ins(f"select i1 {gt.v}, {lt(t)} {b.v}, {lt(t)} {v.v}"), t)
+                v = Val(self.select(gt.v, Val(b.v, t), Val(v.v, t)), t)
             return v
         elif (name == "sorted" or name == "list") and is_list(t):
             c = v.v if fresh else self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
@@ -9827,6 +9997,10 @@ class Gen:
         hit = self.label()
         ls = self.label()
         le = self.label()
+        lp = Loop("seq", lc, lb, ls, le)
+        lp.seqs = [v]
+        lp.ctr = ctr
+        self.fn.loops.append(lp)
         self.place(lc)
         i = self.ins(f"load i64, ptr {ctr}")
         self.cbr(self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {v.v}')}"), lb, le)
@@ -10041,7 +10215,7 @@ class Gen:
         if t == "float":
             return Val(self.rt("pys_str_float", "ptr", [f"double {v.v}"]), "str")
         if t == "bool":
-            return Val(self.ins(f"select i1 {v.v}, ptr {self.sconst('True')}, ptr {self.sconst('False')}"), "str")
+            return Val(self.select(v.v, Val(self.sconst("True"), "str"), Val(self.sconst("False"), "str")), "str")
         if t == "None":
             return Val(self.sconst("None"), "str")
         if t in self.classes:
@@ -10071,7 +10245,10 @@ class Gen:
         e2 = self.cur
         self.br(l3)
         self.place(l3)
-        return Val(self.ins(f"phi ptr [{self.sconst('None')}, %{l1}], [{r.v}, %{e2}]"), "str")
+        ph = Ins("phi", "str", "")
+        self.incoming(ph, self.sconst("None"), l1)
+        self.incoming(ph, r.v, e2)
+        return Val(self.phi(ph), "str")
 
     def repr(self, v: Val) -> Val:
         if v.t in self.classes:

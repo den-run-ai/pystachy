@@ -556,7 +556,10 @@ must be rejected with the message on its first line (a `tests/errors/syntax_*.py
 `pystachy check`), and each `tests/deviations/*.py` must print its hand-written expected
 output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
-in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
+in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHECK=1`: the
+compiler then checks the IR it built before lowering it (every op is known, each block ends
+with its one terminator, branches go to blocks of the function, and a phi's predecessors
+branch to it). The programs cover arithmetic and overflow edges,
 strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
 dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
