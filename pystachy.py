@@ -9652,7 +9652,7 @@ class Gen:
     def none_operands(self, op: str, a: Val, b: Val, shown: str) -> None:
         # a op b with an optional operand that is None: CPython's TypeError, which names the other
         # operand's run-time type, or for str + None and list + None its own message
-        sh = shown if shown != "" else op
+        sh = shown if shown != "" else "** or pow()" if op == "**" else op
         x = unopt(a.t)
         y = unopt(b.t)
         if is_opt(a.t):
