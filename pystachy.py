@@ -5316,7 +5316,7 @@ class Frame:
         self.gdecl: dict[str, bool] = {}
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
-        self.loops: list[str] = []
+        self.loops: list[Loop] = []
         self.withs: list[str] = []
         self.wdepth: list[int] = []
         self.lcs: list[str] = []
@@ -5519,7 +5519,7 @@ class Gen:
         self.gdecl: dict[str, bool] = {}
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
-        self.loops: list[str] = []
+        self.loops: list[Loop] = []  # the loops the code being compiled is in, innermost last
         self.withs: list[str] = []  # files of the enclosing with blocks, closed when the code leaves them
         self.wdepth: list[int] = []  # len(withs) when each enclosing loop began
         self.lcs: list[str] = []
@@ -8245,14 +8245,12 @@ class Gen:
         # the body of loop lp: continue jumps to lp.step, break to lp.exit
         if body is self.elsekids:
             lp.exit = self.elsebrk  # the loop of a for/while ... else: break skips the else block
-        self.loops.append(lp.step)
-        self.loops.append(lp.exit)
+        self.loops.append(lp)
         self.wdepth.append(len(self.withs))
         self.branch += 1
         self.stmts(body)
         self.branch -= 1
         self.wdepth.pop()
-        self.loops.pop()
         self.loops.pop()
 
     def close_withs(self, depth: int) -> None:
@@ -8496,7 +8494,7 @@ class Gen:
             if len(self.loops) == 0:
                 self.err(f"'{k}' outside loop")
             self.close_withs(self.wdepth[-1])
-            self.br(self.loops[-1] if k == "break" else self.loops[-2])
+            self.br(self.loops[-1].exit if k == "break" else self.loops[-1].step)
         elif k == "global":
             for nm in n.kids:
                 self.gdecl[nm.s] = True
@@ -8553,7 +8551,7 @@ class Gen:
                 self.cbr(c, go, hit)
             self.place(hit)
             self.emit(f"store i1 {'true' if n.s == 'any' else 'false'}, ptr {self.lcs[-1]}")
-            self.br(self.loops[-1])
+            self.br(self.loops[-1].exit)
             self.place(go)
         elif k == "lcappend":
             et = self.lct[-1]
