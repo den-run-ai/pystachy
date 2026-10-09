@@ -5098,6 +5098,7 @@ class FnInfo:
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
+        self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
 
 
 class Frame:
@@ -5807,7 +5808,12 @@ class Gen:
         # (see instance), and what cannot be compiled in it is an error only then
         self.line = d.line
         f = FnInfo(d.s, f"@f.{d.s}" if cls == "" else f"@m.{cls}.{d.s}", d, cls)
-        if self.rtmode and cls == "" and d.s.startswith("pys_"):
+        body = d.kids[2].kids
+        if self.rtmode and cls == "" and len(body) == 1 and body[0].kind == "expr" and body[0].kids[0].kind == "ellipsis":
+            # def name(...) -> T: ... is runtime.c's function (or libc's) of that name
+            f.ll = "@" + d.s
+            f.extern = True
+        elif self.rtmode and cls == "" and d.s.startswith("pys_"):
             f.ll = "@" + d.s
             f.export = True
         ps = d.kids[0].kids
@@ -7123,6 +7129,11 @@ class Gen:
         for f in self.funcs.values():
             if f.mod != "" and not f.generic:
                 self.lazy[f.ll] = f
+            elif f.extern:
+                for t in f.ptypes + [f.ret]:
+                    if t == "bool" or t == "":
+                        self.err(f"C function {f.name}() takes or returns {typestr(t) if t != '' else 'an untyped value'}: the runtime ABI passes bools as int")
+                self.decls[f.ll[1:]] = f"declare {lt(f.ret)} {f.ll}({', '.join([lt(t) for t in f.ptypes])})"
             elif not f.generic and f.ll not in self.compiled:
                 self.function(f, f.node.kids[2].kids)
         for ci in self.classes.values():

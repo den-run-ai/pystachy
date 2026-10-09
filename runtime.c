@@ -438,7 +438,6 @@ Str *pys_str_join(Str *sep, List *l);
 List *pys_str_split(Str *s, Str *sep, I maxsplit);
 List *pys_str_rsplit(Str *s, Str *sep, I maxsplit);
 List *pys_str_splitlines(Str *s, I keep);
-static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
 Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
@@ -1337,11 +1336,6 @@ Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? clone(d
 static _Noreturn void failf(const char *f, ...) {
   char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
 }
-static I uoff(const char *p, I n, I k) {          /* byte offset of code point k */
-  I i = 0;
-  for (; i < n && k > 0; k--) { i++; while (i < n && ((unsigned char)p[i] & 0xC0) == 0x80) i++; }
-  return i;
-}
 static I u8enc(char *o, I c) {
   if (c < 0x80) { o[0] = c; return 1; }
   if (c < 0x800) { o[0] = 0xC0 | c >> 6; o[1] = 0x80 | (c & 63); return 2; }
@@ -1351,133 +1345,54 @@ static I u8enc(char *o, I c) {
 static const char *tyname(char d) {
   return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' ? "tuple" : "object";
 }
-static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   /* digits with separators */
-  I z = 0, len = n + (sep ? (n - 1) / every : 0);
-  while (len < minw) { z++; len = n + z + (sep ? (n + z - 1) / every : 0); }   /* zero padding is grouped too */
-  for (I i = 0; i < n + z; i++) {
-    char c = i < z ? '0' : dg[i - z];
-    put(o, &c, 1);
-    if (sep && (n + z - i - 1) % every == 0 && i < n + z - 1) put(o, &sep, 1);
-  }
-}
+/* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
+   by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
+   snprintf, as CPython's float formatting writes them. */
+Str *pys_format_str(Str *s, Str *spec);
+Str *pys_format_int(I v, I isbool, Str *spec);
+Str *pys_format_float(double x, Str *spec);
 Str *pys_format(I v, Str *desc, Str *spec) {
-  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
-  char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
-  int alt = 0, zneg = 0, fillset = 0;
-  I fl = 1, width = 0, prec = -1;
+  char d = desc->s[0];
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
     return pys_repr(v, desc);
   }
-  I cl = p < end ? uoff(p, end - p, 1) : 0;
-  if (cl && p + cl < end && p[cl] && strchr("<>=^", p[cl])) { fill = p; fl = cl; fillset = 1; align = p[cl]; p += cl + 1; }
-  else if (p < end && *p && strchr("<>=^", *p)) align = *p++;
-  if (p < end && (*p == '+' || *p == '-' || *p == ' ')) sign = *p++;
-  if (p < end && *p == 'z') { zneg = 1; p++; }
-  if (p < end && *p == '#') { alt = 1; p++; }
-  int numeric = d != 's';
-  if (p < end && *p == '0') {                  /* zero padding: fill '0', and '=' alignment for numbers */
-    if (!fillset) { fill = "0"; fl = 1; if (!align && numeric) align = '='; }
-    p++;
+  return d == 's' ? pys_format_str((Str *)v, spec) : d == 'f' ? pys_format_float(dbl(v), spec) : pys_format_int(v, d == 'b', spec);
+}
+Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: none) and prec (-1: none) */
+  int up = type && strchr("EFG", (int)type);
+  char tb[1100];
+  I tsz = (prec > 0 ? prec : 0) + 400; char *t = tsz > (I)sizeof tb ? pys_alloc_atomic(tsz) : tb; I n;
+  if (isnan(m) || isinf(m)) n = snprintf(t, tsz, "%s%s", isnan(m) ? (up ? "NAN" : "nan") : (up ? "INF" : "inf"), type == '%' ? "%" : "");
+  else if (!type && prec < 0) {
+    Str *r = pys_str_float(m); n = r->len; memcpy(t, r->s, n + 1);
+    char *e = strchr(t, 'e');                 /* '#': a point even in 1e+16 */
+    if (alt && e && !memchr(t, '.', e - t)) { memmove(e + 1, e, n - (e - t) + 1); *e = '.'; n++; }
   }
-  while (p < end && *p >= '0' && *p <= '9') { width = width * 10 + *p++ - '0'; if (width > 100000000) failf("ValueError: Too many decimal digits in format string"); }
-  if (p < end && (*p == ',' || *p == '_')) { sep = *p++; if (p < end && (*p == ',' || *p == '_')) failf("ValueError: Cannot specify both ',' and '_'."); }
-  if (p < end && *p == '.') {
-    p++;
-    if (p >= end || *p < '0' || *p > '9') failf("ValueError: Format specifier missing precision");
-    prec = 0;
-    while (p < end && *p >= '0' && *p <= '9') { prec = prec * 10 + *p++ - '0'; if (prec > 100000000) failf("ValueError: Too many decimal digits in format string"); }
-  }
-  if (end - p > 1) failf("ValueError: Invalid format specifier '%s' for object of type '%s'", spec->s, tyname(d));
-  if (p < end) type = *p;
-  if (!type && d == 's') type = 's';
-  if (!type && d != 'f') type = 'd';
-  if (sep && !strchr("defgEFG%", type)) {
-    if (sep == '_' && strchr("boxX", type) && type) {} else failf("ValueError: Cannot specify '%c' with '%c'.", sep, type);
-  }
-  Buf o = {0}; char tb[1100];
-  I pre = 0;                                   /* bytes of sign and prefix, before '=' padding */
-  if (d == 's') {
-    if (type != 's') failf("ValueError: Unknown format code '%c' for object of type 'str'", type);
-    if (sign) failf(sign == ' ' ? "ValueError: Space not allowed in string format specifier" : "ValueError: Sign not allowed in string format specifier");
-    if (zneg) failf("ValueError: Negative zero coercion (z) not allowed in string format specifier");
-    if (alt) failf("ValueError: Alternate form (#) not allowed in string format specifier");
-    if (align == '=') failf("ValueError: '=' alignment not allowed in string format specifier");
-    Str *x = (Str *)v;
-    put(&o, x->s, prec >= 0 ? uoff(x->s, x->len, prec) : x->len);
-  } else if ((d == 'i' || d == 'b') && strchr("bcdoxXn", type) && type) {
-    if (prec >= 0) failf("ValueError: Precision not allowed in integer format specifier");
-    if (zneg) failf("ValueError: Negative zero coercion (z) not allowed in integer format specifier");
-    if (type == 'c') {
-      if (sign) failf("ValueError: Sign not allowed with integer format specifier 'c'");
-      if (alt) failf("ValueError: Alternate form (#) not allowed with integer format specifier 'c'");
-      if (v < 0 || v > 0x10FFFF) failf("OverflowError: %%c arg not in range(0x110000)");
-      put(&o, tb, u8enc(tb, v));
-    } else {
-      uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v; int base = type == 'b' ? 2 : type == 'o' ? 8 : type == 'x' || type == 'X' ? 16 : 10;
-      const char *dig = type == 'X' ? "0123456789ABCDEF" : "0123456789abcdef"; char r[70]; I n = 0;
-      do { r[n++] = dig[u % base]; u /= base; } while (u);
-      for (I i = 0; i < n / 2; i++) { char c = r[i]; r[i] = r[n - 1 - i]; r[n - 1 - i] = c; }
-      if (v < 0) put(&o, "-", 1); else if (sign == '+' || sign == ' ') put(&o, &sign, 1);
-      if (alt && base != 10) { char pf[2] = {'0', type == 'X' ? 'X' : type == 'x' ? 'x' : type}; put(&o, pf, 2); }
-      pre = o.n;
-      I minw = fl == 1 && *fill == '0' && align == '=' ? width - pre : 0;
-      group(&o, r, n, sep, base == 10 ? 3 : 4, minw);
+  else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
+    int pr = prec ? (int)prec : 1;
+    snprintf(t, tsz, "%.*e", pr - 1, m);
+    int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
+    n = ex ? snprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : snprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
+    if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
+      char *e = strchr(t, 'e'); I me = e ? e - t : n;
+      if (memchr(t, '.', me)) { I k = me; while (t[k - 1] == '0') k--; if (t[k - 1] == '.') k--; memmove(t + k, t + me, n - me + 1); n -= me - k; }
     }
-  } else {                                     /* float, or int with a float type */
-    double x = d == 'f' ? dbl(v) : (double)v;
-    if (type && !strchr("eEfFgGn%", type)) failf("ValueError: Unknown format code '%c' for object of type '%s'", type, tyname(d));
-    int neg = signbit(x) && !isnan(x), up = type && strchr("EFG", type);
-    double m = fabs(x);
-    I tsz = (prec > 0 ? prec : 0) + 400; char *t = tsz > (I)sizeof tb ? pys_alloc_atomic(tsz) : tb; I n;
-    if (isnan(m) || isinf(m)) n = snprintf(t, tsz, "%s%s", isnan(m) ? (up ? "NAN" : "nan") : (up ? "INF" : "inf"), type == '%' ? "%" : "");
-    else if (!type && prec < 0) {
-      Str *r = pys_str_float(m); n = r->len; memcpy(t, r->s, n + 1);
-      char *e = strchr(t, 'e');                 /* '#': a point even in 1e+16 */
-      if (alt && e && !memchr(t, '.', e - t)) { memmove(e + 1, e, n - (e - t) + 1); *e = '.'; n++; }
-    }
-    else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
-      int pr = prec ? (int)prec : 1;
-      snprintf(t, tsz, "%.*e", pr - 1, m);
-      int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
-      n = ex ? snprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : snprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
-      if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
-        char *e = strchr(t, 'e'); I me = e ? e - t : n;
-        if (memchr(t, '.', me)) { I k = me; while (t[k - 1] == '0') k--; if (t[k - 1] == '.') k--; memmove(t + k, t + me, n - me + 1); n -= me - k; }
-      }
-      if (!ex && !memchr(t, '.', n)) { t[n++] = '.'; t[n++] = '0'; t[n] = 0; }
-    } else if (alt && (type == 'g' || type == 'G' || type == 'n')) {
-      /* glibc's %#g drops the zeros when rounding carries into the exponent (1.e+06): choose
-         the notation from the rounded exponent, as CPython does, and keep every digit */
-      int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
-      snprintf(t, tsz, "%.*e", pr - 1, m);
-      int X = atoi(strchr(t, 'e') + 1);
-      n = X < -4 || X >= pr ? snprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : snprintf(t, tsz, "%#.*f", pr - 1 - X, m);
-    } else {
-      char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
-      snprintf(f, 16, alt ? "%%#.%d%c" : "%%.%d%c", pr, c);
-      n = snprintf(t, tsz, f, type == '%' ? m * 100 : m);
-      if (type == '%') { t[n++] = '%'; t[n] = 0; }
-    }
-    if (zneg && neg && !isinf(m) && strtod(t, 0) == 0) neg = 0;   /* z: no "-0" after rounding */
-    if (neg) put(&o, "-", 1); else if (sign == '+' || sign == ' ') put(&o, &sign, 1);
-    pre = o.n;
-    I ip = 0; while (ip < n && t[ip] >= '0' && t[ip] <= '9') ip++;   /* the integer digits */
-    I minw = fl == 1 && *fill == '0' && align == '=' ? width - pre - (n - ip) : 0;
-    if (ip) group(&o, t, ip, sep, 3, minw); else for (I i = 0; i < minw; i++) put(&o, "0", 1);
-    put(&o, t + ip, n - ip);
+    if (!ex && !memchr(t, '.', n)) { t[n++] = '.'; t[n++] = '0'; t[n] = 0; }
+  } else if (alt && (type == 'g' || type == 'G' || type == 'n')) {
+    /* glibc's %#g drops the zeros when rounding carries into the exponent (1.e+06): choose
+       the notation from the rounded exponent, as CPython does, and keep every digit */
+    int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
+    snprintf(t, tsz, "%.*e", pr - 1, m);
+    int X = atoi(strchr(t, 'e') + 1);
+    n = X < -4 || X >= pr ? snprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : snprintf(t, tsz, "%#.*f", pr - 1 - X, m);
+  } else {
+    char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
+    snprintf(f, 16, alt ? "%%#.%d%c" : "%%.%d%c", pr, c);
+    n = snprintf(t, tsz, f, type == '%' ? m * 100 : m);
+    if (type == '%') { t[n++] = '%'; t[n] = 0; }
   }
-  if (!align) align = numeric ? '>' : '<';
-  const char *body = o.p ? o.p : "";          /* an empty body leaves o.p NULL */
-  I len = ulen(body, o.n);
-  if (len >= width) return pys_str(body, o.n);
-  I gap = width - len, left = align == '<' ? 0 : align == '^' ? gap / 2 : align == '=' ? 0 : gap;
-  Buf r = {0};
-  if (align == '=') put(&r, body, pre);
-  for (I i = 0; i < (align == '=' ? gap : left); i++) put(&r, fill, fl);
-  put(&r, body + (align == '=' ? pre : 0), o.n - (align == '=' ? pre : 0));
-  for (I i = 0; i < (align == '=' ? 0 : gap - left); i++) put(&r, fill, fl);
-  return pys_str(r.p, r.n);
+  return pys_str(t, n);
 }
 
 /* ---------- I/O and process ---------- */

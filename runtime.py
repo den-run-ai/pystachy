@@ -720,3 +720,237 @@ def pys_hash_int(k: int) -> int:
     # a round of SplitMix64's mixer (0xBF58476D1CE4E5B9 is -4658895280553007687 as a 64-bit int)
     h = _rt.wrap_mul(k ^ _rt.lshr(k, 30), -4658895280553007687)
     return h ^ _rt.lshr(h, 31)
+
+
+# ---------- formatting: f"{x:spec}" ----------
+# CPython's format-spec mini-language for int (and bool), float and str:
+# [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points.
+# runtime.c's pys_format calls these by the value's type (other types accept only an empty spec),
+# and the digits of a float come from runtime.c's pys_fmt_float, which uses snprintf.
+
+
+def pys_fmt_float(m: float, ty: int, prec: int, alt: int) -> str: ...
+
+
+def uoff(s: str, k: int) -> int:
+    # the byte offset of code point k
+    i = 0
+    while i < len(s) and k > 0:
+        i += 1
+        while i < len(s) and _rt.byte(s, i) & 192 == 128:
+            i += 1
+        k -= 1
+    return i
+
+
+def utf8(c: int) -> str:
+    # code point c in UTF-8 (chr(c) is the byte itself below 256)
+    if c < 128:
+        return chr(c)
+    n = 2 if c < 2048 else 3 if c < 65536 else 4
+    r = _rt.str_new(n)
+    _rt.str_put(r, 0, (c >> 6 * (n - 1)) | (65280 >> n & 255))
+    for i in range(1, n):
+        _rt.str_put(r, i, 128 | (c >> 6 * (n - 1 - i) & 63))
+    return _rt.str_done(r)
+
+
+def among(c: int, cs: str) -> bool:
+    # whether byte c is one of cs, or the end of the spec (0), as strchr finds C's terminator
+    return c == 0 or _rt.find_byte(cs, c, 0, len(cs)) >= 0
+
+
+def tyname(kind: int) -> str:
+    return "int" if kind == 0 else "bool" if kind == 1 else "float" if kind == 2 else "str"
+
+
+def group(dg: str, sep: int, every: int, minw: int) -> str:
+    # digits with a separator every `every` of them, zero-padded (separators included) to minw
+    n = len(dg)
+    z = 0
+    total = n + ((n - 1) // every if sep != 0 else 0)
+    while total < minw:
+        z += 1
+        total = n + z + ((n + z - 1) // every if sep != 0 else 0)
+    r = _rt.str_new(total)
+    at = 0
+    for i in range(n + z):
+        _rt.str_put(r, at, 48 if i < z else _rt.byte(dg, i - z))
+        at += 1
+        if sep != 0 and (n + z - i - 1) % every == 0 and i < n + z - 1:
+            _rt.str_put(r, at, sep)
+            at += 1
+    return _rt.str_done(r)
+
+
+def zero(t: str) -> bool:
+    # whether the digits of t, up to an exponent or %, are all zero
+    for i in range(len(t)):
+        c = _rt.byte(t, i)
+        if c == 101 or c == 69 or c == 37:
+            return True
+        if c >= 49 and c <= 57:
+            return False
+    return True
+
+
+def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
+    # kind: 0 int, 1 bool, 2 float, 3 str (iv, fv or sv is the value)
+    n = len(spec)
+    p = 0
+    fill = " "
+    align = 0
+    fillset = False
+    cl = uoff(spec, 1)
+    if cl > 0 and cl < n and _rt.byte(spec, cl) != 0 and among(_rt.byte(spec, cl), "<>=^"):
+        fill = spec[:cl]
+        fillset = True
+        align = _rt.byte(spec, cl)
+        p = cl + 1
+    elif n > 0 and _rt.byte(spec, 0) != 0 and among(_rt.byte(spec, 0), "<>=^"):
+        align = _rt.byte(spec, 0)
+        p = 1
+    sign = 0
+    if p < n and (_rt.byte(spec, p) == 43 or _rt.byte(spec, p) == 45 or _rt.byte(spec, p) == 32):
+        sign = _rt.byte(spec, p)
+        p += 1
+    zneg = False
+    if p < n and _rt.byte(spec, p) == 122:
+        zneg = True
+        p += 1
+    alt = False
+    if p < n and _rt.byte(spec, p) == 35:
+        alt = True
+        p += 1
+    numeric = kind != 3
+    if p < n and _rt.byte(spec, p) == 48:
+        # zero padding: fill '0', and '=' alignment for numbers
+        if not fillset:
+            fill = "0"
+            if align == 0 and numeric:
+                align = 61
+        p += 1
+    width = 0
+    while p < n and digit(_rt.byte(spec, p)):
+        width = width * 10 + _rt.byte(spec, p) - 48
+        p += 1
+        if width > 100000000:
+            raise ValueError("Too many decimal digits in format string")
+    sep = 0  # ',' then '_', as CPython reads them: a second ',' or '_' is the type, which it rejects below
+    if p < n and _rt.byte(spec, p) == 44:
+        sep = 44
+        p += 1
+    if p < n and _rt.byte(spec, p) == 95:
+        if sep != 0:
+            raise ValueError("Cannot specify both ',' and '_'.")
+        sep = 95
+        p += 1
+    if p < n and _rt.byte(spec, p) == 44 and sep == 95:
+        raise ValueError("Cannot specify both ',' and '_'.")
+    prec = -1
+    if p < n and _rt.byte(spec, p) == 46:
+        p += 1
+        if p >= n or not digit(_rt.byte(spec, p)):
+            raise ValueError("Format specifier missing precision")
+        prec = 0
+        while p < n and digit(_rt.byte(spec, p)):
+            prec = prec * 10 + _rt.byte(spec, p) - 48
+            p += 1
+            if prec > 100000000:
+                raise ValueError("Too many decimal digits in format string")
+    if n - p > 1:
+        raise ValueError(f"Invalid format specifier '{spec}' for object of type '{tyname(kind)}'")
+    ty = _rt.byte(spec, p) if p < n else 0
+    if ty == 0 and kind == 3:
+        ty = 115
+    if ty == 0 and kind != 2:
+        ty = 100
+    if sep != 0 and not among(ty, "defgEFG%") and not (sep == 95 and ty != 0 and among(ty, "boxX")):
+        raise ValueError(f"Cannot specify '{chr(sep)}' with '{chr(ty)}'.")
+    body = ""
+    pre = 0  # bytes of sign and prefix, before '=' padding
+    if kind == 3:
+        if ty != 115:
+            raise ValueError(f"Unknown format code '{chr(ty)}' for object of type 'str'")
+        if sign != 0:
+            raise ValueError("Space not allowed in string format specifier" if sign == 32 else "Sign not allowed in string format specifier")
+        if zneg:
+            raise ValueError("Negative zero coercion (z) not allowed in string format specifier")
+        if alt:
+            raise ValueError("Alternate form (#) not allowed in string format specifier")
+        if align == 61:
+            raise ValueError("'=' alignment not allowed in string format specifier")
+        body = sv[: uoff(sv, prec)] if prec >= 0 else sv
+    elif kind <= 1 and ty != 0 and among(ty, "bcdoxXn"):
+        if prec >= 0:
+            raise ValueError("Precision not allowed in integer format specifier")
+        if zneg:
+            raise ValueError("Negative zero coercion (z) not allowed in integer format specifier")
+        if ty == 99:
+            if sign != 0:
+                raise ValueError("Sign not allowed with integer format specifier 'c'")
+            if alt:
+                raise ValueError("Alternate form (#) not allowed with integer format specifier 'c'")
+            if iv < 0 or iv > 1114111:
+                raise OverflowError("%c arg not in range(0x110000)")
+            body = utf8(iv)
+        else:
+            base = 2 if ty == 98 else 8 if ty == 111 else 16 if ty == 120 or ty == 88 else 10
+            hexd = "0123456789ABCDEF" if ty == 88 else "0123456789abcdef"
+            u = _rt.wrap_sub(0, iv) if iv < 0 else iv  # |iv| as an unsigned 64-bit pattern
+            nd = 0
+            q = u
+            while True:
+                nd += 1
+                q = _rt.udiv(q, base)
+                if q == 0:
+                    break
+            dg = _rt.str_new(nd)
+            for i in range(nd):
+                _rt.str_put(dg, nd - 1 - i, _rt.byte(hexd, _rt.urem(u, base)))
+                u = _rt.udiv(u, base)
+            head = "-" if iv < 0 else chr(sign) if sign == 43 or sign == 32 else ""
+            if alt and base != 10:
+                head = head + "0" + ("X" if ty == 88 else "x" if ty == 120 else chr(ty))
+            pre = len(head)
+            minw = width - pre if fill == "0" and align == 61 else 0
+            body = head + group(_rt.str_done(dg), sep, 3 if base == 10 else 4, minw)
+    else:
+        # a float, or an int with a float type
+        x = fv if kind == 2 else float(iv)
+        if ty != 0 and not among(ty, "eEfFgGn%"):
+            raise ValueError(f"Unknown format code '{chr(ty)}' for object of type '{tyname(kind)}'")
+        neg = math.copysign(1.0, x) < 0.0 and not math.isnan(x)
+        m = -x if neg else x
+        t = pys_fmt_float(m, ty, prec, 1 if alt else 0)
+        if zneg and neg and not math.isinf(m) and zero(t):
+            neg = False  # z: no "-0" after rounding
+        head = "-" if neg else chr(sign) if sign == 43 or sign == 32 else ""
+        pre = len(head)
+        ip = 0  # the integer digits
+        while ip < len(t) and digit(_rt.byte(t, ip)):
+            ip += 1
+        minw = width - pre - (len(t) - ip) if fill == "0" and align == 61 else 0
+        body = head + (group(t[:ip], sep, 3, minw) if ip > 0 else "0" * minw) + t[ip:]
+    if align == 0:
+        align = 62 if numeric else 60
+    ln = ulen(body)
+    if ln >= width:
+        return body
+    gap = width - ln
+    if align == 61:
+        return body[:pre] + fill * gap + body[pre:]
+    left = 0 if align == 60 else gap // 2 if align == 94 else gap
+    return fill * left + body + fill * (gap - left)
+
+
+def pys_format_str(s: str, spec: str) -> str:
+    return fmt(3, 0, 0.0, s, spec)
+
+
+def pys_format_int(v: int, isbool: int, spec: str) -> str:
+    return fmt(1 if isbool != 0 else 0, v, 0.0, "", spec)
+
+
+def pys_format_float(x: float, spec: str) -> str:
+    return fmt(2, 0, x, "", spec)

@@ -8,6 +8,9 @@ as CPython) plus UTF-8 text for the width methods, which count characters; a Pys
 given as its bytes, one character per byte. 64-bit overflow is not tested here (CPython's ints
 grow): the differential tests compile the same code and check it.
 
+The format functions get runtime.c's pys_fmt_float (float digits by snprintf) from CPython's own
+float formatting, which it reproduces.
+
 usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
 """
 import math
@@ -48,6 +51,12 @@ def outcome(f, *a):
         return ("ok", f(*a))
     except Exception as e:  # the runtime raises CPython's exception types and messages
         return (type(e).__name__, str(e))
+
+
+def ref(f):
+    # CPython's outcome, with the text of its result or message as a Pystachy str
+    r = outcome(f)
+    return (r[0], b(r[1]) if isinstance(r[1], str) else r[1])
 
 
 def same(name, got, want, args):
@@ -169,8 +178,56 @@ def fuzz_hash():
         same("hash_str", rt.pys_hash_str(s) & M64, fnv(s), (s,))
 
 
+def fmt_float(m, ty, prec, alt):
+    # runtime.c's pys_fmt_float (snprintf) writes what CPython's float formatting writes for |x|
+    return format(m, ("#" if alt else "") + (f".{prec}" if prec >= 0 else "") + (chr(ty) if ty else ""))
+
+
+rt.pys_fmt_float = fmt_float
+
+
+def spec():
+    # a random format spec, mostly well-formed
+    parts = []
+    if R.randrange(3) == 0:
+        parts.append(R.choice(["", "*", "0", "é", "€", " "]) + R.choice("<>=^"))
+    for opts, k in [("+- ", 4), ("z", 6), ("#", 4), ("0", 4)]:
+        if R.randrange(k) == 0:
+            parts.append(R.choice(opts))
+    if R.randrange(2) == 0:
+        parts.append(str(R.choice([0, 1, 5, 12, 30])))
+    if R.randrange(5) == 0:
+        parts.append(R.choice(",_"))
+    if R.randrange(3) == 0:
+        parts.append("." + str(R.choice([0, 1, 3, 10, 17])))
+    if R.randrange(2) == 0:
+        parts.append(R.choice("bcdoxXneEfFgGs%a"))
+    s = "".join(parts)
+    if R.randrange(40) == 0:
+        s = s + R.choice(["x", "1", ".", ",,", "_,"])  # malformed
+    return s
+
+
+def fuzz_format():
+    for _ in range(N):
+        sp = spec()
+        v = R.choice([0, 1, -1, 7, -42, 255, 1000000, R.randrange(-(1 << 63), 1 << 63), 0x10FFFF + 1])
+        for name, mine, cpy in [
+            ("format_int", lambda: rt.pys_format_int(v, 0, b(sp)), lambda: format(v, sp)),
+            ("format_bool", lambda: rt.pys_format_int(int(v != 0), 1, b(sp)), lambda: format(v != 0, sp)),
+        ]:
+            if name == "format_bool" and sp == "":
+                continue  # format(True, "") is str(True), decided before pys_format_int
+            same(name, outcome(mine), ref(cpy), (v, sp))
+        x = R.choice([0.0, -0.0, 1.5, -2.5, 1e16, 1.0e-5, 123456.789, -0.0004, float("inf"), float("nan"), R.uniform(-1e6, 1e6)])
+        same("format_float", outcome(rt.pys_format_float, x, b(sp)), ref(lambda: format(x, sp)), (x, sp))
+        t = text(WIDE, 6)
+        same("format_str", outcome(rt.pys_format_str, b(t), b(sp)), ref(lambda: format(t, sp)), (t, sp))
+
+
 fuzz_str()
 fuzz_math()
 fuzz_hash()
+fuzz_format()
 print(f"{cases} cases, {fails} failed")
 sys.exit(1 if fails else 0)
