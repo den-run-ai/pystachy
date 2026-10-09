@@ -3009,32 +3009,44 @@ def special_import(st: Node, a: Node) -> bool:
     return st.s == "from" and (a.kids[0].s == "typing.TYPE_CHECKING" or a.kids[0].s == "typing_extensions.TYPE_CHECKING")
 
 
-def binds(body: list[Node], out: dict[str, bool], special: bool, pkg: str = "") -> None:
+def binds(body: list[Node], out: dict[str, bool], special: bool, pkg: str = "", deep: bool = True) -> None:
     # the names statements bind in their own scope (not inside the functions and classes they
     # define): assignments, del, def and class, except ... as, and imports (only with special those
     # special_import() recognizes; "*" for a star import; but in package pkg's code its own
-    # from . import x of its submodule x, which binds x to that unless x is bound already)
+    # from . import x of its submodule x, which binds x to that unless x is bound already). Not
+    # deep: of the statements in their blocks, only what each binds itself (see Loader.imports)
     for st in body:
-        targets(st, out)
-        if st.kind == "import":
-            for a in st.kids:
-                own = pkg != "" and a.s == a.kids[0].s[a.kids[0].s.rfind(".") + 1 :] and ((st.s == "from." and a.kids[1].s == "") or (st.s == "from" and a.kids[1].s == pkg))
-                if (special or a.s == "*" or not special_import(st, a)) and not own:
-                    out[a.s] = True
-        elif st.kind == "del":
-            for t in st.kids:
-                if t.kind == "name":
-                    out[t.s] = True
-        elif st.kind == "def" or st.kind == "class" or st.kind == "subclass":
-            out[st.s] = True
+        if not own_binds(st, out, special, pkg):
             continue
         for kid in st.kids:
-            if kid.kind == "block":
+            if kid.kind == "block" and deep:
                 binds(kid.kids, out, special, pkg)
+            elif kid.kind == "block":
+                for x in kid.kids:
+                    own_binds(x, out, special, pkg)
             elif kid.kind == "except":
                 if kid.s != "":
                     out[kid.s] = True
                 binds(kid.kids[1].kids, out, special, pkg)
+
+
+def own_binds(st: Node, out: dict[str, bool], special: bool, pkg: str) -> bool:
+    # what statement st binds itself, as binds() counts it (not in its blocks); False for a def or
+    # class, whose blocks are not looked into
+    targets(st, out)
+    if st.kind == "import":
+        for a in st.kids:
+            own = pkg != "" and a.s == a.kids[0].s[a.kids[0].s.rfind(".") + 1 :] and ((st.s == "from." and a.kids[1].s == "") or (st.s == "from" and a.kids[1].s == pkg))
+            if (special or a.s == "*" or not special_import(st, a)) and not own:
+                out[a.s] = True
+    elif st.kind == "del":
+        for t in st.kids:
+            if t.kind == "name":
+                out[t.s] = True
+    elif st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+        out[st.s] = True
+        return False
+    return True
 
 
 def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool]) -> None:
@@ -3943,7 +3955,10 @@ class Loader:
                         self.imports(m, kid, infn or st.kind == "def")
                 self.curdef = saved
             if not infn:
-                binds([st], self.maybe, True, m.name if m.pdir != "" else "")
+                # (the statements in st's blocks took theirs above, but as they were before their
+                # imports were rewritten: only what those bind themselves is new, so that an elif
+                # chain is not walked again for each elif)
+                binds([st], self.maybe, True, m.name if m.pdir != "" else "", False)
                 now: dict[str, bool] = {}
                 surely_binds(st, now, self.sure)
                 for nm in now:
