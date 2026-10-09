@@ -8870,7 +8870,8 @@ class Gen:
         # function directly (see eh_ir). hE tests the clauses in order (exc.match) and throws again
         # what none catches; hF runs a copy of F and throws again. B and L, and each clause that
         # ends, go on to one copy of F; a break, continue or return out of the statement runs one
-        # of its own (see leave), as CPython compiles F once for each way out
+        # of its own (see leave), as CPython compiles F once for each way out. A clause whose name
+        # may be read after it has a landing block of its own, which unbinds the name
         if n.s == "*":
             self.err("'except*' is not supported")
         hs: list[Node] = []
@@ -8933,6 +8934,15 @@ class Gen:
                     self.bind_as(h.s, e, self.as_type(h))
                 x = Exit("handler", old, self.handler)
                 x.name = h.s
+                up = self.handler
+                hu = ""
+                if h.s != "" and self.unbinds(h.s) and (up != "" or (self.modlevel and self.curfn.mod != "")):
+                    # an exception that leaves the clause unbinds its name too, where something may
+                    # read it after (CPython deletes it in a finally block of its own): the clause
+                    # has a landing block of its own, which unbinds the name and throws again
+                    hu = self.label()
+                    self.handler = hu
+                    self.place(self.label())
                 self.exits.append(x)
                 self.excs.append(e)
                 self.stmts(h.kids[1].kids)
@@ -8943,6 +8953,11 @@ class Gen:
                     self.unbind(h.s)
                     live = True
                     self.br(done)
+                self.handler = up
+                if hu != "":
+                    ue = self.landing(hu, slot, mark)
+                    self.unbind(h.s)
+                    self.throw(ue)
                 if len(self.shadows) > 0 and self.shadows[-1][0] == h.s:
                     self.unshadow()
                 if sets[j] == "":
@@ -9075,6 +9090,15 @@ class Gen:
                 del self.lflag[name]
             self.alloca(t, name)
         self.store_name(name, v)
+
+    def unbinds(self, name: str) -> bool:
+        # does unbind(name) clear an "is assigned" flag (a read that may follow tests it)
+        if name in self.ltype and name in self.lflag or name not in self.ltype and name in self.gflag:
+            return True
+        for s in self.shadows:
+            if s[0] == name and (s[3] != "" or (s[1] == "" and name in self.gflag)):
+                return True
+        return False
 
     def unshadow(self) -> None:
         # the end of the except clause whose name has a variable of its own (bind_as): the name is the other again
