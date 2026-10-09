@@ -10,8 +10,10 @@
 #include <locale.h>
 #include <stdarg.h>
 #include <math.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio_ext.h>
@@ -26,6 +28,7 @@ typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminat
 typedef struct { I len, cap; I *a; } List;
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 1: str keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
+typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
@@ -104,6 +107,7 @@ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges 
 static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
+static Exc *xcur, *xhandled;           /* the exception raised last; the one being handled (see exceptions) */
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
@@ -150,6 +154,8 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
+  scan((const W *)&xcur, (const W *)(&xcur + 1));
+  scan((const W *)&xhandled, (const W *)(&xhandled + 1));
 }
 __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
   I n = s->bump, sz = s->size;
@@ -303,12 +309,24 @@ static void gc_init(char *sb, I **roots, I nroots) {
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
-   CPython reports it, with status 120 */
+   CPython reports it, with status 120. Under a try (a handler record on the chain) they are
+   raised instead, and end the program only if nothing catches them (see exceptions). */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
 static _Noreturn void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
-_Noreturn void pys_fail(const char *m) { if (io_intr) kbint_exit(); out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1); }
+typedef struct Handler Handler;
+static Handler *top;                   /* the innermost handler record (see exceptions) */
+_Noreturn void pys_throw(Exc *e);
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args);
+static Exc *exc_line(const char *m);
+static Exc *exc_exit(I c, Str *msg);
+_Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
+  if (io_intr) kbint_exit();
+  if (top) pys_throw(exc_line(m));
+  out_flush(); fprintf(stderr, "%s\n", m); pys_finish(); exit(1);
+}
 _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
+  if (top) pys_throw(pys_exc_new(kind, msg, 0));
   out_flush();
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); fwrite(msg->s, 1, msg->len, stderr); }
@@ -317,8 +335,9 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
   pys_finish();
   exit(1);
 }
-void pys_exit(I c) { pys_finish(); exit((int)c); }
+_Noreturn void pys_exit(I c) { if (top) pys_throw(exc_exit(c, 0)); pys_finish(); exit((int)c); }
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
+  if (top) pys_throw(exc_exit(0, msg));
   out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
 }
 
@@ -2154,6 +2173,123 @@ Str *pys_platform(void) {              /* sys.platform */
 }
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+
+/* ---------- exceptions: a chain of handler records (setjmp/longjmp) ----------
+   A try statement pushes a handler record, which lives in its function's frame, on the chain
+   and calls _setjmp on it. A raise under a try (pys_fail, pys_raise, sys.exit, pys_throw)
+   notes the exception, restores what the innermost record saved, pops it and longjmps to it,
+   where the landing reads the exception (pys_exc_cur); with an empty chain the exception is
+   reported as before, CPython's last traceback line and exit status. Code outside a try pays
+   nothing, a try one push, _setjmp and pop. Compiled code allocates the record as alloca
+   [512 x i8], align 16, and passes it to _setjmp as it is (jb comes first), declared and
+   called returns_twice; locals stored under a try and read after a longjmp are volatile. A
+   user exception object's first field points to its class's ExcClass, a constant compiled
+   code emits per class. The exception being handled (a bare raise's, CPython's exc_info) is
+   set by a handler when it starts and restored on every way out of it: a record saves it
+   when pushed and a raise restores it. Not catchable: an allocation that fails (oom), a
+   Ctrl-C (kbint_exit) and a stack overflow. */
+typedef struct ExcClass {
+  Str *kind;                           /* unique name, which pys_exc_in matches */
+  Str *disp;                           /* name in an uncaught exception's line: "mod.Class", "Class" in __main__ */
+  Str *(*str)(void *obj), *(*repr)(void *obj);
+} ExcClass;
+struct Exc {
+  Str *kind;                           /* "KeyError", or the user class's ExcClass->kind */
+  Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
+  void *obj;                           /* the user exception object, or NULL */
+  I code, has_code;                    /* SystemExit: its status (msg holds a non-int code's text) */
+  Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
+};
+struct Handler {
+  jmp_buf jb;                          /* first: _setjmp takes the record itself */
+  Handler *prev;
+  Exc *handled;                        /* the exception being handled when it was pushed */
+};
+_Static_assert(offsetof(Handler, jb) == 0 && sizeof(Handler) <= 512 && _Alignof(Handler) <= 16,
+               "compiled code allocates a handler record as [512 x i8], align 16, and passes it to _setjmp");
+#define XCLS(e) (*(ExcClass **)(e)->obj)
+void pys_try_push(Handler *h) { h->prev = top; h->handled = xhandled; top = h; }
+void pys_try_pop(void) { top = top->prev; }
+Exc *pys_exc_new(Str *kind, Str *msg, Str *args) { Exc *e = pys_alloc(sizeof(Exc)); e->kind = kind; e->msg = msg; e->args = args; return e; }
+Exc *pys_exc_user(void *obj) { Exc *e = pys_alloc(sizeof(Exc)); e->kind = (*(ExcClass **)obj)->kind; e->obj = obj; return e; }
+Exc *pys_exc_exit(I code, Str *str, Str *args) {   /* SystemExit with an int status; str(e), its args */
+  Exc *e = pys_exc_new(cstr("SystemExit"), str, args); e->code = code; e->has_code = 1; return e;
+}
+static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c), or sys.exit(m): message m, status 1 */
+  return m ? pys_exc_new(cstr("SystemExit"), m, 0) : pys_exc_exit(c, pys_str_int(c), 0);
+}
+static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args of its tuple and errno forms */
+  const char *c = strstr(m, ": "), *t, *q;
+  Str *s = cstr(c ? c + 2 : ""), *a = 0;
+  if (s->len > 1 && s->s[0] == '(' && s->s[s->len - 1] == ')') a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] "))) {   /* an OSError's (errno, strerror) */
+    Buf b = {0}; q = strstr(t + 2, ": ");
+    put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2); repr_str(&b, pys_str(t + 2, q ? q - t - 2 : s->s + s->len - t - 2));
+    a = done(&b);
+  }
+  return pys_exc_new(pys_str(m, c ? c - m : (I)strlen(m)), s, a);
+}
+Str *pys_exc_str(Exc *e) { return e->obj ? XCLS(e)->str(e->obj) : e->msg; }
+Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without its module, then its args */
+  if (e->obj) return XCLS(e)->repr(e->obj);
+  Buf b = {0}; Str *k = e->kind, *m = e->msg; const char *dot = memrchr(k->s, '.', k->len);
+  if (dot) put(&b, dot + 1, k->s + k->len - dot - 1); else put(&b, k->s, k->len);
+  put(&b, "(", 1);
+  if (e->args) put(&b, e->args->s, e->args->len);
+  else if (e->has_code || !strcmp(k->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
+  else if (m->len) repr_str(&b, m);
+  put(&b, ")", 1); return done(&b);
+}
+I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1B\1" */
+  Str *k = e->kind;
+  for (const char *p = names->s, *end = p + names->len; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
+    if (!memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) return 1;
+  return 0;
+}
+void *pys_exc_obj(Exc *e) { return e->obj; }
+Exc *pys_exc_cur(void) { return xcur; }
+Exc *pys_exc_handled(void) { return xhandled; }
+void pys_exc_set_handled(Exc *e) { xhandled = e; }
+static Str *safe_str(Exc *e) {         /* str(e) for the report: CPython's text if it raises */
+  Handler h;
+  pys_try_push(&h);
+  if (_setjmp(h.jb)) return cstr("<exception str() failed>");
+  Str *s = pys_exc_str(e);
+  pys_try_pop();
+  return s;
+}
+static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+  if (!e->obj && !strcmp(e->kind->s, "SystemExit")) {
+    if (e->has_code) { pys_finish(); exit((int)e->code); }
+    out_flush(); fwrite(e->msg->s, 1, e->msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
+  }
+  out_flush();
+  Str *k = e->obj ? XCLS(e)->disp : e->kind, *m = e->obj ? safe_str(e) : e->msg;
+  fwrite(k->s, 1, k->len, stderr);
+  if (m->len) { fputs(": ", stderr); fwrite(m->s, 1, m->len, stderr); }
+  fputc('\n', stderr);
+  kbint = !e->obj && !strcmp(k->s, "KeyboardInterrupt");
+  pys_finish();
+  exit(1);
+}
+/* a raise on its way to the innermost record: the state the record saved is restored */
+static Handler *settle(void) {
+  Handler *h = top;
+  if (h) xhandled = h->handled;
+  return h;
+}
+_Noreturn void pys_throw(Exc *e) {
+  Handler *h = settle();
+  if (!h) uncaught(e);
+  top = h->prev; xcur = e;
+  longjmp(h->jb, 1);
+}
+/* a raise to a record in the caller's own frame: as pys_throw, but the caller branches to its landing */
+void pys_throw_local(Exc *e) { settle(); top = top->prev; xcur = e; }
+_Noreturn void pys_reraise(void) {     /* a bare raise */
+  if (!xhandled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
+  pys_throw(xhandled);
+}
 
 /* ---------- the time module: clocks and sleep ---------- */
 static I clock_ns(clockid_t c) { struct timespec t; clock_gettime(c, &t); return (I)t.tv_sec * 1000000000 + t.tv_nsec; }
