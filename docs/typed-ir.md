@@ -24,8 +24,9 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >   - `rt()` builds `rt` ops, whose operands are typed as their `RUNTIME` entry spells them (`S`,
 >     `*T`, `#`, ...) and whose `Ins.x` holds the descriptor text of a `#` parameter; `call_fn`
 >     and module imports build `call` and `init` ops (from step 14). A raw op is then a load, a
->     store or arithmetic, never a call, and the verifier checks that, so effect summaries are
->     exact in R, A, U and I. `IFn.fx` holds each function's summary, computed by `Gen.effects`
+>     store or arithmetic, never a call, a phi or a terminator, and the verifier checks that (and
+>     that each op holds the numbers its lowering prints), so effect summaries are exact in R, A,
+>     U and I. `IFn.fx` holds each function's summary, computed by `Gen.effects`
 >     once the program is built (`Gen.opfx` gives one op's letters, `fxs` spells them), and
 >     `IFn.n` the last number its builder gave, for passes that add values or blocks;
 >   - `RUNTIME` entries use `%X` for LLVM types the type language cannot spell (`%ptr`, `%i32`,
@@ -1145,7 +1146,7 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 
 | risk | how it is contained |
 |---|---|
-| **Numbering is coupled to the builder.** Identity depends on `%tN`, `LN` and `%name.N` being allocated in exactly today's order. Ops that define several values, and a label opened inside them in dead code, can shift numbers that the corpus never exercises. | `put()` reproduces the order. The `tests/ir` probes cover the dead-code case. Lowering asserts that each op prints exactly the numbers in `Ins.r`. |
+| **Numbering is coupled to the builder.** Identity depends on `%tN`, `LN` and `%name.N` being allocated in exactly today's order. Ops that define several values, and a label opened inside them in dead code, can shift numbers that the corpus never exercises. | `put()` reproduces the order. The `tests/ir` probes cover the dead-code case. The verifier (`PYSTACHY_IRCHECK=1`) checks that each op holds exactly the numbers its lowering prints (`Ins.r`). |
 | **Lowering reads state late.** An op that reads mutable builder state (`ltype`, `gtypes`, `cur`) at lowering time would print different text. | Ops carry everything as fields. Lowering reads only the op, `f.ret`, `holes` and the program tables (R2). |
 | **Error order.** Moving any check into lowering changes which error is reported first. | R5: lowering cannot fail on user input. `irsame` compares the full stderr of all error cases. |
 | **Memory and time.** The whole program's IR is alive at the end. | The 1.3× gate, lowering per function as a fallback, and interning op names. |

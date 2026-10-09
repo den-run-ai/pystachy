@@ -7283,8 +7283,12 @@ class Gen:
         # a raw op is one LLVM instruction that is no call (calls are rt, call and init ops, whose
         # effects are known), no phi and no terminator, and call and init ops call compiled
         # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
-        # starts its block, and its predecessors branch there
+        # starts its block, and its predecessors branch there; each op holds exactly the numbers
+        # its lowering prints (Ins.r)
         at: dict[str, int] = {}
+        for i in fn.slots:
+            if i.op != "slot" or len(i.r) != 1:
+                self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
         for j in range(len(fn.blocks)):
             if fn.blocks[j].label in at:
                 self.bad_ir(fn, fn.blocks[j], "a second block of that name")
@@ -7302,6 +7306,8 @@ class Gen:
                     self.bad_ir(fn, b, "a phi after other ops")
                 if i.op == "rt" and i.s not in RUNTIME:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}")
+                if len(i.r) != self.nums(i):
+                    self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {self.nums(i)}")
                 if i.op == "raw":
                     # one LLVM instruction that loads, stores or computes: not a call, a phi, a
                     # terminator or a label (its first word, after the "%x = " of a value it defines)
@@ -7327,6 +7333,18 @@ class Gen:
                     for l in i.b:
                         if l not in at or b.label not in succ[at[l]]:
                             self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+
+    def nums(self, i: Ins) -> int:
+        # how many numbers op i defines (%tN): what its lowering prints
+        if i.op == "ovf":
+            return 3
+        if i.op == "phi" or i.op == "select":
+            return 1
+        if i.op == "rt":
+            return 0 if rtsig(i.s)[0] == "None" else 1
+        if i.op == "call":
+            return 0 if i.t == "None" else 1
+        return 0
 
     def bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
         fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)
