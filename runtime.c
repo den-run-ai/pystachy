@@ -2329,7 +2329,7 @@ Exc *pys_exc_detail(Exc *e, Str *d) { e->detail = d; return e; }   /* the Syntax
 static Exc *exc_raise(Str *kind, Str *msg) {   /* pys_raise's; a kind "SyntaxError: x" (Gen's) is split */
   const char *c = msg->len ? 0 : strstr(kind->s, ": ");
   if (!c) return exc_new(kind, msg, 0);
-  msg = cstr(c + 2);
+  msg = pys_str(c + 2, kind->s + kind->len - (c + 2));   /* all of it: str(msg) may hold a NUL */
   return pys_exc_detail(exc_new(pys_str(kind->s, c - kind->s), msg, 0), msg);
 }
 static Exc *exc_exit(I c, Str *m) {   /* sys.exit(c) of an int, or sys.exit(m) of a str: status 1 */
