@@ -1,9 +1,9 @@
 import sys
 
 if len(sys.argv) > 5:
-    LIMIT = 1
+    from emods.mod import f
 
 
 class Box:
-    def get(self, n=LIMIT):
+    def get(self, n=f):
         return n

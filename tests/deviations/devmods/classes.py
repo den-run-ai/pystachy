@@ -1,4 +1,5 @@
-# Classes the program never uses, which CPython fails to create when it imports this module.
+# Classes and functions the program never uses, whose def and class statements CPython fails to
+# run when it imports this module.
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -19,6 +20,18 @@ class Job:
 
     def go(self, n):
         return n
+
+
+class Plain:
+    pass
+
+
+class Sub(Plain[int]):
+    pass
+
+
+def joined(x: int | 3, *rest):
+    return x
 
 
 print("devmods.classes: loaded")
