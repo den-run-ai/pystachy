@@ -1,0 +1,4 @@
+main: start
+defmods.order: loaded 5
+15 # Def and class statements run in order with the module's other code. The default values 1
+[exit 0]
