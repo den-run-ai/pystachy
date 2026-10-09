@@ -608,9 +608,10 @@ versions, platform, git commit and a timestamp:
   sequential keys as the control, at 4k to 30k keys, and fails above 3 slots per lookup: the
   counts are the same on every machine, so no timing is compared with a threshold;
 - **scaling** — `tools/scaling.py --check` compiles generated programs of 500 and 1,000
-  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
-  comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
-  items its builtin calls copy or scan, must grow no faster than the programs.
+  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s,
+  comprehensions and links of a dict key's chain of values with both compilers; the lines the
+  CPython-hosted compiler executes, and the items its builtin calls copy or scan, must grow no
+  faster than the programs.
 
 `tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both
 compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviations/*.py`,

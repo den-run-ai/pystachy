@@ -4603,6 +4603,9 @@ for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cl
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse"]
+# what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
+# self-compile's deepest is 18)
+CANON_DEPTH = 1000
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -5406,6 +5409,7 @@ class Values:
         self.cn: dict[str, str] = {}  # value -> its canonical value, once asked
         self.same: dict[str, str] = {}  # a computation's text, with canonical operands -> the first value of it
         self.text: dict[str, str] = {}  # and that value -> the text
+        self.depth = 0  # how many calls of Gen.canon are under way (at most CANON_DEPTH)
         for j in range(len(fn.blocks)):
             code = fn.blocks[j].code
             for x in range(len(code)):
@@ -7739,9 +7743,16 @@ class Gen:
         # the store or load of the same address that comes last before it, on the one path back,
         # stored or read; another raw op, or an rt op that only computes (it may raise, but reads
         # no memory but strings', allocates nothing and does no I/O), computes what the first op
-        # of its text, with canonical operands, computed; any other value is its own
+        # of its text, with canonical operands, computed; any other value is its own. It recurses
+        # once for each link of the chain of values it follows, so a value it reaches below
+        # CANON_DEPTH calls is its own (a long chain, of k = k ^ 1 in straight-line code, would
+        # overflow the native compiler's stack)
         if v in vs.cn:
             return vs.cn[v]
+        if vs.depth >= CANON_DEPTH:
+            vs.cn[v] = v
+            return v
+        vs.depth += 1
         r = v
         w = vs.at[int(v[2:])] if v.startswith("%t") and v[2:].isdigit() else -1
         if w >= 0:
@@ -7770,6 +7781,7 @@ class Gen:
                         b = s.find("%t", a)
                     t.append(s[a:])
                     r = self.same(vs, v, "".join(t))
+        vs.depth -= 1
         vs.cn[v] = r
         return r
 

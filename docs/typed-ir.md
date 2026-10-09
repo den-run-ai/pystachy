@@ -104,6 +104,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     `tests/ir/dictfuse.py` pins it, and where it does not apply: `if k not in d: d[k] = []`
 >     before `d[k].append(x)` (the set inserts, so no entry is known after the join), and a
 >     call that may change a dict. `d[k] = d.get(k, 0) + 1` (bench/words.py) is not fused.
+>     Its work is bounded: `canon` recurses once for each value of the chain it follows, so a
+>     value it reaches `CANON_DEPTH` (1,000) calls deep is its own canonical value (4,000 lines of
+>     `k = k ^ 1 ^ ... ^ 10` overflowed the native compiler's stack; the self-compile's deepest
+>     chain is 18). `tools/scaling.py` has the shape (`chain`).
 >   - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
 >     field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
 >     passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with

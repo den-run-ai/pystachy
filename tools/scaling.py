@@ -21,6 +21,8 @@ Each shape is a family of programs whose size grows with N:
            variables (N / 10: the CPython-hosted compiler's recursion stops at about 490)
   topelifs an elif chain of N / 10 branches in module code, before any call into user code
   comps    one function of N variables and N list comprehensions
+  chain    one function that computes a dict key through N statements of 50 xors each, then
+           tests and updates it (Gen.canon follows the key's chain of values)
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
@@ -164,9 +166,16 @@ def comps(n):
     return {"main.py": src}
 
 
+def chain(n):
+    src = ["def big(x: int) -> int:", "    d: dict[int, int] = {0: 1, 51: 2}", "    k = x"]
+    src += ["    k = k ^ " + " ^ ".join(str(j) for j in range(1, 51))] * n
+    src += ["    if k in d:", "        d[k] += 10", "    return d[0] + d[51]", "print(big(0))"]
+    return {"main.py": src}
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
           "fields": fields, "calls": calls, "imports": imports, "breaks": breaks, "exits": exits, "elifs": elifs,
-          "topelifs": topelifs, "comps": comps}
+          "topelifs": topelifs, "comps": comps, "chain": chain}
 
 
 def write(d, files):
