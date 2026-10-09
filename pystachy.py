@@ -4614,13 +4614,15 @@ LOOKUPS = 32
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
 # parameter, holds a class); I does I/O, or uses the process or global runtime state; rL wL,
 # rD wD, rO wO, rG wG, rF wF read or write lists, dicts, objects' fields and flags, globals and
-# their flags, files. Strings and tuples are immutable, slots are never address-taken, and dict
-# keys are int or str (no user code): they need no letter. N is a property of one op: an effect
-# summary (IFn.fx) leaves it out. The end of the program (an error, an exit) flushes stdout and
-# closes the open files: R and N stand for that. A collection closes the open files nothing refers
-# to any more (and reports a failed close on stderr), which A stands for, not I, rF or wF: when a
-# dropped file is closed is unspecified (README: at a collection or at exit, not at once as in
-# CPython), so moving an A op may change it, as any change to the program's allocations does.
+# their flags, files. Strings and tuples are immutable, slots are never address-taken, dict keys
+# are int or str (no user code), and what an operation writes into an object it makes itself
+# (list.copy, str.split, init's argument list) no other code has seen: they need no letter. N is
+# a property of one op: an effect summary (IFn.fx) leaves it out. The end of the program (an
+# error, an exit) flushes stdout and closes the open files: R and N stand for that. A collection
+# closes the open files nothing refers to any more (and reports a failed close on stderr), which
+# A stands for, not I, rF or wF: when a dropped file is closed is unspecified (README: at a
+# collection or at exit, not at once as in CPython), so moving an A op may change it, as any
+# change to the program's allocations does.
 FX: list[str] = "R N A U I rL wL rD wD rO wO rG wG rF wF".split()
 FXBIT: dict[str, int] = {}
 for _j in range(len(FX)):

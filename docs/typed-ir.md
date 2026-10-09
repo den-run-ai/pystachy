@@ -562,15 +562,16 @@ RUNTIME: dict[str, str] = {
 **What has no letter:**
 - Reading strings and tuples, which are immutable once built.
 - Loads and stores of slots, which are never address-taken.
-- Dict operations never call user code, because keys are only `int` or `str`.
+- Dict operations never call user code, because keys are only `int` or `str`. Keys of another type whose hash or `==` may run user code (a tuple holding objects) would need U? on the dict entries, and `tools/check_runtime.py` would have to drop `NO_USER`, its list of entries that reach user code only through a `KeyError`'s repr of a key.
+- Writing an object the operation itself makes: `list.copy` and `str.split` fill new lists, and `init` (`pys_init`) the argument list, before any user code runs, so none has wL.
 
 **Rules that follow from the letters:**
 - An R op must not move across an I or a U op, because every error flushes stdout and exits.
 - A list length read is invalidated by any wL or U op. `for_seq` re-reads the length each round, because the loop body may change the list.
 
 **Summaries and checks.**
-- Each `IFn` gets a summary: the union of its ops' letters, where a call counts with its callee's summary. A callee that is unfinished or recursive counts as all letters.
-- Because lowering runs after the whole program has been built, a fixpoint over the call graph gives exact summaries.
+- Each `IFn` gets a summary: the union of its ops' letters, where a call or an `init` counts with its callee's summary.
+- Because lowering runs after the whole program has been built, every callee is complete when the summaries are computed, and the least fixpoint over the call graph, from no letters, gives exact summaries, recursion included (`Gen.effects`). Until it runs, every summary is all letters but N, and so is a call of a callee that is not compiled.
 - While the migration lasts, `rt` checks that each call site's declaration matches its `RUNTIME` entry, so the corpus verifies the table.
 - `tools/check_runtime.py` checks the table against the prototypes in `runtime.c`.
 
@@ -1167,6 +1168,7 @@ The README's next steps mention `invoke` and landing pads. This design proposes 
 - **Changes to the IR.**
   - `check`, `raise`, R-effect `rt` ops and `call` change only in their lowering.
   - Cold blocks are pooled per handler and message.
+  - The passes of §7.1 leave out a check's raising edge (`Gen.preds`: its cold block ends the program). Once an R op or a check can lead to a handler, that edge counts: `dictfuse` must meet, at the handler, the lookups that hold at the raising op (not at the end of its block), and `listget`'s path from a loop's test must not be joined by it.
   - `with` becomes a cleanup region.
   - `accel_try`'s import fallback (#4 §1 D and E) becomes a real handler around `init` calls.
 
