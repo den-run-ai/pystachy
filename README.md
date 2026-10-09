@@ -284,7 +284,8 @@ returning operands, `not`, conditional expressions, keyword and default argument
 indices, slicing, list/dict/tuple displays, list comprehensions, generator expressions and
 `range()`/`reversed()`/`enumerate()`/`zip()` as the argument of `list()`, `sorted()`,
 `sum()`, `min()`, `max()`, `any()`, `all()`, `str.join()` or `list.extend()` (`any()` and
-`all()` stop at the deciding item, as they do over files), `x in range(...)`, and operator
+`all()` stop at the deciding item, as they do over files, and `list.extend()` appends each
+item of a generator expression as it is made), `x in range(...)`, and operator
 overloading resolved statically:
 `__add__` & co, the in-place forms, `__eq__`, rich comparisons with CPython's reflection
 rules (`a < b` tries `b.__gt__(a)`), `__len__`, `__bool__`, `__str__`, `__repr__` and

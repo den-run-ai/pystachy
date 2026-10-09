@@ -7338,6 +7338,10 @@ class Gen:
             if empty_display(args[-1]):
                 self.no_type(name)  # (xs.append([]) shows nothing of what xs holds)
             i = self.ival(args[0]) if m == "insert" else Val("0", "int")
+            if m == "extend" and args[0].kind == "listcomp" and args[0].s == "gen":
+                # (item by item, as bmethod's)
+                self.refine(name, self.listcomp(args[0], "", "", o.v).t)
+                return Val("null", "None")
             v = self.as_list(self.consume(args[-1], ""), "extend") if m == "extend" else self.expr(args[-1], "")
             if m == "extend" and not is_list(v.t):
                 self.err(f"cannot extend a list with {v.t}")
@@ -10879,12 +10883,16 @@ class Gen:
         self.err(f"'{t}' object is not subscriptable")
         return o
 
-    def listcomp(self, n: Node, want: str, mode: str = "") -> Val:
-        # [e for t in it if c] runs as a loop appending to a fresh list; t is scoped to it.
-        # mode any/all: any(e for ...) / all(...) instead, stopping at the deciding element.
+    def listcomp(self, n: Node, want: str, mode: str = "", into: str = "") -> Val:
+        # [e for t in it if c] runs as a loop appending to a fresh list (or to list into, of type
+        # want, as xs.extend(e for ...) does item by item); t is scoped to it. mode any/all:
+        # any(e for ...) / all(...) instead, stopping at the deciding element.
+        h = Ins("", "", "")
         if mode != "":
             res = self.alloca("bool", "")
             self.emit(f"store i1 {'false' if mode == 'any' else 'true'}, ptr {res}")
+        elif into != "":
+            res = into
         else:
             h = self.hole("list")
             res = f"%t{h.r[0]}"
@@ -10918,7 +10926,8 @@ class Gen:
             return Val(self.ins(f"load i1, ptr {res}"), "bool")
         if et == "":
             self.err("cannot infer the element type of this comprehension")
-        self.holes[h.k] = f"list[{et}]"
+        if into == "":
+            self.holes[h.k] = f"list[{et}]"
         return Val(res, f"list[{et}]")
 
     def ifexp(self, n: Node, want: str) -> Val:
@@ -11980,6 +11989,11 @@ class Gen:
         for a in args:
             if a.kind == "kw":
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
+        if is_list(o.t) and m == "extend" and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
+            # each item is appended as the generator yields it: the items before a raise stay, and
+            # the generator sees those it added (xs.extend(f(x) for x in xs))
+            self.listcomp(args[0], o.t, "", o.v)
+            return Val("null", "None")
         if is_dict(o.t) and m == "pop" and len(args) == 2:
             kv = targs(o.t)
             k = self.to_slot(self.coerce(self.expr(args[0], kv[0]), kv[0]))
