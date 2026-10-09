@@ -252,7 +252,7 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 
   Both were reproduced with the compiler of `30b51d9`. One decoder in `runtime.py`, tested on CPython, would fix them by construction. `int()`, `float()` and `ascii()` are next on the list (§5).
 - **Two more, which the subset would make impossible or loud.** Both were reproduced with the compiler of `30b51d9`.
-  - **Undefined behaviour in `pys_idiv`.** It calls `__builtin_clzll(0)` when the dividend is 0 and the divisor is above 2**53. With UBSan, `k / (1 << 60)` for `k == 0` aborts: "passing zero to clz(), which is not a valid argument". Without it, the result is right by luck. No test reaches it, so `make verify`'s UBSan step did not see it.
+  - **Undefined behaviour in `pys_idiv`.** It calls `__builtin_clzll(0)` when the dividend is 0 and the divisor is above 2**53. With UBSan, `k / (1 << 60)` for `k == 0` aborts: "passing zero to clz(), which is not a valid argument". Without it, the result is right by luck. No test reaches it, so `make verify`'s UBSan step did not see it. Fixed since: a zero dividend takes the exact path, and `tests/idiv_zero_big.py` reaches the case.
   - **A stale length in list `==`.** `eqv` compares the two lengths once, then reads both lists' slots. If an `__eq__` empties the other list, it reads zeroed slots and passes a null object to the next `__eq__`. The program dies with `AttributeError: 'NoneType' object has no attribute 'v'` where CPython prints `False`.
 
   In `runtime.py`, the first cannot happen: there is no undefined arithmetic. The second would be an `IndexError` from a checked read, not a null object; a faithful port re-reads the lengths, as CPython's `list_richcompare` does.

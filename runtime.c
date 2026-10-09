@@ -635,7 +635,7 @@ double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: f
 double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPython's true division */
   if (!b) pys_fail("ZeroDivisionError: division by zero");
   uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a, y = b < 0 ? 0 - (uint64_t)b : (uint64_t)b;
-  if (x <= (1ULL << 53) && y <= (1ULL << 53)) return (double)a / (double)b;   /* both exact: one rounding */
+  if (!x || (x <= (1ULL << 53) && y <= (1ULL << 53))) return (double)a / (double)b;   /* both exact: one rounding; 0 / b is a signed 0 (and clz(0) below is undefined) */
   int k = 55 + (63 - __builtin_clzll(y)) - (63 - __builtin_clzll(x)); if (k < 0) k = 0;
   unsigned __int128 num = (unsigned __int128)x << k, q = num / y; int sticky = num % y != 0;
   double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
