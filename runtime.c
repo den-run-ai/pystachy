@@ -317,7 +317,7 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
   pys_finish();
   exit(1);
 }
-void pys_exit(I c) { pys_finish(); exit((int)c); }
+_Noreturn void pys_exit(I c) { pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
 _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
   out_flush(); fwrite(msg->s, 1, msg->len, stderr); fputc('\n', stderr); pys_finish(); exit(1);
 }
