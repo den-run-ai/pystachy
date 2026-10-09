@@ -120,7 +120,9 @@ field typed by its constant).
   `and`/`or` and conditional expressions), and nothing after a `return`. A parameter whose
   argument is `None` reads as `None`, and outside if branches and loops may get a value of
   another type (`if hi is None: hi = len(a)`, `if acc is None: acc = []`). A template that
-  returns objects returns `None` where it ends without a `return`, as CPython does. A
+  returns objects returns `None` where it ends without a `return`, as CPython does, and one
+  that cannot end (it always raises) may be called where a value is expected (`return
+  fail("bad")`): the call has the type its context expects. A
   function with `*args` is a template too: each call arity compiles it with `args` a tuple
   of the extra arguments' types (iterating it needs one item type; `()` is the empty
   tuple), and in `def f[T](x: T) -> T` (PEP 695) what mentions a type parameter is

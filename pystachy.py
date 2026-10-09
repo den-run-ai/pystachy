@@ -5510,6 +5510,7 @@ class FnInfo:
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
+        self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
@@ -7718,6 +7719,10 @@ class Gen:
         self.stmts(body)
         if f.ret == "":
             f.ret = "None"  # a template's function without a return statement that has a value
+            f.noret = f.infer and self.term
+            for b in self.fn.blocks:
+                for x in b.code:
+                    f.noret = f.noret and x.op != "ret" and x.op != "ret.none"
         if f.infer:
             # its returns of None, before it was known what it returns: None for an object
             for b in self.fn.blocks:
@@ -11676,6 +11681,13 @@ class Gen:
             f = self.instance(f, [v.t for v in vals])
         c = Ins("call", f.ret, f.ll)
         c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+        if f.noret:
+            # it never returns: the code after the call is not reached, and the call's value has the
+            # type its context expects (return fail("bad") in a function returning int)
+            self.add(c)
+            self.unreachable()
+            t = want if want != "" and "?" not in want else "None"
+            return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
         if f.ret == "None":
             self.add(c)
             return Val("null", "None")
