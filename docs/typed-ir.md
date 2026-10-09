@@ -35,6 +35,8 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
 >     descriptor) against runtime.c's call graph;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;
+>     a list comprehension's result list is a hole too, which `listcomp` fills with the list type
+>     once it knows the element type (a list hole lowers as it was built, so this changes no output);
 >   - `anyall` records a `seq` `Loop` too;
 >   - the verifier also runs in `tools/check_ir.sh` (`make check-ir`, and so `make verify`), which
 >     compiles the compiler itself, the benchmarks and the `tests/ir` probes, and fails on an
