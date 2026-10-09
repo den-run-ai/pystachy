@@ -477,7 +477,8 @@ method, a method of objects called through its class (`C.m(o)`), and decorators 
 these, `@dataclass` and `@overload`; an `__iter__` that is a generator, or
 that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
 `__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
-non-iterator of type 'list'`), and a call of it (`o.__iter__()`); iterating over an object,
+non-iterator of type 'list'`; and `iter(d.keys())`, `values()` or `items()`, whose iterator
+raises if the dict changes size: `iter(list(d.keys()))` copies them), and a call of it (`o.__iter__()`); iterating over an object,
 or `x in o`, by its `__getitem__` alone (CPython's old sequence protocol), and `reversed()`
 of an object; an `==` or `!=` between objects of
 different classes, which CPython would reflect to the right operand's `__eq__`; calling a

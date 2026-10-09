@@ -10719,6 +10719,10 @@ class Gen:
         if e.kind != "call" or e.kids[0].kind != "name" or e.kids[0].s != "iter" or self.bound("iter") or len(e.kids) != 2 or e.kids[1].kind == "kw":
             self.err(f"{short(self.curfn.cls)}.__iter__ must return iter(xs) here, where xs is a list, a tuple, a str or an object with __iter__")
         v = self.iterable(self.consume(e.kids[1], self.ret))
+        last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
+        if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items") and v.v == f"%t{last.r[0]}":
+            # (keys() is a list here; CPython's view iterator raises if the dict changes size)
+            self.err(f"iter() of a dict's {last.s[5:]}() in __iter__ is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
         if v.t == "str":
             v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         if not is_list(v.t):
