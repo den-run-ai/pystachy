@@ -1,4 +1,4 @@
-# Functions and classes Pystachy cannot compile: errors only where a program uses them.
+# Functions, classes and methods Pystachy cannot compile: errors only where a program uses them.
 class Base:
     def __init__(self, v: int) -> None:
         self.v = v
@@ -56,3 +56,100 @@ def head(n: t.Optional[Node]) -> int:
 
 def names(xs: t.List[str]) -> t.Dict[str, int]:
     return {x: len(x) for x in xs} if False else {"n": len(xs)}
+
+
+def setup() -> None:
+    pass
+
+
+class Hooks:
+    def __init__(self) -> None:
+        self.ready = setup()
+
+
+from typing import Iterable
+
+
+def total(xs: Iterable[int]) -> int:
+    return sum(xs)
+
+
+def maybe(x: int | None) -> int:
+    return 0 if x is None else x
+
+
+def by_weight(d: dict[float, Node]) -> int:
+    return len(d)
+
+
+class Weights:
+    keys: dict[float, int]
+
+
+class Cell:
+    def __init__(self) -> None:
+        self.held: int | None = None
+
+
+class Bag:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self):
+        return self.n
+
+
+class Pair:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Pair) and other.x == self.x
+
+
+def mk() -> list[int]:
+    return [1]
+
+
+def defaults(xs: Iterable[int] = [1, 2], d: dict[float, str] = {}) -> int:
+    return 0
+
+
+def template(x, ys: Iterable[int], y: int | None = None) -> int:
+    return x
+
+
+class Probe:
+    def helper(self) -> int | None:
+        return 3
+
+    def __init__(self) -> None:
+        self.x = self.helper()
+
+    def scan(self, xs: Iterable[int] = mk()) -> int:
+        return 0
+
+
+class Tagged:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __repr__(self) -> str:
+        return f"Tagged({self.x})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Tagged) and other.x == self.x
+
+
+class Ranked:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __lt__(self, other: "Ranked") -> bool:
+        return self.x < other.x
+
+    def __le__(self):
+        return True
+
+    def __gt__(self, other: int) -> bool:
+        return self.x > other
