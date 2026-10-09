@@ -5048,6 +5048,20 @@ def stmt_binds(st: Node, name: str) -> bool:
     return name in names
 
 
+def only_none(body: list[Node], name: str) -> bool:
+    # do the statements in body (into blocks, not into defs and classes) bind variable name only
+    # to None, by name = None
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if stmt_binds(st, name) and not (st.kind == "assign" and st.kids[-1].kind == "None" and assigns(st, name)):
+            return False  # (also a, name = None, None)
+        for kid in st.kids:
+            if kid.kind == "block" and not only_none(kid.kids, name):
+                return False
+    return True
+
+
 def assigns(st: Node, name: str) -> bool:
     # is name a target of assignment st itself (not inside a tuple)
     for t in st.kids[:-1]:
@@ -6214,6 +6228,8 @@ class Gen:
             t = self.ltype[name]
             if t == NONEVAR:
                 t = self.none_read(name)
+                if t == "None":
+                    return Val("null", "None")
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
@@ -6260,6 +6276,9 @@ class Gen:
         if t != "":
             self.ltype[name] = t
             return t
+        body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        if only_none(body, name):
+            return "None"  # (it is None wherever it is assigned)
         if not self.nonecmp:
             self.err(f"cannot infer the type of '{name}' from None here, before a value of another type is assigned to it; annotate it ({name}: T | None)")
         return NONEVAR
@@ -6918,9 +6937,9 @@ class Gen:
                     self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
                 del self.nonevars[name]
             if name not in self.ltype and v.t == "None":
-                # first None: T | None, typed by another value assigned to it (see none_type)
-                t0 = self.none_type(name)
-                self.alloca(t0 if t0 != "" else NONEVAR, name)
+                # first None: T | None, typed by the first store of another value, or by a read
+                # that needs the type before it (see none_read)
+                self.alloca(NONEVAR, name)
             elif name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
@@ -7117,7 +7136,7 @@ class Gen:
             for i in range(len(self.body)):
                 if self.body[i] == "  ret <none>":
                     if f.ret != "None" and self.optional(f.ret) == "":
-                        self.err(f"{short(f.name)}() returns both None and {typestr(f.ret)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                        self.err(self.nonemix(f, f.ret))
                     if f.ret != self.optional(f.ret) and f.ret != "None":
                         self.reopt(self.optional(f.ret))
                     self.body[i] = "  ret void" if f.ret == "None" else "  ret ptr null"
@@ -8137,6 +8156,8 @@ class Gen:
             val = n.kids[-1]
             t0 = n.kids[0]
             self.copying = n.s == "from" and self.foreign(val.s)
+            if len(n.kids) == 2 and t0.kind == "name" and empty_display(val) and self.ltype.get(t0.s, "") == NONEVAR and not self.is_global(t0.s):
+                self.err(f"cannot infer the type of '{t0.s}' from None and an empty {val.kind}; annotate it ({t0.s}: {val.kind}[{'T' if val.kind == 'list' else 'K, V'}] | None = None)")
             if len(n.kids) == 2 and t0.kind == "name" and (val.kind == "list" or val.kind == "dict") and len(val.kids) == 0 and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
                 self.assign(t0, self.empty(val.kind, t0.s))
             elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or val.s in self.twins.get(t0.s, "").split()) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
@@ -8249,21 +8270,24 @@ class Gen:
                 if v.t == "None":
                     self.emit("ret <none>")
                 else:
-                    self.ret = v.t
-                    self.curfn.ret = v.t
-                    self.emit(f"ret {lt(v.t)} {v.v}")
+                    t = v.t
+                    if self.optional(t) != t and self.optional(t) != "" and "  ret <none>" in self.body:
+                        t = self.optional(t)  # after a return of None: T | None (before it calls itself)
+                    self.ret = t
+                    self.curfn.ret = t
+                    self.emit(f"ret {lt(t)} {v.v}")
             elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
                 if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
                     self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
                 if self.ret != "None" and not (self.curfn.infer and self.ret in self.classes) and not is_opt(self.ret):
-                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and None, and None/Optional is only supported for class types" if self.curfn.infer else f"missing return value of type {self.ret}")
+                    self.err(self.nonemix(self.curfn, self.ret) if self.curfn.infer else f"missing return value of type {self.ret}")
                 self.close_withs(0)
                 self.emit("ret void" if self.ret == "None" else "ret ptr null")
             elif self.ret == "None":
                 # return f() where f returns None
                 v = self.expr(n.kids[0], "")
                 if v.t != "None" and self.curfn.infer:
-                    self.err(f"{short(self.curfn.name)}() returns both None and {v.t}, and None/Optional is only supported for class types")
+                    self.err(self.nonemix(self.curfn, v.t))
                 if v.t != "None":
                     self.err(f"returning {v.t} from a function declared to return None" if self.retann else "returning a value from a function without a return annotation")
                 self.close_withs(0)
@@ -8276,6 +8300,8 @@ class Gen:
                 if j != self.ret and j != "" and is_opt(j):
                     self.reopt(j)  # a template's function returns T and None (or T | None): T | None
                 if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret):
+                    if v.t == "None":
+                        self.err(self.nonemix(self.curfn, self.ret))
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                 v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
                 self.close_withs(0)
@@ -8384,6 +8410,14 @@ class Gen:
             self.err(UNSUPPORTED[k])
         elif k != "pass":
             self.err(f"unsupported statement '{k}'")
+
+    def nonemix(self, f: FnInfo, t: str) -> str:
+        # why template f, which returns None and a t, cannot return t | None
+        if "?" in t:
+            k = tname(t)
+            return f"{short(f.name)}() returns None and an empty {k} whose items' type it does not show; annotate its return type (-> {k}[{'T' if k == 'list' else 'K, V'}] | None)"
+        why = f" ({'an' if t == 'int' else 'a'} {t} is a machine value, which has no room for None)" if self.isnum(t) else ""
+        return f"{short(f.name)}() returns both None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple{why}"
 
     def reopt(self, t: str) -> None:
         # the template's function being compiled, which returned a T, returns None too: T | None
@@ -9025,6 +9059,10 @@ class Gen:
             return Val(k.lower(), "bool")
         if k == "None":
             return Val("null", "None")
+        if k == "name" and (is_opt(want) or want in self.classes) and want != NONEVAR and self.ltype.get(n.s, "") == NONEVAR:
+            # a local only None has been assigned so far, where a T | None is expected
+            t0 = self.none_type(n.s)
+            self.ltype[n.s] = t0 if t0 != "" else want
         if is_opt(want) and k != "ifexp" and k != "boolop":
             want = unopt(want)  # (what types an empty display is the type a value would hold)
         if k == "name":
@@ -9412,7 +9450,9 @@ class Gen:
             body = [mk("if", "", n.line, [n.kids[3], mk("block", "", n.line, [app]), mk("block", "", n.line, [])])]
         self.lcs.append(res)
         self.lct.append(elem(want) if is_list(want) else "")
+        pre = self.narrowed  # (its variables are its own: the loop binds no outer local)
         self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names)
+        self.narrowed = pre
         et = self.lct.pop()
         self.lcs.pop()
         for i in range(len(names)):
@@ -9451,7 +9491,10 @@ class Gen:
         self.place(l2)
         self.narrowed = pre
         self.narrow_by(n.kids[0], False)
-        b = self.expr(n.kids[2], want if want != "" else a.t)
+        wb = want if want != "" else a.t
+        if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
+            wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
+        b = self.expr(n.kids[2], wb)
         self.narrowed = pre
         e2 = "" if self.term else self.cur
         t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
@@ -9462,10 +9505,10 @@ class Gen:
             phis.append(f"[{self.coerce(a, t).v}, %{e1}]")
         if e2 != "":
             phis.append(f"[{self.coerce(b, t).v}, %{e2}]")
-        if t == "None":
-            self.err("conditional expression has no value")
         self.br(l3)
         self.place(l3)
+        if t == "None":
+            return Val("null", "None")  # (None either way)
         return Val(self.ins(f"phi {lt(t)} {', '.join(phis)}"), t)
 
     def boolop(self, n: Node, ascond: bool, want: str) -> Val:
@@ -9486,7 +9529,7 @@ class Gen:
         if a.t == "None":
             # None is false: `None and b` is None without evaluating b, `None or b` is b
             if n.s == "or":
-                self.coerce(self.expr(n.kids[1], "None"), "None")
+                return self.expr(n.kids[1], want)
             return Val("null", "None")
         c = self.truth(a)
         if self.term:

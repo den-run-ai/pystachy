@@ -1,0 +1,13 @@
+g
+s None  x
+a True p
+None True q
+b True None
+<a> [None, 'b'] 1
+b None
+[None] (None, 1) {'a': None}
+['q'] None {'a': 'q'}
+<None> None True None
+[None]
+None
+[exit 0]
