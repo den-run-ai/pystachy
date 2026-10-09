@@ -4604,8 +4604,9 @@ for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cl
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
-# self-compile's deepest is 18)
+# self-compile's deepest is 18), and the lookups that hold at once (7)
 CANON_DEPTH = 1000
+LOOKUPS = 32
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -5387,12 +5388,13 @@ class IFn:
 
 
 class Lookup:
-    # a dict.has or dict.getitem (op, in block blk of its IFn) of key k in dict d, given as their
-    # canonical values (Gen.canon): a getitem or a set of the same d and k after it may reuse the
-    # entry it finds (Gen.dictfuse)
-    def __init__(self, op: Ins, blk: int, d: str, k: str):
+    # a dict.has or dict.getitem (op, at position x of block blk of its IFn) of key k in dict d,
+    # given as their canonical values (Gen.canon): a getitem or a set of the same d and k after
+    # it may reuse the entry it finds (Gen.dictfuse)
+    def __init__(self, op: Ins, blk: int, x: int, d: str, k: str):
         self.op = op
         self.blk = blk
+        self.x = x  # its position in the block
         self.d = d
         self.k = k
         self.e = 0  # the number of the entry's index (%tN), once an op reuses it
@@ -7602,8 +7604,10 @@ class Gen:
         # the blocks in order keeps the lookups that hold at the end of each block (Lookup, by
         # position in looks: True where k is known to be in d), from the blocks that branch to a
         # block, and none from a later one (a loop's back edge); an op with wD or U, and a set
-        # that reuses no entry, ends them all. d and k must be the same values (canon). How many
-        # ops it rewrote
+        # that reuses no entry, ends them all. d and k must be the same values (canon). At most
+        # LOOKUPS hold at once (the oldest gives way), and a block's state is dropped once the
+        # last block it branches to has read it, so that the work and the memory grow linearly
+        # with the function. How many ops it rewrote
         some = False
         for b in fn.blocks:
             for i in b.code:
@@ -7619,6 +7623,11 @@ class Gen:
         # (a block shares the state it starts with, and copies it before it changes it: own)
         none: dict[int, bool] = {}
         outs: list[dict[int, bool]] = []
+        last = [-1] * len(fn.blocks)  # the last block after it that each block branches to
+        for j in range(len(fn.blocks)):
+            for p in pl[fn.blocks[j].label]:
+                if p < j:
+                    last[p] = j
         bad = FXBIT["wD"] | FXBIT["U"]
         n = 0
         for j in range(len(fn.blocks)):
@@ -7684,10 +7693,15 @@ class Gen:
                         if not own:
                             st = st.copy()
                             own = True
+                        if len(st) >= LOOKUPS:
+                            o = len(looks)
+                            for c in st:
+                                o = c if c < o else o
+                            st.pop(o)
                         st[len(looks)] = i.s == "dict.getitem"
                         if i.s == "dict.has":
                             has[f"%t{i.r[0]}"] = len(looks)
-                        looks.append(Lookup(i, j, d, k))
+                        looks.append(Lookup(i, j, x, d, k))
                 elif i.op == "raw" and i.k > 0:
                     # %c = icmp ne i64 %r, 0 of a has's result (k in d; eq: k not in d), %c = xor i1 %t, true of one (not)
                     s = i.s
@@ -7705,17 +7719,27 @@ class Gen:
                 elif len(st) > 0 and self.opfx(i, vs.fn.fa) & bad != 0:
                     st = none
                     own = False
-            outs.append(st)
+            outs.append(st if last[j] > j else none)
+            for p in ps:
+                if p < j and last[p] == j:
+                    outs[p] = none
         # the lookups whose entry an op reuses: a has becomes a find (and k in d is its entry + 1,
-        # which is not 0), a getitem an entry and a val
+        # which is not 0), a getitem an entry and a val; each adds one op to its block, before
+        # the next lookup of the block (shift: how many it has added)
+        blk = -1
+        shift = 0
         for f in looks:
             if f.e == 0:
                 continue
+            if f.blk != blk:
+                blk = f.blk
+                shift = 0
             code = fn.blocks[f.blk].code
-            x = 0
-            while code[x] is not f.op:
-                x += 1
+            x = f.x + shift
+            shift += 1
             i = f.op
+            if code[x] is not i:
+                self.bad_ir(fn, fn.blocks[f.blk], f"dictfuse lost the lookup of %t{f.e}")
             if i.s == "dict.has":
                 self.runtime("pys_dict_find")
                 fi = Ins("rt", "int", "dict.find")

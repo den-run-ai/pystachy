@@ -107,7 +107,10 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     Its work is bounded: `canon` recurses once for each value of the chain it follows, so a
 >     value it reaches `CANON_DEPTH` (1,000) calls deep is its own canonical value (4,000 lines of
 >     `k = k ^ 1 ^ ... ^ 10` overflowed the native compiler's stack; the self-compile's deepest
->     chain is 18). `tools/scaling.py` has the shape (`chain`).
+>     chain is 18). At most `LOOKUPS` (32) lookups hold at once, the oldest giving way (the
+>     self-compile holds at most 7), and a block's state is dropped once the last block it
+>     branches to has read it: 12,000 reads of other keys in one function took 5.9 s and 3.6 GB.
+>     `tools/scaling.py` has the shapes (`chain`, `lookups`).
 >   - `Gen.ins` sets `Ins.k` of a raw op to the number it defines, and `fgep` records each
 >     field's or flag's address in `IFn.fa`, for `rawfx` and `canon`. The summaries and the two
 >     passes add 8% to the instructions of the native self-compile (1.89 G against 1.75 G with

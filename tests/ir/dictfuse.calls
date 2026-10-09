@@ -8,6 +8,7 @@
 @f.other: pys_dict_find pys_dict_val pys_dict_set
 @f.clear: pys_dict_clear
 @f.called: pys_dict_has pys_dict_getitem
+@f.many: pys_dict_getitem pys_dict_entry pys_dict_val pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_getitem pys_dict_entry_set pys_dict_set
 @m.Tally.__init__: pys_dict_new
 @m.Tally.add: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
 @pys_obj_eq:
