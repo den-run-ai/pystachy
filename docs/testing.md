@@ -10,7 +10,7 @@ honest.
 | `make` | the bootstrap: the compiler built by itself reproduces its own LLVM IR byte for byte |
 | `make test` | the differential tests with the native compiler, JIT and AOT |
 | `make test-py` | the same tests with the compiler running on CPython |
-| `make verify` | everything below, with a JSON report in `build/verification.json` |
+| `make verify` | the bootstrap, both test runs and the other steps under [make verify](#make-verify), with a JSON report in `build/verification.json` |
 | `make irsame REF=<commit>` | a refactor changes no program's IR, message or exit status |
 | `make check-ir` | `llvm-as` accepts the IR of every program in the corpus |
 
@@ -76,7 +76,7 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 `llvm-as` on the IR of every program of the corpus. `tests/ir/*.py` probe code-generation
 paths the other programs never take (dead code after `return`, templates instantiated during
 a look-ahead, nested templates, guards repeated in one function): these two tools compile
-them, but they never run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
+them, but they never run. Both
 need only POSIX sh, run in `PYSTACHY_JOBS` workers, and take a few seconds.
 
 ## Syntax errors against CPython

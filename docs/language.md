@@ -16,7 +16,7 @@ with a `file:line: error:`, never miscompiled.
 | [Typing rules](#typing-rules) | annotated functions have their declared types; an unannotated module-level function is a *template*, compiled once per list of argument types |
 | [Modules](#modules) | your own modules and packages, the builtin modules `sys`, `os`, `math`, `time`, ..., and unmodified standard library modules from `lib/` |
 | [Removed on purpose](#removed-on-purpose) | exceptions (`try`), generators, lambdas and closures, inheritance, sets, `bytes`, big integers, `async`, ... |
-| [Syntax errors](#syntax-errors) | every `SyntaxError` CPython reports before running a file, with CPython's message and line |
+| [Syntax errors](#syntax-errors) | every `SyntaxError` CPython reports before running a file, at CPython's line and almost always with its message |
 
 Contents: [Types](#types) · [Typing rules](#typing-rules) · [Statements](#statements) ·
 [Modules](#modules) · [Expressions](#expressions) ·
