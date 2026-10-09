@@ -4377,6 +4377,9 @@ class Loader:
 # A type is a canonical string: int float bool str None file, list[T], dict[K,V],
 # tuple[A,B], or a class name. LLVM view: i64, double, i1, void, everything else ptr.
 HEX = "0123456789ABCDEF"
+# the type of a local that only None has been assigned so far (see none_type): a pointer, which
+# only comparisons with None may read until a binding of another value types it
+NONEVAR = "opt[None]"
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -5341,6 +5344,7 @@ class Gen:
         # optional locals (and parameters) known not to be None here, as mypy narrows them: a read
         # of one has the type it holds (see narrows)
         self.narrowed: dict[str, bool] = {}
+        self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # a local of an optional type exists: narrows has something to look for
         self.building: dict[str, bool] = {}  # the functions being compiled
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
@@ -5650,7 +5654,7 @@ class Gen:
             return "b"
         if t == "str":
             return "s"
-        if is_opt(t):
+        if is_opt(t) and t != NONEVAR:
             return "?" + self.desc(unopt(t))  # None or the value
         if is_list(t):
             return "L" + self.desc(elem(t))
@@ -6140,10 +6144,12 @@ class Gen:
                 self.no_type(name)
         if name in self.ltype:
             t = self.ltype[name]
+            if t == NONEVAR:
+                t = self.none_read(name)
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
-            if name in self.narrowed and is_opt(t):
+            if name in self.narrowed and is_opt(t) and t != NONEVAR:
                 t = unopt(t)  # known not to be None here
             return Val(r, t)
         if self.unbound_local(name):
@@ -6177,6 +6183,60 @@ class Gen:
             self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
         self.err(f"name '{short(name)}' is not defined")
         return Val("", "")
+
+    def none_read(self, name: str) -> str:
+        # a read of local name, which only None has been assigned so far: a binding of another value
+        # in the function's source that can be typed here gives it its type, else only a comparison
+        # with None may read it
+        t = self.none_type(name)
+        if t != "":
+            self.ltype[name] = t
+            return t
+        if not self.nonecmp:
+            self.err(f"cannot infer the type of '{name}' from None here, before a value of another type is assigned to it; annotate it ({name}: T | None)")
+        return NONEVAR
+
+    def none_type(self, name: str) -> str:
+        # the type of variable name, first assigned None: T | None for the first other value that
+        # the code of its function (or module) assigns it, also by unpacking, that can be typed here
+        # (as lookahead does); "" if there is none
+        body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        found: list[Node] = []
+        self.none_values(body, name, found)
+        for e in found:
+            if e.kind != "None" and not empty_display(e) and self.typed_now(e) and not self.calls_open(e, {}):
+                # (typed as where it is assigned, under tests of the optional locals it reads)
+                pre = self.narrowed
+                self.narrowed = dict(pre)
+                for nm in self.ltype:
+                    self.narrowed[nm] = True
+                t = self.dry(e)
+                self.narrowed = pre
+                if t != "None" and t != "" and "?" not in t and t != NONEVAR:
+                    if self.optional(t) == "":
+                        self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                    return self.optional(t)
+        return ""
+
+    def none_values(self, body: list[Node], name: str, out: list[Node]) -> None:
+        # the values that statements in body (into blocks, in order) assign to variable name: of
+        # a, b = e the item of e (an index node if e is not a display)
+        for st in body:
+            if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+                continue
+            if st.kind == "assign":
+                e = st.kids[-1]
+                for t in st.kids[:-1]:
+                    if t.kind == "name" and t.s == name:
+                        out.append(e)
+                    elif t.kind == "tuple" or t.kind == "list":
+                        for i in range(len(t.kids)):
+                            if t.kids[i].kind == "name" and t.kids[i].s == name:
+                                disp = (e.kind == "tuple" or e.kind == "list") and len(e.kids) == len(t.kids)
+                                out.append(e.kids[i] if disp else mk("index", "", e.line, [e, mk("int", str(i), e.line, [])]))
+            for kid in st.kids:
+                if kid.kind == "block":
+                    self.none_values(kid.kids, name, out)
 
     def read(self, n: Node) -> Val:
         # a variable read; if flow analysis found it may be unassigned, check at run time
@@ -6659,7 +6719,7 @@ class Gen:
                 return True
             t = self.rtype(e.s)
             if t != "":
-                return "?" not in t
+                return "?" not in t and t != NONEVAR
             return not (e.s in self.assigned or e.s in self.mvars or e.s in self.nonevars)
         if e.kind == "listcomp":
             # [x for t in it if c]: x and c read the variables in t too, which the items of it type
@@ -6766,11 +6826,12 @@ class Gen:
             return
         if self.is_global(name):
             if name not in self.gtypes:
-                if v.t == "None":
+                t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
+                if v.t == "None" and t0 == "":
                     self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
                 if v.t == "":
                     self.err(f"cannot infer the type of '{name}'; add a type annotation")
-                self.declare(name, v.t)
+                self.declare(name, t0 if t0 != "" else v.t)
             t = self.gtypes[name]
             if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
@@ -6787,9 +6848,18 @@ class Gen:
                 if self.branch > 0:
                     self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
                 del self.nonevars[name]
-            if name not in self.ltype:
+            if name not in self.ltype and v.t == "None":
+                # first None: T | None, typed by another value assigned to it (see none_type)
+                t0 = self.none_type(name)
+                self.alloca(t0 if t0 != "" else NONEVAR, name)
+            elif name not in self.ltype:
                 self.alloca(v.t, name)
             t = self.ltype[name]
+            if t == NONEVAR and v.t != "None":
+                if self.optional(v.t) == "":
+                    self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for class types, str, list, dict and tuple")
+                t = self.optional(v.t)
+                self.ltype[name] = t
             if "?" in t and same_kind(t, v.t) and "?" not in v.t:
                 self.refine(name, v.t)
                 t = v.t
@@ -8238,7 +8308,9 @@ class Gen:
             self.err(f"del of the global '{name}' in a function is not supported")
         if owner(name) != self.curfn.mod:
             self.err(f"del of module {owner(name)}'s attribute '{short(name)}' is not supported")
+        self.nonecmp = True  # (a local only None was assigned to may be deleted)
         self.read(n)  # del of a name that is not bound raises as its read does
+        self.nonecmp = False
         self.narrowed.pop(name, False)
         if name in self.ltype and name in self.lflag:
             self.emit(f"store i1 false, ptr {self.lflag[name]}")
@@ -8721,7 +8793,7 @@ class Gen:
             return "None"
         if n.s in self.ltype:
             t = self.ltype[n.s]
-            return unopt(t) if n.s in self.narrowed and is_opt(t) else t
+            return unopt(t) if n.s in self.narrowed and is_opt(t) and t != NONEVAR else t
         if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
             return self.gtypes[n.s]
         return ""
@@ -9482,7 +9554,10 @@ class Gen:
             if ops[0] == "in" or ops[0] == "not in":
                 w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
             return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
+        # (x is None reads a local that only None was assigned to so far, see none_type)
+        self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
         a = self.expr(n.kids[0], "")
+        self.nonecmp = False
         if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
             # x in range(...): arithmetic, as CPython's range.__contains__ does for ints
             if a.t != "int" and a.t != "bool":
