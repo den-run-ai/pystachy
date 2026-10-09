@@ -4,4 +4,4 @@ class C:
         self.k = 4
 
 
-print(C.k)
+print(C)

@@ -7105,7 +7105,7 @@ class Gen:
         if name in self.funcs:
             self.err(f"function '{name}' cannot be used as a value")
         if name in self.classes:
-            self.err(f"class '{name}' cannot be used as a value (class attributes are read through an instance)")
+            self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
         if name in self.fglobals:
             self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
         if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.comp[owner(name)] == self.comp[self.curfn.mod]:
@@ -10296,6 +10296,8 @@ class Gen:
             c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
             if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
                 return self.class_attr(n.kids[0], n.s)
+            if c in self.classes:
+                self.no_class_attr(c, n.s)
             o = self.expr(n.kids[0], "")
             if o.t in self.nts and n.s == "_fields":
                 self.notnone(o, "AttributeError: 'NoneType' object has no attribute '_fields'")
@@ -10433,6 +10435,19 @@ class Gen:
             return self.coerce(self.expr(ci.fdefault[a], t), t)
         self.class_default(ci, a)
         return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+
+    def no_class_attr(self, c: str, a: str) -> None:
+        # C.a where class C binds no class attribute a: CPython's AttributeError, or why it is not supported
+        ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
+        if c in self.nts and a in ci.fields:
+            self.err(f"reading a NamedTuple's field through its class ({short(c)}.{a}, a descriptor in CPython) is not supported")
+        if a in ci.methods:
+            self.err(f"method '{short(c)}.{a}' cannot be used as a value (call it)")
+        if a in ci.fields:
+            self.err(f"type object '{short(c)}' has no attribute '{a}' (its objects have the field '{a}')")
+        self.err(f"type object '{short(c)}' has no attribute '{a}'")
 
     def class_ready(self, cn: Node) -> ClassInfo:
         # the class that name cn reads (C.a, C.m(...)), checked where its class statement may not
