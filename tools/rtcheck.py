@@ -269,7 +269,7 @@ def fuzz_search():
     # (reach()): an occurrence at each place around its end, alone or d bytes after another, at
     # the end of the text or not
     for n in ["</p>", "</span>", "</"]:
-        d = 16 * len(n) + 256
+        d = rt.reach(0, 0, len(n))  # (so the cases follow its formula)
         for head in ["<x" * 3, "<" * 40]:
             for p in range(d - 40, d + 10):
                 for h in [head + "y" * p + n, head + "y" * 5 + n + "y" * p + n + "<y" * 3, head + "y" * p + n + "y" * 9 + n]:
