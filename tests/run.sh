@@ -3,7 +3,10 @@
 # (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
-# tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
+# tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh). Where
+# tests/NAME.big exists, the compiler (and so a JIT run) gets PYSTACHY_GC_STRESS empty: with a
+# collection at every allocation, each marking all the IR it holds, it would take hours on a
+# program that large (the AOT-built program still collects as often).
 # Every tests/errors/*.py must be rejected with the message in its first line (rtmode_*.py as
 # "pystachy rt" compiles runtime.py), and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
@@ -29,11 +32,12 @@ program() { # tests/NAME.py
   n=$(basename "$1" .py); in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
   o=1; [ -f "tests/$n.full" ] && o=3
   mp=$PYSTACHY_PATH; [ -f "tests/$n.path" ] && mp=$(cat "tests/$n.path")
+  gs=$PYSTACHY_GC_STRESS; [ -f "tests/$n.big" ] && gs=
   for mode in $MODES; do
     if [ $mode = jit ]; then
-      (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+      (PYSTACHY_GC_STRESS=$gs PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
-      PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
+      PYSTACHY_GC_STRESS=$gs PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
         ("$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then

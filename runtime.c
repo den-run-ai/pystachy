@@ -760,7 +760,11 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
-static I ocls(const char *d) { I c = 0; while (*d >= '0' && *d <= '9') c = c * 10 + *d++ - '0'; return c; }
+static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
+  I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
+  for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
+  return c;
+}
 Str *pys_default_repr(Str *cls, void *p) {
   const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
@@ -774,7 +778,7 @@ I pys_repr_enter(void *p) {
 void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 static const char *skip(const char *d) {
   char c = *d++;
-  if (c == 'O') while (*d >= '0' && *d <= '9') d++;
+  if (c == 'O') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
   if (c == 'L') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);

@@ -19,6 +19,7 @@
 #                  function of runtime.py reaches itself through runtime.c
 #   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
 #                  the IR, and every test passes JIT and AOT with a collection at every allocation
+#                  (but for the compiler of a tests/NAME.big program, see tests/run.sh)
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs

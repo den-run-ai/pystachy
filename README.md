@@ -701,7 +701,8 @@ versions, platform, git commit and a timestamp:
   nothing in its source would show;
 - **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
   and every test passes JIT and AOT with a collection at every allocation
-  (`PYSTACHY_GC_STRESS=1`);
+  (`PYSTACHY_GC_STRESS=1`; where `tests/NAME.big` exists, only the AOT-built program collects
+  that often, as the compiler would take hours on a program that large);
 - **benchmarks** — output equal to CPython's, with timings;
 - **rtcheck** — `tools/rtcheck.py` runs `runtime.py` on CPython and compares each of its
   functions with CPython's str methods, `math` functions and `format()` (and the dict hashes

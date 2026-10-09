@@ -1,6 +1,7 @@
 # Class ids of 1,000 and more in type descriptors (O<id>): the runtime read three digits, so
 # repr, ==, ordering and sort of containers of C1000 called C100's methods and lost their place
 # in the descriptor. C0..C999 only take the ids 0 to 999, in order (one class and one use each).
+# Its IR is some 150,000 lines: tests/class_ids_wide.big keeps GC stress off its compiler.
 class C0: pass
 [C0()] == []
 class C1: pass
