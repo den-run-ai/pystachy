@@ -8379,6 +8379,14 @@ class Gen:
         self.assign(tgt, Val(i, "int"))
         self.loop(body, ls, le)
         self.place(ls)
+        if self.rtmode and (step == "1" or step == "-1"):
+            # i < stop (or i > stop), so i + 1 (i - 1) fits: an nsw add, which lets LLVM bound i
+            # and drop the index checks that compare it with a length. (This would hold for every
+            # program, but it changes their IR: see docs/runtime-in-subset.md.)
+            self.emit(f"store i64 {self.ins(f'add nsw i64 {i}, {step}')}, ptr {ctr}")
+            self.br(lc)
+            self.place(le)
+            return
         # a step that overflows 64 bits has passed any stop value: the loop is over
         r = self.checked("sadd", i, step)
         self.emit(f"store i64 {r[0]}, ptr {ctr}")
