@@ -146,7 +146,12 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     (`dict.getitem`, `dict.entry`, `dict.pop`, `dict.pop_default`, `dict.popbox`, `list.index`,
 >     `list.index_as`) have I. In the self-compile of the merge, listget rewrites 504 of the
 >     2,446 `pys_list_get` calls, and dictfuse 80 of the 728 `pys_dict_has`, 117 of the 444
->     `pys_dict_getitem` and 3 of the 873 `pys_dict_set`.
+>     `pys_dict_getitem` and 3 of the 873 `pys_dict_set`. `tests/ir/passes_types.py` pins the
+>     rewrites on those values, and where a dunder's summary ends a lookup;
+>     `tests/opt_dictfuse_protocol.py`, `opt_dictfuse_types.py` and `opt_listget_types.py` run
+>     them against CPython (each dunder, and each runtime call that runs one, moving every entry
+>     between a key's test and its update). A has whose test is an `and`'s value (a `phi`:
+>     `if d is not None and k in d`) is not fused, as on the old base.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
