@@ -94,6 +94,13 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     table's letters did not change (`tools/check_runtime.py` derives them so).
 >   - `return`, `break` and `continue` leave through `Gen.exits` (with blocks, except clauses,
 >     finally blocks), which runs a copy of each finally block they cross, as CPython does.
+>   - landing blocks that no try statement writes: an except clause whose name may be read
+>     after it has one around its body, which unbinds the name and throws again (CPython's
+>     clause has a finally block for it); and in a program with a try, a module's code
+>     (`@init.<module>`) has one around everything after its done test, which clears the done
+>     flag and throws again, so that a later import runs the code again (a `Try` record in
+>     `IFn.tries` with only a landing block; the clause's is not recorded apart from its try
+>     statement's).
 >   - whether the program has a try is decided before code generation, over all its modules
 >     (the closed world), as the with statement's unwind action needs it: a program that
 >     imports a `lib/` module with a try in a function it never calls has exceptions on too.
