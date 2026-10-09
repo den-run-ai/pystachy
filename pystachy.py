@@ -6227,9 +6227,10 @@ class Gen:
         for nm in names:
             first: list[Node] = []
             self.live = True  # (a fill in a loop over the empty tuple only if no code that runs fills it)
+            self.dead = False
             self.fills(body, nm, first)
             self.live = False
-            if len(first) == 0:
+            if len(first) == 0 and self.dead:
                 self.fills(body, nm, first)
             if len(first) > 0 and (len(found) == 0 or first[0].line < found[0].line):
                 found = first
@@ -6280,8 +6281,10 @@ class Gen:
         # infers it). A template's function returns an empty container that nothing fills (see
         # unfilled) as it is, and each call gives it the type its context expects (typed_empty),
         # unless a use further on (in a loop, a call or another return) gives it a type (adopt)
-        if e.kind == "name" and (want == "" or "?" in want) and self.unfilled(e.s):
-            self.qret[self.curfn.ll] = self.qret.get(self.curfn.ll, "") + " " + e.s
+        q = self.qret.get(self.curfn.ll, "")
+        known = e.kind == "name" and e.s in q.split() and "?" in self.ltype.get(e.s, "")  # (and still so)
+        if e.kind == "name" and (want == "" or "?" in want) and (known or self.unfilled(e.s)):
+            self.qret[self.curfn.ll] = q if known else q + " " + e.s
             self.allowq = True
             v = self.read(e)
             self.allowq = False
