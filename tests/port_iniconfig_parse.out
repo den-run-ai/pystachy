@@ -1,0 +1,59 @@
+tokenize 'assignment in value': True
+    [ParsedLine(lineno=0, section=None, name='value', value=['x = 3'])]
+tokenize 'blank line': True
+    [ParsedLine(lineno=0, section='section', name=None, value=None), ParsedLine(lineno=2, section='section', name='value', value=['1'])]
+tokenize 'comment': True
+    []
+tokenize 'comment on section': True
+    [ParsedLine(lineno=0, section='section', name=None, value=None)]
+tokenize 'comment on value': True
+    [ParsedLine(lineno=0, section=None, name='value', value=['1'])]
+tokenize 'comment2': True
+    []
+tokenize 'comment2 on section': True
+    [ParsedLine(lineno=0, section='section', name=None, value=None)]
+tokenize 'continuations on several values': True
+    [ParsedLine(lineno=0, section=None, name='a', value=['1', '2', '3']), ParsedLine(lineno=4, section='s', name=None, value=None), ParsedLine(lineno=5, section='s', name='b', value=['x', 'y']), ParsedLine(lineno=8, section='s', name='c', value=['z'])]
+tokenize 'empty value': True
+    [ParsedLine(lineno=0, section=None, name='value', value=[])]
+tokenize 'equality gets precedence': True
+    [ParsedLine(lineno=0, section=None, name='value', value=['xyz:5'])]
+tokenize 'pseudo section syntax in value': True
+    [ParsedLine(lineno=0, section=None, name='name', value=['value []'])]
+tokenize 'section': True
+    [ParsedLine(lineno=0, section='section', name=None, value=None)]
+tokenize 'use of colon for name-values': True
+    [ParsedLine(lineno=0, section=None, name='name', value=['y'])]
+tokenize 'use of colon without space': True
+    [ParsedLine(lineno=0, section=None, name='value', value=['y=5'])]
+tokenize 'value': True
+    [ParsedLine(lineno=0, section=None, name='value', value=['1'])]
+tokenize 'value in section': True
+    [ParsedLine(lineno=0, section='section', name=None, value=None), ParsedLine(lineno=1, section='section', name='value', value=['1'])]
+tokenize 'value with aligned continuation': True
+    [ParsedLine(lineno=0, section=None, name='names', value=['Alice', 'Bob'])]
+tokenize 'value with continuation': True
+    [ParsedLine(lineno=0, section=None, name='names', value=['Alice', 'Bob'])]
+empty: [] True
+ParseError: filename:1: hello ParseError('filename', 0, 'hello') filename 0 hello
+error ' Foo': lineno 0: sample:1: unexpected value continuation
+error '[section]\n Foo': lineno 1: sample:2: unexpected value continuation
+error '[]': lineno 0: sample:1: empty section name
+error '!!': lineno 0: sample:1: unexpected line: '!!'
+error '[s]\nx=1\n y\n[t]\n z': lineno 4: sample:5: unexpected value continuation
+error '[s\n': lineno 0: sample:1: unexpected value continuation
+iscommentline('#qwe') = True
+iscommentline('  #qwe') = True
+iscommentline(';qwe') = True
+iscommentline(' ;qwe') = True
+iscommentline('qwe') = False
+iscommentline(' q#') = False
+iscommentline('') = True
+keep {'section1': {'name1': 'value1 # a comment', 'name2': 'value2 ; another', 'list': 'a, b, c # items'}, 'section2': {'names': 'Alice # first\nBob'}}
+    [(('section1', None), 0), (('section1', 'name1'), 1), (('section1', 'name2'), 2), (('section1', 'list'), 3), (('section2', None), 4), (('section2', 'names'), 5)]
+strip {'section1': {'name1': 'value1', 'name2': 'value2', 'list': 'a, b, c'}, 'section2': {'names': 'Alice\nBob'}}
+    [(('section1', None), 0), (('section1', 'name1'), 1), (('section1', 'name2'), 2), (('section1', 'list'), 3), (('section2', None), 4), (('section2', 'names'), 5)]
+ParseError: dup.ini:3: duplicate name 'x' (msg "duplicate name 'x'")
+ParseError: dup.ini:2: duplicate section 'a' (msg "duplicate section 'a'")
+ParseError: dup.ini:1: no section header defined (msg 'no section header defined')
+[exit 1]
