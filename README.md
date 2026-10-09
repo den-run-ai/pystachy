@@ -529,7 +529,9 @@ or assigned where a `list[T | None]` or `dict[K, T | None]` is expected (as mypy
 container could then be given a `None` that its other references do not expect; mypy takes
 it for a `Sequence[T | None]` or `Mapping[K, T | None]`, a list and a dict here), and an
 argument that may be `None` of a builtin function other than `len()`, `int()`, `float()`,
-`ord()`, `dict()`, `sum()`, `os.system()`, `os.path.exists()` and those that take `None`; a
+`ord()`, `dict()`, `sum()`, `round()`, `os.system()`, `os.path.exists()` and those that take
+`None` (and `round(x, n)` of a `float` `x` and an `n` that may be `None`, which would return an
+`int` or a `float` by whether `n` is `None`); a
 read that needs the type of a local that only `None` has been assigned so far, where no
 other value assigned to it can be typed yet and the context expects none (annotate it:
 `x: T | None = None`); an empty `[]` or `{}` assigned to a local first assigned `None`, a

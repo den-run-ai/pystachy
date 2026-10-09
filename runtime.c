@@ -929,6 +929,18 @@ I pys_f2i(double d) {
   return (I)d;
 }
 I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
+                                                10**-n, ties to the even multiple */
+  if (n >= 0) return x;
+  __int128 m = 1, q, r;
+  for (I i = 0; i < -n && i < 20; i++) m *= 10;   /* (10**20 > 2 * |x|: a farther n gives 0 too) */
+  q = x / m; r = x % m;
+  if (r < 0) { r += m; q--; }                     /* x = q * m + r, 0 <= r < m */
+  if (2 * r > m || (2 * r == m && (q & 1))) q++;
+  q *= m;
+  if (q > INT64_MAX || q < INT64_MIN) pys_fail(OVF);
+  return (I)q;
+}
 double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
   static char b[1500], o[1500];
   if (!isfinite(x) || n > 400) return x;

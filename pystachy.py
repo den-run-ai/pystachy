@@ -4711,7 +4711,7 @@ RUNTIME: dict[str, str] = {
     "floordiv": "int:int,int|R|", "mod": "int:int,int|R|", "pow": "int:int,int|R|", "powmod": "int:int,int,int|R|",
     "shl": "int:int,int|R|", "shr": "int:int,int|R|", "idiv": "float:int,int|R|", "fdiv": "float:float,float|R|",
     "ffloordiv": "float:float,float|R|", "fmod": "float:float,float|R|", "fpow": "float:float,float|R|", "cmp_if": "int:int,float||",
-    "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "floor": "int:float|R|",
+    "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "round_int": "int:int,int|R|", "floor": "int:float|R|",
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "fabs": "float:float||fabs",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
@@ -10624,6 +10624,22 @@ class Gen:
         self.incoming(ph, bd, e1)
         return self.phi(ph)
 
+    def optint(self, v: Val, none: str) -> str:
+        # an int | None or bool | None as an int, None giving the int constant none
+        e0 = self.cur
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(self.ins(f"icmp ne ptr {v.v}, null"), l1, l2)
+        self.place(l1)
+        n = self.as_int(self.deref(v)).v
+        e1 = self.cur
+        self.br(l2)
+        self.place(l2)
+        ph = Ins("phi", "int", "")
+        self.incoming(ph, none, e0)
+        self.incoming(ph, n, e1)
+        return self.phi(ph)
+
     def tuple_(self, vals: list[Val]) -> Val:
         p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
         ts: list[str] = []
@@ -11763,6 +11779,13 @@ class Gen:
                 rev = self.reverse_arg(a.kids[0], name)
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
+        if name == "round" and len(vals) == 2 and vals[1].t == "None":
+            vals = vals[:1]  # round(x, None) is round(x)
+        elif name == "round" and len(vals) == 2 and is_sopt(vals[1].t) and (unopt(vals[0].t) == "int" or unopt(vals[0].t) == "bool"):
+            # an ndigits that may be None: for an int, round(x, None) is round(x, 0)
+            vals[1] = self.coerce(Val(self.optint(vals[1], "0"), "int"), "int")
+        elif name == "round" and len(vals) == 2 and is_opt(vals[1].t):
+            self.err(f"round() with an ndigits that may be None ({typestr(vals[1].t)}) is not supported: it returns an int where ndigits is None, else a float; test it with 'is not None' first")
         for i in range(len(vals)):
             if vals[i].t == "None" and name in NONERET and len(vals) == 1:
                 # None itself (a template's parameter whose argument is None): CPython's error
@@ -11804,6 +11827,12 @@ class Gen:
             return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")
         if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
             return self.as_int(vals[0])
+        if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):
+            # an int's round(x) is x, and round(x, n) rounds it to a multiple of 10**-n for n < 0
+            if len(vals) == 1:
+                return self.as_int(vals[0])
+            nd = self.coerce(self.as_int(vals[1]), "int")
+            return Val(self.rt("pys_round_int", "i64", [f"i64 {self.as_int(vals[0]).v}", f"i64 {nd.v}"]), "int")
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"
