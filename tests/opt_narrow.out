@@ -1,0 +1,38 @@
+is not None <ab>
+truthy <ab>
+else of not <ab>
+elif short <ab>
+both <ab> 3
+neither <ab> 3
+and True True
+or True
+ifexp <ab> <ab> <ab>
+isinstance <ab>
+falsy None
+none
+one is None
+and False False
+or True
+ifexp - -- -
+is not None <>
+falsy 
+elif short <>
+both <> 0
+neither <> 0
+and False False
+or False
+ifexp <> -- <>
+isinstance <>
+is not None <abcd>
+truthy <abcd>
+else of not <abcd>
+elif long <abcd>
+one is None
+and False False
+or False
+ifexp <abcd> <abcd> <abcd>
+isinstance <abcd>
+early <e> <> <r> <x> <a> <default> <given>
+['<a>', '<b>', '<>', '<c>', '<a>', 'a', 'b', '', 'c'] 6 0
+['<x>', '<>', '<y>', 'X', 'Y'] <fallback> <fallback> <f> <init>
+[exit 1]
