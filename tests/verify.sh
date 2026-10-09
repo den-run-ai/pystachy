@@ -31,8 +31,8 @@ V=$ROOT/build/verify
 OUT=$ROOT/build/verification.json
 rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
-cp runtime.c "$V/home/"
-cp runtime.c "$V/ubsan-home/"
+cp runtime.c runtime.py "$V/home/"
+cp runtime.c runtime.py "$V/ubsan-home/"
 cp -R lib "$V/home/"
 cp -R lib "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
@@ -77,7 +77,10 @@ L=$V/bootstrap.log; s=$(now); r=fail
     t1=$(now) && "$V/pystachy1" ir pystachy.py -o "$V/stage2.ll" &&
     t2=$(now) && "$V/pystachy2" ir pystachy.py -o "$V/stage3.ll" && t3=$(now) &&
     cmp "$V/stage1.ll" "$V/stage2.ll" && cmp "$V/stage2.ll" "$V/stage3.ll" &&
-    echo "fixed point: stage1 == stage2 == stage3 ($(lines "$V/stage1.ll") lines of IR)" && r=pass
+    echo "fixed point: stage1 == stage2 == stage3 ($(lines "$V/stage1.ll") lines of IR)" &&
+    $PY pystachy.py rt runtime.py -o "$V/rt1.ll" && "$V/pystachy1" rt runtime.py -o "$V/rt2.ll" &&
+    "$V/pystachy2" rt runtime.py -o "$V/rt3.ll" && cmp "$V/rt1.ll" "$V/rt2.ll" && cmp "$V/rt2.ll" "$V/rt3.ll" &&
+    echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($(lines "$V/rt1.ll") lines)" && r=pass
 } > "$L" 2>&1
 x=""
 [ $r = pass ] && x=$(printf ', "ir_identical": true, "ir_lines": %s, "ir_sha256": "%s", "native_compiler_bytes": %s, "cpython_self_compile_seconds": %s, "native_self_compile_seconds": %s' \
@@ -116,6 +119,8 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
     nopy "$V/pystachy2" build pystachy.py -o "$V/pystachy-nopy" && ls "$V/home/build" &&
     nopy "$V/pystachy-nopy" ir pystachy.py -o "$V/stage-nopy.ll" &&
     cmp "$V/stage1.ll" "$V/stage-nopy.ll" && echo "rebuilt compiler emits the stage1 IR" &&
+    nopy "$V/pystachy-nopy" rt runtime.py -o "$V/rt-nopy.ll" && cmp "$V/rt1.ll" "$V/rt-nopy.ll" &&
+    echo "rebuilt compiler emits the rt1 IR of runtime.py" &&
     nopy sh tests/run.sh "$V/pystachy-nopy" && r=pass
 } > "$L" 2>&1
 x=$(tests "$L") || r=fail
@@ -199,8 +204,8 @@ ver() { "$@" 2>&1 | head -1; }
     "$(js "$("${LLVM}opt" --version 2>&1 | sed -n 's/^ *Host CPU: //p')")"
   printf '  "toolchain": {"python": %s, "clang": %s, "llvm": %s, "llvm_dir": %s},\n' "$(js "$(ver $PY --version)")" \
     "$(js "$(ver "${LLVM}clang" --version)")" "$(js "$(ver "${LLVM}opt" --version)")" "$(js "${PYSTACHY_LLVM:-PATH}")"
-  printf '  "sources": {"pystachy.py": {"lines": %s, "sha256": "%s"}, "runtime.c": {"lines": %s, "sha256": "%s"}, "test_programs": %s, "rejection_tests": %s},\n' \
-    "$(lines pystachy.py)" "$(sha pystachy.py)" "$(lines runtime.c)" "$(sha runtime.c)" \
+  printf '  "sources": {"pystachy.py": {"lines": %s, "sha256": "%s"}, "runtime.c": {"lines": %s, "sha256": "%s"}, "runtime.py": {"lines": %s, "sha256": "%s"}, "test_programs": %s, "rejection_tests": %s},\n' \
+    "$(lines pystachy.py)" "$(sha pystachy.py)" "$(lines runtime.c)" "$(sha runtime.c)" "$(lines runtime.py)" "$(sha runtime.py)" \
     "$(ls tests/*.py | wc -l | tr -d ' ')" "$(ls tests/errors/*.py | wc -l | tr -d ' ')"
   printf '  "steps": [\n'; cat "$V/steps.json"; printf '\n  ]\n}\n'
 } > "$OUT"

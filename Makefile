@@ -2,7 +2,7 @@
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= python3
 
-pystachy: pystachy.py runtime.c
+pystachy: pystachy.py runtime.c runtime.py
 	mkdir -p build
 	$(PY) pystachy.py build pystachy.py -o build/pystachy1
 	build/pystachy1 build pystachy.py -o build/pystachy2
@@ -11,6 +11,11 @@ pystachy: pystachy.py runtime.c
 	build/pystachy2 ir pystachy.py -o build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
+	$(PY) pystachy.py rt runtime.py -o build/rt1.ll
+	build/pystachy1 rt runtime.py -o build/rt2.ll
+	build/pystachy2 rt runtime.py -o build/rt3.ll
+	cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+	@echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($$(wc -l < build/rt1.ll) lines)"
 	cp build/pystachy2 pystachy
 
 test: pystachy
@@ -53,6 +58,7 @@ ref:
 	  echo "build/ref: building the compiler of $(REF) ($$c)"; \
 	  rm -rf build/ref && mkdir -p build/ref && \
 	  git show $$c:pystachy.py > build/ref/pystachy.py && git show $$c:runtime.c > build/ref/runtime.c && \
+	  { ! git cat-file -e $$c:runtime.py 2> /dev/null || git show $$c:runtime.py > build/ref/runtime.py; } && \
 	  { ! git cat-file -e $$c:lib 2> /dev/null || git archive $$c lib | tar -xf - -C build/ref; } && \
 	  PYSTACHY_HOME= $(PY) build/ref/pystachy.py build build/ref/pystachy.py -o build/ref/pystachy1 && \
 	  PYSTACHY_HOME= build/ref/pystachy1 build build/ref/pystachy.py -o build/ref/pystachy && \

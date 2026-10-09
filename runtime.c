@@ -846,39 +846,13 @@ I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
-I pys_m_gcd(I a, I b) { uint64_t x = a < 0 ? 0 - (uint64_t)a : a, y = b < 0 ? 0 - (uint64_t)b : b; while (y) { uint64_t t = x % y; x = y; y = t; } if (x >> 63) pys_fail(OVF); return (I)x; }
-I pys_m_lcm(I a, I b) {                       /* |a / gcd * b|; a product of -2**63 has no 64-bit absolute value */
-  if (!a || !b) return 0;
-  I g = pys_m_gcd(a, b), r;
-  if (__builtin_mul_overflow(a / g, b, &r) || r == INT64_MIN) pys_fail(OVF);
-  return r < 0 ? -r : r;
-}
-I pys_m_isqrt(I n) {
-  if (n < 0) pys_fail("ValueError: isqrt() argument must be nonnegative");
-  I r = (I)sqrt((double)n);
-  while (r > 0 && r > n / r) r--;
-  while ((r + 1) <= n / (r + 1)) r++;
-  return r;
-}
-I pys_m_factorial(I n) {
-  if (n < 0) pys_fail("ValueError: factorial() not defined for negative values");
-  I r = 1; for (I i = 2; i <= n; i++) if (__builtin_mul_overflow(r, i, &r)) pys_fail(OVF);
-  return r;
-}
-I pys_m_comb(I n, I k) {
-  if (n < 0 || k < 0) pys_fail(n < 0 ? "ValueError: n must be a non-negative integer" : "ValueError: k must be a non-negative integer");
-  if (k > n) return 0;
-  if (k > n - k) k = n - k;
-  unsigned __int128 r = 1;
-  for (I i = 1; i <= k; i++) { r = r * (n - k + i) / i; if (r >> 63) pys_fail(OVF); }
-  return (I)r;
-}
-I pys_m_perm(I n, I k) {
-  if (n < 0 || k < 0) pys_fail(n < 0 ? "ValueError: n must be a non-negative integer" : "ValueError: k must be a non-negative integer");
-  if (k > n) return 0;
-  I r = 1; for (I i = 0; i < k; i++) if (__builtin_mul_overflow(r, n - i, &r)) pys_fail(OVF);
-  return r;
-}
+/* math.gcd, lcm, isqrt, factorial, comb and perm are in runtime.py */
+I pys_m_gcd(I a, I b);
+I pys_m_lcm(I a, I b);
+I pys_m_isqrt(I n);
+I pys_m_factorial(I n);
+I pys_m_comb(I n, I k);
+I pys_m_perm(I n, I k);
 
 static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
   double m = fmod(a, b), d = (a - m) / b;
