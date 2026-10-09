@@ -20,7 +20,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
     - the two dict hash functions, from `hsh()`, which runtime.c's dict code calls on every lookup;
     - the format-spec mini-language, in 3 functions, from `pys_format()`. runtime.c keeps a 7-line dispatcher and the `snprintf` calls that write a float's digits.
 
-  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 792 (1,050 with comments). The compiler gains 236 lines net (+249/−13).
+  runtime.c loses 328 lines of code (2,470 → 2,142, comments and blank lines aside); `runtime.py` has 829 (1,103 with comments). The compiler gains 236 lines net (+249/−13).
 - **How.** `pystachy rt runtime.py` compiles the file in a *runtime mode*:
   - functions named `pys_*` are defined under their C names, with runtime.c's types;
   - `def f(...) -> T: ...` declares a C function;
@@ -30,12 +30,12 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and is now
 - **Performance: at parity on whole programs, within 10% on most moved functions** (§2.4).
   - The eight programs of `bench/` take 0.99 to 1.01 times the C runtime's CPU time AOT, and 0.96 to 1.05 JIT. They execute 0.997 to 1.003 times its instructions (callgrind). The compiler compiles itself in the same time (0.999), with 1.2% more instructions.
   - The first measurement found `words` and `dictkeys` 10% and 5% slower, all of it in `join` and `split`. Both were fixed (§2.4.2).
-  - The 22 microbenchmarks of the moved functions (§2.4.2) have a median of 1.06 AOT and 1.02 JIT. A `find` that `memchr` speeds up 16-fold is the best case. Phrase replacement in English-like text and `math.comb`, at about 1.2, are the worst.
-  - An adversarial performance review found substring search O(n·m) at first, up to 263 times slower with long needles. It is now linear, at runtime.c's speed. Nothing it measured on the final code is 2 times slower (§2.10).
+  - The 23 microbenchmarks of the moved functions (§2.4.2) have a median of 1.02 AOT and 0.99 JIT. A `find` that `memchr` speeds up 16-fold is the best case. Short calls, such as `strip()` and `ljust(8)` of short words at 1.15 to 1.17, are the worst.
+  - An adversarial performance review found substring search O(n·m) at first, up to 263 times slower with long needles. It is now linear, at runtime.c's speed. Nothing it measured on the final code is 2 times slower, and its slowest case, `count("</span>")` in HTML-like text at 1.7 to 1.9, now takes runtime.c's time (§2.10).
   - Without the primitives, the same code is 3 to about 20 times slower (§2.4.3).
   - Programs that use format specs get 6% to 17% larger executables (§2.3).
 - **What it buys.**
-  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 264,000 cases in about one second, with no compilation.
+  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 271,000 cases in about one second, with no compilation.
     - When the format code moved, rtcheck's new format fuzzer found that runtime.c gave the wrong error message for a repeated `,` or `_`.
     - A compiled differential review of the moved format code found no regression in about 210,000 cases. It did find that runtime.c cut format error messages at 511 bytes and at a NUL, and read the presentation type as a byte.
     - All three are fixed in `runtime.py`, with tests recorded from CPython (§2.2). So is a hang: runtime.c's `expandtabs` grew memory without bound for a huge tab size (§2.1).
@@ -151,7 +151,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 | 2 hash functions | runtime.c's former formulas, computed over unsigned 64-bit ints |
 | format, for int, bool, float and str | `format()` on random specs, some of them malformed: NUL, control and non-ASCII presentation types, and specs of 600 bytes. runtime.c's `pys_fmt_float` is replaced by CPython's own float formatting, which is what it reproduces. |
 
-- A default run makes 261,562 comparisons in about one second. It is a step of `make verify`.
+- A default run makes 271,136 comparisons in about one second. It is a step of `make verify`.
 - **Mutation check.** Eight bugs planted in `runtime.py` were all detected. They covered whitespace, centering, overlapping `count`, case mapping, `maxsplit`, line breaks, `rfind`'s start and the sign of `gcd`.
 - **What it does not test.**
   - 64-bit overflow, because CPython's ints grow. The differential tests compile the same code and check that.
@@ -209,7 +209,7 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 
     Written the same way in the subset, both would have raised `OverflowError` at the faulty operation instead of computing a wrong value. For `lcm` that is the documented 64-bit deviation. For `split` it would still have been a bug: CPython returns the whole split there. But it would have been a loud one.
   - The C code had to test for overflow by hand, and the tests were sometimes missing. For example, `pys_str_join` summed its parts' lengths unchecked. That sum cannot overflow in practice, but nothing in the code says so. In `runtime.py`, the check is there by default.
-  - runtime.c's `comb` needed `unsigned __int128` to stay exact. `runtime.py` multiplies directly unless `mul_ovf` says the product would overflow, and otherwise reduces by a gcd first. No step overflows unless the result does.
+  - runtime.c's `comb` needed `unsigned __int128` to stay exact. `runtime.py` multiplies directly unless `mul_ovf` says the product would overflow, and otherwise splits the quotient: `r * m // i` is `r // i * m + r % i * m // i`. No step overflows unless the result does.
 - **Fixed buffers are gone** from the moved code: the format code's `char r[70]` digit buffer and its `failf` buffer of 512 bytes.
   - The second was too small. A spec of 600 bytes cut the `Invalid format specifier` message at 511 bytes, and `%s` stopped it at a NUL in the spec.
   - `runtime.py` reports the whole spec, as CPython does (§2.2).
@@ -232,9 +232,9 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 
 ### 2.2 Quality and testability
 
-- **One language for the semantics.** The moved functions now read like the CPython behaviour they implement. `pys_str_count` is a loop over `search()` instead of `memmem` pointer arithmetic.
+- **One language for the semantics.** The moved functions now read like the CPython behaviour they implement. `pys_str_find` is CPython's index adjustment and a `search()`, instead of `memmem` pointer arithmetic.
 - **Differential testing in-process.** `rtcheck` is the RPython idea (§3): run the runtime on the host interpreter.
-  - It compares about 300,000 cases per second against CPython itself (261,562 in about 0.9 s). The differential test suite compiles each program twice and runs it.
+  - It compares about 300,000 cases per second against CPython itself (271,136 in about 0.9 s). The differential test suite compiles each program twice and runs it.
   - On its first run, its format fuzzer found that runtime.c reported `Cannot specify both ',' and '_'.` for `f"{x:,,}"` and `f"{x:__}"`. CPython reads `,` and then `_`, so a second `,` or `_` is taken as the presentation type: `Cannot specify ',' with ','.` The fix is three lines of `runtime.py`.
   - A compiled differential review of the moved format code ran about 210,000 cases, JIT and AOT, under GC stress too. It found no regression, and found that runtime.c:
     - cut `Invalid format specifier` messages at 511 bytes (its `failf` buffer) and at a NUL in the spec;
@@ -326,35 +326,36 @@ So the moved methods are a real part of its work, and the biggest item, `==`, is
 | microbenchmark (`tools/rtbench/`) | AOT C | AOT subset | ratio | JIT ratio |
 |---|---:|---:|---:|---:|
 | `find_long`: `t.find(w, i % 7)`, 200 KB text, word absent | 0.044 | 0.003 | 0.06 | 0.46 |
+| `math_comb`: `comb`, `factorial`, `isqrt` | 0.024 | 0.018 | 0.75 | 0.89 |
 | `pad_zfill`: `zfill`, `ljust` with `*`, `center` | 0.097 | 0.075 | 0.77 | 0.84 |
+| `replace_text`: phrases in 1 MB of English-like text | 0.058 | 0.045 | 0.78 | 0.87 |
 | `splitlines_long`: 10,000 lines of 1 KB | 0.185 | 0.158 | 0.85 | 0.89 |
 | `split_sep`: `split(",")`, 140 KB | 0.037 | 0.035 | 0.94 | 0.96 |
 | `join_many`: `",".join(10,000 parts)` | 0.015 | 0.015 | 0.98 | 0.99 |
+| `replace`: `replace("at", "og")`, 115 KB | 0.031 | 0.030 | 0.99 | 1.04 |
 | `find_worst`: a 200,001-byte needle that almost matches, in 2 MB | 0.474 | 0.475 | 1.00 | 1.00 |
 | `math_gcd` | 0.204 | 0.204 | 1.00 | 0.99 |
 | `fmt_mix`: f-strings with int, float and str specs | 0.460 | 0.463 | 1.01 | 1.06 |
 | `find_dense`: a 20-byte needle in text that matches its first 19 bytes every 19 bytes; `rfind` | 0.119 | 0.121 | 1.02 | 1.05 |
-| `replace`: `replace("at", "og")`, 115 KB | 0.029 | 0.030 | 1.03 | 1.05 |
 | `isdigit_short` | 0.099 | 0.103 | 1.03 | 0.92 |
+| `count_html`: `count` and `find` of tags in 1.2 MB of HTML-like text | 0.056 | 0.058 | 1.04 | 1.02 |
 | `split_ws`: `split()`, 200 KB | 0.031 | 0.034 | 1.09 | 1.03 |
+| `in_short`: `"mm" in w`, short words | 0.091 | 0.099 | 1.09 | 1.08 |
 | `strip_chars`: `strip` with a 95-byte set, 4 MB | 0.161 | 0.178 | 1.10 | 1.08 |
-| `in_short`: `"mm" in w`, short words | 0.089 | 0.099 | 1.11 | 1.08 |
 | `upper_lower`: `upper()` and `lower()`, 120 KB | 0.031 | 0.035 | 1.11 | 0.98 |
 | `swapcase`: `swapcase()` and `capitalize()`, 1 MB | 0.312 | 0.350 | 1.12 | 0.92 |
+| `count_ab`: `count("ab")`, `count("a")`, dense matches | 0.139 | 0.155 | 1.12 | 1.02 |
 | `startswith_short` | 0.052 | 0.059 | 1.13 | 1.05 |
 | `ljust_tiny`: `ljust(8)` of short words | 0.052 | 0.060 | 1.15 | 0.74 |
-| `count_ab`: `count("ab")`, `count("a")`, dense matches | 0.137 | 0.158 | 1.16 | 1.08 |
 | `strip_short`: `strip()`, short words | 0.032 | 0.038 | 1.17 | 1.06 |
-| `math_comb`: `comb`, `factorial`, `isqrt` | 0.023 | 0.028 | 1.22 | 1.05 |
-| `replace_text`: phrases in 1 MB of English-like text | 0.056 | 0.069 | 1.23 | 1.13 |
-| **median** | | | **1.06** | **1.02** |
+| **median** | | | **1.02** | **0.99** |
 
-- **Where the subset wins.** `find` with a rare first byte runs 16 times faster. `search()` looks for the needle's first byte with `memchr` (AVX2 in glibc). runtime.c called glibc's `memmem`. For needles of 3 to 256 bytes that is a scalar loop over 2-byte hashes with a 256-entry shift table, which it clears on every call; above 256 bytes it uses Two-Way. This is a best case. With dense matches (`count_ab`), an inline 16-byte scan before `memchr` keeps the cost close to `memmem`'s. Padding writes its fill with stores that LLVM turns into `memset`, where runtime.c called `memcpy` once per fill character.
+- **Where the subset wins.** `find` with a rare first byte runs 16 times faster. `search()` looks for the needle's first byte with `memchr` (AVX2 in glibc). runtime.c called glibc's `memmem`. For needles of 3 to 256 bytes that is a scalar loop over 2-byte hashes with a 256-entry shift table, which it clears on every call; above 256 bytes it uses Two-Way. This is a best case. Where the first byte is common and its candidates fail, as in English text for `"the lazy dog"` (`replace_text`), `search()` hands the rest of the text to `memmem` after a few candidates (§2.10). With dense matches, an inline 8-byte scan before `memchr` saves a call for each nearby candidate. `comb` divides as unsigned 64-bit ints, where runtime.c divided 128-bit ones. Padding writes its fill with stores that LLVM turns into `memset`, where runtime.c called `memcpy` once per fill character.
 - **Where it loses.**
-  - `replace_text` (1.23) and `count_ab` (1.16) pay a call and a bounds-checked compare per candidate, where `memmem` stays in one loop.
-  - `strip` on short words (1.17) and `startswith` (1.13) are short calls, where runtime.c's versions inlined into the program's loop and `runtime.py`'s do not.
-  - `comb` (1.22) executes 20% fewer instructions than runtime.c's but is slower, for the same reason: runtime.c's `comb` and `isqrt` were inlined into the benchmark's loop.
+  - `strip` on short words (1.17), `ljust(8)` (1.15) and `startswith` (1.13) are short calls, where runtime.c's versions inlined into the program's loop and `runtime.py`'s do not.
+  - `count_ab` (1.12) ends up where runtime.c did: `count("ab")` in `memmem`, and `count("a")` in a `memchr` from each `a` to the next. An inline scan would take half the time on `count("a")`, but mispredicts its exit where the byte is less dense, as `<` is in HTML (§2.10).
   - All of these are small, local fixes or questions of inlining thresholds.
+- The rows of `count_html`, `count_ab`, `in_short`, `replace`, `replace_text` and `math_comb` were measured again after the search and `comb` changes of §2.10, the same way; the others' code did not change. Before those changes `count_ab` took 1.16, `replace_text` 1.23, and `math_comb` 1.22: its signed floor division cost more than runtime.c's 128-bit division.
 
 #### 2.4.3 What the primitives are worth
 
@@ -519,7 +520,15 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   | `splitlines()` on 1 KB lines | 1.77 | 0.86 | a call to `eol()` per byte |
   | `ljust(8)` of short words | 2.2 | 1.19 | runtime.c's small `pad` inlined into the program; the subset's called `fillrun` |
 
-  What remains is under 2×. `count("</span>")` in HTML-like text takes 1.7–1.9 times as long: a candidate every 9 bytes, each too short to reach the cutover. A million 2-byte matches in `replace` take 1.3 times; `math.comb` near the 64-bit limit 1.33, `isqrt` 1.24, and very short `find` and `count` calls 1.2–1.3, where runtime.c's functions were inlined into the program. In the other direction, `count("abc")` with dense matches takes 0.42 (glibc's `memmem` clears its table on every call), long `ljust` and `center` 0.13–0.26, `expandtabs` 0.32–0.56, and f-strings with huge widths 0.35.
+  What remained was under 2×, and a later change took most of it back to runtime.c's time. The ratios below are AOT CPU time against runtime.c on our reproductions, before and after it; `tools/rtbench/count_html.py` is the first.
+  - `count("</span>")` in HTML-like text took 1.7–1.9 times as long: a candidate at each `<`, every 9 bytes, each failing too cheaply to reach the cutover. A failed candidate now also counts for what `memmem` spends on 32 bytes, so such text goes to `memmem` after a few candidates, as it did in runtime.c. `count` runs that loop itself, without a call per occurrence; `replace` and `split` learn from `search()` that it went to `memmem`, and stay with it for the rest of the text. `count` and `find` of tags in 1.2 MB of HTML: 1.86 → 1.04 (2.60 → 1.07 in instructions).
+  - A one-byte `count` calls `memchr` from each occurrence to the next. An inline scan before it, as `search()` makes over 8 bytes, mispredicts its exit at each `<` of HTML: `count("<")` there took 2.05, and takes 1.13.
+  - A million 2-byte matches in `replace` took 1.3 times as long: 1.36 → 1.05.
+  - `math.comb` near the 64-bit limit took 1.33: 1.38 → 0.83, with unsigned division and the quotient split where a product overflows. `isqrt` took 1.24: 1.38 → 1.16, fixing up its float root with squares instead of quotients.
+  - Very short `find` and `count` calls took 1.2–1.3: 1.29 → 1.17, where runtime.c's functions were inlined into the program and `runtime.py`'s are not.
+  - One case got slower: `count("</")` in the same HTML, 0.98 → 1.04, with 12% fewer instructions. Its failed candidates now hand it to `memmem`'s 2-byte loop, as in runtime.c.
+
+  In the other direction, `count("abc")` with dense matches took 0.42 (glibc's `memmem` clears its table on every call), and now, without a call per occurrence, 0.17 (0.31 before on our reproduction); long `ljust` and `center` 0.13–0.26, `expandtabs` 0.32–0.56, and f-strings with huge widths 0.35.
 - **GC and memory safety.** The reviewer found no defect in `runtime.py` at three heads, including the final one.
   - **What it ran.** Every moved function under the real collector at GC stress 0, 1 and 7, and under a collector that poisons dead memory and zeroes new slots, JIT and AOT.
   - **Sanitizers.** It ran ASan on runtime.c, ASan on `runtime.py`'s IR as well, and ASan with one `calloc` block per object, plus the official UBSan mode.
@@ -637,7 +646,7 @@ Sources and line counts: the research notes behind this table measured each repo
 | file | change |
 |---|---|
 | `pystachy.py` | +249/−13 lines:<br>• runtime mode (`rtmode`, exported and external functions and their checks, `RTL` and `primitive()`, nsw range steps);<br>• `pystachy rt`;<br>• the driver's runtime build and cache rule |
-| `runtime.py` | new, 1,050 lines (792 of code) |
+| `runtime.py` | new, 1,103 lines (829 of code) |
 | `runtime.c` | −328 lines of code. It keeps prototypes for the moved functions, the format dispatcher and `pys_fmt_float`. |
 | `tools/rt_cpython/_rt.py`, `tools/rtcheck.py` | CPython's primitives and the differential fuzzer |
 | `tools/rtabi.py` | the ABI check across `runtime.py`, runtime.c and the corpus |
@@ -645,7 +654,7 @@ Sources and line counts: the research notes behind this table measured each repo
 | `Makefile`, `tests/verify.sh`, `tests/run.sh` | the runtime fixed point, the Python-free check, the `rtcheck` and `rt-abi` steps, dictprobe's link; `run.sh` compiles `tests/errors/rtmode_*.py` as runtime code |
 | `tools/dictprobe.c` | its usage note: the build links `runtime.py`'s IR |
 | `README.md` | `runtime.py` in the file table, the pipeline, the bootstrap and the verification steps |
-| `tests/rt_format_{comma_twice,underscore_twice,long_spec,nul_spec,type_code}.py`, `tests/rt_ljust_huge.py`, `tests/rt_expandtabs_huge.py`, `tests/errors/rtmode_*.py` | the format fixes' regression tests, `ljust`'s and `expandtabs`'s, and runtime mode's rejections (eight cases) |
+| `tests/rt_format_{comma_twice,underscore_twice,long_spec,nul_spec,type_code}.py`, `tests/rt_ljust_huge.py`, `tests/rt_expandtabs_huge.py`, `tests/rt_search_dense.py`, `tests/rt_comb_isqrt_edges.py`, `tests/errors/rtmode_*.py` | the format fixes' regression tests, `ljust`'s and `expandtabs`'s, the search and `comb`/`isqrt` changes of §2.10, and runtime mode's rejections (eight cases) |
 | `docs/runtime-inventory.tsv` | the per-function inventory behind §1.7 |
 
 ## Appendix B: reproducing the measurements

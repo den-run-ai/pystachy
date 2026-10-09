@@ -45,10 +45,12 @@ def pys_m_lcm(a: int, b: int) -> int:
 def pys_m_isqrt(n: int) -> int:
     if n < 0:
         raise ValueError("isqrt() argument must be nonnegative")
+    # the float root is within one of the answer; squares fix it up, which cost less than quotients
+    # (mul_ovf: a square past the largest int is past n)
     r = int(math.sqrt(float(n)))
-    while r > 0 and r > n // r:
+    while _rt.mul_ovf(r, r) or r * r > n:
         r -= 1
-    while r + 1 <= n // (r + 1):
+    while not _rt.mul_ovf(r + 1, r + 1) and (r + 1) * (r + 1) <= n:
         r += 1
     return r
 
@@ -76,16 +78,16 @@ def pys_m_comb(n: int, k: int) -> int:
     if k > n - k:
         k = n - k
     # r = C(n - k + i, i) after step i, which never exceeds the result. i divides r * m, so where
-    # that product overflows, i // g divides m for g = gcd(r, i), and no step overflows unless the
-    # result does
+    # that product overflows, r * m // i is r // i * m + r % i * m // i, and no step overflows
+    # unless the result does (r % i * m < i * m, and where i * m reaches 2**63 so does C(n, k)).
+    # All are positive: unsigned division, which is much faster than floor division
     r = 1
     for i in range(1, k + 1):
         m = n - k + i
         if _rt.mul_ovf(r, m):
-            g = pys_m_gcd(r, i)
-            r = r // g * (m // (i // g))
+            r = _rt.udiv(r, i) * m + _rt.udiv(_rt.urem(r, i) * m, i)
         else:
-            r = r * m // i
+            r = _rt.udiv(r * m, i)
     return r
 
 
@@ -125,23 +127,29 @@ def adj_end(en: int, n: int) -> int:
 
 
 def match(h: str, i: int, n: str) -> bool:
-    # whether n occurs in h at i, which leaves room for it: byte by byte while it is short, else memcmp
+    # whether n occurs in h at i, which leaves room for it, given that its first byte does: byte by
+    # byte while it is short, else memcmp. (A wrapping add, as byte() checks the index anyway: match
+    # and scan stay small enough for LLVM to inline into both search loops.)
     m = len(n)
     if m > 8:
         return _rt.same(h, i, n, 0, m)
-    for j in range(m):
-        if _rt.byte(h, i + j) != _rt.byte(n, j):
+    for j in range(1, m):
+        if _rt.byte(h, _rt.wrap_add(i, j)) != _rt.byte(n, j):
             return False
     return True
 
 
 def scan(s: str, c: int, i: int, n: int) -> int:
-    # the first k in [i, n) where byte k of s is c, or -1. (Scans are range loops, which step
-    # with an nsw add, so LLVM can drop byte()'s index check; a while loop's += is checked.)
-    for k in range(i, n):
+    # the first k in [i, n) where byte k of s is c, or -1: inline over 8 bytes (dense candidates),
+    # then memchr (sparse ones). (Scans are range loops, which step with an nsw add, so LLVM can
+    # drop byte()'s index check; a while loop's += is checked.)
+    stop = _rt.wrap_add(i, 8)
+    if stop > n:
+        stop = n
+    for k in range(i, stop):
         if _rt.byte(s, k) == c:
             return k
-    return -1
+    return _rt.find_byte(s, c, stop, n) if stop < n else -1
 
 
 def scan_ws(s: str, i: int, n: int, want: bool) -> int:
@@ -153,11 +161,20 @@ def scan_ws(s: str, i: int, n: int, want: bool) -> int:
 
 
 def search(h: str, n: str, st: int, en: int) -> int:
-    # the first i from st on where n occurs in h[:en], or -1: the next occurrence of n's first
-    # byte, looked for inline over 16 bytes (dense matches) and then with memchr (sparse ones),
-    # and checked. A candidate that fails costs up to len(n) comparisons, so once those exceed
-    # the bytes passed so far, the rest goes to memmem, which is linear: the work stays below
-    # about twice the text's length (Go's strings.Index makes a similar cutover)
+    # the first i from st on where n occurs in h[:en], or -1
+    i = seek(h, n, st, en)
+    return -2 - i if i < -1 else i
+
+
+def seek(h: str, n: str, st: int, en: int) -> int:
+    # search(), but -2 - i where memmem found i: the next occurrence of n's first byte (scan),
+    # checked. A failed candidate costs about what memmem spends on 32 bytes, and up to len(n)
+    # comparisons, so once failed candidates have cost more than the bytes passed (and 64), the rest
+    # goes to memmem, which is linear and skips ahead: the work stays below about twice the text's
+    # length (Go's strings.Index makes a similar cutover). A first byte as common as each "<" of
+    # HTML for "</span>" thus goes to memmem soon, as runtime.c did, and a rare one stays with
+    # memchr, which is much faster there. The -2 - i tells a loop over the occurrences to stay with
+    # memmem (again())
     m = len(n)
     if m == 0:
         return st if st <= en else -1
@@ -166,21 +183,22 @@ def search(h: str, n: str, st: int, en: int) -> int:
     i = st
     work = 0
     while i <= last:
-        stop = i + 16 if i + 16 <= last else last + 1
-        k = scan(h, first, i, stop)
-        if k < 0:
-            if stop > last:
-                return -1
-            k = _rt.find_byte(h, first, stop, last + 1)
-            if k < 0:
-                return -1
-        if match(h, k, n):
+        k = scan(h, first, i, last + 1)
+        if k < 0 or match(h, k, n):
             return k
-        work += m
+        work += m + 32
         if work > k - st + 64:
-            return _rt.find_sub(h, n, k + 1, en)
+            k = _rt.find_sub(h, n, k + 1, en)
+            return -2 - k if k >= 0 else -1
         i = k + 1
     return -1
+
+
+def again(h: str, n: str, st: int, en: int, dense: bool) -> int:
+    # the next seek() of a loop over the occurrences of n, or memmem once one found them dense
+    if dense:
+        return _rt.find_sub(h, n, st, en)
+    return seek(h, n, st, en) if en - st >= len(n) else -1
 
 
 def rsearch(h: str, n: str, st: int, en: int) -> int:
@@ -222,20 +240,45 @@ def pys_str_rindex(h: str, n: str, st: int, en: int) -> int:
 def pys_str_count(h: str, n: str, st: int, en: int) -> int:
     st = adj_start(st, len(h))
     en = adj_end(en, len(h))
-    if en - st < len(n):
+    m = len(n)
+    if en - st < m:
         return 0
-    if len(n) == 0:
+    if m == 0:
         return en - st + 1
+    first = _rt.byte(n, 0)
     c = 0
-    i = search(h, n, st, en)
-    while i >= 0:
-        c += 1
-        i = search(h, n, i + len(n), en) if en - i - len(n) >= len(n) else -1
+    if m == 1:
+        # memchr from each occurrence to the next: an inline scan would mispredict its exit at each
+        k = _rt.find_byte(h, first, st, en)
+        while k >= 0:
+            c += 1
+            k = _rt.find_byte(h, first, k + 1, en)
+        return c
+    # seek()'s loop, counting, without a call per occurrence
+    last = en - m
+    i = st
+    work = 0
+    while i <= last:
+        k = scan(h, first, i, last + 1)
+        if k < 0:
+            break
+        if match(h, k, n):
+            c += 1
+            i = k + m
+        else:
+            work += m + 32
+            if work > k - st + 64:
+                k = _rt.find_sub(h, n, k + 1, en)
+                while k >= 0:
+                    c += 1
+                    k = _rt.find_sub(h, n, k + m, en)
+                break
+            i = k + 1
     return c
 
 
 def pys_str_contains(h: str, n: str) -> int:
-    return 1 if len(n) <= len(h) and search(h, n, 0, len(h)) >= 0 else 0
+    return 1 if len(n) <= len(h) and seek(h, n, 0, len(h)) != -1 else 0
 
 
 def tail(s: str, p: str, st: int, en: int, end: bool) -> int:
@@ -268,10 +311,17 @@ def pys_str_replace(s: str, a: str, b: str) -> str:
         _rt.copy(r, at, b, 0, len(b))
         return _rt.str_done(r)
     pos: list[int] = []  # where a occurs: one search pass, not one to count and one to copy
-    j = search(s, a, 0, n) if len(a) <= n else -1
-    while j >= 0:
+    dense = False
+    j = 0
+    while True:
+        j = again(s, a, j, n, dense)
+        if j == -1:
+            break
+        if j < -1:
+            dense = True
+            j = -2 - j
         pos.append(j)
-        j = search(s, a, j + len(a), n) if n - j - len(a) >= len(a) else -1
+        j += len(a)
     r = _rt.str_new(n + len(pos) * (len(b) - len(a)))
     i = 0
     at = 0
@@ -669,11 +719,15 @@ def pys_str_split(s: str, sep: str, maxsplit: int) -> list[str]:
     if len(sep) == 0:
         raise ValueError("empty separator")
     c = _rt.byte(sep, 0) if len(sep) == 1 else -1
+    dense = False
     while left != 0:
         if c >= 0:
             j = _rt.find_byte(s, c, i, n)  # one byte: memchr, no search setup per part
         else:
-            j = search(s, sep, i, n) if n - i >= len(sep) else -1
+            j = again(s, sep, i, n, dense)
+            if j < -1:
+                dense = True
+                j = -2 - j
         if j < 0:
             break
         left -= 1

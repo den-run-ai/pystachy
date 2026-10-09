@@ -140,10 +140,12 @@ def fits(r):
 def fuzz_math():
     for _ in range(N):
         a, c = num(), num()
+        q = R.randrange(3037000500 >> R.randrange(32))  # up to the root of 2**63: squares, where the float root can fall short
         for name, mine, ref, args in [
             ("gcd", rt.pys_m_gcd, math.gcd, (a, c)),
             ("lcm", rt.pys_m_lcm, math.lcm, (a, c)),
             ("isqrt", rt.pys_m_isqrt, math.isqrt, (a,)),
+            ("isqrt", rt.pys_m_isqrt, math.isqrt, (q * q + R.choice([-1, 0, 1]),)),
             ("factorial", rt.pys_m_factorial, math.factorial, (R.randrange(-2, 21),)),
             ("comb", rt.pys_m_comb, math.comb, (R.randrange(-2, 70), R.randrange(-2, 40))),
             ("perm", rt.pys_m_perm, math.perm, (R.randrange(-2, 30), R.randrange(-2, 15))),
@@ -247,6 +249,21 @@ def fuzz_search():
         ]:
             same(name, outcome(mine, h, n, st, en), outcome(ref), (h, n, st, en))
         same("split", outcome(rt.pys_str_split, h, n, -1), outcome(h.split, n), (h, n))
+        same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
+    # HTML-like text: a candidate at each "<", most of them failing, between many occurrences, so
+    # count, replace and split go on with memmem once the failures turn out dense
+    tags = ["<span>", "</span>", "<b>", "</b>", "<br>", "x", "yz", " "]
+    for _ in range(N // 10):
+        h = "".join(R.choice(tags) for _ in range(R.randrange(1, 80)))
+        n = R.choice(["</span>", "</b>", "<", "</", "span>", "<b>x", "</span><", "<i>"])
+        st, en = R.choice([0, 0, 5, -30]), R.choice([len(h), len(h), len(h) - 3, 100])
+        for name, mine, ref in [
+            ("find", rt.pys_str_find, lambda: h.find(n, st, en)),
+            ("count", rt.pys_str_count, lambda: h.count(n, st, en)),
+        ]:
+            same(name, outcome(mine, h, n, st, en), outcome(ref), (h, n, st, en))
+        m = R.choice([-1, -1, 3])
+        same("split", outcome(rt.pys_str_split, h, n, m), outcome(h.split, n, m), (h, n, m))
         same("replace", outcome(rt.pys_str_replace, h, n, "X"), outcome(h.replace, n, "X"), (h, n))
 
 
