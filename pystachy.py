@@ -9814,7 +9814,10 @@ class Gen:
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         # the blocks that branch to each block of fn, by label, as positions in fn.blocks, once
-        # each (a check's raising edge aside: its cold block ends the program)
+        # each, and the unwind edges: a block that a try statement covers (Blk.handler, which
+        # eh_ir has not made invokes yet) goes to its landing block, where an op of it that
+        # raises goes. A check's raising edge is left out: its cold block raises, ending the
+        # program or, covered itself, going to a landing block (an unwind edge of its own)
         pl: dict[str, list[int]] = {}
         for b in fn.blocks:
             pl[b.label] = []
@@ -9823,6 +9826,9 @@ class Gen:
             for l in code[len(code) - 1].b:
                 if j not in pl[l]:
                     pl[l].append(j)
+            h = fn.blocks[j].handler
+            if h != "" and h in pl and j not in pl[h]:
+                pl[h].append(j)
         return pl
 
     def listget(self, fn: IFn) -> int:
@@ -9831,7 +9837,9 @@ class Gen:
         # list.get of that list at that index, on the one path from there with no op between
         # that may shorten a list (wL, or U: user code), needs no bounds check: it becomes a
         # list.load, which lowers to an inline load. The path goes only to blocks that one
-        # branch leads to, so that no other path (from a handler, say) reaches the read. How
+        # branch leads to, so that no other path reaches the read: not a handler's either,
+        # whose code (after a landing block, which only unwind edges reach, see preds) joins
+        # this path only after its try statement or at a loop's test, where paths meet. How
         # many reads it rewrote
         some = False
         for lp in fn.loops:
@@ -9878,8 +9886,12 @@ class Gen:
         # in d after a getitem, and where the test of a has's result is true. A forward pass over
         # the blocks in order keeps the lookups that hold at the end of each block (Lookup, by
         # position in looks: True where k is known to be in d), from the blocks that branch to a
-        # block, and none from a later one (a loop's back edge); an op with wD or U, and a set
-        # that reuses no entry, ends them all. d and k must be the same values (canon). At most
+        # block, and none from a later one (a loop's back edge) nor in a landing block, which
+        # unwind edges reach (preds): what holds where an op raises is not what holds at the end
+        # of its block (a getitem that raised KeyError ends its block knowing k in d), so a
+        # handler's code knows only its own lookups, and so does the code after its try
+        # statement, where the handler's end joins. An op with wD or U, and a set that reuses no
+        # entry, ends them all. d and k must be the same values (canon). At most
         # LOOKUPS hold at once (the oldest gives way), and a block's state is dropped once the
         # last block it branches to has read it, so that the work and the memory grow linearly
         # with the function. How many ops it rewrote
@@ -9910,7 +9922,7 @@ class Gen:
             st = none
             own = False
             ps = pl[b.label]
-            back = False
+            back = len(b.code) > 0 and b.code[0].op == "landing"  # (only unwind edges reach it: none holds)
             for p in ps:
                 back = back or p >= j  # (a loop's back edge: none holds)
             for x in range(len(ps) if not back else 0):

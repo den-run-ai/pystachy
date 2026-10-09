@@ -222,6 +222,24 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     the set of the key it holds, which dictfuse fuses as any other. Only
 >     `tests/bool_int_key.py` and `tests/tuplekey_none.py` of the corpus change; the
 >     self-compile does not. `tests/ir/bool_keys.py` pins both paths.
+>   - Exception edges (the exceptions above): the passes run before `eh_ir`, where a block that
+>     a try statement covers still names its landing block in `Blk.handler`, and `Gen.preds`
+>     counts that unwind edge: every covered block is a predecessor of its landing block (a
+>     check's raising edge stays out: its cold block, covered too, is such a predecessor). A
+>     rewritten op that may raise (`dict.entry`) then becomes an invoke as any other. `dictfuse`
+>     starts a landing block with no lookup, which is less than the meet, at the landing, of what
+>     holds at each op that may raise there: what holds at the end of a covered block is not (a
+>     getitem that raised KeyError ends its block knowing its key is in the dict, so a handler's
+>     `d[k] = 0` would have reused an entry that is not there). The handler's code then knows
+>     only its own lookups, and so does the code after its try statement, where its end joins.
+>     `listget` follows only branches to blocks that one branch leads to, never a landing op's,
+>     so a handler's path joins its own only where paths meet: after the try statement or at a
+>     loop's test, which the next pass runs again. Run after `eh_ir`, both went wrong:
+>     `dict.entry` inserted before an invoke lost its unwind edge, and the KeyError case above
+>     reached the handler's set through the invoke's edge. `tests/ir/passes_exc.py` pins what
+>     they rewrite in a try body, in a clause and after a try statement, and
+>     `tests/opt_exc_dictfuse.py` and `opt_exc_listget.py` run handlers that change the dict or
+>     shorten the list between a lookup and its reuse, or a loop's test and its read.
 >
 > `docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 > `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
@@ -1274,7 +1292,7 @@ The README's next steps mention `invoke` and landing pads. This design proposes 
 - **Changes to the IR.**
   - `check`, `raise`, R-effect `rt` ops and `call` change only in their lowering.
   - Cold blocks are pooled per handler and message.
-  - The passes of §7.1 leave out a check's raising edge (`Gen.preds`: its cold block ends the program). Once an R op or a check can lead to a handler, that edge counts: `dictfuse` must meet, at the handler, the lookups that hold at the raising op (not at the end of its block), and `listget`'s path from a loop's test must not be joined by it.
+  - The passes of §7.1 leave out a check's raising edge (`Gen.preds`: its cold block ends the program). Once an R op or a check can lead to a handler, that edge counts: `dictfuse` must meet, at the handler, the lookups that hold at the raising op (not at the end of its block), and `listget`'s path from a loop's test must not be joined by it. (Done with the invoke lowering: the Status note says how.)
   - `with` becomes a cleanup region.
   - `accel_try`'s import fallback (#4 §1 D and E) becomes a real handler around `init` calls.
 
