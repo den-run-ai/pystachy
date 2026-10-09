@@ -121,8 +121,9 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
 {
   ok=1
   for t in clang opt lli llvm-link llvm-as; do tool $t "$PYSTACHY_LLVM" || ok=0; done
-  # clang's system linker; the driver's shell commands; tests/run.sh; the rm, mkfifo and sleep test programs run
-  for t in ld sh mkdir sed mv rm test cat cmp diff head tail grep dirname basename mkfifo sleep nproc; do tool $t || ok=0; done
+  # clang's system linker; the driver's shell commands (pystachy run's rmdir too); tests/run.sh; the rm,
+  # mkfifo and sleep test programs run
+  for t in ld sh mkdir sed mv rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep nproc; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi
@@ -150,7 +151,10 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
     grep -q __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc && echo "cached runtime bitcode is instrumented" && built=1
   if [ $built = 1 ]; then
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy-ubsan" aot > "$V/ubsan-aot.log" 2>&1
-    env LD_PRELOAD="$UBSO" PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy2" jit > "$V/ubsan-jit.log" 2>&1
+    # (LD_PRELOAD reaches what a program execs too, a shell that kills itself by SIGSEGV say, where
+    # UBSan's deadly-signal handler would turn the death into its report and status 1)
+    env LD_PRELOAD="$UBSO" UBSAN_OPTIONS="${UBSAN_OPTIONS:+$UBSAN_OPTIONS:}handle_segv=0" PYSTACHY_HOME="$V/ubsan-home" \
+      PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy2" jit > "$V/ubsan-jit.log" 2>&1
     for m in aot jit; do echo "-- tests ($m)"; cat "$V/ubsan-$m.log"; done
   fi
 } > "$L" 2>&1
