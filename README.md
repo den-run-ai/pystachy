@@ -204,7 +204,7 @@ supported, not a measurement of what runs today.
 | [M6](https://github.com/den-run-ai/pystachy/issues/11) | native stdlib hubs, C-module shims | 58.7% | 56.8% | 124 |
 | [M7](https://github.com/den-run-ai/pystachy/issues/12) | the long tail: generators, `async`, sets, `bytes`, `str.format` | 90.4% | 99.0% | 523 |
 
-Parts of M4 and M5 land in #22. Open findings from earlier differential testing are
+Parts of M4 and M5 landed in #22. Open findings from earlier differential testing are
 tracked in [#13](https://github.com/den-run-ai/pystachy/issues/13) to
 [#17](https://github.com/den-run-ai/pystachy/issues/17).
 
@@ -241,9 +241,9 @@ compiler rejects each where it would have to compile it.
 
 | not supported yet | on the roadmap |
 |---|---|
-| exception attributes such as `e.args`, `except*` (`try`, `raise` and exception classes come with [#22](https://github.com/den-run-ai/pystachy/pull/22)) | M5 |
-| unions other than `Optional` (which [#22](https://github.com/den-run-ai/pystachy/pull/22) brings to `int`, `str` and the other builtin types) | M4 |
-| inheritance | M2 |
+| exception attributes such as `e.args`, `except*` (`try`, `raise` and exception classes came in [#22](https://github.com/den-run-ai/pystachy/pull/22)) | M5 |
+| unions other than `Optional` (which [#22](https://github.com/den-run-ai/pystachy/pull/22) brought to `int`, `str` and the other builtin types) | M4 |
+| inheritance, but for exception classes | M2 |
 | lambdas, closures, functions as values (`map`, `key=`) | M3 |
 | generators, `async`, sets, `bytes` | M7 |
 | dict and multi-clause comprehensions, slice steps, `getattr`/`eval`, complex numbers, `match`, `:=` | [#5](https://github.com/den-run-ai/pystachy/issues/5) |
@@ -286,7 +286,7 @@ A few choices shape everything else. Each is explained, with the pull request th
 | [docs/testing.md](docs/testing.md) | the test suite, `make verify`, the IR oracle for refactors, CI |
 | [docs/performance.md](docs/performance.md) | benchmarks, start-up, memory and compile time |
 | [docs/stdlib.md](docs/stdlib.md) | how much of the standard library and of PyPI compiles, and what it would take to compile more |
-| [docs/typed-ir.md](docs/typed-ir.md) | the typed IR design (in progress) |
+| [docs/typed-ir.md](docs/typed-ir.md) | the typed IR: its design, and how far #22 built it |
 | [docs/runtime-in-subset.md](docs/runtime-in-subset.md) | writing the runtime in the subset itself: the prototype (`runtime.py`), its measurements, and how other compilers do it |
 | [docs/history.md](docs/history.md) | the timeline, the design decisions and the Ouro v1 lineage |
 | [lib/README.md](lib/README.md) | the unmodified standard-library modules that ship with Pystachy |
