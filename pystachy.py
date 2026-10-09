@@ -5135,7 +5135,7 @@ class Gen:
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
         # parameters of a template's function whose argument is None, and the line from which one
-        # may hold a value of another type: its first binding (none_end), once compiled the line
+        # may hold a value of another type: its first binding (none_ends), once compiled the line
         # that gives it that value (see assign, static_type)
         self.nonevars: dict[str, int] = {}
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
@@ -5173,7 +5173,7 @@ class Gen:
         self.copying = False
         self.live = False  # fills skips the loops over the empty tuple too (see unfilled)
         self.dead = False  # and found a fill there, or in a branch a static test removes
-        self.whole = 0  # static() for the if at this line that fills searches, -1 for none_end
+        self.whole = 0  # static() for the if at this line that fills searches, -1 for none_ends
         self.unsure = False  # and a type not known yet left the test undecided (see static_type)
         # a template's function returning such an empty container without a type (see retval):
         # the locals it returns so, space-separated, by its LLVM name, and the functions whose
@@ -6141,11 +6141,11 @@ class Gen:
 
     def first_binding(self, body: list[Node], name: str) -> Node | None:
         # the first statement in body, in order and into the blocks that run (see live_blocks; not
-        # into functions and classes), that binds name
+        # into functions and classes), that binds name (for none_ends, not to None)
         for st in body:
             if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
                 continue
-            if stmt_binds(st, name):
+            if stmt_binds(st, name) and not (self.whole < 0 and st.kind == "assign" and st.kids[-1].kind == "None"):
                 return st
             for kid in self.live_blocks(st):
                 r = self.first_binding(kid.kids, name)
@@ -6170,7 +6170,7 @@ class Gen:
     def live_blocks(self, st: Node) -> list[Node]:
         # the blocks of statement st that a static test (see static) does not leave out: of an if
         # decided here the branch that runs, of a while loop whose test is false its else block
-        s = self.static_now(st.kids[0]) if st.kind == "if" or st.kind == "while" else -1
+        s = -1 if st.kind != "if" and st.kind != "while" else self.static_now(st.kids[0]) if self.whole == 0 else self.static_whole(st.kids[0], st.line)
         bs: list[Node] = []
         for i in range(len(st.kids)):
             kid = st.kids[i]
@@ -6191,21 +6191,29 @@ class Gen:
         if self.modlevel:
             self.type_reads(n)
         here = self.line
+        w = self.whole
         self.whole = line
         self.line = line
         self.unsure = False
         s = self.static(n)
-        self.whole = 0
+        self.whole = w
         self.line = here
         return s
 
-    def none_end(self, p: str) -> int:
-        # the line of the first statement, in the blocks that may run, that binds parameter p,
-        # whose argument is None (a large number if none does): p is None before it
-        self.whole = -1  # (a test of a None parameter may go either way)
-        st = self.first_binding(self.curfn.node.kids[2].kids, p)
-        self.whole = 0
-        return st.line if st is not None else 1 << 40
+    def none_ends(self) -> None:
+        # for each parameter whose argument is None, the line of the first statement, in the blocks
+        # that may run, that binds it to something else than None (a large number if none does):
+        # it is None before. Tests of them are decided by the lines found so far (at first none,
+        # each one a line it is None up to at least), until they stay the same
+        again = True
+        while again:
+            again = False
+            for p in self.nonevars:
+                self.whole = -1  # (live_blocks decides the tests as fills does)
+                st = self.first_binding(self.curfn.node.kids[2].kids, p)
+                self.whole = 0
+                again = again or (st.line if st is not None else 1 << 40) != self.nonevars[p]
+                self.nonevars[p] = st.line if st is not None else 1 << 40
 
     def type_reads(self, n: Node) -> None:
         if n.kind == "name":
@@ -6352,15 +6360,20 @@ class Gen:
             self.emit(f"store i64 {1 if targs(t)[0] == 'str' else 0}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
         return Val(v.v, t)
 
-    def fills(self, body: list[Node], name: str, found: list[Node]) -> None:
+    def fills(self, body: list[Node], name: str, found: list[Node]) -> bool:
         # the first statement in body (searched in order, into blocks) that fills variable name:
-        # found gets [key or omit, item]
+        # found gets [key or omit, item]. True if body ends in a return, raise, break or continue
+        # (also in the branch of an if that the types decide), after which nothing in it runs
         for st in body:
             if len(found) > 0:
-                return
+                return False
             if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
                 continue
             k = st.kind
+            s = self.static_whole(st.kids[0], st.line) if k == "if" or k == "while" else -1
+            if k == "return" or k == "raise" or k == "break" or k == "continue":
+                self.fill_calls(st, name, found)
+                return True
             if (k == "assign" or k == "augassign") and st.kids[0].kind == "index" and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == name and k == "assign":
                 found.append(st.kids[0].kids[1])
                 found.append(st.kids[-1])
@@ -6371,17 +6384,18 @@ class Gen:
             elif k == "augassign" and st.kids[0].kind == "name" and st.kids[0].s == name and st.s == "+":
                 found.append(mk("omit", "", st.line, []))
                 found.append(st.kids[1])
-            elif k == "if" and self.static_whole(st.kids[0], st.line) >= 0:
+            elif k == "if" and s >= 0:
                 # a test that the types decide there: only the branch that runs
-                s = self.static_whole(st.kids[0], st.line)
                 self.dead = self.dead or shows_items(st.kids[2 if s == 1 else 1], name)
-                self.fills(st.kids[1 if s == 1 else 2].kids, name, found)
-            elif k == "if" and self.unsure and shows_items(st, name):
+                if self.fills(st.kids[1 if s == 1 else 2].kids, name, found):
+                    return True
+            elif (k == "if" or k == "while") and self.unsure and shows_items(st, name):
                 # a test that types not known yet may decide: which branch runs is not known
                 found.append(mk("lambda", "", st.line, []))  # (which no look-ahead compiles)
-            elif k == "for" and self.live and st.kids[1].kind == "name" and self.qtype(st.kids[1].s) == "tuple[]":
-                # a loop over the empty tuple (*args without extra arguments): only its else block runs
-                self.dead = self.dead or shows_items(st.kids[2], name)
+            elif (k == "for" and self.live and st.kids[1].kind == "name" and self.qtype(st.kids[1].s) == "tuple[]") or (k == "while" and s == 0):
+                # a loop over the empty tuple (*args without extra arguments), or whose test the
+                # types make false: only its else block runs
+                self.dead = self.dead or shows_items(st.kids[2 if k == "for" else 1], name)
                 if st.kids[-1].s == "else":
                     self.fills(st.kids[-1].kids, name, found)
             else:
@@ -6389,6 +6403,7 @@ class Gen:
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.fills(kid.kids, name, found)
+        return False
 
     def fill_calls(self, n: Node, name: str, found: list[Node]) -> None:
         # name.append(v), insert(i, v), extend(xs), setdefault(k, v), get(k, v) anywhere in n
@@ -6415,8 +6430,13 @@ class Gen:
                 found.pop()
                 found.pop()
             return
-        for kid in n.kids:
-            self.fill_calls(kid, name, found)
+        s = self.static_whole(n.kids[0], n.line) if n.kind == "ifexp" or n.kind == "boolop" else -1
+        if s < 0 and (n.kind == "ifexp" or n.kind == "boolop") and self.unsure and shows_items(n, name):
+            found.append(mk("lambda", "", n.line, []))  # (as for an if: see fills)
+        for i in range(len(n.kids)):
+            # (not the operand of a conditional expression, and or or that the types leave out)
+            if s < 0 or not ((n.kind == "ifexp" and i == (2 if s == 1 else 1)) or (n.kind == "boolop" and i == 1 and (s == 1) == (n.s == "or"))):
+                self.fill_calls(n.kids[i], name, found)
 
     def typed_now(self, e: Node, own: str = "") -> bool:
         # can e be compiled here: every variable it reads has its type already (but own, the
@@ -6695,8 +6715,7 @@ class Gen:
                 continue
             ps.append(f"{lt(t)}{' nonnull' if i == 0 and f.cls != '' else ''} %a{i}")
             self.emit(f"store {lt(t)} %a{i}, ptr {self.alloca(t, f.params[i])}")
-        for p in self.nonevars:
-            self.nonevars[p] = self.none_end(p)
+        self.none_ends()
         if f.name == "__init__" and f.cls != "" and not (self.is_dc(f.cls) and f.node.kids[0].kind == "noann"):
             # class-body defaults (a synthesized dataclass __init__ assigns every field itself)
             ci = self.classes[f.cls]
