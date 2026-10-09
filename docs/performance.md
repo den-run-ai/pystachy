@@ -23,7 +23,8 @@ CPython's.
 | `dictkeys.py`: dict keys that defeat a weak hash | 0.50 s | 0.25 s | 0.16 s | 3× |
 
 The speedup column is computed by `bench/run.sh` from the unrounded times. The first `run` after a
-build also compiles and caches the runtime, which adds one to two seconds once.
+build also compiles and caches the runtime, which adds one to two seconds once. `bench/dictcount.py`
+is measured [below](#optimizations-on-the-typed-ir).
 
 Run them yourself with `make bench` (`bench/run.sh`): each program runs once under CPython, under
 the JIT and as an AOT executable, and the script reports any output that differs from CPython's;
@@ -37,6 +38,32 @@ most on call-heavy integer code: `fib` took 0.050 s instead of the 0.024 s of Ou
 wrapping arithmetic when the two were compared, because LLVM can no longer turn
 `fib(n - 1) + fib(n - 2)` into a loop; the other benchmarks are unaffected.
 
+## Optimizations on the typed IR
+
+The passes on the typed IR ([internals.md](internals.md#the-typed-ir)) remove repeated work: a
+for loop reads the items of a list it steps through without a bounds check (`listget`), and a
+dict lookup that a membership test or a read of the same key made is reused (`dictfuse`), so
+`if k in d: d[k] += 1` hashes `k` once. `bench/dictcount.py` counts keys that way; best of 11
+runs, with the dict lookup fusion turned off (`PYSTACHY_OPT=-dictfuse`) and on:
+
+| `bench/dictcount.py` | CPython | Pystachy JIT | Pystachy AOT |
+|---|---:|---:|---:|
+| without `dictfuse` | 0.85–0.93 s | 0.254 s | 0.162 s |
+| with `dictfuse` | 0.85–0.93 s | 0.183 s | 0.112 s |
+
+The fused lookups make it 31% faster AOT and 28% faster under the JIT. `PYSTACHY_OPT=-all` turns
+every pass off, for comparisons like this one.
+
+## The cost of exceptions
+
+Code that does not raise pays nothing for a `try` statement (under the JIT, two runtime calls as
+it is entered), and a raise that a `try` of the same function catches is a branch, which costs
+tens of nanoseconds. A raise that leaves its function unwinds the stack with the Itanium C++
+ABI's unwinder, which reads each frame's tables and is slower than CPython: a `KeyError` raised
+in a callee and caught by its caller, 500,000 times, takes 0.44 s AOT and 0.54 s under the JIT,
+against 0.11 s under CPython, about a microsecond per raise
+([internals.md](internals.md#exceptions-by-table-driven-unwinding)).
+
 ## Start-up and memory
 
 The JIT tier starts a program in under 0.1 s: `pystachy run` of a hello world takes 60 to
@@ -48,11 +75,14 @@ CPython's timsort: 2M random ints sort in 0.32 s, against 0.53 s with the earlie
 
 ## Compile time
 
-The native compiler translates its own 11,000 lines to LLVM IR in about 0.2 s of CPU time,
-against 1.4 s when CPython runs it, and a full AOT build of itself, with clang -O2, takes about
-12 s of CPU; CPython's syntax checks and the definition-time checks of imported modules cost
-about a quarter more time per source line than the compiler of 7,000 lines did when it emitted
-its own IR (0.09 s then).
+The native compiler translates its own 16,000 lines to LLVM IR in about 0.45 s of CPU time,
+against 2.6 s when CPython runs it, and a full AOT build of itself, with clang -O2, takes about
+17 s of CPU. Before the typed IR and exceptions, its 11,000 lines took 0.2 s, 1.4 s and 12 s on
+the same machine, and the compiler of 7,000 lines took 0.09 s to translate itself and 7.5 s to
+build. Per source line, translation to LLVM IR has grown from about 13 µs (7,000 lines) to
+18 µs (11,000 lines, which added CPython's syntax checks and the definition-time checks of
+imported modules) and 28 µs now, with the typed IR built, optimized and lowered as steps of
+their own; the clang build stays near 1 ms per line.
 
 Compile time grows linearly with the program: `tools/scaling.py` generates programs that grow in
 one dimension at a time (functions, globals, classes, modules, fields, call and import chains,

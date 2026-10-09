@@ -1,0 +1,6 @@
+os: [Errno 28] No space left on device
+os from a function: [Errno 28] No space left on device
+os, both: [Errno 28] No space left on device
+33
+finally
+[exit 1]

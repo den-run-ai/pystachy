@@ -16,7 +16,7 @@ requests list them.
 | 9 Oct | M0 correctness: CPython's syntax errors, the loader's import-time semantics, inference gaps, nesting limits | [#18](https://github.com/den-run-ai/pystachy/pull/18) |
 | 9 Oct | Linear-time compilation, and a dict hash without clustering | [#20](https://github.com/den-run-ai/pystachy/pull/20) |
 | 9 Oct | Typed-IR design, the IR-identity oracle (`make irsame`) and `make check-ir` | [#21](https://github.com/den-run-ai/pystachy/pull/21) |
-| in progress | The typed IR itself (steps 4–8, byte-identical), optional types, the first IR optimizations; exceptions being merged | [#22](https://github.com/den-run-ai/pystachy/pull/22) (draft) |
+| 9 Oct | The typed IR itself (steps 4–8, byte-identical), optional types, `NamedTuple` and tuple dict keys, the first IR optimizations, exceptions by table-driven unwinding, and a port of iniconfig, pytest's INI parser | [#22](https://github.com/den-run-ai/pystachy/pull/22) |
 | in progress | Part of the runtime written in the subset (`runtime.py`) | [#19](https://github.com/den-run-ai/pystachy/pull/19) (draft) |
 
 #2, #3, #18, #20 and #21 were a stack, each based on the one before, and were merged in that
@@ -63,12 +63,12 @@ Each row says what was decided, why, and where to read more.
 | Linear-time compilation, checked in CI | The review found a pass whose cost grew with functions × globals ([#4](https://github.com/den-run-ai/pystachy/issues/4) §2), so `make verify` now counts what the hosted compiler executes on generated programs and fails if that grows faster than the program, with no timing threshold. | [testing.md](testing.md#make-verify), [performance.md](performance.md), [#4](https://github.com/den-run-ai/pystachy/issues/4) §2, [#20](https://github.com/den-run-ai/pystachy/pull/20) |
 | One pass from AST to IR, now becoming a typed IR | Ouro v1's single walk types and emits at once, so a type cannot be computed without emitting code and optimizations or a second backend have nowhere to live; the typed IR keeps the walk but makes it build typed instructions that a separate pass lowers to LLVM. | [internals.md](internals.md#one-pass-from-ast-to-ir), [typed-ir.md](typed-ir.md), [#21](https://github.com/den-run-ai/pystachy/pull/21) |
 | Lowering first, proven byte for byte | Of three designs written independently, the two reviewers who scored them chose lowering first because only it had working evidence (a prototype at the fixed point, 358 of 358 programs identical), and `make irsame` requires every migration step to leave the whole corpus's IR byte-identical. | [typed-ir.md](typed-ir.md#appendix-a-how-this-design-was-chosen), [testing.md](testing.md#ir-identity-for-refactors), [#21](https://github.com/den-run-ai/pystachy/pull/21) |
+| Exceptions through table-driven unwinding | v0.0.1 planned LLVM landing pads and typed-ir.md §7.2 then proposed an error flag; #22 answers that open question with measurements, using `invoke`/`landingpad` with Pystachy's own personality routine: code that does not raise pays nothing for a `try` in an AOT build, and programs without `try` keep their IR byte for byte. | [internals.md](internals.md#exceptions-by-table-driven-unwinding), [performance.md](performance.md#the-cost-of-exceptions), [typed-ir.md](typed-ir.md) §7.2 and §9, [#22](https://github.com/den-run-ai/pystachy/pull/22) |
 
 ### In progress and open
 
 | decision | why | where |
 |---|---|---|
-| Exceptions through table-driven unwinding (in progress) | v0.0.1 planned LLVM landing pads and typed-ir.md §7.2 then proposed an error flag; the draft #22 answers that open question with measurements, using `invoke`/`landingpad` with Pystachy's own personality routine, and programs without `try` keep their IR byte for byte. | [typed-ir.md](typed-ir.md) §7.2 and §9, [#22](https://github.com/den-run-ai/pystachy/pull/22) |
 | Part of the runtime in the subset (in progress) | Runtime code can then be Python, tested on CPython itself, and a WebAssembly GC backend needs such a runtime; functions move one at a time into `runtime.py` with no program's IR changing, while the collector, memory layouts, files and signals stay in C. | [#19](https://github.com/den-run-ai/pystachy/pull/19) |
 | Standalone mode, or also a CPython-extension mode (open, nothing decided) | Broad package support needs an interoperability strategy as well as features: #5 estimates that even with every feature, standalone mode makes only 288 of 821 pure-Python top packages at least half usable, and #4 §4 recommends evaluating an AOT extension mode in which CPython keeps imports, dynamic objects and dependencies. | [#4](https://github.com/den-run-ai/pystachy/issues/4) §4, [#5](https://github.com/den-run-ai/pystachy/issues/5), [typed-ir.md](typed-ir.md) §7.4 |
 
@@ -93,7 +93,7 @@ Pystachy addresses them:
 | attribute access through `None` is undefined behaviour | `AttributeError`, CPython's `None` rules for `==`, `str()` |
 | unknown imports are silently ignored | imports are checked; aliases and `from` imports work |
 | driver writes fixed `/tmp` files via `os.system` | a private `mkdtemp` directory, removed on every exit path but a `SIGTERM` to the driver |
-| type checking and emission are one class with no IR | still true: a typed IR is in progress ([typed-ir.md](typed-ir.md)) |
+| type checking and emission are one class with no IR | in progress: `Gen` builds an IR of blocks and ops per function, lowered to LLVM text once the program is built; part of it is still LLVM text ([typed-ir.md](typed-ir.md), [internals.md](internals.md#the-typed-ir)) |
 
 Ouro v2 contributed 16 test programs (ported as `tests/ouro2_*.py`) and the idea of a second
 backend; MiniPy contributed checked arithmetic, strict definite assignment and its

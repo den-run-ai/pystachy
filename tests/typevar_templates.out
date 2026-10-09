@@ -1,0 +1,11 @@
+mods: init mods
+mods.shapes: init mods.shapes
+a a [1]
+e None
+dflt y None
+[1] ['a', 'b'] 1.5 [1] s True
+{1: 'a', 2: 'b'} {'x': 1}
+2 1
+1 y (1, 2) ('p', 'q')
+3
+[exit 0]

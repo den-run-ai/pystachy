@@ -1,0 +1,7 @@
+FNF FileNotFoundError(2, 'nope') [Errno 2] nope
+PE PermissionError(13, 'nope') [Errno 13] nope
+OSError OSError(None, 'nope') [Errno None] nope
+OSError OSError(99, 'nope') [Errno 99] nope
+FileNotFoundError FileNotFoundError(2, 'why') [Errno 2] why: 'f.txt'
+OSError OSError(None, 'why', None) [Errno None] why
+[exit 0]

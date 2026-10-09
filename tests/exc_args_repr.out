@@ -1,0 +1,11 @@
+AssertionError(3) 3
+AssertionError(-1) -1
+AssertionError([1, 2])
+AssertionError(None) None
+AssertionError(P()) p-str
+AssertionError('text') text
+SystemExit(2.5) 2.5
+SystemExit([1, 2])
+SystemExit(P()) p-str
+SystemExit('s') s
+[exit 1]

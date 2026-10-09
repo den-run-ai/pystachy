@@ -1,0 +1,27 @@
+iter
+join ba
+iter
+len
+list ['b', 'a', 'c']
+iter
+len
+sorted ['a', 'b', 'c', 'c']
+iter
+len
+extend ['b', 'a', 'c', 'c', 'c']
+iter
+len
+extend ['b', 'a', 'c', 'c', 'c', 'c']
+iter
+iter
+min a max c
+iter
+unpack b
+iter
+enumerate [(0, 'b'), (1, 'a'), (2, 'c'), (3, 'c'), (4, 'c'), (5, 'c')]
+iter
+in True
+iter
+iter
+['b', 'a', 'c', 'c', 'c', 'c']
+[exit 0]

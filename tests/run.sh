@@ -4,10 +4,13 @@
 # CPython wrote to stderr, the last line (tests/*.err) must match too. Stdin comes from
 # tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it fails); where
 # tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
+# PYSTACHY_GC_STRESS_PROGRAM=N makes the programs collect every N allocations (JIT and AOT), whatever
+# PYSTACHY_GC_STRESS gives the compiler that builds them.
 # Every tests/errors/*.py must be rejected with the message in its first line, and every
 # tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
 # "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
 # tests/errors/syntax_*.py whose error is in its own file.
+# The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
 # The cases run in PYSTACHY_JOBS workers at once (default: one per CPU); the report lists them
 # in the same order whatever the number of workers. Worker 0 runs in this shell and takes the
 # cases about SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
@@ -15,9 +18,11 @@
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
 MODES=${2:-jit aot}
+export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 T=${TMPDIR:-/tmp}/pystachy-tests.$$
+XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
 mkdir -p "$T"
 exec 3> /dev/full
 
@@ -31,7 +36,7 @@ program() { # tests/NAME.py
       (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.err" &&
-        ("$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
+        ($XENV "$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2>> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "tests/$n.out" && { [ ! -f "tests/$n.err" ] || [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; }; then
       pass=$((pass + 1)); else
@@ -52,7 +57,7 @@ deviation() { # tests/deviations/NAME.py
     if [ $mode = jit ]; then
       ($PYS run "$1" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
     else
-      { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
+      { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi
     if cmp -s "$T/dev.$n.$mode" "$exp"; then pass=$((pass + 1)); else
       fail=$((fail + 1)); echo "FAIL deviations/$n ($mode)"; diff "$exp" "$T/dev.$n.$mode" | head -10; fi

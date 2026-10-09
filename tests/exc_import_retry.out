@@ -1,0 +1,12 @@
+mods: init mods
+mods.shapes: init mods.shapes
+mods.counter: init mods.counter
+half runs 1
+failed 0
+half runs 2
+failed 1
+NameError: name 'mods' is not defined
+half runs 3
+3
+1 2 3 mods.half
+[exit 0]

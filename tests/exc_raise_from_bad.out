@@ -1,0 +1,4 @@
+caught exception causes must derive from BaseException
+caught exception causes must derive from BaseException
+end
+[exit 1]

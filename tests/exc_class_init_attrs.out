@@ -1,0 +1,7 @@
+5 from-super S('from-super')
+n 3 msg
+b B('msg')
+/x cannot I('cannot')
+never-super /m
+7 1 default-name /default
+[exit 0]

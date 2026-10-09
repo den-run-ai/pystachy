@@ -11,9 +11,15 @@ flowchart TD
     lex --> parse["Parser + Symtable: CPython's syntax errors"]
     parse --> loader["Loader: modules, qualified names, import-time decisions"]
     loader --> flow["Flow: definite assignment, marks the reads to check"]
-    flow --> gen["Gen: type check and emit LLVM IR in one pass, templates compiled on demand"]
-    rt["runtime.c: collector, str, list, dict, formatting, files"] -->|clang| rtbc["runtime.bc and runtime.o (cached)"]
-    gen --> ir["LLVM IR"]
+    flow --> gen["Gen: type check in one pass, building each function's typed IR, templates compiled on demand"]
+    gen --> tir["typed IR: an IFn per function, blocks (Blk) of instructions (Ins), checked under PYSTACHY_IRCHECK"]
+    rtab["RUNTIME table: each runtime function's signature and effect letters"] --> fx
+    tir --> fx["effects: a summary per function, once the whole program is built"]
+    fx --> opt["optimizations: listget, dictfuse (PYSTACHY_OPT turns them off)"]
+    opt --> eh["exception lowering, in functions with a try: invoke, landingpad, throw"]
+    eh --> lower["lowering: each IFn printed as LLVM text"]
+    rt["runtime.c: collector, str, list, dict, formatting, files, unwinding"] -->|clang| rtbc["runtime.bc and runtime.o (cached)"]
+    lower --> ir["LLVM IR"]
     ir --> aot["pystachy build: llvm-link with runtime.bc, clang -O2 on the whole module"]
     ir --> jit["pystachy run: opt (mem2reg, instcombine, simplifycfg), then lli ORC JIT"]
     rtbc --> aot
@@ -26,12 +32,13 @@ flowchart TD
 
 | file | lines | contents |
 |---|---:|---|
-| `pystachy.py` | 11,118 | lexer 611 · parser 1,690 · scopes (CPython's symbol-table errors) 685 · module loader 1,886 · types, tables and the definite-assignment pass 963 · type checker + IR generator 5,096 · driver 132 |
-| `runtime.c` | 2,675 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks |
+| `pystachy.py` | 16,376 | lexer 611 · parser 1,724 · scopes (CPython's symbol-table errors) 685 · module loader 2,014 · types and tables (the `RUNTIME` table among them) 1,396 · the IR's classes and the definite-assignment pass 352 · type checker + IR generator, the IR's passes and its lowering 9,391 · driver 148 |
+| `runtime.c` | 3,263 | garbage collector, strings, lists and timsort, dicts, generic repr/compare, formatting, files and I/O, clocks, exceptions and their unwinding |
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are ([`lib/README.md`](../lib/README.md)) |
-| `tests/` | 295 programs, 421 rejection cases, 11 deviation cases, 6 IR probes | each program must print exactly what CPython prints, JIT and AOT ([testing.md](testing.md)) |
-| `bench/` | 8 programs | the benchmarks of [performance.md](performance.md) |
-| `tools/` | | the IR oracle, the syntax and import sweeps, the scaling check, the dict probe counter and the stdlib census |
+| `tests/` | 520 programs, 622 rejection cases, 16 deviation cases, 12 IR probes | each program must print exactly what CPython prints, JIT and AOT ([testing.md](testing.md)) |
+| `bench/` | 9 programs | the benchmarks of [performance.md](performance.md) |
+| `tools/` | | the IR oracle, the IR check over the corpus, the check of the `RUNTIME` table against `runtime.c`, the syntax and import sweeps, the scaling check, the dict probe counter and the stdlib census |
+| `ports/` | 1 package | iniconfig 2.3.1, pytest's INI parser, with the few edits it needs to compile ([`ports/iniconfig/PORT.md`](../ports/iniconfig/PORT.md)); `tests/port_iniconfig_*.py` run its own test cases |
 
 ## Environment variables
 
@@ -42,7 +49,11 @@ flowchart TD
 | `PYSTACHY_PATH` | extra directories, separated by `:`, to search for imported modules |
 | `PYSTACHY_CFLAGS` | extra clang flags (such as sanitizers) for the runtime and the AOT build, with a runtime cache per flag set |
 | `PYSTACHY_GC_STRESS=N` | collect garbage every N allocations |
+| `PYSTACHY_GC_STRESS_PROGRAM=N` | the program that `pystachy run` runs collects every N allocations, whatever `PYSTACHY_GC_STRESS` gives the compiler; `tests/run.sh` gives it to the AOT executables it builds too |
 | `PYSTACHY_GC` | `off` turns collection off, `stats` prints a summary at exit |
+| `PYSTACHY_IRCHECK=1` | the compiler checks the typed IR it built before lowering it, and again after each pass that changed it (`tests/run.sh` sets it unless it is set otherwise) |
+| `PYSTACHY_IRFX=1` | the compiler prints each function's effect summary on stderr, as `tests/ir/*.fx` record them |
+| `PYSTACHY_OPT` | turns optimizations on the typed IR off: `-listget`, `-dictfuse`, comma-separated, or `-all` |
 | `PYSTACHY_JOBS` | how many test cases `tests/run.sh` and the IR tools run at once (default: one per CPU) |
 
 ## Design, piece by piece
@@ -85,8 +96,32 @@ reject what would overflow CPython's parser stack (`CPYSTACK`).
 After a declaration pass collects classes, fields and
 function signatures, `Gen` walks each function once, inferring expression types
 bottom-up while emitting IR. An expected type (`want`) flows top-down to type empty
-literals and `None`. Types are canonical strings (`dict[str,list[int]]`), so the
-compiler needs no type objects.
+literals and `None`. Types are canonical strings (`dict[str,list[int]]`, `opt[str]` for
+`str | None`), so the compiler needs no type objects.
+
+Narrowing follows the code as it is compiled: the set of optional locals known not to be `None`
+grows with the tests of an `if`, `while`, `assert`, `and`/`or` or conditional expression for the
+code they guard, an `if` keeps what holds at the end of each branch that goes on, and a loop
+drops what its body binds, then keeps what holds at each of its exits (each `break` records it).
+
+### The typed IR
+
+The typed IR that [typed-ir.md](typed-ir.md) designs was introduced step by step, each step
+leaving every program's LLVM IR byte for byte as it was (`make irsame` checks it).
+
+Its first steps have landed: `Gen`'s one walk over the AST builds an `IFn` per compiled
+function, blocks of instructions whose control flow, checks, calls, runtime calls and
+empty-container holes are ops, and the LLVM text is printed from them once the whole program is
+built (`PYSTACHY_IRCHECK=1` checks the IR first).
+
+A `RUNTIME` table gives every runtime function its signature and effects, from which each
+function gets an effect summary. The first language-level optimizations read them (§7.1): a for
+loop reads the items of a list it steps through without a bounds check, and a dict lookup that a
+membership test or a read of the same key made is reused (`if k in d: d[k] += 1` hashes `k`
+once; a dict-counting benchmark, `bench/dictcount.py`, runs in 0.11 s instead of 0.16 s AOT).
+
+Loads, stores and arithmetic are still LLVM text; converting them, then a second lowering, would
+allow more of them (None checks, bounds-check hoisting) and further backends.
 
 ### Templates
 
@@ -106,7 +141,8 @@ the statement fills when it runs, so they are still evaluated once.
 ### Definite assignment
 
 Before code generation, `Flow` walks every scope with the set
-of variables assigned on every path (merging `if` branches, and a loop's `else` block with
+of variables assigned on every path (merging `if` branches, a `try` statement's body with
+its except clauses, which start from the state before it, and a loop's `else` block with
 the state before the loop, leaving `while True` only through what its breaks have in
 common). Reads it cannot prove are marked, and only those test an "is
 assigned" flag that LLVM removes again where it can; fields that `__init__` may leave
@@ -126,8 +162,48 @@ leaves uncompiled, and those reads are checked where the statement runs.
 
 `+`, `-` and `*` use LLVM's `*.with.overflow`
 intrinsics; every failure (overflow, `None` receiver, unassigned variable) branches to
-one cold block per function and message. `self` is marked `nonnull`, so the `None`
-checks vanish inside methods.
+one cold block per function and message (and `try` statement around it). `self` is marked
+`nonnull`, so the `None` checks vanish inside methods.
+
+### Exceptions by table-driven unwinding
+
+A program whose modules hold a `try` (decided before code generation; any other keeps its code)
+calls `pys_eh_on` as it starts. From then on the runtime's error funnels (`pys_fail`,
+`pys_raise`, `sys.exit`) build an exception and unwind with the Itanium ABI's
+`_Unwind_ForcedUnwind`, in one phase (every landing pad catches everything, so the first one
+found is the handler; C++'s `_Unwind_RaiseException` walks the frames twice); if nothing catches
+it, the stack is untouched and the program ends as before.
+
+Each IR block names the landing block of the innermost `try` around it in its function. Once the
+whole program is built, a pass reads the effect summaries: a call that may raise in a covered
+block becomes an LLVM `invoke` whose unwind edge goes to that block's `landingpad`, a `raise`
+there becomes a branch carrying the exception (no unwinder), and a landing block that no invoke
+reaches is dropped. Every landing pad catches everything; the code after it tests the clauses'
+classes and throws again what none catches, and `runtime.c`'s own personality routine,
+`pys_personality`, reads the call-site tables LLVM emits. Code that does not raise pays nothing
+for a `try` (under the JIT, two runtime calls as it is entered); a raise in the `try`'s own
+function costs tens of nanoseconds, one from a call about a microsecond, and half a microsecond
+more for each frame with a `try` it passes through.
+
+`finally` is compiled once for each way out, as in CPython, but one that holds a `try` with a
+`finally` of its own is compiled once, where each way out stores its index and jumps, so that
+nested ones grow linearly, not as 3^depth. What a raise leaves half done in the runtime (a list
+being sorted, a `with` block's open file) is put right by unwind actions that the landing pad
+runs; none raises: a `with` block's file whose close fails notes its `OSError`, which then takes
+the place of the exception the landing handles (CPython's `__exit__` raises it inside the
+`try`).
+
+A module's code runs in the region of a landing block that marks the module not run and throws
+again; a read through a name that an import in a `try` statement binds checks that mark.
+`runtime.c` is compiled with `-fexceptions` in both tiers.
+
+An object of an exception class begins with a pointer to its class's `ExcClass`, a constant the
+compiler generates for each class whose objects the program makes: the name an `except` clause
+matches (the class's qualified name, in the sets of names each clause catches, which the closed
+world makes complete), the name an uncaught exception's line shows, and functions for `str()`,
+`repr()` and, for a `SystemExit`, the exit; `str(e)` of any exception goes through it. Then come
+what it keeps of its arguments, its base's fields with their "is assigned" flags (so the base's
+methods work on it), and its own.
 
 ### SSA by delegation
 
@@ -144,13 +220,15 @@ implementation of `list`/`dict`/`tuple` serves every element type.
 ### Type descriptors
 
 Generic operations (`repr`, `==`, ordering, `sort`, `in`) receive a
-tiny string describing the static type — `LDsi` is `list[dict[str,int]]` — and the
+tiny string describing the static type — `LDsi` is `list[dict[str,int]]`, `?s` is
+`str | None` — and the
 runtime interprets it recursively, comparing sequences the way CPython does (first
 unequal pair, identity first). Objects appear as `O<id>`: the runtime calls back into
 `pys_obj_eq/cmp/repr`, a switch the compiler emits over the classes that occur in
 containers, with small per-class helpers built from each class's `__eq__`, rich
 comparisons and `__repr__`. Dataclass `__repr__` (cycle-safe) and `__eq__` are written
-by the compiler and generated only if used.
+by the compiler and generated only if used, and so are a NamedTuple's; the generic repr
+prints a list or dict that it meets again while printing it as `[...]` or `{...}`.
 
 ### Memory
 
@@ -186,7 +264,11 @@ the table is rebuilt, with its sizes and growth, and `dict(d)` merges as CPython
 so deletion is O(1) and a loop that changes its dict, `reversed(d)` included, sees what
 CPython's would. The index follows CPython's probe sequence (each step mixes in five more
 bits of the hash), over a hash that costs one multiply: one round of SplitMix64's mixer
-for an int, FNV-1a with the high half folded into the low for a str. Keys that differ only
+for an int, FNV-1a with the high half folded into the low for a str; a dict of tuple keys
+holds their type descriptor, by which a key's hash mixes its items' hashes and keys compare
+as `==` compares the tuples (a `None` item hashes and compares as `None` also where the
+descriptor says `str`, which is how a looked-up tuple whose item may be `None` finds no
+key). Keys that differ only
 in their high bits (`i << 46`, which used to form one cluster) probe as random keys do; the
 price is about 2 ns per lookup in tables larger than the cache, whose second slot is in
 another cache line. Files wrap C stdio with CPython's open() rules: argument checks in its

@@ -5,16 +5,22 @@
 #   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR
 #   tests-cpython  tests/run.sh with the CPython-hosted compiler, JIT and AOT
 #   tests-native   tests/run.sh with the stage-2 native compiler, JIT and AOT
+#   tests-opt-off  tests/run.sh with the stage-2 compiler and every optimization on the IR turned off
+#                  (PYSTACHY_OPT=-all): the passes change no output
 #   python-free    PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools that the
 #                  driver and tests/run.sh call (no python3): the native compiler rebuilds its runtime
 #                  and itself, reproduces the same IR and passes the tests
 #   ubsan          PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
 #                  compiler built that way reproduces the IR, and every test passes AOT-built with it
 #                  and JIT-run on the sanitized runtime (lli gets the UBSan runtime via LD_PRELOAD)
-#   check-ir       tools/check_ir.sh: llvm-as accepts the IR of every program of the corpus (the tests,
-#                  the benchmarks, the tests/ir probes and the compiler itself)
-#   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 100 allocations reproduces
-#                  the IR, and every test passes JIT and AOT with a collection at every allocation
+#   check-ir       tools/check_ir.sh: the compiler's IR check (PYSTACHY_IRCHECK=1) and llvm-as accept the
+#                  IR of every program of the corpus (the tests, the benchmarks, the tests/ir probes and
+#                  the compiler itself)
+#   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c (types,
+#                  coverage, and the effects its call graph shows)
+#   gc-stress      PYSTACHY_GC_STRESS: the native compiler collecting every 1000 allocations reproduces
+#                  the IR, and every test passes JIT and AOT with a collection at every allocation of the
+#                  program (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by the compiler collecting every 1000
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
@@ -93,6 +99,14 @@ L=$V/tests-native.log; s=$(now)
 tests/run.sh "$V/pystachy2" > "$L" 2>&1
 x=$(tests "$L") && r=pass || r=fail
 step tests-native $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"]'"$x"
+L=$V/tests-opt-off.log; s=$(now); logs=""; offs=""
+for o in all; do
+  PYSTACHY_OPT=-$o tests/run.sh "$V/pystachy2" > "$V/tests-opt-off-$o.log" 2>&1
+  logs="$logs $V/tests-opt-off-$o.log"; offs="$offs, \"-$o\""
+done
+for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
+x=$(tests $logs) && r=pass || r=fail
+step tests-opt-off $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"']'"$x"
 
 # ---- python-free: the native compiler and the tests with only LLVM + POSIX tools on PATH
 L=$V/python-free.log; s=$(now); r=fail; py=true
@@ -107,8 +121,9 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
 {
   ok=1
   for t in clang opt lli llvm-link llvm-as; do tool $t "$PYSTACHY_LLVM" || ok=0; done
-  # clang's system linker; the driver's shell commands; tests/run.sh; the rm, mkfifo and sleep test programs run
-  for t in ld sh mkdir sed mv rm test cat cmp diff head tail grep dirname basename mkfifo sleep nproc; do tool $t || ok=0; done
+  # clang's system linker; the driver's shell commands (pystachy run's rmdir too); tests/run.sh; the rm,
+  # mkfifo and sleep test programs run
+  for t in ld sh mkdir sed mv rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep nproc; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi
@@ -136,28 +151,38 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
     grep -q __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc && echo "cached runtime bitcode is instrumented" && built=1
   if [ $built = 1 ]; then
     PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy-ubsan" aot > "$V/ubsan-aot.log" 2>&1
-    env LD_PRELOAD="$UBSO" PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy2" jit > "$V/ubsan-jit.log" 2>&1
+    # (LD_PRELOAD reaches what a program execs too, a shell that kills itself by SIGSEGV say, where
+    # UBSan's deadly-signal handler would turn the death into its report and status 1)
+    env LD_PRELOAD="$UBSO" UBSAN_OPTIONS="${UBSAN_OPTIONS:+$UBSAN_OPTIONS:}handle_segv=0" PYSTACHY_HOME="$V/ubsan-home" \
+      PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy2" jit > "$V/ubsan-jit.log" 2>&1
     for m in aot jit; do echo "-- tests ($m)"; cat "$V/ubsan-$m.log"; done
   fi
 } > "$L" 2>&1
 x=$(tests "$V/ubsan-aot.log" "$V/ubsan-jit.log") && [ $built = 1 ] && r=pass
 step ubsan $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll")$x"
 
-# ---- check-ir: the IR of every program of the corpus is valid LLVM
+# ---- check-ir: the IR of every program of the corpus passes the IR check and is valid LLVM
 L=$V/check-ir.log; s=$(now); r=fail
 tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
-step check-ir $r "$s" "$L" "$(sed -n 's/^llvm-as accepts the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
+step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
+
+# ---- runtime-table: the runtime functions the compiler declares, as runtime.c defines them
+L=$V/runtime-table.log; s=$(now); r=fail
+$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
+step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, "entries": \1/p' "$L")"
 
 # ---- gc-stress: collections far more often than the collector would run them
 L=$V/gc-stress.log; s=$(now); r=fail
 {
-  PYSTACHY_GC_STRESS=100 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" &&
-    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 100 allocations emits the stage1 IR" && r=pass
-  PYSTACHY_GC_STRESS=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
+  # (every 1000, not 100: the compiler keeps each function's IR until the program is built, and at
+  # every 100 its collections, which mark all of it, take minutes)
+  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" &&
+    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 1000 allocations emits the stage1 IR" && r=pass
+  PYSTACHY_GC_STRESS=1000 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
   echo "-- tests, collecting at every allocation"; cat "$V/gc-stress-tests.log"
 } > "$L" 2>&1
 x=$(tests "$V/gc-stress-tests.log") || r=fail
-step gc-stress $r "$s" "$L" ", \"compiler_interval\": 100, \"tests_interval\": 1, \"modes\": [\"jit\", \"aot\"], \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")$x"
+step gc-stress $r "$s" "$L" ", \"compiler_interval\": 1000, \"tests_interval\": 1, \"tests_compiler_interval\": 1000, \"modes\": [\"jit\", \"aot\"], \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")$x"
 
 # ---- benchmarks: same output as CPython, JIT and AOT
 L=$V/benchmarks.log; s=$(now); r=pass; x=""; n=0; ok=0

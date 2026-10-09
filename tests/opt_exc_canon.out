@@ -1,0 +1,23 @@
+straight 1 KeyError 'b'
+straight 0 KeyError 'b'
+var_key 1 KeyError 'zz'
+-1
+global_key 1 KeyError 'b'
+after_try 1 KeyError 'b'
+0
+dict_alias 1 KeyError 40
+dict_alias 0 KeyError 40
+{'a': 7, 'k40': 5}
+{'a': 7, 'k40': 5}
+lookup_raises 1 KeyError 'y'
+lookup_raises 0 KeyError 'y'
+in_loop 1 KeyError 'zz'
+in_loop 0 KeyError 'zz'
+template 1 KeyError 'b'
+1 10
+finally_copy 1 KeyError 'b'
+nested 1 KeyError 'b'
+end
+global_dict 1 KeyError 'd'
+0
+[exit 0]

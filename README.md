@@ -20,8 +20,8 @@ list of documented deviations. Where Pystachy cannot keep that promise, it stops
 - **A good fit:** typed, algorithmic Python (numbers, strings, lists, dicts, dataclasses) that
   you want to run fast or ship as one binary, or curiosity about how a self-hosting compiler
   works.
-- **Not yet:** code that needs exceptions, inheritance, lambdas, generators or third-party
-  packages. See the [roadmap](#roadmap) and [what is missing](#status-and-limitations).
+- **Not yet:** code that needs inheritance (beyond exception classes), lambdas, generators or
+  third-party packages. See the [roadmap](#roadmap) and [what is missing](#status-and-limitations).
 
 ## At a glance
 
@@ -48,10 +48,10 @@ flowchart LR
 
 | | |
 |---|---|
-| **compiler** | `pystachy.py`, about 11,000 lines, written in the subset it compiles |
-| **runtime** | `runtime.c`, under 3,000 lines, with its own garbage collector; needs only the C library |
+| **compiler** | `pystachy.py`, about 16,000 lines, written in the subset it compiles |
+| **runtime** | `runtime.c`, under 3,500 lines, with its own garbage collector; needs only the C library |
 | **bootstrap** | the compiler running on CPython, the native compiler it builds, and the one that builds itself all emit byte-identical LLVM IR |
-| **tests** | about 300 programs that must print what CPython printed for them, JIT and AOT, and over 400 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
+| **tests** | about 500 programs that must print what CPython printed for them, JIT and AOT, and over 600 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
 | **standard library** | 9 unmodified CPython 3.13 modules compile as they are, for the functions the subset supports ([`lib/`](lib/README.md)) |
 
 ### Speed
@@ -183,7 +183,7 @@ compiler on CPython. Other settings are listed in
 - **Two tiers.** `pystachy run` compiles with LLVM's JIT for a fast start; `pystachy build`
   optimizes the program and the runtime together into one executable.
 - **Fast to compile, and kept that way.** The native compiler turns its own source into LLVM IR
-  in 0.2 s of CPU time, and CI fails if compile time stops growing linearly with the program.
+  in 0.5 s of CPU time, and CI fails if compile time stops growing linearly with the program.
 
 ## Roadmap
 
@@ -204,23 +204,26 @@ supported, not a measurement of what runs today.
 | [M6](https://github.com/den-run-ai/pystachy/issues/11) | native stdlib hubs, C-module shims | 58.7% | 56.8% | 124 |
 | [M7](https://github.com/den-run-ai/pystachy/issues/12) | the long tail: generators, `async`, sets, `bytes`, `str.format` | 90.4% | 99.0% | 523 |
 
-Parts of M4 and M5 are in progress in [#22](https://github.com/den-run-ai/pystachy/pull/22).
+Parts of M4 and M5 land in #22. Open findings from earlier differential testing are
+tracked in [#13](https://github.com/den-run-ai/pystachy/issues/13) to
+[#17](https://github.com/den-run-ai/pystachy/issues/17).
 
-**In progress now** (draft pull requests, not merged yet):
+**New in [#22](https://github.com/den-run-ai/pystachy/pull/22): a typed IR** (its
+[design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
+a small typed layer between type checking and LLVM, built step by step so that every step
+leaves every program's LLVM IR byte-identical (`make irsame` checks it). On top of it: exceptions
+(`try`/`except`/`else`/`finally`, `raise`, exception classes of the program) by table-driven
+unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
+`float | None` and `bool | None`, `NamedTuple`, tuple dict keys, `@classmethod`,
+`@staticmethod`, `__getitem__` and friends, and the first IR optimizations (fused dict lookups
+make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
+compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
 
-- **A typed IR** ([#22](https://github.com/den-run-ai/pystachy/pull/22); its
-  [design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
-  a small typed layer between type checking and LLVM, built step by step so that every step
-  leaves every program's LLVM IR byte-identical (`make irsame` checks it). On top of it: `T | None` for `str`,
-  `list`, `dict` and `tuple`, boxed `int | None`, `float | None` and `bool | None`,
-  `NamedTuple`, tuple dict keys, `@classmethod`, `@staticmethod`, `__getitem__` and friends,
-  and the first IR optimizations (fused dict lookups make a dict-counting benchmark 31% faster
-  AOT). Exceptions (`try`/`except`/`finally`, user exception classes) are being merged into it.
-- **Part of the runtime in Python** ([#19](https://github.com/den-run-ai/pystachy/pull/19)): 52
-  runtime functions, among them all the `str` methods and the format-spec mini-language, are
-  written in the subset and compiled by Pystachy itself, with no change to any program's IR and
-  the same speed on the benchmarks. Follow-ups are tracked in
-  [#31](https://github.com/den-run-ai/pystachy/issues/31).
+**In progress now** (a draft pull request, not merged yet): **part of the runtime in Python**
+([#19](https://github.com/den-run-ai/pystachy/pull/19)). 52 runtime functions, among them all
+the `str` methods and the format-spec mini-language, are written in the subset and compiled by
+Pystachy itself, with no change to any program's IR and the same speed on the benchmarks.
+Follow-ups are tracked in [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
 CPython-extension mode, like mypyc, so that compiled code can use real PyPI packages?
@@ -238,8 +241,8 @@ compiler rejects each where it would have to compile it.
 
 | not supported yet | on the roadmap |
 |---|---|
-| exceptions: `try`/`except`, user exception classes (`with` works for files) | M5, in progress in [#22](https://github.com/den-run-ai/pystachy/pull/22) |
-| `Optional` of anything but a class (`int \| None`, `list[int] \| None`), unions | M4, partly in progress in [#22](https://github.com/den-run-ai/pystachy/pull/22) |
+| exception attributes such as `e.args`, `except*` (`try`, `raise` and exception classes come with [#22](https://github.com/den-run-ai/pystachy/pull/22)) | M5 |
+| unions other than `Optional` (which [#22](https://github.com/den-run-ai/pystachy/pull/22) brings to `int`, `str` and the other builtin types) | M4 |
 | inheritance | M2 |
 | lambdas, closures, functions as values (`map`, `key=`) | M3 |
 | generators, `async`, sets, `bytes` | M7 |
@@ -247,10 +250,10 @@ compiler rejects each where it would have to compile it.
 
 Programs that compile can still differ from CPython in a few documented ways: `int` is 64-bit
 and raises `OverflowError` where CPython would grow it (it never wraps); `str` holds UTF-8 bytes,
-so `len` counts bytes (ASCII behaves exactly like CPython); a runtime error prints only the last
-line of the traceback; recursion that is too deep crashes the program instead of raising
-`RecursionError`; and `__del__` never runs.
-The complete lists are in [docs/language.md](docs/language.md), under
+so `len` counts bytes (ASCII behaves exactly like CPython); an exception that nothing catches
+prints only the last line of the traceback; recursion that is too deep crashes the program
+instead of raising `RecursionError`; and `__del__` never runs. The complete lists are in
+[docs/language.md](docs/language.md), under
 [deviations](docs/language.md#deviations-from-cpython) and
 [rejected programs](docs/language.md#rejected-rather-than-miscompiled).
 
@@ -272,7 +275,7 @@ A few choices shape everything else. Each is explained, with the pull request th
 | a garbage collector of its own, in C | no dependencies, and memory stays near the live set |
 | templates for unannotated functions | most of the standard library is unannotated, so it compiles per call types instead |
 | import-time decisions at compile time | unmodified library modules, with their platform tests and optional accelerators, compile |
-| a typed IR, introduced byte for byte (in progress) | room for optimizations and new backends, with every step checked to change no program's output |
+| a typed IR, introduced byte for byte | room for optimizations and new backends, with every step checked to change no program's output |
 
 ## Documentation
 

@@ -1,0 +1,13 @@
+iter 1 5
+iter 2 4
+iter 3 4
+iter 4 4
+zip 10 1 1
+zip 20 2 2
+enum 100 5
+enum 101 6
+6 0
+12
+6
+True False True False True False
+[exit 0]

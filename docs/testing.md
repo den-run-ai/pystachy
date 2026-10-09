@@ -12,7 +12,8 @@ honest.
 | `make test-py` | the same tests with the compiler running on CPython |
 | `make verify` | the bootstrap, both test runs and the other steps under [make verify](#make-verify), with a JSON report in `build/verification.json` |
 | `make irsame REF=<commit>` | a refactor changes no program's IR, message or exit status |
-| `make check-ir` | `llvm-as` accepts the IR of every program in the corpus |
+| `make check-ir` | every program in the corpus compiles, and the compiler's IR check and `llvm-as` accept its IR |
+| `make check-runtime` | the compiler's `RUNTIME` table agrees with `runtime.c` |
 
 ## Differential tests
 
@@ -24,17 +25,30 @@ must be rejected with the message on its first line (a `tests/errors/syntax_*.py
 `pystachy check`), and each `tests/deviations/*.py` must print its hand-written expected
 output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
 `tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
-in `PYSTACHY_JOBS` workers at once (default: one per CPU). The programs cover arithmetic and overflow edges,
-strings, escapes and f-strings, a 400-case sample of the format-spec language, lists,
-dicts (also keys that collide in the hash table), tuples, classes, dataclasses, `Optional` structures, rich comparisons, defaults,
+in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHECK=1`: the
+compiler then checks the IR it built before lowering it (every op is known, each block ends
+with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
+defines the numbers its lowering prints, branches go to blocks of the function, a phi's
+predecessors branch to it, only unwind edges reach a landing pad, and inside a `try` no call
+that may raise is left without one). The optimizations that run on the IR before it is lowered
+([`docs/typed-ir.md`](typed-ir.md) §7.1) can be turned off for a differential run: `PYSTACHY_OPT=-listget`
+(a for loop's reads of the list it steps through, without a bounds check) or `-dictfuse` (one
+hash lookup for `if k in d: d[k] += 1` and the like), comma-separated, or `-all`; the tests
+pass with each one off. The programs cover arithmetic and overflow edges,
+strings (also their Unicode whitespace), escapes and f-strings, a 400-case sample of the
+format-spec language, lists, dicts (also keys that collide in the hash table, and tuple keys), tuples, classes
+(also their container protocol, static and class methods, and class variables), dataclasses, NamedTuples, typing's forms (`collections.abc`, `Final`, `@overload`, `TypeVar`,
+`os.PathLike`), `Optional` structures, optional values (also boxed numbers) and
+their narrowing (with CPython's error for each use of `None` where only a value works), rich comparisons, defaults,
 imports, modules and packages (`tests/mods/`, `tests/scope/`, `tests/infer/`), what the
 loader decides at import time (`tests/loader/`), a program run through a symbolic link
 (`tests/linked/`), CPython's syntax errors and its compiler's block, parser-stack and marshal limits, templates, empty containers typed by their first
 use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignment, sorting
 (timsort's exact comparisons), loops that change what they iterate, files and the standard
-streams, exceptions and exit statuses, runtime errors, garbage-collector churn, classic
+streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
+when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1175 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1836 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 ## `make verify`
@@ -45,15 +59,27 @@ versions, platform, git commit and a timestamp:
 
 - **bootstrap** — stage1, stage2 and stage3 emit identical IR;
 - **tests-cpython / tests-native** — the differential tests with each compiler, JIT and AOT;
+- **tests-opt-off** — the differential tests with the native compiler and every optimization
+  on the IR turned off (`PYSTACHY_OPT=-all`): the passes change no output;
 - **python-free** — `PATH` holds only the LLVM tools, the system linker and a few POSIX
   tools (`python3` is checked to be unreachable); the native compiler rebuilds its runtime
   and itself, reproduces the IR and passes the tests;
 - **ubsan** — the runtime and every test program built with
   `-fsanitize=undefined -fno-sanitize-recover=all` must still match CPython;
-- **check-ir** — `llvm-as` accepts the IR of every program of the corpus below;
-- **gc-stress** — the native compiler, collecting every 100 allocations, reproduces the IR,
-  and every test passes JIT and AOT with a collection at every allocation
-  (`PYSTACHY_GC_STRESS=1`);
+- **check-ir** — every program of the corpus below compiles, and the compiler's IR check
+  (`PYSTACHY_IRCHECK=1`) and `llvm-as` accept its IR;
+- **runtime-table** — `tools/check_runtime.py` (`make check-runtime`) checks the compiler's
+  `RUNTIME` table, from which it declares every runtime function, against `runtime.c`: each
+  entry's declaration has the types clang compiles the function to, every runtime function
+  the compiler names has an entry, and an entry's effect letters are known ones and include
+  what the function's C call graph shows (it may raise, allocate, call user code, read the
+  lists and dicts of a value it walks by its descriptor, read or write the list, dict or file
+  it is passed, use the runtime's state or the C library's I/O, or never return);
+- **gc-stress** — the native compiler, collecting every 1,000 allocations, reproduces the IR,
+  and every test passes JIT and AOT with a collection at every allocation of the program
+  (`PYSTACHY_GC_STRESS_PROGRAM=1`), compiled by the compiler collecting every 1,000 (at every
+  100, the compiler's collections, which mark the IR it keeps until the program is built, would
+  take minutes);
 - **benchmarks** — output equal to CPython's, with timings;
 - **dict-probes** — `tools/dictprobe.c` counts the table slots that dict insertions and
   lookups visit for twelve key patterns that defeat a weak hash or probe sequence (`i << 46`,
@@ -61,9 +87,10 @@ versions, platform, git commit and a timestamp:
   sequential keys as the control, at 4k to 30k keys, and fails above 3 slots per lookup: the
   counts are the same on every machine, so no timing is compared with a threshold;
 - **scaling** — `tools/scaling.py --check` compiles generated programs of 500 and 1,000
-  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s and
-  comprehensions with both compilers; the lines the CPython-hosted compiler executes, and the
-  items its builtin calls copy or scan, must grow no faster than the programs.
+  functions, globals, classes, modules, chained imports, `while True` breaks, `elif`s,
+  comprehensions, links of a dict key's chain of values, dict lookups and global dicts with
+  both compilers; the lines the CPython-hosted compiler executes, and the items its builtin
+  calls copy or scan, must grow no faster than the programs.
 
 ## IR identity for refactors
 
@@ -72,11 +99,15 @@ compilers run `ir` over the corpus (`pystachy.py`, `tests/*.py`, `tests/deviatio
 `bench/*.py` and `tests/ir/*.py`) and must emit the same IR byte for byte, and for each
 `tests/errors/*.py` the same messages and exit status. `make irsame REF=<commit>` (default
 `HEAD`) builds that commit's compiler in `build/ref/`, cached by commit, and compares it with
-`./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` runs
-`llvm-as` on the IR of every program of the corpus. `tests/ir/*.py` probe code-generation
-paths the other programs never take (dead code after `return`, templates instantiated during
-a look-ahead, nested templates, guards repeated in one function): these two tools compile
-them, but they never run. Both
+`./pystachy`; `make irsame-py` compares the CPython-hosted compilers. `make check-ir` compiles
+every program of the corpus with `PYSTACHY_IRCHECK=1` and runs `llvm-as` on its IR; a program
+that does not compile fails it, as an internal error and a rejected IR do, and so do effect
+summaries of a `tests/ir/NAME.py` other than the ones its `NAME.fx` lists (`PYSTACHY_IRFX=1`
+prints them), and runtime calls other than its `NAME.calls` lists (for each function, the
+`pys_` functions it calls). `tests/ir/*.py` probe code-generation paths the other programs
+never take (dead code after `return`, templates instantiated during a look-ahead, nested
+templates, guards repeated in one function): these two tools compile them, but they never
+run; `tests/ir/pending/` holds the probes of open compiler bugs. Both
 need only POSIX sh, run in `PYSTACHY_JOBS` workers, and take a few seconds.
 
 ## Syntax errors against CPython
@@ -90,4 +121,4 @@ the two agree everywhere except 19 valid files Pystachy cannot parse (tabs in in
 
 `.github/workflows/ci.yml`
 runs `make verify` on every push and pull request (ubuntu-24.04, LLVM 18 from apt,
-Python 3.13) and uploads the report as an artifact.
+Python 3.13), within a 45-minute time limit, and uploads the report as an artifact.

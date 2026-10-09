@@ -1,0 +1,12 @@
+'line 0\nnot failed\n'
+failed 1
+'line 1\n'
+closed inside? False
+closed after: True pop from empty list
+'line 1\ninner\nhandled inside\n'
+finally 0 False
+after with 0 True
+finally 1 False
+finally 2 False
+after with 2 True
+[exit 0]

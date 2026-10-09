@@ -1,0 +1,22 @@
+handled | outer caught KeyError('from the handler')
+outer: from else
+replaced: replaces it
+stop at x
+after break, nothing handled: No active exception to reraise
+2
+unwinding 1
+unwinding 2
+unwinding 3
+deep: bottom
+Exception: KeyError('a')
+Exception: ValueError('b')
+Exception: ZeroDivisionError('c')
+Exception: OSError('d')
+only BaseException: KeyboardInterrupt('e')
+3
+V positive K 'not positive'
+inner handled
+re-raised outer: outer
+module level: IndexError(2)
+module name unbound: name 'e' is not defined
+[exit 0]

@@ -1,0 +1,30 @@
+@main.init: pys_alloc pys_dict_new pys_dict_set pys_alloc pys_dict_new pys_dict_set pys_alloc pys_list_new pys_list_append pys_box pys_dict_new pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_alloc pys_alloc pys_dict_new pys_dict_set pys_alloc pys_list_new pys_list_append pys_alloc pys_alloc pys_list_new pys_list_append pys_list_append pys_list_new pys_list_append pys_alloc pys_repr pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@f.tkey: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
+@f.tbuilt: pys_alloc pys_dict_has pys_alloc pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.optd: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
+@f.optand: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.ntfield: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.boxv: pys_dict_find pys_dict_val
+@f.dunder: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.dunder_w: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise pys_raise
+@f.objeq: pys_dict_has pys_list_find pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.objloop: pys_raise pys_raise
+@f.optloop: pys_raise
+@f.ntloop: pys_alloc pys_list_new pys_list_append pys_list_append pys_raise pys_raise
+@m.Bag.__init__:
+@m.Bag.__contains__: pys_dict_has
+@m.Drop.__init__:
+@m.Drop.__contains__: pys_dict_pop_default
+@m.E.__init__:
+@m.E.__eq__: pys_raise
+@m.Seq.__init__:
+@m.Seq.__iter__:
+@m.P.__init__:
+@m.Pt.__init__:
+@o.eq.E:
+@o.cmp.E: pys_raise pys_raise pys_raise pys_raise
+@o.repr.E: pys_default_repr
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

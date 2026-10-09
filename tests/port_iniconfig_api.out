@@ -1,0 +1,30 @@
+__all__: ['COMMENTCHARS', 'IniConfig', 'ParseError', 'iscommentline'] '#;'
+empty: True
+from file: ['metadata']
+data wins: ['diff']
+ParseError 'no section header defined': x:1: no section header defined
+ParseError "duplicate section 'section'": x:2: duplicate section 'section'
+ParseError "duplicate name 'name'": x:3: duplicate name 'name'
+lineof: None 1 3
+lineof: 2 5
+lineof: 2 5
+get: 1 1
+get missing: None None
+section get: 1 1 2
+KeyError 'other'
+getitem: 1
+section iter: ['value'] [('value', '1')]
+config iter: 2 [('section1', '1'), ('section2', '2')]
+contains: False True True
+order: ['section2', 'section'] ['value', 'value2'] ['a', 'b']
+pypirc: 'pypi\nother' <repository-url> <username> <password>
+pypirc: ['repository', 'username', 'password'] http://example.com/pypi
+comments: ['value1', 'value2', 'value3', 'a, b, c'] 'Alice\nBob\nCharlie'
+comments: ['value1 # this is a comment', 'value2 ; this is also a comment', 'value3# no space before comment', 'a, b, c # some items'] 'Alice # first person\nBob ; second person\nCharlie'
+comments: ['value1 # this is a comment', 'value2 ; this is also a comment', 'value3# no space before comment', 'a, b, c # some items'] 'Alice # first person\nBob ; second person\nCharlie'
+unicode: ['value1', 'value2', 'value3']
+unicode section: True value
+unicode key: True value
+bom: value value
+bom data: value
+[exit 0]

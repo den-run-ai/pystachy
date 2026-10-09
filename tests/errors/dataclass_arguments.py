@@ -1,4 +1,4 @@
-# error: @dataclass(...) with arguments is not supported
+# error: @dataclass(order=...) is not supported: of its arguments, only kw_only= is
 from dataclasses import dataclass
 
 

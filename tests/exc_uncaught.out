@@ -1,0 +1,4 @@
+inner finally
+outer finally
+module finally
+[exit 1]

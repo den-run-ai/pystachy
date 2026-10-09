@@ -1,0 +1,8 @@
+get 1
+evaluated 5
+evaluated 0
+[5, 2]
+evaluated 5
+get 0
+evaluated 0
+[exit 1]

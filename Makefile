@@ -59,11 +59,16 @@ ref:
 	  echo $$c > build/ref/commit; \
 	fi
 
-# llvm-as must accept the IR of every corpus program that compiles, or of FILES (tools/check_ir.sh)
+# the IR check (PYSTACHY_IRCHECK=1) and llvm-as must accept the IR of every corpus program that compiles,
+# or of FILES (tools/check_ir.sh)
 check-ir: pystachy
 	tools/check_ir.sh ./pystachy $(FILES)
+
+# the compiler's RUNTIME table must agree with runtime.c (tools/check_runtime.py)
+check-runtime:
+	$(PY) tools/check_runtime.py
 
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir clean
+.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir check-runtime clean
