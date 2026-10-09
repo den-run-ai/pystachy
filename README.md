@@ -590,8 +590,8 @@ union with `str`, a `TypeVar` named other than by a module-level function's para
 return (in a method, a field, a variable's annotation, or as a value), a `TypeVar`'s
 constraints and a bound other than a string, a bare `Final` without a value or in a class
 body, an `@overload` stub that the `def` implementing it does not follow in its block (in an
-imported module, where it is called; also one after that `def`: CPython keeps the stub, whose
-calls raise `NotImplementedError`), and a stub's default other than a constant;
+imported module, also a method, where it is called; also one after that `def`: CPython keeps
+the stub, whose calls raise `NotImplementedError`), and a stub's default other than a constant;
 typing's names in a function's local variable annotations that are not imported (CPython never evaluates
 those); `from <builtin module> import *`; a NamedTuple without fields, assigned a field
 outside its `__init__`, whose class defines `__getitem__` or `__iter__`, compared or added
@@ -832,7 +832,7 @@ use, loops with `else`, the `lib/` modules (`tests/lib_*.py`), definite assignme
 streams, exceptions and exit statuses, runtime errors (also CPython's wording of the type and argument errors Pystachy reports
 when it compiles), garbage-collector churn, classic
 algorithms, a small interpreter, and 16 programs from Ouro v2. Where `tests/NAME.full`
-exists, the program's stdout is `/dev/full`. Current result: **1585 passed, 0 failed** with
+exists, the program's stdout is `/dev/full`. Current result: **1589 passed, 0 failed** with
 both the CPython-hosted and the self-compiled compiler.
 
 `make verify` (`tests/verify.sh`) runs the whole verification and writes

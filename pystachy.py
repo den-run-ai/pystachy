@@ -7167,7 +7167,7 @@ class Gen:
                 while j < len(body) and body[j].kind == "def" and (body[j].s != st.s or self.stub(m, body[j])):
                     j += 1
                 if (j == len(body) or body[j].kind != "def") and m.name != "":
-                    out.append(st)  # (an imported module's, which CPython calls: an error where it is used, see declare_fn)
+                    out.append(st)  # (an imported module's, also a method: an error where it is called, see declare_fn)
                     continue
                 if j == len(body) or body[j].kind != "def":
                     self.err(STUB.replace("NAME", short(st.s)))
@@ -7339,12 +7339,13 @@ class Gen:
         f = FnInfo(d.s, f"@f.{d.s}" if cls == "" else f"@m.{cls}.{d.s}", d, cls)
         ps = d.kids[0].kids
         deco = ""
+        stub = False  # (an imported module's that no def follows: see typing_forms)
         for x in d.kids[3:]:
             if x.s != "async" and deco == "":
                 deco = x.s
+            stub = stub or self.imported(x.s) == "typing.overload"
         if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
             f.deco = deco  # (a method that takes no self, or its class as cls)
-        stub = self.imported(deco) == "typing.overload"  # (an imported module's that no def follows: see typing_forms)
         deco = short(deco)
         if deco != "" and f.deco == "" and not self.lib:
             # (CPython applies a decorator when the def runs, called or not: see decorators())
@@ -9053,7 +9054,7 @@ class Gen:
             return FXALL if f.q and "O" in i.x else f.fx
         return self.opfxs[i.op]
 
-    def class_problem(self, st: Node) -> str:
+    def class_problem(self, m: Mod, st: Node) -> str:
         # why a class of an imported module cannot be declared, or "": its methods need
         # annotated parameters, and its body may hold only fields, methods and a docstring
         if len(st.kids) > 2 or (len(st.kids) > 1 and (dc_args(st.kids[1]).startswith("!") or self.imported(st.kids[1].s) != "dataclasses.dataclass")):
@@ -9063,8 +9064,8 @@ class Gen:
                 ps = b.kids[0].kids
                 deco = b.kids[3].s if len(b.kids) == 4 and len(b.kids[3].kids) == 0 else ""
                 static = deco == "staticmethod"
-                if len(b.kids) > 3 and ((not static and deco != "classmethod") or (b.s.startswith("__") and b.s.endswith("__"))):
-                    return f"method {b.s}() has a decorator"
+                if len(b.kids) > 3 and ((not static and deco != "classmethod") or (b.s.startswith("__") and b.s.endswith("__"))) and not self.stub(m, b):
+                    return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
                 if len(ps) == 0 and not static:
                     return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
                 for i in range(len(ps)):
@@ -9317,7 +9318,7 @@ class Gen:
                     if len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
                         why += " (the module may have rebound the name 'object' before this statement)"
                 elif st.kind == "class" and m.name != "":
-                    why = self.class_problem(st)
+                    why = self.class_problem(m, st)
                 if why != "" and m.name == "":
                     self.err(why)
                 if why != "":
@@ -11574,6 +11575,8 @@ class Gen:
         if m not in ci.methods:
             self.err(f"type object '{short(cn.s)}' has no attribute '{m}'")
         f = ci.methods[m]
+        if f.bad == STUB.replace("NAME", m):
+            self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
         if f.deco == "":
             self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
         return self.call_fn(f, [], args, want)
