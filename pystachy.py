@@ -4594,6 +4594,8 @@ IROPS: dict[str, str] = {
     "raw": "rL rD wD rO wO rG wG", "slot": "", "rt": "*", "call": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
 }
+# the LLVM instructions a raw op may not be: the ones that end a block, and phi and call (ops of their own)
+LLNOTRAW: list[str] = "ret br switch indirectbr invoke callbr resume catchswitch catchret cleanupret unreachable phi call tail musttail notail".split()
 # Effect letters: R may raise (today a raise prints its message, flushes stdout and exits); N never
 # returns; A allocates (a collection may run, and running out of memory ends the program); U may
 # run user code, and so has every other letter (U?: when the static type, the descriptor of a #
@@ -7278,9 +7280,10 @@ class Gen:
     # ---- the IR's check (PYSTACHY_IRCHECK=1) and its effect summaries, once the program is built
     def verify(self, fn: IFn) -> None:
         # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
-        # no raw op calls (calls are rt, call and init ops, whose effects are known), and call and
-        # init ops call compiled functions; every block ends with its one terminator; branches go
-        # to blocks of fn; a phi starts its block, and its predecessors branch there
+        # a raw op is one LLVM instruction that is no call (calls are rt, call and init ops, whose
+        # effects are known), no phi and no terminator, and call and init ops call compiled
+        # functions; every block ends with its one terminator; branches go to blocks of fn; a phi
+        # starts its block, and its predecessors branch there
         at: dict[str, int] = {}
         for j in range(len(fn.blocks)):
             if fn.blocks[j].label in at:
@@ -7299,8 +7302,13 @@ class Gen:
                     self.bad_ir(fn, b, "a phi after other ops")
                 if i.op == "rt" and i.s not in RUNTIME:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}")
-                if i.op == "raw" and (i.s.startswith("call ") or "= call " in i.s):
-                    self.bad_ir(fn, b, f"a call as LLVM text: {i.s}")
+                if i.op == "raw":
+                    # one LLVM instruction that loads, stores or computes: not a call, a phi, a
+                    # terminator or a label (its first word, after the "%x = " of a value it defines)
+                    w = i.s[i.s.find(" = ") + 3 :] if i.s.startswith("%") and " = " in i.s else i.s
+                    w = w[: w.find(" ")] if " " in w else w
+                    if w in LLNOTRAW or w.endswith(":") or "\n" in i.s:
+                        self.bad_ir(fn, b, f"LLVM text that must be an op: {i.s}")
                 if (i.op == "call" and i.s not in self.fll) or (i.op == "init" and "@init." + i.s not in self.fll):
                     self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
                 if i.op != "phi":
