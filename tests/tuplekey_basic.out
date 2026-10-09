@@ -1,0 +1,18 @@
+{('a', None): 0, ('a', 'x'): 1, ('a', 'y'): 2, ('b', None): 3, ('b', 'x'): 4, ('b', 'y'): 5} 6
+0 5 True False True
+3 -1 4 99
+{('a', 'x'): 1, ('a', 'y'): 12, ('b', None): 3, ('b', 'y'): 5} [('a', 'x'), ('a', 'y'), ('b', 'y')] ('a', 'x')
+a x 1 True
+a y 12 True
+b None 3 True
+b y 5 True
+('b', 'y') 5
+('b', None) 3
+('a', 'y') 12
+('a', 'x') 1
+{(1, True): 'uno', (2, False): 'two'} uno False
+{(1, ('a', 'b')): [1, 2], (2, ('c', 'd')): [3]} True False {(1, ('a', 'b')): [1, 2], (2, ('c', 'd')): [3]}
+[3] None (2, ('c', 'd')) (1, ('a', 'b'))
+1000000 1000 5 0
+{('w', 1): None, ('w', 2): 'two'} True ?
+[exit 1]

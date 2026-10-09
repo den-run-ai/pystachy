@@ -1,0 +1,10 @@
+(None, None)
+('sec', None)
+('k', 'v')
+(None, 'cont')
+['[s]', 'a=1', '+more']
+b None [1] None s
+big [3] big BIG 3
+['a', None, 'b'] {'k': None, 'j': 'v'} [None, ('x', 1)] {'n': [1], 'm': None}
+('p', None) True
+[exit 0]

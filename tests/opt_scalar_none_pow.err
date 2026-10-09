@@ -1,0 +1,1 @@
+TypeError: unsupported operand type(s) for ** or pow(): 'NoneType' and 'int'

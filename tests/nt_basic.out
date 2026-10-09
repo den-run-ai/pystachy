@@ -1,0 +1,18 @@
+mods: init mods
+mods.shapes: init mods.shapes
+0 None None None True
+1 s None None False
+2 s k ['v', 'w'] False
+['v', 'w'] ParsedLine(lineno=2, section='s', name='k', value=['v', 'w']) 4 2 ['v', 'w'] True
+[ParsedLine(lineno=0, section=None, name=None, value=None), ParsedLine(lineno=1, section='s', name=None, value=None), ParsedLine(lineno=2, section='s', name='k', value=['v', 'w'])] True 1
+<p 3,-4> Point(x=3, y=-4, label='p') <q 2,1> <p 3,-4> Point(x=2, y=1, label='q') 7 q True True
+2 1 q <q 2,1> <r 2,7> <q 2,1>
+Pos(line=3, col=4) True Token(kind='name', text=None, at=Pos(line=3, col=4)) 2
+[Point(x=1, y=5, label='a'), Point(x=1, y=5, label='p'), Point(x=2, y=1, label='p'), Point(x=2, y=2, label='p')] <a 1,5> <p 2,2> True False <p 2,2>
+{'first': Point(x=2, y=2, label='p')} (Point(x=3, y=-4, label='p'), Point(x=2, y=1, label='q')) [[Point(x=3, y=-4, label='p')]] {'k': [Point(x=2, y=1, label='q')]}
+Shelf(items=['shared'], owner=None) Shelf(items=['shared'], owner=None) True Shelf(items=['x'], owner=Point(x=3, y=-4, label='p'))
+Tree(name='root', kids=[Tree(name='leaf', kids=[]), Tree(name='root', kids=[...])]) True True
+False False True True
+2 s k ['v', 'w']
+Span(name='a', start=Pos(line=1, col=0), end=Pos(line=2, col=3)) Span(name='b', start=Pos(line=5, col=0), end=Pos(line=2, col=3)) True True
+[exit 1]

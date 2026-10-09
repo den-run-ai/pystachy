@@ -1,0 +1,14 @@
+{('a', None): 1, ('b', 'c'): 2} {('b', 'c'): 2, ('a', None): 1}
+[('a', None), ('b', 'c')] {1: ('a', None), 2: ('b', 'c')} {(1, None): 'x'}
+{(1, 'x'): 1}
+{('a', None): 6, ('b', 'c'): 2} True 2 2
+{(True, None): 2, (False, None): 1}
+True True False
+False False {('a', 1): 1, (None, 2): 2}
+False -1 -2 False
+True 1 1
+False 0 False
+a True True - True x
+b {(1, 2): 'a'}
+{(): 1} True
+[exit 1]

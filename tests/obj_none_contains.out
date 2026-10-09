@@ -1,0 +1,8 @@
+evaluated 1
+get 1
+evaluated 3
+get 1
+True True
+evaluated 1
+get 0
+[exit 1]

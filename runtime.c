@@ -24,7 +24,7 @@
 typedef int64_t I;
 typedef struct { I len; char s[]; } Str;              /* immutable, NUL-terminated */
 typedef struct { I len, cap; I *a; } List;
-typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 1: str keys; see dicts */
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple keys; see dicts */
 typedef struct { char *p; I n, cap; } Buf;
 #define NONE INT64_MIN                                 /* omitted slice bound */
 
@@ -452,12 +452,38 @@ Str *pys_str_replace(Str *s, Str *a, Str *b) {
   for (I j; (j = find(s, a, i)) >= 0; i = j + a->len) { put(&o, s->s + i, j - i); put(&o, b->s, b->len); }
   put(&o, s->s + i, s->len - i); return done(&o);
 }
-static int ws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
-static int instr(unsigned char c, Str *cs) { return cs ? memchr(cs->s, c, cs->len) != 0 : ws(c); }
-static Str *strip(Str *s, Str *cs, int m) {
-  I i = 0, j = s->len;
-  if (m & 1) while (i < j && instr(s->s[i], cs)) i++;
-  if (m & 2) while (j > i && instr(s->s[j - 1], cs)) j--;
+static int aspace(I c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
+static int uspace(I cp) {              /* str.isspace() (Unicode 15.1, CPython 3.13): ASCII's and these */
+  return cp < 0x80 ? aspace(cp) : cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) ||
+                                  cp == 0x2028 || cp == 0x2029 || cp == 0x202F || cp == 0x205F || cp == 0x3000;
+}
+/* ws: the character at p (n > 0 bytes left) is whitespace: its byte count, else minus that. back: the
+   byte count of the character that ends at p + j (j > 0), as u8char reads it from the start (a UTF-8
+   sequence that ends there, else one byte), and wsback its ws. Only a non-ASCII byte calls out */
+__attribute__((noinline)) static I uws(const char *p, I n) { I cp, k = u8char(p, n, &cp); return uspace(cp) ? k : -k; }
+__attribute__((noinline)) static I uback(const char *p, I j) {
+  I i = j - 1, cp;
+  while (i > 0 && j - i < 4 && (p[i] & 0xC0) == 0x80) i--;
+  return u8char(p + i, j - i, &cp) == j - i ? j - i : 1;
+}
+static inline __attribute__((always_inline)) I ws(const char *p, I n) { return *p & 0x80 ? uws(p, n) : aspace(*p) ? 1 : -1; }
+static inline __attribute__((always_inline)) I back(const char *p, I j) { return p[j - 1] & 0x80 ? uback(p, j) : 1; }
+static inline __attribute__((always_inline)) I wsback(const char *p, I j) {
+  I b;
+  return p[j - 1] & 0x80 ? (b = uback(p, j), uws(p + j - b, b)) : aspace(p[j - 1]) ? 1 : -1;
+}
+static I instr(const char *p, I n, Str *cs) {   /* as ws, for the characters of cs (whitespace if cs is None) */
+  I cp, m, k;
+  if (!cs) return ws(p, n);
+  if (!(*p & 0x80)) return memchr(cs->s, *p, cs->len) ? 1 : -1;
+  k = u8char(p, n, &cp);
+  for (I i = 0; i < cs->len; i += m) if ((m = u8char(cs->s + i, cs->len - i, &cp)) == k && !memcmp(cs->s + i, p, m)) return k;
+  return -k;
+}
+static Str *strip(Str *s, Str *cs, int m) {   /* character by character, as CPython strips code points */
+  I i = 0, j = s->len, k, b;
+  if (m & 1) while (i < j && (k = instr(s->s + i, j - i, cs)) > 0) i += k;
+  if (m & 2) while (j > i && (b = back(s->s, j), instr(s->s + j - b, b, cs) > 0)) j -= b;
   return pys_str(s->s + i, j - i);
 }
 Str *pys_str_strip(Str *s, Str *cs) { return strip(s, cs, 3); }
@@ -465,10 +491,10 @@ Str *pys_str_lstrip(Str *s, Str *cs) { return strip(s, cs, 1); }
 Str *pys_str_rstrip(Str *s, Str *cs) { return strip(s, cs, 2); }
 static I all(Str *s, int k) {                  /* 0 digit, 1 alpha, 2 alnum, 3 space */
   if (!s->len) return 0;
-  for (I i = 0; i < s->len; i++) {
+  for (I i = 0, n = 1; i < s->len; i += n) {
     unsigned char c = s->s[i];
     int d = c >= '0' && c <= '9', a = (c | 32) >= 'a' && (c | 32) <= 'z';
-    if (!(k == 0 ? d : k == 1 ? a : k == 2 ? d || a : ws(c))) return 0;
+    if (!(k == 0 ? d : k == 1 ? a : k == 2 ? d || a : (n = ws(s->s + i, s->len - i)) > 0)) return 0;
   }
   return 1;
 }
@@ -658,8 +684,7 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
     if (n == 1 || i + n > s->len) cp = -1;
     for (I k = 1; cp >= 0 && k < n; k++) cp = (s->s[i + k] & 0xC0) == 0x80 ? cp << 6 | (s->s[i + k] & 0x3F) : -1;
     char o = '?';
-    if (cp == 0x85 || cp == 0xA0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 ||
-        cp == 0x202F || cp == 0x205F || cp == 0x3000) o = ' ';
+    if (uspace(cp)) o = ' ';
     for (I r = 0; o == '?' && cp >= 0 && r < (I)(sizeof decruns / sizeof *decruns); r++)
       if (cp >= decruns[r] && cp < decruns[r] + 10) o = (char)('0' + cp - decruns[r]);
     put(&b, &o, 1);
@@ -905,6 +930,18 @@ I pys_f2i(double d) {
   return (I)d;
 }
 I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
+                                                10**-n, ties to the even multiple */
+  if (n >= 0) return x;
+  __int128 m = 1, q, r;
+  for (I i = 0; i < -n && i < 20; i++) m *= 10;   /* (10**20 > 2 * |x|: a farther n gives 0 too) */
+  q = x / m; r = x % m;
+  if (r < 0) { r += m; q--; }                     /* x = q * m + r, 0 <= r < m */
+  if (2 * r > m || (2 * r == m && (q & 1))) q++;
+  q *= m;
+  if (q > INT64_MAX || q < INT64_MIN) pys_fail(OVF);
+  return (I)q;
+}
 double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
   static char b[1500], o[1500];
   if (!isfinite(x) || n > 400) return x;
@@ -929,7 +966,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, O<ddd> object
-   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it */
+   of class number ddd: the program defines pys_obj_eq/lt/repr, which dispatch on it;
+   ?<e> None (null) or a value of <e> */
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
@@ -945,10 +983,14 @@ I pys_repr_enter(void *p) {
   busy[nbusy++] = p; return 1;
 }
 void pys_repr_leave(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
+/* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
+   box of its value's 8 bytes (a bool's 0 or 1), and None is null */
+void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') return d + 3;
-  if (c == 'L') return skip(d);
+  if (c == 'L' || c == '?') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   return d;
@@ -978,27 +1020,33 @@ static const char *repr(Buf *b, I v, const char *d) {
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
-  case 's': repr_str(b, (Str *)v); return d;
-  case 'L': {
-    List *l = (List *)v; put(b, "[", 1);
+  case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
+  case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
+    List *l = (List *)v;
+    if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
+    put(b, "[", 1);
     for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr(b, l->a[i], d); }
-    put(b, "]", 1); return skip(d);
+    put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
-    Dict *m = (Dict *)v; const char *dv = skip(d); put(b, "{", 1);
+    Dict *m = (Dict *)v; const char *dv = skip(d);
+    if (!pys_repr_enter(m)) { put(b, "{...}", 5); return skip(dv); }
+    put(b, "{", 1);
     for (I e = 0, k = 0; e < m->n; e++) {
       if (!m->hs[e]) continue;
       if (k++) put(b, ", ", 2);
       repr(b, m->keys[e], d); put(b, ": ", 2); repr(b, m->vals[e], dv);
     }
-    put(b, "}", 1); return skip(dv);
+    put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
   case 'T': {
+    if (!v) { put(b, "None", 4); return skip(d - 1); }
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return d + 3; }
+  case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
   }
   return d;
 }
@@ -1007,7 +1055,7 @@ static I entry(Dict *d, I k);
 static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'f': return dbl(a) == dbl(b);
-  case 's': return pys_str_eq((Str *)a, (Str *)b);
+  case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {
     List *x = (List *)a, *y = (List *)b;
     if (x->len != y->len) return 0;
@@ -1026,10 +1074,12 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'T': {
     I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+    if (!x || !y) return x == y;
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqv(x[i], y[i], e)) return 0;
     return 1;
   }
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
+  case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   }
   return a == b;
 }
@@ -1038,6 +1088,7 @@ I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
+static const char *tyname(char d);
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -1055,6 +1106,10 @@ static int opv(I a, I b, const char *d, I op) {
   }
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case '?':
+    if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
+    failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
+          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
   }
   return cmpop((a > b) - (a < b), op);
 }
@@ -1123,12 +1178,24 @@ List *pys_list_mul(List *a, I n) {
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqv(l->a[i], v, d->s)) return i; return -1; }
-I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
-  I i = -1;
+static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
-  for (I j = st; j < en && j < l->len; j++) if (eqv(l->a[j], v, d->s)) { i = j; break; }
-  if (i < 0) { Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, v, d->s); put(&b, " is not in list", 16); pys_fail(b.p); }
+  for (I j = st; j < en && j < l->len; j++) if (eqv(l->a[j], v, d)) return j;
+  return -1;
+}
+static _Noreturn void not_in_list(I x, const char *xd) {
+  Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, x, xd); put(&b, " is not in list", 16); pys_fail(b.p);
+}
+I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
+  I i = index_in(l, v, d->s, st, en);
+  if (i < 0) not_in_list(v, d->s);
+  return i;
+}
+I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* list.index(x, start, stop) of a number x
+                                     of another type than the items: v is the item equal to x, if there is one (ok) */
+  I i = ok ? index_in(l, v, d->s, st, en) : -1;
+  if (i < 0) not_in_list(x, xd->s);
   return i;
 }
 I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += eqv(l->a[i], v, d->s); return c; }
@@ -1379,7 +1446,10 @@ List *pys_range_list(I a, I b, I s) {
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
 Str *pys_str_join(Str *sep, List *l) {
   I n = 0;
-  for (I i = 0; i < l->len; i++) n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) failf("TypeError: sequence item %lld: expected str instance, NoneType found", (long long)i);   /* a str | None item */
+    n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
+  }
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
   for (I i = 0; i < l->len; i++) {
     Str *s = (Str *)l->a[i];
@@ -1392,11 +1462,11 @@ List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit 
   List *l = pys_list_new(0); I i = 0, n = s->len;
   if (maxsplit < 0) maxsplit = INT64_MAX;     /* no limit: counting down from it cannot reach 0, or overflow */
   if (!sep) {
-    for (;;) {
-      while (i < n && ws(s->s[i])) i++;
+    for (I k;;) {
+      while (i < n && (k = ws(s->s + i, n - i)) > 0) i += k;
       if (i >= n) return l;
       if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s + i, n - i)); return l; }   /* the rest, as it is */
-      I j = i; while (j < n && !ws(s->s[j])) j++;
+      I j = i; while (j < n && (k = ws(s->s + j, n - j)) < 0) j -= k;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
     }
   }
@@ -1428,11 +1498,11 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
   List *l = pys_list_new(0); I j = s->len;
   if (maxsplit < 0) maxsplit = INT64_MAX;
   if (!sep) {
-    for (;;) {
-      while (j > 0 && ws(s->s[j - 1])) j--;
+    for (I k;;) {
+      while (j > 0 && (k = wsback(s->s, j)) > 0) j -= k;
       if (j <= 0) break;
       if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s, j)); break; }
-      I i = j; while (i > 0 && !ws(s->s[i - 1])) i--;
+      I i = j; while (i > 0 && (k = wsback(s->s, i)) < 0) i += k;
       pys_list_append(l, (I)pys_str(s->s + i, j - i)); j = i;
     }
   } else {
@@ -1455,7 +1525,9 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
    first shift folds the key's high bits into its low ones, the multiply spreads them up and
    the last shift brings the product's high bits down, so keys that differ only in their high
    bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
-   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A lookup
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A tuple key
+   (kind is its type descriptor: items int, bool, str, None or a str, and such tuples) mixes
+   its items' hashes, None's a constant, and its keys are equal as == compares them. A lookup
    in a table that fits in the cache takes a few ns, so each costs only one multiply (per
    byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
    each step mixes five more of its bits in (perturb), so keys whose hashes share their low
@@ -1465,9 +1537,19 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
 #ifndef DICT_PROBE
 #define DICT_PROBE()
 #endif
+static uint64_t hsh(Dict *d, I k);
+static uint64_t hval(I k, const char *d) {           /* a tuple key's hash (or its item's), by its descriptor */
+  if ((*d == '?' || *d == 's' || *d == 'T') && !k) return 0x9E3779B97F4A7C15ULL;   /* None (also a looked-up key's) */
+  if (*d == '?') d++;
+  if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }
+  uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
+  for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) h = (h ^ hval(((I *)k)[i], e)) * 0x100000001B3ULL;
+  return h ^ h >> 29;
+}
 static uint64_t hsh(Dict *d, I k) {
   uint64_t h = (uint64_t)k;
-  if (d->kind) {
+  if (d->kind > 1) h = hval(k, ((Str *)d->kind)->s);
+  else if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
     h ^= h >> 29;
@@ -1486,7 +1568,8 @@ static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *f
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)))) return i;
+    else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind == 1 && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)) ||
+                                   (d->kind > 1 && eqv(d->keys[e - 1], k, ((Str *)d->kind)->s)))) return i;
   }
 }
 static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
@@ -1506,7 +1589,9 @@ Dict *pys_dict_new(I kind, I n) {                     /* a display of n items is
   if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
   return d;
 }
-static _Noreturn void keyerr(Dict *d, I k) { Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p); }
+static _Noreturn void keyerr(Dict *d, I k) {
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? ((Str *)d->kind)->s : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+}
 static I entry(Dict *d, I k) { I i = dfind(d, k, hsh(d, k), 0); return i < 0 ? -1 : d->idx[i] - 1; }
 I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
 I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
@@ -1526,6 +1611,9 @@ static I dpop(Dict *d, I k, I dflt, int has) {
 }
 I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
 I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+/* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
+I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_box(d->vals[e]); }
+I pys_dict_popbox(Dict *d, I k, I dflt) { return entry(d, k) < 0 ? dflt : (I)pys_box(dpop(d, k, 0, 0)); }
 I pys_dict_setdefault(Dict *d, I k, I v) { I e = entry(d, k); if (e >= 0) return d->vals[e]; pys_dict_set(d, k, v); return v; }
 void pys_dict_clear(Dict *d) { d->len = d->n = d->size = 0; d->keys = d->vals = 0; d->hs = 0; d->idx = 0; }
 /* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
@@ -1609,13 +1697,18 @@ static void group(Buf *o, const char *dg, I n, char sep, int every, I minw) {   
   }
 }
 Str *pys_format(I v, Str *desc, Str *spec) {
-  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ";
-  char d = desc->s[0], align = 0, sign = 0, type = 0, sep = 0;
+  const char *p = spec->s, *end = spec->s + spec->len, *fill = " ", *ds = desc->s;
+  if (*ds == '?') {                            /* None or a value */
+    if (!v && spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
+    if (!v) return cstr("None");
+    v = unbox(v, ++ds);
+  }
+  char d = *ds, align = 0, sign = 0, type = 0, sep = 0;
   int alt = 0, zneg = 0, fillset = 0;
   I fl = 1, width = 0, prec = -1;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));
-    return pys_repr(v, desc);
+    Buf b = {0}; repr(&b, v, ds); return done(&b);
   }
   I cl = p < end ? uoff(p, end - p, 1) : 0;
   if (cl && p + cl < end && p[cl] && strchr("<>=^", p[cl])) { fill = p; fl = cl; fillset = 1; align = p[cl]; p += cl + 1; }
@@ -2121,7 +2214,12 @@ I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as t
   io_out();
   return s->len;
 }
-void pys_file_writelines(File *f, List *l) { for (I i = 0; i < l->len; i++) pys_file_write(f, (Str *)l->a[i]); }
+void pys_file_writelines(File *f, List *l) {
+  for (I i = 0; i < l->len; i++) {
+    if (!l->a[i]) pys_fail("TypeError: write() argument must be str, not None");   /* a str | None item */
+    pys_file_write(f, (Str *)l->a[i]);
+  }
+}
 void pys_file_flush(File *f) {
   if (f->closed) closed_err();
   io_in(); int e = flush1(f); io_out();
@@ -2163,6 +2261,13 @@ Str *pys_platform(void) {              /* sys.platform */
 #endif
 }
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
+Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
+  if ((b->len && b->s[0] == '/') || !a->len) return b;
+  if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
+  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 2);
+  s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
+  return s;
+}
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
 
 /* ---------- the time module: clocks and sleep ---------- */

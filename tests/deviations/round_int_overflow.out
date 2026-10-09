@@ -1,0 +1,3 @@
+9223372036854775800
+OverflowError: integer result does not fit in 64 bits
+[exit 1]

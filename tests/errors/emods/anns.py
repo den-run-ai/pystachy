@@ -22,8 +22,8 @@ def mixed(x, ys: Iterable[int]) -> int:
 
 
 class Holder:
-    def helper(self) -> int | None:
-        return 3
+    def helper(self) -> Iterable[int]:
+        return [3]
 
     def __init__(self) -> None:
         self.x = self.helper()

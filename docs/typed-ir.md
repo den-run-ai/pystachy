@@ -17,6 +17,18 @@ This is the preparation step, and none of it is implemented yet. Function names 
 > - #17's cases 2 and 4 (§9, question 4) now compile.
 > - Bugs A to F of §1.3 are fixed in their own commits (#18), outside the IR steps; bug B's
 >   program is now a compile-time error asking to annotate the field.
+> - Optional values, NamedTuples and tuple keys (wf/types) are merged into the IR, and extend
+>   §3.2's types: `opt[T]` is T | None for `str`, `list`, `dict` and `tuple` (a class type still
+>   includes None), and a dict's keys may be tuples of `int`, `bool`, `str` and `str | None` items,
+>   whose descriptor is the dict's key kind (`rt dict.new`'s first operand, and a dict hole's when
+>   it is lowered). A local first assigned None has the type `opt[None]` until another value
+>   types it, and its `slot` op keeps it. A lookup by a key that may be None joins two container
+>   slots in a `phi` of the pseudo-type `%slot`, which `lt()` spells `i64`.
+> - `opt[T]` is also T | None for `int`, `float` and `bool`: a pointer to an immutable box of the
+>   value (`rt box`, runtime.c's `pys_box`; descriptors `?i`, `?f` and `?b`). Boxing and reading a
+>   box are code, so a value that reaches a `phi` as the other type is converted at the end of
+>   the block it comes from, before that block's terminator (`Gen.convert_in`), and a template's
+>   function that turns out to return `int | None` gives each `ret` built before a box there.
 >
 > - Steps 5 to 8, then step 4, have landed in that order (one commit each, every one byte-identical
 >   on the corpus). Where they differ from the text below:
