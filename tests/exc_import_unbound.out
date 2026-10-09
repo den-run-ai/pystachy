@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+ImportError x
+ImportError 2
+ImportError 2
+AttributeError module 'mods.unbound' has no attribute 'x'
+[exit 0]

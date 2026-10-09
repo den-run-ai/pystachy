@@ -3545,6 +3545,7 @@ class Loader:
         bad = ""  # the module whose import fails
         exc = "ModuleNotFoundError"
         named = ""  # or the name a from-import of module bad fails to bind
+        unsure = ""  # a name a from-import takes from a module that may leave it unbound
         n = 0  # the import statements that run
         for x in st.kids[0].kids:
             if x.kind != "import" or bad != "":
@@ -3575,6 +3576,8 @@ class Loader:
                 # (one that is not found is passed over), then the names are bound
                 xn = x.kids[j].kids[0].s[x.kids[j].kids[0].s.rfind(".") + 1 :]
                 if bad != "" or x.kids[j].s == "*" or self.binds_name(m, p, xn):
+                    if bad == "" and x.kids[j].s != "*" and unsure == "" and p != m.name and not self.binds_surely(p, xn):
+                        unsure = f"from {p} import {xn}"
                     continue
                 if self.modpath(p + "." + xn) == "":
                     gone = min(gone, j)
@@ -3614,6 +3617,11 @@ class Loader:
                     if e.s == "ImportError" or e.s == exc:
                         h = j
         missing = bad != "" and exc == "ModuleNotFoundError" and self.modpath(bad) == ""
+        if bad == "" and unsure != "" and h != 0:
+            # (CPython's import raises ImportError where the name is unbound, which this import's
+            # handler would catch: not decided at compile time)
+            out.append(mk("badimport", f"{unsure} in an optional import (try: ... except ImportError:) is not supported where the code of module '{unsure[5 : unsure.find(' import')]}' may leave '{unsure[unsure.rfind(' ') + 1 :]}' unbound: bind it at the top level of that code, outside if and try", line, []))
+            return True
         if bad != "" and not missing and named == "":
             site.s = bad
         if not scan:
@@ -3670,6 +3678,16 @@ class Loader:
             body = self.mods[p].body.kids
             names = rebound(body[: self.pos] if p == m.name and self.pos >= 0 else body, True)
         return x in names or "*" in names
+
+    def binds_surely(self, p: str, x: str) -> bool:
+        # does module p's code bind x at its top level for sure (not only in an if, try or loop)
+        path = self.mods[p].path if p in self.mods else self.modpath(p)
+        if not path.endswith(".py"):
+            return False
+        bound: dict[str, bool] = {}
+        for st in self.mods[p].body.kids if p in self.mods else self.parse(path).kids:
+            surely_binds(st, bound, bound)
+        return x in bound
 
     def init_fails(self, name: str) -> str:
         # the exception module name's code raises at its top level for sure (init_raise()), or ""
@@ -6818,7 +6836,7 @@ class Gen:
                 self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
         elif (n.chk or self.foreign(name)) and name in self.gflag and name in self.gtypes:
             bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
-            self.guard(bad, self.unbound(name))
+            self.guard(bad, self.unbound(name, self.copying))
         return self.load_name(name)
 
     def modchk(self, n: Node) -> None:
@@ -6835,8 +6853,13 @@ class Gen:
         # another module's global that may be unbound when this code reads it
         return name in self.late and owner(name) != self.curfn.mod
 
-    def unbound(self, name: str) -> str:
-        # what CPython raises for reading name unbound (as M.x from another module)
+    def unbound(self, name: str, imp: bool = False) -> str:
+        # what CPython raises for reading name unbound (as M.x from another module, or imp: by
+        # from M import x, naming the file of M, as found when compiling)
+        if self.foreign(name) and imp:
+            f = self.mfile[owner(name)]
+            where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
+            return f"ImportError: cannot import name '{short(name)}' from '{owner(name)}' ({where})"
         if self.foreign(name):
             return f"AttributeError: module '{owner(name)}' has no attribute '{short(name)}'"
         return f"NameError: name '{short(name)}' is not defined"

@@ -409,11 +409,12 @@ not checked. `tools/syntax_sweep.py` compares `pystachy check` with CPython's `c
   (`from math import fsum`); a handler that may end the program is rejected instead (below). A
   module whose code raises keeps the globals that code set before the raise, where CPython
   discards the half-run module; a later import runs the code again over them.
-- Reading `m.x`, or `from m import x`, while `m`'s code is still running (a circular import)
-  and has not bound `x`, and `from m import x` of a global that m declares (`x: int`) but has
-  not assigned yet, raise `AttributeError: module 'm' has no attribute 'x'`; CPython 3.13 says
-  the module is partially initialized and names its file (an `ImportError` for the
-  from-import).
+- Reading `m.x` while `m`'s code is still running (a circular import) and has not bound `x`
+  raises `AttributeError: module 'm' has no attribute 'x'`, where CPython 3.13 says that the
+  module is partially initialized. `from m import x` where `x` is unbound (`m`'s code left it
+  so, or has not bound it yet) raises CPython's `ImportError: cannot import name 'x' from 'm'
+  (path)`, naming the real path of `m`'s file where the program was compiled, where CPython
+  names the file it found (and suggests renaming it in a circular import).
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
   drops without closing is closed when a collection finds it unreachable, or at exit, not at
@@ -455,7 +456,8 @@ and `elif` branches; a `**` or `lambda` counts twice), which stays below where C
 parser and compiler give up (2,984 to 9,999 levels, by the kind of chain); a syntax error in
 a module that one of the program's import statements names, also where that import never
 runs; an optional import (`try: import m / except ImportError:`) in which what runs in the
-`try` may raise `ImportError` other than by a module's top-level raise reached for sure, whose
+`try` may raise `ImportError` other than by a module's top-level raise reached for sure (also
+a from-import of a name that its module's code may leave unbound), whose
 handler names (`as e`) or re-raises the exception, whose handler may end the program where
 the module is not found, or whose failing module imports the module of the `try` back; a
 `def` or `class` statement inside a block of a module's code (`if`, `try`, a loop), and a
