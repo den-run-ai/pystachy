@@ -5558,6 +5558,7 @@ class Flow:
         # in an exception class's __init__: the fields super().__init__() surely assigns, whether it
         # lets self escape, and whether this __init__ does
         self.sup: list[str] = []
+        self.base = ""  # (the class's base, whose __init__ it may call as Base.__init__(self, ...))
         self.leak = False
         self.escaped = False
 
@@ -8218,6 +8219,7 @@ class Gen:
                 if f not in b.fflag:
                     fl.sup.append(f)
             fl.leak = b.leak
+            fl.base = shown(ci.base)
             nb = len(ci.fields) - len(own)
         for f in ci.fields:
             if f.startswith(" "):
@@ -8548,10 +8550,12 @@ class Gen:
             elif (c.s in self.funcs or c.s in self.classes) and c.s in fl.tracked and c.s not in fl.defd and " dead" not in fl.defd:
                 c.chk = True
                 fl.marks[c.s] = True
-            for i in range(1, len(e.kids)):
+            # super().__init__(...) in an exception class's __init__ (fl_fields), or Base.__init__(self, ...)
+            sup = fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "call" and c.kids[0].kids[0].kind == "name" and c.kids[0].kids[0].s == "super"
+            based = fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "name" and c.kids[0].s == fl.base and len(e.kids) > 1 and e.kids[1].kind == "name" and e.kids[1].s == fl.me
+            for i in range(2 if based else 1, len(e.kids)):
                 self.fl_expr(fl, e.kids[i])
-            if fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "call" and c.kids[0].kids[0].kind == "name" and c.kids[0].kids[0].s == "super":
-                # super().__init__(...) in an exception class's __init__ (fl_fields)
+            if sup or based:
                 for f in fl.sup:
                     fl.put("." + f)
                 if fl.leak:
@@ -9473,8 +9477,11 @@ class Gen:
         # super().m(args) in a method of an exception class: the base's method m, or what
         # BaseException's __init__ (keep the args), __str__ and __repr__ do
         cls = self.curfn.cls
-        if len(sc.kids) > 1 or cls == "" or self.classes[cls].exc == "":
-            self.err("super() is only supported without arguments, in the methods of exception classes")
+        me0 = self.curfn.params[0] if cls != "" else ""
+        # (super(C, self), in a method of class C, is super())
+        same = len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s == shown(cls) and sc.kids[2].kind == "name" and sc.kids[2].s == me0
+        if (len(sc.kids) > 1 and not same) or cls == "" or self.classes[cls].exc == "":
+            self.err("super() is only supported without arguments, in the methods of exception classes (super(C, self) in a method of C is super())")
         me = self.expr(mk("name", self.curfn.params[0], sc.line, []), "")
         b = self.classes[cls].base
         if b in self.classes and m in self.classes[b].methods:
@@ -11085,6 +11092,12 @@ class Gen:
                 return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
             return self.builtin(f.s, args, want)
         if f.kind == "attr":
+            c = self.curfn.cls
+            if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
+                # Base.m(self, args) in a method of an exception class: super().m(args) for its base
+                if f.kids[0].s != self.classes[c].base and not (self.classes[c].base == "OSError" and (f.kids[0].s == "IOError" or f.kids[0].s == "EnvironmentError")):
+                    self.err(f"{f.kids[0].s}.{f.s}(self, ...) in a method of {short(c)} is supported only for its base, {short(self.classes[c].base)} (as super().{f.s}(...))")
+                return self.super_call(mk("call", "", f.line, [mk("name", "super", f.line, [])]), f.s, args[1:])
             path = self.dotted(f)
             if path != "" and path[: path.rfind(".")] not in MODATTRS:
                 return self.builtin(path, args, want)
