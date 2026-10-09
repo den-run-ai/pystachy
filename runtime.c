@@ -970,19 +970,23 @@ static const char *repr(Buf *b, I v, const char *d) {
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
   case 's': repr_str(b, (Str *)v); return d;
-  case 'L': {
-    List *l = (List *)v; put(b, "[", 1);
+  case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
+    List *l = (List *)v;
+    if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
+    put(b, "[", 1);
     for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr(b, l->a[i], d); }
-    put(b, "]", 1); return skip(d);
+    put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
-    Dict *m = (Dict *)v; const char *dv = skip(d); put(b, "{", 1);
+    Dict *m = (Dict *)v; const char *dv = skip(d);
+    if (!pys_repr_enter(m)) { put(b, "{...}", 5); return skip(dv); }
+    put(b, "{", 1);
     for (I e = 0, k = 0; e < m->n; e++) {
       if (!m->hs[e]) continue;
       if (k++) put(b, ", ", 2);
       repr(b, m->keys[e], d); put(b, ": ", 2); repr(b, m->vals[e], dv);
     }
-    put(b, "}", 1); return skip(dv);
+    put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
   case 'T': {
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
