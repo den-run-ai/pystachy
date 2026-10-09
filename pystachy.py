@@ -10270,10 +10270,17 @@ def main() -> None:
     rpl = tmp + "/rtpy.ll"
     rcb = tmp + "/runtime-c.bc"
     fresh = f"test {q(rtb)} -nt {q(rtc)}"
+    me = argv[0]
+    if "/" not in me and not os.path.exists(me):
+        # run through PATH: the first directory that holds it, as the shell found it
+        for d in os.getenv("PATH", "").split(":"):
+            if d != "" and os.path.exists(d + "/" + me):
+                me = d + "/" + me
+                break
     if os.path.exists(rtpy):
         fresh = fresh + f" && test {q(rtb)} -nt {q(rtpy)}"
-        if os.path.exists(argv[0]):
-            fresh = fresh + f" && test {q(rtb)} -nt {q(argv[0])}"
+        if os.path.exists(me):
+            fresh = fresh + f" && test {q(rtb)} -nt {q(me)}"
     code = sh(f"mkdir -p {q(home + '/build')} && {fresh}")
     if code != 0:
         code = sh(f"{llvm}clang -O2 -S -emit-llvm {q(rtc)} -o {q(rll)}{cflags} && {strip} {q(rll)} | {llvm}llvm-as -o {q(rcb if os.path.exists(rtpy) else part)}")
