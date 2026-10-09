@@ -1,5 +1,6 @@
 print("mods.cyc_a: start")
 A = 1
+NEG = -1
 from . import cyc_b
 
 
