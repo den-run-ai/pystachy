@@ -4623,6 +4623,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "file":
         return "TextIOWrapper"
+    if t.startswith("opt["):
+        return tname(t[4:-1]) + " | None"
     b = t.find("[")
     return t[:b] if b >= 0 else short(t)
 
@@ -4688,15 +4690,20 @@ def same_kind(a: str, b: str) -> bool:
 def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # and opt[T] is T | None
-    t = t.replace("[?,?]", "").replace("[?]", "")
+    return optnames(t.replace("[?,?]", "").replace("[?]", ""))
+
+
+def optnames(t: str) -> str:
+    # t (a type, or a message that names types) with each opt[T] written T | None
     while "opt[" in t:
         a = t.find("opt[")
         b = a + 4
         depth = 1
-        while depth > 0:
+        while depth > 0 and b < len(t):
             depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
             b += 1
-        t = t[:a] + t[a + 4 : b - 1] + " | None" + t[b:]
+        x = t[a + 4 : b - 1]
+        t = t[:a] + (x if x == "None" else x + " | None") + t[b:]
     return t
 
 
@@ -5413,7 +5420,7 @@ class Gen:
             for i in range(len(self.making) - 1, -1, -1):
                 msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
             msg += ")"
-        fail(msg, self.line)
+        fail(optnames(msg) if "opt[" in msg else msg, self.line)
 
     def save(self) -> Frame:
         fr = Frame(self.curfn)
@@ -5569,7 +5576,7 @@ class Gen:
 
     def alloca(self, t: str, name: str) -> str:
         if t == "None":
-            self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+            self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
         if t == "":
             self.err(f"cannot infer the type of '{name}'; add a type annotation")
         self.n += 1
@@ -5737,7 +5744,7 @@ class Gen:
         # reference, which is checked where it is used)
         k = n.kind
         if k == "None":
-            return "" if ret else "None is only supported as a return type; annotate an optional object as C | None"
+            return "" if ret else "None is only supported as a return type; annotate an optional value as T | None"
         if k == "str":
             return ""
         if k == "name":
@@ -5760,7 +5767,7 @@ class Gen:
         # the annotation of a variable, parameter or field: None alone is only a return type
         t = self.typeof(n)
         if t == "None":
-            self.err("None is only supported as a return type; annotate an optional object as C | None")
+            self.err("None is only supported as a return type; annotate an optional value as T | None")
         return t
 
     def typing_attr(self, n: Node) -> str:
@@ -6842,7 +6849,8 @@ class Gen:
             if name not in self.gtypes:
                 t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
                 if v.t == "None" and t0 == "":
-                    self.err(f"cannot infer the type of '{name}' from None; annotate it with an optional class type ({name}: C | None)")
+                    # (module code's other values for it are typed here, as far as they can be)
+                    self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
                 if v.t == "":
                     self.err(f"cannot infer the type of '{name}'; add a type annotation")
                 self.declare(name, t0 if t0 != "" else v.t)
@@ -8444,7 +8452,7 @@ class Gen:
         self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
         self.place(lerr)
         m1 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and 'NoneType'")
-        m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(b.t)}'")
+        m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(unopt(b.t))}'")
         self.raise_("TypeError", self.ins(f"select i1 {self.isnull(b)}, ptr {m1}, ptr {m2}"))
         self.place(lok)
 
@@ -9548,8 +9556,8 @@ class Gen:
         an = self.isnull(a)
         bn = self.isnull(b)
         ms: list[str] = []
-        for x in ["NoneType", tname(a.t)]:
-            for y in ["NoneType", tname(b.t)]:
+        for x in ["NoneType", tname(unopt(a.t))]:
+            for y in ["NoneType", tname(unopt(b.t))]:
                 ms.append(self.sconst(f"'{op}' not supported between instances of '{x}' and '{y}'"))
         mn = self.ins(f"select i1 {bn}, ptr {ms[0]}, ptr {ms[1]}")
         mf = self.ins(f"select i1 {bn}, ptr {ms[2]}, ptr {ms[3]}")
