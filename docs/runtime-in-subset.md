@@ -30,7 +30,12 @@ The prototype is stacked on `claude/typed-ir-prep` (commit `30b51d9`). Unless a 
   - On 15 microbenchmarks of the moved functions, the median ratio is 1.09 (AOT) and 1.05 (JIT). The range runs from 0.05 (a `find` that `memchr` speeds up 20-fold) to 1.32 (`join`).
   - Without the primitives, the same code is 2.4 to about 20 times slower (§2.4.3).
 - **What it buys.**
-  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 261,000 cases in about one second, with no compilation. On its first run it found a bug that runtime.c had: the wrong error message for a repeated `,` or `_` in a format spec (§2.2).
+  - **Testing on CPython.** `runtime.py` is ordinary Python. `tools/rtcheck.py` runs it on CPython against CPython's own str methods, `math` and `format()`: 261,000 cases in about one second, with no compilation. On its first run it found a bug that runtime.c had: the wrong error message for a repeated `,` or `_` in a format spec (§2.2). It is fixed here.
+  - **Five more pre-existing bugs**, outside the moved code, turned up during the evaluation and are reproduced in §2.2:
+    - undefined behaviour in integer division;
+    - a stale length in list `==`;
+    - two lax UTF-8 decoders;
+    - class ids that overflow their three digits.
   - **Safety by default.** Ported code gets checked arithmetic and checked indexing. Two of the three overflow bugs that runtime.c's history records (commit `452f29c`) are in moved functions, and the subset would have raised `OverflowError` for both. The moved code no longer uses fixed-size buffers.
   - **The roadmap's runtime code in Python.** The open issues imply about 9k to 18k lines of new runtime code, 3.5 to 7 times today's runtime.c (§2.5). Under the current architecture all of it would be C.
   - **Reuse.** The planned WebAssembly GC backend needs a runtime written in the subset (`docs/typed-ir.md` §7.3), and the typed IR's effects table can be inferred from it.
@@ -177,6 +182,11 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
   - `int(chr(0xE0) + chr(0x99) + chr(0xA0) + "7")` returns 7, reading the overlong bytes as U+0660 ARABIC-INDIC ZERO, where CPython raises `ValueError`.
 
   Both were reproduced with the compiler of `30b51d9`. One decoder in `runtime.py`, tested on CPython, would fix them by construction. `int()`, `float()` and `ascii()` are next on the list (§5).
+- **Two more, of the kind the subset rules out.** Both were reproduced with the compiler of `30b51d9`.
+  - **Undefined behaviour in `pys_idiv`.** It calls `__builtin_clzll(0)` when the dividend is 0 and the divisor is above 2**53. With UBSan, `k / (1 << 60)` for `k == 0` aborts: "passing zero to clz(), which is not a valid argument". Without it, the result is right by luck. No test reaches it, so `make verify`'s UBSan step did not see it.
+  - **A stale length in list `==`.** `eqv` compares the two lengths once, then reads both lists' slots. If an `__eq__` empties the other list, it reads zeroed slots and passes a null object to the next `__eq__`. The program dies with `AttributeError: 'NoneType' object has no attribute 'v'` where CPython prints `False`.
+
+  In `runtime.py`, the first cannot happen: there is no undefined arithmetic. The second would be an `IndexError` from a checked read, not a null object; a faithful port re-reads the lengths, as CPython's `list_richcompare` does.
 - **Review.** A change to a moved function is a change to Python code that `rtcheck` exercises in a second. A change to runtime.c needs the full test suite and a sanitizer build.
 
 ### 2.3 Compilation and bootstrap
@@ -365,8 +375,13 @@ See §2.3: a cold runtime build takes 0.28 s more, and AOT executables do not gr
 | **LLVM libc** | libc in C++ (326k lines) | 48 files with inline asm | `LIBC_INLINE`, no dependency between public entry points | new code, used beside the system libc | correctly rounded math; GPU builds ship bitcode for LTO | MPFR, exhaustive single-precision tests, differential fuzzing against the system libc |
 | **Mojo** | the standard library (116k lines) | CompilerRT (1.2k lines of C++), AsyncRT (12k) | `__mlir_op` (256 uses), `__mlir_type`, `@always_inline("builtin")` | written in Mojo from the start | library-defined `Int.add` stopped compile-time folding until a "builtin" inlining was added | the stdlib's own tests |
 | **RPython / PyPy** | the GC (incminimark, 3.5k lines) and the interpreter, in a Python subset | — | `lltype`, `llmemory`, `llop` | — | — | **untranslated, on CPython**: the model for `rtcheck`; a full translation takes about 40 minutes |
-| **dart2wasm, Kotlin/Wasm** | the whole Wasm GC runtime (31k and 24k lines) | none | `dart:_wasm` (1.4k lines of intrinsics), `@WasmOp` (210 uses) | — | — | — |
-| **mypyc** (for contrast) | — | `lib-rt` in C over the C API | — | — | — | — |
+| **Codon** (a Python-syntax LLVM compiler: the closest analog) | the standard library, `int`, `str`, `list` and `dict` included: 94k lines | 1.7k lines of C++ (allocation, print, locale, exceptions, regex) and the Boehm GC | `@llvm` functions with inline LLVM IR (758 of them), `Ptr[T]`, `@C` | written that way from the start | "rival C/C++ in performance" (CC'23); the library is tied to LLVM text | its own test suite |
+| **Jikes RVM / MMTk** | the whole JVM, GC included, in Java | a small boot loader | `org.vmmagic`: unboxed `Address`/`Word`, intrinsics, `@Uninterruptible` | — | MMTk in Java (2004): about 5% slower than monolithic collectors, 60% faster than glibc's malloc thanks to inlining. Its "fully-static dialect of Java" blocked reuse, and it was rewritten in Rust in 2016. | a harness that simulates memory as a hash table of pages |
+| **GraalVM Native Image** | the serial GC (25k lines of Java) | 3.9k lines of C helpers | `org.graalvm.word`, `@Uninterruptible` (711 uses in the GC) | — | "the object layout code used by the GC can immediately be used in other parts of the VM and the compiler" | runs hosted on HotSpot, with boxed words |
+| **Nim** | `system`, the ARC/ORC memory management, the allocator, and a conservative refc GC: 19k lines | 1.1k lines of C headers | `cast`, `ptr`, `{.compilerRtl.}`, `{.push rangeChecks: off.}` | ORC became the default in 2.0 (2023) | ORC: 320 µs average latency against 65 ms for mark-and-sweep under forced collections | Valgrind and sanitizers |
+| **Swift, Julia** | the standard library (150k lines), `Base` (139k) | the runtime and GC in C/C++ (50k lines; 152k) | the `Builtin` module; `Core.Intrinsics`, `llvmcall` | — | Julia's C runtime hides roots, which made a moving GC impractical "on a code base with hundreds of thousands of lines" | — |
+| **dart2wasm, Kotlin/Wasm, J2Wasm** | the whole Wasm GC runtime (33k, 28k and 7k lines) | host imports (strings, regex) | `dart:_wasm` (321 `wasm:intrinsic`), `@WasmOp` (210), `@Wasm("...")` | — | V8: a VM written in C "can't" be compiled to Wasm GC; Google Sheets' J2Wasm build ended about twice as fast as its JavaScript | — |
+| **mypyc** (for contrast) | — | `lib-rt` in C over the C API (29k lines) | — | — | — | — |
 
 Sources and line counts: the research notes behind this table measured each repository at its October 2026 head (`golang/go 8dfc83de`, `rust-lang/rust 0f6e5bf`, `ziglang/zig fbd733c` on Codeberg, `llvm/llvm-project 15e2ad97`, `modular/modular babedf5`) and cite:
 - go.dev/doc/go1.4, go.dev/doc/go1.5, go.dev/s/dev.cc and the Go 1.3 compiler design (go.googlesource.com/proposal/+/master/design/go13compiler.md);
@@ -375,7 +390,13 @@ Sources and line counts: the research notes behind this table measured each repo
 - libc.llvm.org;
 - mojolang.org/docs/reference/inline-mlir;
 - rpython.readthedocs.io;
-- the LLVM Dev Meeting 2025 talk "LT-Uh-Oh".
+- the LLVM Dev Meeting 2025 talk "LT-Uh-Oh";
+- the Codon paper (commit.csail.mit.edu/papers/2023/cc_Codon.pdf);
+- the vmmagic paper (VEE 2009) and the MMTk ICSE 2004 paper;
+- the MMTk-for-Julia paper (ISMM 2025);
+- the Nim ORC announcement (nim-lang.org/blog/2020/12/08);
+- the V8 Wasm GC porting post (v8.dev/blog/wasm-gc-porting);
+- the Google Sheets Wasm GC case study (web.dev).
 
 **What these systems have in common, and what Pystachy takes from them.**
 1. **Nobody gets to 100%.** Each keeps a native core: Go's assembly, Mojo's C++ runtime, Rust's libunwind, Zig's remaining C. Pystachy keeps the collector, memory layouts and I/O in C (§1.6).
@@ -383,7 +404,10 @@ Sources and line counts: the research notes behind this table measured each repo
 3. **Runtime code is compiled in a restricted mode**: Go's `-+`, Zig's `no_builtin`, Rust's `no_builtins`. Runtime mode restricts module code, classes and bools in signatures, and rejects self-lowering.
 4. **The recurring bug is the compiler creating a call into the runtime from the runtime itself**: Rust's `mem::swap` becoming `memcpy`, Zig's LLVM 21 `strlen`, LTO's `memcmp` to `bcmp`. `Gen.rt` rejects the compiler's own version of this. LLVM may still turn byte loops into `memcmp`/`memchr`/`strlen` calls, which go to libc, not to the runtime.
 5. **The move is incremental, with both versions kept checkable**: Rust's C fallback, Zig's per-function deletions, Go's bit-identical output. Here the C version stays in git history, and `make irsame REF=30b51d9` and the differential tests compare against it.
-6. **The payoff that has actually been measured is not raw speed.** It is precision and memory (Go's GC), tooling and portability (Zig), and testing on a host (RPython). The prototype matches runtime.c's speed (§2.4); its gains are testing, safety and the backends.
+6. **The payoff that has actually been measured is not raw speed.** It is precision and memory (Go's GC), tooling and portability (Zig), inlining across the old language boundary (MMTk, Go), and testing on a host (RPython, MMTk's harness, GraalVM's hosted mode). The prototype matches runtime.c's speed (§2.4); its gains are testing, safety and the backends.
+7. **The library part moves first, and the GC last or never.** Codon (Boehm), Swift, Julia and Kotlin/Native keep their collectors native. The collector is written in the language itself only where there is a compiler-checked low-level regime: a no-allocation rule, `Address`/`Word` types and a simulated-memory test mode (RPython, vmmagic, SubstrateVM, Go, Slang). Pystachy has none of these yet. This is why §5 keeps the collector in C.
+8. **Wasm GC forces the move.** Every Wasm GC compiler surveyed wrote its runtime in its source language over Wasm-instruction intrinsics, and none ported a collector, because the engine has one.
+9. **The runtime dialect should stay a subset of the language, not a separate one.** MMTk's restricted Java cut the collector off from libraries and other hosts. Slang dropped objects altogether. RPython is remembered for "cryptic" errors. `runtime.py` is ordinary subset code, with the subset's error messages, that CPython also runs. That last property keeps Pystachy's bootstrap CPython-only: inline LLVM text, as in Codon's `@llvm`, would end it.
 
 ## 4. Risks and how the prototype handles them
 
@@ -432,7 +456,8 @@ Sources and line counts: the research notes behind this table measured each repo
 | a full port, collector included, with a pointer layer (RPython's `llmemory`) | A large `_rt` that cannot lower to Wasm GC. The conservative collector scans C stacks and registers either way, so it gains nothing. Every system in §3 keeps such a core native. |
 | the runtime as a `lib/` prelude compiled into every program | Every program's IR would change with every runtime edit, which conflicts with `irsame` and the typed IR's migration. The JIT tier would recompile the runtime on every run, or need the same cache. |
 | Rust, Zig or C++ for the runtime | A second toolchain, outside the self-hosting and Python-free stages. It removes undefined behaviour but adds no CPython testability and no Wasm GC reuse. |
-| a mechanical C-to-subset translator (Go's c2go) | The subset lacks pointers, so most of runtime.c would not translate. The leaf code that does translate is small enough to port by hand, and hand ports came out at C's speed. |
+| a mechanical C-to-subset translator (Go's c2go) | The subset lacks pointers, so most of runtime.c would not translate. Go's translator also needed the C refactored first and produced "unidiomatic Go code that performs poorly". The leaf code that does translate is small enough to port by hand, and hand ports came out at C's speed. |
+| inline LLVM IR in runtime functions (Codon's `@llvm`, Julia's `llvmcall`) | It binds the runtime to one backend's text, so the Wasm GC backend could not reuse it. CPython could no longer run `runtime.py`, which would lose `rtcheck` and the CPython-only bootstrap. `_rt`'s primitives are operations each backend lowers, as Julia's intrinsics and Mojo's `pop` dialect are. |
 
 ## Appendix A: what the prototype changes
 
