@@ -5084,7 +5084,8 @@ class FnInfo:
 # ---------------------------------------------------------------- the IR
 # Gen builds one IFn per compiled function: blocks of instructions (Ins), each an op string
 # whose fields mean what the op says (docs/typed-ir.md 3.4). Until all of Gen builds ops, most
-# are "raw": one line of LLVM text. Lowering prints the LLVM text of an IFn (lower).
+# are "raw": one line of LLVM text. Once the whole program is built, lowering prints the LLVM
+# text of each IFn (lower).
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
@@ -5305,6 +5306,7 @@ class Gen:
         self.strs: dict[str, str] = {}
         self.decls: dict[str, str] = {}
         self.out: list[str] = []
+        self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}
@@ -6915,7 +6917,7 @@ class Gen:
             i = msg.find(": ")
             self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
         self.fn.ps = ps
-        self.lower(self.fn)
+        self.fns.append(self.fn)
 
     # ---- lowering: an IFn as LLVM text
     def lower(self, fn: IFn) -> None:
@@ -7131,6 +7133,9 @@ class Gen:
                 hpush(self.wake, i)
             if len(done) + len(helped) == before:
                 break
+        # the whole program is built: its functions are printed in the order they were completed
+        for fn in self.fns:
+            self.lower(fn)
         for op in ["eq", "cmp", "repr"]:
             self.dispatch(op)
         for i in range(len(self.out)):
