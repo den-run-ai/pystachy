@@ -40,7 +40,12 @@ This is the preparation step, and none of it is implemented yet. Function names 
 >     `%ovf`), and also cover `pys_init`, `pys_finish` and `llvm.frameaddress.p0`;
 >     `tools/check_runtime.py` (`make check-runtime`, a `make verify` step) checks types,
 >     coverage, and the R, A, U and N letters (and rL rD for an entry that walks a value by its
->     descriptor) against runtime.c's call graph; `Gen.rtfns` holds one `RtFn` (symbol, signature,
+>     descriptor) against runtime.c's call graph, rL wL, rD wD and rF wF against the loads and
+>     stores through a list, dict or file parameter (clang -O1, following addresses through
+>     loads, getelementptr, phis, locals and callees' parameters), and I against the runtime's
+>     mutable statics and the C library functions it calls, outside the end of the program and
+>     the allocator (so an entry whose letters are at most R, which `canon` merges, reads
+>     nothing but its arguments); `Gen.rtfns` holds one `RtFn` (symbol, signature,
 >     LLVM types, declare line, effects) per runtime function declared, in the order of first use,
 >     and replaces R2's `decls`: the header prints their declare lines;
 >   - hole ids count from 1 (0: no hole), and hole ops carry their operands like other `rt` ops;

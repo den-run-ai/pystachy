@@ -4636,7 +4636,7 @@ RUNTIME: dict[str, str] = {
     "list.new": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
     "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
-    "list.copy": "S:S|A rL|", "list.clear": "None:S|wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
+    "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL rD U?|",
     "list.index": "int:S,*T,#,int,int|R A rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
     "list.sort_r": "None:S,#,bool|R A rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
@@ -4650,7 +4650,7 @@ RUNTIME: dict[str, str] = {
     "dict.copy": "S:S|A rD|", "dict.from": "S:S|A rD|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
-    "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A rD|", "dict.entry_set": "None:S,int,*V|wD|",
+    "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A rD|", "dict.entry_set": "None:S,int,*V|rD wD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.contains": "bool:S,str||", "str.join": "str:S,list[str]|A rL|", "str.split": "list[str]:S,str,int|R A|",
