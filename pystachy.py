@@ -1614,8 +1614,10 @@ class Loader:
         self.parsed: dict[str, Node] = {}  # each module file, parsed once
         self.failc: dict[str, str] = {}  # what init_fails() found for a module not loaded yet
         self.scanning: dict[str, bool] = {}  # the modules init_fails() is looking at
-        # the index of the top-level statement whose code simplify() or init_raise() is in, -1 in a function
+        # the index of the top-level statement whose code simplify() or init_raise() is in, -1 in a
+        # function, and the one imports() is in
         self.pos = -1
+        self.ipos = 0
         # each optional import that optional() decided: s is the module whose import fails, if its
         # code raises ImportError, and the kids are the other modules whose code runs in the try;
         # with the module it is in, and the other statements that run in the try (checked by guarded())
@@ -1751,7 +1753,9 @@ class Loader:
             m.fails = import_error(r[0].kids[0])
         self.simplify(m, m.body, {})
         self.bindings(m)
+        ipos = self.ipos
         self.imports(m, m.body, False)
+        self.ipos = ipos
         self.order.append(m)
         return m
 
@@ -2313,7 +2317,10 @@ class Loader:
     def imports(self, m: Mod, blk: Node, infn: bool) -> None:
         # load the user modules that the import statements in blk name, and rewrite those
         out: list[Node] = []
-        for st in blk.kids:
+        for i in range(len(blk.kids)):
+            st = blk.kids[i]
+            if blk is m.body:
+                self.ipos = i
             if st.kind == "import" and infn:
                 for a in st.kids:
                     if a.s == "*":
@@ -2500,9 +2507,11 @@ class Loader:
     def take(self, m: Mod, src: Mod, x: str, name: str, infn: bool, keep: Node, inits: Node, copies: list[Node], line: int) -> None:
         # from src import x as name
         k = src.kinds.get(x, "")
+        if src.name == m.name and not infn and x not in rebound(m.body.kids[: self.ipos], True):
+            k = ""  # (from . import x in a package's own code, before the code binds x: the submodule)
         if not infn and (m.kinds.get(name, "") == "f" or m.kinds.get(name, "") == "c"):
             fail(f"'{name}' is bound both by an import and by a def or class (not supported)", line)
-        if not infn and m.kinds.get(name, "") == "v" and k != "v" and k != "":
+        if not infn and m.kinds.get(name, "") == "v" and k != "v" and (k != "" or src.pdir != ""):
             fail(f"'{name}' is bound both as a variable and by an import (not supported)", line)
         if k == "" and src.pdir != "":
             # a submodule of the package
