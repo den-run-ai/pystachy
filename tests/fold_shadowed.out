@@ -1,0 +1,13 @@
+other posix
+yes no
+loop nt
+loop x
+assigned nt assigned other
+win32 not win32
+glob posix tc yes method other method posix
+is t not
+[True]
+posix
+main other
+1 2 2
+[exit 0]

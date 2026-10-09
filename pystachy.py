@@ -2337,7 +2337,7 @@ def walrus_names(e: Node, out: dict[str, bool]) -> None:
             walrus_names(k, out)
 
 
-def binds(body: list[Node], out: dict[str, bool], decl: dict[str, str]) -> None:
+def scope_binds(body: list[Node], out: dict[str, bool], decl: dict[str, str]) -> None:
     # the names a function's body binds (not those of the functions and classes in it), and in
     # decl those its global and nonlocal statements declare
     for st in body:
@@ -2377,14 +2377,14 @@ def binds(body: list[Node], out: dict[str, bool], decl: dict[str, str]) -> None:
         if k != "def" and k != "class" and k != "subclass":
             for kid in st.kids:
                 if kid.kind == "block":
-                    binds(kid.kids, out, decl)
+                    scope_binds(kid.kids, out, decl)
                 elif kid.kind == "except":
                     if kid.s != "":
                         out[kid.s] = True
                     walrus_names(kid.kids[0], out)
-                    binds(kid.kids[1].kids, out, decl)
+                    scope_binds(kid.kids[1].kids, out, decl)
                 elif k == "async":
-                    binds([kid], out, decl)
+                    scope_binds([kid], out, decl)
                 else:
                     for nm in kid.s.split() if kid.kind == "pattern" else []:
                         out[nm] = True  # (a match statement's captures)
@@ -2497,7 +2497,7 @@ class Symtable:
             cs = self.push("class", "", False)
             own: dict[str, bool] = {}
             decl: dict[str, str] = {}
-            binds(c.kids[0].kids, own, decl)
+            scope_binds(c.kids[0].kids, own, decl)
             self.rebind(cs, own)
             self.stmts(c.kids[0].kids)
             self.pop()
@@ -2640,7 +2640,7 @@ class Symtable:
         for p in d.kids[0].kids:
             own[p.s] = True
             sc.flags[p.s] = SYMPARAM
-        binds(d.kids[2].kids, own, decl)
+        scope_binds(d.kids[2].kids, own, decl)
         sc.inner = dict(sc.bound)
         for nm in decl:
             if decl[nm] == "global" and nm in sc.inner:
@@ -2802,6 +2802,13 @@ class Mod:
         self.kinds: dict[str, str] = {}
         self.fnglobal: dict[str, bool] = {}  # the names a function's global statement binds
         self.fnonly: dict[str, bool] = {}  # those its top-level code does not
+        self.rebound: dict[str, bool] = {}  # the names it binds other than as os, sys, TYPE_CHECKING (rebound())
+        self.spec: dict[str, str] = {}  # and those it binds so (specials()): the module, or "" if two differ
+        self.specat: dict[str, int] = {}  # the top-level statement that first does
+        self.fails = ""  # the exception its top-level code surely raises, ImportError or ModuleNotFoundError
+        # a package's names that an import of the submodule of that name rebinds at a time Pystachy
+        # cannot tell (Loader.submodules()); True if that may happen while its own code runs
+        self.amb: dict[str, bool] = {}
 
 
 # Python's builtin names: in an imported module, a name it does not bind is one of these or an
@@ -2834,6 +2841,13 @@ for _k in ("_abc _ast _bisect _blake2 _codecs _collections _csv _datetime _eleme
            "_weakref array atexit binascii cmath faulthandler fcntl gc grp itertools marshal posix pwd pyexpat select "
            "syslog unicodedata zlib").split():
     CBUILTIN[_k] = True
+
+
+# the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
+NOCALL: dict[str, bool] = {}
+for _k in ("name str int float None True False list tuple dict attr assign annassign expr pass global import alias "
+           "uimport guard badimport block raise def params param starparam dstarparam noann class").split():
+    NOCALL[_k] = True
 
 
 def builtin_module(path: str) -> bool:
@@ -2876,6 +2890,159 @@ def is_main_guard(st: Node) -> bool:
     return a.kind == "name" and a.s == "__name__" and b.kind == "str" and b.s == "__main__"
 
 
+def has_all(body: list[Node]) -> bool:
+    # does a module's top-level code assign __all__ (which from m import * then takes)
+    for st in body:
+        if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
+            return True
+    return False
+
+
+def import_error(e: Node) -> str:
+    # "ImportError" or "ModuleNotFoundError" if raise e raises it, else ""
+    n = e.kids[0] if e.kind == "call" else e
+    return n.s if n.kind == "name" and (n.s == "ImportError" or n.s == "ModuleNotFoundError") else ""
+
+
+def may_end(n: Node, bare: bool) -> bool:
+    # does n hold, outside the functions and classes it defines, a raise that re-raises (bare), or
+    # else anything that may end the program: a raise, or a call of exit(), quit(), sys.exit(),
+    # os._exit() or os.abort()
+    if n.kind == "raise" and (len(n.kids) == 0 or not bare):
+        return True
+    for x in n.kids[:1] if n.kind == "call" and not bare else n.kids[:0]:
+        if (x.kind == "name" and (x.s == "exit" or x.s == "quit")) or (x.kind == "attr" and (x.s == "exit" or x.s == "_exit" or x.s == "abort")):
+            return True
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass":
+        return False
+    for k in n.kids:
+        if may_end(k, bare):
+            return True
+    return False
+
+
+def special_import(st: Node, a: Node) -> bool:
+    # an import the loader recognizes where the name it binds is read: of a builtin module (import
+    # os, import os.path as p), or from typing import TYPE_CHECKING
+    if st.s == "":
+        return builtin_module(a.kids[1].s)
+    return st.s == "from" and (a.kids[0].s == "typing.TYPE_CHECKING" or a.kids[0].s == "typing_extensions.TYPE_CHECKING")
+
+
+def binds(body: list[Node], out: dict[str, bool], special: bool, pkg: str = "") -> None:
+    # the names statements bind in their own scope (not inside the functions and classes they
+    # define): assignments, del, def and class, except ... as, and imports (only with special those
+    # special_import() recognizes; "*" for a star import; but in package pkg's code its own
+    # from . import x of its submodule x, which binds x to that unless x is bound already)
+    for st in body:
+        targets(st, out)
+        if st.kind == "import":
+            for a in st.kids:
+                own = pkg != "" and a.s == a.kids[0].s[a.kids[0].s.rfind(".") + 1 :] and ((st.s == "from." and a.kids[1].s == "") or (st.s == "from" and a.kids[1].s == pkg))
+                if (special or a.s == "*" or not special_import(st, a)) and not own:
+                    out[a.s] = True
+        elif st.kind == "del":
+            for t in st.kids:
+                if t.kind == "name":
+                    out[t.s] = True
+        elif st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            out[st.s] = True
+            continue
+        for kid in st.kids:
+            if kid.kind == "block":
+                binds(kid.kids, out, special, pkg)
+            elif kid.kind == "except":
+                if kid.s != "":
+                    out[kid.s] = True
+                binds(kid.kids[1].kids, out, special, pkg)
+
+
+def surely_binds(st: Node, out: dict[str, bool], bound: dict[str, bool]) -> None:
+    # the names statement st binds for sure once it has run, at its own level (not in its blocks);
+    # a del removes the names it deletes from bound
+    if st.kind != "for" and not (st.kind == "annassign" and len(st.kids) < 3):
+        targets(st, out)
+    if st.kind == "import":
+        for a in st.kids:
+            if a.s != "*":
+                out[a.s] = True
+    elif st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+        out[st.s] = True
+    elif st.kind == "del":
+        for t in st.kids:
+            if t.kind == "name" and t.s in bound:
+                del bound[t.s]
+
+
+def specials(m: Mod, body: list[Node], top: int) -> None:
+    # the names module m's code (body; top: the index of the top-level statement it is in, or -1 for
+    # the top level) binds by the imports special_import() recognizes, with what they bind, "" if two
+    # differ (Mod.spec), and the top-level statement with the first that binds each for sure
+    for i in range(len(body)):
+        st = body[i]
+        for a in st.kids if st.kind == "import" else st.kids[:0]:
+            if special_import(st, a):
+                t = a.kids[0].s if st.s == "" else "typing.TYPE_CHECKING"
+                m.spec[a.s] = t if m.spec.get(a.s, t) == t else ""
+                if top < 0 and a.s not in m.specat:
+                    m.specat[a.s] = i
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if kid.kind == "block":
+                specials(m, kid.kids, i if top < 0 else top)
+            elif kid.kind == "except":
+                specials(m, kid.kids[1].kids, i if top < 0 else top)
+
+
+def rebound(body: list[Node], special: bool) -> dict[str, bool]:
+    # the names a module binds (but for special, by the imports special_import() recognizes), also
+    # through a function's global statement: such a name is never taken for os, sys or TYPE_CHECKING
+    out: dict[str, bool] = {}
+    binds(body, out, special)
+    for st in body:
+        fns = [st] if st.kind == "def" else st.kids[0].kids if st.kind == "class" else st.kids[:0]
+        for d in fns:
+            if d.kind == "def":
+                decl: dict[str, bool] = {}
+                asg: dict[str, bool] = {}
+                globals_in(d.kids[2].kids, decl)
+                binds(d.kids[2].kids, asg, True)
+                for nm in decl:
+                    if nm in asg:
+                        out[nm] = True
+    return out
+
+
+def own_specials(d: Node) -> Mod:
+    # what def d binds by its own imports that special_import() recognizes (Mod.spec, as specials()
+    # finds it), and its other names: its parameters, globals and what it binds otherwise
+    # (Mod.rebound)
+    f = Mod("", "", "")
+    body = d.kids[2].kids
+    specials(f, body, -1)
+    binds(body, f.rebound, False)
+    globals_in(body, f.rebound)
+    for p in d.kids[0].kids:
+        f.rebound[p.s] = True
+    return f
+
+
+def scope_names(st: Node) -> dict[str, bool]:
+    # the names a def (its parameters and what its body binds, but its globals) or a class body binds
+    # in its own scope, where they hide the module's names
+    out: dict[str, bool] = {}
+    body = st.kids[2].kids if st.kind == "def" else st.kids[0].kids
+    decl: dict[str, bool] = {}
+    if st.kind == "def":
+        for p in st.kids[0].kids:
+            out[p.s] = True
+        globals_in(body, decl)
+    binds(body, out, True)
+    for nm in decl:
+        if nm in out:
+            del out[nm]
+    return out
+
+
 class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
@@ -2889,15 +3056,51 @@ class Loader:
         self.laterd: list[str] = []
         # what the imports in a function bind (for that function only), by the def's line
         self.fks: dict[str, dict[str, str]] = {}
+        self.fgl: dict[str, dict[str, bool]] = {}  # and the names its global statements declare
         self.curdef = ""  # the def whose body imports() is in
         self.fk: dict[str, str] = {}  # the bindings of the function being qualified
+        self.parsed: dict[str, Node] = {}  # each module file, parsed once
+        self.rawbound: dict[str, dict[str, bool]] = {}  # and what rebound() finds in it before it is loaded
+        self.failc: dict[str, str] = {}  # what init_fails() found for a module not loaded yet
+        self.scanning: dict[str, bool] = {}  # the modules init_fails() is looking at
+        # the index of the top-level statement whose code simplify() or init_raise() is in, -1 in a
+        # function
+        self.pos = -1
+        # the names that the top-level code imports() is in has surely bound by then, and those it
+        # may have bound (for take())
+        self.sure: dict[str, bool] = {}
+        self.maybe: dict[str, bool] = {}
+        # each optional import that optional() decided: s is the module whose import fails, if its
+        # code raises ImportError, and the kids are the other modules whose code runs in the try;
+        # with the module it is in, and the other statements that run in the try (checked by guarded())
+        self.sites: list[Node] = []
+        self.sitem: list[Mod] = []
+        self.siterest: list[Node] = []
+        # what raises() found for a module, where that does not depend on the modules whose code was
+        # running (rcyc: a result that did); the function fn_raises() found, "?" before it looks
+        self.rmemo: dict[str, int] = {}
+        self.rcyc = False
+        self.fn = "?"
+        # each from-import of a name a package binds itself (take()), with the bindings it went to,
+        # for submodules(): s is the name bound, the kids the package, the name and the copy if any
+        self.taken: list[Node] = []
+        self.takek: list[dict[str, str]] = []
+        # each star import of a package without __all__, with the module it is in (submodules())
+        self.stars: list[Node] = []
+        self.starm: list[Mod] = []
+        self.qdef = False  # is qstmts() in a function
+        # the function simplify() is in (own_specials()), and the names that its own imports which
+        # special_import() recognizes have surely bound where simplify() is
+        self.fs = Mod("", "", "")
+        self.fsure: dict[str, bool] = {}
 
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
         m = Mod("", path, "")
         FILES.append(path)
         m.body = Parser(Lexer(src, 1).file()).module()
-        self.simplify(m, m.body)
+        self.prescan(m)
+        self.simplify(m, m.body, {})
         self.bindings(m)
         self.imports(m, m.body, False)
         self.order.append(m)
@@ -2915,12 +3118,14 @@ class Loader:
                         xn = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
                         msg = f"cannot import name '{xn}' from '{p}'"
                     out.append(mk("badimport", msg, st.line, []))
-                    self.bind(self.laterm[i], a.s, "x:" + msg, True)
+                    self.bind(self.laterm[i], a.s, "x:" + msg, True, st.line)
             b = self.laterb[i]
             for j in range(len(b.kids)):
                 if b.kids[j] is st:
                     b.kids = b.kids[:j] + out + b.kids[j + 1 :]
                     break
+        self.guarded()
+        self.submodules()
         for x in self.order:
             self.late_aliases(x)
         for x in self.order:
@@ -3000,17 +3205,36 @@ class Loader:
     def load(self, name: str, path: str, pdir: str) -> Mod:
         m = Mod(name, path, pdir)
         self.mods[name] = m
+        m.body = self.parse(path)
+        del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
+        self.prescan(m)
+        r: list[Node] = []
+        if self.init_raise(m, m.body.kids, r, True):
+            r[0].s = "init"  # (an optional import of the module returns there instead: Gen.raise_stmt)
+            m.fails = import_error(r[0].kids[0])
+        self.simplify(m, m.body, {})
+        self.bindings(m)
+        sure = self.sure
+        maybe = self.maybe
+        self.sure = {}
+        self.maybe = {}
+        self.imports(m, m.body, False)
+        self.sure = sure
+        self.maybe = maybe
+        self.order.append(m)
+        return m
+
+    def parse(self, path: str) -> Node:
+        # a module's file, parsed once for the looks before it is loaded (optional()) and the load
+        if path in self.parsed:
+            return self.parsed[path]
         f = open(path, "r", encoding="latin-1")
         src = f.read()
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
-        m.body = Parser(Lexer(src, k * LINES + 1).file()).module()
-        self.simplify(m, m.body)
-        self.bindings(m)
-        self.imports(m, m.body, False)
-        self.order.append(m)
-        return m
+        self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
+        return self.parsed[path]
 
     def bindings(self, m: Mod) -> None:
         # the names m's top-level code binds (imports of user modules are added by imports())
@@ -3074,70 +3298,510 @@ class Loader:
             if st.kind != "def" and st.kind != "class" and st.kind != "subclass" and refers(st, nm):
                 fail(f"name '{nm}' is used before '{nm} = {al.kids[1].s}' binds it (not supported for an alias of a function or class)", st.line)
 
-    def simplify(self, m: Mod, blk: Node) -> None:
-        # what the loader decides about blk before anything else: in an imported module,
-        # "if __name__ == '__main__':" is false; "try: <imports> / except ImportError: <handler>"
-        # (an optional accelerator module) runs the imports if every module they name can be
-        # found, else the handler; a module-level alias of a def or class (bisect = bisect_right)
-        # binds the same function or class, and is no statement at run time
+    def simplify(self, m: Mod, blk: Node, scope: dict[str, bool]) -> None:
+        # what the loader decides about blk before anything else (scope: the names that the function
+        # or class blk is in binds itself, which hide the module's): the if statements and optional
+        # imports CPython decides at import time (static_if(), optional()) leave what runs in their
+        # place; a module-level alias of a def or class (bisect = bisect_right) binds the same
+        # function or class, and is no statement at run time
         out: list[Node] = []
-        for st in blk.kids:
+        added: list[str] = []  # (what an import in blk binds is sure only within blk)
+        for i in range(len(blk.kids)):
+            st = blk.kids[i]
+            if blk is m.body:
+                self.pos = i
             if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "attr" and st.kids[0].s == "__doc__" and st.kids[0].kids[0].kind == "name" and blk is m.body:
                 # f.__doc__ = g.__doc__: docstrings cannot be read in Pystachy, so this is dropped
                 continue
-            if st.kind == "if" and self.platform(m, st.kids[0]) >= 0:
-                b = st.kids[1] if self.platform(m, st.kids[0]) == 1 else st.kids[2]
-                self.simplify(m, b)
-                out.extend(b.kids)
-            elif (m.name != "" and is_main_guard(st)) or (st.kind == "if" and self.type_checking(m, st.kids[0])):
-                # (if TYPE_CHECKING: is for type checkers only)
-                self.simplify(m, st.kids[2])
-                out.extend(st.kids[2].kids)
-            elif accel_try(st):
-                found = ""
-                for x in st.kids[0].kids:
-                    for a in x.kids if x.kind == "import" else []:
-                        p = a.kids[1].s
-                        if x.s.startswith("from."):
-                            p = self.relative(m, x.s, p, x.line)
-                        if not builtin_module(p) and self.modpath(p) == "" and found == "":
-                            found = p
-                b = st.kids[1].kids[1]
-                if found != "" and (st.kids[1].s != "" or (len(b.kids) == 1 and b.kids[0].kind == "raise")):
-                    # the handler needs the exception, or raises: the module is required
-                    b = mk("block", "", st.line, [mk("badimport", f"module '{found}' is not supported: it is not a builtin module and there is no {found[found.rfind('.') + 1 :]}.py on the module path", st.line, [])])
-                elif found == "":
-                    b = st.kids[0]
-                    for h in st.kids[1:]:
-                        if h.kind == "block" and h.s == "else":
-                            b.kids.extend(h.kids)
-                self.simplify(m, b)
+            run: list[Node] = []
+            if self.static_if(m, st, scope, run) or self.optional(m, st, run, False):
+                b = mk("block", "", st.line, run)
+                self.simplify(m, b, scope)
                 out.extend(b.kids)
             else:
                 out.append(st)
+                for a in st.kids if st.kind == "import" and not (blk is m.body) else st.kids[:0]:
+                    if special_import(st, a) and a.s not in self.fsure:
+                        self.fsure[a.s] = True
+                        added.append(a.s)
+                inner = scope_names(st) if st.kind == "def" or st.kind == "class" else scope
+                decl: dict[str, bool] = {}
+                types: dict[str, Node] = {}
+                pos = self.pos
+                fs = self.fs
+                fsure = self.fsure
+                if st.kind == "def":
+                    globals_in(st.kids[2].kids, decl)
+                    local_types(st.kids[2].kids, types)
+                    self.pos = -1
+                    self.fs = own_specials(st)
+                    self.fsure = {}
                 for kid in st.kids:
                     if kid.kind == "block":
-                        self.simplify(m, kid)
+                        self.simplify(m, kid, inner)
+                self.pos = pos
+                self.fs = fs
+                self.fsure = fsure
+                if st.kind == "def":
+                    self.dropped_locals(st, inner, decl, types)
+        for nm in added:
+            del self.fsure[nm]
         blk.kids = out
 
-    def platform(self, m: Mod, e: Node) -> int:
-        # tests of the platform, decided for the POSIX systems Pystachy compiles for:
-        # sys.platform == "win32" (or "cygwin", ...), sys.platform.startswith("win"), os.name == "nt",
-        # and not/and/or of those; 1, 0, or -1 if e is not such a test
+    def dropped_locals(self, d: Node, before: dict[str, bool], decl: dict[str, bool], types: dict[str, Node]) -> None:
+        # what function d binds only in code simplify() dropped still decides its scope in CPython: a
+        # global statement there holds for the whole function (it is kept), and a name bound there is
+        # a local that nothing binds, so a read of it raises UnboundLocalError. It is declared, with
+        # the type of a binding that was dropped (types: x: T, or x = <constant>), as x: T declares
+        # it; if none gives one, it is an error where d is compiled
+        now: dict[str, bool] = {}
+        globals_in(d.kids[2].kids, now)
+        for nm in decl:
+            if nm not in now:
+                d.kids[2].kids.insert(0, mk("global", "", d.line, [mk("name", nm, d.line, [])]))
+        now = scope_names(d)
+        for nm in before:
+            msg = f"'{nm}' is local to {d.s}() only through code that is dropped at compile time (for the platform, TYPE_CHECKING or an import that fails), so a read of it raises UnboundLocalError; that is supported only where the dropped code annotates it with a supported type or assigns it a constant"
+            if nm not in now and reads(d.kids[2], nm) and nm in types:
+                # (where the type is not supported, the message is msg: Gen.stmt())
+                t = types[nm]
+                d.kids[2].kids.insert(0, mk("annassign", msg, t.line, [mk("name", nm, t.line, []), t]))
+            elif nm not in now and reads(d.kids[2], nm):
+                d.kids[2].kids.insert(0, mk("badimport", msg, d.line, []))
+
+    def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
+        # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
+        # the platform or of TYPE_CHECKING (decide()), or in an imported module if __name__ ==
+        # "__main__": (false). Appends what runs to out; False if st is none of these
+        if st.kind != "if":
+            return False
+        pre: list[Node] = []
+        r = self.decide(m, st.kids[0], scope, pre)
+        if r < 0 and m.name != "" and is_main_guard(st) and "__name__" not in scope and "__name__" not in m.rebound:
+            r = 0
+        if r < 0:
+            return False
+        out.extend(pre)
+        out.extend(st.kids[1].kids if r == 1 else st.kids[2].kids)
+        return True
+
+    def optional(self, m: Mod, st: Node, out: list[Node], scan: bool) -> bool:
+        # try: <imports, then other statements> / except ImportError: <handler> (an optional module,
+        # accel_try()), decided at compile time: the imports run in order until one fails, because
+        # its module is not found (the code of its packages runs first), because the module's code
+        # raises ImportError at its top level (init_raise(): its code before the raise runs, guarded
+        # so that it returns there), or because a from-import names what its module neither binds
+        # nor has as a submodule. Then the handler that catches the exception runs; if none fails,
+        # the rest of the body and the else block do. Appends what runs to out; False if st is not
+        # such a try. Unless scan (init_raise() looking ahead), guarded() checks it later
+        if not accel_try(st):
+            return False
+        line = st.line
+        site = mk("pass", "", line, [])  # (for guarded(), which may make it an error)
+        out.append(site)
+        run: list[Node] = []  # the imports that succeed, then the one that fails
+        bad = ""  # the module whose import fails
+        exc = "ModuleNotFoundError"
+        named = ""  # or the name a from-import of module bad fails to bind
+        n = 0  # the import statements that run
+        for x in st.kids[0].kids:
+            if x.kind != "import" or bad != "":
+                break
+            n += 1
+            ok: list[Node] = []
+            p = ""
+            for a in x.kids:
+                p = a.kids[1].s if not x.s.startswith("from.") else self.relative(m, x.s, a.kids[1].s, x.line)
+                i = 0
+                while i >= 0 and bad == "" and not builtin_module(p) and (len(ok) == 0 or x.s == ""):
+                    # each package on the way, then the module (once for a from-import)
+                    i = p.find(".", i + 1)
+                    q = p[:i] if i >= 0 else p
+                    f = self.init_fails(q) if self.modpath(q) != "" else "ModuleNotFoundError"
+                    if f != "":
+                        bad = q
+                        exc = f
+                    else:
+                        site.kids.append(mk("str", q, line, []))
+                if bad != "":
+                    break
+                ok.append(a)
+            subs: list[int] = []  # the names that are submodules, which run their code
+            gone = len(x.kids)  # the first name that is neither bound by module p nor a submodule
+            for j in range(len(x.kids) if x.s != "" and bad == "" and not builtin_module(p) else 0):
+                # CPython's fromlist: each name module p does not bind is imported as its submodule
+                # (one that is not found is passed over), then the names are bound
+                xn = x.kids[j].kids[0].s[x.kids[j].kids[0].s.rfind(".") + 1 :]
+                if bad != "" or x.kids[j].s == "*" or self.binds_name(m, p, xn):
+                    continue
+                if self.modpath(p + "." + xn) == "":
+                    gone = min(gone, j)
+                    continue
+                f = self.init_fails(p + "." + xn)
+                if f != "":
+                    bad = p + "." + xn
+                    exc = f
+                else:
+                    subs.append(j)
+                    site.kids.append(mk("str", p + "." + xn, line, []))
+            if bad == "" and gone < len(x.kids):
+                bad = p
+                exc = "ImportError"
+                named = x.kids[gone].kids[0].s[x.kids[gone].kids[0].s.rfind(".") + 1 :]
+                ok = x.kids[:gone]
+            elif bad != "" and x.s != "":
+                ok = x.kids[:0]  # (a submodule's ImportError comes before any name is bound)
+            if len(ok) == len(x.kids):
+                run.append(x)
+            elif len(ok) > 0:
+                run.append(mk("import", x.s, x.line, ok))
+            for j in subs:
+                if j >= len(ok):
+                    # a submodule that runs its code, though the statement does not bind it
+                    sub = p + "." + x.kids[j].kids[0].s[x.kids[j].kids[0].s.rfind(".") + 1 :]
+                    run.append(mk("import", "", line, [mk("alias", "", line, [mk("str", sub, line, []), mk("str", sub, line, [])])]))
+        h = 0  # the handler that catches the exception
+        for j in range(1, len(st.kids)):
+            if st.kids[j].kind == "except" and h == 0:
+                t = st.kids[j].kids[0]
+                for e in t.kids if t.kind == "tuple" else [t]:
+                    if e.s == "ImportError" or e.s == exc:
+                        h = j
+        missing = bad != "" and exc == "ModuleNotFoundError" and self.modpath(bad) == ""
+        if bad != "" and not missing and named == "":
+            site.s = bad
+        if not scan:
+            self.sites.append(site)
+            self.sitem.append(m)
+            self.siterest.append(mk("block", "", line, st.kids[0].kids[n:] if bad == "" else st.kids[0].kids[:0]))
+        if bad == "" or h == 0:
+            # every import succeeds, or the exception is not caught: the body runs (the failing
+            # module's raise ends the program, as in CPython), then the else block
+            out.extend(st.kids[0].kids)
+            for e in st.kids[1:]:
+                if e.kind == "block" and e.s == "else":
+                    out.extend(e.kids)
+            return True
+        b = st.kids[h].kids[1]
+        if st.kids[h].s != "" or may_end(b, True) or (missing and may_end(b, False)):
+            # the handler needs the exception, or may end the program where the module is not found
+            # (CPython may find it: a module of its standard library, or an installed package): the
+            # module is required
+            if named != "":
+                msg = f"cannot import name '{named}' from '{bad}', and an except clause that re-raises or names the exception is not supported"
+            elif missing:
+                msg = f"module '{bad}' is not supported: it is not a builtin module and there is no {bad[bad.rfind('.') + 1 :]}.py on the module path"
+            else:
+                msg = f"module '{bad}' raises {exc} as it initializes, and an except clause that re-raises or names the exception is not supported"
+            out.append(mk("badimport", msg, line, []))
+            return True
+        out.extend(run)
+        par = bad if named != "" else bad[: bad.rfind(".")] if missing and "." in bad else "" if missing else bad
+        if par != "":
+            # the code of the failing module's packages runs (and its own until its raise), binding nothing
+            al = mk("alias", "", line, [mk("str", par, line, []), mk("str", par, line, [])])
+            if not missing and named == "":
+                al.kids.append(mk("guard", "", line, []))
+            out.append(mk("import", "", line, [al]))
+        out.extend(b.kids)
+        return True
+
+    def binds_name(self, m: Mod, p: str, x: str) -> bool:
+        # may module p's code bind x itself (anywhere at its top level, through a function's global
+        # statement or by a star import) when a from-import of module m takes x from it: if p is m,
+        # by the top-level statements before that import
+        if p in self.mods and x in self.mods[p].kinds:
+            return True
+        path = self.mods[p].path if p in self.mods else self.modpath(p)
+        if not path.endswith(".py"):
+            return False  # (a namespace package binds nothing)
+        if p not in self.mods and path not in self.rawbound:
+            self.rawbound[path] = rebound(self.parse(path).kids, True)
+        if p not in self.mods:
+            names = self.rawbound[path]
+        else:
+            body = self.mods[p].body.kids
+            names = rebound(body[: self.pos] if p == m.name and self.pos >= 0 else body, True)
+        return x in names or "*" in names
+
+    def init_fails(self, name: str) -> str:
+        # the exception module name's code raises at its top level for sure (init_raise()), or ""
+        if name in self.mods:
+            return self.mods[name].fails
+        p = self.modpath(name)
+        if name in self.failc or name in self.scanning or not p.endswith(".py"):
+            # (a module whose code imports it back finds it half run; a namespace package has no code)
+            return self.failc.get(name, "")
+        t = Mod(name, p, p[:-12] if p.endswith("/__init__.py") else "")
+        t.body = self.parse(p)
+        self.prescan(t)
+        r: list[Node] = []
+        pos = self.pos
+        fs = self.fs
+        self.fs = Mod("", "", "")  # (t's code is not in the function simplify() may be in)
+        self.scanning[name] = True
+        self.init_raise(t, t.body.kids, r, True)
+        del self.scanning[name]
+        self.pos = pos
+        self.fs = fs
+        self.failc[name] = import_error(r[0].kids[0]) if len(r) > 0 else ""
+        return self.failc[name]
+
+    def init_raise(self, m: Mod, body: list[Node], out: list[Node], top: bool) -> bool:
+        # the raise of ImportError (or ModuleNotFoundError) that module m's code reaches for sure at its
+        # top level (body, if top), where simplify() leaves it, goes to out; True if it is found
+        for i in range(len(body)):
+            st = body[i]
+            if top:
+                self.pos = i
+            run: list[Node] = []
+            if st.kind == "raise" and len(st.kids) > 0 and import_error(st.kids[0]) != "":
+                out.append(st)
+                return True
+            if (self.static_if(m, st, {}, run) or self.optional(m, st, run, True)) and self.init_raise(m, run, out, False):
+                return True
+        return False
+
+    def guarded(self) -> None:
+        # an optional import is decided at compile time, so the code that runs in its try must not
+        # raise ImportError in another way: neither what the modules it imports run at import (and
+        # the modules they import) nor the statements after the imports, by a raise of their own or
+        # by a call, if a function of the program may raise ImportError. The site (a pass statement
+        # where the try was) becomes an error where it is compiled.
+        back: dict[str, str] = {}  # what failing() found, by the failing module and the importing one
+        for i in range(len(self.sites)):
+            s = self.sites[i]
+            m = self.sitem[i]
+            seen: dict[str, bool] = {}
+            why = ""
+            for x in s.kids:
+                if x.s in self.mods and why == "":
+                    why = self.why(self.raises(self.mods[x.s], "", seen), f"the code of module '{x.s}'")
+            key = s.s + " " + m.name
+            if s.s in self.mods and why == "" and key not in back:
+                back[key] = self.failing(self.mods[s.s], m)
+            if s.s in self.mods and why == "":
+                why = back[key]
+            if why == "":
+                why = self.why(self.raises_in(self.siterest[i], m, False, seen), "the code that runs in the try")
+            s.kids = []
+            if why != "":
+                s.kind = "badimport"
+                s.s = why
+
+    def failing(self, t: Mod, m: Mod) -> str:
+        # what keeps an optional import in module m of module t, whose code raises ImportError at its
+        # top level, from being decided: t's code may raise it otherwise, or import m back (CPython's
+        # import then finds m half run, and succeeds); the message, or ""
+        why = self.why(self.raises(t, t.name, {}), f"the code of module '{t.name}', besides its top-level raise,")
+        if why == "" and self.imports_mod(t.body, m.name, {}, False):
+            return f"module '{t.name}' imports this module as its code runs, before that raises ImportError: an optional import of it here is not supported"
+        if why == "" and self.imports_mod(t.body, m.name, {}, True) and self.raises_in(t.body, t, True, {}) > 0:
+            return f"module '{t.name}' may import this module as its code runs (through a call), before that raises ImportError: an optional import of it here is not supported"
+        return why
+
+    def why(self, r: int, what: str) -> str:
+        # the message for code that may raise ImportError (raises_in() found r), or ""
+        tail = "which the except clause would catch: not supported (Pystachy decides optional imports at compile time)"
+        if r == 2:
+            return f"{what} may raise ImportError, {tail}"
+        for t in self.order if r == 1 and self.fn == "?" else self.order[:0]:
+            if self.fn == "?" or self.fn == "":
+                self.fn = self.fn_raises(t, t.body)
+        if r == 1 and self.fn != "":
+            return f"{what} may raise ImportError through a call (function {self.fn} may raise it), {tail}"
+        return ""
+
+    def fn_raises(self, t: Mod, n: Node) -> str:
+        # the first function or method in code n of module t that may raise ImportError, by a raise of
+        # its own or by an import of a module whose code may: its name, or ""
+        for k in n.kids:
+            if k.kind == "def" and self.raises_in(k.kids[2], t, False, {}) == 2:
+                return f"{t.name + '.' if t.name != '' else ''}{k.s}()"
+            r = self.fn_raises(t, k) if k.kind != "def" else ""
+            if r != "":
+                return r
+        return ""
+
+    def raises(self, m: Mod, ok: str, seen: dict[str, bool]) -> int:
+        # may module m's code, as it runs at import, raise ImportError (other than the top-level raise
+        # of module ok, which an optional import guards)? As raises_in()
+        if m.name != ok and m.name in self.rmemo:
+            return self.rmemo[m.name]
+        if m.name in seen:
+            self.rcyc = True  # (its code runs already, or was counted: a result that includes it is not its own)
+            return 0
+        seen[m.name] = True
+        cyc = self.rcyc
+        self.rcyc = False
+        r = self.raises_in(m.body, m, m.name == ok, seen)
+        if m.name != ok and not self.rcyc:
+            self.rmemo[m.name] = r
+        self.rcyc = self.rcyc or cyc
+        return r
+
+    def raises_in(self, n: Node, m: Mod, ok: bool, seen: dict[str, bool]) -> int:
+        # may code n of module m raise ImportError as it runs (not the bodies of the functions it
+        # defines)? 2 if by a raise of its own or of a module it imports, 1 if it may call a
+        # function or method of the program (any call but of a builtin with constant arguments, an
+        # operator, a truth test, ...), else 0
+        k = n.kind
+        if k == "raise" and len(n.kids) > 0 and import_error(n.kids[0]) != "" and not (ok and n.s == "init"):
+            return 2
+        if k == "call" and self.plain_call(n, m):
+            return 0
+        r = 0 if k in NOCALL else 1
+        if k == "uimport":
+            for x in n.kids:
+                if x.kind == "str" and x.s in self.mods:
+                    r = max(r, self.raises(self.mods[x.s], "", seen))
+        for i in range(len(n.kids)):
+            if (k == "def" and (i == 1 or i == 2)) or (k == "annassign" and i == 1) or (k.endswith("param") and i == 0):
+                continue  # (a def runs its parameters' defaults and decorators, not its body; annotations call nothing)
+            if r < 2:
+                r = max(r, self.raises_in(n.kids[i], m, ok, seen))
+        return r
+
+    def plain_call(self, n: Node, m: Mod) -> bool:
+        # a call of a builtin (that module m does not rebind) with constant arguments: print("loaded")
+        f = n.kids[0]
+        if f.kind != "name" or f.s not in PYBUILTINS or f.s in m.kinds:
+            return False
+        for a in n.kids[1:]:
+            v = a.kids[0] if a.kind == "kw" else a
+            if v.kind != "str" and v.kind != "int" and v.kind != "float" and v.kind != "None" and v.kind != "True" and v.kind != "False":
+                return False
+        return True
+
+    def imports_mod(self, n: Node, name: str, seen: dict[str, bool], fns: bool) -> bool:
+        # does code n import module name, itself or through the modules it imports (with fns, also
+        # in the functions they define)?
+        if n.kind == "uimport":
+            for x in n.kids:
+                if x.s == name:
+                    return True
+                if x.s in self.mods and x.s not in seen:
+                    seen[x.s] = True
+                    if self.imports_mod(self.mods[x.s].body, name, seen, fns):
+                        return True
+        for k in n.kids if fns or n.kind != "def" else n.kids[:0]:
+            if self.imports_mod(k, name, seen, fns):
+                return True
+        return False
+
+    def submodules(self) -> None:
+        # a package that binds a name x itself (util = "a string") while the program imports its
+        # submodule x too: the first import of the submodule rebinds the package's x to it, at a time
+        # Pystachy cannot tell, unless the package's own code imports the submodule before it binds x
+        # (from .parse import parse). Such an x is ambiguous (Mod.amb): reading it from another module
+        # (qmod(), take()) or in the package's functions (qexpr()) is an error where it is compiled
+        for t in self.order:
+            for x in t.kinds:
+                sub = t.name + "." + x
+                if t.pdir != "" and sub in self.mods and t.kinds[x] != "m:" + sub and not self.own_first(t, x):
+                    t.amb[x] = self.imports_mod(t.body, sub, {}, True)
+        for i in range(len(self.taken)):
+            n = self.taken[i]
+            t = self.mods[n.kids[0].s]
+            x = n.kids[1].s
+            if n.kind == "takemid" and not (x in t.amb and not t.amb[x] and x not in t.fnglobal):
+                # (attribute x of t is the submodule only once an import of it has rebound t's own x,
+                # as for the last step, below; else CPython raises ImportError)
+                n.kids[2].kind = "badimport"
+                n.kids[2].s = self.ambiguous(t.name, x) if x in t.amb else f"import {n.kids[3].s} as {n.s}: '{t.name}.{x}' is the package's own '{x}', not its submodule (not supported: CPython raises ImportError)"
+            elif n.kind != "takemid" and x in t.amb:
+                # (import t.x as y runs the submodule's code after t's, so t's x is the submodule from
+                # then on, unless the submodule's code may run within t's or a function of t rebinds x)
+                sure = n.kind == "takesub" and not t.amb[x] and x not in t.fnglobal
+                msg = self.ambiguous(t.name, x)
+                if len(n.kids) > 2:
+                    n.kids[2].kind = "pass" if sure else "badimport"  # (the copy of a variable)
+                    n.kids[2].s = msg
+                    n.kids[2].kids = []
+                self.takek[i][n.s] = "m:" + t.name + "." + x if sure else "x:" + msg
+        for i in range(len(self.stars)):
+            # from t import * without __all__ binds the public submodules of t that have been imported
+            # by then too: one t's own code imports for sure, but another only where its import may
+            # have run (an error where it is read)
+            t = self.mods[self.stars[i].kids[0].s]
+            m = self.starm[i]
+            for sub in self.mods:
+                x = sub[len(t.name) + 1 :]
+                if sub.startswith(t.name + ".") and "." not in x and not x.startswith("_") and x not in t.kinds:
+                    msg = f"'from {t.name} import *' binds '{x}' to the submodule '{sub}' only if an import of it has run before, and Pystachy cannot tell whether one has (not supported)"
+                    sure = False
+                    for st in t.body.kids:
+                        for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+                            sure = sure or y.s == sub
+                    k = m.kinds.get(x, "m:" + sub)
+                    if sure and k == "m:" + sub:
+                        m.kinds[x] = "m:" + sub
+                    elif sure:
+                        # (the module binds x itself too)
+                        if k == "v":
+                            msg = f"'{x}' is bound both as a variable and by an import (not supported)"
+                        elif k == "f" or k == "c":
+                            msg = f"'{x}' is bound both by an import and by a def or class (not supported)"
+                        else:
+                            msg = f"'{x}' is bound by two imports, to different modules, functions or classes (not supported)"
+                        fail(msg, self.stars[i].line)
+                    elif x in m.kinds:
+                        fail(msg, self.stars[i].line)
+                    else:
+                        m.kinds[x] = "x:" + msg
+
+    def own_first(self, t: Mod, x: str) -> bool:
+        # does package t's top-level code import its submodule x before anything in it binds x, while
+        # no function rebinds x? Then x is t's own binding once t's code has run
+        if x in t.fnglobal:
+            return False
+        for st in t.body.kids:
+            for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+                if y.s == t.name + "." + x:
+                    return True
+            names: dict[str, bool] = {}
+            binds([st], names, True)
+            if x in names:
+                return False
+        return False
+
+    def ambiguous(self, p: str, x: str) -> str:
+        return f"'{p}.{x}' is the package's own '{x}' until the program's first import of its submodule '{p}.{x}' replaces it, and Pystachy cannot tell which of the two this is (not supported)"
+
+    def decide(self, m: Mod, e: Node, scope: dict[str, bool], pre: list[Node]) -> int:
+        # an if condition that tests the platform, decided for the POSIX systems Pystachy compiles
+        # for (sys.platform == "win32" or "cygwin", ..., sys.platform.startswith("win"), os.name ==
+        # "nt"), or TYPE_CHECKING (false), also under not/and/or: 1 or 0, after appending to pre what
+        # still runs for the other operands, in CPython's order ("if x: pass" for an operand x that
+        # is evaluated and tested); -1 if e is undecided
         if e.kind == "unary" and e.s == "not":
-            r = self.platform(m, e.kids[0])
+            r = self.decide(m, e.kids[0], scope, pre)
             return 1 - r if r >= 0 else -1
         if e.kind == "boolop":
-            a = self.platform(m, e.kids[0])
-            b = self.platform(m, e.kids[1])
-            if (a == 0 or b == 0) and e.s == "and":
-                return 0
-            if (a == 1 or b == 1) and e.s == "or":
-                return 1
-            return a if a == b else -1
+            stop = 0 if e.s == "and" else 1  # the value that decides e on its own
+            a: list[Node] = []
+            b: list[Node] = []
+            ra = self.decide(m, e.kids[0], scope, a)
+            rb = self.decide(m, e.kids[1], scope, b) if ra != stop else -1
+            if ra == stop or (ra >= 0 and rb >= 0):
+                pre.extend(a)
+                pre.extend(b)
+                return ra if ra == stop else rb
+            if ra < 0 and rb == stop:
+                # x and False, x or True: x runs and is tested, then what the right operand runs where x
+                # does not decide
+                run = mk("block", "", e.line, b if len(b) > 0 else [mk("pass", "", e.line, [])])
+                skip = mk("block", "", e.line, [])
+                pre.append(mk("if", "", e.line, [e.kids[0], run if stop == 0 else skip, skip if stop == 0 else run]))
+                return stop
+            return -1
+        if e.kind == "attr" and e.s == "TYPE_CHECKING" and e.kids[0].kind == "name" and self.special(m, e.kids[0].s, scope) == "typing":
+            return 0
+        if e.kind == "name" and self.special(m, e.s, scope) == "typing.TYPE_CHECKING":
+            return 0
         other = "win32 cygwin msys nt java emscripten wasi ios android"
         if e.kind == "cmp" and (e.s == "==" or e.s == "!=") and e.kids[1].kind == "str" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name":
-            mod = self.builtin_alias(m, e.kids[0].kids[0].s)
+            mod = self.special(m, e.kids[0].kids[0].s, scope)
             r = -1
             if mod == "sys" and e.kids[0].s == "platform" and e.kids[1].s in other.split():
                 r = 0
@@ -3146,36 +3810,35 @@ class Loader:
             return r if r < 0 or e.s == "==" else 1 - r
         if e.kind == "call" and len(e.kids) == 2 and e.kids[1].kind == "str" and e.kids[0].kind == "attr" and e.kids[0].s == "startswith":
             pa = e.kids[0].kids[0]
-            if pa.kind == "attr" and pa.s == "platform" and pa.kids[0].kind == "name" and self.builtin_alias(m, pa.kids[0].s) == "sys":
+            if pa.kind == "attr" and pa.s == "platform" and pa.kids[0].kind == "name" and self.special(m, pa.kids[0].s, scope) == "sys":
                 if e.kids[1].s in "win win32 cygwin msys emscripten wasi java".split():
                     return 0
         return -1
 
-    def type_checking(self, m: Mod, e: Node) -> bool:
-        # typing.TYPE_CHECKING, or the name imported from typing: False
-        if e.kind == "attr" and e.s == "TYPE_CHECKING" and e.kids[0].kind == "name":
-            return self.builtin_alias(m, e.kids[0].s) == "typing"
-        if e.kind != "name":
-            return False
-        for st in m.body.kids:
-            if st.kind == "import" and st.s == "from":
-                for a in st.kids:
-                    if a.s == e.s and a.kids[0].s == "typing.TYPE_CHECKING":
-                        return True
-        return False
+    def special(self, m: Mod, name: str, scope: dict[str, bool]) -> str:
+        # what name is in module m's code, where scope (the names of the function or class the code
+        # is in) does not hide it, if m binds it only by imports special_import() recognizes, one of
+        # them at its top level before the code (self.pos) if that is top-level code: a builtin module
+        # (import sys, import os as _os: "sys", "os") or "typing.TYPE_CHECKING"; else "". In a
+        # function that binds name only by such imports of its own, what they bind, where one of
+        # them has surely run (self.fsure)
+        if name in self.fs.spec and name not in self.fs.rebound:
+            return self.fs.spec[name] if name in self.fsure else ""
+        if name in scope or name in m.rebound or name not in m.specat:
+            return ""
+        return m.spec[name] if self.pos < 0 or m.specat[name] < self.pos else ""
 
-    def builtin_alias(self, m: Mod, name: str) -> str:
-        # the builtin module m binds name to at its top level (import sys, import os as _os), or ""
-        for st in m.body.kids:
-            if st.kind == "import" and st.s == "":
-                for a in st.kids:
-                    if a.s == name and builtin_module(a.kids[1].s):
-                        return a.kids[0].s
-        return ""
+    def prescan(self, m: Mod) -> None:
+        # what simplify() needs to know of m's code first: the names it binds other than by the
+        # imports special_import() recognizes (rebound()), and the names those imports bind
+        # (Mod.spec). A star import that binds such a name otherwise is an error (bind()).
+        m.rebound = rebound(m.body.kids, False)
+        specials(m, m.body.kids, -1)
 
     def imports(self, m: Mod, blk: Node, infn: bool) -> None:
         # load the user modules that the import statements in blk name, and rewrite those
         out: list[Node] = []
+        added: list[str] = []  # (what blk surely binds holds only within it)
         for st in blk.kids:
             if st.kind == "import" and infn and m.name != "":
                 self.later.append(st)
@@ -3191,18 +3854,39 @@ class Loader:
                 if st.kind == "def":
                     self.curdef = str(st.line)
                     self.fks[self.curdef] = {}
+                    self.fgl[self.curdef] = {}
+                    globals_in(st.kids[2].kids, self.fgl[self.curdef])
+                elif not infn and (st.kind == "for" or st.kind == "while"):
+                    binds([st], self.maybe, True, m.name if m.pdir != "" else "")  # (an earlier pass of the loop may have run its body)
                 for kid in st.kids:
                     if kid.kind == "block":
                         self.imports(m, kid, infn or st.kind == "def")
                 self.curdef = saved
+            if not infn:
+                binds([st], self.maybe, True, m.name if m.pdir != "" else "")
+                now: dict[str, bool] = {}
+                surely_binds(st, now, self.sure)
+                for nm in now:
+                    if nm not in self.sure:
+                        self.sure[nm] = True
+                        added.append(nm)
+        if blk is not m.body:
+            for nm in added:
+                if nm in self.sure:
+                    del self.sure[nm]
         blk.kids = out
 
-    def bind(self, m: Mod, name: str, k: str, infn: bool) -> None:
-        # what an import binds name to; in a function, for that function only
-        if infn:
-            self.fks[self.curdef][name] = k
-        else:
-            m.kinds[name] = k
+    def bind(self, m: Mod, name: str, k: str, infn: bool, line: int) -> None:
+        # what an import binds name to; in a function, for that function only. One binding stands for
+        # all the code, so a name that an earlier import bound to another module, function or class
+        # is an error (in a function, where it is compiled)
+        ks = self.fks[self.curdef] if infn else m.kinds
+        old = ks.get(name, k)
+        if old != k and (old.startswith("m:") or old.startswith("b:") or old.startswith("a:")) and not k.startswith("x:"):
+            k = f"x:'{name}' is bound by two imports, to different modules, functions or classes (not supported)"
+            if not infn:
+                fail(k[2:], line)
+        ks[name] = k
 
     def import_stmt(self, m: Mod, st: Node, infn: bool, out: list[Node]) -> None:
         # one import statement becomes: an import node with its builtin modules (for code
@@ -3213,6 +3897,12 @@ class Loader:
         keep = mk("import", st.s, line, [])
         inits = mk("uimport", "", line, [])
         copies: list[Node] = []
+        for a in st.kids if infn else st.kids[:0]:
+            if a.s in self.fgl.get(self.curdef, {}) and (st.s.startswith("from.") or not builtin_module(a.kids[1].s) or m.kinds.get(a.s, "") != "b:" + a.kids[0].s):
+                # (CPython binds the module's global, which then names one module or another; but
+                # for a builtin module that the module's code has bound it to already)
+                out.append(mk("badimport", f"an import of '{a.s}' in a function that declares it global is not supported", line, []))
+                return
         for a in st.kids:
             path = a.kids[1].s
             if path == "typing_extensions":
@@ -3225,7 +3915,7 @@ class Loader:
             elif builtin_module(path):
                 if a.s == "*":
                     fail(f"'from {path} import *' is not supported", line)
-                self.bind(m, a.s, "b:" + a.kids[0].s, infn)
+                self.bind(m, a.s, "b:" + a.kids[0].s, infn, line)
                 keep.kids.append(a)
                 continue
             if infn and not builtin_module(path) and self.modpath(path) == "":
@@ -3233,16 +3923,44 @@ class Loader:
                 # function is compiled, as CPython's ImportError comes only where it runs
                 msg = f"module '{path}' is not supported: it is not a builtin module and there is no {path[path.rfind('.') + 1 :]}.py on the module path"
                 out.append(mk("badimport", msg, line, []))
-                self.bind(m, a.s, "x:" + msg, infn)
+                self.bind(m, a.s, "x:" + msg, infn, line)
                 continue
             src = self.find(path, line)
             self.chain(path, inits)
-            if st.s == "":
-                # import a.b.c binds a; import a.b.c as x binds x to a.b.c
-                self.bind(m, a.s, "m:" + a.kids[0].s, infn)
+            if a.s == "":
+                # an import that fails in an optional import (optional()): its packages' code runs (and
+                # the module's own until its raise, guarded), and it binds nothing
+                if len(a.kids) > 2:
+                    inits.kids[-1].kind = "guard"
+                continue
+            if st.s == "" and "." in a.kids[0].s:
+                # import a.b.c as x binds x to attribute c of a.b, as from a.b import c as x does: the
+                # submodule, unless a.b binds c itself. It takes attribute b of a first, which must be
+                # the submodule a.b (checked by submodules() where a binds b itself)
+                tgt = a.kids[0].s
+                i = tgt.find(".")
+                while tgt.find(".", i + 1) >= 0:
+                    j = tgt.find(".", i + 1)
+                    k = self.mods[tgt[:i]].kinds.get(tgt[i + 1 : j], "")
+                    if k != "" and k != "m:" + tgt[:j]:
+                        chk = mk("pass", "", line, [])
+                        out.append(chk)
+                        self.taken.append(mk("takemid", a.s, line, [mk("str", tgt[:i], line, []), mk("str", tgt[i + 1 : j], line, []), chk, mk("str", tgt, line, [])]))
+                        self.takek.append(m.kinds)
+                    i = j
+                n = len(self.taken)
+                self.take(m, self.mods[tgt[: tgt.rfind(".")]], tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
+                if len(self.taken) > n:
+                    self.taken[n].kind = "takesub"  # (this import runs the submodule's code: submodules())
+            elif st.s == "":
+                # import a.b.c binds a; import a as x binds x to a
+                self.bind(m, a.s, "m:" + a.kids[0].s, infn, line)
             elif a.s == "*":
                 for x in self.public(src):
                     self.take(m, src, x, x, infn, keep, inits, copies, line)
+                if src.pdir != "" and not has_all(src.body.kids):
+                    self.stars.append(mk("star", "", line, [mk("str", src.name, line, [])]))
+                    self.starm.append(m)
             else:
                 tgt = a.kids[0].s
                 self.take(m, src, tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
@@ -3319,30 +4037,40 @@ class Loader:
     def take(self, m: Mod, src: Mod, x: str, name: str, infn: bool, keep: Node, inits: Node, copies: list[Node], line: int) -> None:
         # from src import x as name
         k = src.kinds.get(x, "")
+        if src.name == m.name and not infn and x not in self.sure:
+            # (from . import x in a package's own code takes the package's x if its code has bound x
+            # by then, else the submodule)
+            if x in self.maybe or "*" in self.maybe or x in m.fnglobal:
+                fail(f"'{x}' is the package's own '{x}' if its code has bound it before this import, else the submodule '{m.name}.{x}', and Pystachy cannot tell which (not supported)", line)
+            k = ""
         if not infn and (m.kinds.get(name, "") == "f" or m.kinds.get(name, "") == "c"):
             fail(f"'{name}' is bound both by an import and by a def or class (not supported)", line)
-        if not infn and m.kinds.get(name, "") == "v" and k != "v" and k != "":
+        if not infn and m.kinds.get(name, "") == "v" and k != "v" and (k != "" or src.pdir != ""):
             fail(f"'{name}' is bound both as a variable and by an import (not supported)", line)
         if k == "" and src.pdir != "":
             # a submodule of the package
             sub = src.name + "." + x
             self.find(sub, line)
             inits.kids.append(mk("str", sub, line, []))
-            self.bind(m, name, "m:" + sub, infn)
+            self.bind(m, name, "m:" + sub, infn, line)
         elif k == "":
             fail(f"cannot import name '{x}' from '{src.name}'", line)
         elif k == "f" or k == "c":
-            self.bind(m, name, "a:" + src.q + x, infn)
+            self.bind(m, name, "a:" + src.q + x, infn, line)
         elif k.startswith("b:"):
             p = k[2:]
-            self.bind(m, name, k, infn)
+            self.bind(m, name, k, infn, line)
             keep.kids.append(mk("alias", name, line, [mk("str", p, line, []), mk("str", p[: p.find(".")] if "." in p else p, line, [])]))
         elif k != "v":
-            self.bind(m, name, k, infn)
+            self.bind(m, name, k, infn, line)
         else:
             if not infn:
                 m.kinds[name] = "v"
             copies.append(mk("assign", "", line, [mk("name", name, line, []), mk("name", src.q + x, line, [])]))
+        if src.pdir != "" and k != "" and k != "m:" + src.name + "." + x:
+            # the package binds x itself, which an import of its submodule x may rebind (submodules())
+            self.taken.append(mk("take", name, line, [mk("str", src.name, line, []), mk("str", x, line, [])] + (copies[-1:] if k == "v" else copies[:0])))
+            self.takek.append(self.fks[self.curdef] if infn else m.kinds)
 
     # ---- qualification of names
     def kind(self, m: Mod, s: str) -> str:
@@ -3381,6 +4109,8 @@ class Loader:
             return ""
         t = self.mods[base]
         k = t.kinds.get(n.s, "")
+        if n.s in t.amb:
+            k = "x:" + self.ambiguous(base, n.s)
         if k.startswith("m:"):
             return k[2:]
         if k == "" and base + "." + n.s in self.mods:
@@ -3388,6 +4118,9 @@ class Loader:
         if k == "":
             n.kind = "badattr"
             n.s = f"module '{base}' has no attribute '{n.s}'"
+        elif k.startswith("x:"):
+            n.kind = "badattr"
+            n.s = k[2:]
         else:
             n.kind = "name"
             n.s = self.qname(t, n.s, {})
@@ -3409,6 +4142,10 @@ class Loader:
             elif n.kind == "name" and n.s not in loc and self.kind(m, n.s).startswith("x:"):
                 n.kind = "badattr"
                 n.s = self.kind(m, n.s)[2:]
+            elif n.kind == "name" and n.s not in loc and n.s not in self.fk and n.s in m.amb and (self.qdef or m.amb[n.s]):
+                # a package's own name that an import of its submodule may have rebound (submodules())
+                n.kind = "badattr"
+                n.s = self.ambiguous(m.name, n.s)
             elif n.kind == "name":
                 n.s = self.qname(m, n.s, loc)
             elif n.kind == "attr":
@@ -3427,6 +4164,33 @@ class Loader:
         else:
             for kid in n.kids:
                 self.qexpr(m, kid, loc)
+
+    def qstore(self, m: Mod, t: Node, loc: dict[str, bool]) -> None:
+        # an assignment target: a package's own name that an import of its submodule may rebind
+        # (Mod.amb) cannot be assigned from another module, as which of the two it replaces is not known
+        if t.kind == "tuple" or t.kind == "list":
+            for x in t.kids:
+                self.qstore(m, x, loc)
+            return
+        b = self.modof(m, t.kids[0], loc) if t.kind == "attr" else ""
+        if b != "" and t.s in self.mods[b].amb:
+            t.kind = "badattr"
+            t.s = f"assigning '{b}.{t.s}' is not supported: the program's first import of the submodule '{b}.{t.s}' binds it too"
+            t.kids = []
+        self.qexpr(m, t, loc)
+
+    def modof(self, m: Mod, n: Node, loc: dict[str, bool]) -> str:
+        # the module n denotes, as qmod() finds it but without rewriting n, or ""
+        if n.kind == "name":
+            k = self.kind(m, n.s) if n.s not in loc else ""
+            return k[2:] if k.startswith("m:") else ""
+        base = self.modof(m, n.kids[0], loc) if n.kind == "attr" else ""
+        if base == "" or n.s in self.mods[base].amb:
+            return ""
+        k = self.mods[base].kinds.get(n.s, "")
+        if k.startswith("m:"):
+            return k[2:]
+        return base + "." + n.s if k == "" and base + "." + n.s in self.mods else ""
 
     def qann(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
         # an annotation; a string one (a forward reference), also inside list["Node"], is parsed
@@ -3462,8 +4226,11 @@ class Loader:
                     if nm in inner:
                         del inner[nm]
                 saved = self.fk
+                indef = self.qdef
                 self.fk = self.fks.get(str(st.line), {})
+                self.qdef = True
                 self.qstmts(m, st.kids[2].kids, inner, False)
+                self.qdef = indef
                 self.fk = saved
             elif k == "subclass":
                 self.qstmts(m, [st.kids[0]], loc, cls)
@@ -3487,10 +4254,14 @@ class Loader:
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
             elif k == "annassign":
-                self.qexpr(m, st.kids[0], loc)
+                self.qstore(m, st.kids[0], loc)
                 self.qann(m, st.kids[1], loc)
                 for kid in st.kids[2:]:
                     self.qexpr(m, kid, loc)
+            elif k == "assign":
+                for kid in st.kids[:-1]:
+                    self.qstore(m, kid, loc)
+                self.qexpr(m, st.kids[-1], loc)
             elif k == "import" or k == "global":
                 for a in st.kids:
                     a.s = self.qname(m, a.s, {})
@@ -3535,7 +4306,8 @@ CALLS: dict[str, str] = {
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int",
-    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.getenv(str,str)": "pys_getenv:str",
+    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+    "os.getenv(str,str)": "pys_getenv:str",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
@@ -3847,20 +4619,25 @@ def names_in(t: Node, out: list[str]) -> None:
         for k in t.kids:
             names_in(k, out)
 
+def targets(st: Node, out: dict[str, bool]) -> None:
+    # the names statement st assigns itself (not in its blocks)
+    k = st.kind
+    if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "with":
+        names: list[str] = []
+        if k == "with":
+            for it in st.kids[:-1]:
+                if len(it.kids) == 2:
+                    names_in(it.kids[1], names)
+        for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
+            names_in(st.kids[i], names)
+        for nm in names:
+            out[nm] = True
+
+
 def collect(body: list[Node], out: dict[str, bool]) -> None:
     # Python's rule: a name assigned anywhere in a function is local to it
     for st in body:
-        k = st.kind
-        if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "with":
-            names: list[str] = []
-            if k == "with":
-                for it in st.kids[:-1]:
-                    if len(it.kids) == 2:
-                        names_in(it.kids[1], names)
-            for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
-                names_in(st.kids[i], names)
-            for nm in names:
-                out[nm] = True
+        targets(st, out)
         for kid in st.kids:
             if kid.kind == "block":
                 collect(kid.kids, out)
@@ -3889,6 +4666,49 @@ def has_kind(n: Node, kind: str) -> bool:
         if has_kind(k, kind):
             return True
     return False
+
+
+def reads(n: Node, name: str) -> bool:
+    # does code n read name in its own scope where it may run: not after a return, raise, break or
+    # continue of its block, as a list comprehension's own variable, in an annotation, which a
+    # function does not evaluate, or in the functions and classes it defines
+    k = n.kind
+    if k == "name":
+        return n.s == name
+    if k == "def" or k == "class" or k == "subclass" or k == "lambda":
+        return False
+    if k == "listcomp":
+        names: list[str] = []
+        names_in(n.kids[1], names)
+        if name in names:
+            return reads(n.kids[2], name)
+    for i in range(len(n.kids)):
+        if not (k == "annassign" and i == 1) and reads(n.kids[i], name):
+            return True
+        x = n.kids[i].kind
+        if k == "block" and (x == "return" or x == "raise" or x == "break" or x == "continue"):
+            return False
+    return False
+
+
+def local_types(body: list[Node], out: dict[str, Node]) -> None:
+    # a type for the names a function's body binds (not in the functions and classes it defines):
+    # the annotation of one, or the type of a constant one is assigned
+    for st in body:
+        v = st.kids[-1] if st.kind == "assign" else st
+        if v.kind == "unary" and v.s == "-":
+            v = v.kids[0]
+        t = v.kind if v.kind == "int" or v.kind == "float" or v.kind == "str" else "bool" if v.kind == "True" or v.kind == "False" else ""
+        for x in st.kids[:-1] if st.kind == "assign" and t != "" else st.kids[:0]:
+            if x.kind == "name" and x.s not in out:
+                out[x.s] = mk("name", t, st.line, [])
+        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s not in out:
+            out[st.kids[0].s] = st.kids[1]
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+            if kid.kind == "block":
+                local_types(kid.kids, out)
+            elif kid.kind == "except":
+                local_types(kid.kids[1].kids, out)
 
 
 def refers(n: Node, name: str) -> bool:
@@ -4824,6 +5644,11 @@ class Gen:
             return False
         return self.modlevel or name in self.gdecl or "$" in name
 
+    def unbound_local(self, name: str) -> bool:
+        # a local of the function that is not declared yet: one that the function assigns later
+        # (which hides the module's variable, function, class or import of that name)
+        return name in self.assigned and name not in self.gdecl and name not in self.ltype
+
     def load_name(self, name: str) -> Val:
         if (name in self.nonevars or name in self.noneglobals) and name not in self.ltype:
             return Val("null", "None")
@@ -4836,7 +5661,7 @@ class Gen:
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
             return Val(r, t)
-        if name in self.assigned and name not in self.gdecl:
+        if self.unbound_local(name):
             self.err(f"local variable '{name}' is read before its first assignment; declare it first ({name}: T)")
         if name in self.gtypes:
             t = self.gtypes[name]
@@ -6040,6 +6865,20 @@ class Gen:
         if len(n.kids) > 1 and n.kids[1].kind != "None":
             for a in self.exc_args(n.kids[1]):
                 self.expr(a, "")
+        if n.s == "init":
+            # a module's raise of ImportError at its top level (Loader.init_raise()): under an optional
+            # import (a "guard" in a uimport) the module returns, not imported, so that the importer's
+            # handler runs and a later import runs its code again
+            g = self.curfn.ll + ".guard"
+            self.global_var(g, "i1")
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(self.ins(f"load i1, ptr {g}"), l1, l2)
+            self.place(l1)
+            self.emit(f"store i1 false, ptr {self.curfn.ll}.done")
+            self.emit("ret void")
+            self.term = True
+            self.place(l2)
         if name == "SystemExit":
             self.exit_(vals)
             return
@@ -6118,6 +6957,8 @@ class Gen:
                 for i in range(len(n.kids) - 1):
                     self.assign(n.kids[i], v)
         elif k == "annassign":
+            if n.s != "" and self.ann_problem(n.kids[1], False) != "":
+                self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())
             t = self.vtype(n.kids[1])
             if n.kids[0].kind == "name":
                 self.declare(n.kids[0].s, t)
@@ -6288,7 +7129,13 @@ class Gen:
                 self.aliases[a.s] = a.kids[0].s
         elif k == "uimport":
             for x in n.kids:
-                self.emit(f"call void @init.{x.s}()")
+                if x.kind == "guard":
+                    # an optional import of a module whose code raises ImportError: it returns there
+                    self.emit(f"store i1 true, ptr @init.{x.s}.guard")
+                    self.emit(f"call void @init.{x.s}()")
+                    self.emit(f"store i1 false, ptr @init.{x.s}.guard")
+                else:
+                    self.emit(f"call void @init.{x.s}()")
         elif k == "def" or k == "class":
             self.err("nested functions and classes are not supported")
         elif k == "badimport":
@@ -6304,7 +7151,8 @@ class Gen:
         name = n.s
         if name in self.unsupported:
             return  # a class of an imported module that is never compiled
-        if name in self.funcs or name in self.classes or name in self.aliases:
+        if name not in self.ltype and (name in self.funcs or name in self.classes or name in self.aliases):
+            # (a function's local hides the module's function, class or import of that name)
             self.err(f"del of '{name}' is not supported: only variables can be deleted")
         if not self.modlevel and self.is_global(name):
             self.err(f"del of the global '{name}' in a function is not supported")
@@ -7511,6 +8359,8 @@ class Gen:
             if a.kind == "starred" or a.kind == "dstar":
                 self.err("star arguments are not supported")
         if f.kind == "name" and f.s not in self.ltype:
+            if self.unbound_local(f.s):
+                self.err(f"local variable '{f.s}' is read before its first assignment; declare it first ({f.s}: T)")
             if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
                 # a call that may run before the def or class statement
                 bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{f.s}.def')}, true")
@@ -7718,7 +8568,7 @@ class Gen:
     def dotted(self, n: Node) -> str:
         # "sys.argv", "os.path.exists", ... when n is an attribute chain on a module
         if n.kind == "name":
-            if n.s in self.aliases and n.s not in self.ltype and n.s not in self.gtypes and n.s not in self.compvars:
+            if n.s in self.aliases and n.s not in self.ltype and n.s not in self.gtypes and n.s not in self.compvars and not self.unbound_local(n.s):
                 return self.aliases[n.s]
         elif n.kind == "attr":
             p = self.dotted(n.kids[0])
@@ -8258,9 +9108,15 @@ def main() -> None:
         home = argv[0][:s] if s >= 0 else "."
         if not os.path.exists(home + "/runtime.c"):
             home = home + "/.."
-    # where imported modules are found: the program's directory, PYSTACHY_PATH, lib/ of the checkout
+    # where imported modules are found: the directory of the program's real path (symbolic links
+    # resolved, as CPython's sys.path[0]; spelled as given where that is the same), PYSTACHY_PATH,
+    # lib/ of the checkout
     s = SRC.rfind("/")
-    dirs = [SRC[:s] if s > 0 else "/" if s == 0 else "."]
+    d = SRC[:s] if s > 0 else "/" if s == 0 else "."
+    real = os.path.realpath(SRC)
+    if os.path.realpath(d).rstrip("/") + "/" + SRC[s + 1 :] != real:
+        d = real[: real.rfind("/")] if real.rfind("/") > 0 else "/"
+    dirs = [d]
     for d in os.getenv("PYSTACHY_PATH", "").split(":"):
         if d != "":
             dirs.append(d)

@@ -1,0 +1,30 @@
+effect
+posix
+note a
+1 else
+note b
+2 then
+note c
+3 then
+note d
+note e
+4 else
+note f
+5 then
+note f
+note g
+5 then
+note h
+6 else
+note i
+7c
+note k
+note l
+note m
+10 then
+note n
+11 then
+note o
+note o
+posix posix
+[exit 0]
