@@ -56,3 +56,12 @@ def head(n: t.Optional[Node]) -> int:
 
 def names(xs: t.List[str]) -> t.Dict[str, int]:
     return {x: len(x) for x in xs} if False else {"n": len(xs)}
+
+
+def setup() -> None:
+    pass
+
+
+class Hooks:
+    def __init__(self) -> None:
+        self.ready = setup()

@@ -5666,6 +5666,7 @@ class Gen:
                 if name not in ci.ftypes:
                     why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
                     t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
+                    t = "" if t == "None" else t  # (f() that returns None: a field has a value type)
                     if t == "" and why == "":
                         why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                     if t == "" and ci.mod == "":
