@@ -1441,13 +1441,17 @@ List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; t
    deleted). The sizes are CPython 3.13's, because they decide what a loop that changes its
    dict sees: size is a power of two >= 8 (0 before the first insertion and after clear()),
    at most size*2/3 entries are used, and inserting into a full table rebuilds it without
-   holes at the size for len*3. The hash is an int key's bits, or FNV-1a of a str key's
-   bytes, through SplitMix64's finalizer, so each of its bits depends on every bit of the
-   key; the probe sequence is CPython's: the first slot is the hash's low bits, and each step
-   mixes five more of its bits in (perturb). So keys that differ only in their high bits
-   (i << 46) or in the high bits of their bytes (letter case) start at unrelated slots, and
-   keys whose hashes share their low bits still part after a few steps instead of piling up
-   in one cluster. tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE). */
+   holes at the size for len*3. An int key's hash is one round of SplitMix64's mixer: the
+   first shift folds the key's high bits into its low ones, the multiply spreads them up and
+   the last shift brings the product's high bits down, so keys that differ only in their high
+   bits (i << 46) get unrelated low bits, and distinct ints never share a hash (a bijection).
+   A str key's hash is FNV-1a of its bytes with the high half folded into the low. A lookup
+   in a table that fits in the cache takes a few ns, so each costs only one multiply (per
+   byte for str). The probe sequence is CPython's: the first slot is the hash's low bits, and
+   each step mixes five more of its bits in (perturb), so keys whose hashes share their low
+   bits part after a few steps instead of piling up in one cluster. Unlike a linear probe's,
+   its second slot is in another cache line, which tables larger than the cache pay for.
+   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE). */
 #ifndef DICT_PROBE
 #define DICT_PROBE()
 #endif
@@ -1456,10 +1460,11 @@ static uint64_t hsh(Dict *d, I k) {
   if (d->kind) {
     Str *s = (Str *)k; h = 1469598103934665603ULL;
     for (I i = 0; i < s->len; i++) h = (h ^ (unsigned char)s->s[i]) * 1099511628211ULL;
+    h ^= h >> 29;
+  } else {
+    h = (h ^ h >> 30) * 0xBF58476D1CE4E5B9ULL;
+    h ^= h >> 31;
   }
-  h = (h ^ h >> 30) * 0xBF58476D1CE4E5B9ULL;
-  h = (h ^ h >> 27) * 0x94D049BB133111EBULL;
-  h ^= h >> 31;
   return h ? h : 1;                                  /* 0 marks a hole */
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
