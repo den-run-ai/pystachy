@@ -4691,7 +4691,9 @@ RUNTIME: dict[str, str] = {
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|",
 }
-RTSYM: dict[str, str] = {}  # LLVM symbol -> RUNTIME key
+# LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
+# the last def has run, which spares the compiled functions a check that each callee is defined)
+RTSYM: dict[str, str] = {}
 for _k in RUNTIME:
     _s = RUNTIME[_k][RUNTIME[_k].rfind("|") + 1 :]
     RTSYM[_s if _s != "" else "pys_" + _k.replace(".", "_")] = _k
@@ -4760,6 +4762,19 @@ def fxmask(letters: str) -> int:
 def fxs(m: int) -> str:
     # bits of effect letters as letters
     return " ".join([x for x in FX if m & FXBIT[x] != 0])
+
+
+class RtFn:
+    # a runtime function, as its RUNTIME entry k gives it
+    def __init__(self, k: str):
+        e = RUNTIME[k]
+        fx = e[e.find("|") + 1 : e.rfind("|")]
+        self.sym = rtsym(k)  # its LLVM symbol
+        self.sig: list[str] = rtsig(k)  # its result and parameter types, as RUNTIME spells them
+        self.ll: list[str] = [rtll(p) for p in self.sig]  # and as LLVM types
+        self.decl = runtime_decl(k)  # its declare line
+        self.fx = fxmask(fx.replace("U?", ""))  # its effects (FX bits), but U?
+        self.q = "U?" in fx  # whether it has U? (U when the descriptor of its # parameter holds a class)
 
 
 def tname(t: str) -> str:
@@ -5500,14 +5515,7 @@ class Gen:
         self.strs: dict[str, str] = {}
         self.strvals: list[str] = []  # the text of each @s.N
         self.decls: dict[str, str] = {}
-        # the runtime functions declared, by RUNTIME key: their types as RUNTIME spells them and
-        # as LLVM types (result first), their declare lines and their symbols
-        self.rtsigs: dict[str, list[str]] = {}
-        self.rtlls: dict[str, list[str]] = {}
-        self.rtdecls: dict[str, str] = {}
-        self.rtsyms: dict[str, str] = {}
-        self.rtfx: dict[str, int] = {}  # and their effects (FX bits), but U?
-        self.rtq: dict[str, bool] = {}  # whether they have U?
+        self.rtfns: dict[str, RtFn] = {}  # the runtime functions declared, by RUNTIME key
         self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS but rt, call and init
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
@@ -5752,8 +5760,8 @@ class Gen:
         # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
         # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says
         k = self.runtime(name)
-        ts = self.rtsigs[k]
-        ll = self.rtlls[k]
+        ts = self.rtfns[k].sig
+        ll = self.rtfns[k].ll
         ok = ret == ll[0] and len(args) == len(ll) - 1
         i = Ins("rt", ts[0], k)
         i.a = []
@@ -5768,7 +5776,7 @@ class Gen:
                     fail(f"internal error: {name} called with the descriptor {v}, which is no string constant", 0)
                 i.x = self.strvals[int(v[3:])]
         if not ok:
-            fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {self.rtdecls[k]}", 0)
+            fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {self.rtfns[k].decl}", 0)
         if ret == "void":
             self.add(i)
             return ""
@@ -5780,15 +5788,9 @@ class Gen:
         if name not in RTSYM:
             fail(f"internal error: no RUNTIME entry for {name}", 0)
         k = RTSYM[name]
-        if k not in self.rtsigs:
-            self.rtsigs[k] = rtsig(k)
-            self.rtlls[k] = [rtll(p) for p in self.rtsigs[k]]
-            self.rtdecls[k] = runtime_decl(k)
-            self.rtsyms[k] = name
-            fx = RUNTIME[k][RUNTIME[k].find("|") + 1 : RUNTIME[k].rfind("|")]
-            self.rtfx[k] = fxmask(fx.replace("U?", ""))
-            self.rtq[k] = "U?" in fx
-        self.decls[name] = self.rtdecls[k]
+        if k not in self.rtfns:
+            self.rtfns[k] = RtFn(k)
+        self.decls[name] = self.rtfns[k].decl
         return k
 
     def hole(self, kind: str) -> Ins:
@@ -7268,13 +7270,14 @@ class Gen:
         elif op == "unreachable":
             o.append("  unreachable")
         elif op == "rt":
-            ll = self.rtlls[i.s]
+            f = self.rtfns[i.s]
+            ll = f.ll
             vs = [ll[j + 1] + " " + i.a[j].v for j in range(len(i.a))]
             if i.k > 0 and i.s == "dict.new":
                 # the key kind of a dict created empty: what its first use showed (0 if nothing did)
                 h = self.holes[i.k]
                 vs[0] = f"i64 {1 if h != '' and targs(h)[0] == 'str' else 0}"
-            c = f"call {ll[0]} @{self.rtsyms[i.s]}({', '.join(vs)})"
+            c = f"call {ll[0]} @{f.sym}({', '.join(vs)})"
             o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
         elif op == "call":
             c = f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})"
@@ -7394,7 +7397,8 @@ class Gen:
             c = i.s if i.op == "call" else "@init." + i.s
             return self.fns[self.fll[c]].fx if c in self.fll else fxmask("U")
         if i.op == "rt":
-            return fxmask("U") if self.rtq[i.s] and "O" in i.x else self.rtfx[i.s]
+            f = self.rtfns[i.s]
+            return fxmask("U") if f.q and "O" in i.x else f.fx
         return self.opfxs[i.op]
 
     def class_problem(self, st: Node) -> str:
