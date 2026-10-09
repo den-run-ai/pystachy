@@ -50,8 +50,6 @@ flowchart TD
 The parts below follow a program through the compiler (`Lexer`, `Symtable`, the `Loader`, `Flow`
 and `Gen` in `pystachy.py`), then through the runtime and the driver.
 
-```
-
 ### Modules by renaming
 
 The loader parses each imported module once, decides what CPython
