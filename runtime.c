@@ -396,189 +396,49 @@ I pys_str_cmp(Str *a, Str *b) {
   int c = memcmp(a->s, b->s, a->len < b->len ? a->len : b->len);
   return c ? c : (a->len > b->len) - (a->len < b->len);
 }
-static I find(Str *h, Str *n, I i) {
-  char *p = i <= h->len ? memmem(h->s + i, h->len - i, n->s, n->len) : 0;
-  return p ? p - h->s : -1;
-}
-static void adjust(I *st, I *en, I n) {   /* CPython's ADJUST_INDICES: s[st:en] for the search methods */
-  if (*en > n) *en = n; else if (*en < 0 && (*en += n) < 0) *en = 0;
-  if (*st < 0 && (*st += n) < 0) *st = 0;
-}
-I pys_str_find(Str *h, Str *n, I st, I en) {
-  adjust(&st, &en, h->len);
-  if (en - st < n->len) return -1;
-  char *p = memmem(h->s + st, en - st, n->s, n->len);
-  return p ? p - h->s : -1;
-}
-I pys_str_rfind(Str *h, Str *n, I st, I en) {
-  adjust(&st, &en, h->len);
-  for (I i = en - n->len; i >= st; i--) if (!memcmp(h->s + i, n->s, n->len)) return i;
-  return -1;
-}
-I pys_str_index(Str *h, Str *n, I st, I en) { I i = pys_str_find(h, n, st, en); if (i < 0) pys_fail("ValueError: substring not found"); return i; }
-I pys_str_rindex(Str *h, Str *n, I st, I en) { I i = pys_str_rfind(h, n, st, en); if (i < 0) pys_fail("ValueError: substring not found"); return i; }
-I pys_str_count(Str *h, Str *n, I st, I en) {
-  I c = 0;
-  adjust(&st, &en, h->len);
-  if (en - st < n->len) return 0;
-  if (!n->len) return en - st + 1;
-  for (char *p; (p = memmem(h->s + st, en - st, n->s, n->len)); st = p - h->s + n->len) c++;
-  return c;
-}
-I pys_str_contains(Str *h, Str *n) { return find(h, n, 0) >= 0; }
-static I tail(Str *s, Str *p, I st, I en, int end) {   /* CPython's tailmatch */
-  adjust(&st, &en, s->len);
-  if (en - p->len < st) return 0;
-  return !memcmp(s->s + (end ? en - p->len : st), p->s, p->len);
-}
-I pys_str_startswith(Str *s, Str *p, I st, I en) { return tail(s, p, st, en, 0); }
-I pys_str_endswith(Str *s, Str *p, I st, I en) { return tail(s, p, st, en, 1); }
-Str *pys_str_replace(Str *s, Str *a, Str *b) {
-  Buf o = {0}; I i = 0;
-  if (!a->len) {
-    for (; i < s->len; i++) { put(&o, b->s, b->len); put(&o, s->s + i, 1); }
-    put(&o, b->s, b->len); return done(&o);
-  }
-  for (I j; (j = find(s, a, i)) >= 0; i = j + a->len) { put(&o, s->s + i, j - i); put(&o, b->s, b->len); }
-  put(&o, s->s + i, s->len - i); return done(&o);
-}
-static int ws(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13) || (c >= 28 && c <= 31); }
-static int instr(unsigned char c, Str *cs) { return cs ? memchr(cs->s, c, cs->len) != 0 : ws(c); }
-static Str *strip(Str *s, Str *cs, int m) {
-  I i = 0, j = s->len;
-  if (m & 1) while (i < j && instr(s->s[i], cs)) i++;
-  if (m & 2) while (j > i && instr(s->s[j - 1], cs)) j--;
-  return pys_str(s->s + i, j - i);
-}
-Str *pys_str_strip(Str *s, Str *cs) { return strip(s, cs, 3); }
-Str *pys_str_lstrip(Str *s, Str *cs) { return strip(s, cs, 1); }
-Str *pys_str_rstrip(Str *s, Str *cs) { return strip(s, cs, 2); }
-static I all(Str *s, int k) {                  /* 0 digit, 1 alpha, 2 alnum, 3 space */
-  if (!s->len) return 0;
-  for (I i = 0; i < s->len; i++) {
-    unsigned char c = s->s[i];
-    int d = c >= '0' && c <= '9', a = (c | 32) >= 'a' && (c | 32) <= 'z';
-    if (!(k == 0 ? d : k == 1 ? a : k == 2 ? d || a : ws(c))) return 0;
-  }
-  return 1;
-}
-static I cased(Str *s, int up) {               /* isupper / islower */
-  int any = 0;
-  for (I i = 0; i < s->len; i++) {
-    char c = s->s[i];
-    if (c >= 'a' && c <= 'z') { if (up) return 0; any = 1; }
-    if (c >= 'A' && c <= 'Z') { if (!up) return 0; any = 1; }
-  }
-  return any;
-}
-I pys_str_isdigit(Str *s) { return all(s, 0); }
-I pys_str_isalpha(Str *s) { return all(s, 1); }
-I pys_str_isalnum(Str *s) { return all(s, 2); }
-I pys_str_isspace(Str *s) { return all(s, 3); }
-I pys_str_isupper(Str *s) { return cased(s, 1); }
-I pys_str_islower(Str *s) { return cased(s, 0); }
-static Str *mapc(Str *s, int up) {
-  Str *r = pys_str(s->s, s->len);
-  for (I i = 0; i < r->len; i++) {
-    char c = r->s[i];
-    if (up && c >= 'a' && c <= 'z') r->s[i] = c - 32;
-    if (!up && c >= 'A' && c <= 'Z') r->s[i] = c + 32;
-  }
-  return r;
-}
-Str *pys_str_upper(Str *s) { return mapc(s, 1); }
-Str *pys_str_lower(Str *s) { return mapc(s, 0); }
+/* the str methods are in runtime.py */
+I pys_str_find(Str *h, Str *n, I st, I en);
+I pys_str_rfind(Str *h, Str *n, I st, I en);
+I pys_str_index(Str *h, Str *n, I st, I en);
+I pys_str_rindex(Str *h, Str *n, I st, I en);
+I pys_str_count(Str *h, Str *n, I st, I en);
+I pys_str_contains(Str *h, Str *n);
+I pys_str_startswith(Str *s, Str *p, I st, I en);
+I pys_str_endswith(Str *s, Str *p, I st, I en);
+Str *pys_str_replace(Str *s, Str *a, Str *b);
+Str *pys_str_strip(Str *s, Str *cs);
+Str *pys_str_lstrip(Str *s, Str *cs);
+Str *pys_str_rstrip(Str *s, Str *cs);
+I pys_str_isdigit(Str *s);
+I pys_str_isalpha(Str *s);
+I pys_str_isalnum(Str *s);
+I pys_str_isspace(Str *s);
+I pys_str_isupper(Str *s);
+I pys_str_islower(Str *s);
+Str *pys_str_upper(Str *s);
+Str *pys_str_lower(Str *s);
+Str *pys_str_ljust(Str *s, I w, Str *fill);
+Str *pys_str_rjust(Str *s, I w, Str *fill);
+Str *pys_str_center(Str *s, I w, Str *fill);
+Str *pys_str_zfill(Str *s, I w);
+void **pys_str_partition(Str *s, Str *sep);
+void **pys_str_rpartition(Str *s, Str *sep);
+Str *pys_str_removeprefix(Str *s, Str *p);
+Str *pys_str_removesuffix(Str *s, Str *p);
+Str *pys_str_swapcase(Str *s);
+Str *pys_str_capitalize(Str *s);
+Str *pys_str_title(Str *s);
+I pys_str_istitle(Str *s);
+I pys_str_isascii(Str *s);
+I pys_str_isdecimal(Str *s);
+I pys_str_isnumeric(Str *s);
+Str *pys_str_casefold(Str *s);
+Str *pys_str_expandtabs(Str *s, I size);
+Str *pys_str_join(Str *sep, List *l);
+List *pys_str_split(Str *s, Str *sep, I maxsplit);
+List *pys_str_rsplit(Str *s, Str *sep, I maxsplit);
+List *pys_str_splitlines(Str *s, I keep);
 static I ulen(const char *p, I n) { I k = 0; for (I i = 0; i < n; i++) k += ((unsigned char)p[i] & 0xC0) != 0x80; return k; }
-static Str *pad(Str *s, I w, Str *fill, int how) {   /* how: 0 right, 1 left, 2 center; widths count code points */
-  if (fill && ulen(fill->s, fill->len) != 1) pys_fail("TypeError: The fill character must be exactly one character long");
-  I n = ulen(s->s, s->len), f = fill ? fill->len : 1;
-  if (n >= w) return s;
-  I gap = w - n, l = how == 1 ? 0 : how == 0 ? gap : gap / 2 + (gap & w & 1);   /* CPython's centering */
-  if (gap > (INT64_MAX - s->len) / f) oom();
-  Str *r = pys_alloc_atomic(sizeof(Str) + s->len + gap * f + 1); r->len = s->len + gap * f;
-  char *o = r->s;
-  for (I i = 0; i < l; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
-  memcpy(o, s->s, s->len); o += s->len;
-  for (I i = l; i < gap; i++, o += f) memcpy(o, fill ? fill->s : " ", f);
-  return r;
-}
-Str *pys_str_ljust(Str *s, I w, Str *fill) { return pad(s, w, fill, 1); }
-Str *pys_str_rjust(Str *s, I w, Str *fill) { return pad(s, w, fill, 0); }
-Str *pys_str_center(Str *s, I w, Str *fill) { return pad(s, w, fill, 2); }
-Str *pys_str_zfill(Str *s, I w) {
-  Str *r = pad(s, w, cstr("0"), 0);
-  I z = r->len - s->len;                       /* a sign moves in front of the zeros */
-  if (z && s->len && (s->s[0] == '+' || s->s[0] == '-')) { r->s[0] = s->s[0]; r->s[z] = '0'; }
-  return r;
-}
-static void **triple(Str *a, Str *b, Str *c) { void **t = pys_alloc(24); t[0] = a; t[1] = b; t[2] = c; return t; }
-void **pys_str_partition(Str *s, Str *sep) {
-  if (!sep->len) pys_fail("ValueError: empty separator");
-  I i = find(s, sep, 0);
-  if (i < 0) return triple(s, cstr(""), cstr(""));
-  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
-}
-void **pys_str_rpartition(Str *s, Str *sep) {
-  if (!sep->len) pys_fail("ValueError: empty separator");
-  I i = pys_str_rfind(s, sep, 0, s->len);
-  if (i < 0) return triple(cstr(""), cstr(""), s);
-  return triple(pys_str(s->s, i), sep, pys_str(s->s + i + sep->len, s->len - i - sep->len));
-}
-Str *pys_str_removeprefix(Str *s, Str *p) {
-  return p->len && s->len >= p->len && !memcmp(s->s, p->s, p->len) ? pys_str(s->s + p->len, s->len - p->len) : s;
-}
-Str *pys_str_removesuffix(Str *s, Str *p) {
-  return p->len && s->len >= p->len && !memcmp(s->s + s->len - p->len, p->s, p->len) ? pys_str(s->s, s->len - p->len) : s;
-}
-static int lowc(char c) { return c >= 'a' && c <= 'z'; }
-static int upc(char c) { return c >= 'A' && c <= 'Z'; }
-Str *pys_str_swapcase(Str *s) {
-  Str *r = pys_str(s->s, s->len);
-  for (I i = 0; i < r->len; i++) if (lowc(r->s[i]) || upc(r->s[i])) r->s[i] ^= 32;
-  return r;
-}
-Str *pys_str_capitalize(Str *s) {
-  Str *r = mapc(s, 0);
-  if (r->len && lowc(r->s[0])) r->s[0] -= 32;
-  return r;
-}
-Str *pys_str_title(Str *s) {                   /* a letter after a letter is lowered, any other raised */
-  Str *r = pys_str(s->s, s->len); int prev = 0;
-  for (I i = 0; i < r->len; i++) {
-    char c = r->s[i];
-    if (prev && upc(c)) r->s[i] = c + 32;
-    if (!prev && lowc(c)) r->s[i] = c - 32;
-    prev = lowc(c) || upc(c);
-  }
-  return r;
-}
-I pys_str_istitle(Str *s) {                    /* CPython's istitle, over ASCII letters */
-  int prev = 0, any = 0;
-  for (I i = 0; i < s->len; i++) {
-    char c = s->s[i];
-    if (upc(c)) { if (prev) return 0; prev = any = 1; }
-    else if (lowc(c)) { if (!prev) return 0; prev = any = 1; }
-    else prev = 0;
-  }
-  return any;
-}
-I pys_str_isascii(Str *s) { for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] > 127) return 0; return 1; }
-I pys_str_isdecimal(Str *s) { return all(s, 0); }
-I pys_str_isnumeric(Str *s) { return all(s, 0); }
-Str *pys_str_casefold(Str *s) { return mapc(s, 0); }
-Str *pys_str_expandtabs(Str *s, I size) {
-  Buf o = {0}; I col = 0;
-  for (I i = 0; i < s->len; i++) {
-    char c = s->s[i];
-    if (c == '\t') {
-      if (size > 0) { I n = size - col % size; col += n; while (n--) put(&o, " ", 1); }
-    } else {
-      put(&o, &c, 1);
-      if (c == '\n' || c == '\r') col = 0; else col += ((unsigned char)c & 0xC0) != 0x80;
-    }
-  }
-  return done(&o);
-}
 Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
@@ -1341,72 +1201,6 @@ List *pys_range_list(I a, I b, I s) {
   return l;
 }
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
-Str *pys_str_join(Str *sep, List *l) {
-  I n = 0;
-  for (I i = 0; i < l->len; i++) n += ((Str *)l->a[i])->len + (i ? sep->len : 0);
-  Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); char *w = r->s; r->len = n;
-  for (I i = 0; i < l->len; i++) {
-    Str *s = (Str *)l->a[i];
-    if (i) { memcpy(w, sep->s, sep->len); w += sep->len; }
-    memcpy(w, s->s, s->len); w += s->len;
-  }
-  return r;
-}
-List *pys_str_split(Str *s, Str *sep, I maxsplit) {   /* maxsplit < 0: no limit */
-  List *l = pys_list_new(0); I i = 0, n = s->len;
-  if (maxsplit < 0) maxsplit = INT64_MAX;     /* no limit: counting down from it cannot reach 0, or overflow */
-  if (!sep) {
-    for (;;) {
-      while (i < n && ws(s->s[i])) i++;
-      if (i >= n) return l;
-      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s + i, n - i)); return l; }   /* the rest, as it is */
-      I j = i; while (j < n && !ws(s->s[j])) j++;
-      pys_list_append(l, (I)pys_str(s->s + i, j - i)); i = j;
-    }
-  }
-  if (!sep->len) pys_fail("ValueError: empty separator");
-  for (I j; maxsplit-- != 0 && (j = find(s, sep, i)) >= 0; i = j + sep->len) pys_list_append(l, (I)pys_str(s->s + i, j - i));
-  pys_list_append(l, (I)pys_str(s->s + i, n - i));
-  return l;
-}
-static I eol(Str *s, I i) {                    /* the length of the line break at i, 0 if none */
-  unsigned char c = s->s[i], *p = (unsigned char *)s->s + i; I left = s->len - i;
-  if (c == '\r') return left > 1 && p[1] == '\n' ? 2 : 1;
-  if (c == '\n' || c == 11 || c == 12 || (c >= 28 && c <= 30)) return 1;
-  if (c == 0xC2 && left > 1 && p[1] == 0x85) return 2;                          /* U+0085 */
-  if (c == 0xE2 && left > 2 && p[1] == 0x80 && (p[2] == 0xA8 || p[2] == 0xA9)) return 3;  /* U+2028, U+2029 */
-  return 0;
-}
-List *pys_str_splitlines(Str *s, I keep) {
-  List *l = pys_list_new(0); I i = 0, st = 0;
-  while (i < s->len) {
-    I k = eol(s, i);
-    if (!k) { i++; continue; }
-    pys_list_append(l, (I)pys_str(s->s + st, i - st + (keep ? k : 0)));
-    i += k; st = i;
-  }
-  if (st < s->len) pys_list_append(l, (I)pys_str(s->s + st, s->len - st));
-  return l;
-}
-List *pys_str_rsplit(Str *s, Str *sep, I maxsplit) {  /* split from the right; the parts stay in order */
-  List *l = pys_list_new(0); I j = s->len;
-  if (maxsplit < 0) maxsplit = INT64_MAX;
-  if (!sep) {
-    for (;;) {
-      while (j > 0 && ws(s->s[j - 1])) j--;
-      if (j <= 0) break;
-      if (maxsplit-- == 0) { pys_list_append(l, (I)pys_str(s->s, j)); break; }
-      I i = j; while (i > 0 && !ws(s->s[i - 1])) i--;
-      pys_list_append(l, (I)pys_str(s->s + i, j - i)); j = i;
-    }
-  } else {
-    if (!sep->len) pys_fail("ValueError: empty separator");
-    for (I i; maxsplit-- != 0 && (i = pys_str_rfind(s, sep, 0, j)) >= 0; j = i) pys_list_append(l, (I)pys_str(s->s + i + sep->len, j - i - sep->len));
-    pys_list_append(l, (I)pys_str(s->s, j));
-  }
-  for (I a = 0, b = l->len - 1; a < b; a++, b--) { I t = l->a[a]; l->a[a] = l->a[b]; l->a[b] = t; }
-  return l;
-}
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */
 /* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a

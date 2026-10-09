@@ -4421,6 +4421,16 @@ CALLS: dict[str, str] = {
     "time.sleep(bool)": "pys_sleep_int:None", "sys.setrecursionlimit(int)": "pys_setrecursionlimit:None",
     "sys.setrecursionlimit(bool)": "pys_setrecursionlimit:None", "sys.getrecursionlimit()": "pys_getrecursionlimit:int",
 }
+# runtime.py's primitives (import _rt, in runtime mode only): "name": "argument types:result type".
+# Each is a few LLVM instructions with its checks, no runtime call; tools/rt_cpython/_rt.py is their
+# CPython version, for running runtime.py there. str_new makes a zeroed str of n bytes that only
+# str_put and copy may change, before str_done hands it out (a no-op here). null(s) tests for the
+# null pointer that callers pass for an omitted str argument (s.strip()).
+RTL: dict[str, str] = {
+    "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
+    "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+}
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -5487,6 +5497,49 @@ class Gen:
         l = self.label()
         self.cbr(bad, self.cold[msg], l)
         self.place(l)
+
+    def primitive(self, name: str, vals: list[Val]) -> Val:
+        # runtime.py's _rt.<name>(...): see RTL
+        if name not in RTL:
+            self.err(f"_rt.{name} is not a runtime primitive")
+        sig = RTL[name].split(":")
+        if ",".join([v.t for v in vals]) != sig[0]:
+            self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
+        a = [v.v for v in vals]
+        if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
+            return Val(self.ins(f"{name[5:]} i64 {a[0]}, {a[1]}"), "int")
+        if name == "shl" or name == "lshr":
+            # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
+            return Val(self.ins(f"{name} i64 {a[0]}, {self.ins(f'and i64 {a[1]}, 63')}"), "int")
+        if name == "str_done":
+            return vals[0]
+        if name == "null":
+            return Val(self.ins(f"icmp eq ptr {a[0]}, null"), "bool")
+        if name == "str_new":
+            self.guard(self.ins(f"icmp slt i64 {a[0]}, 0"), "MemoryError: negative size")
+            r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.iop('sadd', a[0], '9')}"])  # zeroed: the NUL is there
+            self.emit(f"store i64 {a[0]}, ptr {r}")
+            return Val(r, "str")
+        # the others index a str: an unsigned compare with its length also rejects a negative index
+        n = self.ins(f"load i64, ptr {a[0]}")
+        if name == "copy":
+            # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
+            m = self.ins(f"load i64, ptr {a[2]}")
+            for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n}, {a[1]}')}",
+                      f"icmp ugt i64 {a[3]}, {m}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {m}, {a[3]}')}"]:
+                self.guard(self.ins(x), "IndexError: copy out of range")
+            self.decls["llvm.memmove"] = "declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1)"
+            dst = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+            src = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 8')}")
+            self.emit(f"call void @llvm.memmove.p0.p0.i64(ptr {dst}, ptr {src}, i64 {a[4]}, i1 false)")
+            return Val("null", "None")
+        self.guard(self.ins(f"icmp uge i64 {a[1]}, {n}"), "IndexError: string index out of range")
+        p = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 8')}")
+        if name == "byte":
+            return Val(self.ins(f"zext i8 {self.ins(f'load i8, ptr {p}')} to i64"), "int")
+        self.guard(self.ins(f"icmp ugt i64 {a[2]}, 255"), "ValueError: byte must be in range(0, 256)")
+        self.emit(f"store i8 {self.ins(f'trunc i64 {a[2]} to i8')}, ptr {p}")
+        return Val("null", "None")
 
     def iop(self, op: str, a: str, b: str) -> str:
         # checked 64-bit arithmetic: overflow raises OverflowError (CPython would grow the int)
@@ -9647,6 +9700,8 @@ class Gen:
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
             vals[1] = self.as_int(vals[1])
         key = f"{name}({','.join([v.t for v in vals])})"
+        if self.rtmode and name.startswith("_rt."):
+            return self.primitive(name[4:], vals)
         if key in DEFAULTS:
             vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
             key = f"{name}({','.join([v.t for v in vals])})"
@@ -10030,7 +10085,10 @@ def runtime_ir(path: str) -> str:
     f.close()
     g = Gen()
     g.rtmode = True
-    return g.program(Loader([]).program(path, src))
+    MODULES["_rt"] = True
+    ir = g.program(Loader([]).program(path, src))
+    del MODULES["_rt"]
+    return ir
 
 
 def q(s: str) -> str:
