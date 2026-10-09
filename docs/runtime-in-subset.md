@@ -462,7 +462,7 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   | `strip(chars)` looped over the set for each byte | 14 times runtime.c's time with a 95-byte set | `memchr`, as runtime.c did |
   | `ljust` and friends within 9 bytes of 2**63 | `OverflowError` where CPython and runtime.c raise `MemoryError` | `_rt.str_new` reports such sizes as `MemoryError`; `tests/rt_ljust_huge.py` |
 
-  `rtcheck` could not see any of these. The first four are performance problems, or differences between `_rt.str_new` and its CPython twin. Compiled differential tests at the edges, and performance tests with long needles, are what found them. `tools/rtbench/` now has three such cases (`find_dense`, `find_worst`, `strip_chars`), and §2.4.2 reports them.
+  `rtcheck` could not see any of these. The first four are performance problems, or differences between `_rt.str_new` and its CPython twin. Compiled differential tests at the edges, and performance tests with long needles, are what found them. `tools/rtbench/` now has cases for them (`find_dense`, `find_worst`, `strip_chars`) and for the worst cases below, and §2.4.2 reports them.
 - **Gaps in runtime mode and the driver, found and fixed before submission.** The compiler reviewer wrote a reproducer for each.
 
   | problem | effect | fix |
@@ -485,7 +485,7 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   | case | before | after | cause |
   |---|---:|---:|---|
   | `replace` with a 1,001-byte separator; with phrases, in English-like text | 1.67; 1.89 | 0.88; 1.21 | it searched twice, to count and to copy |
-  | `swapcase()`, 1 MB | 1.86 | 1.04 | two 64-bit range tests per byte, which vectorize badly without AVX |
+  | `swapcase()`, 1 MB | 1.86 | 1.04 | two 64-bit range tests per byte, which vectorize badly on baseline x86-64 |
   | `splitlines()` on 1 KB lines | 1.77 | 0.86 | a call to `eol()` per byte |
   | `ljust(8)` of short words | 2.2 | 1.19 | runtime.c's small `pad` inlined into the program; the subset's called `fillrun` |
 
@@ -498,12 +498,11 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   - `runtime.py` cannot hide a pointer from the conservative scan: no primitive turns a pointer into an int, and strs hold no pointers.
 
   It raised two points, both handled. First, nothing checks the builder rule of §1.2. The CPython twin of `str_done` returned a copy, so `rtcheck` could not see a write after `str_done`. The twin now empties the builder, and `rtcheck` still passes. A `buf` type for builders would make the rule a compile-time check (§5). Second, sanitizers do not instrument `runtime.py`'s code (§2.1).
-- **Improvements over runtime.c that the review found.** These are the format fixes of §2.2: message truncation, a NUL in the spec, and presentation types read as code points.
+- **Improvements over runtime.c that the review found.** These are the format fixes of §2.2 (message truncation, a NUL in the spec, and presentation types read as code points), and `expandtabs` with a huge tab size, on which runtime.c hung (§2.1).
 - **Shared deviations it found and left as they are.**
   - A format width above 10**8 is rejected.
   - `"%c" % 233` writes one byte.
   - `strip()` with non-ASCII chars, and `replace("", x)`, work byte by byte. This is the byte-string model, but the README lists only `split()`.
-  - `expandtabs` accepted tab sizes above CPython's C int limit. That one is now fixed: runtime.c hung on them (§2.1).
 
 ## 3. How other compilers and runtimes do it
 
