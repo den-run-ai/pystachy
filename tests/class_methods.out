@@ -1,0 +1,22 @@
+mods: init mods
+mods.shapes: init mods.shapes
+default a
+default b
+start
+parse 21.5C C
+parse 0C C
+21.5 0.0 False 3.14
+parse 43.0C C
+parse 1C C
+parse 5C C
+True 43.0 2.0 5.0
+a! q! bbb x bb t!
+False False
+parse 1C C
+parse 2C C
+[1.0, 2.0]
+Point(x=0, y=0) 7 2 Point(x=0, y=0)
+Span(lo=1, hi=3) 20
+Length('a.txt', 2000.0, km) Length('b', 5.0, m) Length('c', 0.0, m)
+True False
+[exit 0]

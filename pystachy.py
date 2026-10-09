@@ -5414,6 +5414,20 @@ class FnInfo:
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
+        self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+
+
+def takes_self(f: FnInfo) -> bool:
+    # is f a method that takes its object as its first parameter (not a static or class method)
+    return f.cls != "" and f.deco == ""
+
+
+def rename(n: Node, name: str, to: str) -> None:
+    # the reads of name in n read to instead (a class method's cls is its class)
+    if n.kind == "name" and n.s == name:
+        n.s = to
+    for k in n.kids:
+        rename(k, name, to)
 
 
 # ---------------------------------------------------------------- the IR
@@ -6612,13 +6626,15 @@ class Gen:
         for x in d.kids[3:]:
             if x.s != "async" and deco == "":
                 deco = x.s
-        if deco != "" and not self.lib:
+        if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
+            f.deco = deco  # (a method that takes no self, or its class as cls)
+        if deco != "" and f.deco == "" and not self.lib:
             # (CPython applies a decorator when the def runs, called or not)
             if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
                 self.err(f"name '{deco}' is not defined (import it from typing)")
             self.err(f"unsupported decorator @{deco}")
-        if cls != "" and len(ps) == 0:
-            self.err(f"method '{d.s}' of class '{cls}' must take self as its first parameter")
+        if cls != "" and len(ps) == 0 and f.deco != "staticmethod":
+            self.err(f"method '{d.s}' of class '{cls}' must take {'cls' if f.deco != '' else 'self'} as its first parameter")
         tv = self.typevar_in([p.kids[0] for p in ps if p.kind == "param"] + [d.kids[1]])
         if tv != "" and cls == "":
             # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
@@ -6643,6 +6659,8 @@ class Gen:
                 f.npos = len(f.params)
             if i == int(marks[0]):
                 f.posonly = len(f.params)
+            if i == 0 and f.deco == "classmethod" and p.kind == "param":
+                continue  # cls: the class, which is not passed (see rename)
             if p.kind == "starparam" and f.generic:
                 # *args: each call passes the extra positional arguments as a tuple of their types
                 f.vararg = len(f.params)
@@ -6660,7 +6678,7 @@ class Gen:
             f.defaults.append(p.kids[1])
             f.dglob.append("")
             f.dtypes.append("")
-            if i == 0 and cls != "":
+            if i == 0 and takes_self(f):
                 f.ptypes.append(cls)
             elif p.kids[0].kind == "noann":
                 if not f.generic:
@@ -6677,8 +6695,18 @@ class Gen:
             f.npos = len(f.params)
         if f.vararg >= 0:
             f.npos = f.vararg
-        if len(d.kids) > 3:
+        if len(d.kids) > 3 and f.deco == "":
             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
+        if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):
+            bad = f"@{f.deco} on the special method {d.s} is not supported"
+        if f.deco == "classmethod" and bad == "" and ps[0].kind == "param":
+            # its cls parameter names the class in its body: cls(...) makes one, cls.x reads a
+            # class attribute, cls.m(...) calls a static or class method
+            asg: dict[str, bool] = {}
+            local_names(d.kids[2].kids, asg)
+            if ps[0].s in asg:
+                bad = f"class method {d.s}() assigns its parameter '{ps[0].s}', which names the class: not supported"
+            rename(d.kids[2], ps[0].s, cls)
         if bad == "" and has_kind(d.kids[2], "yield"):
             bad = UNSUPPORTED["yield"]  # a generator function
             if cls != "" and d.s == "__iter__":
@@ -6897,7 +6925,10 @@ class Gen:
                 return "str"
             if c == "open":
                 return "file"
-        me = f.params[0] if f.cls != "" else ""
+        if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s in self.classes:
+            ms = self.classes[e.kids[0].kids[0].s].methods  # C.m(...): a static or class method
+            return ms[e.kids[0].s].ret if e.kids[0].s in ms and ms[e.kids[0].s].deco != "" else ""
+        me = f.params[0] if takes_self(f) else ""
         if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s == me:
             return self.classes[f.cls].ftypes.get(e.s, "")
         if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
@@ -7888,7 +7919,7 @@ class Gen:
         self.compiled[f.ll] = True
         self.building[f.ll] = True
         self.enter(f, body)
-        if f.cls != "":
+        if takes_self(f):
             # callers check the receiver, so self is never None inside a method
             self.nn["%a0"] = True
             if f.params[0] not in self.assigned:
@@ -7966,7 +7997,7 @@ class Gen:
         o = self.out
         f = fn.f
         # a method's receiver is never None (callers check it)
-        ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and f.cls != '' else ''} %a{j}" for j in fn.ps]
+        ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
         o.append(f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{")
         o.append("entry:")
         for i in fn.slots:
@@ -8165,14 +8196,16 @@ class Gen:
         for b in st.kids[0].kids:
             if b.kind == "def":
                 ps = b.kids[0].kids
-                if len(b.kids) > 3:
+                deco = b.kids[3].s if len(b.kids) == 4 and len(b.kids[3].kids) == 0 else ""
+                static = deco == "staticmethod"
+                if len(b.kids) > 3 and ((not static and deco != "classmethod") or (b.s.startswith("__") and b.s.endswith("__"))):
                     return f"method {b.s}() has a decorator"
-                if len(ps) == 0:
-                    return f"method {b.s}() has no self parameter"
+                if len(ps) == 0 and not static:
+                    return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
                 for i in range(len(ps)):
                     if ps[i].kind != "param":
                         return f"method {b.s}() takes *args or **kwargs"
-                    if i > 0 and ps[i].kids[0].kind == "noann":
+                    if (i > 0 or static) and ps[i].kids[0].kind == "noann":
                         return f"parameter '{ps[i].s}' of method {b.s}() has no type annotation"
             elif not (b.kind == "annassign" and b.kids[0].kind == "name") and b.kind != "pass" and not (b.kind == "expr" and b.kids[0].kind == "str"):
                 return "its body holds statements other than fields, methods and a docstring"
@@ -8603,6 +8636,8 @@ class Gen:
         # runs the module's code)
         if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.funcs or n.kids[0].s in self.classes):
             return True
+        if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s in self.classes:
+            return True  # C.m(...): a static or class method
         if n.kind == "uimport":
             # it runs a module's code, which can call this module's functions only if it imports
             # this module (circular imports): as this module imports it, only if both are in one
@@ -10330,12 +10365,7 @@ class Gen:
     def class_attr(self, cn: Node, a: str) -> Val:
         # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
         # (instances read it until they assign the field; C.a = v is not supported)
-        c = cn.s
-        ci = self.classes[c]
-        if ci.bad != "":
-            self.err(ci.bad)
-        if (cn.chk or self.foreign(c)) and c in self.gflag:
-            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c}.def')}, true"), self.unbound(c))
+        ci = self.class_ready(cn)
         if a == "_fields":
             return self.tuple_([Val(self.sconst(x), "str") for x in ci.fields])
         t = ci.ftypes[a]
@@ -10343,6 +10373,27 @@ class Gen:
             return self.coerce(self.expr(ci.fdefault[a], t), t)
         self.class_default(ci, a)
         return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+
+    def class_ready(self, cn: Node) -> ClassInfo:
+        # the class that name cn reads (C.a, C.m(...)), checked where its class statement may not
+        # have run yet
+        c = cn.s
+        ci = self.classes[c]
+        if ci.bad != "":
+            self.err(ci.bad)
+        if (cn.chk or self.foreign(c)) and c in self.gflag:
+            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c}.def')}, true"), self.unbound(c))
+        return ci
+
+    def class_call(self, cn: Node, m: str, args: list[Node], want: str) -> Val:
+        # C.m(...): a static or class method called through its class (cls.m(...) in a class method)
+        ci = self.class_ready(cn)
+        if m not in ci.methods:
+            self.err(f"type object '{short(cn.s)}' has no attribute '{m}'")
+        f = ci.methods[m]
+        if f.deco == "":
+            self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
+        return self.call_fn(f, [], args, want)
 
     def percent(self, fmt: str, rhs: Node) -> Val:
         # "format" % args with a constant format: each conversion becomes what format() or
@@ -11283,6 +11334,8 @@ class Gen:
                 return self.fill(f.kids[0], f.s, args, want)
             if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
                 self.err(f"{short(f.kids[0].s)}._make() is not supported: call {short(f.kids[0].s)}(...) with the fields")
+            if f.kids[0].kind == "name" and f.kids[0].s in self.classes and f.kids[0].s not in self.ltype:
+                return self.class_call(f.kids[0], f.s, args, want)
             o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
             r = self.method(o, f.s, args)
             if f.s != "close":
@@ -11370,7 +11423,7 @@ class Gen:
                 return self.replace(o, args)
             if ci.methods[m].iters:
                 self.err(f"calling {short(o.t)}.__iter__() is not supported (its iterator is the list it steps through here): iterate over the object")
-            return self.call_fn(ci.methods[m], [o], args)
+            return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args)  # (a static or class method gets no o)
         return self.bmethod(o, m, args)
 
     def replace(self, o: Val, args: list[Node]) -> Val:
@@ -11419,7 +11472,7 @@ class Gen:
             return v
         what = ""
         if is_opt(v.t):
-            what = f"argument {j if f.cls != '' else j + 1} of {short(f.name)}()" if j < f.npos else f"argument '{f.params[j]}' of {short(f.name)}()"
+            what = f"argument {j if takes_self(f) else j + 1} of {short(f.name)}()" if j < f.npos else f"argument '{f.params[j]}' of {short(f.name)}()"
         return self.coerce(v, t, what)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "") -> Val:

@@ -221,6 +221,11 @@ class is quoted, `"Node"`), unless `from __future__ import annotations` makes th
   dataclass's.
 - `C.x` reads the class attribute that a class-body default binds (instances read it until
   they assign `x`), also a `Final` one.
+- A method decorated with `@staticmethod` or `@classmethod` is called through its class
+  (`C.m(...)`) or through an object (`o.m(...)`, `self.m(...)`, which only checks that `o` is
+  not `None`). There is no inheritance, so a class method's `cls` is always its own class:
+  `cls(...)` makes one, `cls.x` reads a class attribute and `cls.m(...)` calls a static or
+  class method.
 
 **Statements.** assignment (chained, tuple and list unpacking, swaps), annotated and
 augmented assignment (`+=` on lists extends in place; `__iadd__` & co are honoured),
@@ -232,7 +237,7 @@ that changes size raises `RuntimeError`), `break`, `continue`, `return`, `pass`,
 `del` of a list item, a dict key or an object's item, `assert`, `with open(...) as f:` (also several items, in
 parentheses or not), `raise` of a builtin exception (`from` allowed; it ends the program
 with CPython's message and status, `SystemExit` and `KeyboardInterrupt` included), `def`,
-`class`, `@dataclass`, `class P(NamedTuple)`, docstrings, `del` of a variable (later reads raise `NameError` or
+`class`, `@dataclass`, `class P(NamedTuple)`, `@staticmethod`, `@classmethod`, docstrings, `del` of a variable (later reads raise `NameError` or
 `UnboundLocalError`; not of a global in a function), `import`/`from` of the builtin modules
 `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `typing`, `collections.abc`,
 `dataclasses`, `builtins` and `__future__`, and of Python modules (below), with keyword-only (`*`) and positional-only
@@ -465,7 +470,10 @@ other than a constant, read while that module is still being imported; an empty 
 whose first use stores an empty `[]` or `{}` into it (`d[k] = []`); an empty list or dict
 that a template's function returns empty, used where the `list[int]` / `dict[int, int]` guess
 does not fit and the context gives no type (`xs: list[str] = collect()` gives one); comparison dunders that do not return `bool`, `__str__`/`__repr__`
-that do not return `str`, methods without `self`; an `__iter__` that is a generator, or
+that do not return `str`, methods without `self` (or a class method without `cls`); a class
+method's `cls` used as a value or assigned, `@staticmethod` or `@classmethod` on a special
+method, a method of objects called through its class (`C.m(o)`), and decorators other than
+these, `@dataclass` and `@overload`; an `__iter__` that is a generator, or
 that returns anything but `iter(xs)` of a list, a tuple, a `str` or an object with such an
 `__iter__` (the list it returns as it is is rejected by CPython too: `iter() returned
 non-iterator of type 'list'`), and a call of it (`o.__iter__()`); iterating over an object,
