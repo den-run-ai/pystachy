@@ -3957,7 +3957,7 @@ class Loader:
                 out.extend(b.kids)
             else:
                 out.append(st)
-                for a in st.kids if st.kind == "import" and not (blk is m.body) else st.kids[:0]:
+                for a in st.kids if st.kind == "import" and blk is not m.body else st.kids[:0]:
                     if special_import(st, a) and a.s not in self.fsure:
                         self.fsure[a.s] = True
                         added.append(a.s)

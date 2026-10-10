@@ -1,0 +1,21 @@
+# make lint: findings only. pystachy.py and runtime.py are in the subset (docs/language.md), and the
+# fixes of rule families such as UP, C4, SIM, PL, RUF, FURB or PERF bring in set literals, starred
+# expressions and other forms the subset rejects; no ruff format either, for the same reason
+target-version = "py313"
+# vendored CPython stdlib, a port, and the test programs, whose output CPython recorded
+extend-exclude = ["lib", "ports", "tests"]
+# also for paths named on the command line: tests/errors/nest_*.py overflow ruff's stack
+force-exclude = true
+
+[lint]
+select = ["F", "E4", "E7", "E9", "W6", "PLE", "B"]
+ignore = [
+  "E741",  # `l` is a common local
+  "B007",  # counted loops: for i in range(n)
+  "B905",  # zip(strict=) is not in the subset
+]
+# no rewrites: edit by hand (the self-compile checks that the result is still in the subset)
+fixable = []
+
+[lint.per-file-ignores]
+"tools/rtcheck.py" = ["B023"]  # closures called inside their loop, by design

@@ -1,0 +1,4 @@
+# make lint's tools, for development and CI only (Pystachy needs none of them to build or run):
+#   python3 -m pip install -r tools/requirements-dev.txt
+ruff==0.17.0
+shellcheck-py==0.11.0.1

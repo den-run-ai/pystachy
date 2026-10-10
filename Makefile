@@ -83,7 +83,14 @@ check-ir: pystachy
 check-runtime:
 	$(PY) tools/check_runtime.py
 
+# ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
+# sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
+lint:
+	ruff check
+	shellcheck -s sh -S warning $(wildcard tests/*.sh tools/*.sh bench/*.sh)
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c
+
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir check-runtime clean
+.PHONY: test test-py bench dictprobe verify irsame irsame-py ref check-ir check-runtime lint clean

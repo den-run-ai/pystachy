@@ -14,6 +14,7 @@ honest.
 | `make irsame REF=<commit>` | a refactor changes no program's IR, message or exit status |
 | `make check-ir` | every program in the corpus compiles, and the compiler's IR check and `llvm-as` accept its IR |
 | `make check-runtime` | the compiler's `RUNTIME` table agrees with `runtime.c` |
+| `make lint` | `ruff check` (findings only, `ruff.toml`), `shellcheck` of the scripts as POSIX sh, and clang's warnings on the C sources; `pip install -r tools/requirements-dev.txt` gives the versions that CI's Lint workflow (`.github/workflows/lint.yml`) runs on every push |
 
 ## Differential tests
 
