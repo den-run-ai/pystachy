@@ -1850,7 +1850,8 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
   struct stat st;
   if (!isatty(1) && !fstat(1, &st)) setbuf1(&std_out, st.st_blksize > 1 ? st.st_blksize : 8192);
-  signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal */
+  signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal, */
+  signal(SIGXFSZ, SIG_IGN);            /* and so is a write past the file-size limit (EFBIG) */
   struct sigaction sa;                 /* and Ctrl-C is KeyboardInterrupt, unless SIGINT is ignored */
   if (!sigaction(SIGINT, 0, &sa) && sa.sa_handler != SIG_IGN) {
     memset(&sa, 0, sizeof sa); sa.sa_handler = on_sigint; sigemptyset(&sa.sa_mask);
