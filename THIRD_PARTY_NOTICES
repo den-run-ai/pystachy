@@ -12,6 +12,19 @@ Lib/ directory (lib/README.md lists their SHA-256 sums). They are part of Python
 under the Python Software Foundation License Version 2, reproduced below, with the copyright
 notice below. lib/curses/__init__.py is Pystachy's own.
 
+CPython's math tests (tests/)
+----------------------------
+
+tests/upstream_math_fmod.py and tests/errors/upstream_math_fmod_arity.py adapt
+MathTests.testFmod from CPython 3.13.16's Lib/test/test_math.py, commit
+cbc944f4bc59639a444dd971c737788ba2283a91, under the Python Software Foundation
+License Version 2 reproduced below; tests/upstream/CPYTHON-LICENSE.txt retains CPython's
+full license. unittest and test.support scaffolding is removed;
+the supported calls keep their expected values and exception classes as plain assertions.
+The no-argument TypeError becomes an expected compile-time rejection, as Pystachy's
+language contract specifies for static type errors. tests/math_fmod_ieee.py is Pystachy's
+own extension covering the IEEE nonfinite and signed-zero cross-product.
+
 iniconfig (ports/iniconfig/)
 ----------------------------
 

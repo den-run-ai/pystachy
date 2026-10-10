@@ -744,7 +744,11 @@ double pys_m_pow(double x, double y) {
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }
-double pys_m_fmod(double x, double y) { if (isinf(x) || (y == 0 && !isnan(x))) pys_fail("ValueError: math domain error"); return fmod(x, y); }
+double pys_m_fmod(double x, double y) {
+  /* A NaN in either argument propagates even with an infinite dividend or zero divisor. */
+  if ((isinf(x) || y == 0) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
+  return fmod(x, y);
+}
 double pys_m_atan2(double y, double x) { return atan2(y, x); }
 /* math.hypot is CPython's vector_norm, not libm's hypot, so its last bit agrees: lossless scaling
    by a power of two, exact squares (fma), compensated summation and a differential correction of
