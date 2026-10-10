@@ -98,9 +98,23 @@ x=""
   "$(lines "$V/stage1.ll")" "$(sha "$V/stage1.ll")" "$(wc -c < "$V/pystachy2" | tr -d ' ')" "$(secs "$t0" "$t1")" "$(secs "$t2" "$t3")")
 step bootstrap $r "$s" "$L" "$x"
 
+# gc-stress's self-compile keeps one core busy for a minute or more: it runs now, beside the test
+# runs below, and that step waits for it. Ctrl-C or TERM kills it ($! is the compiler itself: a
+# simple command run in the background is exec'd, with no shell around it to kill instead)
+gcpid=
+trap '[ -z "$gcpid" ] || kill $gcpid 2> /dev/null; exit 130' INT TERM
+if [ -x "$V/pystachy2" ]; then
+  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
+  gcpid=$!
+fi
+
 # ---- differential tests with both compilers
+# (the CPython-hosted compiler runs as a module, whose bytecode CPython caches, where it compiles a
+# script's 16k lines again at every start; the cache is checked against pystachy.py's hash, as an
+# edit within the same second may keep its mtime and size)
 L=$V/tests-cpython.log; s=$(now)
-tests/run.sh "$PY pystachy.py" > "$L" 2>&1
+{ $PY -c 'import py_compile as c; c.compile("pystachy.py", doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH)' &&
+  tests/run.sh "$PY -m pystachy"; } > "$L" 2>&1
 x=$(tests "$L") && r=pass || r=fail
 step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "modes": ["jit", "aot"]'"$x"
 L=$V/tests-native.log; s=$(now)
@@ -185,8 +199,8 @@ step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, 
 L=$V/gc-stress.log; s=$(now); r=fail
 {
   # (every 1000, not 100: the compiler keeps each function's IR until the program is built, and at
-  # every 100 its collections, which mark all of it, take minutes)
-  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" &&
+  # every 100 its collections, which mark all of it, take minutes; started after the bootstrap)
+  [ -n "$gcpid" ] && wait $gcpid && gcpid= && cat "$V/gc-self.log" &&
     cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 1000 allocations emits the stage1 IR" && r=pass
   PYSTACHY_GC_STRESS=1000 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
   echo "-- tests, collecting at every allocation"; cat "$V/gc-stress-tests.log"

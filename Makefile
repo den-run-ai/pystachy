@@ -21,8 +21,11 @@ pystachy: pystachy.py runtime.c runtime.py
 test: pystachy
 	tests/run.sh ./pystachy
 
+# the CPython-hosted compiler runs as a module, whose bytecode CPython caches (it compiles a script's
+# 16k lines again at every start); the cache is checked against pystachy.py's hash, not its mtime
 test-py:
-	tests/run.sh "$(PY) pystachy.py"
+	$(PY) -c 'import py_compile as c; c.compile("pystachy.py", doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH)'
+	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
 bench: pystachy
 	PY="$(PY)" bench/run.sh
