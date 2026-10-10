@@ -1,0 +1,35 @@
+# make lint on every push: ruff (findings only), shellcheck of the scripts as POSIX sh, and clang's
+# warnings on runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt.
+# A minute, beside CI's make verify.
+name: Lint
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: make lint (ruff, shellcheck, clang -Wall -Wextra)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - run: python3 -m pip install -r tools/requirements-dev.txt
+
+      - run: make lint

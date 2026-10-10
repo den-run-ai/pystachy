@@ -108,6 +108,7 @@ tests/run.sh "$V/pystachy2" > "$L" 2>&1
 x=$(tests "$L") && r=pass || r=fail
 step tests-native $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"]'"$x"
 L=$V/tests-opt-off.log; s=$(now); logs=""; offs=""
+# shellcheck disable=SC2043 # (a list of one, for now)
 for o in all; do
   PYSTACHY_OPT=-$o tests/run.sh "$V/pystachy2" > "$V/tests-opt-off-$o.log" 2>&1
   logs="$logs $V/tests-opt-off-$o.log"; offs="$offs, \"-$o\""
