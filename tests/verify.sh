@@ -99,12 +99,12 @@ x=""
 step bootstrap $r "$s" "$L" "$x"
 
 # gc-stress's self-compile keeps one core busy for a minute or more: it runs now, beside the test
-# runs below, and that step waits for it (Ctrl-C or TERM stops it)
+# runs below, and that step waits for it. Ctrl-C or TERM kills it ($! is the compiler itself: a
+# simple command run in the background is exec'd, with no shell around it to kill instead)
 gcpid=
 trap '[ -z "$gcpid" ] || kill $gcpid 2> /dev/null; exit 130' INT TERM
-gcs=$(now)
 if [ -x "$V/pystachy2" ]; then
-  { PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll"; e=$?; now > "$V/gc-self.end"; exit $e; } > "$V/gc-self.log" 2>&1 &
+  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
   gcpid=$!
 fi
 
@@ -201,7 +201,6 @@ L=$V/gc-stress.log; s=$(now); r=fail
   # (every 1000, not 100: the compiler keeps each function's IR until the program is built, and at
   # every 100 its collections, which mark all of it, take minutes; started after the bootstrap)
   [ -n "$gcpid" ] && wait $gcpid && gcpid= && cat "$V/gc-self.log" &&
-    echo "self-compile: $(secs "$gcs" "$(cat "$V/gc-self.end")")s, beside the test runs" &&
     cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 1000 allocations emits the stage1 IR" && r=pass
   PYSTACHY_GC_STRESS=1000 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" > "$V/gc-stress-tests.log" 2>&1
   echo "-- tests, collecting at every allocation"; cat "$V/gc-stress-tests.log"
