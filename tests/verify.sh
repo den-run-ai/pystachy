@@ -27,10 +27,10 @@
 #                  math functions give on random inputs
 #   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
 #                  signature in runtime.py, runtime.c and every program of the corpus
-#   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
-#                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   list-storage   tools/listprobe.c: cleared reachable lists release backing capacity and live bytes;
 #                  empty operations/reuse preserve sort's sentinel, without allocation in clear
+#   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
+#                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
