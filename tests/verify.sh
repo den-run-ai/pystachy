@@ -29,6 +29,8 @@
 #                  signature in runtime.py, runtime.c and every program of the corpus
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
+#   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types under
+#                  256 MiB / ten CPU seconds, with short diagnostics; finite controls still compile
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -247,6 +249,11 @@ L=$V/dict-probes.log; s=$(now); r=fail
   "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
   "$V/dictprobe" && r=pass; } > "$L" 2>&1
 step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
+
+# ---- compile limits: small sources must receive bounded source diagnostics, not exhaust memory
+L=$V/compile-limits.log; s=$(now); r=fail
+$PY tools/compilelimits.py -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step compile-limits $r "$s" "$L" ', "address_space_mib": 256, "cpu_seconds": 10, "modes": ["ir", "run", "build"]'
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
 L=$V/scaling.log; s=$(now); r=fail
