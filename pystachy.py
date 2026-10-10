@@ -14025,6 +14025,9 @@ class Gen:
                     bnd.append("-9223372036854775808")  # the runtime's "omitted" marker
                 else:
                     bv = self.expr(x, "int")
+                    if bv.t == "None":
+                        bnd.append("-9223372036854775808")  # an explicit None is omitted too
+                        continue
                     if is_sopt(bv.t):
                         bnd.append(self.optbound(bv))  # (None: omitted)
                         continue
