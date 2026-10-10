@@ -48,10 +48,10 @@ flowchart LR
 
 | | |
 |---|---|
-| **compiler** | `pystachy.py`, about 16,000 lines, written in the subset it compiles |
+| **compiler** | `pystachy.py`, about 17,000 lines, written in the subset it compiles |
 | **runtime** | `runtime.c`, under 3,000 lines, with its own garbage collector, and `runtime.py`, its str methods, formatting and hashing written in the subset; needs only the C library |
 | **bootstrap** | the compiler running on CPython, the native compiler it builds, and the one that builds itself all emit byte-identical LLVM IR |
-| **tests** | about 500 programs that must print what CPython printed for them, JIT and AOT, and over 600 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
+| **tests** | over 550 programs that must print what CPython printed for them, JIT and AOT, and over 640 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
 | **standard library** | 9 unmodified CPython 3.13 modules compile as they are, for the functions the subset supports ([`lib/`](lib/README.md)) |
 
 ### Speed
@@ -160,7 +160,7 @@ make verify                             # everything CI runs; report in build/ve
 ```
 
 Your first five minutes: save the example from [A taste](#a-taste) as `cart.py`, then compare `python3 cart.py`
-with `./pystachy run cart.py`. Before `make`, `python3 pystachy.py run cart.py` runs the
+with `./pystachy run cart.py`. Before `make`, `python3 -m pystachy run cart.py` runs the
 compiler on CPython. Other settings are listed in
 [docs/internals.md](docs/internals.md#environment-variables).
 
@@ -189,30 +189,26 @@ compiler on CPython. Other settings are listed in
 ## Roadmap
 
 The goal is to compile more existing Python: CPython's standard library, then popular PyPI
-packages. [Issue #5](https://github.com/den-run-ai/pystachy/issues/5) adds dynamic features back
-in the order of how much real code each lets compile. The numbers are cumulative estimates from
-a static model: an upper bound on the share of functions whose constructs would all be
-supported, not a measurement of what runs today.
+packages. The milestones add dynamic features in the order of how much real code each lets
+compile. The numbers are cumulative estimates from the original static model, based on the
+surveys described in [docs/stdlib.md](docs/stdlib.md): an upper bound on the share of functions
+whose constructs would all be supported, not a measurement of what runs today. The survey
+baseline predates the progress described below.
 
 | milestone | what it adds | top-1000 PyPI functions | CPython `Lib/` functions | stdlib modules that import (of the model's 529) |
 |---|---|---:|---:|---:|
-| today | the subset described in [docs/language.md](docs/language.md) | 1.8% | 4.5% | 38 |
-| [M1](https://github.com/den-run-ai/pystachy/issues/6) | lenient annotations, cheap refinements | 4.8% | 4.6% | 38 |
-| [M2](https://github.com/den-run-ai/pystachy/issues/7) | full classes: inheritance, unannotated methods, properties | 18.8% | 25.6% | 39 |
-| [M3](https://github.com/den-run-ai/pystachy/issues/8) | functions as values: callbacks, lambdas, closures, decorators | 44.9% | 41.5% | 39 |
-| [M4](https://github.com/den-run-ai/pystachy/issues/9) | dynamic values: `Optional` scalars, unions, `Any` | 51.3% | 47.8% | 41 |
-| [M5](https://github.com/den-run-ai/pystachy/issues/10) | exceptions | 55.7% | 53.5% | 41 |
-| [M6](https://github.com/den-run-ai/pystachy/issues/11) | native stdlib hubs, C-module shims | 58.7% | 56.8% | 124 |
-| [M7](https://github.com/den-run-ai/pystachy/issues/12) | the long tail: generators, `async`, sets, `bytes`, `str.format` | 90.4% | 99.0% | 523 |
+| survey baseline | the original subset at the time of the survey | 1.8% | 4.5% | 38 |
+| M1 | lenient annotations, cheap refinements | 4.8% | 4.6% | 38 |
+| M2 | full classes: inheritance, unannotated methods, properties | 18.8% | 25.6% | 39 |
+| M3 | functions as values: callbacks, lambdas, closures, decorators | 44.9% | 41.5% | 39 |
+| M4 | dynamic values: `Optional` scalars, unions, `Any` | 51.3% | 47.8% | 41 |
+| M5 | exceptions | 55.7% | 53.5% | 41 |
+| M6 | native stdlib hubs, C-module shims | 58.7% | 56.8% | 124 |
+| M7 | the long tail: generators, `async`, sets, `bytes`, `str.format` | 90.4% | 99.0% | 523 |
 
-Parts of M4 and M5 landed in #22. Open findings from earlier differential testing are
-tracked in [#13](https://github.com/den-run-ai/pystachy/issues/13) to
-[#17](https://github.com/den-run-ai/pystachy/issues/17).
-
-**New in [#22](https://github.com/den-run-ai/pystachy/pull/22): a typed IR** (its
-[design](docs/typed-ir.md) was merged in [#21](https://github.com/den-run-ai/pystachy/pull/21)):
-a small typed layer between type checking and LLVM, built step by step so that every step
-leaves every program's LLVM IR byte-identical (`make irsame` checks it). On top of it: exceptions
+**Progress: a typed IR**, with parts of M2, M4 and M5 implemented. The
+[typed layer](docs/typed-ir.md) between type checking and LLVM was introduced with
+byte-identical LLVM IR checks (`make irsame`). On top of it: exceptions
 (`try`/`except`/`else`/`finally`, `raise`, exception classes of the program) by table-driven
 unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
 `float | None` and `bool | None`, `NamedTuple`, tuple dict keys, `@classmethod`,
@@ -220,15 +216,14 @@ unwinding, `T | None` for `str`, `list`, `dict` and `tuple`, boxed `int | None`,
 make a dict-counting benchmark 31% faster AOT). With them, iniconfig, pytest's INI parser,
 compiles after a few small edits ([`ports/iniconfig`](ports/iniconfig/PORT.md)).
 
-**New in [#19](https://github.com/den-run-ai/pystachy/pull/19): part of the runtime in Python.**
+**Progress: part of the runtime in Python.**
 52 runtime functions, among them all the `str` methods and the format-spec mini-language, are
 written in the subset and compiled by Pystachy itself. Programs call them as before, at the same
 speed on the benchmarks.
-Follow-ups are tracked in [#31](https://github.com/den-run-ai/pystachy/issues/31).
 
 **An open question:** should Pystachy stay standalone, or also gain an ahead-of-time
 CPython-extension mode, like mypyc, so that compiled code can use real PyPI packages?
-[#4](https://github.com/den-run-ai/pystachy/issues/4) weighs the options; input is welcome.
+Input is welcome.
 
 **Further out:** single inheritance with vtables; `set` and `frozenset` on top of the dict table;
 more of the standard library, ranked by payoff in [docs/stdlib.md](docs/stdlib.md); and a
@@ -242,12 +237,12 @@ compiler rejects each where it would have to compile it.
 
 | not supported yet | on the roadmap |
 |---|---|
-| exception attributes such as `e.args`, `except*` (`try`, `raise` and exception classes came in [#22](https://github.com/den-run-ai/pystachy/pull/22)) | M5 |
-| unions other than `Optional` (which [#22](https://github.com/den-run-ai/pystachy/pull/22) brought to `int`, `str` and the other builtin types) | M4 |
+| exception attributes such as `e.args`, `except*` (`try`, `raise` and exception classes are supported) | M5 |
+| unions other than `Optional` (`Optional` is supported for `int`, `str` and the other builtin types) | M4 |
 | inheritance, but for exception classes | M2 |
 | lambdas, closures, functions as values (`map`, `key=`) | M3 |
 | generators, `async`, sets, `bytes` | M7 |
-| dict and multi-clause comprehensions, slice steps, `getattr`/`eval`, complex numbers, `match`, `:=` | [#5](https://github.com/den-run-ai/pystachy/issues/5) |
+| dict and multi-clause comprehensions, slice steps, `getattr`/`eval`, complex numbers, `match`, `:=` | [Further language coverage](#roadmap) |
 
 Programs that compile can still differ from CPython in a few documented ways: `int` is 64-bit
 and raises `OverflowError` where CPython would grow it (it never wraps); `str` holds UTF-8 bytes,
@@ -258,9 +253,10 @@ instead of raising `RecursionError`; and `__del__` never runs. The complete list
 [deviations](docs/language.md#deviations-from-cpython) and
 [rejected programs](docs/language.md#rejected-rather-than-miscompiled).
 
-Of the standard library, 38 of 519 modules import today, and no popular PyPI package imports as
-a whole yet, though algorithmic code copied out of packages often runs unmodified or after a few
-edits ([docs/stdlib.md](docs/stdlib.md)).
+The published import survey found that 38 of 519 standard-library modules imported, and no
+popular PyPI package imported as a whole. Algorithmic code copied out of packages often runs
+unmodified or after a few edits; see [docs/stdlib.md](docs/stdlib.md) for the survey and its
+scope.
 
 ## Design decisions
 
@@ -287,7 +283,7 @@ A few choices shape everything else. Each is explained, with the pull request th
 | [docs/testing.md](docs/testing.md) | the test suite, `make verify`, the IR oracle for refactors, CI |
 | [docs/performance.md](docs/performance.md) | benchmarks, start-up, memory and compile time |
 | [docs/stdlib.md](docs/stdlib.md) | how much of the standard library and of PyPI compiles, and what it would take to compile more |
-| [docs/typed-ir.md](docs/typed-ir.md) | the typed IR: its design, and how far #22 built it |
+| [docs/typed-ir.md](docs/typed-ir.md) | the typed IR: its design and implementation |
 | [docs/runtime-in-subset.md](docs/runtime-in-subset.md) | writing the runtime in the subset itself: the prototype (`runtime.py`), its measurements, and how other compilers do it |
 | [docs/history.md](docs/history.md) | the timeline, the design decisions and the Ouro v1 lineage |
 | [lib/README.md](lib/README.md) | the unmodified standard-library modules that ship with Pystachy |
@@ -297,11 +293,10 @@ A few choices shape everything else. Each is explained, with the pull request th
 Pystachy is young, and most of its work is easy to check: a change is right when the output
 matches CPython's. Good places to start:
 
-- **M1 items** ([#6](https://github.com/den-run-ai/pystachy/issues/6)): small builtins and
-  methods (`hex`, `oct`, `bin`, `dict.update`, `math.modf`, ...), a `lib/warnings.py` with
-  `warn()`, folding `sys.version_info` tests at compile time.
-- **The standard library:** [docs/stdlib.md](docs/stdlib.md) lists 17 modules that compile after
-  1 to 18 small edits each; each feature that removes an edit moves one of them closer to `lib/`.
+- **Language coverage:** extend annotations, builtins and common methods along the
+  [roadmap](#roadmap).
+- **The standard library:** [docs/stdlib.md](docs/stdlib.md) identifies modules that compile
+  after a few small edits; each feature that removes an edit moves one of them closer to `lib/`.
 - **Bugs:** the [open issues](https://github.com/den-run-ai/pystachy/issues), and any program
   whose output differs from CPython's.
 
@@ -310,8 +305,8 @@ How a test works: put a program in `tests/NAME.py`, record CPython's output with
 rejected goes in `tests/errors/`, with the expected message in a comment on its first line.
 Before a pull request, run `make verify`, which runs what CI runs; after a code-generator
 refactor, `make irsame REF=main` shows that no program's IR changed. Work on the typed IR or
-`runtime.py` touches the code generator and the runtime, so open an issue (for `runtime.py`,
-comment on [#31](https://github.com/den-run-ai/pystachy/issues/31)) before starting something large there.
+`runtime.py` touches the code generator and the runtime, so open an issue before starting
+something large there.
 
 ## License
 
