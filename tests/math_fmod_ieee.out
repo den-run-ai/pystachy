@@ -1,0 +1,258 @@
+0.0 0.0 ValueError math domain error
+0.0 -0.0 ValueError math domain error
+0.0 1.0 0.0
+0.0 -1.0 0.0
+0.0 2.0 0.0
+0.0 -2.0 0.0
+0.0 5.5 0.0
+0.0 -5.5 0.0
+0.0 5e-324 0.0
+0.0 -5e-324 0.0
+0.0 1.7976931348623157e+308 0.0
+0.0 -1.7976931348623157e+308 0.0
+0.0 inf 0.0
+0.0 -inf 0.0
+0.0 nan nan
+0.0 nan nan
+-0.0 0.0 ValueError math domain error
+-0.0 -0.0 ValueError math domain error
+-0.0 1.0 -0.0
+-0.0 -1.0 -0.0
+-0.0 2.0 -0.0
+-0.0 -2.0 -0.0
+-0.0 5.5 -0.0
+-0.0 -5.5 -0.0
+-0.0 5e-324 -0.0
+-0.0 -5e-324 -0.0
+-0.0 1.7976931348623157e+308 -0.0
+-0.0 -1.7976931348623157e+308 -0.0
+-0.0 inf -0.0
+-0.0 -inf -0.0
+-0.0 nan nan
+-0.0 nan nan
+1.0 0.0 ValueError math domain error
+1.0 -0.0 ValueError math domain error
+1.0 1.0 0.0
+1.0 -1.0 0.0
+1.0 2.0 1.0
+1.0 -2.0 1.0
+1.0 5.5 1.0
+1.0 -5.5 1.0
+1.0 5e-324 0.0
+1.0 -5e-324 0.0
+1.0 1.7976931348623157e+308 1.0
+1.0 -1.7976931348623157e+308 1.0
+1.0 inf 1.0
+1.0 -inf 1.0
+1.0 nan nan
+1.0 nan nan
+-1.0 0.0 ValueError math domain error
+-1.0 -0.0 ValueError math domain error
+-1.0 1.0 -0.0
+-1.0 -1.0 -0.0
+-1.0 2.0 -1.0
+-1.0 -2.0 -1.0
+-1.0 5.5 -1.0
+-1.0 -5.5 -1.0
+-1.0 5e-324 -0.0
+-1.0 -5e-324 -0.0
+-1.0 1.7976931348623157e+308 -1.0
+-1.0 -1.7976931348623157e+308 -1.0
+-1.0 inf -1.0
+-1.0 -inf -1.0
+-1.0 nan nan
+-1.0 nan nan
+2.0 0.0 ValueError math domain error
+2.0 -0.0 ValueError math domain error
+2.0 1.0 0.0
+2.0 -1.0 0.0
+2.0 2.0 0.0
+2.0 -2.0 0.0
+2.0 5.5 2.0
+2.0 -5.5 2.0
+2.0 5e-324 0.0
+2.0 -5e-324 0.0
+2.0 1.7976931348623157e+308 2.0
+2.0 -1.7976931348623157e+308 2.0
+2.0 inf 2.0
+2.0 -inf 2.0
+2.0 nan nan
+2.0 nan nan
+-2.0 0.0 ValueError math domain error
+-2.0 -0.0 ValueError math domain error
+-2.0 1.0 -0.0
+-2.0 -1.0 -0.0
+-2.0 2.0 -0.0
+-2.0 -2.0 -0.0
+-2.0 5.5 -2.0
+-2.0 -5.5 -2.0
+-2.0 5e-324 -0.0
+-2.0 -5e-324 -0.0
+-2.0 1.7976931348623157e+308 -2.0
+-2.0 -1.7976931348623157e+308 -2.0
+-2.0 inf -2.0
+-2.0 -inf -2.0
+-2.0 nan nan
+-2.0 nan nan
+5.5 0.0 ValueError math domain error
+5.5 -0.0 ValueError math domain error
+5.5 1.0 0.5
+5.5 -1.0 0.5
+5.5 2.0 1.5
+5.5 -2.0 1.5
+5.5 5.5 0.0
+5.5 -5.5 0.0
+5.5 5e-324 0.0
+5.5 -5e-324 0.0
+5.5 1.7976931348623157e+308 5.5
+5.5 -1.7976931348623157e+308 5.5
+5.5 inf 5.5
+5.5 -inf 5.5
+5.5 nan nan
+5.5 nan nan
+-5.5 0.0 ValueError math domain error
+-5.5 -0.0 ValueError math domain error
+-5.5 1.0 -0.5
+-5.5 -1.0 -0.5
+-5.5 2.0 -1.5
+-5.5 -2.0 -1.5
+-5.5 5.5 -0.0
+-5.5 -5.5 -0.0
+-5.5 5e-324 -0.0
+-5.5 -5e-324 -0.0
+-5.5 1.7976931348623157e+308 -5.5
+-5.5 -1.7976931348623157e+308 -5.5
+-5.5 inf -5.5
+-5.5 -inf -5.5
+-5.5 nan nan
+-5.5 nan nan
+5e-324 0.0 ValueError math domain error
+5e-324 -0.0 ValueError math domain error
+5e-324 1.0 5e-324
+5e-324 -1.0 5e-324
+5e-324 2.0 5e-324
+5e-324 -2.0 5e-324
+5e-324 5.5 5e-324
+5e-324 -5.5 5e-324
+5e-324 5e-324 0.0
+5e-324 -5e-324 0.0
+5e-324 1.7976931348623157e+308 5e-324
+5e-324 -1.7976931348623157e+308 5e-324
+5e-324 inf 5e-324
+5e-324 -inf 5e-324
+5e-324 nan nan
+5e-324 nan nan
+-5e-324 0.0 ValueError math domain error
+-5e-324 -0.0 ValueError math domain error
+-5e-324 1.0 -5e-324
+-5e-324 -1.0 -5e-324
+-5e-324 2.0 -5e-324
+-5e-324 -2.0 -5e-324
+-5e-324 5.5 -5e-324
+-5e-324 -5.5 -5e-324
+-5e-324 5e-324 -0.0
+-5e-324 -5e-324 -0.0
+-5e-324 1.7976931348623157e+308 -5e-324
+-5e-324 -1.7976931348623157e+308 -5e-324
+-5e-324 inf -5e-324
+-5e-324 -inf -5e-324
+-5e-324 nan nan
+-5e-324 nan nan
+1.7976931348623157e+308 0.0 ValueError math domain error
+1.7976931348623157e+308 -0.0 ValueError math domain error
+1.7976931348623157e+308 1.0 0.0
+1.7976931348623157e+308 -1.0 0.0
+1.7976931348623157e+308 2.0 0.0
+1.7976931348623157e+308 -2.0 0.0
+1.7976931348623157e+308 5.5 3.0
+1.7976931348623157e+308 -5.5 3.0
+1.7976931348623157e+308 5e-324 0.0
+1.7976931348623157e+308 -5e-324 0.0
+1.7976931348623157e+308 1.7976931348623157e+308 0.0
+1.7976931348623157e+308 -1.7976931348623157e+308 0.0
+1.7976931348623157e+308 inf 1.7976931348623157e+308
+1.7976931348623157e+308 -inf 1.7976931348623157e+308
+1.7976931348623157e+308 nan nan
+1.7976931348623157e+308 nan nan
+-1.7976931348623157e+308 0.0 ValueError math domain error
+-1.7976931348623157e+308 -0.0 ValueError math domain error
+-1.7976931348623157e+308 1.0 -0.0
+-1.7976931348623157e+308 -1.0 -0.0
+-1.7976931348623157e+308 2.0 -0.0
+-1.7976931348623157e+308 -2.0 -0.0
+-1.7976931348623157e+308 5.5 -3.0
+-1.7976931348623157e+308 -5.5 -3.0
+-1.7976931348623157e+308 5e-324 -0.0
+-1.7976931348623157e+308 -5e-324 -0.0
+-1.7976931348623157e+308 1.7976931348623157e+308 -0.0
+-1.7976931348623157e+308 -1.7976931348623157e+308 -0.0
+-1.7976931348623157e+308 inf -1.7976931348623157e+308
+-1.7976931348623157e+308 -inf -1.7976931348623157e+308
+-1.7976931348623157e+308 nan nan
+-1.7976931348623157e+308 nan nan
+inf 0.0 ValueError math domain error
+inf -0.0 ValueError math domain error
+inf 1.0 ValueError math domain error
+inf -1.0 ValueError math domain error
+inf 2.0 ValueError math domain error
+inf -2.0 ValueError math domain error
+inf 5.5 ValueError math domain error
+inf -5.5 ValueError math domain error
+inf 5e-324 ValueError math domain error
+inf -5e-324 ValueError math domain error
+inf 1.7976931348623157e+308 ValueError math domain error
+inf -1.7976931348623157e+308 ValueError math domain error
+inf inf ValueError math domain error
+inf -inf ValueError math domain error
+inf nan nan
+inf nan nan
+-inf 0.0 ValueError math domain error
+-inf -0.0 ValueError math domain error
+-inf 1.0 ValueError math domain error
+-inf -1.0 ValueError math domain error
+-inf 2.0 ValueError math domain error
+-inf -2.0 ValueError math domain error
+-inf 5.5 ValueError math domain error
+-inf -5.5 ValueError math domain error
+-inf 5e-324 ValueError math domain error
+-inf -5e-324 ValueError math domain error
+-inf 1.7976931348623157e+308 ValueError math domain error
+-inf -1.7976931348623157e+308 ValueError math domain error
+-inf inf ValueError math domain error
+-inf -inf ValueError math domain error
+-inf nan nan
+-inf nan nan
+nan 0.0 nan
+nan -0.0 nan
+nan 1.0 nan
+nan -1.0 nan
+nan 2.0 nan
+nan -2.0 nan
+nan 5.5 nan
+nan -5.5 nan
+nan 5e-324 nan
+nan -5e-324 nan
+nan 1.7976931348623157e+308 nan
+nan -1.7976931348623157e+308 nan
+nan inf nan
+nan -inf nan
+nan nan nan
+nan nan nan
+nan 0.0 nan
+nan -0.0 nan
+nan 1.0 nan
+nan -1.0 nan
+nan 2.0 nan
+nan -2.0 nan
+nan 5.5 nan
+nan -5.5 nan
+nan 5e-324 nan
+nan -5e-324 nan
+nan 1.7976931348623157e+308 nan
+nan -1.7976931348623157e+308 nan
+nan inf nan
+nan -inf nan
+nan nan nan
+nan nan nan
+fmod IEEE cross-product: 256 passed
+[exit 0]
