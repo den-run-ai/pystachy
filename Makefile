@@ -18,8 +18,9 @@ pystachy: pystachy.py runtime.c runtime.py
 	@echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($$(wc -l < build/rt1.ll) lines)"
 	cp build/pystachy2 pystachy
 
+# FILES: only these cases, e.g. make test FILES="tests/str_*.py tests/errors/rtmode_*.py"
 test: pystachy
-	tests/run.sh ./pystachy
+	tests/run.sh ./pystachy "jit aot" $(FILES)
 
 # the CPython-hosted compiler runs as a module, whose bytecode CPython caches (it compiles a script's
 # 16k lines again at every start); the cache is checked against pystachy.py's hash, not its mtime
