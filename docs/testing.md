@@ -105,6 +105,11 @@ versions, platform, git commit and a timestamp:
   both compilers; the lines the CPython-hosted compiler executes, and the items its builtin
   calls copy or scan, must grow no faster than the programs.
 
+The steps set the `PYSTACHY_*` variables they test themselves. `tests/verify.sh` drops the
+others that would change what a step checks (`PYSTACHY_OPT`, `PYSTACHY_GC`, `PYSTACHY_GC_STRESS`,
+`PYSTACHY_CFLAGS`, `PYSTACHY_PATH` and the like) from its environment, and lists the ones it
+found in the report's `ignored_env`; it keeps `PYSTACHY_LLVM` and `PYSTACHY_JOBS`.
+
 ## IR identity for refactors
 
 `tools/irsame.sh OLD NEW` checks that a refactor of the code generator changes nothing: both

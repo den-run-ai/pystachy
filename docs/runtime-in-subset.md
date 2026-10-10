@@ -135,7 +135,7 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
   - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython. The claims audit of this document found the `PATH` case missing; it is fixed.
   - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
   - Regenerating the IR on every run would be exact, but costs 18 ms of a 34 ms JIT start.
-- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): 10,381 lines.
+- **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): about 10,400 lines.
   - The Python-free stage of `make verify` rebuilds the runtime, `runtime.py` included, with the native compiler alone, and compares that IR too.
 - **Compile cost.** The native compiler emits `runtime.py`'s IR in 18 ms; under CPython it takes 0.23 s. This cost is paid only when the cache is rebuilt.
 - **dictprobe.** `tools/dictprobe.c` includes runtime.c to count probes, and runtime.c's hash functions now live in `runtime.py`. So `make dictprobe` and the `dict-probes` step link it with `runtime.py`'s IR.
@@ -404,7 +404,7 @@ See §2.3: a cold runtime build takes 0.18 s more, and AOT executables grow only
   - typed IR §7.1: `dict.find`, `entry_val`, `entry_set`.
 
   Today all of that would be C. Most of it is semantic code of the kind moved here: parsing, formatting, string algorithms, dispatch with CPython's error messages.
-- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 21 ms for 10,381 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
+- **Compile time stays linear.** `runtime.py` is compiled once per cache rebuild, in 21 ms for about 10,400 lines of IR, and the compiler's time is linear in its input (`tools/scaling.py`).
 - **The C core stays small and stable.** The collector, memory layouts and I/O changed least on the stack: 93% of the stack's runtime.c additions were new functions appended at the end of a section.
 
 ### 2.6 Extensibility

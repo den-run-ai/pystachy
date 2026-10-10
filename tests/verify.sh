@@ -47,6 +47,11 @@ cp runtime.c runtime.py "$V/ubsan-home/"
 cp -R lib "$V/home/"
 cp -R lib "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
+# The steps set the knobs they test themselves: one left in the caller's environment would weaken a
+# step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
+# are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|ARGV0))=.*$/\1/p' | sort -u)
+for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
 now() { date +%s.%N; }
@@ -179,7 +184,7 @@ step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR 
 # ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
 L=$V/runtime-table.log; s=$(now); r=fail
 $PY tools/check_runtime.py > "$L" 2>&1 && r=pass
-step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries: .*$/, "entries": \1/p' "$L")"
+step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries, \([0-9]*\) exception classes: .*$/, "entries": \1, "exception_classes": \2/p' "$L")"
 
 # ---- gc-stress: collections far more often than the collector would run them
 L=$V/gc-stress.log; s=$(now); r=fail
@@ -241,6 +246,7 @@ ver() { "$@" 2>&1 | head -1; }
   printf '  "timestamp_utc": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if c=$(git rev-parse HEAD 2>/dev/null); then d=$([ -z "$(git status --porcelain)" ] && echo false || echo true); else c=unknown; d=null; fi
   printf '  "git": {"commit": %s, "dirty": %s},\n' "$(js "$c")" "$d"
+  printf '  "ignored_env": [%s],\n' "$(for e in $ign; do printf ', %s' "$(js "$e")"; done | sed 's/^, //')"
   printf '  "platform": {"system": %s, "machine": %s, "os": %s, "cpu": %s},\n' "$(js "$(uname -sr)")" "$(js "$(uname -m)")" \
     "$(js "$(sed -n 's/^PRETTY_NAME="*\([^"]*\)"*$/\1/p' /etc/os-release 2>/dev/null)")" \
     "$(js "$("${LLVM}opt" --version 2>&1 | sed -n 's/^ *Host CPU: //p')")"

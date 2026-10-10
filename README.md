@@ -141,7 +141,8 @@ words.py:2: error: sorted(key=...) is not supported: functions are not values
 
 ## Quick start
 
-You need LLVM 18 and Python 3.11 or later (3.12 or later for `make verify`; tested with 3.13). CI
+You need LLVM 18 and Python 3.11 or later (3.13 for `make verify`, which checks the runtime's exception
+classes against the running CPython's; tested with 3.13). CI
 runs on Linux x86-64. On
 Ubuntu 24.04, as in CI:
 
