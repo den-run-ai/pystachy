@@ -20,5 +20,8 @@ if [ -n "$miss" ]; then
   done
 fi
 LLVM=${PYSTACHY_LLVM:-/usr/lib/llvm-18/bin}
-for t in clang opt lli llvm-link llvm-as; do "$LLVM/$t" --version | head -1 || exit 1; done
+for t in clang opt lli llvm-link llvm-as; do
+  [ -x "$LLVM/$t" ] || { echo "tools/setup.sh: no $LLVM/$t (PYSTACHY_LLVM: the LLVM 18 bin directory)"; exit 1; }
+  "$LLVM/$t" --version | head -1
+done
 python3 --version
