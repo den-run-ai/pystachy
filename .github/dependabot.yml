@@ -1,0 +1,11 @@
+# Monthly, one grouped pull request for the actions CI uses (pinned by commit, with the version in a
+# comment, which Dependabot updates too)
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -136,5 +136,7 @@ the two agree everywhere except 19 valid files Pystachy cannot parse (tabs in in
 ## Continuous integration
 
 `.github/workflows/ci.yml`
-runs `make verify` on every push and pull request (ubuntu-24.04, LLVM 18 from apt,
-Python 3.13), within a 45-minute time limit, and uploads the report as an artifact.
+runs `make verify` on every push to any branch, once per commit (a newer push to the same
+branch cancels the older run, except on `main`), and on demand (ubuntu-24.04, LLVM 18, which
+`tools/setup.sh` installs where the runner image lacks it, and the CPython of
+`.python-version`), within a 45-minute time limit, and uploads the report as an artifact.
