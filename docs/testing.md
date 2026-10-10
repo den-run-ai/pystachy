@@ -8,7 +8,7 @@ honest.
 | command | what it checks |
 |---|---|
 | `make` | the bootstrap: the compiler built by itself reproduces its own LLVM IR byte for byte |
-| `make test` | the differential tests with the native compiler, JIT and AOT |
+| `make test` | the differential tests with the native compiler, JIT and AOT (`FILES="tests/a.py tests/errors/b.py"` runs only those) |
 | `make test-py` | the same tests with the compiler running on CPython |
 | `make verify` | the bootstrap, both test runs and the other steps under [make verify](#make-verify), with a JSON report in `build/verification.json` |
 | `make irsame REF=<commit>` | a refactor changes no program's IR, message or exit status |
@@ -24,8 +24,10 @@ records a test's expected output from CPython, the way `tests/run.sh` runs it. E
 must be rejected with the message on its first line (a `tests/errors/syntax_*.py` one also by
 `pystachy check`), and each `tests/deviations/*.py` must print its hand-written expected
 output. Where `tests/NAME.path` exists, it is the module path: `PYTHONPATH` when
-`tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it. The cases run
-in `PYSTACHY_JOBS` workers at once (default: one per CPU), with `PYSTACHY_IRCHECK=1`: the
+`tests/record.sh` records the test, `PYSTACHY_PATH` when `tests/run.sh` runs it.
+`tests/run.sh COMPILER MODES FILE...` runs only the cases it names (e.g. `tests/run.sh ./pystachy jit
+tests/str_*.py`). The cases run in `PYSTACHY_JOBS` workers at once (default: one per CPU), each
+worker taking the next case no other has claimed, with `PYSTACHY_IRCHECK=1`: the
 compiler then checks the IR it built before lowering it (every op is known, each block ends
 with its one terminator, an op left as LLVM text is no call, phi or terminator, each op
 defines the numbers its lowering prints, branches go to blocks of the function, a phi's

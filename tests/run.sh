@@ -12,20 +12,39 @@
 # "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
 # tests/errors/syntax_*.py whose error is in its own file.
 # The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
-# The cases run in PYSTACHY_JOBS workers at once (default: one per CPU); the report lists them
-# in the same order whatever the number of workers. Worker 0 runs in this shell and takes the
-# cases about SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
-# usage: tests/run.sh [COMPILER [MODES]]   (default: ./pystachy "jit aot"; e.g. "python3 pystachy.py")
+# The cases run in PYSTACHY_JOBS workers at once (default: one per CPU), each taking the next case
+# no other worker has claimed (mkdir is atomic); the report lists them in the same order whatever
+# the number of workers. Worker 0 runs in this shell and is the only one to take the cases about
+# SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
+# usage: tests/run.sh [COMPILER [MODES [FILE...]]]   (default: ./pystachy "jit aot" and every case;
+#        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/str_*.py tests/errors/x.py;
+#        FILEs are relative to the repository root)
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
 MODES=${2:-jit aot}
+if [ $# -gt 2 ]; then shift 2; else set --; fi
+nsel=$#
+for f; do
+  f=${f#./}
+  case $f in tests/*.py) [ -f "$f" ] ;; *) false ;; esac || { echo "tests/run.sh: not a test: $f" >&2; exit 2; }
+  set -- "$@" "$f"
+done
+shift $nsel
+[ $nsel != 0 ] || for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do [ -f "$f" ] && set -- "$@" "$f"; done
+[ $# != 0 ] || { echo "tests/run.sh: no test cases" >&2; exit 2; }
 export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
-T=${TMPDIR:-/tmp}/pystachy-tests.$$
 XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
-mkdir -p "$T"
-exec 3> /dev/full
+T=${TMPDIR:-/tmp}/pystachy-tests.$$
+rm -rf "$T"; mkdir "$T" || exit 1
+pids=
+trap 'rm -rf "$T"' EXIT
+# Ctrl-C or TERM: name the cases that were running (on fd 4, this script's stdout), stop the workers
+trap 'for f in "$T"/now.*; do [ -f "$f" ] && echo "INTERRUPTED while running $(cat "$f")" >&4; done; kill $pids 2> /dev/null; exit 130' INT TERM
+exec 3> /dev/full 4>&1
+# the cases about SIGINT, found once (one grep, not one per case and worker)
+SIG=" $(grep -lE 'kill -INT|KeyboardInterrupt' "$@" | while read -r f; do printf '%s ' "$f"; done)"
 
 # Each case adds to $pass and $fail and prints what the report shows for it.
 program() { # tests/NAME.py
@@ -79,50 +98,48 @@ rejection() { # tests/errors/NAME.py
       else pass=$((pass + 1)); fi ;;
   esac
 }
-# worker K: the cases whose position in the list is K modulo $JOBS, but worker 0 takes every
-# case about SIGINT; case I's report goes to $T/I.log and its counts to $T/I.n
+# worker K CASE...: each case no worker has claimed yet (claiming creates $T/c.I), the cases about
+# SIGINT only if K is 0; case I's report goes to $T/I.log and its counts to $T/I.n
 worker() {
-  i=0
-  for t in tests/*.py tests/deviations/*.py tests/errors/*.py; do
-    if [ ! -f "$t" ]; then w=-1
-    elif grep -qE 'kill -INT|KeyboardInterrupt' "$t"; then w=0
-    else w=$((i % JOBS)); fi
-    if [ $w = "$1" ]; then
-      pass=0; fail=0
-      {
-        case $t in
-          tests/deviations/*) deviation "$t" ;;
-          tests/errors/*) rejection "$t" ;;
-          *) program "$t" ;;
-        esac
-      } > "$T/$i.log" 2>&1
-      echo "$pass $fail" > "$T/$i.n"
+  k=$1; shift; i=0
+  for t; do
+    if [ ! -d "$T/c.$i" ]; then
+      case $SIG in *" $t "*) [ "$k" = 0 ] ;; *) true ;; esac && mkdir "$T/c.$i" 2> /dev/null && {
+        pass=0; fail=0; echo "$t" > "$T/now.$k"
+        {
+          case $t in
+            tests/deviations/*) deviation "$t" ;;
+            tests/errors/*) rejection "$t" ;;
+            *) program "$t" ;;
+          esac
+        } > "$T/$i.log" 2>&1
+        echo "$pass $fail" > "$T/$i.n"
+      }
     fi
     i=$((i + 1))
   done
+  rm -f "$T/now.$k"
 }
 # the cached runtime is built once, before the workers start (each would rebuild a stale one)
 echo pass > "$T/warm.py" && $PYS run "$T/warm.py" > /dev/null 2>&1
 k=1
 while [ $k -lt "$JOBS" ]; do
-  worker $k &
-  k=$((k + 1))
+  worker $k "$@" &
+  pids="$pids $!"; k=$((k + 1))
 done
-worker 0
+worker 0 "$@"
 wait
 pass=0; fail=0; i=0
-for t in tests/*.py tests/deviations/*.py tests/errors/*.py; do
-  if [ -f "$t" ]; then
-    if [ -f "$T/$i.n" ]; then
-      cat "$T/$i.log"
-      read -r p f < "$T/$i.n"
-      pass=$((pass + p)); fail=$((fail + f))
-    else
-      fail=$((fail + 1)); echo "FAIL $t: no result (its worker died)"
-    fi
+for t; do
+  if [ -f "$T/$i.n" ]; then
+    cat "$T/$i.log"
+    read -r p f < "$T/$i.n"
+    pass=$((pass + p)); fail=$((fail + f))
+  else
+    fail=$((fail + 1)); echo "FAIL $t: no result (its worker died)"
   fi
   i=$((i + 1))
 done
-rm -rf "$T"
+[ $nsel = 0 ] || echo "selected $# cases"
 echo "$pass passed, $fail failed"
 [ $fail = 0 ]
