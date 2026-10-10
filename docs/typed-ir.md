@@ -1521,7 +1521,8 @@ that commit's. What has changed since, and where the code departs from the text:
     (a reused entry's set moves no entry, as `pys_dict_set` overwrites). `Gen.canon` (with
     `Values`) finds equal dicts and keys: a raw load reads what the last store or load of the
     same slot, global or field wrote or read, on the path back through blocks that one branch
-    leads to (fields of different classes or indices never alias); a raw computation, and an
+    leads to (different fields of one class, or fields of unrelated classes, never alias;
+    fields accessed through related exception classes may alias); a raw computation, and an
     `rt` op that only computes (no letter but R), equals the first of the same text with
     canonical operands. The has becomes `dict.find` (the entry or -1; the has's number is then
     the raw `add %e, 1`), a reused getitem `dict.entry` (the entry, or CPython's KeyError) and

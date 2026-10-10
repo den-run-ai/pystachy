@@ -10369,13 +10369,18 @@ class Gen:
             x = len(vs.fn.blocks[j].code)
 
     def disjoint(self, vs: Values, a: str, b: str) -> bool:
-        # whether canonical addresses a and b are fields of different classes or at different
-        # indices (getelementptr %C.<class>, ptr <object>, i32 0, i32 <index>): never the same memory
+        # whether canonical addresses a and b are fields at different indices of the same class
+        # or of unrelated classes: never the same memory. A base and a derived exception class
+        # may view one object through different struct types, so their fields may alias.
         ta = vs.text.get(a, "")
         tb = vs.text.get(b, "")
         if not ta.startswith("getelementptr %C.") or not tb.startswith("getelementptr %C."):
             return False
-        return ta[: ta.find(",")] != tb[: tb.find(",")] or ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
+        ca = ta[len("getelementptr %C.") : ta.find(",")]
+        cb = tb[len("getelementptr %C.") : tb.find(",")]
+        if ca == cb:
+            return ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
+        return not self.derives(ca, cb) and not self.derives(cb, ca)
 
     def eh_ir(self, fn: IFn) -> None:
         # fn has try statements: its blocks' exception edges (Blk.handler) become LLVM's, once the
