@@ -1,0 +1,31 @@
+0 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+1 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+2 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+3 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+4 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+5 True [] [] [] [] [] []
+[7, 3, 7] True 3 [7, 3, 7]
+[9, 9, 9] [9, 9, 9]
+sorted 0
+[1, 2, 3]
+1 list modified during sort
+[1, 2, 3]
+2 list modified during sort
+[1, 2, 3]
+3 list modified during sort
+[1, 2, 3]
+4 list modified during sort
+[1, 2, 3]
+5 comparison
+[3, 1, 2]
+[exit 0]
