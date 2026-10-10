@@ -29,6 +29,8 @@
 #                  signature in runtime.py, runtime.c and every program of the corpus
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
+#   list-storage   tools/listprobe.c: cleared reachable lists release backing capacity and live bytes;
+#                  empty operations/reuse preserve sort's sentinel, without allocation in clear
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -240,6 +242,14 @@ step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "
 L=$V/rt-abi.log; s=$(now); r=fail
 $PY tools/rtabi.py "$V/pystachy2" > "$L" 2>&1 && r=pass
 step rt-abi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) functions of runtime.py, \([0-9]*\) uses in runtime.c and \([0-9]*\) programs, \([0-9]*\) mismatches$/, "functions": \1, "uses": \2, "programs": \3, "mismatches": \4/p' "$L")"
+
+# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists
+L=$V/list-storage.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
+  "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
+step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576'
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
 L=$V/dict-probes.log; s=$(now); r=fail

@@ -151,19 +151,20 @@ line	loc	area	tier	hot	name	needs	note
 1031	20	repr/cmp	C	yes	opv	type punning of untyped slots by descriptor	Internal. Also used by minmax and the sort fallback. Its list loop re-checks lengths, so it is safe. As a template it is tier A, plus tier B for tuples.
 1051	1	repr/cmp	C	yes	pys_cmpop	see opv	Generated code calls it for < <= > >= on compound types (pystachy.py:9258).
 1053	7	other	A	no	pys_unpack_check		Generated code calls it (pystachy.py:6752). A port is an f-string plus raise ValueError. The 96-byte buffer can truncate only with 20-digit counts, which cannot happen.
+1024	4	lists	C	no	empty_list / empty	static backing; raw List.cap/a writes	Detaches historical storage without allocating. The static one-slot backing supports zero-byte copies; cap 0 preserves sort's distinct mutation sentinel.
 1062	4	lists	C	yes	pys_list_new	raw slot-array allocation; struct layout {len,cap,a}	Core primitive; generated code and many runtime functions call it. Writing it in the subset is circular because it is the list implementation.
-1066	5	lists	C	yes	reserve	raw alloc; memcpy	Internal growth (x2). Self-extend is safe because it copies before overwriting.
+1066	5	lists	C	yes	reserve	raw alloc; memcpy	Internal growth (x2, minimum four slots after emptying). Self-extend is safe because it copies before overwriting.
 1073	2	lists	C	yes	Slot / AT macro (TBAA trick)	TBAA metadata control	Lets LLVM hoist len and a loads out of loops. Other functions access l->a[i] as a plain I, which aliases conservatively, so this is sound. A Pystachy port would need the compiler to emit the same TBAA itself, which a typed IR could do well.
 1075	1	lists	C	yes	pys_list_append	raw store	Called from generated code at many sites and internally.
 1076	1	lists	C	yes	pys_list_get	raw load	Generated code calls it for every xs[i] (pystachy.py:8844) and in unpacking. In AOT, LTO inlines it. In JIT mode it is an out-of-line call: a scratch benchmark (b_idx.py, 300M xs[i] // and % operations) ran in 0.62s AOT and 1.27s JIT.
 1077	1	lists	C	yes	pys_list_set	raw store	Generated code calls it (pystachy.py:6737, 6743, 8113).
-1080	5	lists	C	yes	pys_list_pop	memmove; slot zeroing for GC	Called from generated code via METHODS 'list.pop' (the pys_{base}_{m} pattern at pystachy.py:9940) and by remove.
-1085	1	lists	C	no	pys_list_del	memmove	Generated code calls it (pystachy.py:7995).
+1080	5	lists	C	yes	pys_list_pop	memmove; slot zeroing for GC	Called from generated code via METHODS 'list.pop' (the pys_{base}_{m} pattern at pystachy.py:9940) and by remove. Detaches backing when removing the final item, without allocating.
+1085	1	lists	C	no	pys_list_del	memmove	Generated code calls it (pystachy.py:7995). Detaches backing when removing the final item, without allocating.
 1086	5	lists	C	no	pys_list_insert	memmove	Called from generated code and via METHODS.
 1091	1	lists	C	yes	pys_list_extend	memcpy	Called from generated code (+=, list.extend) and by list_add.
 1092	4	lists	C	yes	pys_list_slice	memcpy	Generated code calls it (pystachy.py:8619). Tier A as an append loop, but slower.
 1096	1	lists	A	no	pys_list_copy		Called from generated code and via METHODS. It is xs[:].
-1097	1	lists	C	no	pys_list_clear	memset of slots	Called via METHODS 'list.clear'. Zeroes the slots so the GC does not retain the old items.
+1097	1	lists	C	no	pys_list_clear	memset of slots; static empty backing	Called via METHODS 'list.clear'. Zeroes old occupied slots and detaches backing so GC can reclaim it while retaining list identity. cap 0 preserves sort's sentinel; normal empty backing is a distinct static array, valid for zero-byte copies. No allocation/effect change.
 1098	1	lists	A	no	pys_list_add		Generated code calls it for list + list. It is new plus two extends.
 1099	8	lists	C	no	pys_list_imul	memcpy into reserved space	Generated code calls it for xs *= n. The overflow guard `m > (INT64_MAX>>4)/n` is correct. Tier A as an extend loop.
 1107	8	lists	C	no	pys_list_mul	memcpy	Generated code calls it for list * n. Tier A as an extend loop.
