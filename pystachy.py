@@ -5457,7 +5457,7 @@ OPTS: list[str] = ["listget", "dictfuse"]
 CANON_DEPTH = 1000
 REACH = 256
 LOOKUPS = 32
-# Effect letters: R may raise (in a program that has a try, the raise allocates its exception, so a
+# Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
@@ -6093,14 +6093,14 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
     return count
 
 
-def has_try(body: list[Node]) -> bool:
-    # does body hold a try statement, also in the functions and classes it defines (a class with
-    # bases is a subclass node whose first kid is the class)
+def needs_eh(body: list[Node]) -> bool:
+    # does body need exception handling or with-file cleanup, also in the functions and classes
+    # it defines (a class with bases is a subclass node whose first kid is the class)
     for st in body:
-        if st.kind == "try":
+        if st.kind == "try" or st.kind == "with":
             return True
         for kid in st.kids if st.kind != "subclass" else st.kids[0].kids:
-            if kid.kind == "block" and has_try(kid.kids):
+            if kid.kind == "block" and needs_eh(kid.kids):
                 return True
     return False
 
@@ -6933,7 +6933,7 @@ class Gen:
         # type than the name has outside): [name, its type outside ("": a global), register, flag]
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
-        self.eh = False  # the program has a try statement (closed world): exceptions are on (pys_eh_on)
+        self.eh = False  # the program has try or with (closed world): exceptions are on (pys_eh_on)
         self.lcs: list[str] = []
         self.lct: list[str] = []
         self.ret = "None"
@@ -10382,7 +10382,7 @@ class Gen:
         # effect summaries say which calls may raise. A raise or throw that a landing block covers
         # branches to the code after it, with the exception in its try's slot as the landing op
         # stores it: no unwinder, which takes a microsecond. (A raise's exception is made as
-        # pys_raise makes it, from its kind and message: in a program that has a try, no raise op
+        # pys_raise makes it, from its kind and message: in a program that has try or with, no raise op
         # has the line of a SyntaxError as its kind, see raise_stmt.) A call a landing block covers
         # that may raise (R) becomes an invoke whose unwind edge goes there, and ends its block (a
         # phi after it names the last part as its predecessor). A landing block no invoke goes to
@@ -10766,7 +10766,7 @@ class Gen:
         tops: list[list[Node]] = []
         for m in mods:
             self.scan_imports(m.body.kids)
-            self.eh = self.eh or has_try(m.body.kids)
+            self.eh = self.eh or needs_eh(m.body.kids)
         for m in mods:
             m.body.kids = self.typing_forms(m, m.body.kids, False)
             for i in range(len(m.body.kids)):
@@ -12447,7 +12447,7 @@ class Gen:
     def raise_stmt(self, n: Node) -> None:
         # raise E(args) [from C]: CPython's last traceback line, "E: str(arg)" (KeyError: repr(arg);
         # several arguments: their tuple's repr); SystemExit ends the program like sys.exit. In a
-        # program that has a try, it throws the exception CPython makes (exc_value), which the
+        # program that has try or with, it throws the exception CPython makes (exc_value), which the
         # program ends with as before if nothing catches it
         if len(n.kids) == 0:
             # a bare raise: the exception the except clause around it handles, or else the one
@@ -12599,7 +12599,7 @@ class Gen:
 
     def exit_(self, vals: list[Val], sysx: bool) -> None:
         # sys.exit(code) (sysx) and raise SystemExit(code): None is status 0, an int is the status,
-        # and anything else is printed to stderr with status 1. In a program that has a try, a code
+        # and anything else is printed to stderr with status 1. In a program that has try or with, a code
         # whose str() or repr() the runtime would not show as CPython's (None, a bool, several
         # arguments, anything but an int or a str) is thrown as the exception exit_value makes; a
         # value that may be None (an object, or T | None) is tested first, and then is its T
@@ -13079,10 +13079,9 @@ class Gen:
                     self.err("only 'del list[i]' and 'del dict[key]' are supported")
         elif k == "with":
             # with open(p) as f: the file closes when the block is left, at its end or through
-            # break, continue or return. In a program that has a try, an exception that leaves
-            # the block closes it too: it is an unwind action while the block runs (a landing pad
-            # runs it, and so does an exception that nothing catches); in another, an error ends
-            # the program, and exit flushes every file
+            # break, continue or return. An exception that leaves the block closes it too: it is
+            # an unwind action while the block runs (a landing pad runs it, and so does an
+            # exception that nothing catches), even in a program without a try statement
             n0 = len(self.exits)
             for it in n.kids[:-1]:
                 v = self.expr(it.kids[0], "")

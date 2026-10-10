@@ -110,7 +110,7 @@ static List *args;
 static struct { Exc *cur, *handled, *shown, *pend; } xr;   /* the exception raised last, the one being handled,
                                      the uncaught one whose str() is being shown, the one a with-file's close
                                      raised while unwinding (see exceptions) */
-static int eh;                         /* the program has a try: stored by pys_eh_on alone (see exceptions) */
+static int eh;                         /* the program has try or with: stored by pys_eh_on alone (see exceptions) */
 typedef void Thrower(Exc *);
 static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
                                           or until an uncaught exception object is reported */
@@ -320,10 +320,10 @@ static void gc_init(char *sb, I **roots, I nroots) {
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
-   CPython reports it, with status 120. In a program that has a try (pys_eh_on) they are
+   CPython reports it, with status 120. In a program that has try or with (pys_eh_on) they are
    raised instead, and end the program the same way if nothing catches them (see exceptions).
    They reach that code only through xthrow, which nothing but pys_eh_on and the report of an
-   uncaught exception stores: a program without try links neither, so LLVM folds xthrow to
+   uncaught exception stores: a program without try or with links neither, so LLVM folds xthrow to
    NULL and keeps none of it, and the funnels compile to the code they had before. */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
 static _Noreturn void kbint_exit(void);
@@ -1120,8 +1120,8 @@ void pys_list_reverse(List *l) { rev(l->a, l->len); }
    the merge noted them last (KEEP, before each comparison that may raise), undoes reverse='s
    reversal and gives the list its array back. What it needs is in a record on the heap (Undo),
    so that it can run when the sort's frame is gone, and the merges find it in a static (keep_u),
-   not in the MS: a program without try (eh 0) keeps the sort it had, instruction for
-   instruction. In one with a try, the notes (3 stores a comparison) cost a sort of objects a
+   not in the MS: a program without try or with (eh 0) keeps the sort it had, instruction for
+   instruction. In one with either, the notes (3 stores a comparison) cost a sort of objects a
    few percent. Speed: the common item types compare inline, and binary insertion and the
    one-at-a-time merging of ints and floats use selects, as random data makes their branches
    unpredictable (merging strings or objects keeps the branches, which let the CPU fetch their
@@ -1198,7 +1198,7 @@ static I *getmem(MS *ms, I need) {                  /* merge_getmem, growing geo
 /* The merges, written once (MERGES) and compiled twice: merge_lo and merge_hi, where NOTE notes
    nothing, are those merge_at calls for a sort that needs no Undo, the code they had before;
    merge_lo_k and merge_hi_k, where NOTE is KEEP, those it calls (by merge_keep) when eh and
-   keep_u: a program without try does not keep them */
+   keep_u: a program without try or with does not keep them */
 #define MERGES(SFX, NOTE) \
 static void merge_lo##SFX(MS *ms, I *a, I na, I *b, I nb) {   /* na <= nb: a goes to the buffer, merge from the left */ \
   I *d = a, *pa = memcpy(getmem(ms, na), a, na * 8), *pb = b, k, mg = ms->min_gallop;                                   \
@@ -2091,7 +2091,7 @@ Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.joi
 Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
 
 /* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
-   A program that has a try calls pys_eh_on when it starts. From then on a raise (pys_fail,
+   A program that has try or with calls pys_eh_on when it starts. From then on a raise (pys_fail,
    pys_raise, sys.exit, pys_throw) makes an Exc, which begins with the unwinder's header,
    notes it (a root of the collector) and calls _Unwind_ForcedUnwind, which asks
    pys_personality, the personality routine of every compiled function with landing pads,
@@ -2106,9 +2106,10 @@ Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return
    message, a KeyboardInterrupt's death by SIGINT, a user exception object as "disp: str(e)"
    ("disp" when that is empty, "<exception str() failed>" when its __str__ raises, as
    CPython's). Before pys_eh_on every raise ends the program that way at once. Code that does
-   not raise pays nothing, a try included, but for list.sort of objects, whose merges note where
-   their items are (a few percent; see list.sort); a raise costs about a microsecond. A program
-   without try keeps none of this: the funnels reach it through xthrow, and what else tests
+   not raise pays nothing for a try, but a with registers and forgets its cleanup action and
+   list.sort of objects notes where its items are (a few percent; see list.sort); a raise costs
+   about a microsecond. A program
+   without try or with keeps none of this: the funnels reach it through xthrow, and what else tests
    eh (the unwind actions below) folds away, as only pys_eh_on stores either. It links
    pys_throw and the report only when it raises a user exception object.
    Compiled code's side. A function with landing pads names `personality ptr @pys_personality`;
