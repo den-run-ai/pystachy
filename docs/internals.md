@@ -312,7 +312,8 @@ against CPython's own str methods, `math` and `format()`.
 ORC JIT compilation linked against a cached, precompiled runtime `.o`. `build` favors
 throughput: the full `-O2` pipeline over program and runtime together. The driver
 works in a private `tempfile.mkdtemp()` directory; `PYSTACHY_CFLAGS` adds clang flags
-(such as sanitizers) to the runtime and the AOT build, with a runtime cache per flag set.
+(such as sanitizers) to the runtime and the AOT build, with a runtime cache per flag set (and per
+set of optimizations that `PYSTACHY_OPT` turns off, since `runtime.py` goes through them too).
 Sanitizer flags reach only the runtime's compilation and the final link, so runtime.c is
 instrumented once (`runtime.py`'s code is not: its primitives check its accesses, and ASan's
 interceptors still see the `memchr`/`memcmp`/`memmove` calls they make); `pystachy run` then

@@ -27,7 +27,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and was th
   - `def f(...) -> T: ...` declares a C function;
   - `import _rt` gives 17 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`/`memmem`, wrapping and unsigned arithmetic (§1.2).
 
-  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py-<hash>.bc` and its `.o`; the hash is of the C flags, `-fexceptions` among them), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
+  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py-<hash>.bc` and its `.o`; the hash is of the C flags, `-fexceptions` among them, and of the optimizations `PYSTACHY_OPT` turns off, if any), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
 - **Performance: at parity on whole programs, within 10% on most moved functions** (§2.4).
   - The eight programs of `bench/` take 0.99 to 1.01 times the C runtime's CPU time AOT, and 0.96 to 1.05 JIT. They execute 0.997 to 1.003 times its instructions (callgrind). The compiler compiles itself in the same time (0.999), with 1.2% more instructions.
   - The first measurement found `words` and `dictkeys` 10% and 5% slower, all of it in `join` and `split`. Both were fixed (§2.4.2).

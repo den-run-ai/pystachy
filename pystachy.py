@@ -16581,10 +16581,17 @@ def main() -> None:
     # through runtime functions to compiled code's landing pads, which -O2 would turn back into calls
     # if clang marked them nounwind. Each such set of flags caches its own runtime, named by a 32-bit
     # FNV-1a hash of it, so a runtime cached without -fexceptions is never used; the names say
-    # runtime-py, so that a compiler from before runtime.py keeps its runtime.c-only cache apart
+    # runtime-py, so that a compiler from before runtime.py keeps its runtime.c-only cache apart.
+    # runtime.py goes through the optimizations on the IR as programs do, so the ones PYSTACHY_OPT
+    # turns off are hashed too (when there are any: with all of them on, the names stay as they were)
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    on = optimizations()
+    off = [o for o in OPTS if o not in on]
+    keyed = flags + ["-fexceptions"]
+    if len(off) > 0:
+        keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
     key = 2166136261
-    for c in " ".join(flags + ["-fexceptions"]):
+    for c in " ".join(keyed):
         key = ((key ^ ord(c)) * 16777619) & 0xFFFFFFFF
     rtb = home + f"/build/runtime-py-{key:08x}.bc"
     cflags = "".join([" " + q(a) for a in flags])
