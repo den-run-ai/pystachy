@@ -23,11 +23,13 @@ cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
 MODES=${2:-jit aot}
 if [ $# -gt 2 ]; then shift 2; else set --; fi
-nsel=$#
+nsel=$#; seen=" "
 for f; do
   f=${f#./}
   case $f in tests/*.py) [ -f "$f" ] ;; *) false ;; esac || { echo "tests/run.sh: not a test: $f" >&2; exit 2; }
-  set -- "$@" "$f"
+  # once each (two copies of a case would write the same files at once, from two workers)
+  case $seen in *" $f "*) continue ;; esac
+  seen="$seen$f "; set -- "$@" "$f"
 done
 shift $nsel
 [ $nsel != 0 ] || for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do [ -f "$f" ] && set -- "$@" "$f"; done
