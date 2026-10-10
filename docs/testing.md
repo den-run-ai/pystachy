@@ -58,7 +58,9 @@ both the CPython-hosted and the self-compiled compiler.
 versions, platform, git commit and a timestamp:
 
 - **bootstrap** — stage1, stage2 and stage3 emit identical IR, for the compiler and for `runtime.py`;
-- **tests-cpython / tests-native** — the differential tests with each compiler, JIT and AOT;
+- **tests-cpython / tests-native** — the differential tests with each compiler, JIT and AOT (the
+  CPython-hosted one runs as `python3 -m pystachy`, whose bytecode CPython caches, checked
+  against `pystachy.py`'s hash: run as a script, it would compile its 16k lines at every start);
 - **tests-opt-off** — the differential tests with the native compiler and every optimization
   on the IR turned off (`PYSTACHY_OPT=-all`): the passes change no output;
 - **python-free** — `PATH` holds only the LLVM tools, the system linker and a few POSIX
@@ -86,7 +88,8 @@ versions, platform, git commit and a timestamp:
   and every test passes JIT and AOT with a collection at every allocation of the program
   (`PYSTACHY_GC_STRESS_PROGRAM=1`), compiled by the compiler collecting every 1,000 (at every
   100, the compiler's collections, which mark the IR it keeps until the program is built, would
-  take minutes);
+  take minutes); the self-compile runs on one core, so it starts when the bootstrap ends and runs
+  beside the test runs;
 - **benchmarks** — output equal to CPython's, with timings;
 - **rtcheck** — `tools/rtcheck.py` runs `runtime.py` on CPython and compares each of its
   functions with CPython's str methods, `math` functions and `format()` (and the dict hashes
