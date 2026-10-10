@@ -1,0 +1,2 @@
+r=(nil)
+exc=ValueError('orig')

@@ -1,0 +1,6 @@
+py: 1
+pys: 2
+py: 3
+pys: 4
+py: 5
+redirect_stdout captured: 'pys: captured\n'

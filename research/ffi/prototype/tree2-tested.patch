@@ -1,0 +1,1448 @@
+diff --git apystachy.py bpystachy.py
+index 9b77280..515d127 100644
+--- apystachy.py
++++ bpystachy.py
+@@ -3182,6 +3182,8 @@ def builtin_has(mod: str, x: str) -> bool:
+         return x in ABCS
+     if mod == "dataclasses":
+         return x == "dataclass"
++    if mod == "ffi":
++        return x == "extern" or x == "export" or x == "string_at" or x == "c_buf" or x in CTYPES
+     return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
+ 
+ 
+@@ -3601,7 +3603,7 @@ class Loader:
+         if p == "":
+             # (an optional import other than try: <imports> / except ImportError:, which optional() decides)
+             hint = "; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)" if self.optry else ""
+-            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join(MODULES.keys())}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
++            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join([k for k in MODULES.keys() if k != 'ffi'])}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
+         if p.endswith("/__init__.py"):
+             return self.load(name, p, p[:-12])
+         if p.endswith(".py"):
+@@ -5123,7 +5125,7 @@ CALLS: dict[str, str] = {
+     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
+     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
+     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+-    "os.getenv(str,str)": "pys_getenv:str",
++    "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
+     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
+     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
+     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
+@@ -5178,7 +5180,12 @@ CALLS["math.frexp(float)"] = "pys_m_frexp:tuple[float,int]"
+ CALLS["math.modf(float)"] = "pys_m_modf:tuple[float,float]"
+ # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
+ MODULES: dict[str, bool] = {}
+-for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno".split():
++LIBS: list[str] = []  # the libraries of the program's @ffi.extern functions (the driver links them)
++# @ffi.extern's C integer types: LLVM type with its extension, and pys_c_check's kind (-1: none):
++# 0 C int, 1 C unsigned int, 2 an unsigned 64-bit argument (>= 0), 3 one's result (< 2**63)
++CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "c_int64": "i64:-1", "c_ssize_t": "i64:-1",
++                          "c_uint64": "i64:2", "c_size_t": "i64:2", "c_void_p": "ptr:-1"}
++for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi".split():
+     MODULES[_k] = True
+ MODATTRS: dict[str, bool] = {}
+ for _k in ("sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform math.pi math.e math.inf math.tau math.nan "
+@@ -5360,7 +5367,7 @@ UNSUPPORTED: dict[str, str] = {
+ # of the program (over object.__new__, which makes an object of the class, only those marked "o")
+ INERT_DECOS: dict[str, str] = {"typing.overload": "f", "typing.final": "fco", "typing.no_type_check": "fco", "typing.override": "fco",
+                                "staticmethod": "f", "classmethod": "f", "property": "f", "dataclasses.dataclass": "c",
+-                               "typing.runtime_checkable": "c", "object.__new__": "c"}
++                               "typing.runtime_checkable": "c", "object.__new__": "c", "ffi.extern": "f", "ffi.export": "f"}
+ # node kinds that evaluate without effects
+ INERT: dict[str, bool] = {}
+ for _k in "int float str bytes complex None True False ellipsis noann omit".split():
+@@ -5579,7 +5586,7 @@ RUNTIME: dict[str, str] = {
+     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
+     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
+     # _rt.str_done hands it out, so these need no letter either)
+-    "alloc_atomic": "%ptr:int|A|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
++    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R|", "c_str": "None:str|R|", "string_at": "str:int,int|A|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
+     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
+ }
+ # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
+@@ -6509,6 +6516,9 @@ class FnInfo:
+         self.varelem = ""  # its annotation (the type of each extra argument), or ""
+         self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
+         self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
++        self.lib = ""  # @ffi.extern's library ("" the process's own)
++        self.csym = ""  # and its C symbol
++        self.pyexport = False  # @ffi.export: a function an extension module (pystachy ext) gives CPython
+         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
+         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+         self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
+@@ -6983,6 +6993,9 @@ class Gen:
+         # code calling back into the module
+         self.late: dict[str, bool] = {}
+         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
++        self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
++        self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
++        self.csymline: dict[str, int] = {}  # and the line that declared it
+         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
+         self.rtdefs: dict[str, FnInfo] = {}  # runtime mode: the pys_* functions this module defines, by C name
+         self.rtcache = False  # runtime mode, for the driver's runtime cache: PYSTACHY_IRFX is the program's
+@@ -7621,6 +7634,10 @@ class Gen:
+         if k == "name":
+             if s == "int" or s == "float" or s == "bool" or s == "str" or s in self.classes:
+                 return s
++            if self.imported(s).startswith("ffi.") and self.imported(s)[4:] in CTYPES:
++                return "int"  # (a C integer type, in an @extern function's signature: see CTYPES)
++            if self.imported(s) == "ffi.c_buf":
++                return "str"  # (a str's UTF-8 bytes, NULs and all, for a C function that takes their length too)
+             if is_excname(s):
+                 return "exc"  # (a builtin exception class: any exception, not only those of the class)
+             t = self.typing_name(s)
+@@ -8022,6 +8039,20 @@ class Gen:
+             f.ll = "@" + d.s
+             f.export = True
+             self.rtdefs[d.s] = f
++        for x in d.kids[3:] if cls == "" and not self.rtmode else []:
++            a = x.kids[0].kids[1:] if len(x.kids) > 0 else []
++            if self.imported(x.s) == "ffi.extern":
++                if len(a) == 0 or len(a) > 2 or a[0].kind != "str" or (len(a) == 2 and a[1].kind != "str") or len(d.kids) != 4:
++                    self.err('@extern takes the library ("" for the process\'s own) and an optional symbol name, as string literals')
++                if len(body) != 1 or body[0].kind != "expr" or body[0].kids[0].kind != "ellipsis":
++                    self.err(f"{short(d.s)}() is a C function (@extern): its body must be ...")
++                f.extern = True
++                f.lib = a[0].s
++                f.csym = "@" + (a[1].s if len(a) == 2 else short(d.s))
++            elif self.imported(x.s) == "ffi.export":
++                if len(x.kids) > 0 or len(d.kids) != 4:
++                    self.err("@export takes no arguments, and is a function's only decorator")
++                f.pyexport = True
+         ps = d.kids[0].kids
+         deco = ""
+         stub = False  # (an imported module's that no def follows: see typing_forms)
+@@ -8032,7 +8063,7 @@ class Gen:
+         if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
+             f.deco = deco  # (a method that takes no self, or its class as cls)
+         deco = short(deco)
+-        if deco != "" and f.deco == "" and not self.lib:
++        if deco != "" and f.deco == "" and not self.lib and not f.extern and not f.pyexport:
+             # (CPython applies a decorator when the def runs, called or not: see decorators())
+             if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
+                 self.err(f"name '{deco}' is not defined (import it from typing)")
+@@ -8095,7 +8126,7 @@ class Gen:
+                 f.ptypes.append(self.vtype(p.kids[0]))
+         if int(marks[0]) == len(ps) and len(ps) > 0:
+             f.posonly = len(f.params)  # def f(a, b, /)
+-        if self.rtmode and (f.export or f.extern) and f.generic:
++        if (f.export or f.extern) and f.generic:
+             self.err(f"runtime function {d.s}() needs an annotation on every parameter, and no *args")
+         for x in f.defaults if self.rtmode else []:
+             if not is_const(x):
+@@ -8106,7 +8137,7 @@ class Gen:
+             f.npos = len(f.params)
+         if f.vararg >= 0:
+             f.npos = f.vararg
+-        if len(d.kids) > 3 and f.deco == "":
++        if len(d.kids) > 3 and f.deco == "" and not f.extern and not f.pyexport:
+             bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
+             bad = STUB.replace("NAME", short(d.s)) if stub else bad
+         if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):
+@@ -9759,6 +9790,148 @@ class Gen:
+         self.fn.n = self.n
+         self.fns.append(self.fn)
+ 
++    def ctype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
++        # an @extern signature's type: "float", "str", "None", "opt[str]" or a CTYPES name
++        c = self.imported(a.s)[4:] if a.kind == "name" and self.imported(a.s).startswith("ffi.") else ""
++        if c in CTYPES or (c == "c_buf" and what == "takes"):
++            return c
++        if t == "int":
++            self.err(f"C function {f.name}() {what} int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)")
++        if t in ("float", "str") or (what == "returns" and t in ("None", "opt[str]")):
++            return t
++        self.err(f"C function {f.name}() {what} {typestr(t)}: an @extern function {'takes' if what == 'takes' else 'returns'} a C integer type, float or str{', str | None or None' if what == 'returns' else ''}")
++        return ""
++
++    def cextern(self, f: FnInfo) -> None:
++        # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
++        # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
++        # ValueError for a NUL in it) and copies a returned char * (NULL: None, or ValueError)
++        self.line = f.node.line
++        sym = f.csym[1:]
++        for pre in ("pys_", "pyx_", "PyInit_", "PyModExport_"):
++            if sym.startswith(pre) or sym == "main":
++                self.err(f"C function {sym} is reserved for Pystachy's runtime and extension modules")
++        ps: list[str] = []
++        args: list[str] = []
++        code: list[str] = []
++        cts: list[str] = []
++        for j in range(len(f.ptypes)):
++            t = f.ptypes[j]
++            ps.append(f"{lt(t)} %a{j}")
++            c = self.ctype(f.node.kids[0].kids[j].kids[0], t, "takes", f)
++            if c == "str" or c == "c_buf":
++                if c == "str":
++                    self.runtime("pys_c_str")
++                    code.append(f"  call void @pys_c_str(ptr %a{j})")
++                code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 8")
++                cts.append("ptr")
++            elif c == "float":
++                code.append(f"  %p{j} = fadd double %a{j}, 0.0")
++                cts.append("double")
++            else:
++                ll, k = CTYPES[c].split(":")
++                v = f"%a{j}"
++                if k != "-1":
++                    self.runtime("pys_c_check")
++                    code.append(f"  %k{j} = call i64 @pys_c_check(i64 %a{j}, i64 {k})")
++                    v = f"%k{j}"
++                code.append(f"  %p{j} = {'trunc i64 ' + v + ' to i32' if ll.startswith('i32') else 'inttoptr i64 ' + v + ' to ptr' if ll == 'ptr' else 'add i64 0, ' + v}")
++                cts.append(ll)
++            args.append(f"{cts[-1]} %p{j}")
++        c = self.ctype(f.node.kids[1], f.ret, "returns", f)
++        r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "void" if c == "None" else CTYPES[c].split(":")[0]
++        rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
++        cl = f"call {rr} {f.csym}({', '.join(args)})"
++        if r == "void":
++            code.extend([f"  {cl}", "  ret void"])
++        elif c == "str" or c == "opt[str]":
++            self.runtime("pys_cstr")
++            code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 0})", "  ret ptr %s"])
++        elif c == "float":
++            code.extend([f"  %r = {cl}", "  ret double %r"])
++        else:
++            k = CTYPES[c].split(":")[1]
++            code.append(f"  %r = {cl}")
++            code.append(f"  %x = {'sext i32 %r to i64' if r == 'i32 signext' else 'zext i32 %r to i64' if r == 'i32 zeroext' else 'ptrtoint ptr %r to i64' if r == 'ptr' else 'add i64 0, %r'}")
++            if k == "2":
++                self.runtime("pys_c_check")
++                code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
++            code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
++        decl = f"declare {rr} {f.csym}({', '.join(cts)})"
++        tys = [r.split(" ")[0]] + [x.split(" ")[0] for x in cts]
++        if sym in RTSYM:
++            # one the compiler or the runtime calls too (fabs, memchr, ...): declared once, from RUNTIME
++            e = RtFn(RTSYM[sym]).ll
++            if tys != e:
++                self.err(f"C function {sym} is declared as {tys[0]}({', '.join(tys[1:])}), but Pystachy's runtime calls it as {e[0]}({', '.join(e[1:])})")
++            self.runtime(sym)
++            decl = ""
++        elif sym in self.csyms:
++            if self.csyms[sym] != decl:
++                self.err(f"C function {sym} is declared again with other types: {self.csyms[sym][8:]} at line {self.csymline[sym]}, {decl[8:]} here")
++            decl = ""
++        else:
++            self.csyms[sym] = decl
++            self.csymline[sym] = f.node.line
++        self.externs[f.ll] = (decl + "\n" if decl != "" else "") + f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
++        if f.lib != "" and f.lib not in LIBS:
++            LIBS.append(f.lib)
++
++    def pyext(self) -> list[str]:
++        # pystachy ext: in place of @main, what pyext.c calls. @pyx.init runs the module's code and
++        # each public function of the main module gets @pyx.f.<name>(ptr slots, ptr err): its
++        # arguments in i64 slots, its result as one; a raise is caught there (none crosses CPython's
++        # frames) and its Exc is stored in *err. pyx_exports lists them: name, signature (result,
++        # then each parameter: i int, f float, b bool, s str, n None), wrapper
++        o: list[str] = []
++        for k in ["eh_on", "try_mark", "exc.handled", "exc.restore", "exc.begin", "personality", "init_lib"]:
++            if k not in self.rtfns:
++                o.append(runtime_decl(k))
++        pad = ["lp:", "  %x = landingpad { ptr, i32 } catch ptr null", "  %ue = extractvalue { ptr, i32 } %x, 0",
++               "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)", "  call void @pys_exc_restore(ptr %prev)"]
++        o.extend(["define ptr @pyx_init() personality ptr @pys_personality {", f"  call void @pys_init_lib(ptr @pys.roots, i64 {len(self.gcroots)})",
++                  "  call void @pys_eh_on()", "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()",
++                  "  invoke void @main.init() to label %ok unwind label %lp", "ok:", "  ret ptr null"] + pad + ["  ret ptr %e", "}"])
++        tab: list[str] = []
++        letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
++        for f in self.funcs.values():
++            if f.mod != "" or f.cls != "" or f.name.startswith("_") or f.extern:
++                continue
++            self.line = f.node.line
++            if not f.pyexport:
++                self.err(f"{f.name}() is public in extension module '{self.ext}' but not @export: CPython would not see it; export it or name it _{f.name}")
++            dflt = False
++            for x in f.defaults:
++                dflt = dflt or x.kind != "noann"
++            if dflt or f.vararg >= 0 or f.npos != len(f.params):
++                self.err(f"{f.name}() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)")
++            for t in [f.ret] + f.ptypes:
++                if t not in letter or (t == "None" and t != f.ret):
++                    self.err(f"{f.name}() cannot be called from CPython: it takes or returns {typestr(t) if t != '' else 'an untyped value'} (an extension module's function takes int, float, bool or str and returns one or None); name it _{f.name} to keep it private")
++            sig = "".join([letter[t] for t in [f.ret] + f.ptypes])
++            o.extend([f"define internal i64 @pyx.f.{f.name}(ptr %a, ptr %err) personality ptr @pys_personality {{", "entry:",
++                      "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()"])
++            args: list[str] = []
++            for j in range(len(f.ptypes)):
++                t = lt(f.ptypes[j])
++                o.extend([f"  %q{j} = getelementptr i64, ptr %a, i64 {j}", f"  %s{j} = load i64, ptr %q{j}"])
++                o.append(f"  %v{j} = {'bitcast i64 %s' + str(j) + ' to double' if t == 'double' else 'trunc i64 %s' + str(j) + ' to i1' if t == 'i1' else 'inttoptr i64 %s' + str(j) + ' to ptr' if t == 'ptr' else 'add i64 0, %s' + str(j)}")
++                args.append(f"{t} %v{j}")
++            r = lt(f.ret)
++            o.append(f"  {'%r = ' if r != 'void' else ''}invoke {r} {f.ll}({', '.join(args)}) to label %ok unwind label %lp")
++            o.append("ok:")
++            o.append(f"  %ri = {'bitcast double %r to i64' if r == 'double' else 'zext i1 %r to i64' if r == 'i1' else 'ptrtoint ptr %r to i64' if r == 'ptr' else 'add i64 0, %r' if r == 'i64' else 'add i64 0, 0'}")
++            o.extend(["  ret i64 %ri"] + pad + ["  store ptr %e, ptr %err", "  ret i64 0", "}"])
++            o.append(f"@pyx.n.{f.name} = private constant [{len(f.name) + 1} x i8] c\"{llstr(f.name)}\\00\"")
++            o.append(f"@pyx.s.{f.name} = private constant [{len(sig) + 1} x i8] c\"{sig}\\00\"")
++            tab.append(f"{{ptr, ptr, ptr}} {{ptr @pyx.n.{f.name}, ptr @pyx.s.{f.name}, ptr @pyx.f.{f.name}}}")
++        o.append(f"@pyx_exports = constant [{len(tab) + 1} x {{ptr, ptr, ptr}}] [{', '.join(tab + ['{ptr, ptr, ptr} zeroinitializer'])}]")
++        o.append(f"@pyx.name = private constant [{len(self.ext) + 1} x i8] c\"{self.ext}\\00\"")
++        # both entries: abi3's PyInit_<name> and abi3t's PyModExport_<name>; the driver keeps one
++        o.extend(["declare ptr @pyx_module(ptr)", f"define ptr @PyInit_{self.ext}() {{", "  %m = call ptr @pyx_module(ptr @pyx.name)", "  ret ptr %m", "}"])
++        o.extend(["declare ptr @pyx_slots(ptr)", f"define ptr @PyModExport_{self.ext}() {{", "  %m = call ptr @pyx_slots(ptr @pyx.name)", "  ret ptr %m", "}"])
++        return o
++
+     def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
+         # a function of runtime mode that runtime.c calls or defines and RUNTIME does not name
+         # (the dict's string hash, the format of a str): only LLVM's types check it (rtabi,
+@@ -10570,7 +10743,7 @@ class Gen:
+             ok = x.s == "async" or (("f" if d.kind == "def" else "c") in INERT_DECOS.get(key, "") and (not inst or ("o" in INERT_DECOS[key] and "__setattr__" not in self.body_names(d))))
+             inst = inst or key == "object.__new__"
+             e = f"'{short(root)}' may not be the builtin then" if "$" in root and short(root) in PYBUILTINS and key == "" else ""
+-            e = e if e != "" or len(x.kids) == 0 or key == "dataclasses.dataclass" else f"it calls {short(x.s)}()"
++            e = e if e != "" or len(x.kids) == 0 or key == "dataclasses.dataclass" or key == "ffi.extern" else f"it calls {short(x.s)}()"
+             for a in x.kids[0].kids[1:] if len(x.kids) > 0 and key == "dataclasses.dataclass" else []:
+                 # (@dataclass(...) tests the truth of each option)
+                 e = e if e != "" else self.effect(a.kids[0], {}, 1) if a.kind == "kw" else "it takes no positional argument"
+@@ -10766,7 +10939,7 @@ class Gen:
+         tops: list[list[Node]] = []
+         for m in mods:
+             self.scan_imports(m.body.kids)
+-            self.eh = self.eh or has_try(m.body.kids)
++            self.eh = self.eh or has_try(m.body.kids) or self.ext != ""  # (an extension's calls are tries)
+         for m in mods:
+             m.body.kids = self.typing_forms(m, m.body.kids, False)
+             for i in range(len(m.body.kids)):
+@@ -10922,7 +11095,9 @@ class Gen:
+         # the functions and methods of imported modules are compiled only if the program calls
+         # them, as templates are (a function compiled early, see early, is compiled already)
+         for f in self.funcs.values():
+-            if f.mod != "" and not f.generic:
++            if f.extern and not self.rtmode:
++                self.cextern(f)
++            elif f.mod != "" and not f.generic:
+                 self.lazy[f.ll] = f
+             elif f.extern:
+                 self.line = f.node.line
+@@ -11065,6 +11240,8 @@ class Gen:
+             hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
+             hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775799}}")
+             return "\n".join(hdr) + "\n"
++        if self.ext != "":
++            return "\n".join(hdr + self.pyext()) + "\n"
+         # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
+         # covers @main.init if inlined here) and the table of pointer-typed globals
+         hdr.append(runtime_decl("init"))
+@@ -16471,8 +16648,10 @@ class Gen:
+ 
+ 
+ # ---------------------------------------------------------------- driver
+-def compile_program(path: str, src: str, dirs: list[str]) -> str:
+-    return Gen().program(Loader(dirs).program(path, src))
++def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
++    g = Gen()
++    g.ext = ext
++    return g.program(Loader(dirs).program(path, src))
+ 
+ 
+ def runtime_ir(path: str, cache: bool) -> str:
+@@ -16507,9 +16686,10 @@ def main() -> None:
+     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
+     sys.setrecursionlimit(MAXNEST * 40)
+     argv = sys.argv
+-    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
++    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
+         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
+         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
++        print("       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)", file=sys.stderr)
+         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
+         print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
+         print("       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset", file=sys.stderr)
+@@ -16552,18 +16732,29 @@ def main() -> None:
+             dirs.append(d)
+     dirs.append(home + "/lib")
+     f = open(SRC, "r", encoding="latin-1")
+-    ir = compile_program(SRC, f.read(), dirs)
++    ext = SRC[SRC.rfind("/") + 1 : -3] if cmd == "ext" and SRC.endswith(".py") else ""
++    ir = compile_program(SRC, f.read(), dirs, ext)
+     f.close()
+     out = ""
++    abi = "abi3"  # pystachy ext: abi3 (CPython 3.12+, GIL builds) or abi3t (3.15+, GIL and free-threaded)
+     rest: list[str] = []
+     i = 3
+     while i < len(argv):
+         if argv[i] == "-o" and i + 1 < len(argv) and cmd != "run":
+             out = argv[i + 1]
+             i += 2
++        elif argv[i] == "--abi" and i + 1 < len(argv) and cmd == "ext" and (argv[i + 1] == "abi3" or argv[i + 1] == "abi3t"):
++            abi = argv[i + 1]
++            i += 2
+         else:
+             rest.append(argv[i])
+             i += 1
++    embed = "python" in LIBS  # (lib/pyobj.py: pyembed.c is linked in, which ends the CPython it starts)
++    for i in range(len(LIBS)):
++        if LIBS[i] == "python":  # (lib/pyobj.py's: the libpython to embed; an extension's host has it)
++            LIBS[i] = os.getenv("PYSTACHY_LIBPYTHON", "") if cmd != "ext" else "-"
++            if LIBS[i] == "" and cmd != "ir":
++                fail("the program embeds CPython (it imports pyobj): set PYSTACHY_LIBPYTHON to its libpython3.X.so", 0)
+     if cmd == "ir":
+         if out == "":
+             print(ir, end="")
+@@ -16643,14 +16834,35 @@ def main() -> None:
+     if code == 0 and cmd == "run":
+         # (from the bitcode, so runtime.py's part is in it; sanitizer flags instrumented runtime.c already)
+         code = sh(f"test {q(rto)} -nt {q(rtb)} || ({llvm}clang -O2 -fPIC -c {q(rtb)} -o {q(part)} -Wno-unused-command-line-argument{ccflags} && mv -f {q(part)} {q(rto)})")
++    peb = rtb[:-3] + "-pyembed.bc"
++    if code == 0 and embed:
++        pec = home + "/pyembed.c"
++        code = sh(f"test {q(peb)} -nt {q(pec)} || ({llvm}clang -O2 -fPIC -S -emit-llvm {q(pec)} -o {q(rll)}{cflags} && {strip} {q(rll)} > {q(rsl)} && {llvm}llvm-as {q(rsl)} -o {q(part)} && mv -f {q(part)} {q(peb)})")
++        if code == 0 and cmd == "run":
++            code = sh(f"test {q(peb[:-3] + '.o')} -nt {q(peb)} || ({llvm}clang -O2 -fPIC -c {q(peb)} -o {q(part)} -Wno-unused-command-line-argument{ccflags} && mv -f {q(part)} {q(peb[:-3] + '.o')})")
+     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(rtb)} -o {q(bc)}"
++    if embed:
++        link = f"{llvm}llvm-link {q(ll)} {q(peb)} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(rtb)} -o {q(bc)}"
++    libs = "".join([" " + (q(x) + " " + q("-Wl,-rpath," + x[: x.rfind("/")]) if "/" in x else q("-l:" + x)) for x in LIBS if x != "-"])  # (@ffi.extern's)
+     if code != 0:
+         msg = "cannot build the runtime (are clang and LLVM 18 installed? see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
++    elif cmd == "ext":
++        # a CPython extension module: program, pyext.c and runtime as one module, of which only
++        # PyInit_<name> stays visible (pyext.c's bitcode is cached as the runtime's is)
++        pxc = home + "/pyext.c"
++        pxb = rtb[:-3] + "-pyext-" + abi + ".bc"
++        entry = "PyModExport_" if abi == "abi3t" else "PyInit_"
++        if out == "":
++            out = SRC[:-3] + "." + abi + ".so"
++        code = sh(f"(test {q(pxb)} -nt {q(pxc)} || ({llvm}clang -O2 -fPIC -S -emit-llvm {q(pxc)} -o {q(rll)}{cflags}{' -DPYX_ABI3T' if abi == 'abi3t' else ''} && {strip} {q(rll)} > {q(rsl)} && {llvm}llvm-as {q(rsl)} -o {q(part)} && mv -f {q(part)} {q(pxb)}))"
++                  + f" && {llvm}llvm-link {q(ll)} {q(pxb)}{' ' + q(peb) if embed else ''} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(rtb)} -o {q(bc)}"
++                  + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}"
++                  + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+     elif cmd == "build":
+         # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
+         if out == "":
+             out = SRC[:-3] if SRC.endswith(".py") else SRC + ".exe"
+-        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)} -lm{cflags}")
++        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+     else:
+         # JIT tier: cheap SSA cleanup of the program alone, then LLVM's ORC JIT compiles it for the
+         # host CPU and links it with the precompiled runtime (the JIT tier never inlines the runtime)
+@@ -16667,7 +16879,7 @@ def main() -> None:
+                     os.remove(p)
+             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
+             env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
+-            run = f"{env}PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli -extra-object={q(rto)} /dev/fd/9 {' '.join([q(a) for a in rest])}"
++            run = f"{env}PYSTACHY_ARGV0={q(SRC)} exec {llvm}lli{''.join([' -dlopen=' + q(x) for x in LIBS])} -extra-object={q(rto)}{' -extra-object=' + q(peb[:-3] + '.o') if embed else ''} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} && rm -f {q(bc)} && rmdir {q(tmp)} && {run}"])
+     for p in [ll, bc, obj, rll, rsl, rcb, rpl, lnk, part]:
+         if os.path.exists(p):
+diff --git aruntime.c bruntime.c
+index 3e6bea3..1a41f6a 100644
+--- aruntime.c
++++ bruntime.c
+@@ -1742,9 +1742,10 @@ static const char *defenc(void) {      /* the encoding CPython names for a file
+                                           its UTF-8 mode, which the C and POSIX locales turn on, else the locale's */
+   static char e[40];
+   if (!*e) {
++    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+     const char *l = setlocale(LC_CTYPE, "");
+     snprintf(e, sizeof e, "%s", l && strcmp(l, "C") && strcmp(l, "POSIX") ? nl_langinfo(CODESET) : "utf-8");
+-    setlocale(LC_CTYPE, "C");
++    setlocale(LC_CTYPE, old);
+   }
+   return e;
+ }
+@@ -1787,6 +1788,8 @@ static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call
+   out_flush(); fputs("KeyboardInterrupt\n", stderr);
+   kbint = 1; pys_finish(); exit(130);
+ }
++static void (*finish_hook)(void);      /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish) */
++void pys_at_finish(void (*f)(void)) { finish_hook = f; }
+ void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
+                                           out_flush), the collector's report, stdout flushed in finalization (a
+                                           failure is reported, status 120), the open files closed in the order they
+@@ -1795,6 +1798,7 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
+   static int done;
+   if (done++) return;
+   out_flush();
++  if (finish_hook) finish_hook();      /* an embedded CPython's end (pyembed.c), after the program's output */
+   if (gc_stats) gc_report();
+   int bad = 0, e;
+   if (!std_out.closed && (e = flush1(&std_out))) {
+@@ -1826,8 +1830,10 @@ static void files_sweep(void) {        /* after marking: close the open files no
+ }
+ static _Noreturn void oserr(const char *path);
+ static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
++static void (*out_hook)(const char *, I, I);   /* pystachy ext: the host's sys.stdout and sys.stderr (pys_init_lib) */
+ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+   if (f->closed) closed_err();
++  if (out_hook && f->std && f->wr) { out_hook(s, n, f == &std_err ? 2 : 1); return; }
+   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+   if (e) ioerr(e);
+ }
+@@ -1857,6 +1863,22 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
+     sigint_on = !sigaction(SIGINT, &sa, 0);
+   }
+ }
++/* pystachy ext: CPython hosts the program (pyext.c), and owns main, the signals and sys.stdout.
++   pys_init_lib is pys_init without argv, signal handlers or stdout's emulation (writes go to
++   out_hook); every call from Python is bracketed by pys_enter(its frame)/pys_leave, and the
++   outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
++static I lib_depth;
++void pys_set_out_hook(void (*h)(const char *, I, I)) { out_hook = h; }
++void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
++void pys_leave(void) { lib_depth--; }
++void pys_init_lib(I **roots, I nroots) {
++  if (pmap) return;                    /* (imported again) */
++  gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
++  args = pys_list_new(0);
++  std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
++  std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
++  std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
++}
+ List *pys_argv(void) { return args; }
+ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+ void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+@@ -2257,6 +2279,10 @@ I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1
+   return 0;
+ }
+ void *pys_exc_obj(Exc *e) { return e->obj; }
++I pys_exc_status(Exc *e, I *code) {    /* pystachy ext: a SystemExit, and its status */
++  if (e->obj || e->kind->len != 10 || memcmp(e->kind->s, "SystemExit", 10)) return 0;
++  *code = e->has_code ? e->code : 1; return 1;
++}
+ void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
+ Exc *pys_exc_handled(void) { return xr.handled; }
+ void pys_exc_restore(Exc *e) { xr.handled = e; }
+@@ -2918,3 +2944,13 @@ static int printable(I c) {            /* c >= 0x80: printable unless an odd num
+   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
+   return !(lo & 1);
+ }
++/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
++Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
++Str *pys_string_at(I a, I n) { return pys_str((const char *)a, n); }   /* ffi.string_at, as ctypes.string_at */
++I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
++  static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",
++                            "OverflowError: can't convert negative int to unsigned", "OverflowError: C unsigned result is too large for int"};
++  if (k == 0 ? v != (int32_t)v : k == 1 ? v < 0 || v > 0xFFFFFFFFLL : v < 0) pys_fail(m[k == 1 && v < 0 ? 2 : k]);
++  return v;
++}
++void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
+diff --git alib/pyobj.py blib/pyobj.py
+new file mode 100644
+index 0000000..b796adc
+--- /dev/null
++++ blib/pyobj.py
+@@ -0,0 +1,388 @@
++"""Python objects for Pystachy code, through CPython's stable ABI (@ffi.extern). In a program,
++CPython runs embedded (PYSTACHY_LIBPYTHON names its libpython); in an extension module (pystachy
++ext) the host interpreter is used. tools/rt_cpython/pyobj.py is this module for CPython itself.
++
++An Object holds a reference until close(); a closed Object raises ValueError. A Python
++exception becomes the nearest builtin exception class Pystachy has, with the same str();
++SystemExit and KeyboardInterrupt stay what they are. Embedded, the program holds the GIL only
++inside these calls, so Python threads run while compiled code does, and CPython is finalized
++after the program ends (pyembed.c), as it is when it runs a script."""
++import os
++import sys
++from ffi import extern, c_int, c_int64, c_ssize_t, c_void_p, c_buf, string_at
++
++
++@extern("python")
++def Py_IsInitialized() -> c_int: ...
++@extern("python")
++def Py_InitializeEx(sigs: c_int) -> None: ...
++@extern("python")
++def PyEval_SaveThread() -> c_void_p: ...
++@extern("python")
++def PyGILState_Ensure() -> c_int: ...
++@extern("python")
++def PyGILState_Release(g: c_int) -> None: ...
++@extern("python")
++def PyImport_ImportModule(name: str) -> c_void_p: ...
++@extern("python")
++def PyObject_GetAttrString(o: c_void_p, name: str) -> c_void_p: ...
++@extern("python")
++def Py_DecRef(o: c_void_p) -> None: ...
++@extern("python")
++def Py_IncRef(o: c_void_p) -> None: ...
++@extern("python")
++def PyLong_FromLongLong(v: c_int64) -> c_void_p: ...
++@extern("python")
++def PyLong_AsLongLong(o: c_void_p) -> c_int64: ...
++@extern("python")
++def PyFloat_FromDouble(x: float) -> c_void_p: ...
++@extern("python")
++def PyFloat_AsDouble(o: c_void_p) -> float: ...
++@extern("python")
++def PyUnicode_DecodeUTF8(s: c_buf, n: c_ssize_t, errors: str) -> c_void_p: ...
++@extern("python")
++def PyUnicode_AsEncodedString(o: c_void_p, encoding: str, errors: str) -> c_void_p: ...
++@extern("python")
++def PyBytes_Size(o: c_void_p) -> c_ssize_t: ...
++@extern("python")
++def PyBytes_AsString(o: c_void_p) -> c_void_p: ...
++@extern("python")
++def PyObject_Str(o: c_void_p) -> c_void_p: ...
++@extern("python")
++def PyObject_Repr(o: c_void_p) -> c_void_p: ...
++@extern("python")
++def PyTuple_New(n: c_ssize_t) -> c_void_p: ...
++@extern("python")
++def PyTuple_SetItem(t: c_void_p, i: c_ssize_t, o: c_void_p) -> c_int: ...
++@extern("python")
++def PyTuple_GetItem(t: c_void_p, i: c_ssize_t) -> c_void_p: ...
++@extern("python")
++def PyTuple_Size(t: c_void_p) -> c_ssize_t: ...
++@extern("python")
++def PyList_New(n: c_ssize_t) -> c_void_p: ...
++@extern("python")
++def PyList_Append(lst: c_void_p, o: c_void_p) -> c_int: ...
++@extern("python")
++def PyObject_Call(f: c_void_p, args: c_void_p, kwargs: c_void_p) -> c_void_p: ...
++@extern("python")
++def PyObject_GetItem(o: c_void_p, k: c_void_p) -> c_void_p: ...
++@extern("python")
++def PyObject_Length(o: c_void_p) -> c_ssize_t: ...
++@extern("python")
++def PyObject_IsTrue(o: c_void_p) -> c_int: ...
++@extern("python")
++def PyErr_Occurred() -> c_void_p: ...
++@extern("python")
++def PyErr_GetRaisedException() -> c_void_p: ...
++@extern("python")
++def PyObject_Type(o: c_void_p) -> c_void_p: ...
++@extern("python")
++def PySys_GetObject(name: str) -> c_void_p: ...
++@extern("python")
++def PySys_SetObject(name: str, o: c_void_p) -> c_int: ...
++@extern("")
++def pye_at_exit() -> None: ...  # (pyembed.c)
++
++
++_embedded = False  # this program started CPython (else: an extension module's host runs it)
++
++
++def _text(o: int) -> str:
++    # a Python str (a new reference, which this releases) as Pystachy's UTF-8 str
++    b = PyUnicode_AsEncodedString(o, "utf-8", "surrogatepass")
++    Py_DecRef(o)
++    if b == 0:
++        _raise()
++    s = string_at(PyBytes_AsString(b), PyBytes_Size(b))
++    Py_DecRef(b)
++    return s
++
++
++BUILTIN = ["KeyError", "IndexError", "ZeroDivisionError", "OverflowError", "ValueError", "TypeError",
++           "AttributeError", "ModuleNotFoundError", "ImportError", "NotImplementedError", "RecursionError",
++           "RuntimeError", "FileNotFoundError", "OSError", "StopIteration", "AssertionError", "LookupError",
++           "ArithmeticError", "KeyboardInterrupt", "SystemExit", "Exception"]
++
++
++def _raise() -> None:
++    # the Python exception just raised, as the first builtin class in its type's __mro__ that
++    # Pystachy has, with its str(); SystemExit keeps its code
++    e = PyErr_GetRaisedException()
++    t = PyObject_Type(e)
++    mro = PyObject_GetAttrString(t, "__mro__")
++    Py_DecRef(t)
++    k = "Exception"
++    for i in range(PyTuple_Size(mro)):
++        n = _text(PyObject_GetAttrString(PyTuple_GetItem(mro, i), "__name__"))  # (borrowed item)
++        if n in BUILTIN:
++            k = n
++            break
++    Py_DecRef(mro)
++    if k == "SystemExit":
++        c = PyObject_GetAttrString(e, "code")
++        Py_DecRef(e)
++        ct = PyObject_Type(c)
++        tn = _text(PyObject_GetAttrString(ct, "__name__"))
++        Py_DecRef(ct)
++        if tn == "int":
++            v = PyLong_AsLongLong(c)
++            Py_DecRef(c)
++            raise SystemExit(v)
++        m = _text(PyObject_Str(c))
++        Py_DecRef(c)
++        if tn == "NoneType":
++            raise SystemExit()
++        raise SystemExit(m)
++    m = _text(PyObject_Str(e))
++    Py_DecRef(e)
++    if k == "KeyboardInterrupt":
++        raise KeyboardInterrupt(m)
++    if k == "StopIteration":
++        raise StopIteration(m)
++    if k == "KeyError":
++        raise KeyError(m)
++    if k == "IndexError":
++        raise IndexError(m)
++    if k == "ZeroDivisionError":
++        raise ZeroDivisionError(m)
++    if k == "OverflowError":
++        raise OverflowError(m)
++    if k == "ValueError":
++        raise ValueError(m)
++    if k == "TypeError":
++        raise TypeError(m)
++    if k == "AttributeError":
++        raise AttributeError(m)
++    if k == "ModuleNotFoundError":
++        raise ModuleNotFoundError(m)
++    if k == "ImportError":
++        raise ImportError(m)
++    if k == "NotImplementedError":
++        raise NotImplementedError(m)
++    if k == "RuntimeError" or k == "RecursionError":
++        raise RuntimeError(m)
++    if k == "FileNotFoundError":
++        raise FileNotFoundError(m)
++    if k == "OSError":
++        raise OSError(m)
++    if k == "AssertionError":
++        raise AssertionError(m)
++    if k == "LookupError":
++        raise LookupError(m)
++    if k == "ArithmeticError":
++        raise ArithmeticError(m)
++    raise Exception(m)
++
++
++def _ref(p: int) -> "Object":
++    if p == 0:
++        _raise()
++    return Object(p)
++
++
++def _live(p: int) -> int:
++    if p == 0:
++        raise ValueError("operation on a closed Python object")
++    return p
++
++
++def _flush_py() -> None:
++    out = PySys_GetObject("stdout")  # (borrowed)
++    if out != 0:
++        f = PyObject_GetAttrString(out, "flush")
++        t = PyTuple_New(0)
++        r = PyObject_Call(f, t, 0) if f != 0 and t != 0 else 0
++        Py_DecRef(t)
++        Py_DecRef(f)
++        if r != 0:
++            Py_DecRef(r)
++
++
++class Object:
++    def __init__(self, p: int) -> None:
++        self.p = p  # a strong reference, a PyObject *; 0 once closed
++
++    def close(self) -> None:
++        if self.p != 0:
++            g = PyGILState_Ensure()
++            Py_DecRef(self.p)
++            PyGILState_Release(g)
++            self.p = 0
++
++    def attr(self, name: str) -> "Object":
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            return _ref(PyObject_GetAttrString(p, name))
++        finally:
++            PyGILState_Release(g)
++
++    def call(self, args: list["Object"]) -> "Object":
++        p = _live(self.p)
++        for a in args:
++            _live(a.p)
++        if _embedded:
++            sys.stdout.flush()  # Pystachy's output first, then what Python prints, in order
++        g = PyGILState_Ensure()
++        try:
++            t = PyTuple_New(len(args))
++            if t == 0:
++                _raise()
++            for i in range(len(args)):
++                Py_IncRef(args[i].p)
++                PyTuple_SetItem(t, i, args[i].p)  # (steals the reference)
++            r = PyObject_Call(p, t, 0)
++            Py_DecRef(t)
++            if _embedded:
++                _flush_py()
++            return _ref(r)
++        finally:
++            PyGILState_Release(g)
++
++    def __getitem__(self, k: "Object") -> "Object":
++        p = _live(self.p)
++        q = _live(k.p)
++        g = PyGILState_Ensure()
++        try:
++            return _ref(PyObject_GetItem(p, q))
++        finally:
++            PyGILState_Release(g)
++
++    def __len__(self) -> int:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            n = PyObject_Length(p)
++            if n < 0:
++                _raise()
++            return n
++        finally:
++            PyGILState_Release(g)
++
++    def __bool__(self) -> bool:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            r = PyObject_IsTrue(p)
++            if r < 0:
++                _raise()
++            return r == 1
++        finally:
++            PyGILState_Release(g)
++
++    def to_int(self) -> int:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            v = PyLong_AsLongLong(p)
++            if v == -1 and PyErr_Occurred() != 0:
++                _raise()
++            return v
++        finally:
++            PyGILState_Release(g)
++
++    def to_float(self) -> float:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            v = PyFloat_AsDouble(p)
++            if v == -1.0 and PyErr_Occurred() != 0:
++                _raise()
++            return v
++        finally:
++            PyGILState_Release(g)
++
++    def __str__(self) -> str:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            r = PyObject_Str(p)
++            if r == 0:
++                _raise()
++            return _text(r)
++        finally:
++            PyGILState_Release(g)
++
++    def __repr__(self) -> str:
++        p = _live(self.p)
++        g = PyGILState_Ensure()
++        try:
++            r = PyObject_Repr(p)
++            if r == 0:
++                _raise()
++            return _text(r)
++        finally:
++            PyGILState_Release(g)
++
++
++def import_module(name: str) -> Object:
++    g = PyGILState_Ensure()
++    try:
++        return _ref(PyImport_ImportModule(name))
++    finally:
++        PyGILState_Release(g)
++
++
++def of_int(v: int) -> Object:
++    g = PyGILState_Ensure()
++    try:
++        return _ref(PyLong_FromLongLong(v))
++    finally:
++        PyGILState_Release(g)
++
++
++def of_float(x: float) -> Object:
++    g = PyGILState_Ensure()
++    try:
++        return _ref(PyFloat_FromDouble(x))
++    finally:
++        PyGILState_Release(g)
++
++
++def of_str(s: str) -> Object:
++    g = PyGILState_Ensure()
++    try:
++        return _ref(PyUnicode_DecodeUTF8(s, len(s), "surrogatepass"))
++    finally:
++        PyGILState_Release(g)
++
++
++def of_list(xs: list[Object]) -> Object:
++    for x in xs:
++        _live(x.p)
++    g = PyGILState_Ensure()
++    try:
++        r = _ref(PyList_New(0))
++        for x in xs:
++            if PyList_Append(r.p, x.p) < 0:
++                _raise()
++        return r
++    finally:
++        PyGILState_Release(g)
++
++
++if Py_IsInitialized() == 0:
++    # embedded: CPython as it runs the script (sys.argv, the script's directory first on sys.path),
++    # without its signal handlers (Pystachy keeps its own), then the GIL is released until a call
++    Py_InitializeEx(0)
++    _embedded = True
++    pye_at_exit()
++    _argv = PyList_New(0)
++    for _a in sys.argv:
++        _s = PyUnicode_DecodeUTF8(_a, len(_a), "surrogatepass")
++        PyList_Append(_argv, _s)
++        Py_DecRef(_s)
++    PySys_SetObject("argv", _argv)
++    Py_DecRef(_argv)
++    _d = os.path.realpath(sys.argv[0])
++    _d = _d[: _d.rfind("/")] if _d.rfind("/") > 0 else "/"
++    _path = PySys_GetObject("path")  # (borrowed)
++    _ins = PyObject_GetAttrString(_path, "insert")
++    _t = PyTuple_New(2)
++    PyTuple_SetItem(_t, 0, PyLong_FromLongLong(0))
++    PyTuple_SetItem(_t, 1, PyUnicode_DecodeUTF8(_d, len(_d), "surrogatepass"))
++    _r = PyObject_Call(_ins, _t, 0)
++    Py_DecRef(_r)
++    Py_DecRef(_t)
++    Py_DecRef(_ins)
++    PyEval_SaveThread()
+diff --git apyembed.c bpyembed.c
+new file mode 100644
+index 0000000..9cf55aa
+--- /dev/null
++++ bpyembed.c
+@@ -0,0 +1,9 @@
++/* pyembed.c: linked into a program that imports lib/pyobj.py (and into its extension modules,
++   where it does nothing). A program that starts CPython (Py_InitializeEx) ends it the way
++   CPython ends: pys_finish, after the program's own output, attaches the main thread and runs
++   Py_FinalizeEx (Python threads joined, atexit handlers, sys.stdout flushed). No Python.h. */
++int PyGILState_Ensure(void);
++int Py_FinalizeEx(void);
++void pys_at_finish(void (*f)(void));
++static void finish(void) { PyGILState_Ensure(); Py_FinalizeEx(); }
++void pye_at_exit(void) { pys_at_finish(finish); }
+diff --git apyext.c bpyext.c
+new file mode 100644
+index 0000000..df7042a
+--- /dev/null
++++ bpyext.c
+@@ -0,0 +1,235 @@
++/* pyext.c: a Pystachy program as a CPython extension module (pystachy ext). Linked only into
++   extension modules, with the program and the runtime, as one LLVM module whose only export is
++   the module's entry. It needs no Python.h and no Python to build: what it uses is CPython's
++   stable ABI, declared below as the ABI fixes it. Compiled twice from this one file:
++     default       abi3, CPython 3.12+ GIL builds: PyInit_<name>, PyModuleDef (multi-phase)
++     -DPYX_ABI3T   abi3t (PEP 803), CPython 3.15+ GIL and free-threaded builds: PyModExport_<name>
++                   returning a PEP 820 PySlot array (Py_mod_abi, Py_mod_gil = USED)
++   The program's IR (Gen.pyext) is the same for both: pyx_init, pyx_exports, and both entries,
++   of which the driver keeps one (internalize).
++   The runtime is single-threaded: only the thread that imported the module may call it. */
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++typedef int64_t I;
++typedef intptr_t Py_ssize_t;
++typedef struct _object PyObject;
++typedef struct { I len; char s[]; } Str;
++typedef struct Exc Exc;
++typedef struct { const char *name; void *meth; int flags; const char *doc; } PyMethodDef;
++/* CPython's stable ABI */
++extern PyObject PyUnicode_Type;
++extern PyObject *PyExc_TypeError, *PyExc_RuntimeError, *PyExc_BaseException, *PyExc_ImportError;
++PyObject *PyCFunction_NewEx(PyMethodDef *, PyObject *, PyObject *);
++int PyModule_AddObjectRef(PyObject *, const char *, PyObject *);
++PyObject *PyModule_GetNameObject(PyObject *);
++PyObject *PyImport_ImportModule(const char *);
++PyObject *PyObject_GetAttrString(PyObject *, const char *);
++PyObject *PyObject_VectorcallMethod(PyObject *, PyObject *const *, size_t, PyObject *);
++PyObject *PyObject_Vectorcall(PyObject *, PyObject *const *, size_t, PyObject *);
++PyObject *PyUnicode_FromString(const char *);
++PyObject *PyTuple_New(Py_ssize_t);
++int PyTuple_SetItem(PyObject *, Py_ssize_t, PyObject *);
++Py_ssize_t PyTuple_Size(PyObject *);
++PyObject *PySys_GetObject(const char *);
++int PyObject_IsInstance(PyObject *, PyObject *);
++int PyObject_IsSubclass(PyObject *, PyObject *);
++long long PyLong_AsLongLong(PyObject *);
++PyObject *PyLong_FromLongLong(long long);
++double PyFloat_AsDouble(PyObject *);
++PyObject *PyFloat_FromDouble(double);
++PyObject *PyBool_FromLong(long);
++const char *PyUnicode_AsUTF8AndSize(PyObject *, Py_ssize_t *);
++PyObject *PyUnicode_AsEncodedString(PyObject *, const char *, const char *);
++int PyBytes_AsStringAndSize(PyObject *, char **, Py_ssize_t *);
++PyObject *PyUnicode_DecodeUTF8(const char *, Py_ssize_t, const char *);
++PyObject *PyErr_Occurred(void);
++void PyErr_Clear(void);
++void PyErr_SetString(PyObject *, const char *);
++void PyErr_SetObject(PyObject *, PyObject *);
++PyObject *PyErr_Format(PyObject *, const char *, ...);
++void PyErr_WriteUnraisable(PyObject *);
++void Py_IncRef(PyObject *);
++void Py_DecRef(PyObject *);
++unsigned long PyThread_get_thread_ident(void);
++#define VC_OFFSET ((size_t)1 << (8 * sizeof(size_t) - 1))   /* PY_VECTORCALL_ARGUMENTS_OFFSET */
++#ifdef PYX_ABI3T
++PyObject *Py_GetConstantBorrowed(unsigned int);           /* 3.13+: None 0, False 1, True 2 */
++#define NONE Py_GetConstantBorrowed(0)
++#define FALSE Py_GetConstantBorrowed(1)
++#define TRUE Py_GetConstantBorrowed(2)
++#else
++extern PyObject _Py_NoneStruct, _Py_TrueStruct, _Py_FalseStruct;
++#define NONE (&_Py_NoneStruct)
++#define FALSE (&_Py_FalseStruct)
++#define TRUE (&_Py_TrueStruct)
++#endif
++/* the runtime (runtime.c) and the program (Gen.pyext) */
++Str *pys_str(const char *p, I n);
++Str *pys_exc_name(Exc *e);
++Str *pys_exc_str(Exc *e);
++Str *pys_exc_repr(Exc *e);
++void pys_enter(char *sb);
++void pys_leave(void);
++void pys_set_out_hook(void (*h)(const char *, I, I));
++Exc *pyx_init(void);
++typedef struct { const char *name, *sig; I (*fn)(I *, Exc **); } Export;
++extern const Export pyx_exports[];
++
++static unsigned long owner;            /* the thread that imported the module */
++static int printing;                   /* in out_hook: a print's ops are not calls (their effects are I/O), so the
++                                          Python code it runs (sys.stdout.write) may not call back into the module */
++static PyObject *builtins, *sys, *s_write;
++
++static PyObject *text(Str *s) { return PyUnicode_DecodeUTF8(s->s, s->len, "surrogatepass"); }
++static Str *to_str(PyObject *o) {      /* a str: one UTF-8 copy into the GC heap (lone surrogates kept) */
++  Py_ssize_t n; char *q;
++  if (PyObject_IsInstance(o, &PyUnicode_Type) != 1) return PyErr_Occurred() ? 0 : (PyErr_SetString(PyExc_TypeError, "expected str"), (Str *)0);
++  const char *p = PyUnicode_AsUTF8AndSize(o, &n);
++  if (p) return pys_str(p, n);
++  PyErr_Clear();
++  PyObject *b = PyUnicode_AsEncodedString(o, "utf-8", "surrogatepass");
++  if (!b) return 0;
++  PyBytes_AsStringAndSize(b, &q, &n);
++  Str *s = pys_str(q, n); Py_DecRef(b); return s;
++}
++static PyObject *args_of(Exc *e) {     /* e.args, rebuilt from repr(e) "Kind(a, b)" by ast.literal_eval, or (str(e),) */
++  Str *r = pys_exc_repr(e), *k = pys_exc_name(e);
++  PyObject *a = 0;
++  if (r->len >= k->len + 2 && r->s[k->len] == '(' && r->s[r->len - 1] == ')') {
++    I n = r->len - k->len - 2;
++    char *b = malloc(n + 4);
++    if (!b) return 0;
++    b[0] = '('; memcpy(b + 1, r->s + k->len + 1, n); memcpy(b + 1 + n, n ? ",)" : ")", 3);
++    PyObject *ast = PyImport_ImportModule("ast"), *f = ast ? PyObject_GetAttrString(ast, "literal_eval") : 0;
++    PyObject *t = f ? PyUnicode_DecodeUTF8(b, (Py_ssize_t)strlen(b), "surrogatepass") : 0;
++    a = t ? PyObject_Vectorcall(f, &t, 1, 0) : 0;
++    free(b); Py_DecRef(t); Py_DecRef(f); Py_DecRef(ast);
++    if (!a) PyErr_Clear();
++  }
++  if (!a) {                            /* (str(e),) */
++    PyObject *m = text(pys_exc_str(e));
++    if (m && (a = PyTuple_New(1))) PyTuple_SetItem(a, 0, m); else Py_DecRef(m);   /* (steals m) */
++  }
++  return a;
++}
++static PyObject *raised(Exc *e) {      /* a Pystachy exception, as the builtin class of its name, with its args */
++  Str *k = pys_exc_name(e);
++  PyObject *c = PyObject_GetAttrString(builtins, k->s), *a;
++  if (!c || PyObject_IsSubclass(c, PyExc_BaseException) != 1) {   /* a class of the program: RuntimeError("Name: msg")
++                                                                       (Gen's nearest-builtin table replaces this) */
++    PyErr_Clear(); Py_DecRef(c); PyObject *m = text(pys_exc_str(e));
++    PyErr_Format(PyExc_RuntimeError, "%s: %U", k->s, m); Py_DecRef(m); return 0;
++  }
++  if ((a = args_of(e))) PyErr_SetObject(c, a);   /* (a tuple: the class is called with it as args) */
++  Py_DecRef(a); Py_DecRef(c); return 0;
++}
++static PyObject *call(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames) {
++  const Export *x = &pyx_exports[PyLong_AsLongLong(self)];
++  Py_ssize_t np = (Py_ssize_t)strlen(x->sig) - 1;
++  I a[np > 0 ? np : 1], r; Exc *err = 0; PyObject *res = 0; double d;
++  if (PyThread_get_thread_ident() != owner)
++    return PyErr_Format(PyExc_RuntimeError, "%s() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module", x->name);
++  if (printing) return PyErr_Format(PyExc_RuntimeError, "%s() called from sys.stdout.write while its module prints", x->name);
++  if (kwnames && PyTuple_Size(kwnames) > 0) return PyErr_Format(PyExc_TypeError, "%s() takes no keyword arguments", x->name);
++  if (nargs != np) return PyErr_Format(PyExc_TypeError, "%s() takes %d positional arguments but %d were given", x->name, (int)np, (int)nargs);
++  pys_enter(__builtin_frame_address(0));   /* (to_str allocates: this frame is scanned) */
++  for (Py_ssize_t i = 0; i < np; i++) {
++    PyObject *o = args[i];
++    switch (x->sig[i + 1]) {
++    case 'i': a[i] = PyLong_AsLongLong(o); if (a[i] == -1 && PyErr_Occurred()) goto out; break;
++    case 'f': d = PyFloat_AsDouble(o); if (d == -1.0 && PyErr_Occurred()) goto out; memcpy(&a[i], &d, 8); break;
++    case 'b': if (o != TRUE && o != FALSE) { PyErr_Format(PyExc_TypeError, "%s() argument %d must be bool", x->name, (int)i + 1); goto out; }
++              a[i] = o == TRUE; break;
++    default: if (!(a[i] = (I)to_str(o))) goto out;
++    }
++  }
++  r = x->fn(a, &err);
++  if (err) { res = raised(err); goto out; }
++  switch (x->sig[0]) {
++  case 'i': res = PyLong_FromLongLong(r); break;
++  case 'f': memcpy(&d, &r, 8); res = PyFloat_FromDouble(d); break;
++  case 'b': res = PyBool_FromLong((long)r); break;
++  case 's': res = text((Str *)r); break;
++  default: Py_IncRef(NONE); res = NONE;
++  }
++out:
++  pys_leave();
++  return res;
++}
++static void out_hook(const char *s, I n, I fd) {   /* print() and sys.stdout: Python's sys.stdout, in order */
++  PyObject *f = PySys_GetObject(fd == 2 ? "stderr" : "stdout"), *u = PyUnicode_DecodeUTF8(s, n, "surrogatepass");   /* (f borrowed) */
++  PyObject *v[2] = {f, u};
++  printing++;
++  PyObject *r = f && u ? PyObject_VectorcallMethod(s_write, v, 2 | VC_OFFSET, 0) : 0;
++  printing--;
++  if (!r) PyErr_WriteUnraisable(f);
++  Py_DecRef(r); Py_DecRef(u);
++}
++static PyMethodDef *defs;
++static int execed;
++static int exec_mod(PyObject *m) {
++  I n = 0; Exc *e;
++  if (execed++) { PyErr_SetString(PyExc_ImportError, "a Pystachy extension module runs its code once per process: it cannot be imported again"); return -1; }
++  owner = PyThread_get_thread_ident();
++  if (!(builtins = PyImport_ImportModule("builtins")) || !(sys = PyImport_ImportModule("sys")) || !(s_write = PyUnicode_FromString("write"))) return -1;
++#ifdef PYX_ABI3T
++  {                                    /* Py_mod_gil = USED turned the GIL on, unless PYTHON_GIL=0 / -X gil=0 forces it off */
++    PyObject *f = PyObject_GetAttrString(sys, "_is_gil_enabled"), *on = f ? PyObject_Vectorcall(f, 0, 0, 0) : 0;
++    Py_DecRef(f); Py_DecRef(on);
++    if (!on) return -1;
++    if (on == FALSE) { PyErr_SetString(PyExc_ImportError, "a Pystachy extension module needs the GIL (its runtime is single-threaded), which PYTHON_GIL=0 or -X gil=0 keeps off"); return -1; }
++  }
++#endif
++  pys_set_out_hook(out_hook);
++  pys_enter(__builtin_frame_address(0));
++  e = pyx_init();                      /* the runtime, then the module's code */
++  if (e) { raised(e); pys_leave(); return -1; }
++  pys_leave();
++  while (pyx_exports[n].name) n++;
++  if (!(defs = calloc(n + 1, sizeof *defs))) return -1;
++  PyObject *mn = PyModule_GetNameObject(m);
++  for (I i = 0; i < n; i++) {
++    defs[i] = (PyMethodDef){pyx_exports[i].name, (void *)call, 0x80 | 0x02 /* METH_FASTCALL | METH_KEYWORDS */, 0};
++    PyObject *k = PyLong_FromLongLong(i), *f = k ? PyCFunction_NewEx(&defs[i], k, mn) : 0;
++    int bad = !f || PyModule_AddObjectRef(m, pyx_exports[i].name, f) < 0;
++    Py_DecRef(f); Py_DecRef(k);
++    if (bad) { Py_DecRef(mn); return -1; }
++  }
++  Py_DecRef(mn);
++  return 0;
++}
++#ifdef PYX_ABI3T
++typedef struct { uint16_t id, flags; uint32_t reserved; void *p; } PySlot;
++typedef struct { uint8_t major, minor; uint16_t flags; uint32_t build_version, abi_version; } PyABIInfo;
++static PyABIInfo abi = {1, 0, 1 | 2 | 4 /* STABLE | GIL | FREETHREADED */, 0 /* built without CPython's headers */, 0x030F0000};
++static PySlot slots[] = {
++  {109 /* Py_mod_abi */, 2 /* PySlot_STATIC */, 0, &abi},
++  {100 /* Py_mod_name */, 2, 0, 0},
++  {85 /* Py_mod_exec */, 0, 0, (void *)exec_mod},
++  {87 /* Py_mod_gil */, 4 /* PySlot_INTPTR */, 0, 0 /* Py_MOD_GIL_USED: the runtime is single-threaded */},
++  {86 /* Py_mod_multiple_interpreters */, 4, 0, 0 /* NOT_SUPPORTED: one runtime per process */},
++  {0, 0, 0, 0}};
++PySlot *pyx_slots(const char *name) { slots[1].p = (void *)name; return slots; }
++#else
++typedef struct { Py_ssize_t refcnt; void *type, *init; Py_ssize_t index; void *copy; } PyModuleDef_Base;
++typedef struct { int slot; void *value; } PyModuleDef_Slot;
++typedef struct { PyModuleDef_Base base; const char *name, *doc; Py_ssize_t size; PyMethodDef *methods;
++                 PyModuleDef_Slot *slots; void *traverse, *clear, *free; } PyModuleDef;
++PyObject *PyModuleDef_Init(PyModuleDef *);
++static PyModuleDef_Slot slots[] = {{2 /* Py_mod_exec */, exec_mod},
++  {3 /* Py_mod_multiple_interpreters */, 0 /* NOT_SUPPORTED: one runtime per process */}, {0, 0}};
++static PyModuleDef def = {{1, 0, 0, 0, 0}, 0, 0, 0, 0, slots, 0, 0, 0};
++PyObject *pyx_module(const char *name) {
++  /* free-threaded 3.13 and 3.14 still load an .abi3.so and call this, though its PyModuleDef has the
++     GIL build's object header: refuse before CPython reads it (3.15t never loads .abi3.so) */
++  PyObject *fl = PySys_GetObject("abiflags");   /* (borrowed) */
++  const char *f = fl ? PyUnicode_AsUTF8AndSize(fl, 0) : 0;
++  if (f && strchr(f, 't')) {
++    PyErr_Format(PyExc_ImportError, "%s.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source", name);
++    return 0;
++  }
++  PyErr_Clear();
++  def.name = name; return PyModuleDef_Init(&def);
++}
++#endif
+diff --git atools/rt_cpython/ffi.py btools/rt_cpython/ffi.py
+new file mode 100644
+index 0000000..c1a95ec
+--- /dev/null
++++ btools/rt_cpython/ffi.py
+@@ -0,0 +1,173 @@
++"""CPython's version of Pystachy's ffi module, so that a program that declares C functions with
++@extern runs under CPython too (put this directory on PYTHONPATH): ctypes calls the same C
++function, with the checks Pystachy's stubs make. A str goes in as its UTF-8 bytes (const char *,
++NUL-terminated; a NUL in it is a ValueError) and a returned char * comes back as a str (NULL:
++None, or a ValueError for -> str); C integers are range-checked (OverflowError), as Pystachy
++checks them."""
++import ctypes
++import typing
++
++
++class c_int(int):
++    """C's int (32 bits) in an @extern function's signature; an int everywhere else"""
++
++
++class c_uint(int):
++    """C's unsigned int"""
++
++
++class c_int64(int):
++    """int64_t (long long)"""
++
++
++class c_ssize_t(int):
++    """ssize_t / Py_ssize_t"""
++
++
++class c_uint64(int):
++    """uint64_t"""
++
++
++class c_size_t(int):
++    """size_t"""
++
++
++class c_buf(str):
++    """a str's UTF-8 bytes (NULs allowed) for a C function that also takes their length"""
++
++
++class c_void_p(int):
++    """a pointer, as an int (NULL is 0)"""
++
++
++_C = {c_int: ctypes.c_int, c_uint: ctypes.c_uint, c_int64: ctypes.c_int64, c_ssize_t: ctypes.c_ssize_t,
++      c_uint64: ctypes.c_uint64, c_size_t: ctypes.c_size_t, c_void_p: ctypes.c_void_p,
++      c_buf: ctypes.c_char_p, float: ctypes.c_double, str: ctypes.c_char_p, type(None): None, typing.Optional[str]: ctypes.c_char_p}
++
++
++def _check(t, v):
++    if t is str:
++        if "\0" in v:
++            raise ValueError("embedded null character")
++        return v.encode("utf-8", "surrogatepass")
++    if t is c_buf:
++        return v.encode("utf-8", "surrogatepass")
++    if t is float:
++        return float(v)
++    if t is c_int and not -2**31 <= v < 2**31:
++        raise OverflowError("Python int too large to convert to C int")
++    if t in (c_uint, c_uint64, c_size_t) and v < 0:
++        raise OverflowError("can't convert negative int to unsigned")
++    if t is c_uint and v >= 2**32:
++        raise OverflowError("Python int too large to convert to C unsigned int")
++    if t in (c_int64, c_ssize_t, c_uint64, c_size_t, c_void_p) and not -2**63 <= v < 2**63:
++        raise OverflowError("int too big to convert")  # (Pystachy's int is 64-bit: checked where it was made)
++    return v
++
++
++def _s(b):
++    return None if b is None else b.decode("utf-8", "surrogatepass")
++
++
++def extern(lib, symbol=""):
++    def deco(f):
++        hints = typing.get_type_hints(f)
++        ret = hints.pop("return")
++        ts = list(hints.values())
++        for t in ts + [ret]:
++            if t is int:
++                raise TypeError(f"C function {f.__name__}() takes or returns int: say which C integer type")
++        cf = getattr(ctypes.CDLL(lib or None), symbol or f.__name__)
++        cf.argtypes = [_C[t] for t in ts]
++        cf.restype = _C[ret]
++
++        def call(*args):
++            r = cf(*[_check(t, a) for t, a in zip(ts, args)])
++            if ret is str and r is None:
++                raise ValueError("a C function declared -> str returned NULL")
++            if ret is c_void_p:
++                return r or 0  # (ctypes gives None for NULL)
++            if ret in (c_uint64, c_size_t) and r >= 2**63:
++                raise OverflowError("C unsigned result is too large for int")
++            return _s(r) if ret in (str, typing.Optional[str]) else r
++
++        call.__name__ = f.__name__
++        return call
++
++    return deco
++
++
++def string_at(addr, n):
++    return _s(ctypes.string_at(addr, n))
++
++
++# @export: a function of a module that `pystachy ext` compiles into a CPython extension module.
++# Under CPython the module's source runs, and this wrapper makes each call what pyext.c's
++# trampoline makes it: positional arguments only, converted and checked as the extension
++# converts them, results checked against Pystachy's 64-bit int, only the importing thread may
++# call, and an exception leaves as the builtin class Pystachy raises it as (its nearest builtin
++# base for one of the module's own classes) with args rebuilt from their repr, else (str(e),).
++import ast as _ast
++import functools as _functools
++import operator as _operator
++import threading as _threading
++
++
++def _in(name, i, t, x):
++    if t is int:
++        v = _operator.index(x)
++        if not -2**63 <= v < 2**63:
++            raise OverflowError("int too big to convert")
++        return v
++    if t is float:
++        if not (hasattr(type(x), "__float__") or hasattr(type(x), "__index__")):
++            raise TypeError(f"must be real number, not {type(x).__name__}")
++        return float(x)
++    if t is bool:
++        if x is not True and x is not False:
++            raise TypeError(f"{name}() argument {i + 1} must be bool")
++        return x
++    if not isinstance(x, str):
++        raise TypeError("expected str")
++    return x[:]  # (a plain str)
++
++
++def _out(t, r):
++    if t is int and not -2**63 <= r < 2**63:
++        raise OverflowError("integer result does not fit in 64 bits")
++    return float(r) if t is float else r
++
++
++def export(f):
++    hints = _typing_hints(f)
++    ret = hints.pop("return")
++    ts = list(hints.values())
++    owner = _threading.get_ident()
++    name = f.__name__
++
++    @_functools.wraps(f)
++    def call(*args, **kw):
++        if _threading.get_ident() != owner:
++            raise RuntimeError(f"{name}() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module")
++        if kw:
++            raise TypeError(f"{name}() takes no keyword arguments")
++        if len(args) != len(ts):
++            raise TypeError(f"{name}() takes {len(ts)} positional arguments but {len(args)} were given")
++        a = [_in(name, i, t, x) for i, (t, x) in enumerate(zip(ts, args))]
++        try:
++            return _out(ret, f(*a))
++        except BaseException as e:
++            c = type(e)
++            if c.__module__ != "builtins":
++                c = next(k for k in c.__mro__ if k.__module__ == "builtins")
++            try:
++                ea = _ast.literal_eval(repr(e.args))
++            except Exception:
++                ea = (str(e),)
++            raise c(*ea) from None
++
++    return call
++
++
++def _typing_hints(f):
++    return typing.get_type_hints(f)
+diff --git atools/rt_cpython/pyobj.py btools/rt_cpython/pyobj.py
+new file mode 100644
+index 0000000..a62e35c
+--- /dev/null
++++ btools/rt_cpython/pyobj.py
+@@ -0,0 +1,90 @@
++"""CPython's version of Pystachy's lib/pyobj.py: the same API over the running interpreter's own
++objects (put this directory on PYTHONPATH). A Python exception is raised again as the first
++builtin class in its __mro__ that Pystachy has, with the same str(), as lib/pyobj.py does."""
++import builtins
++import importlib
++import operator
++import sys
++
++BUILTIN = ["KeyError", "IndexError", "ZeroDivisionError", "OverflowError", "ValueError", "TypeError",
++           "AttributeError", "ModuleNotFoundError", "ImportError", "NotImplementedError", "RecursionError",
++           "RuntimeError", "FileNotFoundError", "OSError", "StopIteration", "AssertionError", "LookupError",
++           "ArithmeticError", "KeyboardInterrupt", "SystemExit", "Exception"]
++
++
++_CLOSED = object()
++
++
++def _live(o):
++    if o is _CLOSED:
++        raise ValueError("operation on a closed Python object")
++    return o
++
++
++def _guard(f, *a):
++    try:
++        return f(*a)
++    except (SystemExit, KeyboardInterrupt):
++        raise
++    except BaseException as e:
++        k = next((c.__name__ for c in type(e).__mro__ if c.__name__ in BUILTIN), "Exception")
++        k = "RuntimeError" if k == "RecursionError" else k
++        raise getattr(builtins, k)(str(e)) from None
++
++
++class Object:
++    def __init__(self, o):
++        self.o = o
++
++    def close(self):
++        self.o = _CLOSED
++
++    def attr(self, name):
++        return Object(_guard(getattr, _live(self.o), name))
++
++    def call(self, args):
++        f, a = _live(self.o), [_live(x.o) for x in args]
++        sys.stdout.flush()
++        return Object(_guard(f, *a))
++
++    def __getitem__(self, k):
++        o, i = _live(self.o), _live(k.o)
++        return Object(_guard(lambda: o[i]))
++
++    def __len__(self):
++        return _guard(len, _live(self.o))
++
++    def __bool__(self):
++        return _guard(bool, _live(self.o))
++
++    def to_int(self):
++        return _guard(operator.index, _live(self.o))
++
++    def to_float(self):
++        return _guard(float, _live(self.o))
++
++    def __str__(self):
++        return _guard(str, _live(self.o))
++
++    def __repr__(self):
++        return _guard(repr, _live(self.o))
++
++
++def import_module(name):
++    return Object(_guard(importlib.import_module, name))
++
++
++def of_int(v):
++    return Object(v)
++
++
++def of_float(x):
++    return Object(x)
++
++
++def of_str(s):
++    return Object(s)
++
++
++def of_list(xs):
++    return Object([_live(x.o) for x in xs])

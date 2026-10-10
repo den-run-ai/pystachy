@@ -1,0 +1,298 @@
+===== repo-abi 28785
+Pystachy's ABI is easy to call from C, but its runtime assumes it owns the whole process. Compiled functions are `define internal` with the default C calling convention (ccc, never fastcc). Their symbols are not valid C identifiers (@f.name, @f.mod$name, @m.Class.meth, @f.name.N, @init.mod, @main.init). LLVM types: int is i64, float is double, bool is i1, a None return is void, and everything else is a ptr (str, list, dict, tuple, object, optionals, boxed int|None). The only attribute is `nonnull` on self, plus the pys_personality routine when the function has landing pads.
+
+The GC is conservative and non-moving. It ignores any word outside its own page map, so a PyObject* stored in a slot does no harm, but nothing traces it, retains it or finalizes it. Its roots are only the stack between the collector and @main's frame (gc_bottom), the table of pointer-typed globals and runtime statics. I verified three failures with experiments under PYSTACHY_GC_STRESS=1:
+- **Init from a deeper frame:** calling Pystachy code after initializing from a deeper frame crashes with SIGSEGV. A CPython extension always hits this, because PyInit runs under importlib's deep C frames.
+- **Foreign-held objects:** Pystachy objects held only in malloc memory or a PyCapsule are collected and their memory reused, so reads silently return wrong data.
+- **Exceptions in callbacks:** a Pystachy exception raised inside a C callback silently skips the C frames when they have unwind tables, and exits the process when they do not.
+
+The runtime also calls exit()/_exit(), hijacks SIGINT (verified: CPython never sees KeyboardInterrupt), resets LC_CTYPE, keeps its own stdout buffer, and has no locks.
+
+A 12-line prototype in a scratch copy of runtime.c makes a real CPython 3.13 extension pass under GC stress. It adds pys_lib_init (no signals, exceptions on), pys_enter/pys_leave (the outermost entry frame bounds the stack scan), pys_pin/pys_unpin (extra roots), and wrappers that catch every exception and turn it into an error. The repo itself was not touched.
+
+The extern mechanism of runtime mode (`def f(...) -> T: ...`, limited to int, float, str and None, called with every effect letter (FXALL)) can be generalized for Pystachy calling C. It needs an explicit opt-in marker, because today that form compiles to a RuntimeError. The JIT already works with lli --dlopen and -extra-object (verified by calling libpython). For AOT, PYSTACHY_CFLAGS=-l... already reaches the link.
+-- implications
+ * Recommended split: use AOT for C calling Pystachy, which includes a CPython extension (bidirectional when the shim calls the C API). Use both tiers for Pystachy calling C: the JIT through `lli --dlopen`/`-extra-object` at pystachy.py:16670, AOT through llvm-link or the link line at 16646/16653. Do not host the JIT inside CPython: today the JIT is lli exec'd as a separate process (16670-16671), so that would need in-process ORC, the largest change.
+ * Pystachy calling C, ranked by blast radius:
+- **(1) Driver only, about 3 lines:** pass --dlopen/-extra-object/-extra-module to lli at 16670 and -l/objects/.bc to the AOT link at 16646/16653. PYSTACHY_CFLAGS=-lfoo already works for AOT. No invariant is at risk.
+- **(2) Compiler-internal bindings:** add RUNTIME raw-symbol and CALLS entries (as fabs is). That is 2 lines per function, but not user-facing.
+- **(3) User extern declarations, about 20-40 lines:** generalize runtime mode's `def f(...) -> T: ...` at pystachy.py:8015-8021 and 10925-10945, with an explicit opt-in marker, the untold() type set (int, float, str, None; bool rejected or widened to i64), and FXALL effects for free. The risk is the CPython-equivalence contract: CPython returns None for `...`, so a ctypes-based fallback module is needed, as with tools/rt_cpython/_rt.py.
+- **(4) Opaque owned handles (PyObject*), about 30 lines:** generalize files_sweep (runtime.c:1815) into a handle-finalizer queue drained after collect() returns, never during it: Py_DECREF can run Python code that re-enters Pystachy.
+ * C calling Pystachy, ranked by blast radius:
+- **(1) Pystachy main with C callbacks, about 10-20 lines:** the GC is already sound here. It needs external linkage and C names for chosen functions (9778 forces `internal`; names contain '.' and '$') and a catch-all at each callback boundary.
+- **(2) Library mode, about 12 lines in runtime.c plus 40-80 in the compiler and about 10 in the driver:** add pys_lib_init, pys_enter/pys_leave and pys_pin/pys_unpin (prototype verified under GC stress). Emit export wrappers (frameaddress, enter/leave, try_mark, invoke, catch-all landing pad, exc_begin, exc_restore, error out-parameter; bool as i64) instead of @main at 11068-11084. Add -fPIC, -shared and visibility flags at 16653.
+ * Invariants an FFI must protect:
+- **Stack bottom:** set gc_bottom at the outermost foreign entry, or use the thread's stack base.
+- **Foreign-held references:** pin every Pystachy object that foreign memory holds.
+- **Exception boundary:** never let a Pystachy exception cross a foreign frame, and turn exceptions on in library mode (Gen.eh is closed-world today).
+- **No exit() in a host:** library mode must not install the SIGINT handler, call setvbuf or reset the locale, and must flush stdout at the boundary or route print to PySys_WriteStdout. oom() still calls exit(1).
+ * Threads: the runtime has one global heap and no locks. Calls must come from one thread, and the GIL must not be released while Pystachy frames are live on another thread. Under free-threaded CPython the extension should declare Py_mod_gil = Py_MOD_GIL_USED (CPython API name unverified here).
+ * Keep the extern type set scalar plus str (plus an int-typed opaque handle). This matches runtime mode's untold rule, which rtabi.py can check, and maps directly to Wasm imports for the planned Wasm GC backend. FFI declarations must stay out of runtime.py, which must hold no raw pointers.
+ * A str at the boundary is Str* (len at offset 0, bytes at +8, NUL-terminated), so C can read s+8 as a const char* without copying. CPython str and bytes must be copied through pys_str. Pystachy str is UTF-8 bytes and int is a checked 64-bit value, so the boundary must check: PyLong out of range raises OverflowError, and lone surrogates need a policy.
+ * Generated wrappers and a pystachy.h could reuse the descriptor language (desc(), pystachy.py:7559) to marshal lists, dicts and tuples generically, as pys_repr walks values in C. check_runtime.py's call-graph effect inference could derive effect letters for user C helpers instead of FXALL.
+===== repo-docs 26928
+The repo docs leave CPython interop undecided. history.md:73 lists "Standalone mode, or also a CPython-extension mode (open, nothing decided)". Issue #4 §4 calls the AOT extension mode "a recommendation to evaluate, not an already approved implementation decision" and says "Preserve standalone mode". The only concrete design is typed-ir.md §7.4 (lines 1122-1132): a third lowering of eligible IFns in which containers stay Python objects, None is Py_None, refcounts are derived in that lowering only, check/raise become PyErr_* plus an error return, and the boundary checks or rejects 64-bit int and byte-indexed str.
+
+Hard invariants:
+- the CPython-or-compile-error contract;
+- the three-stage byte-identical fixed point, which also covers runtime.py's IR;
+- the Python-free stage;
+- irsame (byte-identical IR for refactors), with the pay-for-use precedent that a feature leaves programs that don't use it byte-identical;
+- the UBSan, gc-stress, check-ir, runtime-table and rt-abi steps.
+
+Soft preferences: a runtime that needs only libc, no second toolchain (Rust, Zig and C++ were rejected for that reason), runtime.py that CPython can still run (inline LLVM IR was rejected for that reason), and a raw-pointer-free _rt for Wasm GC.
+
+Today's only extern mechanism is runtime-mode `def pys_x(...) -> T: ...`, limited to runtime.c's pys_* symbols. It has no bool in signatures, its untold signatures are limited to int/float/str/None, and rtabi and check_runtime verify it. Programs cannot declare externs.
+
+Runtime facts that block bidirectional use:
+- GC roots run from the collector's frame up to @main's frame, plus a registered globals table, so the foreign heap is never scanned.
+- pys_init installs SIGINT/SIGPIPE handlers and stdout buffering.
+- Errors call exit().
+- Forced unwinding passes over frames that have no pys_personality, so it would skip CPython's frames without cleanup.
+- State is single-threaded and closed-world.
+- `__del__` never runs, but the sweep already closes unreachable files, which is a precedent for releasing foreign handles.
+- The JIT is a separate `lli` process reached by exec.
+
+The typed IR cannot host a third lowering yet: about 58k raw ops still hold LLVM text, and step 16 has not started. It also needs recoverable elaboration. Its premise "the subset has no exceptions" has been stale since #22, although the compiler itself still uses no try.
+
+Two probes:
+1. LLVM 18's `lli --dlopen=libpython3.13.so` ran embedded CPython 3.13.16 in-process, so embedding works under the JIT tier.
+2. clang alone (no Python.h) built an extension module from hand-written LLVM IR, using only abi3-style symbols. CPython imported it, and checked-int overflow mapped onto OverflowError and TypeError.
+
+Net: the docs point to an AOT extension lowering and keep the standalone tier unchanged. Nothing in them covers an in-process JIT, and that would need a new toolchain.
+-- implications
+ * Design every FFI feature as pay-for-use: programs that don't use it must keep byte-identical IR. That keeps irsame, the three-stage fixed point (runtime.py included) and the existing corpus untouched, as #22's exceptions and #19's runtime.py did.
+ * Keep the CPython oracle. Any FFI declaration a program uses must also run under CPython. Follow the _rt precedent: a module Pystachy lowers to direct calls, plus a CPython twin (e.g. ctypes-backed) that tools like rtcheck can test against. A bare `def f(...) -> T: ...` in user code would run as returning None under CPython, which breaks the contract.
+ * Reuse the existing binding tables instead of a new mechanism. RUNTIME ('result:params|effects|symbol') and CALLS already describe foreign C symbols, and rtabi and check_runtime already verify them. Give user externs conservative effects (all letters but N) and the same rules: no bool in signatures, and only int, float, str or None where nothing else can check the signature.
+ * Never let raw pointers into runtime.py or _rt, so it still lowers to Wasm GC. Confine externs and PyObject handles to program code or a separate shim, with only int/float (and str by copy) as portable boundary types.
+ * For CPython → Pystachy (AOT extension), the documented direction is a third typed-IR lowering (typed-ir §7.4): Py_None, refcounts from liveness, PyErr_* plus error returns via the error flag, and int and str boundary checks. It is blocked on typed-IR step 16 and on recoverable elaboration. Since #22, recoverable elaboration could use the subset's own try/raise inside the compiler. Note that this changes the compiler's own IR: it is a re-baselining step, not a byte-identical one.
+ * A lower-impact first step for AOT extension output is possible with today's toolchain: the probe shows clang alone can emit an abi3-symbol extension .so from LLVM IR, with no Python.h and no Python at build time. So the compiler build stays Python-free, and only the tests of the mode need python3 (a separate verify step).
+ * A wrapper-style extension that links runtime.c into the .so needs:
+- a GC root window set at each entry;
+- a root table for Pystachy objects referenced from CPython;
+- a catch-all landing pad at every exported entry, converting to PyErr, because forced unwinding would otherwise skip CPython frames;
+- no exit() on errors;
+- no pys_init signal or stdout takeover inside a host interpreter.
+ * Bidirectional calls (Pystachy → CPython → Pystachy) need four things the docs don't have yet:
+- functions as values (M3) for callbacks;
+- a refcount release hook at sweep, modeled on how files are closed at collection, since __del__ never runs;
+- a policy for cross-runtime cycles;
+- a mapping of arbitrary Python exceptions into the closed exception-class world.
+ * On JIT vs AOT, the docs only ever say AOT for CPython interop (issue #4 §4, typed-ir §7.4). The JIT tier can still reach C externs (-extra-object/--dlopen) and even an embedded libpython (lli --dlopen, verified), at no toolchain cost. An in-process JIT inside CPython would need an LLVM binding in the host, a new dependency against the documented no-new-toolchain rationale. A decorator front end is best done as an AOT compile with a cached .so.
+ * Effects: every foreign or PyObject op is U, R, A and I, so the listget and dictfuse optimizations stop at it and calls inside a try become invokes. FFI-heavy regions lose the typed-IR optimizations unless effect annotations are trusted and checked.
+===== web-capi 24660
+As of 2026-10-09, CPython 3.15.0 is out: PEP 790 lists 3.15.0 final for 2026-10-09 and the v3.15.0 tag exists. It brings the first stable ABI that free-threaded builds can load. PEP 803 adds "abi3t": PyObject is opaque, and Py_INCREF, Py_DECREF, Py_TYPE, Py_SIZE, Py_IS_TYPE and Py_None all become calls to exported functions. A module built with Py_TARGET_ABI3T=0x030F0000 is named `.abi3t.so` and loads on both GIL and free-threaded 3.15+. abi3t requires the PEP 793 entry point (`PyModExport_<name>` returning a PEP 820 `PySlot` array) and a mandatory `Py_mod_abi` slot. Other C API changes:
+- Limited 3.14: PyLong_AsInt64 and PyLong_FromInt64.
+- Limited 3.15: PEP 757 export, PyCriticalSection, and the PEP 788 thread-attach calls.
+- Not in the Limited API: PyBytesWriter, PyUnicodeWriter, PyTuple_FromArray and PEP 741 PyInitConfig.
+
+Two efforts have stalled. PEP 809 (abi2026 with an interfaces table) is still a Draft with no decision. HPy declared itself unmaintained in September 2026 and points to the draft PyNI PEP: handles, a context argument and a function table.
+
+For a compiler that emits LLVM IR: every operation needed is an exported Stable-ABI function. The Stable ABI docs say they are usable "in languages that don't use the C preprocessor". The 3.15 abi3t headers themselves compile Py_INCREF to `call @_Py_IncRef`, Py_None to `call @Py_GetConstantBorrowed(0)`, and PyLong_Check to `Py_TYPE`+`PyType_GetFlags`. So generated IR should call the C API directly; no clang shim is needed for abi3/abi3t.
+
+I checked this end to end:
+- A pure-IR module with no headers, no shim and no libpython link, built with `clang -shared`, imports and works on both CPython 3.15.0b4 and 3.15.0b4t. It covers checked-int add, OverflowError, and calling back into Python through vectorcall with Python exceptions passing through.
+- `Py_mod_gil` USED re-enables the GIL on 3.15t with a RuntimeWarning.
+- Leaving out `Py_mod_abi` is a SystemError.
+- Embedding works from the JIT tier with `lli -dlopen=libpython3.X.so`, tested on 3.13 and 3.15t.
+
+A C shim only pays off for a version-specific (non-stable) build that wants inlined refcount fast paths, or for Windows. Recommendation from the C API side: an AOT `.abi3t.so` for CPython→Pystachy. For Pystachy→CPython, both tiers can call libpython.
+-- implications
+ * Use AOT for CPython->Pystachy, i.e. extension modules. CPython only imports shared objects, and `pystachy run` execs lli as a separate process (pystachy.py:16670), so the JIT cannot host an extension. Minimal change: reuse the existing llvm-link of program plus runtime bitcode (pystachy.py:16646-16653), then run `clang -shared -fPIC` to produce `<mod>.abi3t.so` instead of an executable. Do not link libpython.
+ * Target abi3t 3.15 (abi_version 0x030F0000, flags STABLE|GIL|FREETHREADED). One binary then covers GIL and free-threaded CPython 3.15+, wheel tag cp315-abi3.abi3t. Optionally add abi3 for 3.12-3.14 later, through PyInit_ and PyModuleDef with the version-specific header, which needs a C shim or careful IR.
+ * Generated IR should call the Stable ABI directly, with no C shim. Every macro or static inline has an exported equivalent, and the abi3t headers compile to exactly those calls:
+- Py_INCREF/DECREF -> Py_IncRef/Py_DecRef (NULL-tolerant) or _Py_IncRef/_Py_DecRef (abi_only).
+- None/True/False -> Py_GetConstantBorrowed(0/2/1).
+- Exact type test -> Py_IS_TYPE(o,@PyLong_Type), or icmp on Py_TYPE(o).
+- Subclass test -> PyType_GetFlags(Py_TYPE(o)) & (1<<24 long, 25 list, 26 tuple, 27 bytes, 28 str, 29 dict).
+- Critical section -> alloca 16B plus PyCriticalSection_Begin/End.
+This needs no Python headers and no Python on PATH at build time, which fits the CI rule.
+ * Keep a checked-in declarations table, comparable to RUNTIME, generated from Misc/stable_abi.toml. Add a CI check that `nm -D --undefined-only` of the .so is a subset of the Stable ABI for the target version.
+ * Emit module data in IR: PySlot {i16,i16,i32,ptr}, PyABIInfo {i8,i8,i16,i32,i32} and PyMethodDef {ptr,ptr,i32,ptr}, with the 3.15 slot IDs (Py_mod_abi 109, Py_mod_name 100, Py_mod_methods 103 with the STATIC flag, Py_mod_gil 87, Py_mod_multiple_interpreters 86).
+ * Declare Py_mod_gil=Py_MOD_GIL_USED and Py_mod_multiple_interpreters=NOT_SUPPORTED. The runtime's GC and heap are process-global and single-threaded (runtime.c:56,162). On 3.15t the GIL is then re-enabled with a RuntimeWarning, which is correct and the least invasive choice. GIL-free support would need a thread-safe runtime.
+ * GC roots: today @main passes its frame to pys_init as the stack bottom (runtime.c:56,1839,162). In extension mode there is no @main. Every exported entry trampoline must record the stack bottom at the outermost Python->Pystachy entry, and pys_init must run lazily, for example from Py_mod_exec. Re-entrant callbacks (Py->Pys->Py->Pys) need a nesting counter.
+ * Exceptions must not unwind through CPython frames. Each exported function needs a landing pad under pys_personality (runtime.c:2369; forced unwind at runtime.c:2319) that converts a Pystachy exception to PyErr_SetString(PyExc_*) and returns NULL. A NULL from any C API call becomes PyErr_GetRaisedException (3.12) and is re-raised as a Pystachy exception. PyO3 handles panics the same way.
+ * Boundary conversions, which follow typed-ir.md §7.4's 'boundary checks':
+- int: PyLong_AsInt64/PyLong_FromInt64 (Limited 3.14), which raises the same OverflowError as Pystachy's checked int.
+- str in: PyUnicode_AsUTF8AndSize (cached UTF-8; fails on surrogates; byte length differs from CPython len, so reject or convert).
+- str out: PyUnicode_DecodeUTF8 or PyUnicode_FromStringAndSize.
+- bytes: PyBytes_FromStringAndSize (PyBytesWriter is not limited).
+- Containers: PyList_New/SetItem, PyTuple_New/SetItem, PyDict_New/SetItem, plus PyList_GetItemRef and PyDict_GetItemRef rather than borrowed getters.
+- Calls: PyObject_Vectorcall with PY_VECTORCALL_ARGUMENTS_OFFSET. Avoid variadic Py_BuildValue and PyArg_ParseTuple.
+ * Object lifetimes in both directions: PyObject* stored in the Pystachy heap is never Py_DecRef'd, because __del__ never runs. Either forbid storing PyObject* in Pystachy objects, copying at the boundary, or add a sweep hook for PyObject boxes. To pass Pystachy objects to Python, use PyCapsule (Stable ABI since 3.2) plus a GC root table, with a capsule destructor that unregisters the root. This avoids defining heap types (PyType_FromSlots) in the first iteration.
+ * Keep all CPython glue out of runtime.py, because the WasmGC backend forbids raw pointers there. Put it in the compiler's third lowering (typed-ir.md:1122-1132), or in a C file linked only in extension mode.
+ * Pystachy->CPython (embedding) works in both tiers: JIT via `lli -dlopen=libpython3.X.so`, verified on 3.13 and 3.15t, and AOT via -lpython3.X. Only Py_InitializeEx/Py_FinalizeEx are stable; PyInitConfig is not. Treat embedding as version-specific and secondary.
+ * Portability of direct IR: C `int` is i32 and Py_ssize_t is i64 on 64-bit. PyType_GetFlags returns `unsigned long`, which is i64 on Linux and macOS but i32 on Windows. Windows also needs python3.dll and __imp_ data imports. Signext/zeroext attributes are target-dependent. Direct IR is fine for Linux x86-64; other targets need per-target declarations or a clang-compiled shim.
+===== web-peers 28031
+I surveyed 18 peers from primary sources: docs, changelogs and source code at their Oct 2026 HEADs. They share one pattern.
+
+**Calling C.** The most portable approach is a hand-written typed stub per function. Examples are Codon `from C import f(int)->float`, Julia `@ccall`, LPython `@ccall`, and Shed Skin's ".py type model". Header importers all carry a libclang- or Aro-sized dependency: Zig translate-c (moved out of the language into the build system; @cImport deprecated in 0.16 and reported removed in 0.17), Swift ClangImporter, and Rust bindgen.
+
+**Calling CPython.** Compilers that emit LLVM or C call exported stable-ABI functions such as `Py_IncRef`. They load libpython with dlopen at run time (`CODON_PYTHON`, `MOJO_PYTHON_LIBRARY`, pythonnet `Runtime.PythonDLL`), so it works under both their JIT and their AOT build.
+
+**Being called from CPython.** This is almost always an AOT extension module: `codon -pyext`, Mojo `PythonModuleBuilder`, mypyc, Cython, Shed Skin `-e`, SPy `py-cffi`. "JIT" decorators are mostly a compile on first call into a cached .so (LPython `@lpython`, `mojo.importer`). A real in-process JIT (`codon.jit`, Numba) requires the compiler to run as a library inside CPython.
+
+**Lifetimes across two memory managers** use two mirror-image mechanisms:
+- **Native objects held by Python:** a handle table rooted in the native GC, freed in `tp_dealloc` (PythonCall `PYJLVALUES`, Shed Skin `__ss_proxy`, pythonnet GCHandle, Go `cgo.Handle`).
+- **Python objects held by native code:** releases are deferred and run only while the thread is attached to the interpreter (holds the GIL). Examples: PyO3's reference pool, pythonnet's `Finalizer` queue, the PythonCall GC queue, Codon `pyobj.__del__`.
+
+**Exceptions** never unwind across the boundary. They are caught at every trampoline and turned into `PyErr` plus NULL (PyO3 `catch_unwind` → `PanicException`, Shed Skin `catch(Exception*)`). Rust and Swift abort, or the behaviour is undefined, when an unwind crosses a C frame.
+
+**Closest peers.** Codon is architecturally closest to Pystachy: LLVM output, JIT plus AOT, its own conservative GC (Boehm), C FFI and Python interop in both directions, Py* functions resolved with dlsym. Shed Skin is closest in language and runtime: an implicitly static subset, Boehm GC, 64-bit int, and an extension-module mode with a proxy-dict lifetime bridge. LPython is closest on the "same file must run under CPython" contract: its `@ccall` falls back to ctypes under CPython.
+
+**Verified locally:** LLVM 18 `lli --dlopen=libpython3.12.so.1` runs IR that embeds CPython. Pystachy's JIT tier could therefore call into CPython with one extra flag.
+-- implications
+ * Twelve practices carry over from the peers. The first ten are below; the last two items in this list cover handle checks and JIT versus AOT.
+ * 1. Make the foreign declaration valid Python that CPython can run. Generalize the existing runtime-mode stub (pystachy.py:8015-8020) to user code, for example a decorated `def f(x: int) -> float: ...` that names a library. Ship a small pure-Python shim that binds the same stub through ctypes when the file runs under CPython. This is LPython's @ccall pattern (lpython.py:337-486). It keeps the 'prints what CPython prints' oracle and the self-hosting fixed point, because the compiler itself never needs the shim.
+ * 2. Keep the C ABI narrow at first. Allow int (i64), float (double), bytes/str as a pointer plus length, a pointer-sized opaque handle, and bool passed as int (already enforced at pystachy.py:10931). Do not pass or return structs by value; Codon and Numba both warn against or forbid it. Leave header import (Zig translate-c, Swift ClangImporter, bindgen) to optional offline tooling, never the compiler. Zig itself has moved translate-c out of the language.
+ * 3. Never let a Pystachy exception unwind across a foreign frame. _Unwind_ForcedUnwind (runtime.c:2319) would run through CPython or C frames that have no cleanup code. Every exported entry and every C callback needs a catching trampoline that converts the exception to PyErr_* plus a NULL/-1 return, as PyO3, Shed Skin and Codon -pyext do. In the other direction, check every C-API result for NULL/-1 and re-raise it with PyErr_GetRaisedException, not the deprecated PyErr_Fetch that Codon still uses. Wrap the original exception object (pythonnet 3.0) rather than flattening it to a message.
+ * 4. Encode reference ownership (new, borrowed, stolen) in the RUNTIME signature table. This is the 'new-or-borrowed column' of docs/typed-ir.md §7.4, the same idea as pythonnet NewReference/BorrowedReference/StolenReference, PyO3 Bound/Borrowed/Py, and Mojo from_owned/from_borrowed/steal_data. Derive the incref/decref calls from liveness in the lowering.
+ * 5. Python objects held by Pystachy code need explicit release, because __del__ never runs and the GC has no finalizers. One option is scoped lifetimes: decref at last use or at the end of a with-block. The other is a new 'foreign handle' object kind whose sweep only queues a Py_DecRef, which is then drained while attached to the interpreter. That is the PyO3 reference pool, pythonnet Finalizer and PythonCall GC.enqueue pattern. Codon instead relies on Boehm finalizers, which Pystachy's GC lacks.
+ * 6. Pystachy objects held by Python must be registered in a root table and removed in tp_dealloc. Python's heap is invisible to the conservative scanner, so these objects would otherwise be freed while still in use. This is the PythonCall PYJLVALUES, Shed Skin __ss_proxy, pythonnet GCHandle and Go cgo.Handle pattern. runtime.c:163 already scans a gc_roots table; it needs to become growable with a free list. The GC does not move objects, so pinning costs nothing.
+ * 7. In extension or callback mode, set the conservative stack bound at the outermost entry, or to the thread's stack base, not at @main's frame (runtime.c:104, 1839). The collector is single-threaded, so mark extension modules Py_mod_gil = Py_MOD_GIL_USED. Never release the GIL while Pystachy code runs, and reject calls from other threads.
+ * 8. Copy built-in containers at the boundary and proxy only opaque objects (Shed Skin, the Codon JIT, Pyodide, pythonnet 3.0's explicit codecs). Make every conversion checked: PyLong_AsLongLong gives OverflowError, matching Pystachy's checked int. Python str to UTF-8 is cheap, but Pystachy's len counts bytes, so non-ASCII text must be rejected or flagged at the boundary (typed-ir §7.4). Codon dropped its UTF-8-bytes str in 0.20 for this compatibility reason.
+ * 9. Call only exported stable-ABI functions, resolved by symbol, never C macros or struct layouts; Codon does this with dlsym. An LLVM-emitting compiler cannot use Python.h macros anyway. For extension output targeting 3.15+, emit PEP 793 PyModExport_<name> returning a constant slot array, and aim for abi3t (PEP 803) so one .so serves both GIL and free-threaded builds. Expect a Limited-API cost of roughly 5-20% on object-heavy code (Cython's measurement).
+ * 10. Load libpython lazily so standalone binaries stay free of it (SPy's plan; Codon CODON_PYTHON; pythonnet PythonDLL). JIT: add `--dlopen=<libpython or C lib>` to the lli command line at pystachy.py:16670 (verified working with lli-18). AOT: dlopen at first use, or link with -l. Extension mode resolves Py* from the host process (Codon's dlopen("")).
+ * 11. Add a debug check that counts live handles and pending decrefs at exit (nanobind's leak report, cgocheck, pyo3_disable_reference_pool). Run it in `make verify`.
+ * 12. JIT versus AOT, from the peers: Pystachy calling CPython (embedding) works in both tiers today, the JIT via --dlopen and AOT via dlopen. CPython calling Pystachy should be AOT only: an extension module, optionally compiled on import and cached as LPython @lpython and mojo.importer do. A real in-process JIT inside CPython needs the compiler and ORC as a library loaded into Python, as codon.jit and Numba have. That does not fit Pystachy's separate-process lli design or its 'minimal impact' goal. For WasmGC later, model foreign objects as opaque handle types (SPy JsRef, Pyodide JsProxy, externref), never raw pointers in runtime.py.
+===== web-llvm 22104
+LLVM-side verdict: build an AOT-first FFI that both tiers share. Limit the surface to i64, double and ptr. Push everything else (structs, varargs, CPython's static-inline API) into C shims that clang compiles to bitcode and llvm-link joins, the same path runtime.c already takes (pystachy.py:16642). This works because LLVM IR does not lower the C ABI. Even i32 arguments need signext/zeroext on riscv64 and ppc64le (tested here). LLVM's new ABI library (llvm/lib/ABI) has no C API: LLVM 23 ships only BPF and SysV x86-64, behind -fexperimental-abi-lowering. So Pystachy, which emits textual IR, cannot use it.
+
+JIT tier: lli's -dlopen (like -load) calls dlopen with RTLD_GLOBAL, and LLJIT links process symbols by default. So adding one flag to the lli command (pystachy.py:16670) lets JIT-run programs call C libraries, including libpython3.13.so. Tested: CPython embedded under lli-18 (orc, orc-lazy, mcjit), and calls in both directions between Python and JIT-compiled code.
+
+CPython calling into Pystachy: tested end to end with a .so built from the program, the runtime bitcode and an export wrapper. Steps: internalize everything except the exports, then clang -fPIC -shared. Result: 2 exported symbols, 15.7 KB of text, NEEDED libgcc_s. An OverflowError raised by the runtime is caught by a catch-everything landing pad at the export and returned as status -1.
+
+An in-process JIT inside CPython also works, through ctypes plus libLLVM's ORC C API, or through llvmlite 0.50 (LLVM 22) with JITLink. But it needs libgcc_s loaded RTLD_GLOBAL, a 117 MiB libLLVM or a 56 MiB wheel, and an ORC C API whose header says it is not stable. Keep it optional and later.
+
+Exceptions: a test that unwound through CPython's eval frames leaked one reference per crossing and gave RecursionError after about 1000 crossings. So every export and every callback must catch everything and turn it into a status code (Numba's retcode convention; Rust 1.81 aborts instead). Pystachy's uncaught path calls exit(), which would kill the interpreter.
+
+Recommendation: both tiers for Pystachy calling C/CPython; AOT only for CPython calling Pystachy (extension modules); embed the runtime in each extension.
+-- implications
+ * Recommend BOTH tiers for Pystachy calling C, sharing one FFI surface. A foreign declaration lowers to the same IR `declare` in both tiers. The JIT tier resolves it with lli -dlopen=<lib>, appended to the command at pystachy.py:16670; the AOT tier adds -l<lib> to the clang link at pystachy.py:16653. Nothing else in either tier changes.
+ * Restrict foreign signatures to i64 (int), double (float) and ptr (opaque handle, or a bytes/str data pointer the GC pins). Reject anything else at compile time with file:line. That form needs no ABI attributes on any 64-bit target. Also reject C `long` and narrow ints in declarations, since they need signext/zeroext and change size by target.
+ * For structs, unions, varargs, callbacks with C signatures and CPython's static-inline API, generate a small C shim. Compile it with `clang -O2 -S -emit-llvm -fexceptions` and llvm-link it like runtime.c (pystachy.py:16642), so clang's ABIInfo does the lowering. Do not wait for llvm/lib/ABI: it has no C API, and LLVM 23 has only x86-64 and BPF, behind an experimental flag.
+ * CPython calling Pystachy: AOT only, as the §7.4 extension lowering. Emit PyInit_<mod> (later PyModExport_<mod>, PEP 793, Python 3.15+), llvm-link with the runtime --only-needed, internalize everything but the exports, then clang -fPIC -shared. Tested: 2 exports, about 16 KB of text, NEEDED libgcc_s. Embed the runtime in each extension (hidden, so it cannot be interposed). If several modules must share a heap, use one shared library per package, the mypyc/Cython model, never a system-wide libpystachy.
+ * Pystachy calling CPython works in both tiers when Pystachy is the host. JIT: lli -dlopen=libpython3.X.so (tested). AOT: link `python3-config --embed --ldflags`. Call only exported functions (Py_IncRef/Py_DecRef/Py_GetConstantBorrowed) or go through the clang shim. Never re-implement Py_INCREF in emitted IR.
+ * Do not make an in-process JIT inside CPython the main path. It works (tested with ctypes plus libLLVM 18, and with llvmlite 0.50 on JITLink), but costs a 117 MiB libLLVM or a 56 MiB wheel on LLVM 22, needs libgcc_s loaded RTLD_GLOBAL, and depends on an ORC C API declared unstable. If added later, use JITLink (not RTDyld+PIC, which failed on DW.ref.pys_personality) and load libgcc_s first.
+ * Exceptions: give every exported entry point and every callback trampoline handed to C a catch-everything landing pad (personality pys_personality). It stores the exception, then either returns a status code (the Numba retcode pattern) or calls PyErr_SetString and returns NULL. The Pystachy-side caller re-raises after the C call returns. Mark foreign declarations and the wrappers nounwind, so calls into C need no invoke and no landing pad, and nothing ever unwinds through C or CPython frames (tested: that leaks references and exhausts the recursion counter).
+ * Runtime changes the FFI forces: (1) an embedded init variant without the SIGINT/SIGPIPE/stdout changes and without exit(); (2) pys_enter/pys_leave at exported entries, so the outermost entry's frame becomes the GC stack bottom; (3) a handle/pin table for Pystachy objects held by C or Python; (4) Py_MOD_GIL_USED, and a lock or rejection on free-threaded builds; (5) keep TLS out of runtime.c, or build the JIT-tier runtime object with -femulated-tls, because native TLS in an -extra-object is silently wrong under lli-18 without an ORC runtime.
+ * Upgrading past LLVM 23 means emitting float constants as shortest round-trip decimal, which every LLVM version accepts, instead of the deprecated 0x bit pattern (pystachy.py:6006-6021).
+===== web-gc 26381
+Recommendation from the GC side: build AOT first, as a CPython extension .so made by `pystachy build`. The runtime.c machinery below can later serve a JIT-hosted embedding (lli --dlopen libpython). It cannot serve Python→Pystachy in-process, because `pystachy run` execs a separate lli process.
+
+The systems surveyed each have their own GC beside CPython's refcounts: PyPy rawrefcount/HPy, GraalPy, pythonnet, JPype, PythonCall/juliacall, Pyodide (PEP 818), Codon, Mojo, and Boehm GC users. They converge on four pieces, which map onto Pystachy as follows.
+
+(a) Pystachy→Python references get an ownership class from the compiler:
+- **Borrowed:** call arguments, with no refcount operations (HPy-handle-like).
+- **Owned local:** Py_DECREF at last use, and released on a raise through the existing unwind-action list.
+- **Escaped:** incref plus a GC-tracked atomic box. A post-mark sweep cloned from files_sweep queues the dead boxes' PyObject*s, and a safe point drains the queue with the thread attached (PyPy, pythonnet and PythonCall all defer the decref this way). close() gives prompt release.
+
+(b) Python→Pystachy uses a root-scanned pin table. Each heap-type wrapper (tp_dealloc unpins) or PyCapsule (its destructor unpins) gets one slot. An address→wrapper side map keeps identity, since the GC is non-moving.
+
+(c) Cross-heap cycles are documented as leaks, as PEP 818, JPype and nanobind-on-PyPy all do. Offer weak refs and close(), and count pins and boxes in PYSTACHY_GC=stats. Cross-component tracing (GraalPy, V8/Blink) is deferred.
+
+(d)/(e) The single @main gc_bottom is replaced by per-thread records {bottom of the outermost entry, park top, depth}. Every C-API call that can run Python code "parks": it spills the callee-saved registers, then records sp in a noinline helper (the Boehm GC_do_blocking pattern). The collector scans its own [frame, bottom] plus each parked thread's [top, bottom].
+
+Two experiments confirmed the design:
+- Without spill-then-record, a pointer kept in a callee-saved register across a callout was missed 200/200 times; with it, it was found 200/200.
+- _Unwind_ForcedUnwind walks straight through CPython frames to _start, so every boundary must catch Pystachy exceptions and convert them to and from PyErr.
+
+On GIL builds the GIL serializes Pystachy code; the exception state becomes per-thread. On free-threaded builds, v1 leaves Py_mod_gil unset and refuses import if PYTHON_GIL=0 kept the GIL off. v2 adds a PyMutex world lock released at park, then declares Py_MOD_GIL_NOT_USED. There is one world per process, declared with Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED.
+
+Estimated runtime.c changes: about 150-200 lines for the GC core, about 230-300 with extension-mode init and the free-threading lock.
+-- implications
+ * Tier choice (GC view): AOT first, as a CPython extension .so. Python→Pystachy needs Pystachy code in CPython's process, and the JIT tier is a separate lli process (pystachy.py:16655-16670). The same runtime.c additions also serve a later Pystachy-hosted embedding of libpython, AOT or via `lli --dlopen`. Recommend JIT only for that direction, as a development loop.
+ * Keep runtime.c 'self-contained (only the C library)' (runtime.c:35). Put everything that needs Python.h in a separate pyext.c, linked only in extension mode. runtime.c receives Py_DecRef and the lock and attach hooks as function pointers set by the module's exec slot, so standalone programs are unchanged.
+ * Stack bottom (e): replace the single gc_bottom with a thread record. Planned names: `typedef struct Th { char *bottom, *top; I depth; Th *next; /* xr, unw, nunw, cunw */ } Th; static _Thread_local Th *th; static Th *ths;`.
+- pys_enter(frame address) sets bottom only when depth goes 0→1, and saves and clears top on nested entry (Boehm's stacksect.prev pattern).
+- pys_leave restores the saved top.
+- park/unpark around every C-API call that may run Python code: spill with __builtin_unwind_init, then a noinline helper records __builtin_frame_address(0) as top. Verified by experiment.
+- mark_roots scans [collector frame, th->bottom], plus [t->top, t->bottom] and the exception state of every other linked thread.
+- Standalone @main becomes the first pys_enter.
+- Never let a nested entry overwrite the outermost bottom.
+Estimate: about 50-70 lines.
+ * Make each boundary an exception firewall. The generated entry trampoline is a Pystachy function whose call to the body is an invoke with a catch-all pad: pys_exc_begin(ue, mark), set PyErr, return NULL. It also saves and restores xr.handled. Callout glue turns NULL plus PyErr_Occurred into a Pystachy Exc raised in the calling segment. Without this, the verified forced unwind would jump over CPython frames. In extension mode exceptions are always on (pys_eh_on), and oom raises MemoryError instead of exit().
+ * Pystachy→Python lifetimes (a): the compiler classifies each PyObject* by escape.
+- Borrowed (arguments): no refcount operations.
+- Owned local: Py_DECREF at last use; on a raise, released through the existing unwind-action list (runtime.c:2263-2288), the same way with-files are closed.
+- Escaped (stored into a field, container, closure or global): Py_INCREF plus an atomic GC box {PyObject *p}, recorded in a malloc'd prefs[] table that is not scanned, like files[]. A post-mark prefs_sweep, cloned from files_sweep, moves dead boxes' pointers to a decref queue. pys_py_drain empties the queue at boundary crossings (and optionally after a collection) while the thread is attached; it never runs inside collect(), because Py_DECREF can run Python code and re-enter. close() releases a box at once.
+Estimate: about 40-50 lines. Count each live box as allocation weight so that Python memory held by small boxes still triggers collections (compare pythonnet's threshold of 200 and GraalPy's MaxNativeMemory).
+ * Document a deviation: a Python object referenced from a Pystachy heap object is released at a Pystachy collection or at close(), not when CPython's refcount would reach zero. Python-side __del__ output and weakref callbacks can therefore move or never happen, and conservative false retention can delay them further. This extends the existing 'no __del__' deviation.
+ * Python→Pystachy lifetimes (b):
+- A pin table: a malloc'd array with a free-slot chain, scanned in mark_roots (one scan line, like unw), with pys_pin, pys_unpin and pys_pinned.
+- Exactly one wrapper per object, found through an address→wrapper hash table. Non-moving addresses are stable, and the table preserves `is` identity. With one wrapper per object, CPython's refcount on the wrapper is the only count needed.
+- Wrapper heap types are built with PyType_FromSpec, negative basicsize and PyObject_GetTypeData, so they are abi3- and abi3t-ready; tp_dealloc calls unpin.
+- PyCapsule with a destructor for opaque handles and callback context.
+- On free-threaded builds, tp_dealloc may run on any thread: push the index to a locked queue, or take the world lock.
+Estimate: about 50 lines.
+ * Cycles (c): document cross-heap cycles as leaks, as PEP 818, JPype and nanobind-on-PyPy do. Provide a weak PyRef (PyWeakref_GetRef, 3.13+) for back-references, close() on wrappers so later use raises, and pin and box counts in PYSTACHY_GC=stats, so tests can assert no leaks the way Pyodide's suite requires proxies to be destroyed. A whole-program lint can flag exported classes that transitively hold PyRef fields. Defer GraalPy- or V8-style cross-heap cycle tracing (estimated +150-300 lines).
+ * Threads (d):
+- GIL builds: every Pystachy execution holds an attached thread state, and the runtime never releases the GIL except at a park.
+- Make xr and unw per-thread in extension mode (about 20 lines).
+- Declare Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED: one world per process.
+- Free-threaded v1: leave Py_mod_gil unset (import re-enables the GIL), and in the exec slot raise ImportError if sys._is_gil_enabled() is False because PYTHON_GIL=0 or -Xgil=0 is set.
+- Free-threaded v2: a PyMutex world lock, taken on depth 0→1 and at unpark, released at park and on depth→0; then declare Py_MOD_GIL_NOT_USED (about 20-30 lines).
+- Foreign threads come in through PyThreadState_Ensure (3.15) or PyGILState_Ensure; the per-entry bottom handles them.
+ * Shutdown: from the module's free hook or an atexit function, while the interpreter is alive, drain the queue and Py_DECREF every live box, marking it closed. After Py_IsFinalizing(), never decref, as pythonnet and PythonCall do (about 10-15 lines).
+ * Total runtime.c estimate: GC and lifetime core about 150-200 lines; about 230-300 with extension-mode init (no argv, signals or stdout setup, no exit) and the free-threading lock. A minimum of CPython 3.12 is required for PyObject_GetTypeData; 3.13 for PyMutex, Py_IsFinalizing and PyWeakref_GetRef.
+ * Several Pystachy extensions loaded in one process each get their own runtime and world. Build with -fvisibility=hidden so their pys_* symbols and pys_personality do not interpose. Objects passed between two Pystachy modules go through Python wrappers, so the firewall rule also keeps PYS_EXC exceptions from crossing modules.
+===== spike-py-to-pys 20435
+Yes: code that Pystachy compiles AOT can be called in-process from CPython 3.13 with small changes. The C extension was built as one whole-program LLVM module (program, boundary, C glue and runtime), with everything internalized except PyInit (one exported symbol, 70 KB abi3 .so). Calls cost about 24 ns, against about 250 ns through ctypes. fib(25) takes 0.29–0.34 ms, against 6.4 ms in CPython (about 20x faster).
+
+The unmodified pipeline cannot be used as a library:
+- User functions are `internal` and `llvm-link --only-needed` drops them.
+- `pys_init` takes @main's frame as the fixed bottom of the stack scan. Initialising from a deeper stack and calling from a shallower one segfaults under PYSTACHY_GC_STRESS=1.
+- A Pystachy object held only by Python is freed silently.
+- An uncaught raise calls exit(1), and so does sys.exit or an overflow.
+- `pys_init` replaces CPython's SIGINT handler, so Ctrl-C kills Python.
+- When stdout is a pipe or file, compiled print() output is lost, because it sits in the runtime's 8 KiB pending buffer and `pys_finish` never runs.
+
+Five additions fixed every failure observed: 55 added lines in a scratch copy of runtime.c (`pys_init_lib`, `pys_enter`/`pys_leave` with a per-thread stack bottom, `pys_pin`/`pys_unpin`, `pys_out_begin`/`pys_out_end` spans for call-outs, an out_hook routing stdout/stderr to sys.stdout, and `pys_exc_status`). They are inert for normal programs: 40 of 40 tests/*.py gave byte-identical output with the old and new runtime. On the IR side, each export is a boundary wrapper (invoke plus `landingpad catch ptr null` under pys_personality), the same sequence Gen already emits for try. Wrapper and init are `@pyx_*` functions emitted by libify.py; the C glue uses METH_FASTCALL, the Limited API, Py_mod_gil=USED and MULTIPLE_INTERPRETERS_NOT_SUPPORTED.
+
+Results with these changes:
+- A raise across the boundary costs about 0.8 µs and does not depend on Python stack depth; CPython's own raise costs 0.23 µs.
+- SystemExit, ValueError and OverflowError map to Python exceptions.
+- Strings are converted with a UTF-8 copy plus surrogatepass, so lone surrogates and NUL bytes round-trip.
+- Without the span fix, a second thread entering while compiled frames sat in a GIL-releasing Python callback segfaulted (exit 139); with it, three of three runs passed.
+- In-process ORC LLJIT through libLLVM's C API also works: JIT-compiled landing pads catch Pystachy exceptions. It costs 9 ms dlopen, 23 ms compile and 65 vs 9 MiB RSS.
+
+Recommendation from this spike: AOT ext mode as the FFI. In-process JIT is possible, but only as an optional later addition.
+-- implications
+ * Recommend AOT as the FFI for the CPython direction. Add a `pystachy ext FILE.py [-o NAME.abi3.so]` mode built as one LTO module (program + boundary + glue + cached runtime bitcode), internalized except PyInit_NAME, targeting the Limited API/abi3, with Py_mod_gil=Py_MOD_GIL_USED and Py_mod_multiple_interpreters=NOT_SUPPORTED. Measured at about 24 ns per call, 10x cheaper than ctypes and cheaper than a CPython-level call (35 ns).
+ * Runtime diff sketch (tested in a scratch copy; full text in spike_ext/runtime_lib.diff; inert for programs, 40/40 identical): + pys_init_lib(sb, roots, n): gc_init + empty argv + std streams, with no setbuf1, SIGINT or SIGPIPE setup, idempotent. + __thread t_bottom/t_depth; pys_enter(sb){ if(!t_depth++) t_bottom=sb+16; gc_bottom=t_bottom; } and pys_leave(). + pins[] scanned in mark_roots; pys_pin/pys_unpin for host-held handles. + spans[] scanned in mark_roots; pys_out_begin() (noinline, records [its frame, t_bottom)) and pys_out_end(tok) around every call out to Python. + out_hook in put1 for std_out/std_err; pys_set_out_hook. + pys_exc_status(e, &code) for SystemExit. Leave runtime.py untouched so the WasmGC constraint still holds.
+ * Driver/Gen diff sketch: (1) pystachy.py:16510 accepts `ext`. (2) Gen.program (pystachy.py:11068-11083): in lib mode, emit @pyx_init in place of @main, as a boundary with a landing pad: frameaddress → pys_init_lib(sb, @pys.roots, N) → pys_eh_on (unconditional) → @main.init. (3) For each fully annotated, non-template function of the main module (eligibility), emit `@pyx_NAME(args..., ptr %err)`: pys_enter(frameaddress) → pys_try_mark → pys_exc_handled → invoke @f.NAME → landingpad catch ptr null → pys_exc_begin → pys_exc_restore → store Exc* → pys_leave. Moving enter/leave into the trampoline means the glue need not do it. (4) Emit the METH_FASTCALL glue and PyModuleDef either as C, or better as LLVM IR against stable-ABI symbols, so building needs no Python headers or Python. (5) Link: llvm-link prog+glue, then --only-needed with the runtime bitcode, then opt -passes='internalize,default<O2>' -internalize-public-api-list=PyInit_NAME, then clang -O2 -fPIC -c and clang -shared -lm.
+ * Boundary conversions: int maps to PyLong_AsLongLong and gives OverflowError past 64 bits, which matches Pystachy's checked int. str is a UTF-8 copy in each direction with surrogatepass (lone surrogates and NUL survive), but the boundary must check or reject code whose meaning depends on byte len or ASCII-only case mapping (typed-ir.md §7.4 'Boundary checks'). dict and list are copied by walking entries (needs a stable accessor API rather than the struct layout). Class instances should become pinned opaque handles (capsule or heap type) until a containers-as-PyObject lowering exists.
+ * Exception mapping at the boundary: SystemExit maps to SystemExit(code). A builtin kind maps to the builtins class of that name. KeyError needs structured args, not str(e): it currently gives KeyError("'missing'"). User exception classes should get a generated Python subclass per ExcClass. A Python exception raised inside a callback should tunnel through compiled frames as a Pystachy Exc that carries the pinned PyObject and is restored at the boundary; designed but not tested.
+ * Pys→Py calls (bidirectional): the out_hook shows the mechanism works when every call-out is bracketed by pys_out_begin/pys_out_end with registers spilled. The existing rtmode-only extern mechanism (`def pys_x(...) -> T: ...` with an ellipsis body, pystachy.py:8015-8020) is the natural syntax to generalize for declaring host or C functions in programs.
+ * JIT: keep `pystachy run` (lli in a separate process) for scripts. In-process ORC is possible with the same boundary IR (verified), but it puts 123 MB libLLVM and about 56 MiB of extra RSS in CPython, so it suits an optional dev-loop import hook at most. AOT is the primary path; 'both' only in that the ABI is shared.
+===== spike-pys-to-py 23418
+Every direction I tried works today with hand-edited IR and C shims, in both tiers, using only tools already installed. Scratch work is in /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/spike_embed. Nothing under /home/user/pystachy was modified (git status is empty).
+
+(A1) AOT embedding works. I linked a Pystachy program, C shims (pyshim.c) and the runtime bitcode with llvm-link, then built with clang against -lpython3.13. It imports math, json and the C extension modules _json and _decimal, calls functions and converts int, float and str both ways. A Python exception becomes a catchable Pystachy exception. A Python-to-Pystachy callback runs through a PyCFunction trampoline plus a Pystachy try wrapper. The full round trip works: Pystachy raise, then PyErr, then a Pystachy except.
+
+A user program cannot reuse the extern mechanism. It only exists when compiling runtime.py (runtime mode, pys_* names only). In a user program a `...` stub compiles to a function that raises at run time. Worse, a None-returning stub is treated as unable to raise, so a call to it inside a try is a plain call rather than an invoke. A C error raised there escaped the try; I reproduced this.
+
+GC coexistence:
+- Handles (PyObject* stored in Pystachy ints) are ignored by Pystachy's GC and stay valid through 49,720 forced collections.
+- A wrapper object that dies without Py_DecRef leaks: 50,000 lost CPython blocks per 50,000 wrappers, and 0 with an explicit decref.
+- A Pystachy list held only by a CPython capsule is freed under GC stress (it reads back as [] instead of [11, 22, 33]).
+- The two stdout buffers interleave output in the wrong order.
+
+(A2) The JIT tier works: `lli-18 -load=libpython3.13.so -extra-object=pyshim.o -extra-object=runtime.o` gives the same output, including dynload extensions and the exception round trip. Startup is 40 ms under the JIT versus 13.6 ms AOT for the same program; lli with no Python takes 24 ms.
+
+(B) An in-process JIT inside python3 works with no new dependency. The system libLLVM 18 exports the ORC LLJIT C API. Through ctypes I parsed the .ll, ran the driver's cleanup passes, added the runtime as an object, looked symbols up and called them. Plain calls, allocation, try/except inside JIT'd code and the whole @main all work. It takes about 28.5 ms inside the process, against about 42 ms for an lli subprocess and 32 ms for lli run directly. Three requirements came out of it:
+- libgcc_s must be preloaded with RTLD_GLOBAL.
+- A runtime .so fails, because the runtime calls three functions the program defines (pys_obj_eq/cmp/repr).
+- The runtime as bitcode costs 735 ms.
+
+(C, extra) An AOT CPython extension module (.so) built from the same IR imports in 0.4 ms. 100k calls take 4.7 ms, against 27 ms through ctypes and 36 ms for the same function in CPython. It needs four things: the stack-end trick for the GC stack bottom, a single pys_init, a guard that only the main thread calls in, and catch-all entry wrappers. Pystachy's print output is lost at exit because pys_finish never runs.
+-- implications
+ * Recommendation: support both tiers through one mechanism, because the same C-ABI shim plus extern declarations worked unchanged in AOT and JIT. The AOT driver change is to add libpython's link flags to the final clang line (the `build` branch at pystachy.py:16649); the JIT driver change is to add `-load=libpythonX.so -extra-object=shim.o` to the lli line (pystachy.py:16670). No runtime.c changes are needed to call into CPython from a program.
+ * Extend the existing runtime-mode extern path (pystachy.py:8015-8020, 10927-10944) to user programs instead of hand-editing IR. Two requirements: declare externs with unknown effects (FX 'U', i.e. may raise) so a call inside a try is always an invoke; the void-stub test shows the current inference is wrong for externs. Keep the existing ABI rule of int, float, str or None only (pystachy.py:9762-9770), with bool passed as int.
+ * Keep the 'prints what CPython prints' contract with a bridge module (for example lib/cpython.py, a name I made up) whose CPython implementation is plain Python (importlib, getattr, call) and whose Pystachy implementation is externs into the shim. The bare `...` stubs from the spike return None under CPython and would break the contract.
+ * Represent a CPython object as an opaque handle (an int, or a final class with one int field), with explicit ownership and refcounts taken in C. Release references with an explicit close, a `with` block, or a GC sweep of unreachable handles modelled on files_sweep. Without one of these, each dead wrapper leaks one reference (measured: 50,000 blocks).
+ * Pystachy objects passed to CPython need a pin or handle table that mark_roots scans (runtime.c:161-170), released by the capsule destructor. Raw pointers in capsules are freed under GC stress. A handle table also suits the planned WebAssembly GC backend, which allows no raw pointers.
+ * At every boundary crossing: flush Pystachy's stdout before calling into Python and flush sys.stdout before returning, or route one writer through the other. Register pys_finish with Py_AtExit in extension mode.
+ * Python-to-Pystachy entries (callbacks or extension functions) need compiler-generated wrappers, all of which the spike wrote by hand: try/except that turns a Pystachy exception into PyErr_SetString plus an error return, or uncaught() exits the host process; a main-thread check (the GC is single-threaded, runtime.c:35); a one-time idempotent init, since pys_init run twice corrupts the heap; and a stack bottom covering the host's frames (__libc_stack_end).
+ * The runtime calls three functions the program defines (pys_obj_eq/cmp/repr), so the runtime cannot be a standalone .so loaded before the program. Link it as an object in the JIT (the -extra-object or LLVMOrcLLJITAddObjectFile path) or as bitcode in AOT. Otherwise the runtime would have to call those three through function pointers registered at init.
+ * In-process JIT inside CPython is feasible with no new dependency (ctypes plus the system libLLVM 18), at about 28.5 ms against about 42 ms for an lli subprocess. It needs libgcc_s preloaded with RTLD_GLOBAL and the runtime added as a precompiled object, not bitcode (735 ms). It is fragile: it pins the system libLLVM's exact version and needs ctypes prototypes for each C API function. AOT extension modules are much cheaper per call (about 47 ns against about 270 ns through ctypes) and start in 0.4 ms. The evidence therefore favours AOT for Python-to-Pystachy, with JIT as an option for embedding (Pystachy-to-Python) and for development.

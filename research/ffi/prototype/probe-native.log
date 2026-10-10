@@ -1,0 +1,104 @@
+### S1: @extern (twin vs JIT vs AOT, GC stress 7)
+SAME  zstats jit
+SAME  zstats aot
+  e_int.py:5: error: C function atoi() returns int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)
+  e_dup.py:9: error: C function abs is declared again with other types: i64 @abs(i64) at line 5, signext i32 @abs(i32 signext) here
+  e_res.py:5: error: C function pys_len is reserved for Pystachy's runtime and extension modules
+  e_rt.py:5: error: C function memchr is declared as ptr(ptr, i64, i64), but Pystachy's runtime calls it as ptr(ptr, i32, i64)
+  e_list.py:5: error: C function f() takes list[int]: an @extern function takes a C integer type, float or str
+  e_bool.py:5: error: C function f() takes bool: an @extern function takes a C integer type, float or str
+  e_body.py:5: error: f() is a C function (@extern): its body must be ...
+  ok_rt: True 1
+### S2: pyobj embedding (twin 3.13 vs JIT/AOT 3.13, GC stress 3)
+SAME  jsondemo jit 3.13
+SAME  jsondemo aot 3.13
+SAME  uac jit 3.13
+SAME  uac aot 3.13
+SAME  sx jit 3.13
+SAME  sx aot 3.13
+SAME  fin jit 3.13
+SAME  fin aot 3.13
+SAME  jsondemo jit 3.15t
+SAME  fin jit 3.15t
+  stw aot py315: background thread progressed during compiled loop: True 502768
+  stw aot py315t: background thread progressed during compiled loop: True 502768
+### S3: pystachy ext (abi3 and abi3t, GC stress 1)
+fastmath.py:7: error: fib() is public in extension module 'fastmath' but not @export: CPython would not see it; export it or name it _fib
+viajson.py:4: error: roundtrip() is public in extension module 'viajson' but not @export: CPython would not see it; export it or name it _roundtrip
+nm: 'a3/fastmath.abi3.so': No such file
+  a3/fastmath.abi3.so exports: 
+nm: 'a3t/fastmath.abi3t.so': No such file
+  a3t/fastmath.abi3t.so exports: 
+nm: 'a3/viajson.abi3.so': No such file
+  a3/viajson.abi3.so exports: 
+nm: 'a3t/viajson.abi3t.so': No such file
+  a3t/viajson.abi3t.so exports: 
+fastmath.abi3.so: 0 Py symbols, all in the stable ABI <= 3.12
+viajson.abi3.so: 0 Py symbols, all in the stable ABI <= 3.12
+fastmath.abi3t.so: 0 Py symbols, all in the stable ABI <= 3.15
+viajson.abi3t.so: 0 Py symbols, all in the stable ABI <= 3.15
+DIFF  fastmath abi3 on Python 3.13.16 (vs source run; expect the 2 listed deviations)
+1,13c1,4
+< fastmath ready
+< loaded source []
+< gil True
+< 2880067194370816120 8
+< caught ValueError ('negative: -5',) -
+< caught TypeError ("'str' object cannot be interpreted as an integer",) -
+< caught KeyError ('zz',) -
+  viajson nested abi3 Python 3.13.16: Traceback (most recent call last):   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/ext/a3/use3.py", line 1, in <module>     import viajson ModuleNotFoundError: No module named 'viajson' 
+DIFF  fastmath abi3 on Python 3.14.8 (vs source run; expect the 2 listed deviations)
+1,13c1,4
+< fastmath ready
+< loaded source []
+< gil True
+< 2880067194370816120 8
+< caught ValueError ('negative: -5',) -
+< caught TypeError ("'str' object cannot be interpreted as an integer",) -
+< caught KeyError ('zz',) -
+  viajson nested abi3 Python 3.14.8: Traceback (most recent call last):   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/ext/a3/use3.py", line 1, in <module>     import viajson ModuleNotFoundError: No module named 'viajson' 
+DIFF  fastmath abi3 on Python 3.15.0 (vs source run; expect the 2 listed deviations)
+1,13c1,4
+< fastmath ready
+< loaded source []
+< gil True
+< 2880067194370816120 8
+< caught ValueError ('negative: -5',) -
+< caught TypeError ("'str' object cannot be interpreted as an integer",) -
+< caught KeyError ('zz',) -
+  viajson nested abi3 Python 3.15.0: Traceback (most recent call last):   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/ext/a3/use3.py", line 1, in <module>     import viajson ModuleNotFoundError: No module named 'viajson' 
+  abi3 on Python 3.13.16 experimental free-threadi: ModuleNotFoundError: No module named 'fastmath'
+  abi3 on Python 3.14.8 free-threading build (main: ModuleNotFoundError: No module named 'fastmath'
+DIFF  fastmath abi3t on Python 3.15.0 (main, Oct  9 20 (vs source run)
+1,13c1,4
+< fastmath ready
+< loaded source []
+< gil True
+< 2880067194370816120 8
+< caught ValueError ('negative: -5',) -
+< caught TypeError ("'str' object cannot be interpreted as an integer",) -
+< caught KeyError ('zz',) -
+  viajson nested abi3t: Traceback (most recent call last):   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/ext/a3t/use3.py", line 1, in <module>     import viajson ModuleNotFoundError: No module named 'viajson' 
+DIFF  fastmath abi3t on Python 3.15.0 free-threading b (vs source run)
+1,13c1,4
+< fastmath ready
+< loaded source []
+< gil True
+< 2880067194370816120 8
+< caught ValueError ('negative: -5',) -
+< caught TypeError ("'str' object cannot be interpreted as an integer",) -
+< caught KeyError ('zz',) -
+  viajson nested abi3t: Traceback (most recent call last):   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/ext/a3t/use3.py", line 1, in <module>     import viajson ModuleNotFoundError: No module named 'viajson' 
+  abi3t on 3.15t, PYTHON_GIL=0: ModuleNotFoundError: No module named 'fastmath'
+### S3 @export: .so vs its source run under the twin (oracle recorded on 3.13)
+SAME  @export client on Python 3.13.16 (main, Oct  1 2026,
+SAME  @export client2 on Python 3.13.16 (main, Oct  1 2026,
+SAME  @export client on Python 3.14.8 (main, Oct  9 2026, 
+SAME  @export client2 on Python 3.14.8 (main, Oct  9 2026, 
+SAME  @export client on Python 3.15.0 (main, Oct  9 2026, 
+SAME  @export client2 on Python 3.15.0 (main, Oct  9 2026, 
+SAME  @export client on Python 3.15.0 free-threading build
+SAME  @export client2 on Python 3.15.0 free-threading build
+  bad_pub.py:9: error: g() is public in extension module 'bad_pub' but not @export: CPython would not see it; export it or name it _g
+  bad_def.py:5: error: f() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)
+### probes: 20 same, 5 different

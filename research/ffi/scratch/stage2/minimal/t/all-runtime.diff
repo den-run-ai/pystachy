@@ -1,0 +1,66 @@
+--- runtime.orig.c	2026-10-09 23:36:24.626071672 +0000
++++ runtime.c	2026-10-09 23:46:46.259046293 +0000
+@@ -1742,9 +1742,10 @@
+                                           its UTF-8 mode, which the C and POSIX locales turn on, else the locale's */
+   static char e[40];
+   if (!*e) {
++    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+     const char *l = setlocale(LC_CTYPE, "");
+     snprintf(e, sizeof e, "%s", l && strcmp(l, "C") && strcmp(l, "POSIX") ? nl_langinfo(CODESET) : "utf-8");
+-    setlocale(LC_CTYPE, "C");
++    setlocale(LC_CTYPE, old);
+   }
+   return e;
+ }
+@@ -1826,8 +1827,10 @@
+ }
+ static _Noreturn void oserr(const char *path);
+ static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
++static void (*out_hook)(const char *, I, I);   /* pystachy ext: the host's sys.stdout and sys.stderr (pys_init_lib) */
+ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+   if (f->closed) closed_err();
++  if (out_hook && f->std && f->wr) { out_hook(s, n, f == &std_err ? 2 : 1); return; }
+   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+   if (e) ioerr(e);
+ }
+@@ -1857,6 +1860,22 @@
+     sigint_on = !sigaction(SIGINT, &sa, 0);
+   }
+ }
++/* pystachy ext: CPython hosts the program (pyext.c), and owns main, the signals and sys.stdout.
++   pys_init_lib is pys_init without argv, signal handlers or stdout's emulation (writes go to
++   out_hook); every call from Python is bracketed by pys_enter(its frame)/pys_leave, and the
++   outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
++static I lib_depth;
++void pys_set_out_hook(void (*h)(const char *, I, I)) { out_hook = h; }
++void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
++void pys_leave(void) { lib_depth--; }
++void pys_init_lib(I **roots, I nroots) {
++  if (pmap) return;                    /* (imported again) */
++  gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
++  args = pys_list_new(0);
++  std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
++  std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
++  std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
++}
+ List *pys_argv(void) { return args; }
+ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+ void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+@@ -2257,6 +2276,10 @@
+   return 0;
+ }
+ void *pys_exc_obj(Exc *e) { return e->obj; }
++I pys_exc_status(Exc *e, I *code) {    /* pystachy ext: a SystemExit, and its status */
++  if (e->obj || e->kind->len != 10 || memcmp(e->kind->s, "SystemExit", 10)) return 0;
++  *code = e->has_code ? e->code : 1; return 1;
++}
+ void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
+ Exc *pys_exc_handled(void) { return xr.handled; }
+ void pys_exc_restore(Exc *e) { xr.handled = e; }
+@@ -2918,3 +2941,6 @@
+   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
+   return !(lo & 1);
+ }
++/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
++Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
++Str *pys_string_at(I a, I n) { return pys_str((const char *)a, n); }   /* ffi.string_at, as ctypes.string_at */

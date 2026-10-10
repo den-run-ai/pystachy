@@ -1,0 +1,7 @@
+UBSAN-trap zstats aot: same as twin
+UBSAN-trap jsondemo aot: same as twin
+UBSAN-trap fin aot: same as twin
+UBSAN-trap leak aot: same as twin
+UBSAN-trap fastmath ext: same as its source run
+UBSAN-trap reent ext (nested entries, releases): same as its source run
+pk.out pk.want differ: char 69, line 7

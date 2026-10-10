@@ -1,0 +1,12 @@
+## make
+make exit=0
+fixed point: stage1 == stage2 == stage3 (221266 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (10393 lines)
+## runtime.py IR vs original compiler
+runtime.py IR byte-identical
+## tests
+1886 passed, 0 failed
+## irsame
+irsame: 1265 same, 0 different
+## probes (native compiler)
+### probes: 20 same, 5 different

@@ -1,0 +1,3 @@
+def pys_py_sqrt(x: float) -> float: ...
+
+print(pys_py_sqrt(2.0))

@@ -1,0 +1,118 @@
+[0] (high) Symbol naming: a main-module function is @f.<name>; a function of an imported module is @f.<mod$name> (`$` replaces `.`); a method is @m.<Class>.<meth> or @m.<mod$Class>.<meth>; a template instance is @f.<name>.<N>; module init is @init.<mod> and @main.init; exception helpers are @x.str.C and @x.repr.C, with the ExcClass constant @x.C; a class struct is %C.<Class>. None of these are valid C identifiers, so C must use asm labels or wrappers.
+   EVID: pystachy.py:8013 (FnInfo @f./@m.), 3089 (q prefix name.replace('.', '$')+'$'), 10914 (@init./@main.init), 15654 (template f.ll.N), 12821-12829 (@x.*); compiled scratch imp/main.ll: `define internal i64 @f.helper$scale`, `@m.helper$Pt.__init__`, `@f.ident.1`, `@f.ident.2`, `%C.helper$Pt = type {i64, i1, ptr}`
+[1] (high) LLVM types: int is i64, float is double, bool is i1 (as a parameter, return value and class field), and a None return is void. Everything else is a ptr: str, list, dict, tuple, class instance, opt[T] (null means None), int|None/float|None (pointer to an immutable 8-byte box), file and exc. Container slots are i64: float as bits, bool zero-extended, pointers via ptrtoint. The runtime ABI passes bool as i64 instead (rarg/rres).
+   EVID: pystachy.py:5593-5604 lt(), 5607 rtt(), 7476-7483 to_slot, rarg/rres just before 7499; scratch t1.ll: `define internal double @f.add(i64 %a0, double %a1, i1 %a2, ptr %a3 ... ptr %a8 /*int|None*/ ...)`; runtime.c:878 pys_box
+[2] (high) Calling convention and linkage: always the default C convention (ccc; the compiler never emits fastcc). Compiled functions are `internal` unless they are runtime-mode exports. The only parameter attribute is `nonnull` on a method's self. `personality ptr @pys_personality` is added only when the function has landing pads; there is no nounwind and no noundef. The program IR has no target datalayout/triple: it takes the host's when llvm-link joins it with the runtime bitcode. Each program also defines external @pys_obj_eq, @pys_obj_cmp, @pys_obj_repr and @main.
+   EVID: pystachy.py:9777-9778 (`define {'' if f.export else 'internal '}...{' nonnull' if j == 0 and takes_self(f)}...personality`), 11608 (define @pys_obj_*), 11075 (@main); grep fastcc: no hits; scratch: `grep -c ^target t1.ll` -> 0; llvm-dis lib.bc shows the x86_64 datalayout
+[3] (high) Layouts:
+- Str is {i64 len; char s[]}, NUL-terminated and allocated atomic (never scanned). String constants are private globals {i64, [n x i8]} outside the heap.
+- List is {len, cap, I *a}; the items array is a separate scanned allocation.
+- Dict is {len, kind, n, size, keys*, vals*, hs*, idx*}; keys and vals are scanned, hs and idx are atomic.
+- A tuple is pys_alloc(8*n) slots with no header (its length is static).
+- An object is pys_alloc(sizeof %C.X): an LLVM struct of its fields, then i1 'assigned' flags. An exception class starts with hidden fields (ExcClass*, ...).
+- Exc is GC-allocated, 16-byte aligned, and starts with _Unwind_Exception.
+   EVID: runtime.c:27-29, 383 (pys_str atomic), 1024-1033 (list), 1448-1460 (dict build), 878 (box), 2165-2183 (ExcClass, Exc), 2190 (exc_alloc); pystachy.py:7449 (string constants), 11040-11043 (%C structs with i1 flags); scratch imp/main.ll `%C.MyErr = type {ptr, ptr, ptr}`; t1.ll tuple = `pys_alloc(i64 16)` with i64 slot stores
+[4] (high) The GC tolerates foreign pointers inside its objects: scan() skips any word outside [gc_lo,gc_hi) or not in its two-level page map. So a PyObject* or malloc pointer in an int slot or field is neither traced nor retained, and nothing runs when the Pystachy object holding it dies. The only finalization mechanism is files_sweep, which closes unreachable File objects; __del__ never runs.
+   EVID: runtime.c:144-158 (line 150: `if (w - lo >= span || !(m = pm[w >> 30]) || !(s = m[...])) continue;`), 1815-1826 files_sweep, 1651 `files` malloc'd and 'the collector does not see them'
+[5] (high) A Pystachy object referenced only from foreign memory (malloc or a CPython PyCapsule) is collected and its memory reused, which silently corrupts the data that foreign code later reads.
+   EVID: scratch repo-abi/drv4.c: a list of len 2000 stored only as ~ptr in malloc memory reads back as `len word 777 cap 1024` after churn under PYSTACHY_GC_STRESS=1 (len 2000 without stress). CPython 3.13 extension extx (NOPIN=1): capsule-held lists give totals [56670,56670,56670] instead of [6663,6672,6681]; with pys_pin they are correct
+[6] (high) GC roots:
+- the C stack, from mark_roots' frame (aligned) up to gc_bottom = @main's frame address + 16;
+- callee-saved registers, spilled by __builtin_unwind_init in collect();
+- @pys.roots, a private table that @main passes to pys_init, holding only the program's pointer-typed globals (int globals are not in it);
+- runtime statics: ch1, args, and xr/unw once xthrow is set.
+Without @main/pys_init, pmap is NULL (the first allocation that maps pages crashes) and gc_bottom is NULL (nothing on the stack is scanned).
+   EVID: runtime.c:56-61 (comment), 104, 161-170 (mark_roots, 162 stack scan), 225 (__builtin_unwind_init), 312-320 (gc_init, 314 `gc_bottom = sb + 2 * sizeof(void *)`); pystachy.py:11046-11048 (@pys.roots), 11073-11079; scratch mod.ll `@pys.roots = private constant [0 x ptr] []` despite `@g.COUNT = internal global i64`
+[7] (high) Entering Pystachy from a foreign frame that is shallower than the frame that initialized the runtime makes the stack-scan range empty, and the program crashes. In a CPython extension this always happens, because PyInit runs under importlib's C frames, which are deeper than a later call from module level.
+   EVID: scratch drv3.c mode 1 (plib_init from a 50-deep recursion, then plib_make from main) under PYSTACHY_GC_STRESS=1: exit=139 (SIGSEGV); mode 0 (init from main's frame) correct. CPython 3.13 extension ext/pmod (init in PyInit_pmod): `PYSTACHY_GC_STRESS=1 python3 use.py 0` and `... 200` both 'Segmentation fault', exit 139
+[8] (high) Pystachy frames below a foreign frame are covered when the outermost entry frame is the highest one: Pystachy main -> C -> Pystachy callback is sound today, because everything from @main down is scanned, foreign C frames included (conservatively). Nested re-entry on the same thread is consistent as long as every boundary does try_mark, exc_begin and exc_restore.
+   EVID: scratch jitx.ll + cx.c: `PYSTACHY_GC_STRESS=1 lli -extra-object=runtime.o -extra-object=cx.o jitx.bc` -> 'C called JIT'd Pystachy: total 266670' (correct); runtime.c:162
+[9] (high) Prototype fix, about 12 lines added to a scratch copy of runtime.c:
+- pys_lib_init(roots,n): gc_init with no stack bottom, std streams, pys_eh_on, and no signal handlers or setvbuf;
+- pys_enter(sb)/pys_leave(old): the outermost entry sets gc_bottom;
+- pys_pin/pys_unpin: a malloc'd root array scanned in mark_roots.
+Together with IR wrappers (frameaddress, enter/leave, try_mark, invoke, catch-all landingpad, exc_begin, exc_repr, exc_restore, error out-parameter), a real CPython 3.13 extension imported 50 frames deep passes under PYSTACHY_GC_STRESS=1: correct totals, pinned capsules intact, KeyError turned into a Python RuntimeError, and Ctrl-C (SIGINT) still reaches Python.
+   EVID: scratch repo-abi/home2/runtime.c (patch after pys_argv), modx.ll (wrappers), extx/shim.c, extx/use.py output: 'make_total: 266670', 'pinned totals: [6663, 6672, 6681]', 'caught in Python: pystachy raised KeyError('k2')', 'KeyboardInterrupt reached Python', exit=0
+[10] (high) Program entry: @main calls llvm.frameaddress(0), then pys_init(argc, argv, sb, @pys.roots, n), then pys_eh_on() only if the program has a try statement (Gen.eh is a closed-world flag), then @main.init (which runs @init.<mod> for imports), then pys_finish(), and returns 0. pys_init also:
+- builds sys.argv (and honours PYSTACHY_ARGV0, resetting crash signal handlers under lli);
+- wraps stdout in an 8 KiB pending buffer plus setvbuf when it is not a tty;
+- ignores SIGPIPE;
+- installs a SIGINT handler.
+A library entry needs everything but argv/signals/stdout, with eh forced on, the module init run once, and pys_finish registered at exit.
+   EVID: pystachy.py:11068-11084, 6936 and 10769 (self.eh), 9687; runtime.c:1839-1858 pys_init, 1790-1808 pys_finish
+[11] (high) Exceptions:
+- **One-phase forced unwind:** pys_eh_on stores xthrow. throw_ calls _Unwind_ForcedUnwind with stop_none, a stop function that never stops, so the unwind walks every frame in a single phase.
+- **Personality:** pys_personality acts only on PYS_EXC exceptions in frames with an LSDA. Every pad is `catch ptr null`, so the first Pystachy landing pad wins, and pys_exc_begin(mark) runs the unwind actions.
+- **No handler:** the stack is left as it was, and uncaught() prints the last traceback line and calls exit().
+- **Before pys_eh_on:** every funnel (pys_fail, pys_raise, pys_exit, pys_exit_msg) prints and exits at once.
+- **Foreign exceptions:** C++ exceptions and thread cancellation pass Pystachy frames without running their pads, which leaves unw/xr stale.
+   EVID: runtime.c:2093-2164 (design comment), 2189 pys_eh_on, 2279-2288 pys_exc_begin, 2298-2309 uncaught, 2310-2325 stop_none/throw_ (2319 _Unwind_ForcedUnwind), 2369-2410 personality (2376 `if (cls != PYS_EXC || !p) return _URC_CONTINUE_UNWIND`), 352-371 funnels
+[12] (high) When a Pystachy exception reaches a foreign frame:
+- **C frame with unwind tables** (the x86-64 default; libpython3.13 has .eh_frame and no .gcc_except_table): the C frame is silently skipped, its remaining code never runs, and an outer Pystachy handler catches the exception.
+- **C frame without unwind tables:** the unwind stops there and the exception counts as uncaught, so the process exits(1) even though a handler exists.
+- **No Pystachy handler at all:** the host process is killed.
+   EVID: scratch drv5.c + mod3.ll (plib_try_through_c -> C c_apply -> Pystachy boom raises): output 'raise path: -99 (C frame's depth-- skipped: depth=1)'; same with -fno-asynchronous-unwind-tables: 'KeyError: 'k2'' exit=1; CPython extension ext/pmod boom: python3 exits 1 printing 'KeyError: 'k2''; readelf libpython3.13.so: .eh_frame present, no .gcc_except_table
+[13] (high) Exit sites in runtime.c (it never calls abort()):
+- oom 123: exit(1)
+- pys_fail 352-356 and pys_raise 357-366: exit(1)
+- pys_exit 367: exit(c)
+- pys_exit_msg 368-371: exit(1)
+- on_sigint 1678-1687: raise(SIGINT), then _exit(130)
+- die_sigint 1689-1691
+- kbint_exit 1783-1789: exit(130)
+- pys_finish 1807: _exit(120) on a failed stdout flush
+- exc_report 2289-2297: exit(1)
+- uncaught 2298-2309: exit(code) or exit(1)
+The uncatchable ones are oom, Ctrl-C and stack overflow (the recursion limit is only recorded).
+   EVID: grep 'exit(\|abort(' runtime.c; runtime.c:2160-2164 comment 'Not catchable'; 2065 recursion_limit 'only recorded'
+[14] (high) Runtime mode's extern mechanism:
+- **Declaration:** a top-level `def pys_x(...) -> T: ...` (the body is exactly an ellipsis) is declared, not compiled. Its symbol is @<name>; the name must start with pys_, and every parameter must be annotated with no *args.
+- **In program():** bool or an untyped value is rejected ('the runtime ABI passes bools as int').
+  - If the symbol is in RTSYM, its LLVM types and rt_subset must match RUNTIME.
+  - Otherwise untold() limits it to int, float, str and None, and a `declare` line is emitted.
+- **Calls:** a call of an extern is not in self.fll, so opfx gives it FXALL; verify() allows such calls.
+- **runtime.py today:** it declares exactly one extern, pys_fmt_float.
+- **tools/rtabi.py:** checks that each pys_* and extern has one LLVM signature across runtime.c's clang IR, runtime.py's IR and every corpus program, because llvm-link accepts mismatches silently.
+   EVID: pystachy.py:8015-8024, 8098-8099, 10925-10945, 9742-9762 (export checks, untold), 9933, 10002-10008, 11054-11056; runtime.py:1011; tests/errors/rtmode_untold_extern.py, rtmode_untold_signature.py, rtmode_extern_name.py ('strlen' rejected), rtmode_extern_signature.py; tools/rtabi.py:1-8, 51-87
+[15] (high) Generalizing this to user-facing externs is a small change, but it needs an opt-in marker:
+- **Current meaning:** in a user program today, `def cbrt(x: float) -> float: ...` compiles to `pys_raise RuntimeError 'cbrt() ended without returning a value'`, while CPython returns None. Silently repurposing the form would change what existing programs mean.
+- **Imported modules:** for a function in an imported module, the lazy branch (10925) comes before the extern branch (10927), so the order must change.
+- **Dual-run contract:** a CPython fallback is needed to keep it; tools/rt_cpython/_rt.py is the precedent.
+   EVID: scratch ext1.py: IR `call void @pys_raise(ptr @s.3, ptr @s.2)` in @f.cbrt; `pystachy run ext1.py` -> 'RuntimeError: cbrt() ended without returning a value'; `python3 ext1.py` -> 'None'; tools/rt_cpython/_rt.py header
+[16] (high) The RUNTIME table is already a compiler-internal static FFI. Its format is 'result:params|effects|symbol': S/T/K/V are the receiver and its element types, *X is an 8-byte slot (i64), # a type descriptor, %X a raw LLVM type. The symbol may be a raw C function (fabs, memchr, memcmp, memmem) or an LLVM intrinsic. CALLS maps Python-level calls (math.*, time.*, os.*, sys.*) to those symbols. RtFn/runtime_decl build the declare lines and rt() checks every call against them. tools/check_runtime.py infers effect letters (R, A, U, I, rL/wL, ...) from the C call graph, a capability reusable for C helper sources.
+   EVID: pystachy.py:5508-5588 (RUNTIME; `"fabs": "float:float||fabs"`, memchr/memcmp/memmem at 5582-5583), 5117-5139 (CALLS), 5624-5680, 5734-5745, 7213-7248 (rt/runtime); 15906-15909 (CALLS lowering); tools/check_runtime.py:1-40, 599-616
+[17] (high) Effect letters for an unknown foreign function: conservatively U, which is FXALL (every letter but N: R A U I rL wL rD wD rO wO rG wG rF wF). The compiler already assigns this to any call of a callee it did not compile. Narrower sets:
+- a pure leaf that touches no Pystachy memory: none (like fabs);
+- I/O or process/global state: I;
+- may raise through pys_fail/pys_raise: R (and N if it never returns);
+- allocates Pystachy objects: A;
+- reads or writes containers passed to it: rL/wL/rD/wD;
+- calls back into Pystachy code: U.
+R makes a call inside a try an invoke (eh_ir).
+   EVID: pystachy.py:5482-5503 (FX doc), 5675 FXALL, 5683-5691 fxmask, 10002-10008 opfx, 10380-10430 eh_ir (`self.opfx(i, fn.fa) & raises`)
+[18] (high) Driver commands:
+- **Runtime cache:** <home>/build/runtime-py-<FNV-1a of PYSTACHY_CFLAGS + -fexceptions>.bc, built by `clang -O2 -S -emit-llvm runtime.c -fexceptions`, sed-stripping target-cpu/features, llvm-as, `llvm-link rtpy.ll runtime-c.bc`, then `opt -O2`. It is rebuilt when runtime.c, runtime.py or the compiler is newer.
+- **JIT:** `opt -passes='mem2reg,instcombine<no-verify-fixpoint>,simplifycfg' prog.ll`, then os.execv `/bin/sh -c "exec 9< prog.bc && rm -f prog.bc && rmdir tmp && [PYSTACHY_GC_STRESS=..] PYSTACHY_ARGV0=SRC exec lli -extra-object=<rtb>.o /dev/fd/9 ARGS"`. The .o comes from `clang -O2 -fPIC -c <rtb>`.
+- **AOT:** `llvm-link --only-needed prog.ll <rtb>.bc`, then `clang -O2 -c bc -o obj {ccflags}`, then `clang obj -o out -lm {cflags}`.
+- **PYSTACHY_LLVM** names the tool directory.
+   EVID: pystachy.py:16585-16598, 16603-16617, 16642, 16645, 16646, 16653, 16657, 16666-16671
+[19] (high) Where FFI flags fit in the driver:
+- **JIT** (line 16670): lli 18 has --dlopen=<lib>, --load=<plugin>, --extra-object, --extra-archive and --extra-module.
+- **AOT** (16646): user C bitcode can join `llvm-link --only-needed` for whole-program LTO with Pystachy code.
+- **AOT** (16653): `-l` flags and objects go on the final link; a shared library needs -fPIC on the compile and -shared plus a visibility/version script on the link.
+- **Today:** PYSTACHY_CFLAGS=-lpython3.13 already reaches the AOT link. The runtime compile only warns ('-lpython3.13: linker input unused'), and the runtime is cached separately.
+   EVID: `lli --help-hidden` (Ubuntu LLVM 18.1.3): --dlopen, --load, --extra-object/archive/module, --jit-kind; scratch: `PYSTACHY_CFLAGS=-lpython3.13 pystachy build t1.py` -> ldd shows libpython3.13.so.1.0; new cache runtime-py-eac805e0.bc
+[20] (high) The JIT tier can already call C and CPython once the IR declares the symbol:
+- lli --dlopen=libpython3.13.so ran Py_Initialize, then PyRun_SimpleString with a Pystachy str's bytes (Str+8, NUL-terminated) as the const char*, then Py_Finalize.
+- A C object passed with -extra-object can call JIT'd Pystachy functions by name once they have external linkage.
+- A --dlopen'd .so cannot resolve JIT'd symbols, and cannot resolve runtime symbols either, because runtime.o is a JIT object.
+   EVID: scratch emb2.ll: output 'hello from CPython 3.13.16'; jitx.ll + cx.o: 'C called JIT'd Pystachy: total 266670'; libcx.so via --dlopen: 'lli: symbol lookup error: .../libcx.so: undefined symbol: f.make'
+[21] (high) Global state and threads: runtime.c has about 28 mutable statics and no locks, TLS or pthread calls (grep: 0 hits). It has one heap and free lists, one exception state (xr, unw), one set of std streams, a repr guard (busy) and a sort undo log (keep_u). It is not thread-safe; it is reentrant only on one thread, through nested calls. Process-wide side effects:
+- **Signals:** SIGPIPE set to SIG_IGN; a SIGINT handler that exits the process.
+- **Locale:** defenc() calls setlocale(LC_CTYPE,"") and then setlocale(LC_CTYPE,"C"), clobbering the host's locale.
+- **stdout:** a private 8 KiB pending buffer when stdout is not a tty, so output interleaves out of order with C/CPython writes and is lost if pys_finish never runs.
+   EVID: runtime.c:96-119, 866, 1141, 1650-1651, 1673-1691, 1741-1749, 1834-1837, 1852-1857; scratch ext/sig.py: python3 killed with exit 130 printing 'KeyboardInterrupt' instead of raising it in Python; drv runs: 'module init ran' printed after later C output or only at exit; missing entirely when pys_finish was not called (drv.c modes 0-2)
+[22] (medium) Symbols: runtime pys_* functions, the per-program pys_obj_eq/cmp/repr and @main all have external default visibility. Two Pystachy units cannot be linked into one image. Each extension .so carries its own runtime, so its heap and stdout state are separate. CPython here loads extensions with RTLD_NOW|RTLD_LOCAL (getdlopenflags()==2); -fvisibility=hidden or a version script exporting only PyInit_* is advisable.
+   EVID: pystachy.py:11608, 11075; runtime.c non-static pys_* definitions; `python3 -c 'import sys; print(sys.getdlopenflags())'` -> 2
+[23] (high) FFI-like code that exists today is all compiler-internal. math/time/os/sys/tempfile calls map through CALLS to runtime.c wrappers (pys_m_*, pys_time*, pys_system, pys_execv, pys_getenv, ...), which call libc/libm. fabs and the mem* functions are bound directly. There is no user-facing extern, and the language has no function values (README: 'lambdas, closures, functions as values' is M3), so callbacks can be named only by symbol. runtime.c's external helpers pys_str, pys_list_new/append, pys_dict_new/set, pys_box and pys_repr(v, descriptor) can serve as a C-side marshalling API. The descriptor language (i f b s ?X LX DKV TnX.. E O<id>) already lets the runtime walk any value generically.
+   EVID: pystachy.py:5117-5139, 7559-7600 (desc); runtime.c:383, 878, 908-944, 1024-1060, 2413-2430; README.md:243-249

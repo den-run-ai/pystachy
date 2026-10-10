@@ -1,0 +1,146 @@
+--- /home/user/pystachy/runtime.c	2026-10-09 22:17:49.873749061 +0000
++++ tree3/runtime.c	2026-10-10 01:46:13.999817625 +0000
+@@ -220,6 +220,8 @@
+ }
+ static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
+ static void files_sweep(void);
++static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
++static void trk_sweep(void);
+ __attribute__((noinline)) static void collect(void) {
+   struct timespec t0, t1;
+   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
+@@ -232,6 +234,7 @@
+     scan(p, p + n / 8);
+   }
+   if (nfiles) files_sweep();
++  if (ntrk) trk_sweep();
+   sweep(); gc_n++;
+   if (gc_stats) {
+     clock_gettime(CLOCK_MONOTONIC, &t1);
+@@ -305,9 +308,12 @@
+ }
+ __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
+ __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
++static I trk_report(I *ex);
+ static void gc_report(void) {
+   fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
+           (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
++  I ex, n = trk_report(&ex);
++  if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
+ }
+ static void gc_init(char *sb, I **roots, I nroots) {
+   const char *e = getenv("PYSTACHY_GC");
+@@ -1742,9 +1748,10 @@
+                                           its UTF-8 mode, which the C and POSIX locales turn on, else the locale's */
+   static char e[40];
+   if (!*e) {
++    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+     const char *l = setlocale(LC_CTYPE, "");
+     snprintf(e, sizeof e, "%s", l && strcmp(l, "C") && strcmp(l, "POSIX") ? nl_langinfo(CODESET) : "utf-8");
+-    setlocale(LC_CTYPE, "C");
++    setlocale(LC_CTYPE, old);
+   }
+   return e;
+ }
+@@ -1787,6 +1794,8 @@
+   out_flush(); fputs("KeyboardInterrupt\n", stderr);
+   kbint = 1; pys_finish(); exit(130);
+ }
++static void (*finish_hook)(void);      /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish) */
++void pys_at_finish(void (*f)(void)) { finish_hook = f; }
+ void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
+                                           out_flush), the collector's report, stdout flushed in finalization (a
+                                           failure is reported, status 120), the open files closed in the order they
+@@ -1795,6 +1804,7 @@
+   static int done;
+   if (done++) return;
+   out_flush();
++  if (finish_hook) finish_hook();      /* an embedded CPython's end (pyembed.c), after the program's output */
+   if (gc_stats) gc_report();
+   int bad = 0, e;
+   if (!std_out.closed && (e = flush1(&std_out))) {
+@@ -1826,8 +1836,10 @@
+ }
+ static _Noreturn void oserr(const char *path);
+ static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
++static void (*out_hook)(const char *, I, I);   /* pystachy ext: the host's sys.stdout and sys.stderr (pys_init_lib) */
+ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+   if (f->closed) closed_err();
++  if (out_hook && f->std && f->wr) { out_hook(s, n, f == &std_err ? 2 : 1); return; }
+   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+   if (e) ioerr(e);
+ }
+@@ -1857,6 +1869,23 @@
+     sigint_on = !sigaction(SIGINT, &sa, 0);
+   }
+ }
++/* pystachy ext: CPython hosts the program (pyext.c), and owns main, the signals and sys.stdout.
++   pys_init_lib is pys_init without argv, signal handlers or stdout's emulation (writes go to
++   out_hook); every call from Python is bracketed by pys_enter(its frame)/pys_leave, and the
++   outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
++static I lib_depth;
++void pys_set_out_hook(void (*h)(const char *, I, I)) { out_hook = h; }
++void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
++void pys_leave(void) { lib_depth--; }
++void pys_init_lib(I **roots, I nroots) {
++  if (!pmap) {                         /* (else an import that failed is tried again) */
++    gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
++    std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
++    std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
++    std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
++  }
++  args = pys_list_new(0);              /* sys.argv: the host's (pyext.c's pyx_argv appends it) */
++}
+ List *pys_argv(void) { return args; }
+ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+ void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+@@ -2918,3 +2947,49 @@
+   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
+   return !(lo & 1);
+ }
++/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
++Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
++Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
++  if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
++  return pys_str((const char *)a, n);
++}
++/* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
++   of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
++   ffi.collected() takes one at a time (released then, outside collect: Py_DecRef runs Python code) */
++typedef struct { void *o; I v; } Trk;  /* (a free slot: o is NULL, v the next free one) */
++static Trk *trk;
++static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
++I pys_track(void *o, I v) {
++  I i = trk_free;
++  if (i >= 0) trk_free = trk[i].v;
++  else {
++    if (ntrk == ctrk && !(trk = realloc(trk, (ctrk = 2 * ctrk + 64) * sizeof *trk))) oom();
++    i = ntrk++;
++  }
++  trk[i].o = o; trk[i].v = v;
++  return i;
++}
++void pys_untrack(I i) { if (i >= 0 && i < ntrk && trk[i].o) { trk[i].o = 0; trk[i].v = trk_free; trk_free = i; } }
++static void trk_sweep(void) {          /* after marking */
++  for (I i = 0; i < ntrk; i++)
++    if (trk[i].o && !gc_marked(trk[i].o)) {
++      if (ndq == cdq && !(dq = realloc(dq, (cdq = 2 * cdq + 64) * sizeof *dq))) oom();
++      dq[ndq++] = trk[i].v; trk_gc++; pys_untrack(i);
++    }
++}
++I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
++static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
++I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
++  static I i = -1;
++  if (ndq) return dq[--ndq];
++  if (i < 0) i = ntrk;
++  while (i > 0) if (trk[--i].o) { I v = trk[i].v; pys_untrack(i); trk_exit++; return v; }
++  return 0;
++}
++I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
++  static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",
++                            "OverflowError: can't convert negative int to unsigned", "OverflowError: C unsigned result is too large for int"};
++  if (k == 0 ? v != (int32_t)v : k == 1 ? v < 0 || v > 0xFFFFFFFFLL : v < 0) pys_fail(m[k == 1 && v < 0 ? 2 : k]);
++  return v;
++}
++void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */

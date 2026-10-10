@@ -1,0 +1,237 @@
+### S1: @extern (twin vs JIT vs AOT, GC stress 7)
+SAME  zstats jit
+SAME  zstats aot
+SAME  sat jit
+SAME  sat aot
+  e_int.py:5: error: C function atoi() returns int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)
+  e_dup.py:9: error: C function abs is declared again with other types: i64 @abs(i64) at line 5, signext i32 @abs(i32 signext) here
+  e_res.py:5: error: C function pys_len is reserved for Pystachy's runtime and extension modules
+  e_rt.py:5: error: C function memchr is declared as ptr(ptr, i64, i64), but Pystachy's runtime calls it as ptr(ptr, i32, i64)
+  e_list.py:5: error: C function f() takes list[int]: an @extern function takes a C integer type, float or str
+  e_bool.py:5: error: C function f() takes bool: an @extern function takes a C integer type, float or str
+  e_body.py:5: error: f() is a C function (@extern): its body must be ...
+  ok_rt: True 1
+SAME  a program's own ffi.py (jit)
+SAME  a program's own ffi.py (aot)
+  own ffi.py + pyobj: /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/lib/pyobj.py:13: error: cannot import name 'c_int' from 'ffi'
+### S2: pyobj embedding
+SAME  jsondemo jit 3.13 (GC stress 3)
+SAME  jsondemo aot 3.13 (GC stress 3)
+SAME  jsondemo aot 3.12 (GC stress 3)
+DIFF  uac jit 3.13 (GC stress 3)
+1,9d0
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/emb/uac.py", line 7, in <module>
+<     print(f.call([of_str("x")]))
+<           ~~~~~~^^^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 46, in call
+<     f, a = _live(self.o), [_live(x.o) for x in args]
+<            ~~~~~^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 20, in _live
+<     raise ValueError("operation on a closed Python object")
+DIFF  uac aot 3.13 (GC stress 3)
+1,9d0
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/emb/uac.py", line 7, in <module>
+<     print(f.call([of_str("x")]))
+<           ~~~~~~^^^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 46, in call
+<     f, a = _live(self.o), [_live(x.o) for x in args]
+<            ~~~~~^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 20, in _live
+<     raise ValueError("operation on a closed Python object")
+DIFF  uac aot 3.12 (GC stress 3)
+1,9d0
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/emb/uac.py", line 7, in <module>
+<     print(f.call([of_str("x")]))
+<           ^^^^^^^^^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 46, in call
+<     f, a = _live(self.o), [_live(x.o) for x in args]
+<            ^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree3/tools/rt_cpython/pyobj.py", line 20, in _live
+<     raise ValueError("operation on a closed Python object")
+SAME  sx jit 3.13 (GC stress 3)
+SAME  sx aot 3.13 (GC stress 3)
+SAME  sx aot 3.12 (GC stress 3)
+SAME  sxb jit 3.13 (GC stress 3)
+SAME  sxb aot 3.13 (GC stress 3)
+SAME  sxb aot 3.12 (GC stress 3)
+SAME  fin jit 3.13 (GC stress 3)
+SAME  fin aot 3.13 (GC stress 3)
+SAME  fin aot 3.12 (GC stress 3)
+SAME  jsondemo jit 3.15t (GC stress 7)
+SAME  fin jit 3.15t (GC stress 7)
+SAME  leak jit 3.15t (GC stress 7)
+SAME  leak jit 3.13 (GC stress 50)
+SAME  leak aot 3.13 (GC stress 50)
+  leak aot, no stress, PYSTACHY_GC=stats, 3,000,000 dropped: dropped 3000000 objects; CPython blocks bounded: False gc: 2 collections, 12.6 ms; heap peak 33.1 MiB; live 0.0 MiB at the last gc: Python references released: 2099109 after collections, 900895 at exit 
+  stw aot py315: background thread progressed during compiled loop: True 502768
+  stw aot py315t: background thread progressed during compiled loop: True 502768
+### S3: pystachy ext, abi3 and abi3t, each client against its source run under the twin (same CPython)
+fastmath.abi3.so: defines only PyInit_fastmath; 46 Py symbols, all in the stable ABI <= 3.12
+fastmath.abi3t.so: defines only PyModExport_fastmath; 43 Py symbols, all in the stable ABI <= 3.15
+viajson.abi3.so: defines only PyInit_viajson; 58 Py symbols, all in the stable ABI <= 3.12
+viajson.abi3t.so: defines only PyModExport_viajson; 55 Py symbols, all in the stable ABI <= 3.15
+mg.abi3.so: defines only PyInit_mg; 39 Py symbols, all in the stable ABI <= 3.12
+mg.abi3t.so: defines only PyModExport_mg; 39 Py symbols, all in the stable ABI <= 3.15
+av.abi3.so: defines only PyInit_av; 46 Py symbols, all in the stable ABI <= 3.12
+av.abi3t.so: defines only PyModExport_av; 43 Py symbols, all in the stable ABI <= 3.15
+reent.abi3.so: defines only PyInit_reent; 59 Py symbols, all in the stable ABI <= 3.12
+reent.abi3t.so: defines only PyModExport_reent; 56 Py symbols, all in the stable ABI <= 3.15
+bad_once.abi3.so: defines only PyInit_bad_once; 34 Py symbols, all in the stable ABI <= 3.12
+bad_once.abi3t.so: defines only PyModExport_bad_once; 34 Py symbols, all in the stable ABI <= 3.15
+SAME  a3 client.py on Python 3.12.3 (main, Aug 31 2026,  (but its 'loaded' line)
+    so: loaded abi3 []
+SAME  a3 client2.py on Python 3.12.3 (main, Aug 31 2026, 
+DIFF  a3 use3.py on Python 3.12.3 (main, Aug 31 2026, 
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+DIFF  a3 pk3.py on Python 3.12.3 (main, Aug 31 2026, 
+5,6d4
+< module name: module:mg 
+< mg fib
+8a7,8
+> module name: mg
+> module: mg fib
+SAME  a3 reclient.py on Python 3.12.3 (main, Aug 31 2026, 
+SAME  a3 reimp.py on Python 3.12.3 (main, Aug 31 2026, 
+SAME  a3 avclient.py a b on Python 3.12.3 (main, Aug 31 2026, 
+SAME  a3 -c 'import mg' on Python 3.12.3 (main, Aug 31 2026, 
+SAME  a3 client.py on Python 3.13.16 (main, Oct  1 2026, (but its 'loaded' line)
+    so: loaded abi3 []
+SAME  a3 client2.py on Python 3.13.16 (main, Oct  1 2026,
+DIFF  a3 use3.py on Python 3.13.16 (main, Oct  1 2026,
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+SAME  a3 pk3.py on Python 3.13.16 (main, Oct  1 2026,
+SAME  a3 reclient.py on Python 3.13.16 (main, Oct  1 2026,
+SAME  a3 reimp.py on Python 3.13.16 (main, Oct  1 2026,
+SAME  a3 avclient.py a b on Python 3.13.16 (main, Oct  1 2026,
+SAME  a3 -c 'import mg' on Python 3.13.16 (main, Oct  1 2026,
+SAME  a3 client.py on Python 3.14.8 (main, Oct  9 2026,  (but its 'loaded' line)
+    so: loaded abi3 []
+SAME  a3 client2.py on Python 3.14.8 (main, Oct  9 2026, 
+DIFF  a3 use3.py on Python 3.14.8 (main, Oct  9 2026, 
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+DIFF  a3 pk3.py on Python 3.14.8 (main, Oct  9 2026, 
+4c4,5
+< module name: mg
+---
+> module name:module name:  mgmg
+> 
+6,7d6
+< 55
+< module name: mg
+8a8
+> 55
+SAME  a3 reclient.py on Python 3.14.8 (main, Oct  9 2026, 
+SAME  a3 reimp.py on Python 3.14.8 (main, Oct  9 2026, 
+SAME  a3 avclient.py a b on Python 3.14.8 (main, Oct  9 2026, 
+SAME  a3 -c 'import mg' on Python 3.14.8 (main, Oct  9 2026, 
+SAME  a3 client.py on Python 3.15.0 (main, Oct  9 2026,  (but its 'loaded' line)
+    so: loaded abi3 []
+SAME  a3 client2.py on Python 3.15.0 (main, Oct  9 2026, 
+DIFF  a3 use3.py on Python 3.15.0 (main, Oct  9 2026, 
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+SAME  a3 pk3.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3 reclient.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3 reimp.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3 avclient.py a b on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3 -c 'import mg' on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3t client.py on Python 3.15.0 (main, Oct  9 2026,  (but its 'loaded' line)
+    so: loaded abi3t []
+SAME  a3t client2.py on Python 3.15.0 (main, Oct  9 2026, 
+DIFF  a3t use3.py on Python 3.15.0 (main, Oct  9 2026, 
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+SAME  a3t pk3.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3t reclient.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3t reimp.py on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3t avclient.py a b on Python 3.15.0 (main, Oct  9 2026, 
+SAME  a3t -c 'import mg' on Python 3.15.0 (main, Oct  9 2026, 
+DIFF  a3t client.py on Python 3.15.0 free-threading build (but its 'loaded' line)
+2c2
+< gil False
+---
+> gil True
+    so: loaded abi3t ['The global interpreter lock (GIL) has been enabled to load m']
+SAME  a3t client2.py on Python 3.15.0 free-threading build
+DIFF  a3t use3.py on Python 3.15.0 free-threading build
+1,6c1,3
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/src/use3.py", line 2, in <module>
+<     assert viajson.__file__.endswith(".so")
+<            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+< AssertionError
+< exit=1
+---
+> 8997000
+> 8997000
+DIFF  a3t pk3.py on Python 3.15.0 free-threading build
+4c4,5
+< module name: mg
+---
+> module name:module name:  mgmg
+> 
+6,7d6
+< 55
+< module name: mg
+8a8
+> 55
+SAME  a3t reclient.py on Python 3.15.0 free-threading build
+SAME  a3t reimp.py on Python 3.15.0 free-threading build
+SAME  a3t avclient.py a b on Python 3.15.0 free-threading build
+SAME  a3t -c 'import mg' on Python 3.15.0 free-threading build
+  abi3 on Python 3.13.16 experimental free-threadi: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+  abi3 on Python 3.14.8 free-threading build (main: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+  abi3t on 3.15t, PYTHON_GIL=0: ImportError: a Pystachy extension module needs the GIL (its runtime is single-threaded), which PYTHON_GIL=0 or -X gil=0 keeps off
+  abi3 on 3.11 (below the floor): ImportError: /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run3/ext/a3/fastmath.abi3.so: undefined symbol: PyErr_GetRaisedException
+  bad_pub.py:9: error: g() is public in extension module 'bad_pub' but not @export: CPython would not see it; export it or name it _g
+  bad_def.py:5: error: f() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)
+  bad_cls.py:4: error: class TooBig is public in extension module 'bad_cls', but classes cannot cross to CPython yet: name it _TooBig
+  bad_var.py:3: error: variable 'limit' is public in extension module 'bad_var', but CPython would not see it (variables cannot cross yet): name it _limit
+  bad_call.py:6: error: fib() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use
+### probes: 61 same, 13 different

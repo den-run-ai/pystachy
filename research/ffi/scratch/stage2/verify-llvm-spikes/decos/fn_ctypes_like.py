@@ -1,0 +1,3 @@
+@extern("libm")
+def cos(x: float) -> float: ...
+print(cos(0.0))

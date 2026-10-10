@@ -1,0 +1,118 @@
+--- /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/spike_ext/runtime.c	2026-10-09 23:06:15.232913229 +0000
++++ runtime_seg.c	2026-10-09 23:39:19.152935220 +0000
+@@ -103,6 +103,15 @@
+ static int gc_off, gc_stats;
+ static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+ static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
++/* library mode, no TLS: the host's GIL lets one thread run compiled code at a time, so the running
++   segment's state is global, and each switch (an entry, a call out to the host) saves and restores it */
++static char *cur_bottom;               /* the running segment's stack bottom */
++static I seg_mark;                     /* the running segment's first unwind action */
++typedef struct { char *lo, *hi; I mark, nsv; void *sv; void *x[4]; } Span;   /* a parked segment */
++static Span *spans;                    /* library mode: compiled frames suspended in a call out to the host */
++static I nspans, cspans;
++static void **pins;                    /* library mode: objects a foreign heap holds (pys_pin), malloc'd */
++static I npins, cpins;
+ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
+ static I msp, mcap;
+ static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
+@@ -163,6 +172,12 @@
+   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
+   scan((const W *)ch1, (const W *)(ch1 + 256));
+   scan((const W *)&args, (const W *)(&args + 1));
++  if (npins) scan((const W *)pins, (const W *)(pins + npins));
++  for (I i = 0; i < nspans; i++) {     /* parked segments: their stack, unwind actions and exception state */
++    scan((const W *)((uintptr_t)spans[i].lo & ~(uintptr_t)7), (const W *)spans[i].hi);
++    scan((const W *)spans[i].x, (const W *)(spans[i].x + 4));
++    if (spans[i].nsv) scan((const W *)spans[i].sv, (const W *)((char *)spans[i].sv + spans[i].nsv * 2 * sizeof(void *)));
++  }
+   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
+     scan((const W *)&xr, (const W *)(&xr + 1));
+     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
+@@ -1826,8 +1841,10 @@
+ }
+ static _Noreturn void oserr(const char *path);
+ static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
++static void (*out_hook)(const char *s, I n, I fd);   /* library mode: the host's sys.stdout/sys.stderr.write */
+ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
+   if (f->closed) closed_err();
++  if (out_hook && (f == &std_out || f == &std_err)) { out_hook(s, n, f == &std_err ? 2 : 1); return; }
+   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+   if (e) ioerr(e);
+ }
+@@ -1857,6 +1874,64 @@
+     sigint_on = !sigaction(SIGINT, &sa, 0);
+   }
+ }
++/* ---------- library mode: a host process (CPython) calls compiled functions ----------
++   The host owns main, the signals and sys.stdout. pys_init_lib replaces pys_init: no argv, no
++   SIGINT/SIGPIPE handlers, no stdout emulation (writes go to the host through out_hook). Every
++   foreign entry brackets its calls with pys_enter(its frame address)/pys_leave(): the outermost
++   one bounds the stack scan, as @main's frame does for a program. Objects the host keeps between
++   calls are pinned. Single-threaded: the host must serialize entries (CPython's GIL, with
++   Py_mod_gil = Py_MOD_GIL_USED), and must not release it while compiled frames are live. */
++static int lib_inited;
++__attribute__((minsize)) void pys_init_lib(char *sb, I **roots, I nroots) {
++  if (lib_inited++) return;            /* a second import of the module (another interpreter, reload) */
++  gc_init(sb, roots, nroots);
++  args = pys_list_new(0);
++  std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
++  std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
++  std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
++}
++typedef struct { char *bottom; I mark; } Entry;
++void pys_enter(char *sb, Entry *e) {   /* every entry from the host starts a segment */
++  e->bottom = cur_bottom; e->mark = seg_mark;
++  cur_bottom = gc_bottom = sb + 2 * sizeof(void *); seg_mark = nunw;
++}
++void pys_leave(Entry *e) { cur_bottom = gc_bottom = e->bottom; seg_mark = e->mark; }
++/* a call out to the host, which may let another thread enter (CPython releases the GIL): the
++   caller spilled its registers (__builtin_unwind_init); this segment's frames, unwind actions and
++   exception state are set aside (and stay roots) until pys_out_end */
++__attribute__((noinline)) void *pys_out_begin(void) {
++  if (nspans == cspans && !(spans = realloc(spans, (cspans = 2 * cspans + 8) * sizeof *spans))) oom();
++  Span *p = &spans[nspans++];
++  p->lo = __builtin_frame_address(0); p->hi = cur_bottom; p->mark = seg_mark;
++  p->nsv = nunw - seg_mark; p->sv = 0;
++  if (p->nsv) {
++    if (!(p->sv = malloc(p->nsv * sizeof *unw))) oom();
++    memcpy(p->sv, unw + seg_mark, p->nsv * sizeof *unw); nunw = seg_mark;
++  }
++  memcpy(p->x, &xr, sizeof xr);
++  return p->lo;
++}
++void pys_out_end(void *lo) {
++  I i = nspans - 1;
++  while (i >= 0 && spans[i].lo != lo) i--;
++  Span p = spans[i]; spans[i] = spans[--nspans];
++  cur_bottom = gc_bottom = p.hi; seg_mark = nunw;   /* (== p.mark: other segments left or parked) */
++  if (p.nsv) {
++    if (nunw + p.nsv > cunw && !(unw = realloc(unw, (cunw = nunw + p.nsv + 16) * sizeof *unw))) oom();
++    memcpy(unw + nunw, p.sv, p.nsv * sizeof *unw); nunw += p.nsv; free(p.sv);
++  }
++  memcpy(&xr, p.x, sizeof xr);
++}
++void pys_set_out_hook(void (*h)(const char *, I, I)) { out_hook = h; }
++void pys_pin(void *p) {
++  if (npins == cpins && !(pins = realloc(pins, (cpins = 2 * cpins + 16) * sizeof *pins))) oom();
++  pins[npins++] = p;
++}
++void pys_unpin(void *p) {              /* the latest pin of p (LIFO is the common case) */
++  for (I i = npins - 1; i >= 0; i--) if (pins[i] == p) { pins[i] = pins[--npins]; return; }
++}
++I pys_exc_status(Exc *e, I *code);     /* (exceptions) SystemExit: 1 and its status in *code */
++
+ List *pys_argv(void) { return args; }
+ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
+ void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
+@@ -2257,6 +2332,10 @@
+   return 0;
+ }
+ void *pys_exc_obj(Exc *e) { return e->obj; }
++I pys_exc_status(Exc *e, I *code) {    /* library mode: a builtin SystemExit, and its status (1 for a str code) */
++  if (e->obj || strcmp(e->kind->s, "SystemExit")) return 0;
++  *code = e->has_code ? e->code : 1; return 1;
++}
+ void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
+ Exc *pys_exc_handled(void) { return xr.handled; }
+ void pys_exc_restore(Exc *e) { xr.handled = e; }

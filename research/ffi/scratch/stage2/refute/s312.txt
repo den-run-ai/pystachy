@@ -1,0 +1,13 @@
+fastmath ready
+gil n/a
+2880067194370816120 8
+caught ValueError ('negative: -5',) -
+caught OverflowError ('int too big to convert',) -
+caught TypeError ("'str' object cannot be interpreted as an integer",) -
+caught KeyError ('zz',) -
+caught ValueError ('bad', 7) -
+caught SystemExit (3,) 3
+caught SystemExit ('so long',) so long
+caught SystemExit () None
+redirected: 'hello from Pystachy, captured\n'
+other thread: ['RuntimeError']

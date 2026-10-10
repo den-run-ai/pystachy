@@ -1,0 +1,9 @@
+--- runtime.orig.c	2026-10-09 23:36:24.626071672 +0000
++++ runtime.s1.c	2026-10-09 23:46:46.247828913 +0000
+@@ -2918,3 +2918,6 @@
+   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
+   return !(lo & 1);
+ }
++/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
++Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
++Str *pys_string_at(I a, I n) { return pys_str((const char *)a, n); }   /* ffi.string_at, as ctypes.string_at */

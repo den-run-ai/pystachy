@@ -1,0 +1,97 @@
+[0] (high) The contract is a hard invariant: a program that compiles prints what CPython prints (apart from documented deviations), otherwise it gets a compile-time file:line: error. CPython's output is the specification and the tests' oracle.
+   EVID: README.md:14-16; docs/language.md:8-11; docs/history.md:35-36 ("CPython's output is the contract", "Reject rather than miscompile"); docs/testing.md:18-23
+[1] (high) Self-hosting is a hard invariant: stage1, stage2 and stage3 must emit byte-identical IR, for the compiler and also for runtime.py (pystachy rt). The compiler is written in the subset, and CPython runs it as stage 0.
+   EVID: docs/testing.md:10,60; docs/internals.md:324-332 (Bootstrap); README.md:53,173-175; docs/runtime-in-subset.md:138-139
+[2] (high) The Python-free stage is a hard invariant. With PATH holding only the LLVM tools, the linker and POSIX tools (python3 checked unreachable), the native compiler must rebuild its runtime and itself, reproduce the IR and pass the tests.
+   EVID: docs/testing.md:64-66; tests/verify.sh:10-11,119-147 (nopy() uses env -i PATH=$NP; it checks that python3 is not found); README.md:175
+[3] (high) irsame is the oracle for refactors. Every IR step must leave the corpus's IR byte-identical (and the stderr and status of the error cases), and behaviour changes never go into those steps. The established precedent for new features is pay-for-use: programs that do not use a feature keep their IR byte for byte.
+   EVID: docs/testing.md:108-117; docs/typed-ir.md:831-841 ("Behaviour changes never go into these steps"); docs/typed-ir.md:18-19 and docs/history.md:67 ("programs without try keep their IR byte for byte"); docs/runtime-in-subset.md:13 ("no program's IR changes")
+[4] (high) make verify also gates UBSan (runtime and every test program built with -fsanitize=undefined) and gc-stress (a collection at every allocation of the program). check-ir, runtime-table (RUNTIME against runtime.c and runtime.py, signatures and effect letters) and rt-abi (one LLVM signature per function across runtime.py, runtime.c and the corpus) are steps too. Any FFI shim or boundary must pass all of them.
+   EVID: docs/testing.md:67-96; docs/runtime-in-subset.md:664
+[5] (high) Typed IR goals bind any new lowering. It stays in the subset, stays deterministic (stage1 == stage2 == stage3), keeps the LLVM/mem2reg delegation and the runtime ABI (None as null, 8-byte slots, descriptors), keeps every error message and its order, and lowering cannot fail on user input (R5).
+   EVID: docs/typed-ir.md:168-178, 686, 1167 ("Changes to the runtime's ABI in IR steps" out of scope)
+[6] (high) Soft preference for a minimal runtime: the runtime needs only the C library, and the collector needs nothing beyond it. The runtime ABI stays frozen while the IR steps run.
+   EVID: README.md:52,180-181; docs/internals.md:238; docs/runtime-in-subset.md:57,463
+[7] (high) Soft preference for no new toolchain. Rust, Zig or C++ for the runtime were rejected as "A second toolchain, outside the self-hosting and Python-free stages". Inline LLVM IR (Codon's @llvm, Julia's llvmcall) was rejected because it binds the runtime to one backend's text and CPython could no longer run runtime.py, which would lose rtcheck and the CPython-only bootstrap.
+   EVID: docs/runtime-in-subset.md:712, 714, 656 ("inline LLVM text, as in Codon's @llvm, would end it")
+[8] (high) Soft preference for Wasm GC portability. _rt has "no raw pointers and no pointer arithmetic", and every primitive works on str or int with a Wasm GC counterpart. The Wasm GC backend is a second lowering that binds RUNTIME keys to a runtime written in the subset. C cannot touch Wasm GC objects.
+   EVID: docs/runtime-in-subset.md:119, 422-425, 649, 655, 666, 700; docs/typed-ir.md:1113-1120; README.md:232-234
+[9] (high) CPython interop is undecided. The README asks whether Pystachy should also gain an AOT CPython-extension mode like mypyc. Issue #4 §4 recommends evaluating it as a candidate, explicitly "not an already approved implementation decision", and says standalone mode must be preserved.
+   EVID: docs/history.md:73 ("open, nothing decided"); README.md:228-230; GitHub issue den-run-ai/pystachy#4 §4 and its intro (read via mcp__github__issue_read; no comments)
+[10] (high) Issue #4 §4 sets requirements for any boundary before implementation:
+- an ADR comparing extension mode, explicit opaque-Python-object bridging and expansion of the independent runtime;
+- a spec of identity and shared mutation, owned and borrowed references, error propagation, callbacks, buffer protocols and cross-runtime cycles;
+- mutable Python objects stay Python objects by default, with explicit copies only;
+- zero-copy numerical buffers come first;
+- explicit eligibility diagnostics, with no invisible performance cliffs;
+- completion gate: one pure-Python and one native-extension package run unchanged, and baselines are taken against mypyc, Cython and CinderX.
+   EVID: GitHub issue #4 §4 checklist and 'Completion gate' (mcp__github__issue_read get, issue 4)
+[11] (high) Extension mode is already sketched as a third lowering of the typed IR. An IFn is eligible when it elaborated without error and every op has a C-API lowering. Containers stay Python objects. None is Py_None. Refcounts come from liveness plus a new-or-borrowed column in RUNTIME and never appear in the shared IR. check/raise become PyErr_* plus an error return. Boundary checks: str is byte-indexed and int is 64-bit, so the boundary must "check or reject these, so that the same IR does not mean different things".
+   EVID: docs/typed-ir.md:1122-1132, 50, 652
+[12] (high) Two decisions bear on the extension lowering. The error flag (rejected for standalone mode in favour of table-driven unwinding) is explicitly kept for it. Extension mode also does not use the standalone runtime.
+   EVID: docs/typed-ir.md:1110-1111, 1190 ("keeps the flag for a CPython-extension lowering"); docs/runtime-in-subset.md:426
+[13] (high) A third lowering cannot be written yet. About 58,000 raw ops still hold LLVM text, steps 1-3, 9-13, 15 and 16 have not landed, and the docs warn that if the migration stops before step 16, "a Wasm or CPython backend gains nothing".
+   EVID: docs/typed-ir.md:25-27, 1180; open question docs/typed-ir.md:1191
+[14] (high) Recoverable elaboration is a stated prerequisite for extension-mode eligibility, and its design is an open question. Today err() calls fail(), which exits the process. The docs' premise that "the subset has no exceptions" has been stale since #22 added try/except to the language, but pystachy.py itself uses no try statement.
+   EVID: docs/typed-ir.md:772, 1128, 1200, 1227; pystachy.py:7038-7045 (err -> fail); def fail: print error, sys.exit(1); docs/language.md:222-233; grep '^\s+try:' pystachy.py -> no matches
+[15] (high) No FFI exists for programs. The only extern form is runtime-mode `def pys_x(...) -> T: ...`, which must name one of runtime.c's pys_* functions; in program mode a `...` body is rejected. Externs may not take or return bool (the ABI passes bools as i64). An extern RUNTIME does not name may use only int, float, str or None. A str crosses as Str*, never char*, so libc is reached only through runtime.c.
+   EVID: pystachy.py:8015-8020 ("declares a C function: in runtime.py that is one of runtime.c's, named pys_*"); pystachy.py:10927-10944 (bool check, RUNTIME match); pystachy.py:9762-9770 (untold); docs/runtime-in-subset.md:68, 76-80, 123, 521
+[16] (high) The existing internal binding layer is table-driven and could serve as an FFI descriptor format. CALLS maps 'module.fn(types)' to a 'pys_symbol:ret', and MODULES lists the builtin modules. RUNTIME holds 'result:params|effects|symbol' and is checked against the C side. A call to a callee that is not compiled counts as every effect letter but N, which is conservative and sound, but blocks the listget and dictfuse passes across it and makes it an invoke inside a try.
+   EVID: pystachy.py:5116-5183 (CALLS, MODULES); pystachy.py:5480-5489 (RUNTIME format); docs/typed-ir.md:427-447, 476; docs/runtime-in-subset.md:123
+[17] (high) There is a precedent for keeping CPython as the oracle across a non-Python primitive layer. `_rt` exists as compiler primitives and also as a CPython twin (tools/rt_cpython/_rt.py), so CPython can run runtime.py, and rtcheck compares the two in about 275k cases per second.
+   EVID: docs/runtime-in-subset.md:143-160; tools/rt_cpython/_rt.py:1-7
+[18] (high) GC rooting assumes Pystachy owns the process. The stack is scanned from the collector's frame up to gc_bottom (@main's frame, passed to pys_init), plus the program's pointer-typed globals table, the runtime statics, args and the exception record. Memory owned by foreign code (malloc'd or CPython heap) is never scanned. Interior pointers are found through the page map.
+   EVID: runtime.c:104-105, 161-170, 1839-1840; docs/internals.md:238-246
+[19] (high) The runtime's initialization and error paths assume a standalone process. pys_init ignores SIGPIPE, installs a SIGINT handler, re-buffers C stdout (separate from any CPython sys.stdout) and builds argv. Every error funnel (pys_fail, pys_raise, pys_exit, oom) ends in exit() when no handler catches the error.
+   EVID: runtime.c:1839-1859; runtime.c:123, 352-371; runtime.c:2300-2306
+[20] (high) Exceptions use single-phase _Unwind_ForcedUnwind with the stop_none stop function. Frames without pys_personality are passed over, so CPython frames between a raise and an outer Pystachy handler would be skipped with no cleanup. Every boundary entry therefore needs its own catch-all landing pad that converts to PyErr.
+   EVID: runtime.c:2093-2100, 2316-2320; docs/internals.md:170-200 (Exceptions by table-driven unwinding)
+[21] (high) Code generation makes closed-world assumptions. Whether a program has a try is decided over all its modules. exc.match tests against the closed set EXCBASES plus the program's exception classes. pys_obj_eq/cmp/repr is a switch over the classes that occur in containers. Template instance names are not stable, so a template cannot be a C export.
+   EVID: docs/typed-ir.md:1456-1457, 1485-1487; docs/internals.md:228-231; docs/runtime-in-subset.md:418
+[22] (high) The runtime has single-threaded global state (static free lists, the heap, the exception record), and issue #4 §3 asks to document it as a collector assumption. Finalizers never run (__del__), but a collection closes unreachable files after marking, which is a precedent for a sweep-time release hook.
+   EVID: runtime.c:95-120; GitHub issue #4 §3; docs/language.md:578-579; docs/internals.md:247
+[23] (high) The tiers are built with the tools already present. The JIT exec's `lli -extra-object=runtime-py.o` as a separate process and never inlines the runtime. AOT runs llvm-link --only-needed and clang -O2, and links only an executable with -lm. The runtime .o for the JIT is built -fPIC.
+   EVID: pystachy.py:16642-16671; docs/internals.md:309-322
+[24] (high) Probe: the JIT tier's lli can host CPython in-process. lli 18 has --dlopen, and a hand-written IR module calling Py_Initialize/PyRun_SimpleString ran under `lli --dlopen=/usr/lib/x86_64-linux-gnu/libpython3.13.so` and printed 'embedded CPython 3.13.16' (status 0).
+   EVID: scratchpad/repo-docs/emb.ll; command: lli --dlopen=$LIB emb.ll -> 'embedded CPython 3.13.16', status=0; lli --help lists --dlopen, --extra-object, --extra-archive, --extra-module
+[25] (medium) Probe: an extension module can be built from LLVM IR with clang alone, with no Python.h and no Python at build time. Undefined symbols are only PyLong_AsLongLong, PyLong_FromLongLong, PyModule_Create2, PyErr_Occurred, PyErr_SetString and PyExc_OverflowError; the module is named pysq.abi3.so. CPython 3.13.16 imported it. square(7) gave 49. An i64 overflow raised OverflowError through PyErr_SetString, and a str argument raised TypeError from PyLong_AsLongLong. Not verified: that every symbol is in the official stable-ABI list, and that the module loads on other CPython versions.
+   EVID: scratchpad/repo-docs/pysq.ll; clang -O2 -shared -fPIC pysq.ll -o pysq.abi3.so; python3 -I -c 'import pysq; ...' -> '49 9', 'OverflowError ...', "TypeError 'str' object cannot be interpreted as an integer"; nm -D --undefined-only output
+[26] (high) M6's C-module shims (_weakref with strong references, _thread with one thread, _io, binascii, _codecs, itertools) are planned as Pystachy-native modules. Each documents its semantics as a deviation, and the issue says "neither is general compatibility". This is the standalone runtime's own interop path for stdlib C modules, not CPython interop.
+   EVID: GitHub issue #11 Scope item 2; docs/stdlib.md:53-56, 269-275; GitHub issue #5 'Ceiling' (307 of 821 packages need third-party compiled deps → "Reaching those needs the interoperability path of #4 §4")
+[27] (medium) (a) User-declared C externs: interaction with each invariant.
+- Contract: broken unless CPython can run the same declaration. A `...` body returns None under CPython, so a CPython twin (ctypes-backed, like _rt's twin) is needed.
+- Fixed point and irsame: unaffected if programs that use no extern keep their IR (pay-for-use).
+- Python-free: fine.
+- Runtime: no growth if calls are direct; the effects are conservative (all but N).
+- UBSan and gc-stress: pointers held by C beyond the call would be invisible to the GC.
+- Wasm GC: portable only for int/float (str by copy) as host imports, and externs must stay out of runtime.py to keep _rt pointer-free.
+- Tiers: both reach C symbols, AOT through the link and the JIT through -extra-object/--dlopen.
+   EVID: Inference from pystachy.py:8015-8020, docs/runtime-in-subset.md:68,119,123,143-145, docs/typed-ir.md:476, runtime.c:161-170, lli --help (--dlopen/--extra-object)
+[28] (medium) (b) CPython extension-module output (AOT): interaction with each invariant.
+- Status: the only option the docs sketch (typed-ir §7.4, issue #4 §4).
+- Contract: testable by importing the compiled module and its source into CPython and comparing. The deviations (64-bit int, byte str) must be checked or rejected at the boundary.
+- Fixed point and irsame: unaffected if the lowering is a separate output mode.
+- Python-free: compiler builds stay Python-free (the probe shows no headers are needed), but tests of the mode need python3, so they belong in a separate verify step.
+- Prerequisites: the full typed-IR lowering needs step 16 and recoverable elaboration first.
+- Runtime: it does not use runtime.c, but needs C-API helpers (mypyc's lib-rt is 29k lines of C over the C API).
+- Wasm: no conflict.
+- Lighter variant (my inference, not in the docs): wrap the existing LLVM lowering plus runtime.c into a .so with copy-converting entry wrappers, a gc_bottom per entry and handles kept as roots. That needs no third lowering but contradicts "keep mutable Python objects as Python objects" unless the copies are explicit.
+   EVID: docs/typed-ir.md:1122-1132, 25-27, 1180; docs/runtime-in-subset.md:426, 630; GitHub issue #4 §4; probe pysq.ll
+[29] (medium) (c) Embedding CPython in Pystachy programs with an opaque PyObject type: interaction with each invariant.
+- Status: named in #4 §4 as "explicit opaque-Python-object bridging", to compare in the ADR; Codon is cited, where converted containers do not preserve shared mutation.
+- Contract: holds only if every PyObject op has CPython semantics, and the oracle is CPython running the program natively.
+- Runtime: needs an opaque type (M4's Any is not started), U+R+A+I effects on every op, PyObject* refcounts released by a sweep-time hook (as files are; __del__ never runs) and a policy for cross-runtime cycles.
+- Runtime dependency: needs libpython at run time, which breaks the libc-only runtime unless it is optional or dlopen'd. Both tiers can load it (JIT through lli --dlopen, verified).
+- Exceptions: Python exceptions fall outside the closed class set and need a catch-all mapping.
+- Stdout: Python's sys.stdout and Pystachy's C stdout buffer interleave.
+- Callbacks: Python calling into Pystachy needs functions as values (M3, not supported).
+- Wasm GC: not portable.
+   EVID: GitHub issue #4 §4; docs/typed-ir.md:1147-1148, 1456-1457; docs/language.md:578-579; docs/internals.md:247; README.md:52,247; runtime.c:1851; probe emb.ll
+[30] (medium) (d) In-process JIT inside CPython (a Numba/LPython-style decorator): no doc mentions it.
+- Tooling: Pystachy's JIT is an exec'd lli process, and the compiler drives LLVM only through command-line tools. An in-process JIT needs an LLVM binding inside CPython, which is a new toolchain dependency (contrary to the no-new-toolchain rationale). The other route is an AOT compile to a cached .so loaded behind the decorator, which is (b) with a cache.
+- Contract: a natural fit, since the undecorated function runs on CPython as the oracle.
+- Templates: specialization per argument types matches templates, but instance names are not stable for export.
+- Runtime: pys_init's signal and stdout setup and exit()-on-error would act on the host process.
+- Compile cost: the CPython-hosted compiler is about 6x slower than the native one (2.6 s against 0.45 s for 16k lines).
+- Python-free: an inherently Python-hosted mode, outside that stage.
+   EVID: pystachy.py:16657-16671; docs/runtime-in-subset.md:418, 712; docs/performance.md:76-78; runtime.c:1839-1859, 352-371

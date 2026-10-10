@@ -1,0 +1,119 @@
+### S1: @extern (twin vs JIT vs AOT, GC stress 7)
+SAME  zstats jit
+SAME  zstats aot
+  e_int.py:5: error: C function atoi() returns int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)
+  e_dup.py:9: error: C function abs is declared again with other types: i64 @abs(i64) at line 5, signext i32 @abs(i32 signext) here
+  e_res.py:5: error: C function pys_len is reserved for Pystachy's runtime and extension modules
+  e_rt.py:5: error: C function memchr is declared as ptr(ptr, i64, i64), but Pystachy's runtime calls it as ptr(ptr, i32, i64)
+  e_list.py:5: error: C function f() takes list[int]: an @extern function takes a C integer type, float or str
+  e_bool.py:5: error: C function f() takes bool: an @extern function takes a C integer type, float or str
+  e_body.py:5: error: f() is a C function (@extern): its body must be ...
+  ok_rt: True 1
+### S2: pyobj embedding (twin 3.13 vs JIT/AOT 3.13, GC stress 3)
+SAME  jsondemo jit 3.13
+SAME  jsondemo aot 3.13
+DIFF  uac jit 3.13
+1,9d0
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/emb/uac.py", line 7, in <module>
+<     print(f.call([of_str("x")]))
+<           ~~~~~~^^^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree2/tools/rt_cpython/pyobj.py", line 46, in call
+<     f, a = _live(self.o), [_live(x.o) for x in args]
+<            ~~~~~^^^^^^^^
+DIFF  uac aot 3.13
+1,9d0
+< Traceback (most recent call last):
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/run/emb/uac.py", line 7, in <module>
+<     print(f.call([of_str("x")]))
+<           ~~~~~~^^^^^^^^^^^^^^^
+<   File "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/final/tree2/tools/rt_cpython/pyobj.py", line 46, in call
+<     f, a = _live(self.o), [_live(x.o) for x in args]
+<            ~~~~~^^^^^^^^
+SAME  sx jit 3.13
+SAME  sx aot 3.13
+SAME  fin jit 3.13
+SAME  fin aot 3.13
+DIFF  jsondemo jit 3.15t
+1,4c1,31
+< json: [1, "h\u00e9llo"]
+< 21
+< caught: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+< exit=0
+---
+> Python path configuration:
+>   PYTHONHOME = '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/capi-verify/py315t/python'
+DIFF  fin jit 3.15t
+1,4c1,31
+< pystachy done
+< thread finished
+< atexit ran
+< exit=0
+---
+> Python path configuration:
+>   PYTHONHOME = '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/capi-verify/py315t/python'
+  stw aot py315: background thread progressed during compiled loop: True 502768
+  stw aot py315t: background thread progressed during compiled loop: True 502768
+### S3: pystachy ext (abi3 and abi3t, GC stress 1)
+  a3/fastmath.abi3.so exports: PyInit_fastmath 
+  a3t/fastmath.abi3t.so exports: PyModExport_fastmath 
+  a3/viajson.abi3.so exports: PyInit_viajson 
+  a3t/viajson.abi3t.so exports: PyModExport_viajson 
+fastmath.abi3.so: 40 Py symbols, all in the stable ABI <= 3.12
+viajson.abi3.so: 55 Py symbols, all in the stable ABI <= 3.12
+fastmath.abi3t.so: 37 Py symbols, all in the stable ABI <= 3.15
+viajson.abi3t.so: 52 Py symbols, all in the stable ABI <= 3.15
+DIFF  fastmath abi3 on Python 3.13.16 (vs source run; expect the 2 listed deviations)
+2c2
+< loaded source []
+---
+> loaded abi3 []
+5a6
+> caught OverflowError ('int too big to convert',) -
+13c14
+< other thread: []
+  viajson nested abi3 Python 3.13.16: 8997000 8997000 
+DIFF  fastmath abi3 on Python 3.14.8 (vs source run; expect the 2 listed deviations)
+2c2
+< loaded source []
+---
+> loaded abi3 []
+5a6
+> caught OverflowError ('int too big to convert',) -
+13c14
+< other thread: []
+  viajson nested abi3 Python 3.14.8: 8997000 8997000 
+DIFF  fastmath abi3 on Python 3.15.0 (vs source run; expect the 2 listed deviations)
+2c2
+< loaded source []
+---
+> loaded abi3 []
+5a6
+> caught OverflowError ('int too big to convert',) -
+13c14
+< other thread: []
+  viajson nested abi3 Python 3.15.0: 8997000 8997000 
+  abi3 on Python 3.13.16 experimental free-threadi: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+  abi3 on Python 3.14.8 free-threading build (main: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+DIFF  fastmath abi3t on Python 3.15.0 (main, Oct  9 20 (vs source run)
+2c2
+< loaded source []
+---
+> loaded abi3t []
+5a6
+> caught OverflowError ('int too big to convert',) -
+13c14
+< other thread: []
+  viajson nested abi3t: 8997000 8997000 
+DIFF  fastmath abi3t on Python 3.15.0 free-threading b (vs source run)
+2c2
+< loaded source []
+---
+> loaded abi3t ['The global interpreter lock (GIL) has been enabled to load m']
+5a6
+> caught OverflowError ('int too big to convert',) -
+13c14
+< other thread: []
+  viajson nested abi3t: 8997000 8997000 
+  abi3t on 3.15t, PYTHON_GIL=0: ImportError: a Pystachy extension module needs the GIL (its runtime is single-threaded), which PYTHON_GIL=0 or -X gil=0 keeps off
+### probes: 8 same, 9 different

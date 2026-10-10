@@ -1,0 +1,14 @@
+mkdir -p build
+python3 pystachy.py build pystachy.py -o build/pystachy1
+build/pystachy1 build pystachy.py -o build/pystachy2
+python3 pystachy.py ir pystachy.py -o build/stage1.ll
+build/pystachy1 ir pystachy.py -o build/stage2.ll
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (218448 lines of IR)
+python3 pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (10393 lines)
+cp build/pystachy2 pystachy
