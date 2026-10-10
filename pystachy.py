@@ -6481,6 +6481,13 @@ class Val:
         self.t = t
 
 
+class IterArg:
+    # A consumer's next argument: evaluate it after its iterator is constructed, before traversal.
+    def __init__(self, node: Node):
+        self.node = node
+        self.value = Val("", "")
+
+
 class FnInfo:
     def __init__(self, name: str, ll: str, node: Node, cls: str):
         self.name = name
@@ -13369,7 +13376,11 @@ class Gen:
                 del self.ltype[nm]
             self.compvars[nm] = self.compvars.get(nm, 0) + 1
 
-    def for_(self, n: Node, hide: list[str]) -> None:
+    def iterarg(self, arg: IterArg | None) -> None:
+        if arg is not None:
+            arg.value = self.expr(arg.node, "")
+
+    def for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None:
         tgt = n.kids[0]
         it = n.kids[1]
         body = n.kids[2].kids
@@ -13383,10 +13394,10 @@ class Gen:
             args = it.kids[1:]
             if fn == "range":
                 vs = self.range_args(args)
-                self.for_range(tgt, vs[0], vs[1], vs[2], body, hide)
+                self.for_range(tgt, vs[0], vs[1], vs[2], body, hide, arg)
                 return
             if fn == "reversed" and len(args) == 1 and args[0].kind == "call" and args[0].kids[0].kind == "name" and args[0].kids[0].s == "range" and not self.bound("range"):
-                self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide)
+                self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide, arg)
                 return
             for a in args:
                 if self.iterator_call(a) and (fn == "enumerate" or fn == "zip" or fn == "reversed"):
@@ -13403,7 +13414,7 @@ class Gen:
                     evs.append(v if is_opt(v.t) or v.t in self.classes else self.iterable(v))  # (None raises, and __iter__ runs, once all are evaluated)
                 notit = "TypeError: 'NoneType' object is not reversible" if fn == "reversed" else "TypeError: 'NoneType' object is not iterable"
                 seqs = [self.iterable(v, notit) for v in evs]
-                self.for_seq(tgt, seqs, fn, body, "0", hide)
+                self.for_seq(tgt, seqs, fn, body, "0", hide, arg)
                 for i in range(len(args)):
                     self.close_temp(args[i], seqs[i])
                 return
@@ -13413,7 +13424,7 @@ class Gen:
                 a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
                 st = self.ival(a1).v
                 seq = self.iterable(seq)
-                self.for_seq(tgt, [seq], fn, body, st, hide)
+                self.for_seq(tgt, [seq], fn, body, st, hide, arg)
                 self.close_temp(args[0], seq)
                 return
         if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
@@ -13421,14 +13432,15 @@ class Gen:
             if m == "items" or m == "keys" or m == "values":
                 o = self.unwrap(self.expr(it.kids[0].kids[0], ""), f"AttributeError: 'NoneType' object has no attribute '{m}'")
                 if is_dict(o.t):
-                    self.for_seq(tgt, [o], m, body, "0", hide)
+                    self.for_seq(tgt, [o], m, body, "0", hide, arg)
                 else:
-                    self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide)
+                    self.for_seq(tgt, [self.method(o, m, [])], "", body, "0", hide, arg)
                 return
         seq = self.iterable(self.expr(it, ""))
         if seq.t == "tuple[]":
+            self.iterarg(arg)
             return  # nothing to iterate: the body never runs (and its types are unknown)
-        self.for_seq(tgt, [seq], "", body, "0", hide)
+        self.for_seq(tgt, [seq], "", body, "0", hide, arg)
         self.close_temp(it, seq)
 
     def iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
@@ -13457,9 +13469,13 @@ class Gen:
         return self.coerce(self.as_int(v), "int")
 
     def range_args(self, args: list[Node]) -> list[str]:
+        # A call evaluates every argument before checking their index types.
+        vals = [self.expr(a, "int") for a in args]
         vs: list[str] = []
-        for a in args:
-            vs.append(self.ival(a, "TypeError: 'NoneType' object cannot be interpreted as an integer").v)
+        for v in vals:
+            if is_sopt(v.t):
+                v = self.unwrap(v, "TypeError: 'NoneType' object cannot be interpreted as an integer")
+            vs.append(self.coerce(self.as_int(v), "int").v)
         if len(vs) == 1:
             vs.insert(0, "0")
         if len(vs) == 2:
@@ -13468,11 +13484,12 @@ class Gen:
             self.err("range() takes 1 to 3 arguments")
         return vs
 
-    def for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str]) -> None:
-        self.hide(hide)
-        after = self.forget(body, tgt)
+    def for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str], arg: IterArg | None = None) -> None:
         if step.startswith("%") or int(step) == 0:
             self.guard(self.ins(f"icmp eq i64 {step}, 0"), "ValueError: range() arg 3 must not be zero")
+        self.iterarg(arg)
+        self.hide(hide)
+        after = self.forget(body, tgt)
         ctr = self.alloca("int", "")
         self.emit(f"store i64 {start}, ptr {ctr}")
         lc = self.label()
@@ -13512,12 +13529,13 @@ class Gen:
         self.place(le)
         self.narrowed = after
 
-    def for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[str]) -> None:
+    def for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[str], arg: IterArg | None = None) -> None:
         # reversed(range(a, b, s)): the range's items from the last, a + k*s for k = len-1 .. 0
         # (the length is unsigned, and the arithmetic wraps: every result is an item of the range)
+        n = self.rt("pys_range_len", "i64", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
+        self.iterarg(arg)
         self.hide(hide)
         after = self.forget(body, tgt)
-        n = self.rt("pys_range_len", "i64", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
         ctr = self.alloca("int", "")
         self.emit(f"store i64 {n}, ptr {ctr}")
         lc = self.label()
@@ -13540,9 +13558,7 @@ class Gen:
         self.place(le)
         self.narrowed = after
 
-    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str]) -> None:
-        self.hide(hide)
-        after = self.forget(body, tgt)
+    def for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str], arg: IterArg | None = None) -> None:
         # One loop serves lists, strings, dicts, enumerate, zip and reversed. Each round takes
         # the next item of every sequence, in order, the way its CPython iterator would: lists
         # and strings by index, checked against their current length (reversed: counting down
@@ -13570,6 +13586,9 @@ class Gen:
                 st.append(pos)
             else:
                 st.append(n0)
+        self.iterarg(arg)
+        self.hide(hide)
+        after = self.forget(body, tgt)
         lc = self.label()
         ls = self.label()
         le = self.label()
@@ -14594,7 +14613,7 @@ class Gen:
             self.err(f"iter() of {typestr(v.t)} in __iter__ is not supported: return iter(xs) of a list xs of the items")
         return v
 
-    def listcomp(self, n: Node, want: str, mode: str = "", into: str = "") -> Val:
+    def listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None) -> Val:
         # [e for t in it if c] runs as a loop appending to a fresh list (or to list into, of type
         # want, as xs.extend(e for ...) does item by item); t is scoped to it. mode any/all:
         # any(e for ...) / all(...) instead, stopping at the deciding element.
@@ -14619,7 +14638,7 @@ class Gen:
         self.lcs.append(res)
         self.lct.append(elem(want) if is_list(want) else "")
         pre = self.narrowed  # (its variables are its own: the loop binds no outer local)
-        self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names)
+        self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names, arg)
         self.narrowed = pre
         et = self.lct.pop()
         self.lcs.pop()
@@ -15822,10 +15841,15 @@ class Gen:
                 return Val(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {first}')}, 0"), "bool")
             vals = [self.as_list(v0, name)]
             self.close_temp(args[0], v0)
-        elif name == "sum" and npos == 2 and args[0].kind == "listcomp" and args[0].s == "gen":
-            # sum(generator, start): the generator runs once start is evaluated, as in CPython
-            st = self.expr(args[1], "")
-            vals = [self.consume(args[0], ""), st]
+        elif name == "sum" and npos == 2 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
+            # Construct the iterator first, then evaluate start, then traverse it. In particular,
+            # __iter__ and range's step check run before start; reversed keeps its original length.
+            it = args[0]
+            if self.iterator_call(it):
+                item = mk("name", "__item", it.line, [])
+                it = mk("listcomp", "gen", it.line, [item, item, it])
+            st = IterArg(args[1])
+            vals = [self.listcomp(it, "", "", "", st), st.value]
         elif (name == "len" or name == "bool") and len(args) == 1 and args[0].kind == "name" and "?" in self.rtype(args[0].s):
             self.allowq = True
             vals = [self.read(args[0])]
@@ -15837,7 +15861,7 @@ class Gen:
             if a.kind == "kw" and a.s == "reverse":
                 rev = self.reverse_arg(a.kids[0], name)
         if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
-            vals[1] = self.as_int(vals[1])
+            self.err("sum() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
         if name == "sum" and len(vals) == 2 and (vals[0].t in self.classes or is_tuple(vals[0].t) or is_dict(vals[0].t)):
             vals[0] = self.as_list(vals[0], "sum")  # (sum(o, start) iterates o once start is evaluated)
         if name == "round" and len(vals) == 2 and vals[1].t == "None":
