@@ -5457,6 +5457,11 @@ OPTS: list[str] = ["listget", "dictfuse"]
 CANON_DEPTH = 1000
 REACH = 256
 LOOKUPS = 32
+# Types are serialized strings. Bound their size before joining children, and the active
+# template signatures before making keys or call contexts; a depth limit alone misses
+# exponential width growth such as f((x, x)). These are compiler resource limits.
+TYPE_SIZE = 65536
+TEMPLATE_BYTES = 1048576
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
@@ -5910,13 +5915,6 @@ def bool_for_int(a: str, b: str) -> bool:
     return False
 
 
-def none_items(t: str) -> str:
-    # a tuple key type with str | None for its None items (a key's None says no more of the type)
-    if t == "None":
-        return "opt[str]"
-    return f"tuple[{','.join([none_items(x) for x in targs(t)])}]" if is_tuple(t) else t
-
-
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
@@ -5946,14 +5944,6 @@ def targs(t: str) -> list[str]:
             start = i + 1
     out.append(t[start:-1])
     return out
-
-
-def subst(t: str, T: str, K: str, V: str, S: str) -> str:
-    if t == "T":
-        return T
-    if t == "S":
-        return S
-    return t.replace("K", K).replace("V", V)
 
 
 def llstr(s: str) -> str:
@@ -6972,6 +6962,7 @@ class Gen:
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
+        self.template_bytes = 0  # bytes in the signatures of the active instance() calls
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
@@ -7603,6 +7594,35 @@ class Gen:
         return ""
 
     # ---- types and declarations
+    def ctype(self, base: str, ts: list[str]) -> str:
+        # A composite type, checking its serialized size before join copies any children.
+        # In a recursive template, a two-item tuple may double this on every instance.
+        size = len(base) + 2 + (len(ts) - 1 if len(ts) > 0 else 0)
+        for t in ts:
+            size += len(t)
+            if size > TYPE_SIZE:
+                self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
+        return base + "[" + ",".join(ts) + "]"
+
+    def none_items(self, t: str) -> str:
+        # A tuple key with str | None in place of each None item.
+        if t == "None":
+            return "opt[str]"
+        return self.ctype("tuple", [self.none_items(x) for x in targs(t)]) if is_tuple(t) else t
+
+    def subst(self, t: str, T: str, K: str, V: str, S: str) -> str:
+        # Instantiate a builtin method's type without allocating an oversized replacement.
+        if t == "T":
+            return T
+        if t == "S":
+            return S
+        if len(t) + t.count("K") * (len(K) - 1) > TYPE_SIZE:
+            self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
+        t = t.replace("K", K)
+        if len(t) + t.count("V") * (len(V) - 1) > TYPE_SIZE:
+            self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
+        return t.replace("V", V)
+
     def typeof(self, n: Node) -> str:
         t = self.ann(n)
         if t.startswith("!"):
@@ -7664,11 +7684,11 @@ class Gen:
                 if ts[-1].startswith("!"):
                     return ts[-1]
             if base == "list" and len(ts) == 1:
-                return f"list[{ts[0]}]"
+                return self.ctype("list", [ts[0]])
             if base == "dict" and len(ts) == 2:
-                return f"dict[{ts[0]},{ts[1]}]" if key_problem(ts[0]) == "" else "!" + key_problem(ts[0])
+                return self.ctype("dict", ts) if key_problem(ts[0]) == "" else "!" + key_problem(ts[0])
             if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple"):
-                return f"tuple[{','.join(ts)}]"  # (tuple[()] is the empty tuple's)
+                return self.ctype("tuple", ts)  # (tuple[()] is the empty tuple's)
             if base == "optional" and len(ts) == 1:
                 return self.opt(ts[0], a[0])
             if base == "union":
@@ -7897,7 +7917,7 @@ class Gen:
         if t in self.classes or is_opt(t):
             return t
         if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_tuple(t)) and "?" not in t:
-            return f"opt[{t}]"
+            return self.ctype("opt", [t])
         return ""
 
     def join(self, a: str, b: str) -> str:
@@ -7914,7 +7934,7 @@ class Gen:
             return self.optional(j) if j != "" else ""
         if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
             js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
-            return f"tuple[{','.join(js)}]" if "" not in js else ""
+            return self.ctype("tuple", js) if "" not in js else ""
         return ""
 
     def wider(self, a: str, b: str) -> str:
@@ -7934,11 +7954,11 @@ class Gen:
             return self.optional(w) if w != "" else ""
         if is_list(a) and is_list(b):
             w = self.wider(elem(a), elem(b))
-            return f"list[{w}]" if w != "" else ""
+            return self.ctype("list", [w]) if w != "" else ""
         if is_dict(a) and is_dict(b):
             k = self.wider(targs(a)[0], targs(b)[0])  # (tuple keys whose items may be None)
             w = self.wider(targs(a)[1], targs(b)[1])
-            return f"dict[{k},{w}]" if k != "" and w != "" else ""
+            return self.ctype("dict", [k, w]) if k != "" and w != "" else ""
         if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
             return ""
         bs = targs(b)
@@ -7948,7 +7968,7 @@ class Gen:
             if w == "":
                 return ""
             ws.append(w)
-        return f"tuple[{','.join(ws)}]"
+        return self.ctype("tuple", ws)
 
     def boxwider(self, a: str, b: str) -> str:
         # wider(a, b) for tuple types whose items differ also where one is an int, float or bool and
@@ -7975,7 +7995,7 @@ class Gen:
             if w == "":
                 return ""
             ws.append(w)
-        return f"tuple[{','.join(ws)}]"
+        return self.ctype("tuple", ws)
 
     def boxto(self, v: Val, t: str) -> Val:
         # v as a value of tuple type t = boxwider(v.t, ...), boxing its items where it needs to
@@ -8151,7 +8171,7 @@ class Gen:
         # an __iter__'s return annotation Iterator[T] or Iterable[T] (typing's or collections.abc's):
         # list[T], the list that the iterator it returns steps through (see iter_ret); else ""
         t = self.iter_item(n)
-        return f"list[{self.vtype(t)}]" if t is not None else ""
+        return self.ctype("list", [self.vtype(t)]) if t is not None else ""
 
     def iter_item(self, n: Node) -> Node:
         # T, of an __iter__'s return annotation Iterator[T] or Iterable[T]; else None
@@ -8477,19 +8497,19 @@ class Gen:
             return self.guess(e.kids[1], f)
         if k == "list" and len(e.kids) > 0:
             t = self.guess(e.kids[0], f)
-            return f"list[{t}]" if t != "" and not t.startswith("!") else t
+            return self.ctype("list", [t]) if t != "" and not t.startswith("!") else t
         if k == "tuple" and 0 < len(e.kids) <= 9:
             ts = [self.guess(x, f) for x in e.kids if x.kind != "starred"]
             bad = [t for t in ts if t.startswith("!")]
             if len(bad) > 0:
                 return bad[0]
-            return f"tuple[{','.join(ts)}]" if "" not in ts and len(ts) == len(e.kids) else ""
+            return self.ctype("tuple", ts) if "" not in ts and len(ts) == len(e.kids) else ""
         if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
             kt = self.guess(e.kids[0], f)
             vt = self.guess(e.kids[1], f)
             if kt.startswith("!") or vt.startswith("!"):
                 return kt if kt.startswith("!") else vt
-            return f"dict[{kt},{vt}]" if kt != "" and vt != "" and key_problem(kt) == "" else ""
+            return self.ctype("dict", [kt, vt]) if kt != "" and vt != "" and key_problem(kt) == "" else ""
         if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "list" or e.kids[0].s == "sorted") and len(e.kids) == 2 and not self.bound(e.kids[0].s):
             # list(range(n)), list(xs), sorted(xs): a list of the items
             arg = e.kids[1]
@@ -9104,7 +9124,7 @@ class Gen:
         if "?" in t or "None" in targs(t):
             self.err(f"cannot infer the type of '{name}' from this use; annotate it")
         if is_dict(t):
-            t = f"dict[{none_items(targs(t)[0])},{targs(t)[1]}]"  # (d[k, None] = v)
+            t = self.ctype("dict", [self.none_items(targs(t)[0]), targs(t)[1]])  # (d[k, None] = v)
         toks = ""
         if name in self.ltype and not glob:
             self.ltype[name] = t
@@ -9163,9 +9183,9 @@ class Gen:
                 return ""
             r = it
         elif is_list(t):
-            r = f"list[{it}]"
+            r = self.ctype("list", [it])
         else:
-            r = f"dict[{self.dry(found[0])},{it}]"
+            r = self.ctype("dict", [self.dry(found[0]), it])
         if "?" in r or "None" in targs(r):
             return ""
         here = self.line
@@ -9374,7 +9394,7 @@ class Gen:
             v = self.as_list(self.consume(args[-1], ""), "extend") if m == "extend" else self.expr(args[-1], "")
             if m == "extend" and not is_list(v.t):
                 self.err(f"cannot extend a list with {v.t}")
-            self.refine(name, v.t if m == "extend" else f"list[{v.t}]")
+            self.refine(name, v.t if m == "extend" else self.ctype("list", [v.t]))
             if m == "append":
                 self.rt("pys_list_append", "void", [f"ptr {o.v}", "i64 " + self.to_slot(v)])
             elif m == "insert":
@@ -9387,7 +9407,7 @@ class Gen:
                 self.no_type(name)
             k = self.expr(args[0], "")
             v = self.expr(args[1], want if "?" not in want else "")
-            self.refine(name, f"dict[{k.t},{v.t}]")
+            self.refine(name, self.ctype("dict", [k.t, v.t]))
             return self.from_slot(self.rt(f"pys_dict_{m}", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(k), "i64 " + self.to_slot(v)]), v.t)
         # any other method: the type a later use shows (or an error), then the method as usual
         return self.method(self.load_name(name), m, args)
@@ -9402,9 +9422,9 @@ class Gen:
         if "?" not in self.rtype(r.kids[0].kids[0].s) or (d.kind != "list" and d.kind != "dict") or len(d.kids) > 0:
             return ""
         if m == "[]" and d.kind == "dict":
-            return f"dict[{self.dry(args[0])},{vt}]"
+            return self.ctype("dict", [self.dry(args[0]), vt])
         if d.kind == "list" and ((m == "append" and len(args) == 1) or (m == "insert" and len(args) == 2)) and args[-1].kind != "kw":
-            return f"list[{self.dry(args[-1])}]"
+            return self.ctype("list", [self.dry(args[-1])])
         return ""
 
     def new_global(self, name: str, t: str) -> None:
@@ -9531,11 +9551,11 @@ class Gen:
             self.allowq = False
             if is_dict(o.t):
                 kval = self.expr(t.kids[1], "")
-                self.refine(t.kids[0].s, f"dict[{kval.t},{v.t}]")
+                self.refine(t.kids[0].s, self.ctype("dict", [kval.t, v.t]))
                 self.rt("pys_dict_set", "void", [f"ptr {o.v}", "i64 " + self.to_slot(kval), "i64 " + self.to_slot(v)])
             else:
                 ix = self.ival(t.kids[1])
-                self.refine(t.kids[0].s, f"list[{v.t}]")
+                self.refine(t.kids[0].s, self.ctype("list", [v.t]))
                 self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", "i64 " + self.to_slot(v)])
         elif k == "index":
             o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
@@ -14053,7 +14073,7 @@ class Gen:
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
             for v in items:
                 self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(v)])
-            return Val(r, f"list[{et}]")
+            return Val(r, self.ctype("list", [et]))
         if k == "dict":
             kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
             soft = n is self.soft
@@ -14077,7 +14097,7 @@ class Gen:
             if not given and (is_opt(jt) or is_tuple(jt)):
                 kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
             if not kgiven and is_tuple(kj):
-                kv[0] = none_items(kj)
+                kv[0] = self.none_items(kj)
             ks = [self.store_key(x, kv[0]) for x in ks]
             if given and soft:
                 for b in vs:
@@ -14090,7 +14110,7 @@ class Gen:
             r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ks)}"])
             for i in range(len(ks)):
                 self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])])
-            return Val(r, f"dict[{kv[0]},{kv[1]}]")
+            return Val(r, self.ctype("dict", kv))
         if k == "tuple":
             ws = targs(want) if is_tuple(want) else []
             vals: list[Val] = []
@@ -14482,14 +14502,13 @@ class Gen:
         return [iv, ok]
 
     def tuple_(self, vals: list[Val]) -> Val:
+        t = self.ctype("tuple", [v.t for v in vals])
         p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
-        ts: list[str] = []
         for i in range(len(vals)):
             s = self.to_slot(vals[i])
             q = self.ins(f"getelementptr i64, ptr {p}, i64 {i}")
             self.emit(f"store i64 {s}, ptr {q}")
-            ts.append(vals[i].t)
-        return Val(p, f"tuple[{','.join(ts)}]")
+        return Val(p, t)
 
     def tget(self, v: Val, i: int) -> Val:
         p = self.ins(f"getelementptr i64, ptr {v.v}, i64 {i}")
@@ -14640,8 +14659,8 @@ class Gen:
         if et == "":
             self.err("cannot infer the element type of this comprehension")
         if into == "":
-            self.holes[h.k] = f"list[{et}]"
-        return Val(res, f"list[{et}]")
+            self.holes[h.k] = self.ctype("list", [et])
+        return Val(res, self.ctype("list", [et]))
 
     def ifexp(self, n: Node, want: str) -> Val:
         st = self.static(n.kids[0])
@@ -14988,7 +15007,13 @@ class Gen:
         if op == "*" and is_tuple(a.t) and b.t == "int":
             if b.v.startswith("%"):
                 self.err(f"{typestr(a.t)} * n needs a constant n (its length is part of its type)")
-            return self.tuple_([self.tget(a, i % len(targs(a.t))) for i in range(len(targs(a.t)) * max(0, int(b.v)))])
+            ts = targs(a.t)
+            count = max(0, int(b.v))
+            # For a nonempty tuple, size = 6 + count * (len(a.t) - 6); divide first so
+            # even sys.maxsize cannot overflow in the self-hosted compiler. () stays ().
+            if len(ts) > 0 and count > (TYPE_SIZE - 6) // (len(a.t) - 6):
+                self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
+            return self.tuple_([self.tget(a, i % len(ts)) for i in range(len(ts) * count)])
         if op == "*" and a.t == "int" and (b.t == "str" or is_list(b.t) or is_tuple(b.t)):
             return self.arith(op, b, a)
         if op == "+" and is_list(a.t) and is_list(b.t):
@@ -15043,7 +15068,7 @@ class Gen:
         if len(ops) == 1:
             w = a.t
             if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "list" and (is_list(a.t) or is_dict(a.t)):
-                w = f"list[{a.t}]"  # (xs in [[1], [2]]: a list of such)
+                w = self.ctype("list", [a.t])  # (xs in [[1], [2]]: a list of such)
             self.soft = n.kids[1]  # (a display there may hold what may be None where a holds none)
             return self.cmp2(ops[0], a, self.expr(n.kids[1], w))
         l3 = self.label()
@@ -15475,7 +15500,7 @@ class Gen:
         for fl in ci.fields:
             v = self.coerce(self.getfield(o, self.field(o, fl), fl), vt)
             self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(fl), "str")), "i64 " + self.to_slot(v)])
-        return Val(r, f"dict[str,{vt}]")
+        return Val(r, self.ctype("dict", ["str", vt]))
 
     def new_obj(self, c: str) -> Val:
         # a new object of class c, not initialized
@@ -15643,6 +15668,13 @@ class Gen:
         # the function template f compiles to for arguments of types ts, compiled when first
         # needed, in the middle of the function that calls it: its first return statement
         # decides what it returns; nnp: the parameters whose objects are known not to be None
+        size = len(ts) + len(nnp)
+        for t in ts:
+            size += len(t)
+        for p in nnp:
+            size += len(p)
+        if size > TEMPLATE_BYTES:
+            self.err(f"{short(f.name)}() template signature exceeds {TEMPLATE_BYTES} bytes; annotate its parameters")
         key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
         if key in f.insts:
             g = f.insts[key]
@@ -15655,6 +15687,8 @@ class Gen:
             self.err(f.bad)
         if len(self.making) >= 100:
             self.err(f"{short(f.name)}() needs more than 100 nested template functions; annotate its parameters")
+        if self.template_bytes + size > TEMPLATE_BYTES:
+            self.err(f"active template signatures exceed {TEMPLATE_BYTES} bytes; annotate template parameters")
         g = FnInfo(f.name, f"{f.ll}.{len(f.insts) + 1}", f.node, "")
         g.params = f.params
         g.ptypes = ts
@@ -15674,13 +15708,16 @@ class Gen:
         f.insts[key] = g
         maybe = [f.params[j] for j in range(len(ts)) if ts[j] in self.classes and f.params[j] not in g.nnp and self.dispatches(f, f.params[j])]
         why = f", where {' and '.join(maybe)} may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time" if len(maybe) > 0 else ""
-        self.making.append(f"compiling {shown(f.name)}({', '.join(ts)}) for the call at {where(self.line)}{why}")
+        args = ", ".join(ts) if size <= 256 else f"<{len(ts)} arguments, {size} type bytes>"
+        self.making.append(f"compiling {shown(f.name)}({args}) for the call at {where(self.line)}{why}")
+        self.template_bytes += size
         fr = self.save()
         self.modlevel = False
         self.lenient = False
         self.function(g, f.node.kids[2].kids)
         self.restore(fr)
         self.making.pop()
+        self.template_bytes -= size
         return g
 
     def dotted(self, n: Node) -> str:
@@ -15985,7 +16022,7 @@ class Gen:
             # not d.copy(): dict(d) merges d into an empty dict, whose table can differ (runtime.c)
             return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"]), t)
         elif name == "list" and is_dict(t):
-            return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(t)[0]}]")
+            return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]]))
         elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
             self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all() or str.join()")
         if name in self.gtypes or name in self.ltype:
@@ -16065,7 +16102,7 @@ class Gen:
                 self.objlen(v)  # (a length hint: CPython's list() calls __len__ once __iter__ has run)
             return items
         if is_dict(v.t):
-            return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), f"list[{targs(v.t)[0]}]")
+            return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
         if is_tuple(v.t):
             ts = targs(v.t)
             for x in ts:
@@ -16074,7 +16111,7 @@ class Gen:
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(ts)}"])
             for i in range(len(ts)):
                 self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.tget(v, i))])
-            return Val(r, f"list[{ts[0]}]")
+            return Val(r, self.ctype("list", [ts[0]]))
         if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
             return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         if v.t == "file":
@@ -16230,7 +16267,7 @@ class Gen:
                 dflt = p[e + 1 :]
                 p = p[:e]
             slot = p.startswith("*")
-            pt = subst(p[1:] if slot else p, T, K, V, o.t)
+            pt = self.subst(p[1:] if slot else p, T, K, V, o.t)
             # a str method's start or end (find, count, startswith, ...) that is None is omitted
             span = base == "str" and p == "int" and (dflt == "0" or dflt == "9223372036854775807")
             if i < len(args) and dflt == "null" and args[i].kind == "None":
@@ -16292,7 +16329,7 @@ class Gen:
             self.guard(self.ins(f"icmp eq ptr {nones[j]}, null"), nmsg[j])
         r = spec[:c]
         slot = r.startswith("*")
-        rtype = subst(r[1:] if slot else r, T, K, V, o.t)
+        rtype = self.subst(r[1:] if slot else r, T, K, V, o.t)
         if optget:
             rtype = self.optional(V)
         fn = f"pys_{base}_{m}"
