@@ -110,3 +110,19 @@ products or services of Licensee, or any third party.
 8. By copying, installing or otherwise using Python, Licensee
 agrees to be bound by the terms and conditions of this License
 Agreement.
+
+CPython's sum regression tests (tests/upstream_sum_start.py)
+-----------------------------------------------------------
+
+The range/start assertion in tests/upstream_sum_start.py is adapted from
+Lib/test/test_builtin.py, BuiltinTest.test_sum, at CPython commit
+cbc944f4bc59639a444dd971c737788ba2283a91. The bool-start rejection fixture in
+tests/errors/sum_bool_start.py records the supported-language disposition of that
+method's empty-list/bool-start assertion. These adaptations are used under the
+Python Software Foundation License Version 2; the complete CPython license and
+copyright notices are retained in tests/upstream/CPYTHON-LICENSE.txt.
+
+Summary of changes: remove unittest scaffolding, annotate typed containers,
+replace the dynamic bool result expectation with an explicit compiler rejection,
+and add Pystachy regressions for iterator construction, argument evaluation and
+traversal order. Differential output is recorded with CPython 3.13.16.

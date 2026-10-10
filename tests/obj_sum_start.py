@@ -22,4 +22,4 @@ def st() -> int:
     return 10
 
 
-print(sum(C(), 10), sum(C(), 1.5), sum(C(), st()), sum((1, 2), 3), sum({1: 2, 3: 4}, 5), sum(P(1, 2), 4), sum(C(), True))
+print(sum(C(), 10), sum(C(), 1.5), sum(C(), st()), sum((1, 2), 3), sum({1: 2, 3: 4}, 5), sum(P(1, 2), 4), sum(C(), int(True)))

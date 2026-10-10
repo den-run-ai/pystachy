@@ -1,0 +1,73 @@
+1045 3.5 7
+20 16
+24
+20
+construct
+plain start 10
+iter
+13
+construct
+iter
+generator start 10
+body 1
+body 2
+13
+source
+generator start 10
+body 1
+body 2
+13
+range stop 3
+range start 10
+13
+construct
+enumerate start 4
+iter
+sum start 10
+13
+construct
+construct
+iter
+iter
+zip start 10
+16
+append start
+body 1
+body 2
+body 10
+18 [1, 2, 10]
+append start
+8 [1, 2, 10]
+append start
+body 2
+body 1
+8 [1, 2, 10]
+pop start
+5 [1]
+103 100
+dict start
+RuntimeError dictionary changed size during iteration
+construct
+iter
+bad start
+ValueError start
+zero step 0
+ValueError range() arg 3 must not be zero
+ValueError range() arg 3 must not be zero
+missing bound
+later bound 3
+TypeError 'NoneType' object cannot be interpreted as an integer
+missing bound
+bad bound
+ValueError bound
+missing
+TypeError 'NoneType' object is not iterable
+missing
+TypeError 'NoneType' object is not iterable
+source
+eager 1
+eager 2
+eager start 10
+13
+0 1 4
+[exit 0]

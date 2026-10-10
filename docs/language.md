@@ -702,6 +702,9 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
 - comparing or sorting objects in a container when the `__eq__` or ordering method the operation
   calls is annotated to take another class, which CPython calls anyway
 - a constant tuple index out of range (CPython raises `IndexError` where it runs)
+- `sum(iterable, start)` with a `bool` start: its result is the original bool when the iterable
+  is empty, and an `int` or `float` otherwise, which cannot share one static type here. Use
+  `sum(iterable, int(start))` for a numeric result, including on empty inputs.
 
 ### Classes, dataclasses and NamedTuples
 
