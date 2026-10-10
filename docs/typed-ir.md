@@ -16,7 +16,8 @@ started. #22 implements it as far as this list goes.
   compiler's heap peak grows by about 10% (78 against 71 MiB), not the 2× of the prototype.
 - **Exceptions (§7.2):** `try`/`except`/`else`/`finally`, `raise`, exception classes and catchable
   runtime errors, lowered by table-driven unwinding. This answers §9's first question. Programs
-  without a `try` keep their IR byte for byte.
+  without `try` or `with` keep their IR byte for byte. A `with` enables exceptional cleanup even
+  when the program has no exception handler.
 - **Optional values (§7.6):** `T | None` for `str`, `list`, `dict` and `tuple`, and boxed
   `int | None`, `float | None` and `bool | None`, with CPython's errors on `None` and mypy's
   narrowing. A class type still includes None (§9, question 7).
@@ -1073,7 +1074,7 @@ reasons given for the flag turned out not to hold: the unwinder goes through the
 frames that call compiled code back, also under the JIT, which registers the `.eh_frame` of the
 program and of `runtime.o`. So exceptions landed as table-driven unwinding:
 
-- **The runtime.** A program with a `try` calls `pys_eh_on()` when it starts. From then on the
+- **The runtime.** A program with `try` or `with` calls `pys_eh_on()` when it starts. From then on the
   raise funnels (`pys_fail`, `pys_raise`, `sys.exit`, `pys_throw`) make an `Exc`, which begins with
   the unwinder's `_Unwind_Exception` header, and unwind in one phase (`_Unwind_ForcedUnwind`):
   every landing pad Pystachy emits catches everything, so the first one found is the handler, and
@@ -1082,7 +1083,9 @@ program and of `runtime.o`. So exceptions landed as table-driven unwinding:
   `pys_eh_on()`, every raise ends the program at once, as before. runtime.c is compiled with
   `-fexceptions` in both tiers. What a raise leaves half done in the runtime (a list being sorted,
   a `with` statement's file, the repr guard, the I/O busy count) is put right by unwind actions that
-  the landing pad runs first.
+  the landing pad runs first, or before reporting an uncaught exception. A `with` file closes
+  even without a `try`, innermost first; a failed close replaces the exception being propagated,
+  including `SystemExit`.
 - **The IR.** `Blk.handler` names the landing block that covers a block. New ops: `landing`,
   `throw` and `exc.match`, which tests an exception against the closed set of classes a clause
   catches. `Try` records keep each statement's shape for a structured backend. One pass, once the
@@ -1105,7 +1108,8 @@ program and of `runtime.o`. So exceptions landed as table-driven unwinding:
   `__str__` and `__repr__` are used.
 - **Cost.** A raise caught by its caller costs about 0.9 µs AOT: 500,000 `KeyError`s take 0.44 s
   AOT and 0.54 s JIT, where CPython takes 0.11 s. A raise caught in its own function is a branch.
-  Code that does not raise pays nothing, a `try` included.
+  A `try` adds no cost until something raises. A `with` registers and forgets its cleanup action
+  on the normal path too.
 - **Next.** Non-raising runtime variants where the handler is local (`try: v = d[k]` /
   `except KeyError:`), as Appendix B.2 suggests. A CPython-extension lowering (§7.4) can lower
   the same ops to the error protocol of the C API.
@@ -1430,7 +1434,7 @@ that commit's. What has changed since, and where the code departs from the text:
     whole line `"<kind>: " + str(msg)` (an `rt str.add`) as its kind operand and an empty
     message: CPython prints the `": "` even before an empty `str(msg)`, which `pys_raise`
     leaves out. Its `s` is the kind, but its operands are not (kind, message). Such a raise
-    exists only in a program without a try: in one with a try, a raise statement throws the
+    exists only in a program without try or with: in one with either, a raise statement throws the
     exception that `pys_exc_new` and `pys_exc_detail` make (`Gen.exc_value`), so the exception
     lowering reads every `raise` op as (kind, message).
   - `Ins.line` (§3.1) is left out until something reads it: lowering cannot fail on user input
@@ -1457,7 +1461,7 @@ that commit's. What has changed since, and where the code departs from the text:
     of the closed set `EXCBASES` and the program's exception classes); an exception has the
     type `exc`, which the builtin exception classes name in annotations too (descriptor `E`).
   - once the program is built, `Gen.eh_ir` reads the effect summaries (so `Gen.effects` runs
-    for every program with a try): in a covered block, a `raise` or `throw` becomes a branch
+    for every program with try or with): in a covered block, a `raise` or `throw` becomes a branch
     to the code after its landing block, with the exception in the slot; a call (`rt`,
     `call` or `init`) whose effects have R becomes an invoke (`Ins.b` = [next, landing]) and
     ends its block; a landing block no invoke reaches is dropped, and a function with none
@@ -1477,14 +1481,14 @@ that commit's. What has changed since, and where the code departs from the text:
     of LLVM IR at depth 8, which LLVM's passes took 25 s over; it is now linear.
   - landing blocks that no try statement writes: an except clause whose name may be read
     after it has one around its body, which unbinds the name and throws again (CPython's
-    clause has a finally block for it); and in a program with a try, a module's code
+    clause has a finally block for it); and in a program with try or with, a module's code
     (`@init.<module>`) has one around everything after its done test, which clears the done
     flag and throws again, so that a later import runs the code again (a `Try` record in
     `IFn.tries` with only a landing block; the clause's is not recorded apart from its try
     statement's).
-  - whether the program has a try is decided before code generation, over all its modules
+  - whether the program has try or with is decided before code generation, over all its modules
     (the closed world), as the with statement's unwind action needs it: a program that
-    imports a `lib/` module with a try in a function it never calls has exceptions on too.
+    imports a `lib/` module with try or with in a function it never calls has exceptions on too.
   - exception classes (one base: a builtin exception class or another exception class) need
     no op of their own. An object begins with hidden fields (`EXCFIELDS`: its `ExcClass`,
     what it keeps of its args, a `SystemExit`'s code), then its base's fields and flags, so a

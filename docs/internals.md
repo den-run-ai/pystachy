@@ -169,7 +169,7 @@ one cold block per function and message (and `try` statement around it). `self` 
 
 ### Exceptions by table-driven unwinding
 
-A program whose modules hold a `try` (decided before code generation; any other keeps its code)
+A program whose modules hold `try` or `with` (decided before code generation; any other keeps its code)
 calls `pys_eh_on` as it starts. From then on the runtime's error funnels (`pys_fail`,
 `pys_raise`, `sys.exit`) build an exception and unwind with the Itanium ABI's
 `_Unwind_ForcedUnwind`, in one phase (every landing pad catches everything, so the first one
@@ -191,9 +191,10 @@ more for each frame with a `try` it passes through.
 `finally` of its own is compiled once, where each way out stores its index and jumps, so that
 nested ones grow linearly, not as 3^depth. What a raise leaves half done in the runtime (a list
 being sorted, a `with` block's open file) is put right by unwind actions that the landing pad
-runs; none raises: a `with` block's file whose close fails notes its `OSError`, which then takes
-the place of the exception the landing handles (CPython's `__exit__` raises it inside the
-`try`).
+runs, or that run before reporting an uncaught exception. A `with` needs no `try` to close its
+files on an exceptional exit; cleanup runs innermost first. No action raises: a `with` block's
+file whose close fails notes its `OSError`, which then takes the place of the exception being
+propagated, including `SystemExit` (CPython's `__exit__` raises it inside the `try`, if any).
 
 A module's code runs in the region of a landing block that marks the module not run and throws
 again; a read through a name that an import in a `try` statement binds checks that mark.
