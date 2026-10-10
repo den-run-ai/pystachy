@@ -3,6 +3,17 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+CPython's sequence regression (tests/upstream_slice_none.py)
+------------------------------------------------------------
+
+The two list assertions with explicit None bounds are adapted from CPython 3.13.16's
+Lib/test/seq_tests.py, CommonTest.test_getslice, at commit
+cbc944f4bc59639a444dd971c737788ba2283a91. They use the Python Software Foundation
+License Version 2; the complete upstream license is in tests/upstream/CPYTHON-LICENSE.txt.
+The adaptation removes the unittest and type2test wrappers. The remaining assertions
+extend that scenario to strings, computed None bounds,
+evaluation order, optional bounds, bool bounds, and the signed-64-bit minimum.
+
 CPython's standard library modules (lib/)
 -----------------------------------------
 
