@@ -1,0 +1,24 @@
+Bits(1110) Bits(0110) Bits(110000) Bits(0110) Bits(0011)
+and 10 12
+Bits(1110) Bits(1101)
+operand 1
+operand 3
+and 1 3
+Bits(0001)
+Bits(1110) Bits(1110) True
+and 14 9
+Bits(1000) Bits(1110) False
+Bits(0110) Bits(1110)
+and 14 10
+Bits(1110) 7 Bits(1010) Bits(0001)
+ValueError: negative shift count
+Bits(0010)
+32 [-1, -2, -3] +[1, 2, 3] 14
+[10, 20, 30] +[-10, -20, -30]
+-3 -3
+Flags(r=True, w=False) Flags(r=False, w=True) Flags(r=True, w=True)
+TypeError: unsupported operand type(s) for |: 'NoneType' and 'Bits'
+TypeError: bad operand type for unary ~: 'NoneType'
+TypeError: unsupported operand type(s) for ^=: 'NoneType' and 'Bits'
+AttributeError: 'NoneType' object has no attribute 'n'
+[exit 0]

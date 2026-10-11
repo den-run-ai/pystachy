@@ -395,12 +395,14 @@ displays, list comprehensions, generator expressions and
 `all()` stop at the deciding item, as they do over files, and `list.extend()` appends each
 item of a generator expression as it is made), `x in range(...)`, and operator
 overloading resolved statically:
-`__add__` & co, the in-place forms, `__eq__`, rich comparisons with CPython's reflection
+the left operand's `__add__` & co for `+ - * / // % @ & | ^ << >>`, the in-place forms
+(`__iadd__` & co, else the binary method), `__neg__`, `__pos__` and `__invert__` for unary
+`-`, `+` and `~`, `__eq__`, rich comparisons with CPython's reflection
 rules (`a < b` tries `b.__gt__(a)`), `__len__`, `__bool__`, `__str__`, `__repr__` and
 `__format__`. Objects inside lists, dicts and tuples compare, sort and print through
 their own methods, as CPython calls them: lists and tuples compare their items with `==`
 before ordering them, `list.sort`, `sorted` and `min` use `<` (`__lt__`, else the reflected
-`__gt__`), and `max` uses `>`. Unary `-`, `+` and `~` on objects are not supported.
+`__gt__`), and `max` uses `>`.
 
 The container protocol is resolved statically too: `o[k]` calls `__getitem__`, `o[k] = v`
 `__setitem__` (`o[k] += v` both), `del o[k]` `__delitem__`, and `x in o` `__contains__`, whose
@@ -702,6 +704,9 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
   of it (`o.__iter__()`)
 - iterating over an object, or `x in o`, by its `__getitem__` alone (CPython's old sequence
   protocol), and `reversed()` of an object
+- reflected operator methods (`__radd__` & co), which CPython calls when the left operand's type
+  has no method for the operator (`3 & o` calls `o.__rand__(3)`), and `**` or `pow()` of an
+  object whose class defines `__pow__`
 - an `==` or `!=` between objects of different classes, which CPython would reflect to the right
   operand's `__eq__`, and between values of other types that cannot be equal (`1 == "1"`, or an
   `int | None` and a `str | None`, which CPython finds equal only when both are `None`)

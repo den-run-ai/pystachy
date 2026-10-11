@@ -5103,14 +5103,17 @@ FCMP: dict[str, str] = {"==": "oeq", "!=": "une", "<": "olt", "<=": "ole", ">": 
 # special methods: "number of parameters (with self):required return type"
 SPECIAL: dict[str, str] = {"__str__": "1:str", "__repr__": "1:str", "__len__": "1:int", "__bool__": "1:bool", "__format__": "2:str",
                            "__eq__": "2:bool", "__ne__": "2:bool", "__lt__": "2:bool", "__le__": "2:bool", "__gt__": "2:bool", "__ge__": "2:bool"}
-for _k in "add sub mul truediv floordiv mod iadd isub imul itruediv ifloordiv imod".split():
+for _k in "add sub mul truediv floordiv mod matmul and or xor lshift rshift iadd isub imul itruediv ifloordiv imod imatmul iand ior ixor ilshift irshift".split():
     SPECIAL[f"__{_k}__"] = "2:"
+for _k in "neg pos invert".split():
+    SPECIAL[f"__{_k}__"] = "1:"
 # a comparison from pys_cmp_if's result R (-1, 0, 1, or 2 when a NaN makes it unordered)
 MIXCMP: dict[str, str] = {"==": "icmp eq i64 R, 0", "!=": "icmp ne i64 R, 0", "<": "icmp eq i64 R, -1", "<=": "icmp sle i64 R, 0",
                           ">": "icmp eq i64 R, 1", ">=": "icmp ule i64 R, 1"}
 REFL: dict[str, str] = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}  # a < b may run b.__gt__(a)
 ORDOP: dict[str, int] = {"<": 0, "<=": 1, ">": 2, ">=": 3}  # op codes shared with runtime.c
 DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "__truediv__", "//": "__floordiv__", "%": "__mod__",
+                          "@": "__matmul__", "&": "__and__", "|": "__or__", "^": "__xor__", "<<": "__lshift__", ">>": "__rshift__",
                           "==": "__eq__", "!=": "__ne__", "<": "__lt__", "<=": "__le__", ">": "__gt__", ">=": "__ge__"}
 # builtin and module functions that are one runtime call: "name(argtypes)": "C function:result type"
 CALLS: dict[str, str] = {
@@ -8474,7 +8477,8 @@ class Gen:
             return "str"
         if k == "unary" and e.s != "not":
             t = self.guess(e.kids[0], f)
-            return "int" if t == "bool" else t  # (-True is -1, as unary() computes it)
+            # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
+            return "int" if t == "bool" else "" if t in self.classes else t
         if k == "name" and e.s in f.params:
             t = f.ptypes[f.params.index(e.s)]
             return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
@@ -14848,7 +14852,8 @@ class Gen:
             return v
         m = "__neg__" if op == "-" else "__pos__" if op == "+" else "__invert__"
         if v.t in self.classes and m in self.classes[v.t].methods:
-            self.err(f"unary {op} on an object ({m}) is not supported")
+            self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
+            return self.call_fn(self.classes[v.t].methods[m], [v], [])
         self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
         return v
 
@@ -14869,6 +14874,10 @@ class Gen:
             if op == "!=" and self.cmp_method(b.t, "__eq__", "None") != "":
                 return Val(self.ins(f"xor i1 {self.eqcall(bm['__eq__'], True, b, a).v}, true"), "bool")
             return Val("", "")
+        rm = "__r" + m[2:]
+        if m != "" and op != "==" and op != "!=" and b.t in self.classes and rm in self.classes[b.t].methods and (a.t not in self.classes or m not in self.classes[a.t].methods) and not (op == "%" and a.t == "str"):
+            # a's type has no method for the operator: CPython calls b.__radd__(a) & co (str % b formats b)
+            self.err(f"reflected operator methods are not supported ({tname(unopt(a.t))} {shown if shown != '' else op} {tname(b.t)} calls {tname(b.t)}.{rm})")
         if a.t not in self.classes:
             return Val("", "")
         ms = self.classes[a.t].methods
