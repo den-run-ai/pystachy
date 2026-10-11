@@ -1,0 +1,10 @@
+item 1e+308
+item 1e+308
+item 1.0
+OverflowError: intermediate overflow in fsum
+mk 0
+mk 1
+mk 2
+mk 3
+ValueError: 2 < 0
+[exit 0]

@@ -7,6 +7,9 @@
 2 4
 a b c x-y p+q
 ['u', 'v'] 9
+0 0.5 [] [] False True 
+['n']
+ValueError: max() iterable argument is empty
 0
 1
 2

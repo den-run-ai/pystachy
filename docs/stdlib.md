@@ -229,7 +229,7 @@ bounds. The 15 best candidates, read line by line:
 | `sys.version_info` tests and module-level `HAS_X = False` flags folded | 731 and 395 modules | not yet |
 | a `lib/warnings.py` with `warn()` | 3,589 modules use only `warnings.warn` | not yet |
 | exception classes that only subclass a builtin exception | 4,747 classes, raised at 55,510 sites | not yet |
-| `dict.get(k)` on scalar values; `math.modf`/`fsum`/`asinh`; `int(x, base=16)` | 75,656 call sites; jdcal, sgp4, hsluv | not yet |
+| `dict.get(k)` on scalar values; `math.modf`/`fsum`/`asinh`; `int(x, base=16)` | 75,656 call sites; jdcal, sgp4, hsluv | partly: all but `int(x, base=16)` |
 
 The importability counts above were measured on the compiler before the first four refinements;
 the survey's model with them (and the folding of `sys.version_info`) raises the top 400 from 200 to

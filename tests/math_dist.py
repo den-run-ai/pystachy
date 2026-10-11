@@ -1,7 +1,7 @@
 # math.dist is CPython's: the vector_norm of the differences, math.hypot's (lossless scaling,
 # exact squares, the root corrected), so its last bit agrees at any magnitude and in any number
 # of dimensions; an infinite difference gives inf, else a nan gives nan. The points are lists or
-# tuples of one number type (also NamedTuples and objects with __iter__); ints are floats.
+# tuples of numbers (also NamedTuples and objects with __iter__), each made a float.
 import math
 from math import dist
 from typing import Iterator, NamedTuple
@@ -12,11 +12,25 @@ class P(NamedTuple):
     y: float
 
 
+class Q(NamedTuple):
+    n: int
+    x: float
+
+
 class Path:
     def __init__(self, xs: list[float]) -> None:
         self.xs = xs
 
     def __iter__(self) -> Iterator[float]:
+        return iter(self.xs)
+
+
+class Loud:
+    def __init__(self, xs: list[float]) -> None:
+        self.xs = xs
+
+    def __iter__(self) -> Iterator[float]:
+        print("iter", self.xs)
         return iter(self.xs)
 
 
@@ -30,6 +44,7 @@ print(dist((True, True, False, False, True, True), (True, False, True, False, Fa
 print(dist((13.25, 12.5, -3.25), (13.25, 12.5, -3.25)), dist((-0.0,), (0.0,)), dist((0.0,), (-0.0,)), dist((-5,), (3,)))
 print(dist((1.5, 1.5, 0.5), (0, 0, 0)), dist((1.5, 0.5, 1.5), (0, 0, 0)), dist(P(3.0, 4.0), P(0.0, 0.0)), dist(Path([1.0, 1.0]), [0.0, 0.0]))
 print(dist([2**53 + 1, 0], [0, 0]), dist({3: "a", 4: "b"}, (0, 0)), dist([0.1] * 100, [0.0] * 100), dist([1e-300] * 20, [-1e-300] * 20))
+print(dist((), ()), dist((1, 2.5), (0.0, 0)), dist(Q(3, 4.0), (0, 0.0)), dist((True, 2**53 + 1, 0.25), (False, 2**53, 0)), dist(Loud([3.0]), Loud([1.0])))
 try:
     print(dist((1, 2, 3, 4), (5, 6, 7)))
 except ValueError as err:
@@ -41,6 +56,10 @@ except ValueError as err:
 try:
     print(dist(maybe(3), (0.0, 0.0)))
     print(dist((0.0, 0.0), maybe(0)))
+except TypeError as err:
+    print("TypeError:", err)
+try:
+    print(dist(Loud([1.0, 2.0]), maybe(0)))  # (tuple(p) first: its __iter__ runs)
 except TypeError as err:
     print("TypeError:", err)
 

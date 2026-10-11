@@ -3,9 +3,14 @@
 0.0 0.0 0.0 8.0
 2.179449471770337 2.179449471770337 5.0 1.4142135623730951
 9007199254740992.0 5.0 1.0 8.944271909999159e-300
+iter [3.0]
+iter [1.0]
+0.0 2.692582403567252 5.0 1.0307764064044151 2.0
 ValueError: both points must have the same number of dimensions
 ValueError: both points must have the same number of dimensions
 3.1622776601683795
+TypeError: 'NoneType' object is not iterable
+iter [1.0, 2.0]
 TypeError: 'NoneType' object is not iterable
 [1440, 705, 256]
 [0.0, 7.784239614998252e+307, 1.1008577236292447e+308, 1.3482698511467367e+308, 1.5568479229996504e+308, 1.7406088932282882e+308, inf, inf, inf, inf, inf]

@@ -37,7 +37,7 @@ print(prod([3.0], start=2**53 + 1), prod([2**53 + 1, 3], start=1.0), prod([1.0],
 print(prod([1e308, 10.0]), prod([-1e308, 10.0]), prod([0.0, math.inf]), prod([-0.0, 2.0]), prod([2.0, -0.0], start=-1))
 print(prod([math.nan, 0.0]), prod([1e-320, 1e-10]), prod([5e-324, 0.5]), prod([5e-324, 0.75]), prod([math.inf, -1.0]))
 print(prod((2, 3, 7)), prod((0.5, 0.25)), prod({2: "a", 5: "b"}), prod(Factors([4, 5, 6])), prod(reversed([2, 9])))
-print(prod(x + 1 for x in range(6)), prod((x * 0.5 for x in range(1, 5)), start=3))
+print(prod(x + 1 for x in range(6)), prod((x * 0.5 for x in range(1, 5)), start=3), prod(()), prod((), start=2.5))
 print(prod((item(x) for x in range(1, 4)), start=first(10)))
 print(prod([item(x) for x in range(1, 4)], start=first(10)))
 try:

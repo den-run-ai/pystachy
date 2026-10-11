@@ -1,4 +1,5 @@
-# tuples of one item type in for loops, comprehensions and str.join(); join() over strings and dicts
+# tuples of one item type (or none: the empty tuple) in for loops, comprehensions, str.join() and
+# the builtins that consume them; join() over strings and dicts
 for x in (1, 2, 3):
     print(x)
 for i, s in enumerate(("a", "b")):
@@ -7,6 +8,14 @@ for a, b in zip((1, 2), [3, 4]):
     print(a, b)
 print(" ".join("abc"), "-".join({"x": 1, "y": 2}), "+".join(("p", "q")))
 print([c for c in ("u", "v")], sum(n for n in (4, 5)))
+print(sum(()), sum((), 0.5), list(()), sorted(()), any(()), all(()), "-".join(()))
+names: list[str] = list(())
+names.append("n")
+print(names + sorted(()))
+try:
+    print(max(()))
+except ValueError as e:
+    print("ValueError:", e)
 for n in sorted(range(3)):
     print(n)
 for y in list(enumerate(["a"])):

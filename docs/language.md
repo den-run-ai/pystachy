@@ -434,8 +434,8 @@ devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors, with `fsum`, `prod` (and its
 `start=`) and `dist` computed as CPython computes them (`fsum` and `prod` take what `sum()`
-takes, `dist` two lists or tuples of one number type); `gamma`, `isclose`, `lgamma` and
-`sumprod` are rejected.
+takes, and `fsum` a tuple of ints and floats too; `dist` takes two lists or tuples of
+numbers); `gamma`, `isclose`, `lgamma` and `sumprod` are rejected.
 
 ## Removed on purpose
 
@@ -526,6 +526,10 @@ In these cases the program compiles but can behave differently from CPython:
   and where CPython raises `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
   for a tail call in an AOT build, loops forever. `==` between two cyclic dataclass objects
   recurses like that too.
+- `min()`, `max()` and `math.fsum()` make all the items of a generator expression before they
+  compare or add them, so where CPython stops at an item (a `__lt__` that raises, or fsum's
+  `OverflowError: intermediate overflow in fsum`), the expressions of the later items have run,
+  and an exception that one of them raises comes first.
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
   tuples holding the same NaN object compare, and sort, as if they held different ones. The
   sum of an empty `list[float]` is `0.0` (`sum(xs, 1)`: `1.0`), and its `math.prod()` is

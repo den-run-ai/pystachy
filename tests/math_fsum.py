@@ -62,6 +62,11 @@ class P(NamedTuple):
     z: float
 
 
+class Q(NamedTuple):
+    n: int
+    x: float
+
+
 def maybe(n: int) -> list[float] | None:
     return [0.5] * n if n > 0 else None
 
@@ -70,6 +75,7 @@ ys: list[int] = [1, 2**53 + 1, -(2**53)]
 print(math.fsum(ys), math.fsum([2**62, 2**62, -9223372036854775807]), math.fsum(range(100000)), math.fsum([True, False, True]))
 print(math.fsum(x * 0.1 for x in range(10)), math.fsum((0.1, 0.2, 0.3)), math.fsum(Pts([1e100, 1.0, -1e100])))
 print(math.fsum(P(1e16, 1.0, 1e-16)), math.fsum({3: "a", 4: "b"}), math.fsum(reversed([0.5, 1e20, -1e20])))
+print(math.fsum(()), math.fsum((1, 2.5, True)), math.fsum((2**53 + 1, -(2**53), 0.5)), math.fsum(Q(2**53 + 1, 1.0)))
 try:
     print(math.fsum(maybe(3)))
     print(math.fsum(maybe(0)))

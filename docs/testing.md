@@ -98,7 +98,7 @@ versions, platform, git commit and a timestamp:
 - **benchmarks** — output equal to CPython's, with timings;
 - **rtcheck** — `tools/rtcheck.py` runs `runtime.py` on CPython and compares each of its
   functions with CPython's str methods, `math` functions and `format()` (and the dict hashes
-  with their formulas) on random inputs, about 275,000 cases;
+  with their formulas) on random inputs, about 290,000 cases;
 - **rt-abi** — `tools/rtabi.py`: every function `runtime.py` defines or declares has one LLVM
   signature in `runtime.py`, in runtime.c and in every program of the corpus (`llvm-link`
   would accept a mismatch silently);

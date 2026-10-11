@@ -14207,7 +14207,7 @@ class Gen:
             return self.tuple_(vals)
         if k == "listcomp":
             if n.s == "gen":
-                self.err("a generator expression is only supported as the argument of sum(), min(), max(), sorted(), list(), any(), all(), str.join() or list.extend()")
+                self.err("a generator expression is only supported as the argument of sum(), min(), max(), sorted(), list(), any(), all(), math.fsum(), math.prod(), str.join() or list.extend()")
             return self.listcomp(n, want)
         if k == "fstr":
             acc = Val(self.sconst(""), "str")
@@ -15950,6 +15950,8 @@ class Gen:
                 first = self.rt("pys_file_readline", "ptr", [f"ptr {v0.v}"])
                 return Val(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {first}')}, 0"), "bool")
             vals = [self.as_list(v0, name)]
+            if v0.t == "tuple[]" and is_list(w):
+                vals[0] = Val(vals[0].v, w)  # (list(()) has no item to type: it is the list wanted)
             self.close_temp(args[0], v0)
         elif (name == "sum" or name == "math.prod") and npos == 2 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
             # Construct the iterator first, then evaluate start, then traverse it. In particular,
@@ -15981,6 +15983,9 @@ class Gen:
             vals[1] = self.coerce(Val(self.optint(vals[1], "0"), "int"), "int")
         elif name == "round" and len(vals) == 2 and is_opt(vals[1].t):
             self.err(f"round() with an ndigits that may be None ({typestr(vals[1].t)}) is not supported: it returns an int where ndigits is None, else a float; test it with 'is not None' first")
+        if name == "math.dist":
+            # tuple(p), then tuple(q): p's __iter__ runs before q is found to be None
+            vals = [self.as_list(self.unwrap(v, "TypeError: 'NoneType' object is not iterable") if is_opt(v.t) else v, name) for v in vals]
         for i in range(len(vals)):
             if vals[i].t == "None" and name in NONERET and len(vals) == 1:
                 # None itself (a template's parameter whose argument is None): CPython's error
@@ -15991,7 +15996,7 @@ class Gen:
             bad = NONEARG[name] if name in NONEARG else ""
             if name == "int" and len(vals) == 2:
                 bad = "int() can't convert non-string with explicit base"
-            elif ((name == "sum" or name == "math.prod") and i == 0) or name == "math.dist":
+            elif (name == "sum" or name == "math.prod") and i == 0:
                 bad = "'NoneType' object is not iterable"
             if bad != "":
                 vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
@@ -16037,9 +16042,9 @@ class Gen:
             vals = [self.as_float(self.as_int(vals[0])), self.as_int(vals[1])]
             key = f"{name}({','.join([v.t for v in vals])})"
         if key not in CALLS and (name == "math.fsum" or name == "math.prod" or name == "math.dist"):
-            # dist(p, q) takes tuple(p) and tuple(q); CPython makes a float of each int item (in a
-            # product, of each item and the start once there is a float)
-            fl = [self.floats(self.as_list(v, name) if name == "math.dist" else v) for v in vals]
+            # CPython makes a float of each int item (in a product, of each item and the start once
+            # there is a float)
+            fl = [self.floats(v) for v in vals]
             if f"{name}({','.join([v.t for v in fl])})" in CALLS:
                 vals = fl
                 key = f"{name}({','.join([v.t for v in vals])})"
@@ -16128,7 +16133,7 @@ class Gen:
         elif name == "list" and is_dict(t):
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]]))
         elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
-            self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all() or str.join()")
+            self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
         if name in self.gtypes or name in self.ltype:
             self.err(f"'{name}' is not callable")
         if t in self.classes and name in NONEARG:
@@ -16209,13 +16214,17 @@ class Gen:
             return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
         if is_tuple(v.t):
             ts = targs(v.t)
-            for x in ts:
-                if x != ts[0]:
+            et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)
+            if any(x != et for x in ts):
+                if (name == "math.fsum" or name == "math.dist") and all(self.isnum(x) for x in ts):
+                    et = "float"  # (they make a float of each item: (1, 2.5) too)
+                else:
                     self.err(f"{name}() of a {v.t} needs items of a single type")
             r = self.rt("pys_list_new", "ptr", [f"i64 {len(ts)}"])
             for i in range(len(ts)):
-                self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.tget(v, i))])
-            return Val(r, self.ctype("list", [ts[0]]))
+                item = self.tget(v, i)
+                self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.as_float(item) if et == "float" else item)])
+            return Val(r, self.ctype("list", [et]))
         if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
             return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         if v.t == "file":
