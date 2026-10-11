@@ -1,0 +1,1 @@
+91 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)

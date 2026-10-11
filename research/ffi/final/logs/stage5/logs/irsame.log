@@ -1,0 +1,3 @@
+build/ref: the compiler of base (4dc548aec1d4756f79daa62bd14f186f05ca822c)
+PYSTACHY_HOME= tools/irsame.sh build/ref/pystachy ./pystachy 
+1240 programs identical

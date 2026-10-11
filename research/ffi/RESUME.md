@@ -1,4 +1,18 @@
-# FFI research for Pystachy: paused state (2026-10-10)
+# FFI research for Pystachy
+
+**Status (2026-10-11): complete.** The final recommendation is
+[`RECOMMENDATION.md`](RECOMMENDATION.md).
+- The prototype that backs it is [`final/ffi-prototype-on-4dc548a.patch`](final/ffi-prototype-on-4dc548a.patch),
+  with its commits listed in `final/ffi-commits.txt`. It applies cleanly to main `4dc548a`.
+- `make verify` passed 19/19 on it, and irsame left every program that does not use the FFI
+  byte-identical.
+- The logs are in `final/logs/`, and the port, refutation and fix reports are in `stage3/*.json`.
+- Not done yet:
+  - an independent refutation of the last fix round;
+  - GitHub CI;
+  - splitting into per-stage PRs (S0 docs, S1 `@ffi.extern`, S3 `pystachy ext`, S2 `lib/pyobj.py`).
+
+The notes below are the state at the pause on 2026-10-10, kept for history.
 
 **The question:** "Propose best ffi mechanism for pystachy following latest compiler, runtime,
 interop best practices with minimal impact that could maybe work with cpython bidirectionally.

@@ -1,0 +1,25 @@
+PY="python3" tests/verify.sh
+bootstrap      pass    48.759s  build/verify/bootstrap.log
+tests-cpython  pass    95.843s  build/verify/tests-cpython.log
+tests-native   pass    63.688s  build/verify/tests-native.log
+tests-opt-off  pass    63.581s  build/verify/tests-opt-off.log
+python-free    pass    85.218s  build/verify/python-free.log
+ubsan          pass   105.191s  build/verify/ubsan.log
+check-ir       pass     3.073s  build/verify/check-ir.log
+runtime-table  pass     3.712s  build/verify/runtime-table.log
+gc-stress      pass    89.298s  build/verify/gc-stress.log
+benchmarks     pass    15.168s  build/verify/benchmarks.log
+rtcheck        pass     1.021s  build/verify/rtcheck.log
+rt-abi         pass     1.169s  build/verify/rt-abi.log
+inherited-ast  pass     0.418s  build/verify/inherited-ast.log
+ffi            pass    26.581s  build/verify/ffi.log
+list-storage   pass     2.383s  build/verify/list-storage.log
+container-eq   pass     2.392s  build/verify/container-eq.log
+dict-probes    pass     2.673s  build/verify/dict-probes.log
+compile-limits pass     7.324s  build/verify/compile-limits.log
+scaling        pass    76.459s  build/verify/scaling.log
+verification: 19/19 steps passed -> build/verification.json
+
+real	11m34.459s
+user	28m0.240s
+sys	3m54.618s

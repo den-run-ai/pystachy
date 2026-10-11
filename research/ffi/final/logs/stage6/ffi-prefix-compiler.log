@@ -1,0 +1,276 @@
+FAIL c_lib (jit)
+1c1
+< ffitest 42
+---
+> 1.3 10505
+tail: cannot open '/tmp/pystachy-ffi.27440/c_lib.aot' for reading: No such file or directory
+FAIL c_lib (aot)
+1,2c1
+< ffitest 42
+< [exit 0]
+---
+> [stderr] clang: error: linker command failed with exit code 1 (use -v to see invocation)
+/usr/bin/ld: cannot find -l:libpystachy-ffitest.so: No such file or directory
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+FAIL c_libm (jit)
+2c2
+< -1.0 3.141592653589793 -3.141592653589793 -0.0 -inf nan
+---
+> 1.0 0.0 3.141592653589793 0.0 -inf nan
+FAIL c_libm (aot)
+2c2
+< -1.0 3.141592653589793 -3.141592653589793 -0.0 -inf nan
+---
+> 1.0 0.0 3.141592653589793 0.0 -inf nan
+FAIL c_nolib (jit)
+1d0
+< before
+3c2
+< [stderr] OSError: libpystachy-no-such-library.so.9: cannot open shared object file: No such file or directory
+---
+> [stderr] lli: libpystachy-no-such-library.so.9: cannot open shared object file: No such file or directory
+lli: libpystachy-no-such-library.so.9: cannot open shared object file: No such file or directory
+tail: cannot open '/tmp/pystachy-ffi.27440/c_nolib.aot' for reading: No such file or directory
+FAIL c_nolib (aot)
+1,3c1
+< before
+< [exit 1]
+< [stderr] OSError: libpystachy-no-such-library.so.9: cannot open shared object file: No such file or directory
+---
+> [stderr] clang: error: linker command failed with exit code 1 (use -v to see invocation)
+/usr/bin/ld: cannot find -l:libpystachy-no-such-library.so.9: No such file or directory
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+FAIL c_nosym (jit)
+1d0
+< before
+3c2
+< [stderr] AttributeError: /lib/x86_64-linux-gnu/libm.so.6: undefined symbol: no_such_function_here
+---
+> [stderr] lli: Failed to materialize symbols: { (main, { pys_obj_cmp, pys_obj_eq, pys_obj_repr, main }) }
+JIT session error: Symbols not found: [ no_such_function_here ]
+lli: Failed to materialize symbols: { (main, { pys_obj_cmp, pys_obj_eq, pys_obj_repr, main }) }
+FAIL c_nosym (aot)
+2,3c2,3
+< [exit 1]
+< [stderr] AttributeError: /lib/x86_64-linux-gnu/libm.so.6: undefined symbol: no_such_function_here
+---
+> not reached
+> [exit 0]
+FAIL tests/ffi/errors/c_python.py: expected error 'tests/ffi/errors/c_python.py:6: error: @extern("python") is reserved for Pystachy's lib/pyobj.py: import pyobj to call CPython', got: 
+FAIL tests/ffi/errors/c_track.py: expected error 'tests/ffi/errors/c_track.py:2: error: cannot import name 'track' from 'ffi': it is internal to Pystachy's lib/pyobj.py', got: tests/ffi/errors/c_track.py:9: error: unsupported call ffi.track(A,int,int)
+FAIL tests/ffi/errors/py_ctor.py: expected error 'tests/ffi/errors/py_ctor.py:4: error: pyobj.Object() cannot be called: Pystachy's pyobj module makes its objects (with import_module, of_int, of_float, of_str, of_list)', got: tests/ffi/errors/py_ctor.py:4: error: Object.__init__() takes 2 positional arguments but 3 were given
+FAIL tests/ffi/errors/py_field.py: expected error 'tests/ffi/errors/py_field.py:4: error: 'Object' object has no attribute '_p' that a program may use: the fields of Pystachy's pyobj.Object are its own (its methods are not)', got: tests/ffi/errors/py_field.py:4: error: 'pyobj.Object' object has no attribute '_p'
+FAIL tests/ffi/errors/py_modattr.py: expected error 'tests/ffi/errors/py_modattr.py:4: error: pyobj._text is not offered by Pystachy's pyobj module, whose names are Object, import_module, of_int, of_float, of_str, of_list', got: tests/ffi/errors/py_modattr.py:4: error: _text() takes 1 positional argument but 2 were given
+FAIL tests/ffi/errors/py_private.py: expected error 'tests/ffi/errors/py_private.py:2: error: cannot import name 'PyLong_AsLongLong' from 'pyobj': Pystachy's pyobj module offers Object, import_module, of_int, of_float, of_str, of_list (as its twin, tools/rt_cpython/pyobj.py, does)', got: 
+FAIL py_argv (jit, CPython 3.13 embedded)
+1,2c1
+< 4 4 "ok", "caf\udce9", "two words"]
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'Exception: ../Objects/listobject.c:546: bad argument to internal function'
+FAIL py_argv (aot, CPython 3.13 embedded)
+1,2c1
+< 4 4 "ok", "caf\udce9", "two words"]
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'Exception: ../Objects/listobject.c:546: bad argument to internal function'
+FAIL py_badstr (jit, CPython 3.13 embedded)
+1,3c1
+< boom caught str() of E failed
+< boom2 caught <exception str() failed>
+< [exit 0]
+---
+> [exit 139]
+  stderr: want '', got 'Segmentation fault'
+FAIL py_badstr (aot, CPython 3.13 embedded)
+1,3c1
+< boom caught str() of E failed
+< boom2 caught <exception str() failed>
+< [exit 0]
+---
+> [exit 139]
+  stderr: want '', got 'Segmentation fault'
+FAIL py_big (jit, CPython 3.13 embedded)
+2c2
+< peak below 200 MiB: True
+---
+> peak below 200 MiB: False
+  stderr: want '', got ''
+FAIL py_big (aot, CPython 3.13 embedded)
+2c2
+< peak below 200 MiB: True
+---
+> peak below 200 MiB: False
+  stderr: want '', got ''
+FAIL py_coerce (jit, CPython 3.13 embedded)
+1,5c1,3
+< utf8 mode 1 utf-8 utf-8
+< LC_CTYPE C.UTF-8
+< héllo wörld
+< héllo again
+< [exit 0]
+---
+> utf8 mode 0 ascii ascii
+> LC_CTYPE 
+> [exit 1]
+  stderr: want '', got 'ValueError: 'ascii' codec can't encode character '\xe9' in position 1: ordinal not in range(128)'
+FAIL py_coerce (aot, CPython 3.13 embedded)
+1,5c1,3
+< utf8 mode 1 utf-8 utf-8
+< LC_CTYPE C.UTF-8
+< héllo wörld
+< héllo again
+< [exit 0]
+---
+> utf8 mode 0 ascii ascii
+> LC_CTYPE 
+> [exit 1]
+  stderr: want '', got 'ValueError: 'ascii' codec can't encode character '\xe9' in position 1: ordinal not in range(128)'
+FAIL py_locale (jit, CPython 3.13 embedded)
+1,2c1
+< 1.5 0.5 2.67 1.500 5.0 1e+301 0.1
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'ValueError: could not convert string to float: '2.5''
+FAIL py_locale (aot, CPython 3.13 embedded)
+1,2c1
+< 1.5 0.5 2.67 1.500 5.0 1e+301 0.1
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'ValueError: could not convert string to float: '2.5''
+FAIL py_negzero (jit, CPython 3.13 embedded)
+1c1
+< -0.0 -0.0 -1.0
+---
+> 0.0 0.0 1.0
+  stderr: want '', got ''
+FAIL py_negzero (aot, CPython 3.13 embedded)
+1c1
+< -0.0 -0.0 -1.0
+---
+> 0.0 0.0 1.0
+  stderr: want '', got ''
+FAIL py_order (jit, CPython 3.13 embedded)
+1d0
+< 1 before import
+2a2
+> 1 before import
+4d3
+< 3 before attr
+6d4
+< 4 after attr 7
+8d5
+< 5 after str P
+  stderr: want '<module 'side_noisy' from '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/tree/tests/ffi/side_noisy.py'>', got '<module 'side_noisy' from '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/tree/tests/ffi/side_noisy.py'>'
+FAIL py_order (aot, CPython 3.13 embedded)
+1d0
+< 1 before import
+2a2
+> 1 before import
+4d3
+< 3 before attr
+6d4
+< 4 after attr 7
+8d5
+< 5 after str P
+  stderr: want '<module 'side_noisy' from '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/tree/tests/ffi/side_noisy.py'>', got '<module 'side_noisy' from '/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/tree/tests/ffi/side_noisy.py'>'
+FAIL py_redirect (jit, CPython 3.13 embedded)
+2c2,4
+< after: "captured line\npython's line\n"
+---
+> captured line
+> after: "python's line\n"
+> not printed
+  stderr: want '', got ''
+FAIL py_redirect (aot, CPython 3.13 embedded)
+2c2,4
+< after: "captured line\npython's line\n"
+---
+> captured line
+> after: "python's line\n"
+> not printed
+  stderr: want '', got ''
+FAIL py_stdin (jit, CPython 3.13 embedded)
+2,3c2
+< 'first' 'second\n' 'third\n' 'fourth' 'fifth\nsixth\n'
+< EOFError EOF when reading a line
+---
+> 'first' '' 'second\n' 'third' ''
+  stderr: want '', got ''
+FAIL py_stdin (aot, CPython 3.13 embedded)
+2,3c2
+< 'first' 'second\n' 'third\n' 'fourth' 'fifth\nsixth\n'
+< EOFError EOF when reading a line
+---
+> 'first' '' 'second\n' 'third' ''
+  stderr: want '', got ''
+FAIL py_utf8 (jit, CPython 3.13 embedded)
+1c1
+< utf8 mode 1 utf-8 utf-8
+---
+> utf8 mode 0 ascii ascii
+3,5c3
+< héllo wörld
+< héllo again
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'ValueError: 'ascii' codec can't encode character '\xe9' in position 1: ordinal not in range(128)'
+FAIL py_utf8 (aot, CPython 3.13 embedded)
+1c1
+< utf8 mode 1 utf-8 utf-8
+---
+> utf8 mode 0 ascii ascii
+3,5c3
+< héllo wörld
+< héllo again
+< [exit 0]
+---
+> [exit 1]
+  stderr: want '', got 'ValueError: 'ascii' codec can't encode character '\xe9' in position 1: ordinal not in range(128)'
+FAIL ext client rdclient.py (CPython 3.13, abi3)
+2,8c2,7
+< name? module: two
+< module line: 'three\n'
+< host line: 'four\n'
+< module rest: ''
+< caught EOFError EOF when reading a line
+< PRINTED
+< [exit 0]
+---
+> name? Traceback (most recent call last):
+FAIL ext client memclient.py (CPython 3.13, abi3)
+2c2
+< peak below 200 MiB: True
+---
+> peak below 200 MiB: False
+FAIL ext client wrclient.py (CPython 3.13, abi3)
+1,2c1,2
+< wr_a.txt 'saved\n'
+< wr_b.txt 'one\ntwo\n'
+---
+> wr_a.txt ''
+> wr_b.txt ''
+FAIL ext client fmclient.py (CPython 3.13, abi3)
+2,3c2,7
+< 1.5 5.0 0.1 1.500
+< [exit 0]
+---
+> Traceback (most recent call last):
+>   File "/tmp/pystachy-ffi.27440/so/fmclient.py", line 10, in <module>
+>     print(fm.show(1.5))
+>           ~~~~~~~^^^^^
+> ValueError: could not convert string to float: '2.5'
+> [exit 1]
+FAIL ext client bxclient.py (CPython 3.13, abi3)
+1,2c1,2
+< caught no str
+< [exit 0]
+---
+> Segmentation fault
+> [exit 139]
+54 passed, 39 failed

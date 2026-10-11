@@ -1,0 +1,5 @@
+ruff check
+All checks passed!
+shellcheck -s sh -S warning tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/irsame.sh tools/setup.sh bench/run.sh
+clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c pyext.c pyembed.c
+clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c

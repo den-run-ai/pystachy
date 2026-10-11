@@ -1,0 +1,70 @@
+## tree: d89c8b9 on base 4dc548a (6 commits), dirty: 0 files
+## make (three-stage fixed point, runtime.py's fixed point)
+make exit=0
+fixed point: stage1 == stage2 == stage3 (225035 lines of IR)
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (10393 lines)
+## runtime.py's IR: this compiler vs base's (build/ref)
+runtime.py IR byte-identical (10393 lines)
+## check_runtime
+exit=0
+276 RUNTIME entries, 69 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (96 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python
+## rtabi
+exit=0
+28 runtime calls of the FFI's C glue (pyext.c, both ABIs; pyembed.c) checked against runtime.c
+76 functions of runtime.py, 2524 uses in runtime.c and 596 programs, 0 mismatches
+## tests/run.sh ./pystachy (JIT and AOT)
+exit=0
+1933 passed, 0 failed
+## make irsame REF=base
+exit=0
+1240 programs identical
+## irsame of the files main's corpus leaves out (lib/*.py, tests/ subdirectories, the FFI tests' plain modules)
+exit=0
+69 programs identical
+## make check-ir
+exit=0
+the IR check and llvm-as accept the IR of 597 programs
+## make lint (ruff 0.16.8, shellcheck 0.11.0)
+exit=0
+shellcheck -s sh -S warning tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/irsame.sh tools/setup.sh bench/run.sh
+clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c pyext.c pyembed.c
+clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+## tests/ffi/run.sh, native compiler, PY=3.13
+exit=0
+93 passed, 0 failed
+## tests/ffi/run.sh, native compiler, PY=3.12
+exit=0
+93 passed, 0 failed
+## tests/ffi/run.sh, native compiler, PY=3.13t
+exit=0
+72 passed, 0 failed; skipped: the ext cases (a free-threaded CPython before 3.15 loads no extension module of Pystachy's)
+## tests/ffi/run.sh, native compiler, PY=3.14
+exit=0
+93 passed, 0 failed
+## tests/ffi/run.sh, native compiler, PY=3.14t
+exit=0
+72 passed, 0 failed; skipped: the ext cases (a free-threaded CPython before 3.15 loads no extension module of Pystachy's)
+## tests/ffi/run.sh, native compiler, PY=3.15
+exit=0
+93 passed, 0 failed
+## tests/ffi/run.sh, native compiler, PY=3.15t
+exit=1
+92 passed, 1 failed
+## tests/ffi/run.sh, native compiler, PY=3.11
+exit=0
+34 passed, 0 failed; skipped: the py_ and ext cases (no python3.11 3.12+ with a shared libpython)
+## tests/ffi/run.sh, CPython-hosted compiler (python3 -m pystachy)
+exit=0
+91 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)
+## FFI probes (probe5.sh): 3.11 (below the floor), 3.12, 3.13, 3.13t, 3.14, 3.14t, 3.15, 3.15t; JIT and AOT
+### probes: 215 same, 0 different; 3 documented deviations observed as documented
+## the stage-4 refuters' cases (refute5.sh)
+### refute5: 64 same, 0 different; 2 documented deviations observed as documented
+## UBSan trap mode (ubsan5.sh)
+### ubsan (trap mode): 46 same, 0 different
+  traps (ud1/ud2) in zstats.exe: 140, in jsondemo.exe: 272
+  traps (ud1/ud2) in fastmath.abi3.so: 234
+
+real	8m38.167s
+user	10m12.247s
+sys	1m31.739s

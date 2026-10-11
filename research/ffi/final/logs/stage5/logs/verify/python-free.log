@@ -1,0 +1,30 @@
+PATH=/tmp/pystachy-path.qzMIGo
+lrwxrwxrwx 1 root root 17 Oct 11 17:28 basename -> /usr/bin/basename
+lrwxrwxrwx 1 root root 12 Oct 11 17:28 cat -> /usr/bin/cat
+lrwxrwxrwx 1 root root 14 Oct 11 17:28 clang -> /usr/bin/clang
+lrwxrwxrwx 1 root root 12 Oct 11 17:28 cmp -> /usr/bin/cmp
+lrwxrwxrwx 1 root root 13 Oct 11 17:28 diff -> /usr/bin/diff
+lrwxrwxrwx 1 root root 16 Oct 11 17:28 dirname -> /usr/bin/dirname
+lrwxrwxrwx 1 root root 13 Oct 11 17:28 grep -> /usr/bin/grep
+lrwxrwxrwx 1 root root 13 Oct 11 17:28 head -> /usr/bin/head
+lrwxrwxrwx 1 root root 11 Oct 11 17:28 ld -> /usr/bin/ld
+lrwxrwxrwx 1 root root 12 Oct 11 17:28 lli -> /usr/bin/lli
+lrwxrwxrwx 1 root root 16 Oct 11 17:28 llvm-as -> /usr/bin/llvm-as
+lrwxrwxrwx 1 root root 18 Oct 11 17:28 llvm-link -> /usr/bin/llvm-link
+lrwxrwxrwx 1 root root 14 Oct 11 17:28 mkdir -> /usr/bin/mkdir
+lrwxrwxrwx 1 root root 15 Oct 11 17:28 mkfifo -> /usr/bin/mkfifo
+lrwxrwxrwx 1 root root 11 Oct 11 17:28 mv -> /usr/bin/mv
+lrwxrwxrwx 1 root root 14 Oct 11 17:28 nproc -> /usr/bin/nproc
+lrwxrwxrwx 1 root root 12 Oct 11 17:28 opt -> /usr/bin/opt
+lrwxrwxrwx 1 root root 11 Oct 11 17:28 rm -> /usr/bin/rm
+lrwxrwxrwx 1 root root 14 Oct 11 17:28 rmdir -> /usr/bin/rmdir
+lrwxrwxrwx 1 root root 12 Oct 11 17:28 sed -> /usr/bin/sed
+lrwxrwxrwx 1 root root 11 Oct 11 17:28 sh -> /usr/bin/sh
+lrwxrwxrwx 1 root root 14 Oct 11 17:28 sleep -> /usr/bin/sleep
+lrwxrwxrwx 1 root root 13 Oct 11 17:28 tail -> /usr/bin/tail
+lrwxrwxrwx 1 root root 13 Oct 11 17:28 test -> /usr/bin/test
+python3, python: not found on PATH
+runtime-py-d2ef0ee0.bc
+rebuilt compiler emits the stage1 IR
+rebuilt compiler emits the rt1 IR of runtime.py
+1933 passed, 0 failed

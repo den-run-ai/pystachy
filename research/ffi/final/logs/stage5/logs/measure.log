@@ -1,0 +1,18 @@
+## machine: 4 CPUs, Intel(R) Xeon(R) Processor
+## @extern call (AOT; best of 3 runs)
+  NEW: 4 hypot via @extern: 3.9 ns; math.sqrt inline: 1.6 ns
+  OLD: 4 hypot via @extern: 3.7 ns; math.sqrt inline: 1.6 ns
+## pyobj operations, embedded 3.13 (AOT, stdout to a file; best of 3 runs)
+  NEW: 600000 of_int(i).to_int(): 122 ns; neg.call([of_int(i)]).to_int(): 523 ns; len(o.attr(name)): 327 ns; of_int then print: 540 ns; print alone: 46 ns
+  OLD: 600000 of_int(i).to_int(): 112 ns; neg.call([of_int(i)]).to_int(): 501 ns; len(o.attr(name)): 189 ns; of_int then print: 100 ns; print alone: 39 ns
+## start-up, AOT (median of 21)
+  NEW: hello 3.01 ms (min 2.74, n=21); libm @extern 2.93 ms (min 2.76, n=21); emb (CPython started and finalized) 13.73 ms (min 12.39, n=21)
+  OLD: hello 2.95 ms (min 2.74, n=21); libm @extern 2.89 ms (min 2.72, n=21); emb (CPython started and finalized) 13.04 ms (min 12.34, n=21)
+## start-up, JIT (pystachy run, median of 11, compile included)
+  NEW: libm @extern 46.94 ms (min 45.91, n=11); emb 94.92 ms (min 91.98, n=11)
+  OLD: libm @extern 45.28 ms (min 43.77, n=11); emb 90.35 ms (min 88.20, n=11)
+## extension modules (fastmath.py): per-call cost (ns, net of the loop), .so size, ext build time with warm caches
+  NEW: 3.13.16 (abi3): loop 9.5 ns; ext fastmath.check(4) 18.1 ns; ctypes C check(4) 223.1 ns; python check(4) 24.1 ns; ext fastmath.fib(10) 20.0 ns
+  NEW: fastmath.abi3.so 79600 bytes; pystachy ext 671.09 ms (min 643.42, n=7)
+  OLD: 3.13.16 (abi3): loop 8.7 ns; ext fastmath.check(4) 19.2 ns; ctypes C check(4) 228.3 ns; python check(4) 24.5 ns; ext fastmath.fib(10) 22.9 ns
+  OLD: fastmath.abi3.so 74792 bytes; pystachy ext 690.25 ms (min 644.32, n=7)

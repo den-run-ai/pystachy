@@ -1,0 +1,7 @@
+sanitized compiler emits the stage1 IR
+runtime-py-68102910.bc
+cached runtime bitcode is instrumented
+-- tests (aot)
+1359 passed, 0 failed
+-- tests (jit)
+1359 passed, 0 failed

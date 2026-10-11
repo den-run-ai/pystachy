@@ -1,0 +1,230 @@
+### S1: @extern, Pystachy calls C (twin on 3.13 vs JIT vs AOT, GC stress 7)
+SAME  zstats jit
+SAME  zstats aot
+SAME  sat jit
+SAME  sat aot
+SAME  neg jit
+SAME  neg aot
+SAME  ok_rt jit
+SAME  ok_rt aot
+SAME  rejected: e_int.py:5: error: C function atoi() returns int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)
+SAME  rejected: e_dup.py:9: error: C function abs is declared again with other types: i64 @abs(i64) at line 5, signext i32 @abs(i32 signext) here
+SAME  rejected: e_res.py:5: error: C function pys_len is reserved for Pystachy's runtime and extension modules
+SAME  rejected: e_rt.py:5: error: C function memchr is declared as ptr(ptr, i64, i64), but Pystachy's runtime calls it as ptr(ptr, i32, i64)
+SAME  rejected: e_list.py:5: error: C function f() takes list[int]: an @extern function takes a C integer type, float or str
+SAME  rejected: e_bool.py:5: error: C function f() takes bool: an @extern function takes a C integer type, float or str
+SAME  rejected: e_body.py:5: error: f() is a C function (@extern): its body must be ...
+DEV   @extern("") zlibVersion: JIT finds it in lli's process / an AOT build's process has no libz / python3 links libz (documented deviation, observed as documented): 1. / AttributeError: ./zv.exe: undefined symbol: zlibVersion / 1.
+DEV   a C string that is not UTF-8: native / twin (documented deviation, observed as documented): 4 False / UnicodeDecodeError
+SAME  a C string that is ASCII (jit)
+SAME  a program's own ffi.py (jit)
+SAME  a program's own ffi.py (aot)
+SAME  own ffi.py + pyobj, rejected: /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage5/../stage3/tree/lib/pyobj.py:14: error: module 'pyobj' needs Pystachy's builtin ffi module, which the program's own ./ffi.py replaces: rename that module
+### S2: lib/pyobj.py, Pystachy calls CPython (embedded), each against the twin on the same CPython
+SAME  jsondemo jit 3.12 (GC stress 3)
+SAME  jsondemo aot 3.12 (GC stress 3)
+SAME  uac jit 3.12 (GC stress 3)
+SAME  uac aot 3.12 (GC stress 3)
+SAME  uac2 jit 3.12 (GC stress 3)
+SAME  uac2 aot 3.12 (GC stress 3)
+SAME  sx jit 3.12 (GC stress 3)
+SAME  sx aot 3.12 (GC stress 3)
+SAME  sxb jit 3.12 (GC stress 3)
+SAME  sxb aot 3.12 (GC stress 3)
+SAME  fin jit 3.12 (GC stress 3)
+SAME  fin aot 3.12 (GC stress 3)
+SAME  kb jit 3.12 (GC stress 3)
+SAME  kb aot 3.12 (GC stress 3)
+SAME  leak jit 3.12 (GC stress 50)
+SAME  leak aot 3.12 (GC stress 50)
+  stw aot 3.12 (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.13 (GC stress 3)
+SAME  jsondemo aot 3.13 (GC stress 3)
+SAME  uac jit 3.13 (GC stress 3)
+SAME  uac aot 3.13 (GC stress 3)
+SAME  uac2 jit 3.13 (GC stress 3)
+SAME  uac2 aot 3.13 (GC stress 3)
+SAME  sx jit 3.13 (GC stress 3)
+SAME  sx aot 3.13 (GC stress 3)
+SAME  sxb jit 3.13 (GC stress 3)
+SAME  sxb aot 3.13 (GC stress 3)
+SAME  fin jit 3.13 (GC stress 3)
+SAME  fin aot 3.13 (GC stress 3)
+SAME  kb jit 3.13 (GC stress 3)
+SAME  kb aot 3.13 (GC stress 3)
+SAME  leak jit 3.13 (GC stress 50)
+SAME  leak aot 3.13 (GC stress 50)
+  stw aot 3.13 (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.13t (GC stress 3)
+SAME  jsondemo aot 3.13t (GC stress 3)
+SAME  uac jit 3.13t (GC stress 3)
+SAME  uac aot 3.13t (GC stress 3)
+SAME  uac2 jit 3.13t (GC stress 3)
+SAME  uac2 aot 3.13t (GC stress 3)
+SAME  sx jit 3.13t (GC stress 3)
+SAME  sx aot 3.13t (GC stress 3)
+SAME  sxb jit 3.13t (GC stress 3)
+SAME  sxb aot 3.13t (GC stress 3)
+SAME  fin jit 3.13t (GC stress 3)
+SAME  fin aot 3.13t (GC stress 3)
+SAME  kb jit 3.13t (GC stress 3)
+SAME  kb aot 3.13t (GC stress 3)
+SAME  leak jit 3.13t (GC stress 50)
+SAME  leak aot 3.13t (GC stress 50)
+  stw aot 3.13t (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.14 (GC stress 3)
+SAME  jsondemo aot 3.14 (GC stress 3)
+SAME  uac jit 3.14 (GC stress 3)
+SAME  uac aot 3.14 (GC stress 3)
+SAME  uac2 jit 3.14 (GC stress 3)
+SAME  uac2 aot 3.14 (GC stress 3)
+SAME  sx jit 3.14 (GC stress 3)
+SAME  sx aot 3.14 (GC stress 3)
+SAME  sxb jit 3.14 (GC stress 3)
+SAME  sxb aot 3.14 (GC stress 3)
+SAME  fin jit 3.14 (GC stress 3)
+SAME  fin aot 3.14 (GC stress 3)
+SAME  kb jit 3.14 (GC stress 3)
+SAME  kb aot 3.14 (GC stress 3)
+SAME  leak jit 3.14 (GC stress 50)
+SAME  leak aot 3.14 (GC stress 50)
+  stw aot 3.14 (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.14t (GC stress 3)
+SAME  jsondemo aot 3.14t (GC stress 3)
+SAME  uac jit 3.14t (GC stress 3)
+SAME  uac aot 3.14t (GC stress 3)
+SAME  uac2 jit 3.14t (GC stress 3)
+SAME  uac2 aot 3.14t (GC stress 3)
+SAME  sx jit 3.14t (GC stress 3)
+SAME  sx aot 3.14t (GC stress 3)
+SAME  sxb jit 3.14t (GC stress 3)
+SAME  sxb aot 3.14t (GC stress 3)
+SAME  fin jit 3.14t (GC stress 3)
+SAME  fin aot 3.14t (GC stress 3)
+SAME  kb jit 3.14t (GC stress 3)
+SAME  kb aot 3.14t (GC stress 3)
+SAME  leak jit 3.14t (GC stress 50)
+SAME  leak aot 3.14t (GC stress 50)
+  stw aot 3.14t (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.15 (GC stress 3)
+SAME  jsondemo aot 3.15 (GC stress 3)
+SAME  uac jit 3.15 (GC stress 3)
+SAME  uac aot 3.15 (GC stress 3)
+SAME  uac2 jit 3.15 (GC stress 3)
+SAME  uac2 aot 3.15 (GC stress 3)
+SAME  sx jit 3.15 (GC stress 3)
+SAME  sx aot 3.15 (GC stress 3)
+SAME  sxb jit 3.15 (GC stress 3)
+SAME  sxb aot 3.15 (GC stress 3)
+SAME  fin jit 3.15 (GC stress 3)
+SAME  fin aot 3.15 (GC stress 3)
+SAME  kb jit 3.15 (GC stress 3)
+SAME  kb aot 3.15 (GC stress 3)
+SAME  leak jit 3.15 (GC stress 50)
+SAME  leak aot 3.15 (GC stress 50)
+  stw aot 3.15 (no stress): background thread progressed during compiled loop: True 502768 
+SAME  jsondemo jit 3.15t (GC stress 3)
+SAME  jsondemo aot 3.15t (GC stress 3)
+SAME  uac jit 3.15t (GC stress 3)
+SAME  uac aot 3.15t (GC stress 3)
+SAME  uac2 jit 3.15t (GC stress 3)
+SAME  uac2 aot 3.15t (GC stress 3)
+SAME  sx jit 3.15t (GC stress 3)
+SAME  sx aot 3.15t (GC stress 3)
+SAME  sxb jit 3.15t (GC stress 3)
+SAME  sxb aot 3.15t (GC stress 3)
+SAME  fin jit 3.15t (GC stress 3)
+SAME  fin aot 3.15t (GC stress 3)
+SAME  kb jit 3.15t (GC stress 3)
+SAME  kb aot 3.15t (GC stress 3)
+SAME  leak jit 3.15t (GC stress 50)
+SAME  leak aot 3.15t (GC stress 50)
+  stw aot 3.15t (no stress): background thread progressed during compiled loop: True 502768 
+  leak aot 3.13, no stress, PYSTACHY_GC=stats, 3,000,000 dropped: dropped 3000000 objects; CPython blocks bounded: False gc: 48 collections, 7.1 ms; heap peak 3.0 MiB; live 0.0 MiB at the last gc: Python references released: 2960517 after collections, 39487 at exit 
+SAME  embedding libpython 3.11 (below the floor), jit: 1: jsondemo.py:0: error: the program embeds CPython (it imports pyobj), which needs CPython 3.12 or later: PYSTACHY_LIBPYTHON is CPython 3.11's (/usr/lib/x86_64-linux-gnu/libpython3.11.so.1.0)
+SAME  embedding libpython 3.11 (below the floor), aot: 1: jsondemo.py:0: error: the program embeds CPython (it imports pyobj), which needs CPython 3.12 or later: PYSTACHY_LIBPYTHON is CPython 3.11's (/usr/lib/x86_64-linux-gnu/libpython3.11.so.1.0)
+### S3: pystachy ext, CPython calls Pystachy: abi3 and abi3t, each client against its source run with the twins (same CPython)
+SAME  abi_check: fastmath.abi3.so: defines only PyInit_fastmath; 49 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: fastmath.abi3t.so: defines only PyModExport_fastmath; 46 Py symbols, all in the stable ABI <= 3.15
+SAME  abi_check: viajson.abi3.so: defines only PyInit_viajson; 62 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: viajson.abi3t.so: defines only PyModExport_viajson; 59 Py symbols, all in the stable ABI <= 3.15
+SAME  abi_check: mg.abi3.so: defines only PyInit_mg; 44 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: mg.abi3t.so: defines only PyModExport_mg; 43 Py symbols, all in the stable ABI <= 3.15
+SAME  abi_check: av.abi3.so: defines only PyInit_av; 49 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: av.abi3t.so: defines only PyModExport_av; 46 Py symbols, all in the stable ABI <= 3.15
+SAME  abi_check: reent.abi3.so: defines only PyInit_reent; 63 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: reent.abi3t.so: defines only PyModExport_reent; 60 Py symbols, all in the stable ABI <= 3.15
+SAME  abi_check: bad_once.abi3.so: defines only PyInit_bad_once; 38 Py symbols, all in the stable ABI <= 3.12
+SAME  abi_check: bad_once.abi3t.so: defines only PyModExport_bad_once; 37 Py symbols, all in the stable ABI <= 3.15
+SAME  a3 on 3.12: the modules load from the extension: loaded from ['abi3']
+SAME  a3 client.py on 3.12 (but its 'loaded' and 'gil' lines)
+SAME  a3 client.py on 3.12, its 'gil' line: gil n/a
+SAME  a3 client2.py on 3.12
+SAME  a3 use3.py on 3.12
+SAME  a3 pk3.py on 3.12
+SAME  a3 reclient.py on 3.12
+SAME  a3 reimp.py on 3.12
+SAME  a3 avclient.py a b on 3.12
+SAME  a3 -c 'import mg' on 3.12
+SAME  a3 on 3.13: the modules load from the extension: loaded from ['abi3']
+SAME  a3 client.py on 3.13 (but its 'loaded' and 'gil' lines)
+SAME  a3 client.py on 3.13, its 'gil' line: gil True
+SAME  a3 client2.py on 3.13
+SAME  a3 use3.py on 3.13
+SAME  a3 pk3.py on 3.13
+SAME  a3 reclient.py on 3.13
+SAME  a3 reimp.py on 3.13
+SAME  a3 avclient.py a b on 3.13
+SAME  a3 -c 'import mg' on 3.13
+SAME  a3 on 3.14: the modules load from the extension: loaded from ['abi3']
+SAME  a3 client.py on 3.14 (but its 'loaded' and 'gil' lines)
+SAME  a3 client.py on 3.14, its 'gil' line: gil True
+SAME  a3 client2.py on 3.14
+SAME  a3 use3.py on 3.14
+SAME  a3 pk3.py on 3.14
+SAME  a3 reclient.py on 3.14
+SAME  a3 reimp.py on 3.14
+SAME  a3 avclient.py a b on 3.14
+SAME  a3 -c 'import mg' on 3.14
+SAME  a3 on 3.15: the modules load from the extension: loaded from ['abi3']
+SAME  a3 client.py on 3.15 (but its 'loaded' and 'gil' lines)
+SAME  a3 client.py on 3.15, its 'gil' line: gil True
+SAME  a3 client2.py on 3.15
+SAME  a3 use3.py on 3.15
+SAME  a3 pk3.py on 3.15
+SAME  a3 reclient.py on 3.15
+SAME  a3 reimp.py on 3.15
+SAME  a3 avclient.py a b on 3.15
+SAME  a3 -c 'import mg' on 3.15
+SAME  a3t on 3.15: the modules load from the extension: loaded from ['abi3t']
+SAME  a3t client.py on 3.15 (but its 'loaded' and 'gil' lines)
+SAME  a3t client.py on 3.15, its 'gil' line: gil True
+SAME  a3t client2.py on 3.15
+SAME  a3t use3.py on 3.15
+SAME  a3t pk3.py on 3.15
+SAME  a3t reclient.py on 3.15
+SAME  a3t reimp.py on 3.15
+SAME  a3t avclient.py a b on 3.15
+SAME  a3t -c 'import mg' on 3.15
+SAME  a3t on 3.15t: the modules load from the extension: loaded from ['abi3t']
+SAME  a3t client.py on 3.15t (but its 'loaded' and 'gil' lines)
+DEV   a3t on 3.15t: the extension turns the GIL on, with a RuntimeWarning (documented deviation, observed as documented): gil False / gil True / 1
+SAME  a3t client2.py on 3.15t
+SAME  a3t use3.py on 3.15t
+SAME  a3t pk3.py on 3.15t
+SAME  a3t reclient.py on 3.15t
+SAME  a3t reimp.py on 3.15t
+SAME  a3t avclient.py a b on 3.15t
+SAME  a3t -c 'import mg' on 3.15t
+SAME  abi3 on 3.13t: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+SAME  abi3t on 3.13t (it loads no .abi3t.so): ModuleNotFoundError: No module named 'fastmath'
+SAME  abi3 on 3.14t: ImportError: fastmath.abi3.so is built for CPython's GIL builds (abi3): on a free-threaded build, use the abi3t module (CPython 3.15+) or the source
+SAME  abi3t on 3.14t (it loads no .abi3t.so): ModuleNotFoundError: No module named 'fastmath'
+SAME  abi3t on 3.15t, PYTHON_GIL=0: ImportError: a Pystachy extension module needs the GIL (its runtime is single-threaded), which PYTHON_GIL=0 or -X gil=0 keeps off
+SAME  abi3 on 3.11 (below the floor): ImportError from the dynamic loader: ImportError: fastmath.abi3.so: undefined symbol: PyErr_GetRaisedException
+SAME  rejected: bad_pub.py:9: error: g() is public in extension module 'bad_pub' but not @export: CPython would not see it; export it or name it _g
+SAME  rejected: bad_def.py:5: error: f() is @export: its parameters are positional, with no default values and no *args (as CPython calls it)
+SAME  rejected: bad_cls.py:4: error: class TooBig is public in extension module 'bad_cls', but classes cannot cross to CPython yet: name it _TooBig
+SAME  rejected: bad_var.py:3: error: variable 'limit' is public in extension module 'bad_var', but CPython would not see it (variables cannot cross yet): name it _limit
+SAME  rejected: bad_call.py:6: error: fib() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use
+### probes: 215 same, 0 different; 3 documented deviations observed as documented

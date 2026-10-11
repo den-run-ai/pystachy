@@ -1,0 +1,6 @@
+N=80: 1483 retained AST nodes, 737 cloned nodes
+N=160: 2923 retained AST nodes, 1457 cloned nodes
+N=320: 5803 retained AST nodes, 2897 cloned nodes
+N=800: native ir passed under 256 MiB / 10 CPU seconds
+N=800: native run passed under 256 MiB / 10 CPU seconds
+N=800: native build passed under 256 MiB / 10 CPU seconds

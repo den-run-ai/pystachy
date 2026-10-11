@@ -1,0 +1,49 @@
+SAME  UBSan-trap zstats jit
+SAME  UBSan-trap zstats aot
+SAME  UBSan-trap neg jit
+SAME  UBSan-trap neg aot
+SAME  UBSan-trap sat jit
+SAME  UBSan-trap sat aot
+SAME  UBSan-trap c_libm jit
+SAME  UBSan-trap c_libm aot
+SAME  UBSan-trap c_lib jit
+SAME  UBSan-trap c_lib aot
+SAME  UBSan-trap jsondemo jit (embedded 3.13)
+SAME  UBSan-trap jsondemo aot (embedded 3.13)
+SAME  UBSan-trap fin jit (embedded 3.13)
+SAME  UBSan-trap fin aot (embedded 3.13)
+SAME  UBSan-trap leak jit (embedded 3.13)
+SAME  UBSan-trap leak aot (embedded 3.13)
+SAME  UBSan-trap uac2 jit (embedded 3.13)
+SAME  UBSan-trap uac2 aot (embedded 3.13)
+SAME  UBSan-trap sx jit (embedded 3.13)
+SAME  UBSan-trap sx aot (embedded 3.13)
+SAME  UBSan-trap sxb jit (embedded 3.13)
+SAME  UBSan-trap sxb aot (embedded 3.13)
+SAME  UBSan-trap kb jit (embedded 3.13)
+SAME  UBSan-trap kb aot (embedded 3.13)
+SAME  UBSan-trap py_order jit (embedded 3.13)
+SAME  UBSan-trap py_order aot (embedded 3.13)
+SAME  UBSan-trap py_stdin jit (embedded 3.13)
+SAME  UBSan-trap py_stdin aot (embedded 3.13)
+SAME  UBSan-trap py_redirect jit (embedded 3.13)
+SAME  UBSan-trap py_redirect aot (embedded 3.13)
+SAME  UBSan-trap py_badstr jit (embedded 3.13)
+SAME  UBSan-trap py_badstr aot (embedded 3.13)
+SAME  UBSan-trap py_negzero jit (embedded 3.13)
+SAME  UBSan-trap py_negzero aot (embedded 3.13)
+SAME  UBSan-trap py_convert jit (embedded 3.13)
+SAME  UBSan-trap py_convert aot (embedded 3.13)
+  traps (ud1/ud2) in zstats.exe: 140, in jsondemo.exe: 272
+  traps (ud1/ud2) in fastmath.abi3.so: 234
+SAME  UBSan-trap ext client client.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client client2.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client reclient.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client pk3.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client use3.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client avclient.py a b (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client rdclient.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client bxclient.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client wrclient.py (abi3 on 3.13, GC stress 1)
+SAME  UBSan-trap ext client memclient.py (abi3 on 3.13, GC stress 1)
+### ubsan (trap mode): 46 same, 0 different

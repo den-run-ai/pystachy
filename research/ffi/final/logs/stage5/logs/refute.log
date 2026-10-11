@@ -1,0 +1,78 @@
+### 1 (invariants) -0.0 through @extern and pyobj.of_float
+SAME  e13_negzero jit
+SAME  e13_negzero aot
+SAME  e14_pyneg0 jit
+SAME  e14_pyneg0 aot
+### 2, 13 (invariants, recommendation) JIT: lli's libraries must not stand in for the library an @extern names, or an extension module links
+SAME  p jit
+SAME  p aot
+SAME  collide jit
+SAME  collide aot
+SAME  e20_rl jit
+SAME  e20_rl aot
+SAME  rl2 jit
+SAME  rl2 aot
+### 3 (invariants) no segfault: Object() made by a program, an exception whose str() raises
+SAME  rejected at compile time: e11_ctor.py:2: error: pyobj.Object() cannot be called: Pystachy's pyobj module makes its objects (with import_module, of_int, of_float, of_str, of_list)
+SAME  e16_badstr jit
+SAME  e16_badstr aot
+### 4 (invariants) only what the twins offer: ffi internals, pyobj internals; @extern keywords and defaults; to_float
+SAME  rejected at compile time: e2_track.py:1: error: cannot import name 'track' from 'ffi': it is internal to Pystachy's lib/pyobj.py
+SAME  rejected at compile time: e12_internal.py:1: error: cannot import name 'PyLong_AsLongLong' from 'pyobj': Pystachy's pyobj module offers Object, import_module, of_int, of_float, of_str, of_list (as its twin, tools/rt_cpython/pyobj.py, does)
+SAME  e1_kw jit
+SAME  e1_kw aot
+SAME  e7_default jit
+SAME  e7_default aot
+SAME  e3_tofloat jit
+SAME  e3_tofloat aot
+DEV   an exception raised by an extension module's code at import leaves as its nearest builtin class (documented deviation, observed as documented): caught _Bad ('init failed',) m1._Bad: init failed  / caught ValueError ('init failed',) ValueError: init failed 
+### 5, 11 (invariants, interop) one order of output, one stdin: embedding and extension modules
+SAME  e4_importprint jit
+SAME  e4_importprint aot
+SAME  e10_stdin jit
+SAME  e10_stdin aot
+SAME  order jit
+SAME  order aot
+SAME  stdin2 jit
+SAME  stdin2 aot
+SAME  ext c2.py (m2)
+SAME  ext rdclient.py (rd)
+SAME  ext none.py (rd)
+### 6, 7, 15 (invariants, interop, recommendation) dropped large Python objects: peak RSS (MiB) bounded, twin vs native
+SAME  e21_big (300 x 10 MB bytearrays): twin 27 MiB, AOT 67 MiB (bound: twin + 96): 1
+SAME  interpose/big (3000 x 1 MiB): twin 11 MiB, AOT 44 MiB: 1
+SAME  refute-interop e1/big (1500 x 1 MiB): twin 10 MiB, AOT 44 MiB: 1
+SAME  x1 nested callbacks (1000 x 1 MiB inside one outer call): source 14 MiB, ext 42 MiB: 1
+SAME  x1 nested callbacks, GC stress 1: ext 10 MiB: 1
+### 8 (interop) an extension module's Python objects released at the host's exit (atexit)
+SAME  x4 wr: the file's contents after the host exits
+DEV   x4 wr: a file written through a dropped Object is flushed when the Object is released (release timing) (documented deviation, observed as documented): a.txt right after save: 'hello
+' / a.txt right after save: ''
+SAME  x4 lg: the file's contents after the host exits
+### 9, 14 (interop, recommendation) embedded CPython as python3 sets it up: C locale, sys.executable, multiprocessing
+SAME  loc jit
+SAME  loc aot
+SAME  loc jit
+SAME  loc aot
+SAME  exe.py: a child run with sys.executable, embedded 3.12 (aot)
+SAME  exe.py, embedded 3.12 (jit)
+SAME  exe.py: a child run with sys.executable, embedded 3.13 (aot)
+SAME  exe.py, embedded 3.13 (jit)
+SAME  pool.py: multiprocessing (forkserver), embedded 3.14 (aot)
+SAME  pool.py, embedded 3.14 (jit)
+SAME  pool.py, embedded 3.14 without PYTHONHOME (aot)
+SAME  mp.py: Pool(2) map, embedded 3.14 (aot)
+SAME  sys.executable: twin (python3) / AOT 3.13 / AOT 3.13 with PATH=/nonexistent: exe /usr/bin/python3 / exe /usr/bin/python3 / exe /usr/bin/python3
+SAME  sys.executable: twin 3.14 / AOT embedding 3.14: exe /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/capi-verify/py314/python/bin/python3 / exe /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage2/capi-verify/py314/python/bin/python3
+### 10 (interop) Python's setlocale does not change Pystachy's float text (de_DE.UTF-8 from LOCPATH)
+SAME  ext fm2client.py (fm2)
+SAME  ext fmclient.py (fm)
+SAME  fe2 jit
+SAME  fe2 aot
+### 12 (interop) unchecked NULLs: a str() that raises, a non-UTF-8 argument
+SAME  bs1 jit
+SAME  bs1 aot
+SAME  av.py with a non-UTF-8 argument (aot; argv[0] named as the twin's)
+SAME  av.py with a non-UTF-8 argument (jit)
+SAME  ext bxclient.py (bx)
+### refute5: 64 same, 0 different; 2 documented deviations observed as documented

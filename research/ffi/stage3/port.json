@@ -1,0 +1,211 @@
+{
+ "base_commit": "3542d631c3a9b385fed04d17e37a4807aea027c9",
+ "head_commit": "f0476765f8a08afb8e213ad37df431bbf33dff2f",
+ "patch_path": "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/ffi-prototype.patch",
+ "diffstat": "git diff base..ffi: 64 files changed, 2507 insertions(+), 31 deletions(-). Existing files: pystachy.py +288/-23, runtime.c +80/-1, Makefile +8/-3 (test-ffi target; lint now also covers pyext.c in both ABIs, pyembed.c and tests/ffi/run.sh), tests/verify.sh +8 (an ffi step), tools/check_runtime.py +10/-2, tools/rtabi.py +14/-1, docs/history.md, language.md and testing.md (links only, 1-5 lines each). New files: lib/pyobj.py 416, pyext.c 286, pyembed.c 36, tools/rt_cpython/ffi.py 189, tools/rt_cpython/pyobj.py 90, tools/abi_check.sh 28, docs/ffi.md 268, tests/ffi/ (44 files, 731 lines: run.sh, 2 C-call tests with recorded .out files, 18 error cases, 7 embedding tests, 12 extension module and client files), and the own-ffi regression test (tests/ffi_own.py, .out, .path and tests/ownffi/ffi.py). runtime.py is unchanged. The diff touches only FFI work: every changed path is in the FFI file set, and the patch applies cleanly to base with git apply --check. Commits on branch ffi, on top of base: 96b92b4 (tree3 rebased; the only conflict was program()'s self.eh line, resolved to `needs_eh(m.body.kids) or self.ext != \"\"`, which keeps main's try-or-with rule), 0729f7b (renamed the prototype's Gen.ctype to externtype, because main added a Gen.ctype of its own and the first bootstrap failed on it), a565ab9 (the finishing work), f5e025d and f047676 (docs). The clone is at /tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/tree; /home/user/pystachy was not touched.",
+ "checks": [
+  {
+   "check": "Three-stage fixed point and runtime.py's fixed point",
+   "command": "make pystachy (logs/make.log, run by stage3/all.sh)",
+   "result": "fixed point: stage1 == stage2 == stage3 (223240 lines of IR); runtime.py's IR, rt1 == rt2 == rt3 (10393 lines)",
+   "pass": true
+  },
+  {
+   "check": "runtime.py's IR is the same as base's compiler produces",
+   "command": "PYSTACHY_HOME= build/ref/pystachy rt runtime.py vs ./pystachy rt runtime.py, then cmp",
+   "result": "byte-identical, 10393 lines",
+   "pass": true
+  },
+  {
+   "check": "check_runtime",
+   "command": "python3 tools/check_runtime.py",
+   "result": "275 RUNTIME entries, 69 exception classes: signatures, coverage and effects agree (96 functions, no recursion through lowerings or runtime.c)",
+   "pass": true
+  },
+  {
+   "check": "rtabi",
+   "command": "python3 tools/rtabi.py ./pystachy",
+   "result": "76 functions of runtime.py, 2513 uses in runtime.c and 593 programs, 22 runtime calls of the FFI's C glue, 0 mismatches",
+   "pass": true
+  },
+  {
+   "check": "Differential tests, JIT and AOT",
+   "command": "tests/run.sh ./pystachy",
+   "result": "1927 passed, 0 failed. This includes the new tests/ffi_own.py in both tiers.",
+   "pass": true
+  },
+  {
+   "check": "IR identity against base for every program in the corpus",
+   "command": "make irsame REF=base",
+   "result": "1237 programs identical: main's corpus plus tests/ffi_own.py, a program with its own ffi.py",
+   "pass": true
+  },
+  {
+   "check": "IR identity for files main's corpus leaves out",
+   "command": "PYSTACHY_HOME= tools/irsame.sh build/ref/pystachy ./pystachy lib/*.py (not pyobj) tests/{defmods,infer,linked,loader,mods,scope,ownffi}/*.py tests/ffi/side_*.py",
+   "result": "67 programs identical. Programs that use the FFI cannot compile on base, so they are expected to differ and are not in any irsame corpus.",
+   "pass": true
+  },
+  {
+   "check": "check-ir",
+   "command": "make check-ir",
+   "result": "the IR check and llvm-as accept the IR of 594 programs. Run separately, tools/check_ir.sh also accepted 11 of the 12 FFI programs; tests/ffi/ext/mg.py is rejected as a program because its __main__ block calls an @export function, which is a compile-time error by design.",
+   "pass": true
+  },
+  {
+   "check": "Lint",
+   "command": "PATH=/root/.local/bin:$PATH make lint (ruff 0.16.8; shellcheck 0.11.0 installed with pip install --user shellcheck-py)",
+   "result": "exit 0. ruff passes after moving the twin's mid-file imports to the top (E402); shellcheck passes, including tests/ffi/run.sh and tools/abi_check.sh; clang -Wall -Wextra -Werror passes on runtime.c, pyext.c (abi3 and -DPYX_ABI3T) and pyembed.c. The installed ruff is 0.16.8, not the 0.17.0 that tools/requirements-dev.txt pins.",
+   "pass": true
+  },
+  {
+   "check": "FFI tests in the repo, native compiler, with each CPython",
+   "command": "PY=<python> tests/ffi/run.sh ./pystachy (also make test-ffi)",
+   "result": "3.13: 47 passed, 0 failed. 3.12: 47/0. 3.14: 47/0. 3.15t (abi3t): 47/0. 3.13t: 36/0, extension cases skipped because a free-threaded CPython before 3.15 cannot load these modules. 3.11: 22/0, embedding and extension cases skipped because 3.11 is below the floor.",
+   "pass": true
+  },
+  {
+   "check": "FFI tests with the CPython-hosted compiler",
+   "command": "tests/ffi/run.sh \"python3 -m pystachy\"",
+   "result": "47 passed, 0 failed",
+   "pass": true
+  },
+  {
+   "check": "FFI probes on every available CPython, JIT and AOT, under GC stress",
+   "command": "sh stage3/probe.sh stage3/tree/pystachy (logs/probe.log)",
+   "result": "215 same, 0 different. 3 documented deviations showed up exactly as documented: @extern(\"\") finds zlibVersion in the JIT but the AOT link fails; a C string that is not UTF-8; the abi3t module turns the GIL on under 3.15t. The 13 differences in stage2/final/probe3-native.log are gone.",
+   "pass": true
+  },
+  {
+   "check": "UBSan in trap mode over all three directions, JIT and AOT",
+   "command": "sh stage3/ubsan.sh (logs/ubsan.log)",
+   "result": "26 same, 0 different. Trap instructions are present: 140 in zstats.exe, 257 in jsondemo.exe, 233 in fastmath.abi3.so.",
+   "pass": true
+  },
+  {
+   "check": "A Ctrl-C delivered to a Python thread is forwarded to the main thread",
+   "command": "strace -f -e trace=tgkill,write ./kb.exe (logs/sigint-forward.strace)",
+   "result": "The Python thread's tgkill(SIGINT) to itself is re-sent with tgkill to the main thread, which writes KeyboardInterrupt and dies by SIGINT (status 130).",
+   "pass": true
+  },
+  {
+   "check": "make verify, first run",
+   "command": "make verify (logs/verification-run1.json, logs/verify-run1/)",
+   "result": "17 of 18 steps passed. The ubsan step failed only because the container had no UBSan runtime (libclang_rt.ubsan_standalone-x86_64.a missing). Every other step passed, including the new ffi step (47/0).",
+   "pass": false
+  },
+  {
+   "check": "make verify, after installing libclang-rt-18-dev",
+   "command": "apt-get update && apt-get install -y libclang-rt-18-dev; make verify (logs/verification.json, logs/verify/, logs/verify.log)",
+   "result": "18 of 18 steps passed in 647 s on commit f047676 (not dirty). Counts: tests-cpython, tests-native, tests-opt-off, python-free and gc-stress 1927/0 each; ubsan 2712/0; ffi 47/0.",
+   "pass": true
+  },
+  {
+   "check": "Patch applies to base",
+   "command": "git apply --check ffi-prototype.patch on a fresh clone of base",
+   "result": "applies cleanly",
+   "pass": true
+  }
+ ],
+ "probe_summary": "Final run: logs/probe.log (stage3/probe.sh) on commit f5e025d. The later commit f047676 changes only docs. Result: 215 same, 0 different, plus 3 documented deviations observed exactly as documented.\n\nEmbedding (S2): lib/pyobj.py against the twin on the same CPython. Fixtures: jsondemo, uac, uac2, sx, sxb, fin, kb (a Ctrl-C sent to a Python thread), all under GC stress 3, and leak under GC stress 50.\n- 3.12, 3.13, 3.13t, 3.14, 3.14t, 3.15 and 3.15t: 8 same and 0 different for each version in each tier (JIT and AOT), 112 in all.\n- 3.11 (below the floor): `pystachy run` and `build` both stop with the driver error \"the program embeds CPython (it imports pyobj), which needs CPython 3.12 or later: PYSTACHY_LIBPYTHON is CPython 3.11's (...)\". Matched as expected.\n- A background Python thread made progress during a compiled loop (stw) on all 7 versions (informational).\n\nC calls (S1): twin on 3.13 against JIT and AOT, GC stress 7.\n- zstats, sat, neg (narrow-int edge cases) and ok_rt: 8 same.\n- 7 @extern misuse cases: each rejected with file:line.\n- An ASCII C string: same.\n- A program's own ffi.py: same in JIT and AOT.\n- A program with its own ffi.py that also imports pyobj: now a clear compile-time error at lib/pyobj.py:13.\n- Documented deviations seen as documented: @extern(\"\") zlibVersion (JIT finds it in lli's process, the AOT link fails), and a non-UTF-8 C string (native prints \"4 False\", the twin raises UnicodeDecodeError).\n\nExtension modules (S3): each client against its source run with the twins, PYSTACHY_GC_STRESS=1.\n- tools/abi_check.sh: 12 same (6 modules, abi3 and abi3t).\n- abi3 on 3.12, 3.13 and 3.14: 10 same each.\n- abi3 and abi3t on 3.15: 20 same.\n- abi3t on 3.15t: 9 same, plus the documented GIL deviation (the source run reports gil False, the module reports gil True with the RuntimeWarning).\n- Guards: abi3 on 3.13t and 3.14t raises ImportError; abi3t is not loaded on 3.13t or 3.14t; PYTHON_GIL=0 raises ImportError; abi3 on 3.11 fails with the dynamic loader's ImportError for the undefined symbol PyErr_GetRaisedException.\n- 5 ext misuse cases: each rejected with file:line.\n\nUBSan trap mode (logs/ubsan.log): 26 same, 0 different, covering S1 and S2 in JIT and AOT on embedded 3.13 and 6 extension clients.\n\nThe 13 old differences, stage2/final/probe3-native.log. All 13 were mistakes in the probe, not in the compiler:\n1. uac on 3.13 JIT, 3.13 AOT and 3.12 AOT (3): the probe compared CPython's whole traceback. Pystachy prints only the traceback's last line, a documented deviation (docs/language.md, \"An exception that nothing catches\"). The probe now cuts CPython's traceback to its last line, as tests/run.sh compares only stderr's last line. A new uac2 fixture checks the ValueError messages explicitly.\n2. use3 on all 6 configurations (6): `assert viajson.__file__.endswith('.so')` failed in the source run, whose module is a .py. The assert is gone; a separate check confirms that the extension is what loads.\n3. pk3 on 3.12, 3.14 and 3.15t (3): Pool(2), spawn workers re-running top-level prints and `with Pool` (terminate) made the output depend on scheduling. The source runs themselves interleaved within a line. The probe now uses Pool(1), keeps its prints under the main guard, flushes before starting the pool and uses close()/join().\n4. client.py on 3.15t (1): it compared the 'gil' line, which differs by design on 3.15t. The probe now excludes that line and checks the deviation separately.",
+ "nonblocking": [
+  {
+   "item": "1. The final logs did not back the S3 claims: stale fixtures, no 3.12 in the @export section.",
+   "action": "fixed",
+   "detail": "stage3/probe.sh re-runs everything with @export fixtures on 3.12, 3.13, 3.14, 3.15 and 3.15t, plus the 3.13t, 3.14t, PYTHON_GIL=0 and 3.11 guards and the nm/abi checks for every module. The fixtures are also in the repo (tests/ffi/ext), and the runner compares clients live against the twins. Evidence: logs/probe.log and logs/ffi-tests-*.log."
+  },
+  {
+   "item": "2. abi_check.py never checked that nm succeeded, and needs python3/tomllib, so it cannot run in the Python-free stage.",
+   "action": "fixed",
+   "detail": "New tools/abi_check.sh uses only POSIX sh, nm and awk, so it can run without Python. It fails on a missing file, on an nm failure, when any dynamic symbol besides the entry is defined, when no Py symbol is imported, or when an import is not in the stable ABI at or before MAXVER (ifdef-gated entries are excluded). Verified on all 12 modules, and on negative cases (a missing file, a .py given as the .so, abi3t checked against 3.12). It still needs Misc/stable_abi.toml from a CPython checkout, which is not vendored, so it is not yet wired into verify or CI."
+  },
+  {
+   "item": "3. Ctrl-C does not reach pys_finish, and the process-wide handler can run on a Python thread.",
+   "action": "fixed",
+   "detail": "Two parts. (1) The thread problem is fixed: pye_init in pyembed.c, which is linked only into embedding programs, wraps the runtime's SIGINT handler so that a signal arriving on a thread CPython started is re-sent to the main thread with pthread_kill. strace confirms it (logs/sigint-forward.strace), and the kb and py_sigint tests match the twin on every version. (2) Finalization on Ctrl-C is documented as a deviation in docs/ffi.md: the handler ends the program at once, so Py_FinalizeEx and atexit do not run. They do run when the Ctrl-C arrives during the program's own I/O, which exits through kbint_exit and pys_finish. The draft's claim that pys_finish runs on Ctrl-C is corrected."
+  },
+  {
+   "item": "4. @extern(\"\") resolves differently by tier, and an unknown symbol is not reported at file:line.",
+   "action": "documented",
+   "detail": "docs/ffi.md, Deviations: \"\" means the process's own C library; lli's process has more libraries loaded, so name the library. Unresolved symbols are reported by lli or by the linker. Restricting \"\" at compile time is not possible without headers. The probe checks the deviation exactly: JIT prints '1.', the AOT build fails with the link error."
+  },
+  {
+   "item": "5. C strings that are not UTF-8 differ from the twin; string_at(addr, -1) is undefined behaviour.",
+   "action": "documented",
+   "detail": "n < 0 now raises ValueError in both the native code and the twin (tests/ffi/c_libc.py, the probe sat.py). Invalid UTF-8 is documented in docs/ffi.md under the str deviation, the same rule files follow, and the probe checks it (native '4 False', twin UnicodeDecodeError)."
+  },
+  {
+   "item": "6. Py_IsFinalizing (3.13+) conflicts with the 3.12 floor.",
+   "action": "fixed",
+   "detail": "Not used anywhere (grep finds it in neither lib/pyobj.py, pyext.c nor pyembed.c). Embedding works on 3.12 in both tiers (probe and tests/ffi with PY=3.12), and abi3 imports on 3.12."
+  },
+  {
+   "item": "7. _flush_py calls flush while the call's exception is still set.",
+   "action": "fixed",
+   "detail": "lib/pyobj.py _flush_py takes the exception with PyErr_GetRaisedException before PySys_GetObject and flush, drops any error from flush, and restores the call's exception with PyErr_SetRaisedException. It is exercised by jsondemo and py_json (a JSONDecodeError raised during call()) on every version."
+  },
+  {
+   "item": "8. 'The GIL is never released while compiled frames are live' is false in ext mode; greenlet stack switching is not caught.",
+   "action": "documented",
+   "detail": "docs/ffi.md, Invariants: the GIL changes hands during pyobj call-outs and during out_hook's sys.stdout.write, and safety rests on pyx_call's owner-thread check plus lib_depth. Limitations: stack switching (greenlet, gevent) while compiled frames are live is unsupported and undetected, because the collector scans one contiguous stack from the outermost entry."
+  },
+  {
+   "item": "9. SystemExit with a bool code printed 'True' to stderr.",
+   "action": "fixed",
+   "detail": "lib/pyobj.py maps a bool code like an int (tn == 'bool'), so the program exits with status 1 and prints nothing, as CPython does. sxb and py_exit_bool match the twin on all 7 versions."
+  },
+  {
+   "item": "10. exec_mod refused any second exec, even after a failed one.",
+   "action": "fixed",
+   "detail": "execed is set only on success, and pys_init_lib re-initializes only argv when the runtime already exists. reimp (first import raises, the retry runs the code again) matches the source run on 3.12 to 3.15t. A second import after a successful one is still refused; that is documented."
+  },
+  {
+   "item": "11. Some line references were off.",
+   "action": "fixed",
+   "detail": "docs/ffi.md cites functions, not line numbers. On the rebased tree: builtin_has ffi branch 3185; Loader.find's own-ffi check 3598; MODULES 5189; INERT_DECOS 5375; RUNTIME 5508 (FFI entries at 5601); declare_fn's @extern branch 8079; Gen.externtype 9828; Gen.cextern 9840; Gen.pyext 9915; decorators() 10791; program()'s eh line 11002; driver own-ffi 16845; libpython floor check 16878; ext link 16988; AOT link 16993; the lli command 17010. runtime.c: finish_hook 1821-1831, out_hook 1863, pys_init_lib 1905, pys_track 2991."
+  },
+  {
+   "item": "12. S6's PyCriticalSection world lock does not hold across call-outs.",
+   "action": "documented",
+   "detail": "docs/ffi.md, Invariants: a critical section is suspended whenever its thread detaches, so the runtime's state must be parked at every call-out, out_hook's write included. S6 is not built."
+  },
+  {
+   "item": "13. The stated reason for rejecting Python.h-based builds was inaccurate.",
+   "action": "documented",
+   "detail": "docs/ffi.md, Invariants: ext builds are not part of the Python-free stage. Header-free glue is kept for reproducibility (the ABI is what the glue declares) and so that building an extension needs no Python install."
+  }
+ ],
+ "design_changes": [
+  "S4 changes because of issue #108, which asks that typed/dynamic adapters start with scalars and not copy mutable containers. Containers no longer cross the boundary by copy; the draft planned copied list/dict/tuple parameters walked by desc(). Identity and shared mutation need an explicit contract first, and Pystachy code reaches Python containers as pyobj Objects. What crosses now is unchanged: int, float, bool, str and None. Recorded in docs/ffi.md, Limitations. #108 also names #4's CPython-hosted compiled functions as the route to existing packages, and that is exactly S3.",
+  "A program's own ffi.py now shadows the builtin, as CPython's resolution order does. The draft planned to reject such programs. Only one combination is rejected: a program with its own ffi.py that also imports Pystachy's pyobj gets a clear error at lib/pyobj.py's import. tests/ffi_own.py is in the irsame corpus and in tests/run.sh, and its IR is identical to base's. Decorator or annotation misuse of the program's own ffi gives the same errors as base.",
+  "Automatic release changed in two ways. (1) Dropped Objects are released only when no pyobj operation is in progress (depth 1), not at every operation. (2) Each tracked Python reference counts as 512 bytes (TRK_BYTES) of heap allocation, so dropping many Objects starts collections through the normal policy. With a small heap that bounds outstanding references at about GC_MIN/512, roughly 64k; with a large heap the bound grows with it. Measured: 3,000,000 dropped Objects now take 47 collections with a 3.0 MiB heap peak, where before it was 2 collections and 33 MiB. A strictly flat CPython block count, as in S2's draft acceptance criterion, holds only under GC stress; this is the release-timing deviation.",
+  "Ctrl-C: the draft said pys_finish runs on Ctrl-C. It runs only for a Ctrl-C during the program's own I/O; otherwise the handler exits at once and the embedded CPython is not finalized (documented deviation). New in pyembed.c: a SIGINT that reaches a thread CPython started is forwarded to the main thread.",
+  "The CPython floor is now enforced, not just stated. The driver refuses a libpython older than 3.12 for embedding, by its file name. An abi3 .so on 3.11 fails with the dynamic loader's ImportError; the cp312-abi3 wheel tag keeps installers from offering it there.",
+  "The stable-ABI CI gate is now a sh/nm/awk script, tools/abi_check.sh, so it can run in the Python-free stage. It needs a stable_abi.toml from a CPython checkout.",
+  "Tests live in tests/ffi with their own runner (make test-ffi) and a new `ffi` step in make verify, outside tests/run.sh and the irsame corpus, because FFI programs cannot compile on base. C calls are compared with recorded .out files; embedding and extension modules are compared live against the twins on the same CPython, which avoids version skew in stdlib messages.",
+  "The GIL invariant is restated for ext mode: the GIL changes hands during pyobj call-outs and out_hook writes, and safety rests on the owner-thread check. Stack switching (greenlet) is listed as unsupported.",
+  "The answer to the user's question is unchanged: calling C works in both tiers (JIT and AOT), embedding CPython works in both tiers, and extension modules are AOT only."
+ ],
+ "measurements": [
+  "Machine: 4-CPU Intel Xeon, quiet, after all other checks. Logs: logs/measure.log; scripts: measure/measure.sh, callcost.py, pyops.py.",
+  "Per-call cost net of the loop, fastmath.check(4), exported function vs ctypes vs pure Python:\n- 3.12.3 (abi3): 19.8 / 207.1 / 21.4 ns\n- 3.13.16 (abi3): 18.9 / 224.0 / 25.1 ns\n- 3.14.8 (abi3): 20.7 / 206.4 / 20.3 ns\n- 3.15.0 (abi3): 20.3 / 214.3 / 19.4 ns\n- 3.15.0t (abi3t): 22.4 / 247.4 / 21.2 ns\nfastmath.fib(10) costs 22-24 ns net. The ctypes figure is a C `long long check(long long)` called through ctypes.CDLL.",
+  "Extension import time: in-process perf_counter around `import fastmath`, median of 21 fresh processes:\n- 3.12 abi3: 0.363 ms\n- 3.13 abi3: 0.346 ms\n- 3.14 abi3: 0.358 ms\n- 3.15 abi3: 0.229 ms\n- 3.15 abi3t: 0.230 ms\n- 3.15t abi3t: 0.396 ms",
+  "`pystachy ext fastmath.py` with a warm runtime and pyext cache, median of 7: abi3 620 ms, abi3t 615 ms. For comparison, `pystachy build` of the same file as a program takes 150 ms.",
+  ".so size: fastmath.abi3.so 74,792 bytes (64,408 stripped); fastmath.abi3t.so 74,576 bytes (64,344 stripped). An AOT executable of the same file is 28,184 bytes.",
+  "JIT start-up, `pystachy run`, median of 11, compile included:\n- hello.py, no FFI: 47.2 ms\n- @extern with -dlopen=libm.so.6: 44.9 ms\n- -dlopen of libpython3.13, CPython not initialized: 48.7 ms (min 45.0 vs 43.5 for hello, so about +1.5 ms)\n- importing pyobj, which starts and finalizes CPython 3.13: 93.8 ms\nAOT executables of the same programs: 2.9, 3.3 and 13.3 ms. So dlopen of libpython costs about 0.4 ms AOT and 1.5 ms JIT; CPython initialization plus finalization costs about 10 ms.",
+  "Pystachy calling CPython through pyobj, AOT, embedded 3.13, per loop iteration: of_int(i).to_int() 111-127 ns (two operations, each taking and releasing the GIL); neg.call([of_int(i)]).to_int() about 497 ns (includes the sys.stdout flush after every call). The same loops under the twin on CPython: 207 and 606 ns.",
+  "make verify: 647.5 s for 18 steps; the ffi step takes 9.7 s."
+ ],
+ "remaining_issues": [
+  "Ctrl-C in an embedding program does not finalize the embedded CPython: atexit handlers do not run and its threads are not joined, unless the signal arrives during the program's own I/O. Cause: the runtime's SIGINT handler exits at once, and Py_FinalizeEx cannot run inside a signal handler. Documented as a deviation, not fixed.",
+  "Release timing is bounded but not prompt. Without GC stress, up to about 64k dropped Python references (GC_MIN 32 MiB / 512 B) can be outstanding between collections; the leak probe's informational 'CPython blocks bounded' line prints False for 100k and 3M drops without stress, and True under stress. One large Python object behind one Object is counted as only 512 bytes. Cause: the collector cannot see Python's memory; TRK_BYTES is a heuristic.",
+  "tools/abi_check.sh is not wired into make verify or CI, because it needs Misc/stable_abi.toml from a CPython checkout, which the repo does not vendor.",
+  "abi3 on CPython 3.11 fails with the dynamic loader's generic ImportError (undefined symbol PyErr_GetRaisedException), not a tailored message, because the .so cannot load far enough to check the version.",
+  "Free-threaded 3.13t and 3.14t cannot use Pystachy extension modules at all: abi3 is refused by a guard, abi3t needs 3.15+, and no version-specific build is offered. Embedding works on both (probes pass).",
+  "Stack switching (greenlet, gevent) while compiled frames of an extension module are live is unsupported and undetected.",
+  "A module whose `if __name__ == '__main__':` block calls one of its own @export functions (tests/ffi/ext/mg.py) builds with `pystachy ext`, but `pystachy run` and `pystachy ir` reject it at compile time ('fib() is @export, so Pystachy code may not call it'). That is within the contract, but CPython can run that file as a script.",
+  "When tests/ffi/run.sh is given both a relocatable CPython (PY=python-build-standalone) and the CPython-hosted compiler, PYTHONHOME leaks into the hosted compiler, which then fails to start. Not hit in the runs above: the hosted runs used the system python3.",
+  "Environment: the container lacked the UBSan runtime, so the first make verify failed its ubsan step (17/18). I installed libclang-rt-18-dev with apt in this container and the second run passed 18/18. The installed ruff is 0.16.8, not the pinned 0.17.0. Only x86-64 Linux was tested.",
+  "On CI runners whose python3 has no shared libpython, the new ffi verify step runs only the C-call and error cases and reports the embedding and extension cases as skipped. The step still passes, so those directions would go untested there."
+ ]
+}

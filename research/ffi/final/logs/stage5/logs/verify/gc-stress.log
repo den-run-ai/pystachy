@@ -1,0 +1,3 @@
+the compiler collecting every 1000 allocations emits the stage1 IR
+-- tests, collecting at every allocation
+1933 passed, 0 failed

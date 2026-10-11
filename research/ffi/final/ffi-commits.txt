@@ -1,0 +1,7 @@
+4051925 tests/ffi/ext/wrclient.py: its children ignore warnings too (3.15t's GIL warning)
+d89c8b9 FFI: fix the blocking issues of the stage-4 refutation
+1dd033c docs/ffi.md: containers do not cross by copy (#108)
+39f5ce8 docs/ffi.md: when a Ctrl-C finalizes the embedded CPython
+f5de731 FFI: finish the prototype on current main
+d5df0fd Rename the @extern type helper: main has a Gen.ctype of its own
+62ad9d1 FFI prototype (stage 2 tree3): @ffi.extern, lib/pyobj.py, pystachy ext

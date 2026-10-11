@@ -1,0 +1,224 @@
+{
+ "base_commit": "4dc548aec1d4756f79daa62bd14f186f05ca822c",
+ "head_commit": "40519253592afd4090238998d3e9c20425ded761",
+ "patch_path": "/tmp/claude-0/-home-user-pystachy/291866c5-a7d2-5867-b6e3-d298a0dd7960/scratchpad/stage3/ffi-prototype.patch",
+ "diffstat": "git diff base..ffi: 107 files changed, 3543 insertions(+), 53 deletions(-).\n\nBase: main moved again on Sunday 2026-10-11, from 3542d63 to 4dc548a (PRs #53, #101 and #102). Branch `ffi` in stage3/tree is rebased onto 4dc548a, and `base` now points there; the old refs are kept as tags ffi-on-3542d63 and base-3542d63. The only rebase conflict was tests/verify.sh, where I kept both main's inherited-ast step and the ffi step.\n\nExisting files: pystachy.py +347/-23, runtime.c +161/-19, Makefile +8/-3, tests/verify.sh +8, tools/check_runtime.py +21/-6, tools/rtabi.py +14, and docs/history.md, language.md and testing.md (links only).\n\nNew files:\n- docs/ffi.md (338 lines), lib/pyobj.py (479), pyembed.c (317), pyext.c (257)\n- tools/rt_cpython/ffi.py (181) and pyobj.py (143), tools/abi_check.sh (28)\n- tests/ffi/: 87 files, 1187 lines, including run.sh (137) and ffitest.c\n- the own-ffi test: tests/ffi_own.py, .out, .path and tests/ownffi/ffi.py\n\nCommits on base: 62ad9d1, d5df0fd, f5de731, 39f5ce8, 1dd033c (the port, rebased), d89c8b9 (the fixes for the stage-4 refuters) and 4051925 (a test fix for 3.15t). The fix commits alone are 56 files, +1424/-410, against 1dd033c.\n\nEvery changed path belongs to the FFI file set. The patch applies cleanly to a fresh clone of base (`git apply --check`). /home/user/pystachy is unchanged: it is still on claude/ffi-research at 1ab0e2c with a clean working tree. Running `git fetch` there updated only its remote-tracking ref origin/main.",
+ "checks": [
+  {
+   "check": "Three-stage fixed point and runtime.py's fixed point",
+   "command": "make pystachy (stage5/all5.sh -> stage5/logs/make.log)",
+   "result": "fixed point: stage1 == stage2 == stage3 (225035 lines of IR); runtime.py's IR rt1 == rt2 == rt3 (10393 lines)",
+   "pass": true
+  },
+  {
+   "check": "runtime.py's IR is identical to what base's compiler produces",
+   "command": "make ref REF=base; PYSTACHY_HOME= build/ref/pystachy rt runtime.py vs ./pystachy rt runtime.py; cmp",
+   "result": "byte-identical (10393 lines)",
+   "pass": true
+  },
+  {
+   "check": "check_runtime",
+   "command": "python3 tools/check_runtime.py",
+   "result": "276 RUNTIME entries and 69 exception classes; signatures, coverage and effects agree. New entries: track is int:%ptr,int,int|A I| and c_bind is None:%ptr,%ptr,%ptr|R A I|. The HOOKS are now std_hook and in_hook. A direct collect() counts as A, as gc_slow does. c_num is a NO_STATE static.",
+   "pass": true
+  },
+  {
+   "check": "rtabi",
+   "command": "python3 tools/rtabi.py ./pystachy",
+   "result": "76 functions of runtime.py, 2524 uses in runtime.c and 596 programs, 0 mismatches. The count of 28 runtime calls of the FFI's C glue now prints on its own line, so the summary line keeps main's format and verify's rt-abi JSON gets its metrics back.",
+   "pass": true
+  },
+  {
+   "check": "Differential tests, JIT and AOT",
+   "command": "tests/run.sh ./pystachy",
+   "result": "1933 passed, 0 failed",
+   "pass": true
+  },
+  {
+   "check": "IR identity against base (4dc548a) over main's corpus",
+   "command": "make irsame REF=base",
+   "result": "1240 programs identical, including tests/ffi_own.py",
+   "pass": true
+  },
+  {
+   "check": "IR identity for files main's corpus leaves out",
+   "command": "PYSTACHY_HOME= tools/irsame.sh build/ref/pystachy ./pystachy lib/*.py (not pyobj) tests/{defmods,infer,linked,loader,mods,scope,ownffi}/*.py tests/ffi/side_*.py",
+   "result": "69 programs identical",
+   "pass": true
+  },
+  {
+   "check": "check-ir",
+   "command": "make check-ir",
+   "result": "The IR check and llvm-as accept the IR of 597 programs.",
+   "pass": true
+  },
+  {
+   "check": "Lint",
+   "command": "PATH=/root/.local/bin:$PATH make lint (ruff 0.16.8, shellcheck 0.11.0)",
+   "result": "Exit 0. ruff, shellcheck (including tests/ffi/run.sh), and clang -Wall -Wextra -Werror on runtime.c, pyext.c (abi3 and -DPYX_ABI3T) and pyembed.c all pass.",
+   "pass": true
+  },
+  {
+   "check": "FFI tests in the repo, native compiler, each CPython",
+   "command": "PY=<python> tests/ffi/run.sh ./pystachy",
+   "result": "93 passed, 0 failed on 3.13, 3.12, 3.14, 3.15 and 3.15t (abi3t). 72/0 on 3.13t and 3.14t, where the ext cases are skipped by design. 34/0 on 3.11, below the floor. The suite went from 47 to 93 cases: 4 new C-call files, 6 new error cases, 13 new embedding programs and 5 new extension clients. The first all5 run had 1 failure on 3.15t: wrclient's child processes printed 3.15t's documented GIL RuntimeWarning. Commit 4051925 gives the children -W ignore, and the rerun on the final commit passed 93/0.",
+   "pass": true
+  },
+  {
+   "check": "New tests fail on the pre-fix FFI",
+   "command": "tests/ffi/run.sh stage4rec/main/pystachy (the stage-3 patch on 4dc548a)",
+   "result": "54 passed, 37 failed: every new C-call, error, py_ and ext case that targets a refuter issue fails on the old code, except py_convert and py_exe, which happen to pass with python3.13.",
+   "pass": true
+  },
+  {
+   "check": "FFI tests with the CPython-hosted compiler",
+   "command": "tests/ffi/run.sh \"python3 -m pystachy\"",
+   "result": "91 passed, 0 failed. py_coerce is skipped because the hosting CPython's own PEP 538 coercion reaches the program; this is documented.",
+   "pass": true
+  },
+  {
+   "check": "FFI probes on every available CPython, JIT and AOT, under GC stress",
+   "command": "sh stage5/probe5.sh stage3/tree/pystachy (stage5/logs/probe.log)",
+   "result": "215 same, 0 different, 3 documented deviations observed exactly as documented. The @extern(\"\") zlibVersion expectation changed: the AOT build now raises AttributeError at the def instead of failing to link.",
+   "pass": true
+  },
+  {
+   "check": "Every case of the 15 refuter issues",
+   "command": "sh stage5/refute5.sh (stage5/logs/refute.log)",
+   "result": "64 same, 0 different, 2 documented deviations observed: the import-time exception class of an extension module, and a file written through a dropped Object being flushed when the Object is released",
+   "pass": true
+  },
+  {
+   "check": "UBSan in trap mode, all three directions, JIT and AOT, including the new regression tests",
+   "command": "sh stage5/ubsan5.sh (stage5/logs/ubsan.log)",
+   "result": "46 same, 0 different. Trap instructions are present: 140 in zstats.exe, 272 in jsondemo.exe, 234 in fastmath.abi3.so.",
+   "pass": true
+  },
+  {
+   "check": "make verify on the final commit",
+   "command": "make verify (stage5/logs/verify.log, verification.json, verify/)",
+   "result": "19 of 19 steps passed in 694 s on 4051925 (not dirty). tests-cpython, tests-native, tests-opt-off, python-free and gc-stress: 1933/0 each. ubsan 2718/0, ffi 93/0. rt-abi's metrics are back: 76 functions, 2524 uses, 596 programs, 0 mismatches.",
+   "pass": true
+  },
+  {
+   "check": "Patch applies to base",
+   "command": "git clone --branch base; git apply --check ffi-prototype.patch",
+   "result": "applies cleanly to 4dc548a",
+   "pass": true
+  }
+ ],
+ "probe_summary": "Final runs on commit 4051925 (logs under stage5/logs).\n\nprobe5.sh, the stage-3 probe set updated to the new semantics: 215 same, 0 different, 3 documented deviations.\n- S1, C calls (twin on 3.13 against JIT and AOT, GC stress 7): 19 same.\n  - zstats, sat, neg and ok_rt in both tiers; 7 misuse cases each rejected with file:line; an ASCII C string; a program's own ffi.py in JIT and AOT; own ffi.py plus pyobj rejected at lib/pyobj.py:14.\n  - Deviations, observed as documented: @extern(\"\") zlibVersion prints 1. under JIT and under the twin (python3 links libz), while AOT raises 'AttributeError: ./zv.exe: undefined symbol: zlibVersion' at the def. A C string that is not UTF-8 prints '4 False' natively, while the twin raises UnicodeDecodeError.\n- S2, embedding (8 fixtures, GC stress 3; leak under stress 50): 8 same and 0 different in JIT and in AOT on each of 3.12, 3.13, 3.13t, 3.14, 3.14t, 3.15 and 3.15t (112 in all). 3.11 is refused by the driver in both tiers. A background Python thread made progress on all 7 versions.\n- S3, extension modules: 82 same.\n  - abi_check: 12 modules, each with only its entry and only stable-ABI imports. viajson, which imports pyobj, passes at <= 3.12 and <= 3.15.\n  - Clients: abi3 on 3.12, 3.13 and 3.14, 9 each; abi3 and abi3t on 3.15, 9 each; abi3t on 3.15t, 8, plus the documented GIL deviation.\n  - Guards: 3.13t, 3.14t, PYTHON_GIL=0 and 3.11. 5 misuse cases rejected.\n\nrefute5.sh, all 15 refuter issues: 64 same, 0 different, 2 documented deviations. Every embedded case runs twin vs JIT vs AOT; extension clients run source+twin vs .so.\n- -0.0, inf and nan: e13 via libm and e14 via of_float.\n- JIT shadowing: libmine ZSTD_versionNumber prints 42, libmyz zlibVersion prints MINE-9.9, and e20_rl / rl2 get readline history and the libreadline version in the JIT too.\n- No segfaults: e11 rejected at compile time; e16 and bs1 print what the twin prints.\n- Twin API: e2_track and e12 rejected; e1_kw, e7_default and e3_tofloat same.\n- Stdio: e4_importprint, e10_stdin, order, stdin2, c2 (StringIO stdin, sys.stdout None), rdclient and none.py same.\n- Peak RSS bounded:\n  - e21 (300 x 10 MB): twin 27 MiB, AOT 67 (before: 2871).\n  - interpose/big: twin 10, AOT 44 (before: 3022).\n  - e1/big: twin 11, AOT 44 (before: 1516).\n  - x1, nested callbacks inside one outer call: source 13, ext 42, and 10 under stress (before: 1013).\n- atexit: wr and lg file contents after exit are the same.\n- Embedded setup: loc.py with no locale (3.13) and LC_ALL=C (3.12); exe.py on 3.12 and 3.13 in both tiers; pool.py with forkserver on embedded 3.14 in JIT and AOT, also without PYTHONHOME; mp.py on 3.14. sys.executable equals the twin's, even with PATH=/nonexistent.\n- LC_NUMERIC set to de_DE (localedef): fm2client, fmclient and fe2 same.\n- NULLs: bs1, av.py with a non-UTF-8 argv, and bx in ext mode all the same.\n\nubsan5.sh, UBSan trap mode on 3.13: 46 same, 0 different. This adds c_libm, c_lib, py_order, py_stdin, py_redirect, py_badstr, py_negzero, py_convert and the rd, bx, wr and mem extension clients to the stage-3 set.\n\ntests/ffi (93 cases): every version and tier passes, as listed in checks.",
+ "nonblocking": [
+  {
+   "item": "1 (refute-invariants) The @extern float stub's fadd 0.0 loses -0.0, in S1 calls and in pyobj.of_float",
+   "action": "fixed",
+   "detail": "Gen.cextern now passes the double through unchanged (a bitcast to the same type). e13_negzero and e14_pyneg0 match the twin in JIT and AOT. Regression tests: tests/ffi/c_libm.py (copysign and atan2 with -0.0, cbrt of -0.0, -inf and nan; the .out recorded with the twin) and py_negzero.py."
+  },
+  {
+   "item": "2 (refute-invariants) Under pystachy run, lli's libraries shadow the library an @extern names, and an embedded CPython's extension modules",
+   "action": "fixed",
+   "detail": "A user @extern no longer links its library or uses lli -dlopen. When the def statement runs, pys_c_bind does dlopen(lib, RTLD_NOW|RTLD_LOCAL), adding RTLD_DEEPBIND under the JIT, then dlsym in that handle, as ctypes.CDLL does. The stub calls through @ffi.fp.<fn>. A missing library or symbol raises OSError or AttributeError with dlerror's text, as ctypes does (tests c_nolib and c_nosym record the message). For embedding under the JIT, pye_init sets sys.setdlopenflags(RTLD_NOW|RTLD_DEEPBIND). Results: the shadow test prints 42 and collide prints MINE-9.9 in all three runs, and e20_rl/rl2 get readline, not libedit, in the JIT. New test c_lib.py uses tests/ffi/ffitest.c, which defines zlibVersion and ZSTD_versionNumber. Documented residuals: sys.getdlopenflags() shows DEEPBIND under the JIT; @extern(\"\") depends on what the process has loaded; AOT is the reference tier for embedding."
+  },
+  {
+   "item": "3 (refute-invariants) Segfaults: Object(5) built from a raw pointer, and _text(PyObject_Str(e)) with NULL",
+   "action": "fixed",
+   "detail": "Object() called from outside lib/pyobj.py is a compile-time error, as is reading an Object's fields (tests/ffi/errors/py_ctor.py and py_field.py). The twin's Object() raises TypeError and uses a private _wrap. _text takes a fallback for NULL and encode failures. When str(e) fails, _raise raises the exception str() raised instead (once; else '<exception str() failed>'), in the twin and in pyembed.c's pye_fail alike. e11 is rejected at file:line; e16 and bs1 print 'caught bad str' / 'caught RuntimeError' like the twin. Test: py_badstr.py with side_badstr.py."
+  },
+  {
+   "item": "4 (refute-invariants) The twins do not specify the native surface: ffi.track, pyobj internals, @extern keywords and defaults, to_float, the import-time exception class",
+   "action": "fixed",
+   "detail": "Four parts fixed, the fifth documented.\n- ffi.track, untrack and collected may be imported or called only from GLUE modules (lib modules that use ffi), and the twin no longer has them (test c_track).\n- @extern(\"python\") is reserved (test c_python).\n- A program may use only a GLUE module's __all__, through from-import or a module attribute, and no field of its classes (tests py_private, py_modattr, py_field). The twin has the same __all__.\n- The twin binds @extern calls with inspect.signature, so keywords and defaults work as the native code already allowed (e1_kw and e7_default are the same; c_libm tests them).\n- The twin's to_float follows PyFloat_AsDouble (no str parsing) and to_int range-checks like PyLong_AsLongLong (test py_convert).\n- Documented, not reproduced: an exception raised by an extension module's code at import leaves as its nearest builtin class, while the source run raises its own class. m1 is observed exactly as documented."
+  },
+  {
+   "item": "5 (refute-invariants) Separate stdout/stdin buffers: only call() flushes, stdin read-ahead, the extension module's input() ignores sys.stdin",
+   "action": "fixed",
+   "detail": "pyembed.c now owns the stdio hooks shared by embedding and ext (runtime.c's std_hook and in_hook).\n- Embedded: pye_enter writes Pystachy's pending output before every operation; Python's sys.stdout or sys.stderr is flushed before Pystachy's next write to that stream; call() flushes Python's sys.stdout first, as the twin's call() does.\n- A replaced sys.stdout (redirect_stdout, or None) receives Pystachy's prints.\n- input(), sys.stdin.readline() and read() go through Python's input() and sys.stdin in both modes.\nResults: e4_importprint, e10_stdin and ext c2 are the same. Tests: py_order, py_stdin (.in), py_redirect, ext rdclient."
+  },
+  {
+   "item": "6 (refute-invariants) Automatic release does not bound Python memory: Python's memory never starts a collection",
+   "action": "fixed",
+   "detail": "pys_track(o, v, n) counts TRK_BYTES plus n, where n is sys.getsizeof (pye_sizeof) for results of attr, call, [] and import_module, and the str length for of_str. When the count reaches the limit, pys_track collects, as an allocation would. Before this, the count was checked only on the allocator's slow path, so e21 had 0 collections. e21's peak RSS is now 67 MiB against the twin's 27, where it was 2871. Test: py_big.py, run without GC stress, asserts a peak under 200 MiB."
+  },
+  {
+   "item": "7 (refute-interop) The depth guard releases nothing during an outer call, and the 512-byte charge ignores object size",
+   "action": "fixed",
+   "detail": "Every pyobj operation now takes its own reference (_own, Py_IncRef) to each object it passes to CPython and releases it in its finally. _enter therefore drains the queue at any depth, and pyx_call also drains when the outermost call returns. The size is charged as in item 6. Results: x1 (1000 x 1 MiB inside one outer call) peaks at 42 MiB against the source's 13, where it was 1013; e1/big.py at 44 MiB against 11, where it was 1516. Test: ext/evl.py with memclient.py, run without stress."
+  },
+  {
+   "item": "8 (refute-interop) An extension module never releases its Python references at interpreter exit",
+   "action": "fixed",
+   "detail": "exec_mod registers an atexit handler (pyx_exit). It releases every tracked reference (pys_trk_pop) and closes the module's open Pystachy files in order (pys_files_exit). Calls after that raise RuntimeError, so no Pystachy code can touch a released reference. Results: wr's a.txt and lg's log.txt contents after exit match the source run. Test: ext/wr.py with wrclient.py, through subprocesses. The 'right after the call' difference is the documented release-timing deviation; docs/ffi.md now says a file written through a dropped Object is flushed when it is released, and to close() it."
+  },
+  {
+   "item": "9 (refute-interop) Embedded CPython uses the compat config: no C-locale coercion or UTF-8 mode, and sys.executable comes from PATH",
+   "action": "fixed",
+   "detail": "pye_preinit runs before Py_InitializeEx. In the C or POSIX locale with LC_ALL unset it applies PEP 538 coercion (setenv LC_CTYPE=C.UTF-8 unless PYTHONCOERCECLOCALE=0), and it sets Py_UTF8Mode=1 (found with dlsym, since 3.15 does not need it) as PYTHONUTF8 or the C locale says. It also calls Py_SetProgramName with <prefix>/bin/python3 (or python3.X[t]), derived from dladdr of the loaded libpython. Results: loc.py on 3.13 (no locale) and 3.12 (LC_ALL=C), exe.py on 3.12 and 3.13, and mp.py on 3.14 are all the same in both tiers. Tests: py_utf8 (with PYTHONCOERCECLOCALE=0), py_coerce and py_exe."
+  },
+  {
+   "item": "10 (refute-interop) Python's setlocale breaks Pystachy's float printing and parsing",
+   "action": "fixed",
+   "detail": "runtime.c now converts floats through fsnprintf and fstrtod, which switch to a C locale_t with uselocale only once c_num is set. c_num is set by pys_c_numeric, which runs from pye_init (embedding), pys_init_lib (ext) and pys_c_bind (any @extern). Programs without the FFI pay one null test, and their IR is unchanged. Results: fm2client, fmclient and fe2 under de_DE.UTF-8 are the same. Tests: py_locale.py and ext/fmclient.py; run.sh builds de_DE.UTF-8 into LOCPATH with localedef."
+  },
+  {
+   "item": "11 (refute-interop) One process, two stdio buffers: output order only around call(), stdin never shared",
+   "action": "fixed",
+   "detail": "Same mechanism as item 5. In ext mode, out_hook is now pyembed.c's std_hook: a None sys.stdout makes print() a no-op, flush=True flushes the host's sys.stdout, and input() and sys.stdin read the host's sys.stdin, including a StringIO. Results: order.py, stdin2.py, rdclient.py and none.py are the same."
+  },
+  {
+   "item": "12 (refute-interop) Unchecked NULLs: a str() that raises crashes the process, and argv decoding fails on non-UTF-8 bytes",
+   "action": "fixed",
+   "detail": "_text, _raise and pye_fail check every result. argv and sys.path[0] are decoded with surrogateescape, the init block checks errors after each step, and the GIL is released in a finally. Results: bs1 is the same in JIT and AOT; bx in ext mode prints 'caught RuntimeError' and the host no longer crashes; av.py with 'caf\\xe9' gives the twin's argv. Tests: py_badstr, py_argv (.args) and ext/bx.py."
+  },
+  {
+   "item": "13 (refute-recommendation) JIT symbol resolution happens in lli's process-wide scope",
+   "action": "fixed",
+   "detail": "Same mechanism as item 2, with the same results: collide.py prints MINE-9.9 and rl2.py gets readline history in the JIT. The jit_aot wording is corrected: C calls bind to the same library in both tiers. For embedding, JIT and AOT agree because of RTLD_DEEPBIND, AOT is named as the reference tier, and the residual differences are documented."
+  },
+  {
+   "item": "14 (refute-recommendation) sys.executable is whichever python3 PATH finds, so multiprocessing and subprocess run the wrong CPython",
+   "action": "fixed",
+   "detail": "Py_SetProgramName with the libpython's own interpreter (item 9). Results:\n- pool.py, forkserver on embedded python-build-standalone 3.14: the same in JIT and AOT, and also without PYTHONHOME.\n- sys.executable printed natively equals the twin's: /usr/bin/python3 for 3.13, also with PATH=/nonexistent, and the PBS prefix's bin/python3 for 3.14.\nTest: py_exe.py (subprocess with sys.executable, and Pool(1).map) passes on 3.12, 3.13, 3.13t, 3.14, 3.14t, 3.15 and 3.15t."
+  },
+  {
+   "item": "15 (refute-recommendation) TRK_BYTES is a flat 512 bytes, so dropped large objects are never collected",
+   "action": "fixed",
+   "detail": "Same mechanism as item 6. interpose/big.py (3000 x 1 MiB) now peaks at 44 MiB AOT against the twin's 10; it was 3022 MiB in the refuter's run and 689 MiB in my first rerun. Documented limitation: sys.getsizeof is shallow, so a dropped container counts its own size, not its items'."
+  }
+ ],
+ "design_changes": [
+  "Rebased onto main's newest commit, 4dc548a (PRs #53, #101 and #102 merged Sunday 2026-10-11). base and irsame now refer to 4dc548a. The only conflict was tests/verify.sh, resolved by keeping both steps.",
+  "S1, @ffi.extern binds the way ctypes does. Nothing is linked any more: no lli -dlopen and no -l:lib. When the def statement runs, pys_c_bind opens the library (dlopen RTLD_NOW|RTLD_LOCAL, plus RTLD_DEEPBIND under the JIT), looks the symbol up with dlsym, and the stub calls through a stored pointer. A missing library or symbol becomes OSError or AttributeError with dlerror's text at the def, as in the twin. Calls take keywords and defaults. @extern(\"python\") and ffi.track, untrack and collected are reserved for lib/pyobj.py. The answer is unchanged: both tiers, from the same IR, and JIT and AOT now bind the same library.",
+  "S2, pyobj's public API is exactly its twin's __all__ (Object, import_module, of_int, of_float, of_str, of_list). The compiler enforces this for GLUE modules (lib modules that use ffi): no other names, no Object() constructor, no fields. to_int and to_float follow PyLong_AsLongLong and PyFloat_AsDouble in the twin too.",
+  "S2 and S3, one stdout and one stdin across both runtimes. The draft planned to flush only around call(). Now pyembed.c's hooks write Pystachy's pending output before every operation, flush Python's stream before Pystachy's next write, route Pystachy's prints through a replaced sys.stdout, and read Pystachy's input() and sys.stdin through Python's (the host's in an extension module). pyembed.c is now linked into every extension module, compiled with -fexceptions.",
+  "Release is now owned and bounded. The depth guard is gone: each operation takes its own reference, so drops are released at any depth and on an extension module's outermost return. Each reference counts 512 bytes plus sys.getsizeof, and pys_track starts a collection when the count reaches the limit. The draft's flat 512 bytes checked only on the allocator's slow path did not bound memory. An extension module releases everything and closes its files in an atexit handler, then refuses calls.",
+  "Embedded CPython starts as python3 starts (pye_preinit): PEP 538 coercion and PEP 540 UTF-8 mode, which the compat configuration of Py_InitializeEx omits, and a program name taken from the loaded libpython, so sys.executable, sys.prefix and multiprocessing work, also without PYTHONHOME for relocatable builds. Under the JIT, the embedded CPython loads extension modules with RTLD_DEEPBIND. A failed flush at finalization exits 120.",
+  "The runtime's float text no longer depends on the locale once CPython or a C library shares the process (uselocale around snprintf and strtod). Plain programs pay one null test per conversion, and their IR is unchanged.",
+  "The recommendation names AOT as the reference tier for embedding. The JIT is supported, with documented residuals: sys.getdlopenflags() shows DEEPBIND, and lli's process differs for @extern(\"\").",
+  "The test suite grew from 47 to 93 cases, with one regression test or more for each refuter issue. run.sh supports NAME.in, NAME.args and NAME.env, builds a test library and a de_DE locale, compares the error line of failing C-call tests, and runs py_big and memclient without GC stress."
+ ],
+ "measurements": [
+  "Machine: 4-CPU Intel Xeon, quiet. stage5/measure/measure5.sh compares NEW (final tree) with OLD (the stage-3 FFI on the same main, stage4rec/main). Log: stage5/logs/measure.log.",
+  "@extern call (libm hypot through the stored pointer, AOT, best of 3): NEW 3.9 ns, OLD 3.7 ns. The indirect call costs nothing measurable.",
+  "pyobj operations, embedded 3.13, AOT, stdout to a file (NEW / OLD):\n- of_int(i).to_int(): 122 / 112 ns\n- neg.call([of_int(i)]).to_int(): 523 / 501 ns\n- len(o.attr(name)): 327 / 189 ns; the attr result's sys.getsizeof costs about 60 ns, and the owned references and pye_enter/leave add the rest\n- of_int(i) then a Pystachy print: 540 / 100 ns; Python's sys.stdout is flushed before Pystachy writes after an operation, which the old code did not do, and it misordered output\n- print alone: 46 / 39 ns",
+  "Start-up, AOT, median of 21 (NEW / OLD):\n- hello: 3.01 / 2.95 ms\n- @extern of libm (one dlopen and dlsym at the def): 2.93 / 2.89 ms\n- embedding 3.13 (CPython started and finalized, with preinit): 13.7 / 13.0 ms",
+  "Start-up, JIT, `pystachy run` with compile, median of 11 (NEW / OLD): @extern libm 46.9 / 45.3 ms; embedding 3.13 94.9 / 90.4 ms.",
+  "Extension module fastmath, 3.13 abi3, NEW / OLD:\n- per-call cost net of the loop: check(4) 18.1 / 19.2 ns; ctypes 223 / 228 ns; pure Python 24.1 / 24.5 ns; fib(10) 20.0 / 22.9 ns\n- .so size: 79,600 / 74,792 bytes; pyembed.c is now linked in\n- `pystachy ext` with warm caches: 671 / 690 ms",
+  "Peak RSS from dropping large Python objects, twin vs AOT, MiB:\n- e21 (300 x 10 MB): 27 vs 67; it was 2871\n- 3000 x 1 MiB: 10 vs 44; it was 3022\n- 1500 x 1 MiB: 11 vs 44; it was 1516\n- ext nested callbacks (1000 x 1 MiB in one outer call): source 13 vs ext 42; it was 1013\nThe remaining gap is about one collector budget (GC_MIN, 32 MiB).",
+  "leak probe, 3,000,000 dropped of_int Objects without stress: 48 collections, 6.9 ms of GC in all, 3.0 MiB heap peak; 2,960,517 references released after collections and 39,487 at exit.",
+  "make verify: 694 s for 19 steps; the ffi step (93 cases) takes 26.6 s, up from 9.7 s with 47 cases."
+ ],
+ "remaining_issues": [
+  "Ctrl-C in an embedding program does not finalize the embedded CPython: atexit handlers do not run, threads are not joined, and Python's buffered output is lost. This now also covers a Ctrl-C during input(), since reads go through Python. Only a Ctrl-C during the program's own write finalizes. Documented, not fixed: the SIGINT handler cannot run Python.",
+  "Release timing is still after a collection. A Python file written through a dropped Object gets its data only when the Object is released, at the latest at exit; close() is required to see it sooner (documented). sys.getsizeof is shallow, so a dropped container is charged its own size and not its items'. Peak memory stays one collector budget above CPython's.",
+  "Cost of correct output order: a Pystachy print after a pyobj operation costs about 440 ns more, because Python's sys.stdout is flushed first. attr, call and [] results cost about 60 ns more for sys.getsizeof.",
+  "Bytes reach the file descriptor at different times than in CPython's single buffer. Writes that bypass sys.stdout (os.write, child processes, C stdio) may interleave differently. This is documented; the text order is what is defined.",
+  "Under pystachy run, the embedded CPython loads extension modules with RTLD_DEEPBIND. This shows in sys.getdlopenflags(), and a module that relies on global-scope interposition behaves differently. AOT is the reference tier for embedding. @extern(\"\") still depends on what the process has loaded (python3 links libz, lli has LLVM's dependencies, an AOT build only libc and libm). Both are documented.",
+  "The CPython-hosted compiler (python3 -m pystachy run) passes its own PEP 538 LC_CTYPE=C.UTF-8 on to the program, so an embedded CPython starts in a UTF-8 locale with UTF-8 mode off before 3.15. Documented; tests/ffi skips py_coerce under the hosted compiler.",
+  "Extension modules: an exception raised at import leaves as its nearest builtin class (documented). sys.stdout.write with sys.stdout = None does nothing, where CPython raises AttributeError. Calls after the host's atexit handlers raise RuntimeError. Free-threaded 3.13t and 3.14t cannot load the modules. abi3 on 3.11 fails with the loader's generic ImportError. Stack switching (greenlet) is unsupported and undetected.",
+  "Stdin that C stdio read ahead before pyobj is first imported cannot be read by Python (documented).",
+  "tools/abi_check.sh is not yet in make verify or CI: it needs Misc/stable_abi.toml, which the repo does not vendor.",
+  "tests/ffi/c_nosym.out records the Debian/Ubuntu libm path (/lib/x86_64-linux-gnu/libm.so.6) in dlerror's message. On CI runners without a shared libpython, the ffi verify step still skips the embedding and extension cases.",
+  "Unchanged from stage 3: tests/ffi/ext/mg.py builds with ext but is rejected by run and ir, because its main block calls an export. PYTHONHOME can leak into the hosted compiler when run.sh gets a relocatable PY.",
+  "Environment: ruff 0.16.8 is installed, not the pinned 0.17.0. Only x86-64 Linux with glibc was tested. pyembed.c's program-name derivation assumes a <prefix>/lib or <prefix>/lib/<multiarch> layout and leaves CPython's default otherwise."
+ ]
+}
