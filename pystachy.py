@@ -5129,7 +5129,9 @@ CALLS: dict[str, str] = {
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
     "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
     "math.isfinite(float)": "pys_m_isfinite:bool", "math.isinf(float)": "pys_m_isinf:bool", "math.isnan(float)": "pys_m_isnan:bool",
-    "math.log(float,float)": "pys_m_logb:float",
+    "math.log(float,float)": "pys_m_logb:float", "math.fsum(list[float])": "pys_m_fsum:float",
+    "math.prod(list[int],int)": "pys_m_prod_int:int", "math.prod(list[bool],int)": "pys_m_prod_int:int",
+    "math.prod(list[float],float)": "pys_m_prod_float:float", "math.dist(list[float],list[float])": "pys_m_dist:float",
     "time.time()": "pys_time:float", "time.time_ns()": "pys_time_ns:int", "time.monotonic()": "pys_monotonic:float",
     "time.monotonic_ns()": "pys_monotonic_ns:int", "time.perf_counter()": "pys_monotonic:float",
     "time.perf_counter_ns()": "pys_monotonic_ns:int", "time.process_time()": "pys_process_time:float",
@@ -5216,7 +5218,8 @@ for _k in "annotations division absolute_import print_function generators nested
 # omitted arguments, as source text: f() -> f(default), f(x) -> f(x, default)
 DEFAULTS: dict[str, str] = {"int": "0", "float": "0.0", "str": '""', "bool": "False",
                             "list": "[]", "dict": "{}", "int(str)": "10", "sum(list[int])": "0",
-                            "sum(list[float])": "0.0", "sum(list[bool])": "0"}
+                            "sum(list[float])": "0.0", "sum(list[bool])": "0", "math.prod(list[int])": "1",
+                            "math.prod(list[float])": "1", "math.prod(list[bool])": "1"}
 # the builtin exceptions raise accepts; "x": special arguments, so at most one is supported;
 # "-": arguments that cannot be given here
 EXCEPTIONS: dict[str, str] = {}
@@ -5409,7 +5412,7 @@ def normcodec(e: str) -> str:
 # the most positional arguments a builtin takes: more are a compile error (a TypeError in CPython)
 ARITY: dict[str, int] = {"len": 1, "repr": 1, "ascii": 1, "abs": 1, "ord": 1, "chr": 1, "bool": 1, "float": 1, "list": 1,
                          "dict": 1, "str": 1, "sorted": 1, "any": 1, "all": 1, "input": 1, "int": 2, "round": 2,
-                         "divmod": 2, "sum": 2, "pow": 3}
+                         "divmod": 2, "sum": 2, "pow": 3, "math.fsum": 1}
 # Builtin methods, "ret:arg,arg=default". *X: passed/returned as an 8-byte slot; #: element
 # type descriptor; T: list element, K/V: dict key/value, S: the receiver's own type.
 # Each maps to the C function pys_<type>_<method>.
@@ -5555,7 +5558,9 @@ RUNTIME: dict[str, str] = {
     "m.acosh": "float:float|R|", "m.atanh": "float:float|R|", "m.erf": "float:float|R|", "m.erfc": "float:float|R|",
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
-    "m.fma": "float:float,float,float|R|",
+    "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
+    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|",
+    "m.dist": "float:list[float],list[float]|R A rL|",
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A I rL rD U?|",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
@@ -7518,6 +7523,12 @@ class Gen:
         if v.t == "bool":
             return Val(self.ins(f"uitofp i1 {v.v} to double"), "float")
         return v
+
+    def floats(self, v: Val) -> Val:
+        # a number, or a list of numbers, as float(s)
+        if v.t == "list[int]" or v.t == "list[bool]":
+            return Val(self.rt("pys_m_floats", "ptr", [f"ptr {v.v}"]), "list[float]")
+        return self.as_float(v)
 
     def is_dc(self, t: str) -> bool:
         return t in self.classes and (len(self.classes[t].node.kids) > 1 or t in self.nts)
@@ -15907,6 +15918,12 @@ class Gen:
             if g.kind != "listcomp":
                 g = mk("listcomp", "gen", g.line, [mk("name", "__item", g.line, []), mk("name", "__item", g.line, []), g])
             return self.listcomp(g, "", name)
+        if name == "math.prod":
+            # prod(iterable, /, *, start=1): start is sum()'s second argument
+            npos = len([a for a in args if a.kind != "kw"])
+            if npos != 1:
+                self.err(f"prod() takes exactly 1 positional argument ({npos} given)")
+            args = [a.kids[0] if a.kind == "kw" and a.s == "start" else a for a in args]
         npos = 0
         for a in args:
             if a.kind != "kw":
@@ -15922,7 +15939,7 @@ class Gen:
             args = [self.parse_expr(DEFAULTS[name])]
         w = want if name == "list" or name == "sorted" or name == "dict" else ""
         fresh = False
-        if npos == 1 and (name == "sorted" or name == "min" or name == "max" or name == "sum" or name == "any" or name == "all" or name == "list"):
+        if npos == 1 and (name == "sorted" or name == "min" or name == "max" or name == "sum" or name == "any" or name == "all" or name == "list" or name == "math.fsum" or name == "math.prod"):
             # these iterate their argument at once, so range(), reversed(), enumerate() and zip() may be it
             fresh = self.iterator_call(args[0]) or args[0].kind == "listcomp"
             v0 = self.consume(args[0], w)
@@ -15934,7 +15951,7 @@ class Gen:
                 return Val(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {first}')}, 0"), "bool")
             vals = [self.as_list(v0, name)]
             self.close_temp(args[0], v0)
-        elif name == "sum" and npos == 2 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
+        elif (name == "sum" or name == "math.prod") and npos == 2 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
             # Construct the iterator first, then evaluate start, then traverse it. In particular,
             # __iter__ and range's step check run before start; reversed keeps its original length.
             it = args[0]
@@ -15953,10 +15970,10 @@ class Gen:
         for a in args:
             if a.kind == "kw" and a.s == "reverse":
                 rev = self.reverse_arg(a.kids[0], name)
-        if name == "sum" and len(vals) == 2 and vals[1].t == "bool":
-            self.err("sum() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
-        if name == "sum" and len(vals) == 2 and (vals[0].t in self.classes or is_tuple(vals[0].t) or is_dict(vals[0].t)):
-            vals[0] = self.as_list(vals[0], "sum")  # (sum(o, start) iterates o once start is evaluated)
+        if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
+            self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
+        if (name == "sum" or name == "math.prod") and len(vals) == 2 and (vals[0].t in self.classes or is_tuple(vals[0].t) or is_dict(vals[0].t)):
+            vals[0] = self.as_list(vals[0], name)  # (sum(o, start) iterates o once start is evaluated)
         if name == "round" and len(vals) == 2 and vals[1].t == "None":
             vals = vals[:1]  # round(x, None) is round(x)
         elif name == "round" and len(vals) == 2 and is_sopt(vals[1].t) and (unopt(vals[0].t) == "int" or unopt(vals[0].t) == "bool"):
@@ -15974,7 +15991,7 @@ class Gen:
             bad = NONEARG[name] if name in NONEARG else ""
             if name == "int" and len(vals) == 2:
                 bad = "int() can't convert non-string with explicit base"
-            elif name == "sum" and i == 0:
+            elif ((name == "sum" or name == "math.prod") and i == 0) or name == "math.dist":
                 bad = "'NoneType' object is not iterable"
             if bad != "":
                 vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
@@ -16019,6 +16036,13 @@ class Gen:
         if key not in CALLS and name == "math.ldexp" and len(vals) == 2:
             vals = [self.as_float(self.as_int(vals[0])), self.as_int(vals[1])]
             key = f"{name}({','.join([v.t for v in vals])})"
+        if key not in CALLS and (name == "math.fsum" or name == "math.prod" or name == "math.dist"):
+            # dist(p, q) takes tuple(p) and tuple(q); CPython makes a float of each int item (in a
+            # product, of each item and the start once there is a float)
+            fl = [self.floats(self.as_list(v, name) if name == "math.dist" else v) for v in vals]
+            if f"{name}({','.join([v.t for v in fl])})" in CALLS:
+                vals = fl
+                key = f"{name}({','.join([v.t for v in vals])})"
         if key not in CALLS and name.startswith("math."):
             vals = [self.as_float(v) for v in vals]
             key = f"{name}({','.join([v.t for v in vals])})"

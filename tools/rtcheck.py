@@ -153,6 +153,35 @@ def fuzz_math():
             want = outcome(ref, *args)
             if fits(want):  # beyond 64 bits the compiled code raises OverflowError (the differential tests check it)
                 same(name, outcome(mine, *args), want, args)
+        xs = [real() for _ in range(R.randrange(12))]
+        if R.randrange(3) == 0:  # cancellation: the items negated, some halved or one ulp off
+            xs += [-x * R.choice([1.0, 0.5, 1.0000000000000002]) for x in xs]
+            R.shuffle(xs)
+        same("fsum", bits(outcome(rt.pys_m_fsum, xs)), bits(outcome(math.fsum, xs)), (xs,))
+        same("prod", bits(outcome(rt.pys_m_prod_float, xs, 1.5)), bits(outcome(lambda: math.prod(xs, start=1.5))), (xs,))
+        ns = [R.randrange(-1000, 1001) for _ in range(R.randrange(7))]
+        st = R.choice([1, -1, a])
+        want = outcome(lambda: math.prod(ns, start=st))
+        if fits(want):
+            same("prod", outcome(rt.pys_m_prod_int, ns, st), want, (ns, st))
+
+
+def real():
+    # a float for fsum and prod: specials, small ints (exact sums, ties), anything in range
+    k = R.randrange(8)
+    if k == 0:
+        return R.choice([0.0, -0.0, 5e-324, 2.2250738585072014e-308, 1.7976931348623157e308, -1.7976931348623157e308,
+                         1e16, 1.0, math.inf, -math.inf, math.nan])
+    if k == 1:
+        return float(R.randrange(-1000, 1001))
+    if k == 2:
+        return math.ldexp(R.random() - 0.5, R.randrange(-1074, 1025))
+    return (R.random() - 0.5) * 2.0 ** R.randrange(-60, 60)
+
+
+def bits(r):
+    # a float outcome by its bits, so that a nan or a zero's sign compares
+    return (r[0], r[1].hex()) if r[0] == "ok" else r
 
 
 M64 = (1 << 64) - 1

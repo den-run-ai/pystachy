@@ -756,14 +756,14 @@ double pys_m_atan2(double y, double x) { return atan2(y, x); }
 typedef struct { double hi, lo; } DL;
 static DL dl_fast_sum(double a, double b) { double x = a + b; return (DL){x, (a - x) + b}; }
 static DL dl_mul(double x, double y) { double z = x * y; return (DL){z, fma(x, y, -z)}; }
-static double vnorm(double *v, int n, double max) {
+static double vnorm(double *v, I n, double max) {
 #pragma clang fp contract(off)
   double csum = 1.0, frac1 = 0.0, frac2 = 0.0, x, h, scale; DL pr, sm; int e;
   if (max == 0.0 || n <= 1) return max;
   frexp(max, &e);
-  if (e < -1023) { for (int i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
+  if (e < -1023) { for (I i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
   scale = ldexp(1.0, -e);
-  for (int i = 0; i < n; i++) {
+  for (I i = 0; i < n; i++) {
     x = v[i] * scale; pr = dl_mul(x, x); sm = dl_fast_sum(csum, pr.hi);
     csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
   }
@@ -793,13 +793,17 @@ I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
-/* math.gcd, lcm, isqrt, factorial, comb and perm are in runtime.py */
+/* math.gcd, lcm, isqrt, factorial, comb, perm, fsum and prod are in runtime.py */
 I pys_m_gcd(I a, I b);
 I pys_m_lcm(I a, I b);
 I pys_m_isqrt(I n);
 I pys_m_factorial(I n);
 I pys_m_comb(I n, I k);
 I pys_m_perm(I n, I k);
+double pys_m_fsum(List *l);
+I pys_m_prod_int(List *l, I start);
+double pys_m_prod_float(List *l, double start);
+List *pys_m_floats(List *l);
 
 static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
   double m = fmod(a, b), d = (a - m) / b;
@@ -1400,6 +1404,16 @@ double pys_sum_float(List *l, double s) { return fsum(l, 0, s); }
 /* an int start: CPython adds the first float to it plainly, then sums the rest compensated */
 double pys_sum_float_int(List *l, I s) { return l->len ? fsum(l, 1, (double)s + dbl(l->a[0])) : (double)s; }
 double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
+double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
+  if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
+  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
+  for (I i = 0; i < p->len; i++) {
+    v[i] = fabs(dbl(p->a[i]) - dbl(q->a[i])); nan |= isnan(v[i]);
+    if (v[i] > max) max = v[i];   /* a NaN is never the max */
+  }
+  if (isinf(max)) return max;
+  return nan ? NAN : vnorm(v, p->len, max);
+}
 I pys_range_len(I a, I b, I s) {                     /* len(range(a, b, s)) as an unsigned count */
   if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
   uint64_t d = s > 0 ? (uint64_t)b - (uint64_t)a : (uint64_t)a - (uint64_t)b, st = s > 0 ? (uint64_t)s : -(uint64_t)s;

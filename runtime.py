@@ -102,6 +102,95 @@ def pys_m_perm(n: int, k: int) -> int:
     return r
 
 
+# ---------- math.fsum and math.prod ----------
+# fsum is CPython's math_fsum, Shewchuk's exact summation: the partials hold the sum so far
+# exactly, as nonzero, nonoverlapping floats increasing in magnitude, and are rounded once at the
+# end; infs and nans are summed apart. prod multiplies left to right, ints with the checked
+# arithmetic. Where CPython makes a float of an int item (in fsum and dist, and in a product
+# with a float), the compiler passes the list through pys_m_floats.
+
+
+def pys_m_fsum(xs: list[float]) -> float:
+    p: list[float] = []  # the partials: p[:n]
+    n = 0
+    special = 0.0  # the sum of the infs and nans
+    infs = 0.0  # of the infs: a nan if both signs occur
+    for v in xs:
+        x = v
+        i = 0
+        for j in range(n):
+            y = p[j]
+            if abs(x) < abs(y):
+                t = x
+                x = y
+                y = t
+            hi = x + y
+            lo = y - (hi - x)
+            if lo != 0.0:
+                p[i] = lo
+                i += 1
+            x = hi
+        n = i
+        if x != 0.0:
+            if not math.isfinite(x):
+                # an inf or a nan, or a sum past the largest float
+                if math.isfinite(v):
+                    raise OverflowError("intermediate overflow in fsum")
+                if math.isinf(v):
+                    infs += v
+                special += v
+                n = 0
+            else:
+                if n == len(p):
+                    p.append(x)
+                else:
+                    p[n] = x
+                n += 1
+    if special != 0.0:
+        if math.isnan(infs):
+            raise ValueError("-inf + inf in fsum")
+        return special
+    hi = 0.0
+    lo = 0.0
+    if n > 0:
+        # the partials from the largest down, while their sum is exact
+        n -= 1
+        hi = p[n]
+        while n > 0:
+            x = hi
+            n -= 1
+            y = p[n]
+            hi = x + y
+            lo = y - (hi - x)
+            if lo != 0.0:
+                break
+        # half-even rounding across the partials: the rest of them may break a tie
+        if n > 0 and ((lo < 0.0 and p[n - 1] < 0.0) or (lo > 0.0 and p[n - 1] > 0.0)):
+            y = lo * 2.0
+            x = hi + y
+            if y == x - hi:
+                hi = x
+    return hi
+
+
+def pys_m_prod_int(xs: list[int], start: int) -> int:
+    r = start
+    for x in xs:
+        r *= x
+    return r
+
+
+def pys_m_prod_float(xs: list[float], start: float) -> float:
+    r = start
+    for x in xs:
+        r *= x
+    return r
+
+
+def pys_m_floats(xs: list[int]) -> list[float]:
+    return [float(x) for x in xs]
+
+
 # ---------- str methods ----------
 # A str is a length and its bytes (UTF-8). _rt.byte reads one without making a 1-char str, and
 # _rt.str_new/str_put/copy/str_done build a new str in place, where runtime.c used memcpy, memmem
