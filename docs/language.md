@@ -511,7 +511,10 @@ In these cases the program compiles but can behave differently from CPython:
   and `reversed()` of them do not notice a dict that changes size (a plain `for` over
   `d.items()` steps the dict itself and does), and neither do `in`, `min()` and `max()` over
   `d.values()` when an `__eq__` or `__lt__` of the values changes the dict, where CPython
-  raises `RuntimeError`; they print as lists and compare equal to lists.
+  raises `RuntimeError`; they print as lists and compare equal to lists. A snapshot is taken
+  where the call is evaluated, so a later argument that changes the dict does not change it
+  (`sum(d.values(), d.pop(k))`, `dict.fromkeys(d.keys(), d.popitem()[1])`,
+  `e.update(d.items(), k=d.pop(k))`), where CPython's view shows the change.
 - A type error that CPython raises only when the code runs (`<` between dicts, a constant
   index outside a tuple) is a compile-time error, so the output before it is not printed.
 - An exception that nothing catches prints only the last line of CPython's traceback (without

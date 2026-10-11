@@ -9399,7 +9399,7 @@ class Gen:
         o = self.read(n)
         self.allowq = False
         for a in args:
-            if a.kind == "kw":
+            if a.kind == "kw" and m != "update":  # (which takes keywords: below, d's type is asked for)
                 self.err(f"keyword arguments to {'list' if is_list(o.t) else 'dict'}.{m}() are not supported; pass them by position")
         if is_list(o.t) and (m == "append" or m == "extend" or m == "insert") and len(args) == (2 if m == "insert" else 1):
             if empty_display(args[-1]):

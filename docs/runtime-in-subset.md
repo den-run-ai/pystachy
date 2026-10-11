@@ -681,7 +681,7 @@ The follow-ups are filed: #31 tracks items 2 to 7, and the issues named below ho
 2. **Next leaf moves, independent of the typed IR.**
    - `int()` and `float()` parsing. They need wrapping arithmetic; the digit tables would use a `str` as a table.
    - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which the lax character counts of §2.2 should use too (#29); `pys_str_list`; `str(int)`.
-   - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`, `dict.update`/`popitem`/`fromkeys` over the C dict API. Write them in `runtime.py` from the start.
+   - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`. Write them in `runtime.py` from the start. (`dict.update`/`popitem`/`fromkeys` are in runtime.c: they size and rebuild the table as CPython does, with its internals.)
 3. **Small language and compiler work that runtime code needs.**
    - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule, and a test of the cache rules (#24).
    - A `buf` type for `str_new`'s result, and a nullable `str` for omitted arguments (#25): only `str_put` and `copy` write to it, only `str_done` turns it into a `str`, and nothing uses it after that. The builder rule of §1.2 then becomes a compile-time check, at no run-time cost.
