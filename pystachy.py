@@ -5115,6 +5115,7 @@ ORDOP: dict[str, int] = {"<": 0, "<=": 1, ">": 2, ">=": 3}  # op codes shared wi
 DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "__truediv__", "//": "__floordiv__", "%": "__mod__",
                           "@": "__matmul__", "&": "__and__", "|": "__or__", "^": "__xor__", "<<": "__lshift__", ">>": "__rshift__",
                           "==": "__eq__", "!=": "__ne__", "<": "__lt__", "<=": "__le__", ">": "__gt__", ">=": "__ge__"}
+UNARY: dict[str, str] = {"-": "__neg__", "+": "__pos__", "~": "__invert__"}
 # builtin and module functions that are one runtime call: "name(argtypes)": "C function:result type"
 CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
@@ -8478,7 +8479,7 @@ class Gen:
         if k == "unary" and e.s != "not":
             t = self.guess(e.kids[0], f)
             # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
-            return "int" if t == "bool" else "" if t in self.classes else t
+            return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
         if k == "name" and e.s in f.params:
             t = f.ptypes[f.params.index(e.s)]
             return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
@@ -14850,7 +14851,7 @@ class Gen:
             return Val(self.ins(f"fneg double {v.v}"), "float")
         if (v.t == "int" or v.t == "float") and op == "+":
             return v
-        m = "__neg__" if op == "-" else "__pos__" if op == "+" else "__invert__"
+        m = UNARY[op]
         if v.t in self.classes and m in self.classes[v.t].methods:
             self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
             return self.call_fn(self.classes[v.t].methods[m], [v], [])
@@ -14874,9 +14875,18 @@ class Gen:
             if op == "!=" and self.cmp_method(b.t, "__eq__", "None") != "":
                 return Val(self.ins(f"xor i1 {self.eqcall(bm['__eq__'], True, b, a).v}, true"), "bool")
             return Val("", "")
+        if op == "**":
+            # CPython calls a.__ipow__(b) (**=), a.__pow__(b), else b.__rpow__(a) (b of another type)
+            pw = ""
+            for x, n in [(a, "__ipow__" if shown == "**=" else ""), (a, "__pow__"), (b, "__rpow__" if b.t != a.t else "")]:
+                if pw == "" and x.t in self.classes and n in self.classes[x.t].methods:
+                    pw = f"{tname(x.t)}.{n}"
+            if pw != "":
+                self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {shown if shown != '' else op} {tname(b.t)} calls {pw})")
         rm = "__r" + m[2:]
-        if m != "" and op != "==" and op != "!=" and b.t in self.classes and rm in self.classes[b.t].methods and (a.t not in self.classes or m not in self.classes[a.t].methods) and not (op == "%" and a.t == "str"):
-            # a's type has no method for the operator: CPython calls b.__radd__(a) & co (str % b formats b)
+        if m != "" and op != "==" and op != "!=" and b.t in self.classes and b.t != a.t and rm in self.classes[b.t].methods and (a.t not in self.classes or m not in self.classes[a.t].methods) and not (op == "%" and a.t == "str"):
+            # a's type has no method for the operator: CPython calls b.__radd__(a) & co, where b's
+            # type is another (str % b formats b)
             self.err(f"reflected operator methods are not supported ({tname(unopt(a.t))} {shown if shown != '' else op} {tname(b.t)} calls {tname(b.t)}.{rm})")
         if a.t not in self.classes:
             return Val("", "")

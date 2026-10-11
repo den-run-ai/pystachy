@@ -1,0 +1,23 @@
+box
+operand 3
+xor 5 3
+M(6)
+key 1
+operand 7
+xor 2 7
+key 0
+ilshift 1 4
+[M(16), M(5)]
+xor 9 1
+ilshift 8 1
+{'a': M(16)}
+key 1
+get 1
+operand 4
+or 2 4
+set 1 M(6)
+get 0
+ilshift 1 2
+set 0 M(4)
+[M(4), M(6)]
+[exit 0]

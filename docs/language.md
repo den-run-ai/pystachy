@@ -544,6 +544,11 @@ In these cases the program compiles but can behave differently from CPython:
   `C | None` for a class `C` (a dataclass or `NamedTuple` too). A function declared to return
   `T | None` for an `int`, `float`, `bool`, `str`, `list`, `dict` or `tuple` T, and a template
   that returns objects or `T | None`, return `None` there, as CPython does.
+- A left operand of `+ - * / // % @ & | ^ << >>` (or of their in-place forms) whose class
+  defines the operator's method, but which is `None` when the code runs, raises CPython's
+  `TypeError` for `None` (`unsupported operand type(s) for |: 'NoneType' and 'B'`), also where
+  the right operand's class defines the reflected method, which CPython calls with `None`
+  instead (`B.__ror__(b, None)`; reflected methods are not supported, below).
 - An optional value that is `None`, passed to a builtin method's parameter that has a
   default (`s.split(sep)`, `s.strip(chars)`), means the default, as an explicit `None` does,
   also where CPython raises `TypeError` (the fill character of `ljust()`, `rjust()` and
@@ -705,8 +710,9 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
 - iterating over an object, or `x in o`, by its `__getitem__` alone (CPython's old sequence
   protocol), and `reversed()` of an object
 - reflected operator methods (`__radd__` & co), which CPython calls when the left operand's type
-  has no method for the operator (`3 & o` calls `o.__rand__(3)`), and `**` or `pow()` of an
-  object whose class defines `__pow__`
+  has no method for the operator and the right operand's type is another (`3 & o` calls
+  `o.__rand__(3)`), and `**`, `**=` and `pow()` of objects whose class defines `__pow__`,
+  `__ipow__` or `__rpow__`
 - an `==` or `!=` between objects of different classes, which CPython would reflect to the right
   operand's `__eq__`, and between values of other types that cannot be equal (`1 == "1"`, or an
   `int | None` and a `str | None`, which CPython finds equal only when both are `None`)

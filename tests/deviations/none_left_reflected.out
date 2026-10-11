@@ -1,0 +1,5 @@
+or
+xor
+TypeError: unsupported operand type(s) for |: 'NoneType' and 'B'
+TypeError: unsupported operand type(s) for ^: 'NoneType' and 'V'
+[exit 0]
