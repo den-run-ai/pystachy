@@ -5429,7 +5429,7 @@ METHODS: dict[str, str] = {
     "list.index": "int:*T,#,int=0,int=9223372036854775807", "list.count": "int:*T,#", "list.remove": "None:*T,#", "list.reverse": "None:",
     "list.copy": "S:", "list.clear": "None:",
     "dict.get": "*V:*K,*V=0", "dict.pop": "*V:*K", "dict.setdefault": "*V:*K,*V", "dict.keys": "list[K]:",
-    "dict.values": "list[V]:", "dict.items": "list[tuple[K,V]]:", "dict.clear": "None:", "dict.copy": "S:",
+    "dict.values": "list[V]:", "dict.items": "list[tuple[K,V]]:", "dict.clear": "None:", "dict.copy": "S:", "dict.popitem": "tuple[K,V]:",
     "file.read": "str:int=-1", "file.readline": "str:", "file.readlines": "list[str]:", "file.write": "int:str",
     "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:",
     "float.hex": "str:", "float.is_integer": "bool:",
@@ -5517,6 +5517,8 @@ RUNTIME: dict[str, str] = {
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.find": "int:S,*K|rD|", "dict.entry": "int:S,*K|R A I rD|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    "dict.popitem": "tuple[K,V]:S|R A rD wD|", "dict.update": "None:S,S|A rD wD|", "dict.update_pairs": "None:S,list[T]|A rL rD wD|",
+    "dict.fromkeys": "dict[K,V]:int,list[T],*V|A rL|", "dict.fromkeys_dict": "dict[K,V]:S,*V|A rD|",
     # strings
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
@@ -15423,6 +15425,8 @@ class Gen:
                 return self.builtin(path, args, want)
             if f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
                 return self.super_call(f.kids[0], f.s, args)
+            if f.kids[0].kind == "name" and f.kids[0].s == "dict" and f.s == "fromkeys" and not self.bound("dict"):
+                return self.fromkeys(args, want)
             if f.kids[0].kind == "name" and "?" in self.rtype(f.kids[0].s):
                 return self.fill(f.kids[0], f.s, args, want)
             if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
@@ -16283,6 +16287,8 @@ class Gen:
                     self.err(f"list.sort({a.s}=...) is not supported" if a.s == "key" else f"sort() got an unexpected keyword argument '{a.s}'")
             self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(elem(o.t), '<'))}", f"i64 {rev}"])
             return Val("null", "None")
+        if is_dict(o.t) and m == "update":
+            return self.update(o, args)
         for a in args:
             if a.kind == "kw":
                 self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
@@ -16431,6 +16437,73 @@ class Gen:
         if slot:
             return self.from_slot(res, rtype)
         return self.rres(res, rtype)
+
+    def update(self, o: Val, args: list[Node]) -> Val:
+        # d.update(x, k=v, ...): x a dict of d's type, merged as CPython merges one (runtime.c), or
+        # a list of (key, value) tuples, set one by one; then the keywords (str keys), merged as
+        # the dict CPython makes of them, which is a display's. The arguments are evaluated first
+        kv = targs(o.t)
+        pairs = self.ctype("list", [self.ctype("tuple", kv)])
+        pos = [a for a in args if a.kind != "kw"]
+        kws: list[Node] = []
+        for a in args:
+            if a.kind == "kw":
+                kws.append(mk("str", a.s, a.line, []))
+                kws.append(a.kids[0])
+        if len(pos) > 1:
+            self.err(f"update expected at most 1 argument, got {len(pos)}")
+        if len(kws) > 0 and kv[0] != "str":
+            self.err(f"dict.update() with keyword arguments adds str keys, which a {typestr(o.t)} cannot hold")
+        x = Val("", "")
+        if len(pos) == 1:
+            x = self.expr(pos[0], pairs if pos[0].kind == "list" or pos[0].kind == "listcomp" else o.t)
+        kw = self.expr(mk("dict", "", self.line, kws), o.t) if len(kws) > 0 else Val("", "")
+        if is_opt(x.t):
+            x = self.unwrap(x, "TypeError: 'NoneType' object is not iterable")
+        if x.t == "int" or x.t == "float" or x.t == "bool" or x.t == "None":
+            self.err(f"'{tname(x.t)}' object is not iterable")  # (CPython's TypeError)
+        if x.t != "" and x.t != o.t and x.t != pairs:
+            self.err(f"dict.update() of a {typestr(o.t)} takes a dict of its type, a {typestr(pairs)} or keyword arguments, not {typestr(x.t)}")
+        if x.t != "":
+            self.rt("pys_dict_update" if x.t == o.t else "pys_dict_update_pairs", "void", [f"ptr {o.v}", f"ptr {x.v}"])
+        if kw.t != "":
+            self.rt("pys_dict_update", "void", [f"ptr {o.v}", f"ptr {kw.v}"])
+        return Val("null", "None")
+
+    def fromkeys(self, args: list[Node], want: str) -> Val:
+        # dict.fromkeys(xs, v=None): a dict of xs's items, each mapped to v. Both are evaluated
+        # first; a dict's keys go into a table sized for them, any other iterable's one by one
+        for a in args:
+            if a.kind == "kw":
+                self.err("dict.fromkeys() takes no keyword arguments")
+        if len(args) == 0 or len(args) > 2:
+            self.err(f"fromkeys expected {'at least 1 argument' if len(args) == 0 else 'at most 2 arguments'}, got {len(args)}")
+        kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
+        w = self.ctype("list", [kv[0]]) if kv[0] != "" and (args[0].kind == "list" or args[0].kind == "listcomp") else ""
+        xs = self.consume(args[0], w) if self.iterator_call(args[0]) and args[0].kids[0].s == "range" else self.expr(args[0], w)
+        V = kv[1]
+        v = self.expr(args[1], V) if len(args) == 2 else Val("null", "None")
+        if is_opt(xs.t):
+            xs = self.unwrap(xs, "TypeError: 'NoneType' object is not iterable")
+        if xs.t == "str":
+            xs = Val(self.rt("pys_str_list", "ptr", [f"ptr {xs.v}"]), "list[str]")
+        elif not is_dict(xs.t):
+            xs = self.as_list(xs, "fromkeys")
+        if not is_list(xs.t) and not is_dict(xs.t):
+            self.err(f"'{tname(xs.t)}' object is not iterable")
+        K = targs(xs.t)[0] if is_dict(xs.t) else elem(xs.t)
+        if key_problem(K) != "":
+            self.err(key_problem(K))
+        if v.t == "None" and V == "":
+            self.err(f"dict.fromkeys(keys{', None' if len(args) == 2 else ''}) needs the type of the dict it makes, whose values are None: annotate it (d: dict[K, V | None] = ...)")
+        if v.t == "None" and self.optional(V) != V:
+            self.err(f"dict.fromkeys(keys{', None' if len(args) == 2 else ''}) needs values that can be None ({OPTTYPES}), not {typestr(V)}: give a value")
+        V = v.t if V == "" else V
+        v = self.coerce(v, V)
+        t = self.ctype("dict", [K, V])
+        if is_dict(xs.t):
+            return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)]), t)
+        return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)]), t)
 
     def optdefault(self, d: Val, t: str) -> str:
         # the type of d.get(k, d) and d.pop(k, d) for values of type t: t | None for a default

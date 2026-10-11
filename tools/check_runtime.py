@@ -74,7 +74,8 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # repr of the key: dict keys are ints, strs, or tuples of int, bool, str, None and such tuples,
 # which compare and print without user code
 NO_USER = {"dict.has", "dict.find", "dict.getitem", "dict.entry", "dict.get", "dict.set", "dict.pop", "dict.pop_default",
-           "dict.setdefault", "dict.getbox", "dict.popbox"}
+           "dict.setdefault", "dict.getbox", "dict.popbox", "dict.update", "dict.update_pairs", "dict.fromkeys",
+           "dict.fromkeys_dict"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),

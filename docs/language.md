@@ -422,8 +422,11 @@ object that is `None` raises CPython's error when it runs.
 with inverses), `any`, `all`, `input`, `format`; the common `str`, `list` and `dict` methods
 (`find`/`index`/`count` with start and end, also `None`, `split`/`rsplit`, `partition`/`rpartition`,
 `splitlines`, `removeprefix`/`removesuffix`, `center`/`ljust`/`rjust` with a fill character,
-`zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default; not
-`str.format()`, `dict.update()`, `popitem()` and `fromkeys()`, `dict()` of pairs, or tuple's
+`zfill`, `expandtabs`, `capitalize`/`title`/`swapcase`, `dict.pop` with a default,
+`dict.update()` of a dict of its type, a list of `(key, value)` tuples and keyword arguments
+(str keys), `popitem()`, and `dict.fromkeys(xs, v)` (`v` omitted or `None` where an annotation
+gives values that can be `None`; `xs` not a generator, `zip()`, `enumerate()` or `reversed()`);
+not `str.format()`, `dict()` of pairs, or tuple's
 `index()` and `count()`); `open()` with CPython's modes, errors, `buffering=`, `newline=`
 translation and positions for `"+"` modes, and files' `read`/`readline`/
 `readlines`/`write`/`writelines`/`flush`/`close`, iteration and `closed`/`name`/`mode`;
@@ -827,6 +830,10 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
 - `range()`, `enumerate()`, `zip()` or `reversed()` nested inside `enumerate()`, `zip()` or
   `reversed()` in a `for` loop, and `zip(strict=...)`
 - a keyword argument Pystachy does not take (`os.path.realpath(p, strict=True)`)
+- `dict.update()` of a dict of other key or value types, of an iterable other than a list of
+  `(key, value)` tuples of the dict's types (a generator could see the pairs set so far), or with
+  keyword arguments where the keys are not `str`, and `dict.fromkeys()` of a generator, or without
+  a value where no annotation gives the values a type that can be `None`
 - an `encoding=` constant other than UTF-8 and Latin-1
 
 ### Source text
