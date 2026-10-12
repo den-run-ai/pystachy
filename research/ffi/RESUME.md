@@ -7,10 +7,16 @@
 - `make verify` passed 19/19 on it, and irsame left every program that does not use the FFI
   byte-identical.
 - The logs are in `final/logs/`, and the port, refutation and fix reports are in `stage3/*.json`.
-- Not done yet:
-  - an independent refutation of the last fix round;
-  - GitHub CI;
-  - splitting into per-stage PRs (S0 docs, S1 `@ffi.extern`, S3 `pystachy ext`, S2 `lib/pyobj.py`).
+- **Pull requests (2026-10-12):** the prototype, split into three stacked PRs on main `4dc548a`:
+  - [#168](https://github.com/den-run-ai/pystachy/pull/168): `@ffi.extern` and the decision record
+    (branch `claude/ffi-extern`);
+  - [#169](https://github.com/den-run-ai/pystachy/pull/169): `pystachy ext` (branch `claude/ffi-ext`);
+  - [#170](https://github.com/den-run-ai/pystachy/pull/170): `lib/pyobj.py` (branch `claude/ffi-pyobj`).
+
+  Each branch passed `make verify` (19/19), `make irsame REF=4dc548a` (1240 identical), `make lint`
+  and `tests/ffi/run.sh` on CPython 3.11 to 3.15t before it was pushed. #170's tip is the prototype
+  plus a rationale section in docs/ffi.md and one comment fix.
+- Not done yet: an independent refutation of the last fix round (the PRs' review takes its place).
 
 The notes below are the state at the pause on 2026-10-10, kept for history.
 
