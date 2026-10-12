@@ -3,7 +3,7 @@
 python3 research/ports/port_markers.py [DIR | REF ...]
 A DIR is a port's directory (default: each directory under ports/); a REF is a branch whose
 ports/ files differ from origin/main, such as origin/claude/port-sgp4. The rules are heuristic;
-tools/census.py --summary counts the same markers, and the census blockers the edits removed.
+tools/port_edits.py (#182) is this classifier as a tool, with the census check of a port added.
 """
 import collections
 import os

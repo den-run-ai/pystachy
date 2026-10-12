@@ -1,10 +1,12 @@
 """Census of each port against the upstream modules it keeps: the cross-check of #171, section 2.
 
-python3 research/ports/census_ports.py SDISTS [CENSUS]
+python3 research/ports/census_ports.py SDISTS
 SDISTS holds the unpacked sdists, NAME-VERSION/ each, as `pip download --no-deps --no-binary
-:all: NAME==VERSION` gives them; CENSUS is a tools/census.py with --summary (default: the
-checkout's). A port is read from ports/ when it is there, else from its origin/claude/port-* branch.
+:all: NAME==VERSION` gives them. A port is read from ports/ when it is there, else from its
+origin/claude/port-* branch. tools/census.py runs as it is, with --json; tools/port_edits.py
+(#182) gives the same comparison for one port at a time.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -50,10 +52,22 @@ MILESTONE = {
     "M1 runtime gaps": "dyn:hex, dyn:oct, dyn:bin",
 }
 OF = {b: m for m, bs in MILESTONE.items() for b in bs.split(", ")}
-HEAD = {"modules", "parse errors", "units", "units with a blocker", "port markers", "unannotated function"}
 removed = {}
 sdists = sys.argv[1]
-census = sys.argv[2] if len(sys.argv) > 2 else "tools/census.py"
+
+
+def census(root):
+    """Blocker counts over root, "unannotated" split by the kind of unit."""
+    js = root + ".json"
+    subprocess.run([sys.executable, "-I", "tools/census.py", root, "--json", js], check=True, stdout=subprocess.DEVNULL)
+    counts = {}
+    for r in json.load(open(js)):
+        for k, n in r.get("blockers", {}).items():
+            k = k + " " + r["kind"] if k == "unannotated" else k
+            counts[k] = counts.get(k, 0) + n
+    return counts
+
+
 for pdir, name, version in PORTS:
     ref = "HEAD" if os.path.isdir(os.path.join("ports", pdir)) else "origin/claude/port-" + name
     files = [f for f in git("ls-tree", "-r", "--name-only", ref, "ports/" + pdir).split() if f.endswith(".py")]
@@ -73,16 +87,14 @@ for pdir, name, version in PORTS:
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             open(dest, "w", encoding="utf-8").write(text)
     print(f"== {name} {version} ({ref}): {len(kept)} modules kept" + (f"; only in the port: {', '.join(only_port)}" if only_port else ""))
-    out = subprocess.run([sys.executable, "-I", census, "upstream=" + os.path.join(tmp, "upstream", pdir),
-                          "port=" + os.path.join(tmp, "port", pdir), "--summary"], capture_output=True, text=True, check=True)
-    print(out.stdout.split("\n", 1)[1])
+    up, po = census(os.path.join(tmp, "upstream", pdir)), census(os.path.join(tmp, "port", pdir))
     shutil.rmtree(tmp)
-    for line in out.stdout.splitlines()[2:]:
-        key, up, port = line.rsplit(maxsplit=2)
-        key = key.strip()
-        if key not in HEAD and int(up) > int(port):
-            m = OF.get(key, "unmapped: " + key)
-            removed[m] = removed.get(m, 0) + int(up) - int(port)
+    for k in sorted(set(up) | set(po), key=lambda k: (po.get(k, 0) - up.get(k, 0), k)):
+        if up.get(k, 0) != po.get(k, 0):
+            print(f"  {up.get(k, 0):6} -> {po.get(k, 0):<4} {k}")
+        if k != "unannotated function" and up.get(k, 0) > po.get(k, 0):
+            m = OF.get(k, "unmapped: " + k)
+            removed[m] = removed.get(m, 0) + up[k] - po.get(k, 0)
 n = sum(removed.values())
 print(f"== census blockers the 14 ports' edits removed: {n}")
 for m, k in sorted(removed.items(), key=lambda x: -x[1]):

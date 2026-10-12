@@ -8,7 +8,7 @@ The evidence behind #132, the evaluation of which PyPI packages and stdlib modul
 | `hubs.json` | the stdlib-hub probe: which missing modules block `import X`, and the stub experiment (9 of 91 → 14) |
 | `tables.py`, `tables.out` | #171 §4: blocked packages per milestone, the unblocking table, the kinds of M4 blockers |
 | `port_markers.py`, `port_markers.out` | #171 §2: the 626 `Pystachy port:` markers of the 14 ports, by cause, with keyword rules |
-| `census_ports.py`, `census_ports.out` | the check of §2 with `tools/census.py --summary` (#181): each port against the upstream modules it keeps |
+| `census_ports.py`, `census_ports.out` | the check of §2 with `tools/census.py`: each port against the upstream modules it keeps (`tools/port_edits.py`, #182, does it for one port) |
 
 ## The records
 
@@ -54,5 +54,5 @@ python3 research/ports/tables.py
 python3 research/ports/port_markers.py ports/jdcal ports/pylev ports/qrcode origin/claude/port-convertdate ...  # every port
 # the sdists the ports name in PORT.md, unpacked into sdists/NAME-VERSION/:
 pip download --no-deps --no-binary :all: -d sdists qrcode==8.2   # and so on for each port
-python3 research/ports/census_ports.py sdists tools/census.py    # tools/census.py with #181's --summary
+python3 research/ports/census_ports.py sdists
 ```
