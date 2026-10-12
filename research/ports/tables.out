@@ -1,0 +1,25 @@
+115 probed, 69 blocked (57 PyPI, 12 stdlib)
+
+blocked packages with a hard blocker in each milestone:
+  M6     49
+  M2     45
+  M4     45
+  M3     39
+  M7     36
+  other  18
+  M1     2
+  M5     1
+
+unblocked by:
+  M1-M3                  0
+  + M4                   9
+  + M5, M6               23
+  + M7                   51
+  all of M1-M7 but M4    17
+
+the 51 hard M4 blockers:
+   29  JSON- or TOML-like documents, mixed containers
+    7  getattr/setattr with computed names
+    6  other
+    5  object() sentinels
+    4  isinstance over unions

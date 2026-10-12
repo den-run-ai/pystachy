@@ -1,0 +1,286 @@
+== convertdate 2.5.1 (origin/claude/port-convertdate): 18 modules kept; only in the port: _calendar.py
+                      upstream      port
+modules                     18        18
+units                      248       248
+units with a blocker       244       244
+port markers                 0        38
+unannotated function       173       173
+deco:property               43        43
+import_other                39        33
+none_default                36        36
+str_format                  16        10
+unannotated method          11        11
+starred                     11         9
+try                          9         9
+dyn:set                      4         4
+yield                        2         2
+dyn:format                   1         1
+dyn:next                     1         1
+nested_def                   1         1
+percent_format               1         1
+
+== jdcal 1.4.1 (HEAD): 1 modules kept
+                      upstream      port
+modules                      1         1
+units                        7         7
+units with a blocker         6         6
+port markers                 0         2
+unannotated function         6         6
+
+== ordered-set 4.1.0 (origin/claude/port-ordered-set): 1 modules kept
+                      upstream      port
+modules                      1         1
+units                       36        39
+units with a blocker        25        11
+port markers                 0        50
+dyn:isinstance              11         5
+decorator                    5         5
+percent_format               4         4
+dyn:set                      6         0
+star_params                  4         0
+unannotated method           4         0
+class_body_stmt              3         0
+dyn:map                      3         0
+try                          2         1
+dyn:hasattr                  1         1
+dyn:iter                     1         1
+none_default                 1         1
+starred                      2         0
+dictcomp                     1         0
+dyn:slice                    1         0
+dyn:type                     1         0
+import_other                 1         0
+inherit                      1         0
+
+== pyaes 1.6.1 (origin/claude/port-pyaes): 2 modules kept
+                      upstream      port
+modules                      2         2
+units                       38        38
+units with a blocker        37        33
+port markers                 0        36
+class_body_stmt             24        24
+unannotated method          21        18
+inherit                      7         7
+unannotated function         4         4
+import_other                 5         1
+none_default                 3         3
+dyn:property                 2         2
+lambda                       2         2
+nested_def                   3         0
+dyn:bytes                    2         0
+loop_else                    1         1
+dyn:isinstance               1         0
+try                          1         0
+
+== pyfiglet 1.0.4 (origin/claude/port-pyfiglet): 2 modules kept; only in the port: _fontdata.py
+                      upstream      port
+modules                      2         2
+units                       70        76
+units with a blocker        31        25
+port markers                 0        61
+bytes                       11         8
+raise_custom                 7         8
+inherit                      6         6
+percent_format               5         6
+import_other                 8         2
+with_nonfile                 5         5
+deco:classmethod             4         5
+str_format                   4         4
+class_body_stmt              4         2
+try                          3         3
+slice_step                   2         2
+star_params                  3         1
+none_default                 1         2
+star_call                    2         1
+unannotated method           3         0
+deco:property                2         0
+deco:staticmethod            1         1
+dyn:hasattr                  1         1
+dyn:map                      2         0
+dyn:type                     1         0
+nested_def                   1         0
+
+== pylev 1.4.0 (HEAD): 5 modules kept
+                      upstream      port
+modules                      5         5
+units                       10        10
+units with a blocker         6         6
+port markers                 0         8
+import_other                 4         7
+unannotated function         5         5
+none_default                 1         1
+
+== qrcode 8.2 (HEAD): 7 modules kept
+                      upstream      port
+modules                      7         7
+units                       85        84
+units with a blocker        65        45
+port markers                 0        85
+unannotated function        28        31
+unannotated method          23         0
+import_other                13         8
+lambda                       8         8
+bytes                       15         0
+none_default                 9         5
+inherit                      4         3
+star_params                  5         2
+dyn:isinstance               3         3
+percent_format               3         3
+dyn:iter                     4         1
+star_call                    3         2
+yield                        5         0
+decorator                    4         0
+raise_custom                 2         2
+starred                      2         2
+dyn:next                     3         0
+deco:property                2         0
+dyn:issubclass               2         0
+dyn:map                      2         0
+dyn:type                     1         1
+first_class_fn               2         0
+set                          2         0
+dyn:bytes                    1         0
+nested_def                   1         0
+
+== roman 5.2 (origin/claude/port-roman): 1 modules kept
+                      upstream      port
+modules                      1         1
+units                        9        10
+units with a blocker         7         7
+port markers                 0         7
+inherit                      4         4
+raise_custom                 4         4
+import_other                 2         1
+dyn:isinstance               1         1
+percent_format               1         1
+
+== sgp4 2.27 (origin/claude/port-sgp4): 9 modules kept
+                      upstream      port
+modules                      9         9
+units                       49        48
+units with a blocker        45        40
+port markers                 0        40
+unannotated function        25        26
+import_other                21        16
+unannotated method           8         3
+class_body_stmt              7         3
+percent_format               3         4
+starred                      5         1
+str_format                   5         0
+try                          3         2
+none_default                 2         2
+bytes                        2         0
+deco:classmethod             1         1
+deco:property                2         0
+dyn:isinstance               1         1
+first_class_fn               1         1
+star_params                  1         1
+del_name                     1         0
+inherit                      0         1
+
+== snowballstemmer 3.1.1 (origin/claude/port-snowballstemmer): 5 modules kept
+                      upstream      port
+modules                      5         5
+units                       67       115
+units with a blocker        45        26
+port markers                 0       123
+raise_custom                52        52
+try                         37        37
+class_body_stmt             33        33
+import_other                41         8
+unannotated method          20         0
+inherit                      8         6
+set                          5         0
+nested_def                   2         1
+none_default                 1         0
+percent_format               1         0
+
+== sortedcontainers 2.4.0 (origin/claude/port-sortedcontainers): 2 modules kept
+                      upstream      port
+modules                      2         2
+units                       73        86
+units with a blocker        67        42
+port markers                 0       102
+unannotated method          50        19
+class_body_stmt             25        10
+str_format                  21        11
+import_other                16         3
+none_default                10         9
+dyn:map                     16         2
+dyn:iter                    13         4
+first_class_fn               7         5
+percent_format               0         9
+try                          5         3
+dyn:slice                    4         3
+dyn:type                     4         3
+dyn:isinstance               3         2
+nested_def                   3         2
+unannotated function         2         2
+deco:property                2         1
+inherit                      2         1
+decorator                    2         0
+dyn:id                       1         1
+dyn:set                      1         1
+dyn:staticmethod             1         0
+
+== sqids 0.5.2 (origin/claude/port-sqids): 3 modules kept
+                      upstream      port
+modules                      3         3
+units                       12        12
+units with a blocker         7         3
+port markers                 0        16
+dyn:set                      7         0
+dyn:isinstance               2         2
+import_other                 2         2
+slice_step                   3         0
+set                          2         0
+dyn:tuple                    1         0
+
+== tomli-w 1.2.0 (origin/claude/port-tomli-w): 2 modules kept
+                      upstream      port
+modules                      2         2
+units                       15        15
+units with a blocker        10        11
+port markers                 0        29
+dyn:isinstance              10        14
+import_other                 7         5
+kwonly_marker                5         5
+unannotated function         0         7
+dyn:frozenset                5         0
+posonly_marker               2         2
+yield                        4         0
+dyn:type                     2         1
+try                          2         1
+bytes                        1         1
+dyn:format                   0         1
+dyn:hex                      1         0
+dyn:id                       1         0
+
+== wcwidth 0.9.2 (origin/claude/port-wcwidth): 13 modules kept
+                      upstream      port
+modules                     13        13
+units                       27        26
+units with a blocker        14         8
+port markers                 0        38
+import_other                47        26
+decorator                    5         0
+dyn:tuple                    3         2
+lambda                       3         1
+none_default                 2         2
+dyn:frozenset                3         0
+dyn:map                      1         1
+nested_comp                  2         0
+starred                      2         0
+try                          1         1
+first_class_fn               1         0
+inherit                      1         0
+star_params                  1         0
+
+== census blockers the 14 ports' edits removed: 430
+  127  29.5%  M2 classes
+  120  27.9%  M7 long tail
+   97  22.6%  M6 stdlib (import_other also counts a package's own relative imports)
+   58  13.5%  M3 functions as values
+   21   4.9%  M4 dynamic values
+    6   1.4%  M5 exceptions
+    1   0.2%  M1 runtime gaps

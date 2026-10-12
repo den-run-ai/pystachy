@@ -1,0 +1,463 @@
+[
+ {
+  "group": "hubs",
+  "probe": {
+   "hubs": [
+    {
+     "module": "re",
+     "candidates_using": 47,
+     "names_used": "Imported on the headline path by 45 candidates; 37 use it while importing. Names: compile 41 (at module level in 33), sub 16, VERBOSE 12, match 10, IGNORECASE 8, Pattern 8 (annotations only), search 8, escape 7, split 6, error 5, DOTALL 4, Match 4, MULTILINE 3, UNICODE 3. Methods called (number of candidates): group 29, match 32, search 20, sub 23 (17 pass a string replacement, 18 a lambda or a function), groups 12, finditer 8, groupdict 6, findall 6, fullmatch 4. Patterns: 281 of 417 calls pass a constant str pattern, and 277 of those are ASCII. Their features are almost all basic: classes, repeats, groups, anchors, alternation, \\d \\s \\w. Lookaround appears in 15 patterns, backreferences in 2, a conditional in 1.",
+     "approach": "(c) Write a Pystachy-native lib/re.py in today's subset: a typed pattern parser that compiles to a backtracking VM, plus Pattern and Match classes. Do not vendor CPython's re: its parse tree is dynamically typed and its _sre engine is C.",
+     "needs": [
+      "nothing new for the core: annotated classes, lists, recursion and Optional are enough (measured)",
+      "M1 variable-length homogeneous tuples, for Match.groups() and m.group(1, 2)",
+      "M3 for sub() with a function or lambda replacement",
+      "M7 for finditer (an iterator) and for bytes patterns (h11)",
+      "Unicode classes and case folding are limited by the UTF-8 byte-string str model"
+     ],
+     "effort": "M",
+     "measured": "Vendoring CPython's re: re/_constants.py:70 `_NamedIntConstant(int)` needs inheritance (M2), and `_makecodes` uses globals().update (M4). After regenerating those as plain int constants, re/_parser.py:20 uses frozenset (M7). The parse tree holds (opcode, arg) tuples whose arg type varies (M4), MAXWIDTH = 1 << 64 needs big ints, and re/__init__ needs enum.IntFlag and functools. Prototype work/hubs/proto_re/re.py (748 lines) compiles with today's ./pystachy. It matches CPython on 28 checks; the one difference is that groups() returns a list. Unmodified roman 5.2 runs with output identical to CPython under both JIT and AOT, with only an argparse stub for its CLI import. Benchmark (20k version matches plus 200 findall runs): 0.047 s AOT against 0.018 s for CPython's C _sre.",
+     "unblocks": [
+      "roman (headline call runs end to end)",
+      "docopt (import)",
+      "if the loader deferred stdlib imports, re alone removes the import gate for: h11, idna, inflect, jsonpointer, pycparser, pyfiglet, pypika, pystache, python-stdnum, qrcode, rfc3986, roman, webcolors",
+      "tomli, tomli-w, packaging, sqlparse, semver, isodate (re plus other features)"
+     ],
+     "priority": 1,
+     "next_blockers": "docopt: classes with unannotated methods (M2). webcolors: star arguments in calls. idna: a type mismatch on a 37-int tuple in its data tables. h11: bytes. pyphen and python-slugify: methods or functions used as values (M3). jsonpointer: object(). pystache: a global typed None by an optional-import fallback. tomli: the `Pos = int` alias (M1), frozenset (M7), a parse_float callable (M3). lark: imports re._parser and sre_constants.",
+     "notes": "re is the hub most often needed at import time, because constant re.compile calls run when a module loads. A lazy Pattern would make those imports compile with only an interface. Positions are byte offsets, which is consistent with Pystachy's str model and exact for ASCII."
+    },
+    {
+     "module": "collections",
+     "candidates_using": 31,
+     "names_used": "Imported on the headline path by 30 candidates; 10 use it while importing. hubs.txt's figure of 51 also counts collections.abc. Names: defaultdict 13 (factories: list 36 calls, set 17, int 16, float 5, dict 5, lambda 15), namedtuple 13 (at module level in 11; `class X(namedtuple(...))` at 8 sites), deque 9, Counter 6, OrderedDict 5. ABCs are used as bases (MutableMapping, Sequence, MutableSet, views) by 10 candidates: bidict, bottle, cachetools, heapdict, intervaltree, more-itertools, networkx, pygtrie, sortedcontainers, tinydb.",
+     "approach": "(c) Native support in pieces. Lower namedtuple with constant fields to the existing NamedTuple class, folding a `class X(namedtuple(...))` subclass's methods into it. Make defaultdict(list/int/float/dict/bool) a dict with a default factory, typed by its first use as `{}` already is. After M2, vendor deque, Counter and OrderedDict as classes, and add a subset collections.abc with the mixin methods. The package must coexist with Pystachy's builtin collections.abc.",
+     "needs": [
+      "M2 class templates, so namedtuple field types can come from instantiation, and deque can be generic",
+      "M2 inheritance, for dict subclasses (Counter, OrderedDict) and collections.abc mixin bases",
+      "M3 for lambda factories and Counter.most_common's key=",
+      "M7 for defaultdict(set)"
+     ],
+     "effort": "L",
+     "measured": "CPython has no pure-Python deque or defaultdict: both exist only in the C _collections module. With discovery stubs: collections/__init__.py:32 assigns `_sys.modules[...] = _collections_abc`, using a module as a value (M4). Lines 225 and 239 are OrderedDict class bodies that read base-class attributes when the class is created (M2). namedtuple uses exec, and OrderedDict uses _weakref.proxy. With interface stubs, two packaging conflicts showed up: cachetools gets \"'collections' is bound by two imports\" and tinydb gets \"cannot import name 'abc' from 'collections'\".",
+     "unblocks": [
+      "namedtuple or defaultdict run at import in: cachetools, lark, mercantile, networkx, packaging, peewee, pypng, segno, sgp4, tabulate",
+      "tinydb and cachetools need collections and collections.abc to coexist"
+     ],
+     "priority": 2,
+     "next_blockers": "cachetools: its caches subclass MutableMapping (M2) and its decorators are closures (M3). mercantile: the sys.version_info branch (M1). pypng: struct and bytes. tabulate and texttable: an optional import of the wcwidth C accelerator."
+    },
+    {
+     "module": "functools",
+     "candidates_using": 33,
+     "names_used": "Imported on the headline path by 31 candidates; 7 call it while importing. Names: wraps 17 (only inside decorators), partial 15, reduce 13, lru_cache 10 (a module-level decorator in 9), cached_property 4, total_ordering 4, update_wrapper 3, cache 2.",
+     "approach": "(c) Native recognition of @lru_cache and @cache (memoize on the argument tuple), @total_ordering (generate the missing comparison methods) and @cached_property (after @property). (d) A loader rule that treats a stdlib decorator as free of side effects, so the decorated def or class is an error only where used. After M3, vendor CPython's functools.py with the 7 edits measured, for reduce, partial and wraps.",
+     "needs": [
+      "M3 for reduce, partial and wraps (functions as values, closures)",
+      "M2 for cached_property, and for lru_cache on methods (self as a dict key)"
+     ],
+     "effort": "S",
+     "measured": "With stubs for abc, collections, reprlib and _thread, functools.py imports after 7 edits: line 24 `type(list[int])` (M4); line 175, a dict of functions (M3); three object() sentinels (M4); @recursive_repr() applied when the class is created; and namedtuple rewritten as a NamedTuple class. After that, `functools.reduce(add, ...)` fails with \"function 'add' cannot be used as a value\". Without the deferral rule, termcolor's import stops at \"unsupported decorator @cache\"; with it, termcolor imports.",
+     "unblocks": [
+      "termcolor (import)",
+      "hsluv (gate)",
+      "decorators deferred for: base58, prettytable, tomli, mercantile, more-itertools, packaging, pyparsing, python-ulid, humanize, cachetools"
+     ],
+     "priority": 2,
+     "next_blockers": "termcolor's headline call: a `%` format whose string is not a constant. hsluv: a function used as a value at import (M3). Calls to partial at import (bottle, mpmath, segno, tabulate, toolz) need M3."
+    },
+    {
+     "module": "warnings",
+     "candidates_using": 31,
+     "names_used": "Imported on the headline path by 25 candidates; 2 call it at import. Names: warn 30 (125 calls). Categories: DeprecationWarning 61, the default UserWarning 23, package-specific subclasses 20, UserWarning 9, RuntimeWarning 6. stacklevel=2 in 46 calls, stacklevel=3 in 11. Also catch_warnings 3, simplefilter 3, warn_explicit 2.",
+     "approach": "(c) A compiler intrinsic, the way print is: take the category statically, apply CPython's default filters, and print `file:line: Category: message` to stderr once per location. Reject simplefilter(\"error\") and catch_warnings(record=True). Approximate stacklevel greater than 1, and document it (stderr is outside the contract).",
+     "needs": [
+      "exception classes as values (M2/M4); the intrinsic avoids needing them",
+      "the call site's location, which the compiler knows"
+     ],
+     "effort": "XS",
+     "measured": "Vendoring warnings.py blocks at line 653 (sys.version_info used as a default), line 724 (sys.warnoptions), a def inside the _warnings except block, and line 718, where filters holds category classes and regexes. A subset lib/warnings.py fails on the call itself: `warnings.warn('rt', RuntimeWarning)` gives \"the builtin 'UserWarning' cannot be used as a value\".",
+     "unblocks": [
+      "the import gate only: hashids, idna, mercantile, intervaltree, pygtrie, ply, markupsafe, and others",
+      "warnings is rarely on a headline path"
+     ],
+     "priority": 2,
+     "next_blockers": "hashids: the name basestring (py2, M1). mercantile: sys.version_info (M1). pygtrie: unrepresentable annotations (M1)."
+    },
+    {
+     "module": "itertools",
+     "candidates_using": 29,
+     "names_used": "Imported on the headline path by 27 candidates; 2 use it at import (num2words calls product, networkx uses chain). Names: chain 21 (plus chain.from_iterable), islice 10, zip_longest 8, product 7, repeat 6, tee 5, filterfalse 4, groupby 4; count, cycle, permutations, starmap and takewhile 3 each; py2's imap and izip 2.",
+     "approach": "Wait for M7 (the iterator protocol and generators) and M2 (generic classes), then vendor the pure equivalents from the docs, which then need little change. Until then the only option is lowering consumer contexts, as generator expressions are lowered today.",
+     "needs": [
+      "M7 iterator protocol / generators",
+      "M2 class templates (generic iterator classes)"
+     ],
+     "effort": "L",
+     "measured": "itertools is a C-only module. A monomorphic chain written as an iterator class (__iter__ returns self, __next__ is defined) is rejected today: \"an iterator class is not supported\". Of about 470 calls, 82 iterate in a for loop or comprehension, 31 are consumed by list(), 10 by set(), 8 by .extend(), 6 by tuple() and 5 by .join(). The other 300 or so are assigned, returned or passed on, so consumer lowering covers about a third.",
+     "unblocks": [
+      "ordered-set (gate)",
+      "num2words (gate)",
+      "more-itertools, toolz and networkx would need much more"
+     ],
+     "priority": 4,
+     "next_blockers": "ordered-set: slice(None) (M4), plus inheritance from MutableSet and Sequence (M2). num2words: the name basestring (M1)."
+    },
+    {
+     "module": "datetime",
+     "candidates_using": 20,
+     "names_used": "Imported on the headline path by 15 candidates; 7 use it at import (astral, bottle, croniter, isodate, msgpack, peewee, python-dateutil). Names: datetime 19 (80 annotations, 36 isinstance, 24 calls), date 12, timedelta 11, timezone 8, time 7, tzinfo 7 (subclassed at 8 sites), MAXYEAR 1.",
+     "approach": "(b) Vendor CPython's _pydatetime.py once M2 lands, with a few edits, and add time.localtime, gmtime and strftime to the runtime. A native implementation (c) would duplicate a large API.",
+     "needs": [
+      "M2: unannotated methods as templates, __new__, inheritance (datetime(date), timezone(tzinfo), tzinfo subclasses), @property, class attributes assigned after the class, runtime isinstance over the date/datetime hierarchy",
+      "runtime: time.localtime, gmtime, strftime"
+     ],
+     "effort": "M",
+     "measured": "_pydatetime.py:907 `timedelta.min = timedelta(-999999999)` needs the class, but timedelta.__new__ has unannotated parameters. The classes timedelta, date, time, datetime and timezone have 29, 32, 28, 45 and 13 methods; 15, 17, 15, 22 and 7 of those have unannotated parameters. All use __slots__ and have 3 to 6 properties. The datetime.py shim fails on `from _pydatetime import __doc__`.",
+     "unblocks": [
+      "with deferred stdlib imports, datetime removes the remaining import gate for astral and msgpack",
+      "needed at import by isodate, croniter, bottle, peewee, python-dateutil",
+      "used inside functions by tomli, tomli-w, hijridate"
+     ],
+     "priority": 3,
+     "next_blockers": "isodate: `class Utc(tzinfo)`, instantiated at import (M2). astral: dataclasses.field. hijridate: annotations (M1). croniter: python-dateutil, which needs six. msgpack: the optional __pypy__ import."
+    },
+    {
+     "module": "copy",
+     "candidates_using": 18,
+     "names_used": "Imported on the headline path by 17 candidates; 1 uses it at import (croniter calls deepcopy). Names: copy 10 (copy.copy(self) on objects, copy of lists), deepcopy 10 (dicts, lists, objects). addict, lark and pygtrie define __deepcopy__(self, memo).",
+     "approach": "(c) Native and type-directed: copy.copy(x) generated for the static type (a list or dict copy, a field-by-field object copy, honouring __copy__). deepcopy recursive, with an identity memo in the runtime, and __deepcopy__ given an opaque memo.",
+     "needs": [
+      "compiler and runtime only (an identity map for deepcopy)",
+      "M2 for copies of subclass instances"
+     ],
+     "effort": "S",
+     "measured": "copy.py imports types, weakref and copyreg; copyreg.py:31 uses `complex` as a value. With stubs, copy.py:101 builds dispatch dicts keyed by types, with functions as values (M3+M4). Vendoring would be XL.",
+     "unblocks": [
+      "addict (import)",
+      "pygtrie, jsonpointer, croniter, intervaltree, pyaes (gates)"
+     ],
+     "priority": 3,
+     "next_blockers": "addict's headline call: Dict subclasses dict (M2). jsonpointer: object(). pyaes: range used as a value, and bytes. pygtrie: an @overload default that is not a constant."
+    },
+    {
+     "module": "enum",
+     "candidates_using": 16,
+     "names_used": "Imported on the headline path by 16 candidates; 8 use Enum classes at import. Names: Enum 15 (32 bases), auto 4 (34 calls), IntEnum 3, IntFlag 1. The 42 Enum classes are simple. By member type: int 17, str 12, auto() 7, int with computed members 3, other 3. They define 9 methods in all. Mixins: (str, Enum) and (float, Enum) in haversine.",
+     "approach": "(c) Native compiler support, like NamedTuple: members are singletons with name and value (one value type per class). Support E(value), E['NAME'], iteration, len, CPython's repr and str, identity ==, hashing, IntEnum and IntFlag arithmetic, and auto().",
+     "needs": [
+      "compiler support (not general inheritance)",
+      "M2 only for Enum classes with methods that use super()"
+     ],
+     "effort": "M",
+     "measured": "enum.py imports partial, MappingProxyType and DynamicClassAttribute. With stubs for those it fails at line 173 (_not_given is bound both as a class and as a variable). It relies on the EnumType metaclass, __prepare__ and globals(). Vendoring would be XL. With interface stubs, haversine and json5 fail where they use the Enum subclass at import (\"class inheritance is not supported\"), and bidict fails on \"Enum() takes no arguments\".",
+     "unblocks": [
+      "haversine, json5, uritemplate, bidict (their next import blocker)",
+      "prettytable, pycparser, pypika, astral, humanize, chess, packaging, pyparsing, wcwidth (gate)"
+     ],
+     "priority": 2,
+     "next_blockers": "haversine: closures built at import (M3). json5: argparse and a CLI. uritemplate: Operator methods with annotations (M1). bidict: sys.version_info and views (M1, M2)."
+    },
+    {
+     "module": "abc",
+     "candidates_using": 12,
+     "names_used": "Imported on the headline path by 10 candidates. abstractmethod 10 (70 decorator uses), ABC 8 (16 bases), ABCMeta 4 (as a metaclass, and once as a base). All 10 headline users use abc only in these forms.",
+     "approach": "(d) A fold: drop an ABC base and metaclass=ABCMeta, and make @abstractmethod a marker; instantiating a class that still has abstract methods is rejected at compile time.",
+     "needs": [
+      "nothing for the fold",
+      "M2 for the subclasses that implement the abstract methods"
+     ],
+     "effort": "XS",
+     "measured": "With _weakrefset and types stubs, _py_abc imports. CPython's abc.py:90 then sets `ABCMeta.__module__ = 'abc'` on `class ABCMeta(type)`, a metaclass, so vendoring is XL. A test class deriving from abc.ABC is rejected (\"class inheritance is not supported\"). typing_only.py classifies all 10 users as foldable.",
+     "unblocks": [
+      "no candidate on its own: every abc user has another gate",
+      "removes one gate from: h11, lark, pyparsing, qrcode, tinydb, python-ulid, packaging, bidict, pyrsistent, networkx"
+     ],
+     "priority": 1,
+     "next_blockers": "h11: re and bytes. tinydb: the collections package. qrcode: PIL (an optional import). For all of them, the subclasses need M2."
+    },
+    {
+     "module": "numbers",
+     "candidates_using": 6,
+     "names_used": "Imported on the headline path by 6. Number 4 (isinstance and annotations), Integral 2 (isinstance), Rational 1 (isinstance), Real.register and Complex.register in mpmath.",
+     "approach": "(d) A fold: decide isinstance(x, numbers.X) from the static type, drop .register(), and treat the names as typing names in annotations.",
+     "needs": [
+      "nothing new"
+     ],
+     "effort": "XS",
+     "measured": "numbers.py needs abc's metaclass, which fails at abc.py:90. typing_only.py classifies all 6 users as foldable.",
+     "unblocks": [
+      "no candidate on its own",
+      "removes one gate from: inflect, intervaltree, jmespath, mpmath, networkx, pyrsistent"
+     ],
+     "priority": 1,
+     "next_blockers": "intervaltree: collections, copy, warnings, and sortedcontainers' py2 branch. jmespath: str used as a value (M3/M4)."
+    },
+    {
+     "module": "types",
+     "candidates_using": 17,
+     "names_used": "Imported on the headline path by 15; 7 use it at import. Names: ModuleType 7, FunctionType 4, MappingProxyType 3 (called at import by tomli, tomli-w and bidict), MethodType 3, FrameType 2, GeneratorType 2, GenericAlias 1, and py2's StringType and UnicodeType (ply).",
+     "approach": "(d) A builtin stub module: the names exist for annotations and statically decided isinstance, and MappingProxyType(d) returns the mapping itself. Reads are identical; a write through it, which is a TypeError in CPython, is rejected statically.",
+     "needs": [
+      "nothing for the stub",
+      "M3/M4 for FunctionType and MethodType used as values (ply, pyparsing, toolz)"
+     ],
+     "effort": "XS",
+     "measured": "types.py:41 binds _c both as a variable and as a function, and the module computes type(_f.__code__) and other runtime types, so it cannot be vendored. Only 2 of 15 users are pure folds. With a MappingProxyType shim, tomli-w passes its gate.",
+     "unblocks": [
+      "tomli-w (gate)",
+      "tomli (together with re)",
+      "bidict"
+     ],
+     "priority": 1,
+     "next_blockers": "tomli-w: a generator expression outside a consumer at import (M7). tomli: the `Pos = int` alias (M1), then frozenset (M7). ply: a feature test (try/except AttributeError)."
+    },
+    {
+     "module": "contextlib",
+     "candidates_using": 14,
+     "names_used": "Imported on the headline path by 12 (11 not inside an optional import). contextmanager 7 (a module-level decorator in colorama, packaging, peewee, pyparsing, segno, sqlparse), suppress 6 (a call at import only in bidict), ExitStack 1, nullcontext 1.",
+     "approach": "Lower `with suppress(E): body` to try/except at compile time, and defer @contextmanager at import under the stdlib-decorator rule. A real contextmanager needs generators and with on objects.",
+     "needs": [
+      "M7 generators and with on objects, for contextmanager and ExitStack",
+      "compiler support for the suppress lowering"
+     ],
+     "effort": "S",
+     "measured": "contextlib.py imports _collections_abc and abc (metaclasses) and needs generators. With interface stubs, @contextmanager on a module-level function blocks import exactly as termcolor's @cache did.",
+     "unblocks": [
+      "the decorator gate for: colorama, packaging, peewee, pyparsing, segno, sqlparse",
+      "bidict (suppress at import)"
+     ],
+     "priority": 3,
+     "next_blockers": "colorama: Windows ctypes branches (`name 'wintypes' may be unbound`). sqlparse: inheritance at import (M2). segno: bytes."
+    },
+    {
+     "module": "io",
+     "candidates_using": 14,
+     "names_used": "Imported on the headline path by 10; none use it at import. BytesIO 7, StringIO 4, TextIOWrapper 2. IOBase, TextIOBase and BufferedReader are used only in isinstance checks.",
+     "approach": "(c) A native StringIO: a memory-backed variant of Pystachy's existing file type, with write, read, getvalue, seek and readline. BytesIO only after bytes.",
+     "needs": [
+      "runtime work for StringIO",
+      "M7 bytes for BytesIO"
+     ],
+     "effort": "S",
+     "measured": "io.py imports the C _io module. _pyio.py needs abc metaclasses, codecs, bytes and inheritance, so vendoring is XL. io never runs at import in these candidates.",
+     "unblocks": [
+      "prettytable, pyparsing, python-dateutil, networkx (StringIO, inside functions)"
+     ],
+     "priority": 4,
+     "next_blockers": "For the BytesIO users (cbor2, msgpack, pypng, segno, bottle), bytes."
+    },
+    {
+     "module": "struct",
+     "candidates_using": 10,
+     "names_used": "Imported on the headline path by 8; 1 uses it at import (pypng calls pack). unpack 7, pack 5, calcsize 3, error 3, Struct 1, unpack_from 1.",
+     "approach": "(c) Native pack and unpack over the format mini-language, once bytes exists.",
+     "needs": [
+      "M7 bytes"
+     ],
+     "effort": "M",
+     "measured": "struct.py:13 imports the C _struct module. Every use produces or consumes bytes.",
+     "unblocks": [
+      "pypng, msgpack, pyaes, segno, peewee, python-dateutil, packaging (after bytes)"
+     ],
+     "priority": 5,
+     "next_blockers": "In all of them, the bytes literals and binary files around the struct calls."
+    },
+    {
+     "module": "string",
+     "candidates_using": 8,
+     "names_used": "Imported on the headline path by 7; 2 use it at import (jmespath and uritemplate read constants). ascii_letters 3, digits 2, hexdigits 1, ascii_uppercase 1, Formatter 1 (subclassed by markupsafe), Template 1 (pycparser, in a function).",
+     "approach": "(b) Vendor CPython's string.py with 5 edits. Its constants and capwords then match CPython.",
+     "needs": [
+      "M1: str.split(sep) where sep is a None template parameter",
+      "M3 for capwords' map(str.capitalize, ...)",
+      "re and M2 (__init_subclass__) for Template",
+      "M4 and the C _string module for Formatter"
+     ],
+     "effort": "XS",
+     "measured": "cpy_string/string.py, 5 edits, each marked `# Pystachy port:`: drop `import _string`; drop `import re` and ChainMap; drop the module-level `Template.__init_subclass__()` call; set Template.flags to 2 in place of re.IGNORECASE; in capwords, replace map() and add a None branch. drv/s1.py (all constants plus capwords) prints exactly what CPython prints under the JIT.",
+     "unblocks": [
+      "markupsafe (import)",
+      "jmespath, uritemplate, webcolors (with re), pycparser (gate)"
+     ],
+     "priority": 1,
+     "next_blockers": "markupsafe's headline: escape() calls type(str) and `class Markup(str)` (M2). jmespath: str used as a value. uritemplate: annotations (M1), then an Enum."
+    },
+    {
+     "module": "unicodedata",
+     "candidates_using": 8,
+     "names_used": "Imported on the headline path by 8; none use it at import. normalize 5, category 3, combining 2, bidirectional 1, east_asian_width 1, lookup 1, name 1.",
+     "approach": "(c) Range tables generated at build time from CPython's data, looked up with bisect, written in the subset or in C. normalize also needs decomposition and composition tables, canonical ordering and Hangul.",
+     "needs": [
+      "only tables and code",
+      "code-point iteration helpers: a Pystachy str iterates bytes"
+     ],
+     "effort": "M",
+     "measured": "unicodedata is a C-only module. Iterating a str yields bytes: for 'é€', Pystachy gives 195, 169, ... where CPython gives 233, 8364. This is a documented deviation, and it limits per-character use on non-ASCII text in idna, slugify and texttable.",
+     "unblocks": [
+      "json5, texttable, idna (gate)",
+      "mnemonic, python-slugify (headline paths)"
+     ],
+     "priority": 4,
+     "next_blockers": "idna: its data-table tuple type. mnemonic: __file__ (to read its wordlist) and hashlib. texttable: the optional cjkwrap import whose handler re-raises. python-slugify: functions used as values (M3)."
+    },
+    {
+     "module": "json",
+     "candidates_using": 14,
+     "names_used": "Imported on the headline path by only 5; 1 uses it at import (bottle). dumps 8, loads 8, load 4, dump 3, JSONEncoder 1. It is mostly used in CLIs and serialization helpers.",
+     "approach": "(c) A native dumps generated for each static type, matching CPython's formatting (separators, float repr, ensure_ascii escapes, indent, sort_keys). loads needs dynamic values, or a typed target taken from context, which would be a Pystachy-specific design.",
+     "needs": [
+      "M4 for loads, which returns dynamic values",
+      "the compiler for the type-directed dumps"
+     ],
+     "effort": "M",
+     "measured": "json/__init__.py imports codecs. With a stub for it, json/scanner.py:73 `make_scanner = c_make_scanner or py_make_scanner` fails (a function as a value, M3). The scanner is a closure, the encoder uses generators (M7), and the decoder uses re.",
+     "unblocks": [
+      "peripheral (CLIs) in jmespath, tinydb, mercantile, prettytable"
+     ],
+     "priority": 3,
+     "next_blockers": "tinydb: the collections package and M2. jmespath: str used as a value."
+    },
+    {
+     "module": "textwrap",
+     "candidates_using": 8,
+     "names_used": "Imported on the headline path by 4. dedent 4, TextWrapper 2 (subclassed by tabulate and wcwidth), wrap 2, indent 2.",
+     "approach": "(b) Vendor CPython's textwrap.py once re and M2 exist.",
+     "needs": [
+      "re",
+      "M2: a class body with statements, class attributes",
+      "M1 dict.fromkeys",
+      "M7 str.translate",
+      "`%(name)s` formatting"
+     ],
+     "effort": "S",
+     "measured": "textwrap.py:66: TextWrapper's class body holds statements (dict.fromkeys, a for loop, re.compile with `%`-dict formatting). The error names dict.fromkeys.",
+     "unblocks": [
+      "texttable, segno, sortedcontainers (dedent), tabulate and wcwidth (TextWrapper bases, which also need M2)"
+     ],
+     "priority": 4,
+     "next_blockers": "tabulate and wcwidth: wcwidth's optional C-accelerator import, then inheritance from TextWrapper."
+    }
+   ],
+   "best_set": "The single hub with the largest jump is re. 45 candidates import it on their headline path. 37 call it while importing (constant re.compile), more than all the other hubs: collections 10, types 7, functools 7, datetime 7, enum 6. It is also the only hub whose absence blocks a headline call that otherwise compiles: roman.\n\nA Pystachy-native re is feasible today. The prototype at work/hubs/proto_re/re.py is 748 lines and compiles with ./pystachy. It matches CPython on 28 checks; the one difference is that groups() returns a list. Unmodified roman 5.2 prints exactly what CPython prints under both JIT and AOT, needing only an argparse stub.\n\nThe smallest set I would recommend:\n- re, as a subset lib/re.py.\n- string, CPython's string.py with the 5 edits measured.\n- XS folds for the typing machinery: abc, numbers, and types.MappingProxyType.\n- An M1-style loader rule: an unavailable stdlib import, or a stdlib decorator or base class, becomes an error only where it is used. The loader already does this for defs and classes it cannot compile.\n\nEvidence, by the import-gate model (gates.json, lazy_gates.json):\n- Today 10 of 91 candidates have no stdlib import gate. Providing all 18 hubs frees 31 more. No single hub frees more than 2, and the best triple (re + functools + enum) frees 6.\n- With the deferral rule, 36 candidates are gate-free. re alone then frees 13 more: h11, idna, inflect, jsonpointer, pycparser, pyfiglet, pypika, pystache, python-stdnum, qrcode, rfc3986, roman, webcolors. re + datetime + types frees 19, and all 18 hubs free 32.\n\nCompiling for real with interface stubs (imports_*.json, iterate_*.json) shows that hubs are necessary but not sufficient:\n- `import <headline modules>` compiles for 4 of 91 today and 8 with the 18 hub stubs plus simulated M1 and a native @cache. The four added are addict (copy), docopt (re), markupsafe (string) and termcolor (functools). With every stdlib module stubbed, 10 compile.\n- Headline calls compile for 1 of 53 drivers today (jdcal) and 2 with everything stubbed (jdcal and roman).\n- After the hubs, the first blockers are: optional C accelerators or third-party imports 16, M1 annotations and typing 9, M3 functions as values 8, py2 names and feature tests 6, bytes 4, Enum subclasses used at import 4, other inheritance at import 4.\n\nSo the real jump comes from re and the loader rule together with M1, then M2. Enum (M) and namedtuple lowering are the next hub-specific steps.",
+   "typing_only_quick_win": "Yes, but on its own it is small. The broader M1-style version of it is large.\n\nMeasured with typing_only.py on the headline modules:\n- abc: all 10 users use only ABC bases, metaclass=ABCMeta and @abstractmethod. These fold: drop the base and the metaclass, make @abstractmethod a marker, and reject instantiating an abstract class.\n- numbers: all 6 users fold. isinstance(x, numbers.Number or Integral) is decided by the static type, and Real/Complex.register is dropped.\n- types: 2 of 15 users are pure folds (ModuleType in annotations or isinstance). A one-line MappingProxyType(d) that returns d covers 3 more: tomli, tomli-w and bidict, which call it at import.\n- collections.abc is already builtin as typing names, except where it is used as a base with mixin methods (10 candidates); that needs M2.\n- contextlib does not fold: @contextmanager needs generators. `with suppress(E)` can be lowered to try/except.\n- enum does not fold: Enum classes need native support.\n\nFolding abc, numbers and types removes no candidate's last gate, because every candidate has another one (h11 still needs re, tinydb the collections package, and so on).\n\nThe quick win that pays is the generalisation, a loader rule: an import of an unavailable stdlib module, and a decorator or base class that comes from the stdlib, are errors only where used. The loader already does this for defs and classes it cannot compile, and stdlib imports have no visible side effects. That alone takes gate-free candidates from 10 to 36, and it removes the import-time @cache, @lru_cache, @contextmanager, @total_ordering, @cached_property and ABC failures. With interface stubs, it is what lets termcolor import.",
+   "notes": "All files are under <scratch>/work/hubs/. The write-up is NOTES.md in that directory; it has the commands, the measurements, and a check of the external analysis' hub claims. The repo is unchanged (`git status` is clean).\n\nMethod:\n- usage.json comes from an ast scan of non-test files with use kinds and contexts.\n- gates.json and lazy_gates.json hold the import gates per candidate.\n- Interface and placeholder stubs (stubs_hand/, stubs_gen/) bind names only. They are for measurement and implement nothing.\n- disc/pystachy-disc is pystachy.py rebuilt natively with only the CBUILTIN list emptied, so that .py stubs can stand in for C modules.\n- iterate.py and iterate_head.py patch scratch copies (sim/, simh/) to simulate M1 (lenient annotations, version folding, typing aliases) and natively provided stdlib decorators. They stop at the first other blocker.\n- Copies of CPython's modules, with each edit marked `# Pystachy port:`, are in cpy_string/, cpy_warnings/, cpy_functools/, cpy/collections/, cpy_re2/, cpy_dt/, cpy_enum/, cpy_copy/, cpy_json/, cpy_tw/ and cpy_misc/.\n\nOther findings:\n1. hubs.txt's figure of 51 for collections includes collections.abc; only 31 candidates import collections itself.\n2. Iterator classes (__next__) are rejected today, so itertools must wait for M7 plus M2.\n3. Exception classes cannot be passed as values, so even a minimal subset warnings.warn(msg, Category) is impossible; it needs a compiler intrinsic.\n4. A None-valued template parameter passed to str.split is rejected. This is a small M1-size fix that string.capwords needs.\n5. Iterating a str yields bytes, which limits unicodedata and Unicode regex classes on non-ASCII text.\n6. A native collections package must coexist with the builtin collections.abc. cachetools and tinydb hit this with stubs.\n7. CPython has no pure-Python deque or defaultdict.\n\nExternal analysis, checked:\n- ordered-set's \"only itertools and typing\" is true of its imports, but for Pystachy it is blocked by slice(None) (M4), annotations (M1) and inheritance from MutableSet and Sequence (M2).\n- h11 needs re at import, and also bytes and bytes regexes (M7).\n- tomli's list (re, datetime, functools, types) is accurate. For Pystachy, re and MappingProxyType run at import; then the `Pos = int` alias (M1), frozenset (M7) and callables (M3) block it.\n- For parsy, a module-level lambda (M3) blocks it before any hub matters."
+  },
+  "verify": {
+   "corrections": [
+    {
+     "module": "re",
+     "correction": "The name counts hold. My grep and AST pass give 46-48 candidates, compile 40-43, sub 16-19, VERBOSE 12, Pattern 8, 281 constant str patterns of which 277 are ASCII, and 15 lookaround patterns. Roman holds: unmodified roman 5.2 plus the prototype gives output byte-identical to CPython under JIT and AOT on a harder driver (1..3999 round trip plus 37 bad inputs). The benchmark holds: about 0.043 s AOT against 0.017 s for CPython.\n\nWRONG: 'sub: 18 candidates pass a lambda or a function'. By AST it is 10: lambda 6, a function defined in the file 5, a method 1. Even counting every unresolved name as a callable, it is at most 13.\n\nUNDERSTATED, 'nothing new for the core'. I ran a differential test of the prototype against CPython on 268 real constant (pattern, flags) pairs taken from the candidates (verify/m2_re):\n- 248 are identical.\n- 16 raise re.error at run time. Causes: lookaround (7 candidates), a backreference, a conditional, and \\x escapes (wcwidth).\n- 4 SILENTLY DIFFER. Three are \\x1c/  inside classes (packaging metadata, pyfiglet, wcwidth); one is {,30} (python-stdnum).\nThat breaks the contract. Constant patterns must be validated at compile time, and unsupported syntax must be an error.\n\nNeeds the claims do not list:\n- possessive quantifiers: packaging.version (rank 2) selects the `*+`/`?+` VERSION_PATTERN on 3.13\n- re.Pattern[str] / re.Match[str] accepted as annotations: pycparser stops on it\n- Match.lastgroup (pycparser)\n- re as a package exposing _parser/_constants/sre_parse (lark)\n- UTF-8-aware classes such as idna's `[.。．｡]`\n- a bound method as a value, `pat.sub` (pyphen, M3)\n\nEffort M is right for an import-time subset; full fidelity is L."
+    },
+    {
+     "module": "collections",
+     "correction": "The counts hold: 31-32 candidates; namedtuple 13-14, defaultdict 13, deque 9, Counter 6, OrderedDict 5. There are 8 `class X(namedtuple(...))` sites (in intervaltree, mercantile, msgpack, peewee, rfc3986) and 12 module-level namedtuple users (the claim says 11).\n\nWRONG: the defaultdict factory figures. lambda is 24 calls, not 15. networkx makes 72 of the 108 calls. Per candidate: list 7, lambda 6, int 5, set 3, dict 3. So 'M7 for defaultdict(set)' affects only inflect, lark and networkx.\n\nThe loader conflict is STRONGER than stated. Even a collections/ package with its own abc.py still gets \"'collections' is bound by two imports\" (cachetools), because the builtin collections.abc always wins. A hub needs a loader change that makes collections.abc a submodule of the real package.\n\nL overall is fine. The import-time subset (namedtuple lowering, defaultdict of builtin factories, the loader fix) is M."
+    },
+    {
+     "module": "functools",
+     "correction": "The counts hold exactly: 33 candidates; wraps 17, partial 15, reduce 13, lru_cache 10, total_ordering 4, cached_property 4, update_wrapper 3, cache 2. 11 candidates use @lru_cache/@cache as a module-level decorator.\n\nRe-measured:\n- `reduce(add, ...)` gives \"function 'add' cannot be used as a value\".\n- termcolor's @cache blocks import even with an identity-function stub.\n- With a simulated native @cache, termcolor imports. Its headline call then needs M1 annotations, then hits `fmt_str % (...)` with a non-literal format (\"unsupported operand %: str and tuple\").\n\ntomli also needs a native @lru_cache at import. S for the native-decorator subset is fair; everything else needs M3."
+    },
+    {
+     "module": "warnings",
+     "correction": "The counts hold. I find 121-128 warn calls, DeprecationWarning 58, the default category 26, and stacklevel=2 in 46 calls.\n\nPARTLY WRONG: 'a subset lib/warnings.py fails on the call itself'. `def warn(message, category=None, stacklevel=1)` compiles and runs today for calls with no category, about 21% of calls. Only calls that pass a category fail: \"the builtin 'RuntimeWarning' cannot be used as a value\", and a user Warning subclass also fails (\"class 'MyWarning' cannot be used as a value\").\n\nMISSING: warnings.deprecated (3.13). packaging.version (rank 2) imports it and applies it as a decorator to Version methods; a warn() intrinsic does not cover that.\n\nEffort is S rather than XS. Under stacklevel=2, whether a DeprecationWarning shows depends on the caller's module, which is not static. Add catch_warnings/simplefilter (3 candidates) and the deprecated decorator."
+    },
+    {
+     "module": "itertools",
+     "correction": "The counts hold: 29 candidates; chain 21, islice 10, zip_longest 8, product 7, repeat 6, tee 5. About 30% of calls sit in consumer contexts (my grep: 170 of 562). The iterator-class rejection reproduces.\n\nTOO PESSIMISTIC: 'only consumer lowering until M7+M2'. An eager, list-returning subset written as templates compiles today and matches CPython in consumer contexts: chain(*its) per arity, islice, zip_longest(fillvalue=), product (verify/m7_itertools). Three conditions:\n- the loader must allow a .py for a CBUILTIN module, since today that needs the discovery compiler\n- a consume-once check: a second pass over a real iterator yields nothing, an eager list does not, so without the check the output differs silently\n- count, cycle and an unbounded repeat must be rejected\n\nS-M for a finite subset, against the L claimed."
+    },
+    {
+     "module": "datetime",
+     "correction": "The line references hold (_pydatetime.py:907). Effort M 'after M2' is optimistic. The surface is 5 classes with about 150 methods, plus __new__, __slots__, properties, inheritance, pickling and the strftime mini-language. L is more realistic. tomli uses datetime only inside functions: a names-only stub is enough for its import."
+    },
+    {
+     "module": "enum",
+     "correction": "The approach is fine, but 're alone frees pycparser' is refuted at the compile level. pycparser 3.11 types a dataclass field and module-level annotations with an Enum class and builds instances at import. With an Enum stub base, `_RegexRule` is rejected (\"class _RegexAction is not supported: class inheritance\"). A native Enum must be a first-class type, usable in annotations and dataclass fields. M is fair."
+    },
+    {
+     "module": "string",
+     "correction": "Confirmed. The 5-edit vendored string.py (6 '# Pystachy port:' markers) prints exactly what CPython prints for every constant and for capwords on ASCII input. capwords on non-ASCII input differs ('ünïcode' is not capitalized), which is the documented UTF-8 deviation. The rejection of a None template parameter in str.split reproduces (\"expected str, got None\")."
+    },
+    {
+     "module": "abc/numbers/types",
+     "correction": "The fold is fine, and it frees nothing on its own. Concrete subclasses inherit from the abstract class (h11 Event, then Request), so they still need M2. types.MappingProxyType returning the dict worked for tomli's import."
+    },
+    {
+     "module": "sets (missing from the hub list)",
+     "correction": "29 candidates build a set or frozenset at import, at module level or in a class body. They include five of the top seven: packaging (#2), idna (#4), pycparser (#19), jmespath (#42), tomli (#107); wcwidth (#118) uses them too. Sets are the next import blocker after M1 for packaging.version, tomli and idna. When I simulated frozensets of characters as str in tomli, its import compiled. The import then ran for real with the prototype re. Membership-only frozensets of constants deserve hub-level priority."
+    },
+    {
+     "module": "M1 items the hub assessment missed",
+     "correction": "Each of these was measured on a real import path:\n- `*args: Any` or `*args: object` is a HARD import error even under `from __future__ import annotations`, where other unsupported annotations are deferred to the point of use. 16 candidates have non-scalar star-parameter annotations (textdistance 71, pypika 48, packaging 4, ...).\n- A module's own `TYPE_CHECKING = False` / `if TYPE_CHECKING:` is not dropped (tomli).\n- Version folding must also drop dead branches: packaging's else-branch `def` is rejected even when the test is folded.\n- `@dataclass(frozen=True)` is rejected; 7 candidates use it (chess, h11, lark, more-itertools, packaging, pycparser, wcwidth).\n- A builtin class aliased as a value, `string_type = str` (jmespath).\n- Dicts of variable-length tuples (idna, jmespath)."
+    },
+    {
+     "module": "external-analysis (hub claims)",
+     "correction": "- h11 'mostly re, typing, ABCs': for Pystachy the walls are `str.format(**globals())` at import (M7 + M4), then bytes regex patterns (M7).\n- cachetools 'key module needs no imports': true, but keys.py subclasses tuple and uses the class as a value at import (M2), and the package hits the collections/collections.abc conflict.\n- tomli's import list is accurate. It also needs the TYPE_CHECKING flag, version folding and frozenset.\n- parsy stops at a module-level lambda (M3).\n- jmespath stops at its metaclass registry (beyond M2).\n- addict 'imports only copy': with a copy stub its import compiles."
+    }
+   ],
+   "next_error_census": [
+    {
+     "candidate": "packaging (#2), headline packaging.version",
+     "stubbed": "re (minimal), warnings (warn, deprecated), functools",
+     "next_error": "version.py:28 unsupported module attribute sys.version_info. With that folded: a def in the dead else-branch is rejected. Then the typing alias `LocalType = tuple[Union[int, str], ...]` ('builtin tuple cannot be used as a value'). Then `frozenset(\".0123456789\")` at import. Then `class Version(_BaseVersion)` is rejected (inheritance), whose class body calls re.compile at import.",
+     "roadmap": "M1 (version folding with dead-branch removal, typing aliases), then M7 sets, then M2. Also needs possessive quantifiers in re and warnings.deprecated as a method decorator."
+    },
+    {
+     "candidate": "idna (#4)",
+     "stubbed": "re (minimal), unicodedata (discovery compiler), warnings",
+     "next_error": "idnadata.py:103 'expected tuple[int x37], got tuple[int x21]': a dict of variable-length tuples. With lists simulated: core.py:13 bytes literal b\"xn--\" at import. After that: 10 frozensets at import.",
+     "roadmap": "M1 variable-length tuples, then M7 bytes and sets. re also needs UTF-8-aware classes ([。．...]). A bytes library: low value before M7."
+    },
+    {
+     "candidate": "pycparser (#19)",
+     "stubbed": "re (minimal), subprocess, copy, enum",
+     "next_error": "c_lexer.py:651 `re.Pattern[str]` annotation is not a type. Then `_keywords: tuple[str, ...]`. Then `@dataclass(frozen=True)`. Then `_bucket.sort(key=lambda ...)` at import. A native Enum is required, because a dataclass field is typed by the Enum. Then set literals in c_parser.py.",
+     "roadmap": "re interface (generic Pattern annotations, lastgroup), M1 x2, native Enum, M3, M7 sets. 're alone frees it' is refuted."
+    },
+    {
+     "candidate": "h11 (#27)",
+     "stubbed": "re (minimal), abc",
+     "next_error": "_headers.py:147 an annotation that is not a type (Literal/alias). Under `from __future__ import annotations`: _util.py:85 `*format_args: Any` is a hard import error. Then _abnf.py:58 `\"...\".format(**globals())` at import. Then every regex is compiled from bytes (`x.encode(\"ascii\")`, rb\"...\").",
+     "roadmap": "M1 (annotations, star-param annotation), M7 str.format plus M4 globals(), then M7 bytes and bytes patterns."
+    },
+    {
+     "candidate": "markupsafe (#34)",
+     "stubbed": "string (ascii_letters, digits, Formatter)",
+     "next_error": "import COMPILES. Headline escape(): `s: t.Any` is an unsupported annotation. With M1: `type(s) is str` gives 'unsupported call type(str)'. Then `class Markup(str)`.",
+     "roadmap": "M1, then a static fold of type(x) is T (or M4), then M2 (a str subclass)."
+    },
+    {
+     "candidate": "jmespath (#42)",
+     "stubbed": "string, warnings, json, numbers, itertools (discovery compiler), inspect (not a hub)",
+     "next_error": "compat.py:6 `string_type = str` ('builtin str cannot be used as a value'). Then the identity class decorator @with_str_method at import. Then REVERSE_TYPES_MAP, a dict of variable-length tuples. Then `class Functions(metaclass=FunctionRegistry)`.",
+     "roadmap": "alias folding (M1/M2), then M3 decorators, then M1 tuples, then a metaclass (beyond M2). The hubs barely matter."
+    },
+    {
+     "candidate": "tomli (#107)",
+     "stubbed": "re (minimal, then the real prototype), datetime, functools, types.MappingProxyType returning the dict",
+     "next_error": "_types.py:8 typing.Callable, reached because tomli's own `TYPE_CHECKING = False` flag is not dropped. Then @lru_cache at import. Then sys.version_info. Then `frozenset(chr(i) for i in range(32))`. With sets simulated as str, the import compiles and runs with the prototype re. The headline loads() then stops at `parse_float: ParseFloat = float`.",
+     "roadmap": "M1 (module bool flag, version folding), a native @lru_cache, M7 sets, then M3 (a builtin function as a default value)."
+    },
+    {
+     "candidate": "cachetools (#119)",
+     "stubbed": "collections (tried as a file and as a package with its own abc.py), functools, random",
+     "next_error": "__init__.py:18 \"'collections' is bound by two imports\" in every stub layout. With the loader conflict simulated away: keys.py:34 `_kwmark = (_HashedTuple,)`, where `class _HashedTuple(tuple)` is used as a value at import.",
+     "roadmap": "a loader fix (collections.abc inside the hub package), then M2 (a builtin subclass, a class as a value), then M2 MutableMapping bases and M3 closure decorators."
+    },
+    {
+     "candidate": "termcolor (#332)",
+     "stubbed": "functools (an identity cache)",
+     "next_error": "termcolor.py:92 unsupported decorator @cache. With native @cache simulated, the import compiles. Headline colored(): unsupported annotations. With M1: `fmt_str % (...)` with a non-literal format string.",
+     "roadmap": "a native @cache, M1, and %-formatting with a local format string."
+    },
+    {
+     "candidate": "aggregate: all 91, names-only stubs for every missing stdlib module (verify/auto_all)",
+     "stubbed": "autostub.py (minimal re plus generated stubs; discovery compiler)",
+     "next_error": "Root import compiles for 14 of 91. 9 already import today; the new ones are addict, docopt, markupsafe, mnemonic and roman. Of the 13 candidates 're alone frees', only roman imports. First blocker for the other 77, hand-corrected:\n- M1: about 31 (annotations 19, version_info and py2 names 8, runtime gaps 3, tuples 1)\n- loader (names bound twice, package vs submodule, collections.abc): 9\n- M2: 8\n- M3: about 8\n- M7: 6\n- optional C accelerators: 5\n- M4: 4\n- other: about 6",
+     "roadmap": "After the hubs, M1 decides, then the loader, M2, M3 and M7. This agrees with the other agent's classification."
+    }
+   ],
+   "best_set_verdict": "Partly refuted. re is the right first hub: it has the most import-time use (37-39 candidates), the subset is feasible today, and roman runs identically to CPython under JIT and AOT.\n\nThe claimed best set is re, string, the abc/numbers/types folds and a deferral rule. It moves real imports very little.\n- I stubbed every missing stdlib module with names only, which is more generous than that set plus deferral. Root imports go from 9 to 14 of 91.\n- Of the 13 candidates 're alone frees', only roman imports. The gate model's '10 -> 49 gate-free' overstates real import success by roughly 10x.\n- Of the 8 high-rank candidates I checked by hand, only markupsafe imports after the hubs alone, and its headline call still needs M1, a static type() fold and M2.\n\nThe walls after the hubs are:\n- M1, in every case: lenient annotations including star parameters and `re.Pattern[str]`; a module's own `TYPE_CHECKING = False`; version folding that drops dead branches; typing aliases; variable-length tuples; frozen dataclasses\n- sets (packaging.version, idna, tomli, pycparser)\n- M2 (packaging.version, cachetools, markupsafe)\n- bytes (idna, h11)\n\nAmended set:\n- a subset re with compile-time pattern validation, possessive repeats and generic Pattern annotations\n- that M1 bundle\n- the loader fixes: collections/collections.abc coexistence, stdlib-import and stdlib-decorator deferral, native @lru_cache/@cache\n- membership-only frozensets of constants\n\nMeasured on tomli, that combination takes it from failing at import to an import that runs for real, stopping next at an M3 callable. packaging.version would then stop at M2 inheritance.",
+   "summary": "The other agent's usage counts largely hold, and so do its compile measurements. Its conclusions about what providing the hubs achieves are too optimistic. Nothing in the checkout was changed (`git status` is clean). All work is under <scratch>/work/hubs/verify/.\n\n**1. Usage counts.** I re-measured the top 5 hubs with my own regex scan (grep_usage.py, over the package roots and over all of src/*/x minus tests) and an AST pass (ast_check.py). Almost every count matches within ±2. Two do not:\n- 18 candidates pass a lambda or function to `sub`: really 10.\n- `defaultdict(lambda)` is 15 calls: really 24, and networkx alone makes 72 of the 108 `defaultdict` calls.\n\n**2. Compile measurements re-run.** All reproduced:\n- roman end to end with the prototype re: byte-identical to CPython under JIT and AOT on a harder driver.\n- The re benchmark: about 0.043 s AOT against 0.017 s for CPython.\n- warnings, the iterator-class rejection, `str.split` with a None parameter, `reduce(add)`, termcolor's `@cache`, the collections conflict (it persists even when the stub package has its own `abc.py`), the 5-edit `string.py`, and docopt reaching M2.\n- New: a differential test of the prototype re on 268 real candidate patterns. 248 match, 16 raise `re.error` at run time, and 4 give silently different results.\n\n**3. Effort challenges.**\n- itertools can be S-M rather than L. An eager, template-based subset compiles and matches CPython in consumer contexts today. It needs a consume-once check, because a second pass over a real iterator yields nothing while a list does not.\n- warnings is S rather than XS (stacklevel attribution, `warnings.deprecated`).\n- datetime is nearer L than M.\n- The claims miss two things. Sets are built at import by 29 candidates, including five of the top seven by downloads. And a set of M1 items, among them `*args: Any` being a hard import error.\n\n**4. Next-error census.** 8 high-rank candidates were done by hand: packaging, idna, pycparser, h11, markupsafe, jmespath, tomli and cachetools, plus termcolor. For all 91 candidates, an auto-stub run gave this:\n- Root imports compile for 14 of 91 with every missing stdlib module stubbed. 9 of them already import today.\n- Of the 13 candidates said to be freed by `re` alone, only roman imports.\n- For the others, the first remaining blocker is mostly M1 (about 31), then the loader (9), M2 (8), M3 (about 8), M7 (6), optional C accelerators (5) and M4 (4).\n\nFiles:\n- verify/census/census_manual.json: the hand census\n- verify/auto_all/all.txt and verify/auto_all2/all.txt: the 91-candidate auto-stub results\n- verify/m2_re/: the pattern differential (patterns.json, cpy.out, pys.out)\n- verify/m1_roman/: the roman run\n- verify/m4_small/, m5_termcolor/, m6_annot/, m7_itertools/, m8_string/, m9_docopt/: the re-run measurements\n- verify/grep_root.json, grep_all.json, ast_check.txt: the usage counts"
+  }
+ }
+]

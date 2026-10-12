@@ -1,0 +1,18 @@
+626 markers in 14 ports
+  221  35.3%  M2 classes
+  110  17.6%  M7 long tail
+   87  13.9%  M4 dynamic values
+   69  11.0%  M3 functions as values
+   55   8.8%  M1 loader, annotations
+   52   8.3%  M6 stdlib
+   21   3.4%  scope cut
+   11   1.8%  UTF-8 text (#120)
+
+   2  jdcal: M4 dynamic values 2
+   5  roman: M6 stdlib 4, M1 loader, annotations 1
+   8  pylev: M1 loader, annotations 5, M3 functions as values 3
+  16  sqids: M7 long tail 11, M1 loader, annotations 4, M4 dynamic values 1
+  29  tomli-w: M4 dynamic values 21, M7 long tail 4, M6 stdlib 2, M1 loader, annotations 2
+  36  pyaes: M1 loader, annotations 23, M2 classes 5, M6 stdlib 4, scope cut 2, M7 long tail 2
+  38  convertdate: M6 stdlib 13, M4 dynamic values 9, M7 long tail 7, scope cut 3, M3 functions as values 3, M2 classes 3
+  38  wcwidth: M1 loader, annotations 12, scope cut 7, M3 functions as values 7, UTF-8 text (#120) 5, M6 stdlib 3, M7 long tail 2, M4 dynamic values 2
