@@ -1,6 +1,6 @@
 """Feature census: which of the Python features Pystachy cannot compile does each function use?
 
-usage: python3 -I tools/census.py [PREFIX=]ROOT ... [--json OUT.json]
+usage: python3 -I tools/census.py [PREFIX=]ROOT ... [--json OUT.json] [--summary]
 Each .py file under a ROOT directory is a module named by its path there; a ROOT that is a .py
 file is one module, named by its base name; PREFIX= names a ROOT's modules PREFIX:name.
 The census reads source with the ast module only (it never imports what it scans). Each
@@ -8,12 +8,20 @@ module-level function, each method, each class and each module's top-level code 
 unit's blockers are the syntactic features in it that Pystachy rejects or treats specially
 (the names are explained in docs/stdlib.md). It is an upper bound on what compiles: a unit
 without blockers can still fail type checking. docs/stdlib.md reports a run over CPython 3.13.
+A module's "Pystachy port:" comments, the marked edits of a port in ports/, are counted as its
+port_marker note. --summary prints a table with a column for each ROOT (ROOTs with the same
+PREFIX share one): its modules, units, units with a blocker, port markers and the count of each
+blocker, with "unannotated" split into functions (compiled as templates) and methods (rejected
+until classes are templates). Given a package's upstream source and its port, it shows what the
+port's edits removed.
 """
 import ast
 import builtins
+import io
 import json
 import os
 import sys
+import tokenize
 
 # pystachy.py's MODULES, and typing_extensions, which the compiler reads as typing
 SUPPORTED_MODULES = {"sys", "os", "os.path", "math", "tempfile", "typing", "dataclasses", "__future__", "builtins", "time",
@@ -282,6 +290,11 @@ def scan_module(path, modname):
     funcs = {n.name for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     units = []
     top = Unit(modname, "<module>", "module", 1, len(src.splitlines()))
+    if "Pystachy port:" in src:  # tokenizing every module would slow a run over Lib/ by 40%
+        markers = sum(1 for t in tokenize.generate_tokens(io.StringIO(src).readline)
+                      if t.type == tokenize.COMMENT and "Pystachy port:" in t.string)
+        if markers:
+            top.notes["port_marker"] = markers
     s = Scan(top, set(), False)
     s.u_funcs = funcs
     for st in tree.body:
@@ -340,17 +353,52 @@ def walk(root, prefix):
     return out
 
 
+def summarize(cols):
+    """Print a column for each ROOT, given as (label, its rows): totals, then the blockers by count."""
+    head = ["modules", "parse errors", "units", "units with a blocker", "port markers"]
+    table = []
+    total = {}
+    for label, rows in cols:
+        c = dict.fromkeys(head, 0)
+        for row in rows:
+            if "error" in row:
+                c["modules"] += 1
+                c["parse errors"] += 1
+                continue
+            c["modules"] += row["kind"] == "module"
+            c["units"] += 1
+            c["units with a blocker"] += bool(row["blockers"])
+            c["port markers"] += row["notes"].get("port_marker", 0)
+            for k, n in row["blockers"].items():
+                if k == "unannotated":
+                    k = "unannotated " + row["kind"]  # a function or a method
+                c[k] = c.get(k, 0) + n
+                total[k] = total.get(k, 0) + n
+        table.append((label, c))
+    keys = [k for k in head if k != "parse errors" or any(c[k] for _, c in table)]
+    keys += sorted(total, key=lambda k: (-total[k], k))
+    w = max(len(k) for k in keys)
+    widths = [max(8, len(label)) for label, _ in table]
+    print(" " * w + "".join("  " + label.rjust(n) for (label, _), n in zip(table, widths)))
+    for k in keys:
+        print(k.ljust(w) + "".join("  " + str(c.get(k, 0)).rjust(n) for (_, c), n in zip(table, widths)))
+
+
 def main():
     roots = [a for a in sys.argv[1:] if not a.startswith("--")]
     js = sys.argv[sys.argv.index("--json") + 1] if "--json" in sys.argv else ""
     if js in roots:
         roots.remove(js)
     rows = []
+    cols = {}
     for r in roots:
+        label = r
         prefix = ""
         if "=" in r:
             prefix, r = r.split("=", 1)
+            label = prefix
             prefix += ":"
+        first = len(rows)
         for p, m in walk(r, prefix):
             top, units, err = scan_module(p, m)
             if top is None:
@@ -359,9 +407,12 @@ def main():
             for u in [top] + units:
                 rows.append({"module": u.module, "name": u.name, "kind": u.kind, "line": u.line, "lines": u.nlines,
                              "blockers": u.blockers, "notes": u.notes})
+        cols.setdefault(label, []).extend(rows[first:])
     if js:
         json.dump(rows, open(js, "w"), indent=0)
     print(len(rows), "units")
+    if "--summary" in sys.argv:
+        summarize(list(cols.items()))
 
 
 main()

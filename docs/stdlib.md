@@ -278,6 +278,7 @@ Python, as PyPy's reuse of them shows) are the hubs that most of the library imp
 
 ```
 python3 -I tools/census.py cpython=/usr/lib/python3.13 --json build/census.json
+python3 -I tools/census.py upstream=DIR port=ports/qrcode --summary   # a port against the upstream modules it keeps
 python3 tools/import_sweep.py ./pystachy /usr/lib/python3.13 build/import-sweep.json
 PYSTACHY_PATH=/usr/lib/python3.13 ./pystachy run prog.py   # compile against CPython's own Lib/
 tests/run.sh ./pystachy                                     # includes tests/lib_*.py
