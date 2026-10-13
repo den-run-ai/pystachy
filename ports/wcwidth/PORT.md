@@ -14,10 +14,10 @@ which also has the notice of Markus Kuhn's C code that wcwidth derives from).
 
 | file | upstream SHA-256 | edits |
 |---|---|---|
-| `__init__.py` | `646c6b7a3dc93d36475da57f1da58b83879ca323f97c8d7b0345614de51ad9cc` | 12 regions: imports, `os.environ`, the C extension's branch, `__all__` |
-| `_wcwidth.py` | `d90e01620d4bacb231cc15584cd20c36f36bd1084894d93c5e26eec06fc0e688` | 4 regions: `lru_cache` |
+| `__init__.py` | `646c6b7a3dc93d36475da57f1da58b83879ca323f97c8d7b0345614de51ad9cc` | 11 regions: imports, `os.environ`, the C extension's branch, `__all__` |
+| `_wcwidth.py` | `d90e01620d4bacb231cc15584cd20c36f36bd1084894d93c5e26eec06fc0e688` | 1 region: `lru_cache` |
 | `_wcswidth.py` | `674f1420fce6114b02b7e371fc574c4553776efa5b7b0982df5fcaef93e40b4e` | 9 regions |
-| `_constants.py` | `04425f05bce4197bac837bbb40c07e10e070da21fc1dd39c28be0f6052425a68` | 11 regions |
+| `_constants.py` | `04425f05bce4197bac837bbb40c07e10e070da21fc1dd39c28be0f6052425a68` | 10 regions |
 | `bisearch.py` | `63f15dbd84f31570f6a5ae5ca6951e803e525dfcbe07c1c2e00f6bac939d6f8d` | 1 line |
 | `unicode_versions.py` | `0504f550c0e77dd1b3c81c408a0d7c1888cfae2ee319aac5c45e755040439bb0` | 1 line |
 | `table_grapheme.py` | `3176cee3c7c78311592287cd5a44509d48199d98bdf46731058c66974df0ed6d` | 3 regions: 16 of its 20 tables left out |
@@ -32,7 +32,7 @@ The rest of the package is left out: the modules of the API beyond `wcwidth()` a
 (see below), the per-terminal tables that only `wcstwidth()` reads (`table_overrides.py`,
 `table_term_programs.py`, `table_grapheme_overrides/`), the legacy module `wcwidth/wcwidth.py` and
 the C extension (`_wcwidth_c.c`, `libwcwidth/`). Every edit is marked `# Pystachy port:` in the
-source, 41 regions in 7 files, and `diff -ru` against the sdist's `wcwidth/` shows them all. Code
+source, 36 regions in 7 files, and `diff -ru` against the sdist's `wcwidth/` shows them all. Code
 is commented out rather than deleted, but for the tables of `table_grapheme.py`.
 
 ## The edits, and the feature each one stands in for
@@ -64,10 +64,12 @@ is commented out rather than deleted, but for the tables of `table_grapheme.py`.
 
 **M3, functions as values ([#8](https://github.com/den-run-ai/pystachy/issues/8)).**
 
-- The five `@lru_cache` decorators (on `wcwidth()`, `_wcversion_value()`, `_wcmatch_version()`,
-  `get_term_overrides()` and `resolve_terminal()`) are commented out, with the import of
-  `functools`, a module Pystachy does not have (a native stdlib hub, #11). The caches only save
-  time: calls return what they returned.
+- Of the five `@lru_cache` decorators, those of `wcwidth()` and `_wcmatch_version()` are
+  upstream's, with the imports of `functools` ([`lib/functools`](../../lib/README.md#functools-pystachys-own)).
+  The other three are commented out, for the types of their functions: `_wcversion_value()`
+  returns a `tuple[int, ...]` (M1), and `_constants.py`'s `get_term_overrides()` returns a
+  `TerminalOverrides`, left out with its tuple types (M1), and `resolve_terminal()` takes a
+  `bool | str` (M4). The caches only save time: calls return what they returned.
 - `wcswidth()` chose `_wcwidth = wcwidth if ambiguous_width == 1 else lambda c: wcwidth(c, 'auto',
   ambiguous_width)` and called `_wcwidth(char)`; its loop calls `wcwidth(char, 'auto',
   ambiguous_width)`, which both choices call.
@@ -162,8 +164,10 @@ out stay in the source, unedited: Pystachy compiles a function only where a prog
   native hubs (#11), inheritance (M2, [#7](https://github.com/den-run-ai/pystachy/issues/7)), M3
   and M7.
 - `_wcversion_value()`, deprecated, which returns `tuple(map(int, ...))` (M1, M3).
-- The C extension (`HAS_C_EXTENSION` is `False`), and the caches' `cache_clear()` and
-  `cache_info()`.
+- The C extension (`HAS_C_EXTENSION` is `False`). `wcwidth.cache_info()` counts other entries than
+  upstream's after `wcswidth()`: for `ambiguous_width=1` upstream calls `wcwidth(char)`, through
+  the variable `_wcwidth` (above), and this port `wcwidth(char, 'auto', 1)`, a form of call that
+  `lru_cache` keys apart.
 - Arguments that CPython accepts and Pystachy rejects at compile time: a `bool` `ambiguous_width`
   (`wcswidth("¡x", ambiguous_width=True)` is 2 in CPython, whose `operator.index()` takes a
   `bool`; Pystachy: `expected int, got bool`), and a `float` one, which upstream rejects at run
@@ -247,6 +251,29 @@ an install from the sdist, so a typical CPython install runs C for both function
 import the sdist's source tree, where it is not built (`HAS_C_EXTENSION` is `False`); this does not
 compare the C extension, which would mean running a downloaded binary wheel or the sdist's
 `setup.py`.
+
+**The cache of `wcwidth()`.** Compiled, `wcwidth()` takes less time than a lookup in its cache:
+an ASCII character returns at its first test, and another is a few binary searches of tables of
+ints, where a lookup makes, hashes and compares the key `(form, char, 'auto', ambiguous_width)` and
+moves its link. So the decorator costs time here, where it saves it under CPython. A workload of
+20,000 rounds of `wcswidth()` at both ambiguous widths over four lines of mixed text (CJK, a ZWJ
+family, VS16, a flag, a skin tone, Katakana, fullwidth Latin, a Devanagari conjunct, Thai,
+ambiguous characters, Cyrillic, Hebrew, accented Latin, ASCII), then `wcwidth()` of each code
+point from 0x100 to 0x2FFFF, all misses for `maxsize=1024`; medians of 5, AOT:
+
+| | `wcswidth()` rounds | `wcwidth()` of 196,352 code points |
+|---|---:|---:|
+| this port, decorators commented out | 0.156 s | 0.005 s |
+| this port, decorators as upstream's | 0.298 s | 0.030 s |
+| the same, with #267 (a tuple key's items hashed in place) | 0.235 s | 0.023 s |
+| CPython 3.13.16, unmodified wcwidth 0.9.2, pure Python | 0.84 s | 0.32 s |
+
+With the cache, the port runs 1.9 times as long as without it (1.5 with #267), and still 2.8
+and 11 times faster than CPython (3.6 and 14). A miss, which evicts here, hashes its key four
+times, in the lookup, the check after the call, the eviction and the insertion, as CPython's C
+code looks the key up four times, with its hash computed once. Commenting the decorator out
+again would be an edit for speed, not for Pystachy. Building `tests/port_wcwidth_core.py` takes
+3.6 s with the cache, 3.3 s without (medians of 3).
 
 **Build time.** `pystachy build` of a program that imports `wcwidth` and calls `wcwidth()` once
 takes 3.2 s of CPU (3.2 s of wall clock, at load 5 to 6), against 0.15 s for `print(1)`;

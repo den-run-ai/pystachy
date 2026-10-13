@@ -4,9 +4,7 @@ from __future__ import annotations
 # std imports
 import os
 from operator import index as _index
-# Pystachy port: no functools (#11), so no @lru_cache below (decorators are M3, #8): the caches
-# only save time.
-# from functools import lru_cache
+from functools import lru_cache
 
 from typing import Tuple, NamedTuple
 
@@ -125,7 +123,7 @@ def list_term_programs() -> tuple[str, ...]:
 # _EMPTY_OVERRIDES = TerminalOverrides((), (), (), (), (), ())
 
 
-# @lru_cache(maxsize=32)  # Pystachy port
+# @lru_cache(maxsize=32)  # Pystachy port: it returns a TerminalOverrides, left out above (M1, #6)
 def get_term_overrides(term_canonical: str) -> TerminalOverrides:
     """Return a TerminalOverrides, with all empty tuples when there are no overrides."""
     # wide, sri, sfz: all narrow characters Unicode expects wide (no 'wider' data exists)
@@ -155,7 +153,7 @@ def get_term_overrides(term_canonical: str) -> TerminalOverrides:
                              narrow_wider, narrow_zeroer)
 
 
-# @lru_cache(maxsize=32)  # Pystachy port
+# @lru_cache(maxsize=32)  # Pystachy port: its parameter is a bool | str, which has no Pystachy type (M4, #9)
 def resolve_terminal(term_program: bool | str = False) -> str | None:
     """
     Resolve a terminal identifier to its canonical name.
