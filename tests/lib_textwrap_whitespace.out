@@ -1,0 +1,9 @@
+'a b c d e f g'
+' unchanged '
+'café 中文 été'
+'a\tb\nc\x0bd\x0ce\rf g'
+'a b c d e f_g'
+'y y y'
+'y y_y'
+'a\tb\nc\x0bd\x0ce\rf g'
+[exit 0]

@@ -379,7 +379,7 @@ instead of 468, and takes 30% less time compiled.
 ## `fnmatch`, a port of CPython's
 
 `fnmatch.py` is CPython 3.13.16's `Lib/fnmatch.py` (SHA-256
-`95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963`) with 8 regions edited,
+`95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963`) with 9 regions edited,
 each marked `# Pystachy port:`. Its functions are CPython's: `fnmatch()`, `fnmatchcase()`,
 `filter()` and `translate()` translate a shell pattern into CPython's regular expression, character
 for character, and match it with `lib/re`; `_compile_pattern()` keeps the compiled patterns in an
@@ -395,6 +395,9 @@ for character, and match it with `lib/re`; `_compile_pattern()` keeps the compil
   (#248): the lists are `pieces` and `res`, the strs `fixed` and `joined`.
 - `filter()` tests `os.name == 'posix'` where CPython tests `os.path is posixpath`: a module is no
   value in Pystachy. `os.path.normcase()` is Pystachy's builtin, posixpath's: a str as it is.
+- `_translate()` escapes `&`, `~` and `|` in character classes with literal replacements
+  instead of `re.sub()`. The translated regular expression is identical; the pattern cache
+  still records every call to `_compile_pattern()`.
 
 `tests/lib_fnmatch.py` compares `translate()` of 45 patterns (classes, negated, reversed and
 dashed ranges, `[]]`, an unclosed `[`, `&&`, `~` and `|` in a class, regex metacharacters,
@@ -479,7 +482,10 @@ Its regular expressions are `lib/re`'s.
   `str.replace()` of each name makes the same pattern.
 - `max_lines=None` is annotated `int | None`: a field that a class template gives `None` needs
   its type.
-- `_munge_whitespace()` replaces each character through `unicode_whitespace_trans` with
+- `_munge_whitespace()` skips tab expansion when there are no tabs, recognizes the default
+  table by its six entries, and replaces only
+  the ASCII whitespace characters present in the text. Custom or mutated tables still replace
+  each character through `unicode_whitespace_trans` with
   `''.join([chr(trans.get(ord(c), ord(c))) for c in text])`: Pystachy has no `str.translate()`.
 - `dedent()` enumerates `list(zip(margin, indent))`: `zip()` nested in `enumerate()` is not
   supported.
@@ -497,7 +503,9 @@ Where it differs from CPython (`tests/deviations/lib_textwrap.py`):
 - A subclass of `TextWrapper` is an error: only an exception class may have a base (#7).
 
 `tests/lib_textwrap.py` compares it with CPython's on the cases of CPython's
-`Lib/test/test_textwrap.py`, and on a wrapper's own options and class attributes. Run by
+`Lib/test/test_textwrap.py`, and on a wrapper's own options and class attributes.
+`tests/lib_textwrap_whitespace.py` also checks the default translation, non-ASCII text, table
+mutation through an alias, and custom tables that omit whitespace or translate other characters. Run by
 CPython, the edited module passes that file's 66 tests.
 
 In an AOT executable, `wrap()` of a 500-character paragraph of 79 words takes 137 µs, `fill()`

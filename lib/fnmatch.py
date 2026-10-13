@@ -136,7 +136,13 @@ def _translate(pat, STAR, QUESTION_MARK):
                     stuff = '-'.join(s.replace('\\', r'\\').replace('-', r'\-')
                                      for s in chunks)
                 # Escape set operations (&&, ~~ and ||).
-                stuff = re.sub(r'([&~|])', r'\\\1', stuff)
+                # Pystachy port: three literal escapes avoid invoking the regex matcher.
+                if '&' in stuff:
+                    stuff = stuff.replace('&', r'\&')
+                if '~' in stuff:
+                    stuff = stuff.replace('~', r'\~')
+                if '|' in stuff:
+                    stuff = stuff.replace('|', r'\|')
                 i = j+1
                 if not stuff:
                     # Empty range: never match.
