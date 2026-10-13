@@ -27,8 +27,7 @@ LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
-T=${TMPDIR:-/tmp}/pystachy-checkir.$$
-rm -rf "$T"; mkdir -p "$T" || exit 1
+T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-checkir.XXXXXX") || exit 1
 trap 'rm -rf "$T"' EXIT
 trap 'exit 130' INT TERM
 

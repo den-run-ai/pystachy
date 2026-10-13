@@ -30,8 +30,7 @@ fi
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 SHOW=3
-T=${TMPDIR:-/tmp}/pystachy-irsame.$$
-rm -rf "$T"; mkdir -p "$T" || exit 1
+T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-irsame.XXXXXX") || exit 1
 trap 'rm -rf "$T"' EXIT
 trap 'exit 130' INT TERM
 

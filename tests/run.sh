@@ -45,8 +45,7 @@ export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
-T=${TMPDIR:-/tmp}/pystachy-tests.$$
-rm -rf "$T"; mkdir "$T" || exit 1
+T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-tests.XXXXXX") || exit 1
 pids=
 trap 'rm -rf "$T"' EXIT
 # Ctrl-C or TERM: name the cases that were running (on fd 4, this script's stdout), stop the workers
