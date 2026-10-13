@@ -291,6 +291,7 @@ A few choices shape everything else. Each is explained, with the pull request th
 | [docs/runtime-in-subset.md](docs/runtime-in-subset.md) | writing the runtime in the subset itself: the prototype (`runtime.py`), its measurements, and how other compilers do it |
 | [docs/history.md](docs/history.md) | the timeline, the design decisions and the Ouro v1 lineage |
 | [lib/README.md](lib/README.md) | the unmodified standard-library modules that ship with Pystachy |
+| [examples/route](examples/route/README.md) | a log and trace router on `fnmatch` and `lru_cache`, compiled, and what its caches buy against CPython's |
 
 ## Get involved
 

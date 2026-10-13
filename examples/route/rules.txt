@@ -1,0 +1,22 @@
+# route.py's rules: PATTERN DESTINATION, the first match wins (fnmatch, case-sensitive)
+auth.*.failed           alerts
+auth.*.locked           alerts
+payments.*.failed       alerts
+*.failed                errors
+*.timeout               errors
+*.retried               retries
+payments.*              billing
+billing.invoice.*       billing
+tool.search.*           search
+tool.*.completed        tools
+tool.*                  tools
+http.request.[45]??     http-errors
+http.request.*          access
+db.query.slow*          slow-queries
+db.*                    database
+cache.*.miss            cache-misses
+cache.*                 metrics
+queue.*.started         jobs
+queue.*                 jobs
+*.debug.*               drop
+gc.*                    drop
