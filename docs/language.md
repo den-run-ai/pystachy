@@ -562,7 +562,9 @@ CPython 3.13 modules that compile this way ([`lib/README.md`](../lib/README.md))
 `operator`, `stat`, `posixpath` and `genericpath` (the path string functions), `this` and
 `curses.ascii`. Its `re` is Pystachy's port of CPython's `re` and of its C engine `_sre`, which
 matches as CPython's does, with a position in a str counting its bytes past ASCII and the other
-deviations [`lib/README.md`](../lib/README.md#re-a-port-of-cpythons) lists. Its `functools` is
+deviations [`lib/README.md`](../lib/README.md#re-a-port-of-cpythons) lists, and its `fnmatch` is
+CPython's over that `re`, with its compiled patterns in an `lru_cache`, for `str` patterns
+([`lib/README.md`](../lib/README.md#fnmatch-a-port-of-cpythons)). Its `functools` is
 Pystachy's own, with `cache()` and `lru_cache()` ([`lib/README.md`](../lib/README.md#functools-pystachys-own)):
 a function they decorate keeps its results in a cache of its own types, which its annotated
 parameters and return give (the wrapper is a generic class, *Typing rules*), and the cache
@@ -650,7 +652,7 @@ translation and positions for `"+"` modes, and files' `read`/`readline`/
 `sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
 are files), `sys.float_info.max/max_exp/max_10_exp/min/min_exp/min_10_exp/dig/mant_dig/epsilon/radix/rounds`
 (CPython's for IEEE 754 doubles; `sys.float_info` itself is not a value),
-`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join/path.getsize/path.getmtime/path.getctime` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join/path.normcase/path.getsize/path.getmtime/path.getctime` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors, with `fsum`, `prod` (and its
@@ -839,12 +841,13 @@ In these cases the program compiles but can behave differently from CPython:
   found (and suggests renaming it in a circular import).
 - Memory is reclaimed by a conservative collector, not reference counting: garbage is
   freed in batches and there are no finalizers (`__del__` never runs). A file the program
-  drops without closing is closed when a collection finds it unreachable, or at exit, not at
-  once as in CPython. A file used in one expression (`open(p).read()`,
-  `print(..., file=open(p, "w"))`) is closed right after it, and opening a file that has a
-  writer open runs a collection first; but the stack scan is conservative, so a writer that a
-  function dropped a moment ago can still look reachable. Its data can then be missing when
-  the file is read back, and appends through several dropped writers can land out of order.
+  drops without closing is closed when a collection finds it unreachable (its buffers count
+  toward the memory that starts one), or at exit, not at once as in CPython. A file used in
+  one expression (`open(p).read()`, `print(..., file=open(p, "w"))`) is closed right after
+  it, and opening a file that has a writer open runs a collection first; but the stack scan
+  is conservative, so a writer that a function dropped a moment ago can still look reachable.
+  Its data can then be missing when the file is read back, and appends through several
+  dropped writers can land out of order.
 - In `"+"` modes, a write after reads goes where CPython's text layer stopped reading ahead,
   which Pystachy models in 8 KiB chunks. After `read(n)` for an `n` above that, CPython has
   read ahead by about `n` characters instead; and when a `for` loop over the file stops

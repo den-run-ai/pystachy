@@ -43,6 +43,9 @@
 #                  empty operations/reuse preserve sort's sentinel, without allocation in clear
 #   container-eq   tools/eqprobe.c: shared DAG comparisons stop within a fixed comparison budget,
 #                  including ordering and list searches, normally and with GC stress
+#   file-buffers   tools/fileprobe.c: writable files' malloc'd buffers count as heap bytes, so files
+#                  dropped without close() run collections; every close takes back exactly what was
+#                  counted, a standard stream's are never counted (deterministic counts, no RSS)
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
 #   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types,
@@ -323,6 +326,14 @@ L=$V/container-eq.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/eqprobe.bc" -o "$V/eqprobe" -lm &&
   "$V/eqprobe" && PYSTACHY_GC_STRESS=1 "$V/eqprobe" && r=pass; } > "$L" 2>&1
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
+
+# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
+L=$V/file-buffers.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
+  "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
+step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
 L=$V/dict-probes.log; s=$(now); r=fail

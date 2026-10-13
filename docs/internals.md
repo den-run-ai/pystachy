@@ -315,7 +315,11 @@ frame address and a table of those globals, because under the JIT they live in m
 no scanner would find. A collection runs once max(32 MiB, live bytes) have been
 allocated since the last one, so the heap stays near twice the live set.
 Open files that become unreachable are closed after marking, before the sweep. A
-collection also runs when `open()` runs out of file descriptors.
+collection also runs when `open()` runs out of file descriptors. The buffers of a file open
+for writing are malloc'd, but count as heap bytes (allocated, live and in the heap), and
+`open()` allocates them as a large object is allocated, so files dropped without `close()`
+start collections too; a close takes back exactly what was counted. `sys.stdout`'s, which no
+collection frees, are not counted.
 `PYSTACHY_GC_STRESS=N` collects every N allocations; `PYSTACHY_GC=off` and
 `PYSTACHY_GC=stats` turn collection off or print a summary at exit.
 
