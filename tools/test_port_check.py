@@ -137,6 +137,11 @@ class PortCheckTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "empty or duplicate"):
             self.run_port()
 
+    def test_partial_mapping_requires_compiled_evidence_too(self):
+        self.module["cases"][self.identifier]["status"] = "partial"
+        with self.assertRaisesRegex(ValueError, "compiled mapping needs"):
+            self.run_port()
+
     def test_wrong_module_and_wrong_function_cannot_report_success(self):
         wrong = types.ModuleType("widget")
         wrong.__file__ = __file__

@@ -49,7 +49,7 @@
             "tests/upstream_fnmatch.py",
             "tests/upstream_fnmatch.out"
           ],
-          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_slow_fnmatch": {
           "status": "compiled",
@@ -57,7 +57,7 @@
             "tests/upstream_fnmatch.py",
             "tests/upstream_fnmatch.out"
           ],
-          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_mix_bytes_str": {
           "status": "unsupported",
@@ -72,7 +72,7 @@
             "tests/upstream_fnmatch.py",
             "tests/upstream_fnmatch.out"
           ],
-          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_bytes": {
           "status": "unsupported",
@@ -82,53 +82,60 @@
           "reason": "The compiled fnmatch port accepts str patterns; upstream bytes and mixed bytes/str cases are outside its declared scope."
         },
         "test_fnmatch.FnmatchTestCase.test_case": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_sep": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_char_set": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_range": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_sep_in_char_set": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_sep_in_range": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FnmatchTestCase.test_warnings": {
-          "status": "unmapped",
+          "status": "partial",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "All six matching assertions run compiled, but warning capture and warnings-as-errors cannot run: the subset has no warnings module. This is partial coverage, not a complete upstream method."
         },
         "test_fnmatch.TranslateTestCase.test_translate": {
           "status": "compiled",
@@ -136,14 +143,15 @@
             "tests/upstream_fnmatch.py",
             "tests/upstream_fnmatch.out"
           ],
-          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FilterTestCase.test_filter": {
-          "status": "unmapped",
+          "status": "partial",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "The original str filtering assertion runs compiled; the bytes filtering assertion is unsupported. This is partial coverage, not a complete upstream method."
         },
         "test_fnmatch.FilterTestCase.test_mix_bytes_str": {
           "status": "unsupported",
@@ -153,18 +161,20 @@
           "reason": "The compiled fnmatch port accepts str patterns; upstream bytes and mixed bytes/str cases are outside its declared scope."
         },
         "test_fnmatch.FilterTestCase.test_case": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         },
         "test_fnmatch.FilterTestCase.test_sep": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_fnmatch.py"
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertions retained in the compiled differential corpus; unittest scaffolding becomes standalone functions and assertions."
         }
       }
     },
@@ -185,467 +195,533 @@
       "expected_skips": {},
       "cases": {
         "test_textwrap.WrapTestCase.test_simple": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_empty_string": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_empty_string_with_initial_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_whitespace": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_fix_sentence_endings": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_wrap_short": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_wrap_short_1line": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_hyphenated": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_hyphenated_numbers": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_em_dash": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_unix_options": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_funky_hyphens": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_punct_hyphens": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_funky_parens": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_false": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_false_whitespace_only": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_false_whitespace_only_with_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_only": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_leading_whitespace": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_line": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_only_with_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_split": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_break_on_hyphens": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_bad_width": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_no_split_at_umlaut": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_umlaut_followed_by_dash": {
           "status": "deviation",
           "evidence": [
-            "tests/deviations/lib_textwrap.py",
-            "tests/deviations/lib_textwrap.out"
+            "tests/deviations/upstream_textwrap_unicode.py",
+            "tests/deviations/upstream_textwrap_unicode.out"
           ],
-          "reason": "UTF-8 byte-counted widths change these exact line breaks; tracked in #120."
+          "reason": "UTF-8 byte length changes the split of aa ää-ää at width 7: compiled returns three lines where upstream expects two (#120)."
         },
         "test_textwrap.WrapTestCase.test_non_breaking_space": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_wrap.py",
+            "tests/upstream_textwrap_wrap.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_narrow_non_breaking_space": {
-          "status": "unmapped",
+          "status": "deviation",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/deviations/upstream_textwrap_unicode.py",
+            "tests/deviations/upstream_textwrap_unicode.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "With break_on_hyphens=False, byte lengths change wrapping around U+202F; the original True form matches, the False form deviates (#120)."
         },
         "test_textwrap.MaxLinesTestCase.test_simple": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.MaxLinesTestCase.test_spaces": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.MaxLinesTestCase.test_placeholder": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.MaxLinesTestCase.test_placeholder_backtrack": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordTestCase.test_break_long": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordTestCase.test_nobreak_long": {
-          "status": "unmapped",
+          "status": "partial",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out",
+            "tests/errors/upstream_textwrap_field_rebind.py"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "All original result assertions and integer-0 arguments run, but the wrapper is initialized with integer 0 before reassignment. The original default-bool-to-int field assignment is rejected and tested separately; this setup adaptation prevents claiming a complete unadapted method."
         },
         "test_textwrap.LongWordTestCase.test_max_lines_long": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_on_hyphen": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_not_on_hyphen": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordWithHyphensTestCase.test_break_on_hyphen_but_not_long_words": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.LongWordWithHyphensTestCase.test_do_not_break_long_words_or_on_hyphens": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCases.test_fill": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCases.test_initial_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCases.test_subsequent_indent": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_layout.py",
+            "tests/upstream_textwrap_layout.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_nomargin": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_even": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_uneven": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_declining": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_preserve_internal_tabs": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.DedentTestCase.test_dedent_preserve_margin_tabs": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_nomargin_default": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_nomargin_explicit_default": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_nomargin_all_lines": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_no_lines": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_roundtrip_spaces": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_roundtrip_tabs": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_roundtrip_mixed": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_default": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_explicit_default": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_all_lines": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.IndentTestCase.test_indent_empty_lines": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_simple": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_placeholder": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_empty_string": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_whitespace": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_width_too_small_for_placeholder": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.ShortenTestCase.test_first_word_too_long_but_placeholder_fits": {
-          "status": "unmapped",
+          "status": "compiled",
           "evidence": [
-            "tests/lib_textwrap.py"
+            "tests/upstream_textwrap_indent.py",
+            "tests/upstream_textwrap_indent.out"
           ],
-          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+          "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         }
       }
     }

@@ -18,7 +18,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = "tests/upstream/ports/manifest.json"
-STATUSES = {"compiled", "unmapped", "deviation", "unsupported"}
+STATUSES = {"compiled", "partial", "unmapped", "deviation", "unsupported"}
 
 
 def read_json(path):
@@ -126,7 +126,7 @@ def check_cases(root, module, identifiers):
         if entry["status"] not in STATUSES or not entry["reason"] or not entry["evidence"]:
             raise ValueError(f"incomplete coverage entry: {identifier}")
         evidence = [local_file(root, path) for path in entry["evidence"]]
-        if entry["status"] == "compiled":
+        if entry["status"] in {"compiled", "partial"}:
             programs = [path for path in evidence if path.suffix == ".py"
                         and path.parent == (root / "tests").resolve()
                         and f"# {identifier}\n" in path.read_text(encoding="utf-8")]

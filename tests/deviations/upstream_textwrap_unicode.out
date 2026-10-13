@@ -1,0 +1,4 @@
+test_umlaut_followed_by_dash ['aa', 'ää-', 'ää']
+test_narrow_non_breaking_space True ['This is a sentence', 'with non-', 'breaking\u202fspace.']
+test_narrow_non_breaking_space False ['This is a sentence', 'with non-breaking\u202f', 'space.']
+[exit 0]

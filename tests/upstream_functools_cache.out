@@ -1,0 +1,8 @@
+TestCache.test_cache
+TestLRU.test_lru_no_args
+TestLRU.test_lru_bug_35780
+TestLRU.test_lru_with_maxsize_none
+TestLRU.test_lru_with_maxsize_negative
+TestLRU.test_lru_with_keyword_args
+TestLRU.test_lru_with_keyword_args_maxsize_none
+[exit 0]
