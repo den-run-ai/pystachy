@@ -72,6 +72,37 @@ and it makes the same code, errors and results as CPython's `re` for 18,000 rand
 each matched against 19 strings. With it, unmodified roman 5.2 prints what CPython prints. It
 is about 3 times slower than `_sre`.
 
+## `fnmatch`, a port of CPython's
+
+`fnmatch.py` is CPython 3.13.16's `Lib/fnmatch.py` (SHA-256
+`95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963`) with 8 regions edited,
+each marked `# Pystachy port:`. Its functions are CPython's: `fnmatch()`, `fnmatchcase()`,
+`filter()` and `translate()` translate a shell pattern into CPython's regular expression, character
+for character, and match it with `lib/re`; `_compile_pattern()` keeps the compiled patterns in an
+`lru_cache(maxsize=32768, typed=True)`, so its `cache_info()` counts what CPython's does.
+
+- `_compile_pattern(pat: str) -> Callable[[str], re.Match | None]`, with `from typing import
+  Callable`: `lib/functools` types a cache from its function's annotations. A pattern is a `str`
+  (CPython's also takes `bytes`, which Pystachy has not), and the matcher is the bound method
+  `re.compile(...).match` as a `Callable`.
+- `translate()`'s sentinel `STAR = object()` is `None` (#251): `_translate()` and
+  `_join_translated_parts()` annotate their lists `list[str | None]` and test `is STAR` as before.
+- `_join_translated_parts()` binds `fixed` and `res` to a list and then to the str it joins
+  (#248): the lists are `pieces` and `res`, the strs `fixed` and `joined`.
+- `filter()` tests `os.name == 'posix'` where CPython tests `os.path is posixpath`: a module is no
+  value in Pystachy. `os.path.normcase()` is Pystachy's builtin, posixpath's: a str as it is.
+
+`tests/lib_fnmatch.py` compares `translate()` of 45 patterns (classes, negated, reversed and
+dashed ranges, `[]]`, an unclosed `[`, `&&`, `~` and `|` in a class, regex metacharacters,
+non-ASCII) and the names each matches with CPython's, and the cache's statistics. A pattern
+matches by code point, as `lib/re` does, so a non-ASCII name matches as in CPython.
+
+In an AOT executable, `fnmatchcase()` of 2,000 names against 10 patterns takes 484 ns a match
+with the cache and 1,337 ns compiling the pattern each time (CPython: 299 and 3,358 ns): `lib/re`
+compiles a pattern about 3.6 times faster than CPython's `re`, whose parser and compiler are
+Python, and matches about 1.6 times slower than its C engine `_sre`, so the cache saves Pystachy
+less than it saves CPython, but still nearly two thirds of the time.
+
 ## `functools`, Pystachy's own
 
 CPython's `Lib/functools.py` does not compile (it imports `abc`, `collections`, `reprlib` and

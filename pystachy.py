@@ -3169,7 +3169,7 @@ def builtin_module(path: str) -> bool:
 def known_path(p: str) -> bool:
     # a module attribute Pystachy implements: a CALLS entry, a modattr() value, a module, a
     # function builtin() handles itself, or sys.float_info (whose attributes are modattr() values)
-    if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "sys.float_info" or p == "os.fspath" or p == "os.path.join" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
+    if p in MODULES or p in MODATTRS or p == "sys.exit" or p == "sys.float_info" or p == "os.fspath" or p == "os.path.normcase" or p == "os.path.join" or p == "os.PathLike" or (p.startswith("errno.") and p[6:] in ERRNO):
         return True
     for k in CALLS:
         if k.startswith(p + "(") or k.startswith(p + "."):
@@ -5390,7 +5390,7 @@ MODFUNCS: dict[str, bool] = {}
 for _k in CALLS:
     if "." in _k[: _k.find("(")]:
         MODFUNCS[_k[: _k.find("(")]] = True
-for _k in "os.path.join os.fspath sys.exit math.fsum math.prod".split():
+for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod".split():
     MODFUNCS[_k] = True
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
@@ -5564,6 +5564,7 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "ord": "ord() expected string of length 1, but NoneType found",
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.fspath": "expected str, bytes or os.PathLike object, not NoneType",
+                           "os.path.normcase": "expected str, bytes or os.PathLike object, not NoneType",
                            "abs": "bad operand type for abs(): 'NoneType'", "round": "type NoneType doesn't define __round__ method",
                            "chr": "'NoneType' object cannot be interpreted as an integer",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
@@ -18835,8 +18836,8 @@ class Gen:
                 return Val("null", "None")
             self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [], True)
             return Val("null", "None")
-        if name == "os.fspath" and len(vals) == 1 and vals[0].t == "str":
-            return vals[0]  # a str path is its own file system path
+        if (name == "os.fspath" or name == "os.path.normcase") and len(vals) == 1 and vals[0].t == "str":
+            return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
         if name == "os.getenv" and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
             # without a default the result is the variable's value or None
             return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")

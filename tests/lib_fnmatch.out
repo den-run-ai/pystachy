@@ -1,0 +1,96 @@
+'' (?s:)\Z
+'*' (?s:.*)\Z
+'**' (?s:.*)\Z
+'***' (?s:.*)\Z
+'?' (?s:.)\Z
+'??*' (?s:...*)\Z
+'a' (?s:a)\Z
+'abc' (?s:abc)\Z
+'*.py' (?s:.*\.py)\Z
+'*.py?' (?s:.*\.py.)\Z
+'test_*.py' (?s:test_.*\.py)\Z
+'a*b*c' (?s:a(?>.*?b).*c)\Z
+'*a*' (?s:(?>.*?a).*)\Z
+'a**b' (?s:a.*b)\Z
+'*x*y*' (?s:(?>.*?x)(?>.*?y).*)\Z
+'.*' (?s:\..*)\Z
+'[abc]' (?s:[abc])\Z
+'[!abc]' (?s:[^abc])\Z
+'[a-z]' (?s:[a-z])\Z
+'[a-z0-9_]' (?s:[a-z0-9_])\Z
+'[z-a]' (?s:(?!))\Z
+'[]]' (?s:[]])\Z
+'[!]]' (?s:[^]])\Z
+'[^x]' (?s:[\^x])\Z
+'[[]' (?s:[\[])\Z
+'[' (?s:\[)\Z
+'[abc' (?s:\[abc)\Z
+'[a-]' (?s:[a\-])\Z
+'[-a]' (?s:[\-a])\Z
+'[a--b]' (?s:[b])\Z
+'[!]' (?s:\[!\])\Z
+'[\\]' (?s:[\\])\Z
+'[a-c-e]' (?s:[a-c\-e])\Z
+'[a&&b]' (?s:[a\&\&b])\Z
+'[~x]' (?s:[\~x])\Z
+'[|x]' (?s:[\|x])\Z
+'a.b+c(d)|e^f$g\\h{i}' (?s:a\.b\+c\(d\)\|e\^f\$g\\h\{i\})\Z
+'src/**/*.c' (?s:src/(?>.*?/).*\.c)\Z
+'*/build/*' (?s:(?>.*?/build/).*)\Z
+'[!.]*' (?s:[^.].*)\Z
+'?.[ch]' (?s:.\.[ch])\Z
+'[*?[]' (?s:[*?[])\Z
+'caf?.txt' (?s:caf.\.txt)\Z
+'中*' (?s:中.*)\Z
+'*é*' (?s:(?>.*?é).*)\Z
+'' ['']
+'*' ['', 'a', 'b', 'abc', 'abd', 'a.py', 'test_x.py', 'test_.py', 'tests/test_x.py', 'src/a/b/x.c', 'src/x.c', 'x/build/y', 'build/y', '.hidden', 'x.c', 'x.h', 'x.ch', ']', '[', '-', '^', '!', '\\', 'a-b', '&', '~', '|', 'a.b+c(d)|e^f$g\\h{i}', '*', '?', 'café.txt', 'cafe.txt', '中文', 'été', 'aXbYc', 'abc\nd']
+'**' ['', 'a', 'b', 'abc', 'abd', 'a.py', 'test_x.py', 'test_.py', 'tests/test_x.py', 'src/a/b/x.c', 'src/x.c', 'x/build/y', 'build/y', '.hidden', 'x.c', 'x.h', 'x.ch', ']', '[', '-', '^', '!', '\\', 'a-b', '&', '~', '|', 'a.b+c(d)|e^f$g\\h{i}', '*', '?', 'café.txt', 'cafe.txt', '中文', 'été', 'aXbYc', 'abc\nd']
+'***' ['', 'a', 'b', 'abc', 'abd', 'a.py', 'test_x.py', 'test_.py', 'tests/test_x.py', 'src/a/b/x.c', 'src/x.c', 'x/build/y', 'build/y', '.hidden', 'x.c', 'x.h', 'x.ch', ']', '[', '-', '^', '!', '\\', 'a-b', '&', '~', '|', 'a.b+c(d)|e^f$g\\h{i}', '*', '?', 'café.txt', 'cafe.txt', '中文', 'été', 'aXbYc', 'abc\nd']
+'?' ['a', 'b', ']', '[', '-', '^', '!', '\\', '&', '~', '|', '*', '?']
+'??*' ['abc', 'abd', 'a.py', 'test_x.py', 'test_.py', 'tests/test_x.py', 'src/a/b/x.c', 'src/x.c', 'x/build/y', 'build/y', '.hidden', 'x.c', 'x.h', 'x.ch', 'a-b', 'a.b+c(d)|e^f$g\\h{i}', 'café.txt', 'cafe.txt', '中文', 'été', 'aXbYc', 'abc\nd']
+'a' ['a']
+'abc' ['abc']
+'*.py' ['a.py', 'test_x.py', 'test_.py', 'tests/test_x.py']
+'*.py?' []
+'test_*.py' ['test_x.py', 'test_.py']
+'a*b*c' ['abc', 'aXbYc']
+'*a*' ['a', 'abc', 'abd', 'a.py', 'src/a/b/x.c', 'a-b', 'a.b+c(d)|e^f$g\\h{i}', 'café.txt', 'cafe.txt', 'aXbYc', 'abc\nd']
+'a**b' ['a-b']
+'*x*y*' ['test_x.py', 'tests/test_x.py', 'x/build/y']
+'.*' ['.hidden']
+'[abc]' ['a', 'b']
+'[!abc]' [']', '[', '-', '^', '!', '\\', '&', '~', '|', '*', '?']
+'[a-z]' ['a', 'b']
+'[a-z0-9_]' ['a', 'b']
+'[z-a]' []
+'[]]' [']']
+'[!]]' ['a', 'b', '[', '-', '^', '!', '\\', '&', '~', '|', '*', '?']
+'[^x]' ['^']
+'[[]' ['[']
+'[' ['[']
+'[abc' []
+'[a-]' ['a', '-']
+'[-a]' ['a', '-']
+'[a--b]' ['b']
+'[!]' []
+'[\\]' ['\\']
+'[a-c-e]' ['a', 'b', '-']
+'[a&&b]' ['a', 'b', '&']
+'[~x]' ['~']
+'[|x]' ['|']
+'a.b+c(d)|e^f$g\\h{i}' ['a.b+c(d)|e^f$g\\h{i}']
+'src/**/*.c' ['src/a/b/x.c']
+'*/build/*' ['x/build/y']
+'[!.]*' ['a', 'b', 'abc', 'abd', 'a.py', 'test_x.py', 'test_.py', 'tests/test_x.py', 'src/a/b/x.c', 'src/x.c', 'x/build/y', 'build/y', 'x.c', 'x.h', 'x.ch', ']', '[', '-', '^', '!', '\\', 'a-b', '&', '~', '|', 'a.b+c(d)|e^f$g\\h{i}', '*', '?', 'café.txt', 'cafe.txt', '中文', 'été', 'aXbYc', 'abc\nd']
+'?.[ch]' ['x.c', 'x.h']
+'[*?[]' ['[', '*', '?']
+'caf?.txt' ['café.txt', 'cafe.txt']
+'中*' ['中文']
+'*é*' ['café.txt', 'été']
+['a.py', 'test_x.py', 'test_.py', 'tests/test_x.py'] ['a', 'b', 'abc', 'abd', 'a.py', 'build/y', 'a-b', 'a.b+c(d)|e^f$g\\h{i}', 'café.txt', 'cafe.txt', 'aXbYc', 'abc\nd'] []
+False True True
+1578 48 32768 48
+CacheInfo(hits=2577, misses=49, maxsize=32768, currsize=49)
+['y.c'] CacheInfo(hits=0, misses=1, maxsize=32768, currsize=1)
+[exit 0]

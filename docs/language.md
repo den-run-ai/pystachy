@@ -523,7 +523,9 @@ CPython 3.13 modules that compile this way ([`lib/README.md`](../lib/README.md))
 `operator`, `stat`, `posixpath` and `genericpath` (the path string functions), `this` and
 `curses.ascii`. Its `re` is Pystachy's port of CPython's `re` and of its C engine `_sre`, which
 matches as CPython's does, with a position in a str counting its bytes past ASCII and the other
-deviations [`lib/README.md`](../lib/README.md#re-a-port-of-cpythons) lists. Its `functools` is
+deviations [`lib/README.md`](../lib/README.md#re-a-port-of-cpythons) lists, and its `fnmatch` is
+CPython's over that `re`, with its compiled patterns in an `lru_cache`, for `str` patterns
+([`lib/README.md`](../lib/README.md#fnmatch-a-port-of-cpythons)). Its `functools` is
 Pystachy's own, with `cache()` and `lru_cache()` ([`lib/README.md`](../lib/README.md#functools-pystachys-own)):
 a function they decorate keeps its results in a cache of its own types, which its annotated
 parameters and return give, and the cache counts, evicts and reports `cache_info()` as CPython's C
@@ -602,7 +604,7 @@ translation and positions for `"+"` modes, and files' `read`/`readline`/
 `sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
 are files), `sys.float_info.max/max_exp/max_10_exp/min/min_exp/min_10_exp/dig/mant_dig/epsilon/radix/rounds`
 (CPython's for IEEE 754 doubles; `sys.float_info` itself is not a value),
-`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join/path.normcase` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors, with `fsum`, `prod` (and its
