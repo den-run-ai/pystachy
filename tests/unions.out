@@ -1,0 +1,13 @@
+int 42 str AB 6.0 3.0 3.0
+[1, 'two', 3, 'four'] 4 two four
+11
+5 5 5 [5] True False False
+five 'five' True True ['five']
+None True
+0 False False
+7 seven [7, 'seven']
+{'a': 1, 'b': [2, 3]} [2, 3]
+a 1
+b 5
+[Cat('tom'), 3] True False
+[exit 0]

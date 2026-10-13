@@ -926,6 +926,9 @@ void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 /* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
    box of its value's 8 bytes (a bool's 0 or 1), and None is null */
 void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+/* A union (int | str, A | B) is a pointer to a box of its value's tag, a number the program gives
+   each type, and its value's 8 bytes, which the collector scans: they may be a pointer */
+void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;
@@ -1091,6 +1094,10 @@ static int opv(I a, I b, const char *d, I op) {
   return cmpop((a > b) - (a < b), op);
 }
 I pys_cmpop(I a, I b, Str *d, I op) { return opv(a, b, d->s, op); }
+/* an ordering of two values of types CPython does not order (a union's members): its TypeError */
+void pys_cmp_fail(I op, Str *a, Str *b) {
+  failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", a->s, b->s);
+}
 
 void pys_unpack_check(I have, I want) {
   char b[96];

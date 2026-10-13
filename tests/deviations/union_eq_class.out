@@ -1,0 +1,3 @@
+True True False False
+TypeError: comparing a Node with a value of type int (Node | int) would call Node.__eq__, which takes Node values
+[exit 0]

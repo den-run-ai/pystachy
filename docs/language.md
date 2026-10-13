@@ -35,7 +35,7 @@ to 9 elements, indexed by integer constants), user classes, `T | None` (also `No
 `Optional[T]` and `Union[T, None]`, whose repeated members collapse as `typing`'s do:
 `Union[T, T, None]`, and `Union[T]` is `T`) for a class type or for `str`, `int`, `float`,
 `bool`, `list`, `dict`, `set`, `frozenset` and `tuple` (wherever a type goes, inside containers
-too), and `None` as a return type.
+too), unions `A | B` (also `Union[A, B]`, see *Typing rules*), and `None` as a return type.
 
 The `typing` spellings (`List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `TextIO`, and `Self` in a
 class's methods and fields, which is that class) work when imported from `typing`, and string
@@ -162,6 +162,25 @@ imports `annotations` from `__future__`.
   one `Result` specialization share a layout. Specializations count
   towards the 4,096 template specializations of a compilation (*Rejected rather than
   miscompiled*).
+- **Unions.** `A | B` (also `Union[A, B]`, and with `| None` or `Optional[...]`) of two or more of
+  `int`, `float`, `bool`, `str`, lists, dicts, sets, tuples and the program's classes (not exception
+  classes), which `isinstance()` tells apart (not `list[int] | list[str]`: `list[int | str]` holds
+  both). A value of a member type is boxed with its type's tag where a union is expected (an
+  annotated variable, parameter, field or return, an item of a list or a dict annotated so), and a
+  union of fewer members is one of more as it is. `isinstance(x, T)` tests the tag, and narrows a
+  local `x` as mypy does: in `if`, `elif` and `while`, after an early `return` or `continue`, in
+  `and`, `or` and `not`, and to the type of a value assigned to it; narrowed to one member, `x` is a
+  value of that type, and to several, a union of them. A union's value prints (`print()`, `str()`,
+  `repr()`, f-strings without a format spec), compares (`==` and `!=`, and `<` & co where its
+  members order: numbers with numbers and values of one type, else CPython's `TypeError`) and is
+  true or false as its member's value is; lists and dicts of unions print, compare, sort and search
+  (`in`, `index()`, `count()`) the same way. Arithmetic takes unions of numbers (`int | float`), and
+  gives a number or a union of numbers; any other operation needs one of the types, and is rejected
+  with a hint to narrow the value first. A union that holds a class's objects may be None, as the
+  class's objects may (`Node | int`); any other may be None only as `A | B | None`. A conditional
+  expression whose arms have types with nothing else in common is typed as their union, and so are
+  a list display's items, a dict display's values and the returns of a function without a return
+  annotation.
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
   or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
@@ -740,6 +759,11 @@ In these cases the program compiles but can behave differently from CPython:
   `C | None` for a class `C` (a dataclass or `NamedTuple` too). A function declared to return
   `T | None` for an `int`, `float`, `bool`, `str`, `list`, `dict` or `tuple` T, and a template
   that returns objects or `T | None`, return `None` there, as CPython does.
+- `==` of two values of a union that holds a class whose `__eq__` takes only its own class (as
+  annotated), where one holds an object of the class and the other a value of another member type,
+  raises `TypeError`; CPython calls `__eq__` with that value anyway. An ordering (`<` & co) of an
+  object of a class in a union and a value of another member type raises CPython's `TypeError` for
+  types it does not order, without calling the class's `__lt__` & co.
 - A left operand of `+ - * / // % @ & | ^ << >>` (or of their in-place forms) whose class
   defines the operator's method, but which is `None` when the code runs, raises CPython's
   `TypeError` for `None` (`unsupported operand type(s) for |: 'NoneType' and 'B'`), also where
@@ -919,6 +943,12 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
   of it (`o.__iter__()`)
 - iterating over an object, or `x in o`, by its `__getitem__` alone (CPython's old sequence
   protocol), and `reversed()` of an object
+- on a union's value that is not narrowed to a type that has it (`x.upper()`, `len(x)`, `x[0]`, a
+  loop over `x`, `x + 1` for an `x` of `int | str`), any operation but those of *Typing rules*;
+  `is` between union values (`x is None` works); a format spec for a union's value; unions as dict
+  keys or set elements; unions of types that `isinstance()` cannot tell apart
+  (`list[int] | list[str]`); exception classes, functions and `Callable`s in a union; and the
+  narrowing of a global or a field, which a call may change (copy it to a local)
 - reflected operator methods (`__radd__` & co), which CPython calls when the left operand's class
   has no method for the operator and the right operand's class is another (`3 & o` calls
   `o.__rand__(3)`), and first when the right operand's class derives from the left one's and

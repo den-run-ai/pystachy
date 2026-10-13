@@ -5825,7 +5825,7 @@ RUNTIME: dict[str, str] = {
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A I rL rD U?|",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "unpack_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "cmp_fail": "None:int,str,str|R N|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
@@ -6022,6 +6022,8 @@ def tname(t: str) -> str:
         return "TextIOWrapper"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
+    if is_union(t):
+        return typestr(t)
     if t == "exc":
         return "BaseException"
     if is_kw(t):
@@ -6173,6 +6175,33 @@ def is_sopt(t: str) -> bool:
     return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]"
 
 
+def is_union(t: str) -> bool:
+    # union[A,B,...]: a value of one of two or more types (A | B), none of them None, a union or an
+    # optional; a pointer to a box of the value's tag (its type's, see Gen.utag) and its slot
+    # (runtime.c's pys_ubox). None is null: in opt[union[...]], or where a member is a class
+    return t.startswith("union[")
+
+
+def umembers(t: str) -> list[str]:
+    # the member types of union t, in their (sorted) order
+    return targs(t)
+
+
+def unarrowed(t: str) -> str:
+    # the hint for an error about a value of type t that only one of its types supports, if t is a
+    # union (or a union | None): narrow it first; else ""
+    return ": narrow it to one of its types first, with isinstance()" if is_union(unopt(t)) else ""
+
+
+def numres(op: str, a: str, b: str) -> str:
+    # the type of a op b for numbers a and b (int, float or bool), "" where CPython raises TypeError
+    if op == "@" or ((op == "&" or op == "|" or op == "^" or op == "<<" or op == ">>") and (a == "float" or b == "float")):
+        return ""
+    if op == "/" or a == "float" or b == "float":
+        return "float"
+    return "bool" if a == "bool" and b == "bool" and op in IOPS else "int"
+
+
 def pure_arg(e: Node) -> bool:
     # an argument whose value nothing evaluated before it can change, and that changes nothing: a
     # constant or an empty display (Gen.star_call leaves it for its parameter to type)
@@ -6243,15 +6272,15 @@ def fn_shown(t: str) -> str:
     return f"<built-in function {k[2:]}>" if k.startswith("b:") else f"<function {short(k[2:])}>"
 
 
-def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
-    # the names in every one of states (narrowed where paths join)
-    r: dict[str, bool] = {}
+def meet(states: list[dict[str, str]]) -> dict[str, str]:
+    # the names narrowed alike in every one of states (narrowed where paths join)
+    r: dict[str, str] = {}
     for nm in states[0]:
         ok = True
         for st in states[1:]:
-            ok = ok and nm in st
+            ok = ok and nm in st and st[nm] == states[0][nm]
         if ok:
-            r[nm] = True
+            r[nm] = states[0][nm]
     return r
 
 
@@ -6326,7 +6355,25 @@ def typestr(t: str) -> str:
             w = ""
         else:
             w += c
-    return optnames("".join(out)[:-1])
+    return optnames(unionnames("".join(out)[:-1]))
+
+
+def unionnames(t: str) -> str:
+    # t (a type, or a message that names types) with each union[A,B] written A | B
+    while "union[" in t:
+        a = t.find("union[")
+        b = a + 6
+        depth = 1
+        ms: list[str] = []
+        m = a + 6
+        while depth > 0 and b < len(t):
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            if (depth == 1 and t[b] == ",") or depth == 0:
+                ms.append(t[m:b])
+                m = b + 1
+            b += 1
+        t = t[:a] + " | ".join(ms) + t[b:]
+    return t
 
 
 def optnames(t: str) -> str:
@@ -7450,7 +7497,7 @@ class Frame:
         self.cells: dict[str, str] = {}
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
-        self.narrowed: dict[str, bool] = {}
+        self.narrowed: dict[str, str] = {}
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
@@ -7640,6 +7687,7 @@ class Gen:
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
         self.specing: dict[str, str] = {}  # the specializations being made, by template and argument types
         self.specdone: dict[str, str] = {}  # and those made, which the same call gets again
+        self.utags: dict[str, int] = {}  # the tag of each type a union's box holds (see utag)
         self.selfcls = ""  # the class whose method or fields are being declared: what typing.Self is
         self.funcs: dict[str, FnInfo] = {}
         self.aliases: dict[str, str] = {}
@@ -7707,9 +7755,9 @@ class Gen:
         # may hold a value of another type: its first binding (none_ends), once compiled the line
         # that gives it that value (see assign, static_type)
         self.nonevars: dict[str, int] = {}
-        # optional locals (and parameters) known not to be None here, as mypy narrows them: a read
-        # of one has the type it holds (see narrows)
-        self.narrowed: dict[str, bool] = {}
+        # optional locals (and parameters) known not to be None here, and union locals known to hold
+        # a value of some of their types, as mypy narrows them: the type a read of one has (see narrows)
+        self.narrowed: dict[str, str] = {}
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # a local of an optional type exists: narrows has something to look for
         self.building: dict[str, bool] = {}  # the functions being compiled
@@ -7758,8 +7806,8 @@ class Gen:
         self.nlw: dict[str, bool] = {}  # and those of them, or of the variables it takes, that a closure assigns (nonlocal)
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
-        self.brks: list[list[dict[str, bool]]] = []  # for each loop being compiled, what narrowed holds at its breaks
-        self.elsebrks: list[dict[str, bool]] = []  # those of the last loop with an else block
+        self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
+        self.elsebrks: list[dict[str, str]] = []  # those of the last loop with an else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
         # what the container holds (see fill). The op that makes one holds a hole, which gets that
         # type (lowering prints a dict's key kind from it)
@@ -7807,7 +7855,7 @@ class Gen:
             for i in range(len(self.making) - 1, -1, -1):
                 msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
             msg += ")"
-        fail(optnames(msg) if "opt[" in msg else msg, self.line)
+        fail(optnames(unionnames(msg)) if "opt[" in msg or "union[" in msg else msg, self.line)
 
     def save(self) -> Frame:
         fr = Frame(self.curfn, self.fn, self.blk)
@@ -8229,7 +8277,7 @@ class Gen:
             # a variable a closure takes: its cell, which the function allocated as it began
             self.ltype[name] = t
             self.lreg[name] = self.cells[name]
-            self.anyopt = self.anyopt or is_opt(t)
+            self.anyopt = self.anyopt or is_opt(t) or is_union(t)
             if name in self.uflags:
                 self.n += 1
                 self.lflag[name] = f"%{name}.def.{self.n}"
@@ -8240,7 +8288,7 @@ class Gen:
             return self.cells[name]
         self.n += 1
         r = f"%{name or 'h'}.{self.n}"
-        self.anyopt = self.anyopt or is_opt(t)
+        self.anyopt = self.anyopt or is_opt(t) or is_union(t)
         i = Ins("slot", t, name)
         i.r = [self.n]
         self.fn.slots.append(i)
@@ -8328,6 +8376,8 @@ class Gen:
             self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
         if self.widens(v.t, t):
             return Val(v.v, t)
+        if is_union(unopt(t)) and v.t != "None":
+            return self.to_union(v, t, what)
         if is_fn(v.t) and is_callable(unopt(t)):
             return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
         if is_sopt(t) and v.t == unopt(t):
@@ -8381,6 +8431,11 @@ class Gen:
             return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
         if t == "exc":
             return "E"  # (repr: pys_exc_repr; equality: identity)
+        if is_union(t):
+            # (the runtime calls back into pys_obj_eq/cmp/repr, as for an object, see union_helpers)
+            if t not in self.ocls:
+                self.ocls[t] = len(self.ocls)
+            return f"O{self.ocls[t]:03d}"
         if t in self.classes:
             # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
             # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
@@ -8478,6 +8533,12 @@ class Gen:
             return self.opt(self.ann(n.kids[0]), n.kids[0])
         elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
             return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
+        elif k == "binop" and n.s == "|":
+            ts = [self.ann(x) for x in self.union_members(n, [])]
+            for t in ts:
+                if t.startswith("!"):
+                    return t
+            return self.union_type(ts)  # A | B
         elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = n.kids[0].s
             if n.kids[0].kind == "attr":
@@ -8535,6 +8596,7 @@ class Gen:
                     return us[0]  # Union[T]
                 if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                     return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
+                return self.union_type(us)
         if self.typing_ref(n) == "Final":
             return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
         if self.pathlike(n):
@@ -8751,9 +8813,256 @@ class Gen:
         # the type of a value that is a t or None, "" if there is none
         if t in self.classes or is_opt(t):
             return t
+        if is_union(t):
+            # (a union that holds a class's objects may be None, as the class's objects may)
+            return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
         if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_callable(t)) and "?" not in t:
             return self.ctype("opt", [t])
         return ""
+
+    def umember_problem(self, t: str) -> str:
+        # why a value of type t cannot be one of a union's (A | B), or ""
+        if t == "int" or t == "float" or t == "bool" or t == "str":
+            return ""
+        if t in self.classes:
+            return "" if self.classes[t].exc == "" else f"an exception class ({short(t)}) in a union (A | B) is not supported"
+        if (is_list(t) or is_dict(t) or is_set(t) or is_tuple(t)) and "?" not in t:
+            return ""
+        return f"{typestr(t)} in a union (A | B) is not supported"
+
+    def union_type(self, ts: list[str]) -> str:
+        # the type of a value of one of types ts (None among them: T | None): the type, for one, else
+        # union[...] of them, nested unions and optionals flattened, in sorted order; "!" and why not
+        ms: list[str] = []
+        none = False
+        for t in ts:
+            if t == "None" or t == NONEVAR:
+                none = True
+                continue
+            if is_opt(t):
+                none = True
+                t = unopt(t)
+            for m in umembers(t) if is_union(t) else [t]:
+                if m not in ms:
+                    ms.append(m)
+        if len(ms) == 0:
+            return "None"
+        if len(ms) == 1:
+            r = self.optional(ms[0]) if none else ms[0]
+            return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(ms[0])}"
+        kinds: list[str] = []
+        for m in ms:
+            if self.umember_problem(m) != "":
+                return "!" + self.umember_problem(m)
+            k = self.ukind(m)
+            if k in kinds:
+                o = [x for x in ms if self.ukind(x) == k]
+                return f"!a union of {typestr(o[0])} and {typestr(o[1])} is not supported: isinstance() cannot tell them apart (a union of the types they hold may do: {k}[A | B])"
+            kinds.append(k)
+        ms.sort()
+        u = self.ctype("union", ms)
+        return self.optional(u) if none else u
+
+    def ukind(self, t: str) -> str:
+        # the class CPython gives a value of type t: what isinstance() tells apart in a union
+        if is_list(t) or is_dict(t) or is_tuple(t):
+            return t[: t.find("[")]
+        if is_set(t):
+            return "frozenset" if is_fset(t) else "set"
+        if t in self.classes and self.classes[t].origin != "":
+            return self.classes[t].origin  # (a class template's specializations are its class)
+        return t
+
+    def utag(self, t: str) -> int:
+        # the tag of type t in a union's box: one number per type, for the whole program, so that
+        # a union's box is also one of a union of more types
+        if t not in self.utags:
+            self.utags[t] = len(self.utags) + 1
+        return self.utags[t]
+
+    def ubox(self, v: Val, m: str) -> str:
+        # v, of member type m, as a union's box (a class's object that may be None: null)
+        b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m))])
+        if m not in self.classes or v.v in self.nn:
+            return b
+        return self.ins(f"select i1 {self.ins(f'icmp eq ptr {v.v}, null')}, ptr null, ptr {b}")
+
+    def uget(self, u: str, m: str) -> Val:
+        # the value a union's box u holds, known to be of member type m
+        return self.from_slot(self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {u}, i64 1')}"), m)
+
+    def utest(self, u: str, ms: list[str], may_none: bool) -> str:
+        # i1: does the union's box u (null where it is None, if may_none) hold a value of one of types ms
+        if len(ms) == 0:
+            return "false"
+        l0 = self.cur
+        lload = self.label() if may_none else ""
+        lend = self.label() if may_none else ""
+        if may_none:
+            self.cbr(self.ins(f"icmp eq ptr {u}, null"), lend, lload)
+            self.place(lload)
+        tag = self.ins(f"load i64, ptr {u}")
+        r = ""
+        for m in ms:
+            x = self.ins(f"icmp eq i64 {tag}, {self.utag(m)}")
+            r = x if r == "" else self.ins(f"or i1 {r}, {x}")
+        if not may_none:
+            return r
+        l1 = self.cur
+        self.br(lend)
+        self.place(lend)
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, "false", l0)
+        self.incoming(ph, r, l1)
+        return self.phi(ph)
+
+    def to_union(self, v: Val, t: str, what: str) -> Val:
+        # v as a value of union type t (or t | None): a box of its tag and slot, the same pointer for
+        # a union of fewer types, null for None; an error where v is of no member type, or may be
+        # None and t may not
+        u = unopt(t)
+        ms = umembers(u)
+        none_ok = self.optional(u) == t
+        src = unopt(v.t)
+        if is_union(src) and len([m for m in umembers(src) if m not in ms]) == 0:
+            if is_opt(v.t) and not none_ok:
+                self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
+            return Val(v.v, t)
+        if src not in ms:
+            self.err(f"expected {typestr(t)}, got {typestr(v.t)}")
+        if not is_opt(v.t):
+            return Val(self.ubox(v, src), t)
+        if not none_ok:
+            self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
+        # an optional value: None stays null, any other value is boxed
+        l0 = self.cur
+        lbox = self.label()
+        lend = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lbox)
+        self.place(lbox)
+        b = self.ubox(self.deref(v), src)
+        l1 = self.cur
+        self.br(lend)
+        self.place(lend)
+        ph = Ins("phi", t, "")
+        self.incoming(ph, "null", l0)
+        self.incoming(ph, b, l1)
+        return Val(self.phi(ph), t)
+
+    def narrow_val(self, v: Val, nt: str) -> Val:
+        # v, a local's value of its own type, as of the type nt a test or an assignment narrowed it
+        # to (see narrows): an optional's value, a union's member, or a union of fewer members
+        if nt == v.t:
+            return v
+        if not is_union(unopt(v.t)):
+            return self.deref(v)  # (an optional known not to be None)
+        if nt == "None":
+            return Val("null", "None")
+        if is_union(unopt(nt)):
+            return Val(v.v, nt)  # (the same box)
+        m = unopt(nt)
+        if m not in self.classes and not is_opt(nt):
+            return self.uget(v.v, m)
+        # a class's object, or a value that may be None: null stays None
+        l0 = self.cur
+        lget = self.label()
+        lend = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lget)
+        self.place(lget)
+        x = self.coerce(self.uget(v.v, m), nt)
+        l1 = self.cur
+        self.br(lend)
+        self.place(lend)
+        ph = Ins("phi", nt, "")
+        self.incoming(ph, "null", l0)
+        self.incoming(ph, x.v, l1)
+        return Val(self.phi(ph), nt)
+
+    def items_union(self, ts: list[str], first: str) -> str:
+        # the type of a display's items (or values) of types ts that no other type holds: their
+        # union, where it can be one; else first's (the first item's), whose error coerce gives
+        u = self.union_type(ts)
+        return u if not u.startswith("!") and is_union(unopt(u)) else first
+
+    def numbers(self, t: str) -> bool:
+        # is t a number's type, or a union of them (int | float)
+        return self.isnum(t) or (is_union(t) and len([m for m in umembers(t) if not self.isnum(m)]) == 0)
+
+    def uarith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        # a op b where a or b is a union of numbers (int | float): for each pair of their types, as
+        # the tags pick it, what it gives (CPython's TypeError where it is not supported), as one
+        # type or as the union of the types the pairs give
+        xs = umembers(a.t) if is_union(a.t) else [a.t]
+        ys = umembers(b.t) if is_union(b.t) else [b.t]
+        sh = shown if shown != "" else op
+        ts: list[str] = []
+        for xt in xs:
+            for yt in ys:
+                rt = numres(op, xt, yt)
+                if rt != "" and rt not in ts:
+                    ts.append(rt)
+        if len(ts) == 0:
+            self.err(f"unsupported operand type(s) for {sh}: '{typestr(a.t)}' and '{typestr(b.t)}'")
+        rt = self.union_type(ts)
+        lend = self.label()
+        ph = Ins("phi", rt, "")
+        for i in range(len(xs)):
+            lnext = ""
+            if i < len(xs) - 1:
+                lthis = self.label()
+                lnext = self.label()
+                self.cbr(self.utest(a.v, [xs[i]], False), lthis, lnext)
+                self.place(lthis)
+            x = self.uget(a.v, xs[i]) if is_union(a.t) else a
+            for j in range(len(ys)):
+                mnext = ""
+                if j < len(ys) - 1:
+                    mthis = self.label()
+                    mnext = self.label()
+                    self.cbr(self.utest(b.v, [ys[j]], False), mthis, mnext)
+                    self.place(mthis)
+                y = self.uget(b.v, ys[j]) if is_union(b.t) else b
+                if numres(op, xs[i], ys[j]) == "":
+                    self.raise_("TypeError", self.sconst(f"unsupported operand type(s) for {sh}: '{tname(xs[i])}' and '{tname(ys[j])}'"))
+                else:
+                    r = self.coerce(self.arith(op, x, y, shown), rt)
+                    self.incoming(ph, r.v, self.cur)
+                    self.br(lend)
+                if mnext != "":
+                    self.place(mnext)
+            if lnext != "":
+                self.place(lnext)
+        self.place(lend)
+        return Val(self.phi(ph), rt)
+
+    def ucmp(self, op: str, a: Val, b: Val) -> Val:
+        # a op b (==, != or an ordering) where a or b is a union's value (or one that may be None):
+        # both as values of the union of their types, compared as their members are (union_helpers)
+        u = self.union_type([a.t, b.t])
+        if u.startswith("!"):
+            self.err(u[1:])
+        x = self.coerce(a, u)
+        y = self.coerce(b, u)
+        if op == "==" or op == "!=":
+            r = self.ucall("eq", unopt(u), [x, y])
+            return Val(r if op == "==" else self.ins(f"xor i1 {r}, true"), "bool")
+        return Val(self.ucall("cmp", unopt(u), [Val(str(ORDOP[op]), "int"), x, y]), "bool")
+
+    def uisinst(self, v: Val, c: Node) -> str:
+        # i1: isinstance(v, c) for a union value v (or one that may be None): its tag is that of a
+        # member type c names, or it is None and c names NoneType
+        ms: list[str] = []
+        for m in umembers(unopt(v.t)):
+            k = self.isinst(m, c)
+            if k == -1 or k == -3:
+                self.err("isinstance() is only supported with the builtin types and classes as its second argument")
+            if k == 1 or k == -2:
+                ms.append(m)
+        may_none = (is_opt(v.t) or self.optional(unopt(v.t)) == unopt(v.t)) and v.v not in self.nn
+        r = self.utest(v.v, ms, may_none)
+        if may_none and self.isinst("None", c) == 1:
+            r = self.ins(f"or i1 {r}, {self.ins(f'icmp eq ptr {v.v}, null')}")
+        return r
 
     def join(self, a: str, b: str) -> str:
         # the type of a value that is an a or a b, where None and optional types meet (T and None
@@ -8853,6 +9162,11 @@ class Gen:
             return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
         if b in self.classes:
             return a == "None" or (a in self.classes and self.classes[a].exc != "" and self.derives(a, b))
+        if is_union(b):
+            # (its box: the tags are the program's, the same in every union)
+            if a == "None":
+                return self.optional(b) == b
+            return is_union(a) and len([m for m in umembers(a) if m not in umembers(b)]) == 0
         if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
             return False
         bs = targs(b)
@@ -9620,8 +9934,8 @@ class Gen:
             r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
             if name == self.selfname and name not in self.compvars:
                 self.nn[r] = True
-            if name in self.narrowed and is_opt(t) and t != NONEVAR:
-                return self.deref(Val(r, t))  # known not to be None here
+            if name in self.narrowed and (is_opt(t) or is_union(t)) and t != NONEVAR:
+                return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
             return Val(r, t)
         self.read_ahead(name)
         if name in self.gtypes:
@@ -9911,7 +10225,7 @@ class Gen:
                 pre = self.narrowed
                 self.narrowed = dict(pre)
                 for nm in self.ltype:
-                    self.narrowed[nm] = True
+                    self.narrowed[nm] = pre[nm] if nm in pre else unopt(self.ltype[nm])
                 t = self.dry(e)
                 self.narrowed = pre
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR:
@@ -10743,10 +11057,11 @@ class Gen:
             self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr {self.lreg[name]}")
             if name in self.lflag and name not in self.compvars:
                 self.emit(f"store i1 true, ptr {self.lflag[name]}")
-            if is_opt(t) and (is_opt(v.t) or v.t == "None"):
-                self.narrowed.pop(name, False)
-            elif is_opt(t):
-                self.narrowed[name] = True  # (it holds a value)
+            held = self.holds(t, v.t)
+            if held == "":
+                self.narrowed.pop(name, "")
+            else:
+                self.narrowed[name] = held  # (it holds a value, of type held)
 
     def assigned_to(self, v: Val, t: str, name: str) -> str:
         # what names value v assigned to variable name of type t, for coerce's error
@@ -13346,10 +13661,132 @@ class Gen:
                 return
             self.stmt(s)
 
+    def oname(self, c: str) -> str:
+        # the name of class c's (or union type c's) helpers, @o.eq.<name> & co: a union's is U and
+        # its number among the types the runtime dispatches on (ocls)
+        return f"U{self.ocls[c]}" if is_union(c) else c
+
+    def ucall(self, op: str, u: str, args: list[Val]) -> str:
+        # a call of union type u's helper op (see union_helpers), registered for compiling; one
+        # that may raise, in a try statement, unwinds to its handler as any call does
+        if u not in self.ocls:
+            self.ocls[u] = len(self.ocls)
+        c = Ins("call", "str" if op == "repr" or op == "str" else "bool", f"@o.{op}.U{self.ocls[u]}")
+        c.a = args
+        self.put(c, 1)
+        return f"%t{c.r[0]}"
+
+    def union_helpers(self, u: str) -> None:
+        # @o.eq/cmp/repr/str/bool.U<n> of union type u: what ==, ordering, repr(), str() and bool()
+        # do with its values (the runtime's for a container's items, see dispatch), by the tag of
+        # the box: what its member type does, as CPython does it. A union that holds a class's
+        # objects may be None (null). Compiled leniently, as obj_helpers are
+        ms = umembers(u)
+        line = self.line
+        a = mk("name", "a", line, [])
+        b = mk("name", "b", line, [])
+        op = mk("name", "op", line, [])
+        reprs: list[Node] = [self.unone(a, [mk("return", "", line, [mk("str", "None", line, [])])])]
+        strs: list[Node] = [self.unone(a, [mk("return", "", line, [mk("str", "None", line, [])])])]
+        bools: list[Node] = [self.unone(a, [mk("return", "", line, [mk("False", "", line, [])])])]
+        for i in range(len(ms)):
+            x = self.umember(a, i)
+            reprs.append(self.utagis(a, ms[i], [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), x])])]))
+            strs.append(self.utagis(a, ms[i], [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_str", line, []), x])])]))
+            bools.append(self.utagis(a, ms[i], [mk("return", "", line, [mk("call", "", line, [mk("name", "bool", line, []), x])])]))
+        reprs.append(mk("return", "", line, [mk("str", "", line, [])]))
+        strs.append(mk("return", "", line, [mk("str", "", line, [])]))
+        bools.append(mk("return", "", line, [mk("False", "", line, [])]))
+        # ==: a member's == where both hold one type, or numbers, or a class whose __eq__ takes the
+        # other's type (asked first where it is the left one, else as CPython reflects it); False
+        # for any other two types, which CPython finds unequal
+        eqs: list[Node] = [self.unone(a, [mk("return", "", line, [mk("cmp", "is", line, [b, mk("None", "", line, [])])])]),
+                           self.unone(b, [mk("return", "", line, [mk("False", "", line, [])])])]
+        # ordering: a member's where both hold one type that has it, or numbers, else CPython's
+        # TypeError naming both types (None's too)
+        anone: list[Node] = [self.unone(b, [self.cmpfail(op, "NoneType", "NoneType")])]
+        bnone: list[Node] = []
+        for i in range(len(ms)):
+            anone.append(self.utagis(b, ms[i], [self.cmpfail(op, "NoneType", tname(ms[i]))]))
+            bnone.append(self.utagis(a, ms[i], [self.cmpfail(op, tname(ms[i]), "NoneType")]))
+        cmps: list[Node] = [self.unone(a, anone), self.unone(b, bnone)]
+        for i in range(len(ms)):
+            ie: list[Node] = []
+            ic: list[Node] = []
+            for j in range(len(ms)):
+                x = self.umember(a, i)
+                y = self.umember(b, j)
+                num = self.isnum(ms[i]) and self.isnum(ms[j])
+                if i == j or num or self.eq_takes(ms[i], ms[j]):
+                    ie.append(self.utagis(b, ms[j], [mk("return", "", line, [mk("cmp", "==", line, [x, y])])]))
+                elif self.eq_takes(ms[j], ms[i]):
+                    ie.append(self.utagis(b, ms[j], [mk("return", "", line, [mk("cmp", "==", line, [y, x])])]))
+                elif (ms[i] in self.classes and "__eq__" in self.classes[ms[i]].methods) or (ms[j] in self.classes and "__eq__" in self.classes[ms[j]].methods):
+                    # (CPython would call the class's __eq__ with the other value, which it does not take)
+                    c = ms[i] if ms[i] in self.classes and "__eq__" in self.classes[ms[i]].methods else ms[j]
+                    o = ms[j] if c == ms[i] else ms[i]
+                    msg = f"comparing a {shown(c)} with a value of type {tname(o)} ({typestr(u)}) would call {shown(c)}.__eq__, which takes {typestr(self.classes[c].methods['__eq__'].ptypes[1])} values"
+                    ie.append(self.utagis(b, ms[j], [mk("raise", "", line, [mk("call", "", line, [mk("name", "TypeError", line, []), mk("str", msg, line, [])])])]))
+                if (i == j and not is_dict(ms[i])) or num:
+                    body: list[Node] = []
+                    for o in ["<", "<=", ">"]:
+                        hit = mk("block", "", line, [mk("return", "", line, [mk("cmp", o, line, [x, y])])])
+                        body.append(mk("if", "", line, [mk("cmp", "==", line, [op, mk("int", str(ORDOP[o]), line, [])]), hit, mk("block", "", line, [])]))
+                    body.append(mk("return", "", line, [mk("cmp", ">=", line, [x, y])]))
+                    ic.append(self.utagis(b, ms[j], body))
+                else:
+                    ic.append(self.utagis(b, ms[j], [self.cmpfail(op, tname(ms[i]), tname(ms[j]))]))
+            ie.append(mk("return", "", line, [mk("False", "", line, [])]))
+            ic.append(mk("return", "", line, [mk("False", "", line, [])]))
+            eqs.append(self.utagis(a, ms[i], ie))
+            cmps.append(self.utagis(a, ms[i], ic))
+        eqs.append(mk("return", "", line, [mk("False", "", line, [])]))
+        cmps.append(mk("return", "", line, [mk("False", "", line, [])]))
+        ops = ["eq", "cmp", "repr", "str", "bool"]
+        bodies = [eqs, cmps, reprs, strs, bools]
+        rets = ["bool", "bool", "str", "str", "bool"]
+        ou = self.optional(u)  # (a value that may be None is passed as it is: null)
+        self.lenient = True
+        for i in range(len(ops)):
+            noann = mk("noann", "", line, [])
+            f = FnInfo(ops[i], f"@o.{ops[i]}.{self.oname(u)}", mk("def", ops[i], line, [noann, noann, mk("block", "", line, bodies[i])]), "")
+            f.params = ["op", "a", "b"] if ops[i] == "cmp" else ["a", "b"] if ops[i] == "eq" or ops[i] == "repr" else ["a"]
+            f.ptypes = ["int", ou, ou] if ops[i] == "cmp" else [ou, ou] if ops[i] == "eq" or ops[i] == "repr" else [ou]
+            f.ret = rets[i]
+            self.function(f, bodies[i])
+        self.lenient = False
+
+    def eq_takes(self, c: str, m: str) -> bool:
+        # does class c's __eq__ take a value of type m (as annotated)
+        if c not in self.classes or "__eq__" not in self.classes[c].methods:
+            return False
+        f = self.classes[c].methods["__eq__"]
+        return f.bad == "" and len(f.params) == 2 and f.ptypes[1] == m
+
+    def umember(self, a: Node, i: int) -> Node:
+        # __pys_umember(a, i): the value of union a's box, of its member type i
+        return mk("call", "", a.line, [mk("name", "__pys_umember", a.line, []), a, mk("int", str(i), a.line, [])])
+
+    def utagis(self, a: Node, m: str, body: list[Node]) -> Node:
+        # if the box of union a holds a value of type m: body
+        test = mk("cmp", "==", a.line, [mk("call", "", a.line, [mk("name", "__pys_utag", a.line, []), a]), mk("int", str(self.utag(m)), a.line, [])])
+        return mk("if", "", a.line, [test, mk("block", "", a.line, body), mk("block", "", a.line, [])])
+
+    def unone(self, a: Node, body: list[Node]) -> Node:
+        # if union a is None: body
+        return mk("if", "", a.line, [mk("cmp", "is", a.line, [a, mk("None", "", a.line, [])]), mk("block", "", a.line, body), mk("block", "", a.line, [])])
+
+    def cmpfail(self, op: Node, x: str, y: str) -> Node:
+        # CPython's TypeError for an ordering between a value of type x and one of type y
+        return mk("expr", "", op.line, [mk("call", "", op.line, [mk("name", "__pys_cmpfail", op.line, []), op, mk("str", x, op.line, []), mk("str", y, op.line, [])])])
+
     def obj_helpers(self, c: str) -> None:
         # @o.eq/cmp/repr.<class>: what the runtime's generic ==, ordering and repr do with objects
         # of class c. They are compiled leniently: an operation the class does not support
         # raises TypeError when it runs rather than failing the compilation.
+        if is_union(c):
+            self.union_helpers(c)
+            return
         line = self.classes[c].node.line
         a = mk("name", "a", line, [])
         b = mk("name", "b", line, [])
@@ -13383,10 +13820,10 @@ class Gen:
             i = self.ocls[c]
             self.out.append(f"k{i}:")
             if op == "repr":
-                self.out.append(f"  %r{i} = call ptr @o.repr.{c}(ptr %pa, ptr %pb)")
+                self.out.append(f"  %r{i} = call ptr @o.repr.{self.oname(c)}(ptr %pa, ptr %pb)")
                 self.out.append(f"  ret ptr %r{i}")
             else:
-                self.out.append(f"  %r{i} = call i1 @o.{op}.{c}({'i64 %op, ' if op == 'cmp' else ''}ptr %pa, ptr %pb)")
+                self.out.append(f"  %r{i} = call i1 @o.{op}.{self.oname(c)}({'i64 %op, ' if op == 'cmp' else ''}ptr %pa, ptr %pb)")
                 self.out.append(f"  %z{i} = zext i1 %r{i} to i64")
                 self.out.append(f"  ret i64 %z{i}")
         self.out.append("none:")
@@ -13634,7 +14071,7 @@ class Gen:
         # after the loop: what holds where its test is false (never for while True) and at each
         # break that leaves it here (a loop with an else block breaks past it)
         self.narrow_by(n.kids[0], False)
-        ends: list[dict[str, bool]] = []
+        ends: list[dict[str, str]] = []
         if n.kids[0].kind != "True":
             ends.append(self.narrowed)
         if n.kids[1].kids is not self.elsekids:
@@ -13642,7 +14079,7 @@ class Gen:
         self.narrowed = meet(ends) if len(ends) > 0 else after
         self.place(l3)
 
-    def loop(self, body: list[Node], lp: Loop) -> list[dict[str, bool]]:
+    def loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         # the body of loop lp: continue jumps to lp.step, break to lp.exit; what narrowed holds at
         # its breaks is returned (see while_)
         if body is self.elsekids:
@@ -13753,7 +14190,7 @@ class Gen:
         # at the end of each way that goes on (ends)
         hst = self.unnarrowed([n.kids[0].kids])
         fst = self.unnarrowed([n.kids[0].kids, orelse] + [h.kids[1].kids for h in hs])
-        ends: list[dict[str, bool]] = []
+        ends: list[dict[str, str]] = []
         # the try notes the depth of the unwind actions (pys_exc_begin runs those added since) and
         # the exception being handled, which every way out of its clauses restores
         mark = Val(self.rt("pys_try_mark", "i64", []), "int")
@@ -13917,10 +14354,10 @@ class Gen:
         else:
             self.raise_("AssertionError", self.to_str(v).v)
 
-    def unnarrowed(self, bodies: list[list[Node]]) -> dict[str, bool]:
+    def unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
         # a copy of narrowed without the names that the code of bodies binds or deletes: what
         # holds wherever an exception may come from in them
-        out: dict[str, bool] = {}
+        out: dict[str, str] = {}
         if len(self.narrowed) > 0:
             names: dict[str, bool] = {}
             for b in bodies:
@@ -13928,7 +14365,7 @@ class Gen:
                 deleted(b, names)
             for nm in self.narrowed:
                 if nm not in names:
-                    out[nm] = True
+                    out[nm] = self.narrowed[nm]
         return out
 
     def clause_or(self, t: Node) -> Node:
@@ -14732,11 +15169,7 @@ class Gen:
             if ygo and not ngo:
                 self.narrowed = yes
             elif ygo and ngo and len(yes) + len(self.narrowed) > 0:
-                no = self.narrowed
-                self.narrowed = {}
-                for both in yes:
-                    if both in no:
-                        self.narrowed[both] = True
+                self.narrowed = meet([yes, self.narrowed])
         elif k == "while" and self.static(n.kids[0]) == 0:
             # a loop whose test is false from the start (while x: with x None): only its else block runs
             self.static_reads(n.kids[0])
@@ -14817,7 +15250,11 @@ class Gen:
                 j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
                 if j != self.ret and j != "" and is_opt(j):
                     self.reopt(j)  # a template's function returns T and None (or T | None): T | None
-                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
+                if self.curfn.infer and j == "" and v.t != "None" and not is_opt(self.ret) and not is_opt(v.t) and self.ret != "None":
+                    u = self.union_type([self.ret, v.t])
+                    if not u.startswith("!") and is_union(u):
+                        self.reunion(u)  # a function returns an A and a B: A | B
+                if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (is_union(unopt(self.ret)) and self.union_type([self.ret, v.t]) == self.ret):
                     if v.t == "None":
                         self.err(self.nonemix(self.curfn, self.ret))
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
@@ -15006,6 +15443,18 @@ class Gen:
         self.ret = t
         self.curfn.ret = t
 
+    def reunion(self, t: str) -> None:
+        # the function being compiled, whose return type is inferred, returned values of a type
+        # that union t holds so far, and returns another member's: each of those returns boxes
+        # its value (see reopt)
+        if self.curfn.ll in self.retseen:
+            self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a return shows that it returns {typestr(t)}; annotate its return type")
+        for b in self.fn.blocks:
+            if len(b.code) > 0 and b.code[-1].op == "ret" and len(b.code[-1].a) == 1 and b.code[-1].a[0].t != t:
+                b.code[-1].a = [self.convert_in(b.code[-1].a[0], t, b)]
+        self.ret = t
+        self.curfn.ret = t
+
     def del_name(self, n: Node) -> None:
         # del x: x is unbound afterwards. Reads that may follow test its "is assigned" flag
         # (definite assignment marks them), so clearing the flag is all it takes.
@@ -15024,7 +15473,7 @@ class Gen:
         self.nonecmp = True  # (a local only None was assigned to may be deleted)
         self.read(n)  # del of a name that is not bound raises as its read does
         self.nonecmp = False
-        self.narrowed.pop(name, False)
+        self.narrowed.pop(name, "")
         if name in self.ltype and name in self.lflag:
             self.emit(f"store i1 false, ptr {self.lflag[name]}")
         elif name not in self.ltype and name in self.gflag:
@@ -15439,7 +15888,7 @@ class Gen:
             if is_set(s.t) and mode == "reversed":
                 self.err(f"'{tname(s.t)}' object is not reversible")
             if not (s.t == "str" or is_list(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]")):
-                self.err(f"cannot iterate over {s.t}" if s.t != "file" else "a file is not reversible")
+                self.err(f"cannot iterate over {s.t}{unarrowed(s.t)}" if s.t != "file" else "a file is not reversible")
             if s.t == "file":
                 st.append("")
                 used.append("")
@@ -15543,9 +15992,11 @@ class Gen:
         self.narrowed = after
 
     # ---- narrowing: optional locals known not to be None
-    def narrows(self, n: Node, truth: bool, out: list[str]) -> None:
-        # the optional locals that test n shows are not None when its value is truth, as mypy
-        # narrows them: x, x is not None, x != None, isinstance(x, T), and not/and/or of those
+    def narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+        # the locals that test n narrows when its value is truth, as mypy narrows them, and the type
+        # each then holds: an optional one is not None (x, x is not None, x != None, isinstance(x,
+        # T)), a union holds a value of the types isinstance(x, T) names, or of the others; and
+        # not/and/or of those
         if not self.anyopt:
             return
         k = n.kind
@@ -15555,30 +16006,77 @@ class Gen:
             self.narrows(n.kids[0], truth, out)
             self.narrows(n.kids[1], truth, out)
         elif k == "name" and truth and self.narrowable(n.s):
-            out.append(n.s)
+            out[n.s] = unopt(out[n.s] if n.s in out else self.now_type(n.s))
         elif k == "cmp" and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (n.s == "is not" or n.s == "!=" or n.s == "is" or n.s == "==") and self.narrowable(n.kids[0].s):
             if (n.s == "is not" or n.s == "!=") == truth:
-                out.append(n.kids[0].s)
+                nm = n.kids[0].s
+                out[nm] = unopt(out[nm] if nm in out else self.now_type(nm))
         elif k == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and n.kids[1].kind == "name" and self.narrowable(n.kids[1].s):
-            if not self.bound("isinstance") and self.isinst(self.ltype[n.kids[1].s], n.kids[2]) == (-2 if truth else -3):
-                out.append(n.kids[1].s)
+            nm = n.kids[1].s
+            t = out[nm] if nm in out else self.now_type(nm)
+            if self.bound("isinstance"):
+                return
+            if is_union(unopt(t)):
+                nt = self.isinst_narrow(t, n.kids[2], truth)
+                if nt != "":
+                    out[nm] = nt
+            elif self.isinst(self.ltype[nm], n.kids[2]) == (-2 if truth else -3):
+                out[nm] = unopt(self.ltype[nm])
+
+    def now_type(self, name: str) -> str:
+        # the type local name has here: as a test or an assignment narrowed it, else its own
+        return self.narrowed[name] if name in self.narrowed else self.ltype[name]
+
+    def isinst_narrow(self, t: str, c: Node, truth: bool) -> str:
+        # the type of a value of union type t (or t | None) where isinstance(x, c) is truth: the
+        # members that are (or are not) instances of c, with None where it is not; "" where c
+        # decides nothing that way
+        none = is_opt(t) or self.optional(unopt(t)) == unopt(t)
+        keep: list[str] = []
+        for m in umembers(unopt(t)):
+            r = self.isinst(m, c)
+            if r == -1 or r == -3:
+                return ""
+            if (r == 1 or r == -2) == truth:
+                keep.append(m)
+        if none and (self.isinst("None", c) == 1) == truth:
+            keep.append("None")
+        if len(keep) == 0:
+            return ""
+        nt = self.union_type(keep)
+        return nt if not nt.startswith("!") and nt != t else ""
 
     def narrowable(self, name: str) -> bool:
-        # a local (or parameter) of an optional type: a global or a field may change in a call, and so
-        # may a variable that a closure assigns (nonlocal)
-        return is_opt(self.ltype.get(name, "")) and not self.is_global(name) and name not in self.nlw
+        # a local (or parameter) of an optional type, or a union: a global or a field may change in a
+        # call, and so may a variable that a closure assigns (nonlocal)
+        t = self.ltype.get(name, "")
+        return (is_opt(t) or is_union(t)) and not self.is_global(name) and name not in self.nlw
 
-    def narrow_by(self, test: Node, truth: bool) -> dict[str, bool]:
+    def narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
         # narrowed becomes a copy narrowed by test being truth; the state before is returned
         pre = self.narrowed
         self.narrowed = dict(pre)
-        found: list[str] = []
+        found: dict[str, str] = {}
         self.narrows(test, truth, found)
         for nm in found:
-            self.narrowed[nm] = True
+            self.narrowed[nm] = found[nm]
         return pre
 
-    def forget(self, body: list[Node], tgt: Node) -> dict[str, bool]:
+    def holds(self, t: str, vt: str) -> str:
+        # what a local of type t holds once a value of type vt is assigned to it: a T where t is
+        # T | None (and vt is not None or optional), a member or fewer members where t is a union
+        # (or a union | None); "" where that is t itself, nothing narrower
+        if is_union(unopt(t)):
+            if vt == "None" or vt == t:
+                return ""
+            if vt in umembers(unopt(t)) or (is_union(unopt(vt)) and len([m for m in umembers(unopt(vt)) if m not in umembers(unopt(t))]) == 0):
+                return vt if not (is_opt(vt) and not is_opt(t)) else ""
+            return ""
+        if is_opt(t) and not is_opt(vt) and vt != "None":
+            return unopt(t)
+        return ""
+
+    def forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
         # a loop: what it binds (in body, and its target tgt) may be None on its later passes, and
         # after it; a copy of the state after it is returned
         if len(self.narrowed) > 0:
@@ -15634,7 +16132,7 @@ class Gen:
             return self.static(n.kids[1])
         if x >= 0:
             t = self.static_type(n.kids[x])
-            r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) else 1 if t == "None" else 0
+            r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) or (is_union(t) and self.optional(t) == t) else 1 if t == "None" else 0
             if (n.s == "==" or n.s == "!=") and (t == "exc" or (t in self.classes and ("__eq__" in self.classes[t].methods or "__ne__" in self.classes[t].methods))):
                 r = -1  # (CPython calls x.__eq__ or __ne__; an exception's class may define one)
             return r if r < 0 or n.s == "is" or n.s == "==" else 1 - r
@@ -15725,7 +16223,7 @@ class Gen:
                 # loop's later passes, unless None is all that its function assigns it)
                 body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
                 return "None" if only_none(body, n.s) else ""
-            return unopt(t) if n.s in self.narrowed and is_opt(t) and t != NONEVAR else t
+            return self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t)) and t != NONEVAR else t
         if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
             return self.gtypes[n.s]
         return ""
@@ -15739,6 +16237,10 @@ class Gen:
             if not self.puretype(c, False):
                 return -1
             return self.isinst(t, mk("tuple", "|", c.line, c.kids))
+        if is_union(t):
+            # (decided where every member decides it alike, and None, where a class's object may be it)
+            rs = [self.isinst(m, c) for m in umembers(t)] + ([self.isinst("None", c)] if self.optional(t) == t else [])
+            return rs[0] if len([r for r in rs if r != rs[0]]) == 0 and (rs[0] == 1 or rs[0] == 0) else -1
         if is_opt(t):
             # by whether it is None
             r = self.isinst(unopt(t), c)
@@ -15840,6 +16342,8 @@ class Gen:
         t = v.t
         if t == "bool":
             return v.v
+        if is_union(unopt(t)):
+            return self.ucall("bool", unopt(t), [v])  # (None: null)
         if is_fn(t):
             return "true"  # (a function is true)
         if is_kw(t):
@@ -16044,6 +16548,8 @@ class Gen:
                 items.append(v)
             if not given and (is_opt(jt) or is_tuple(jt)):
                 et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+            if not given and jt == "-":
+                et = self.items_union([v.t for v in items], et)  # (items of types with no other in common: their union)
             if given and soft:
                 for v in items:
                     et = self.wider(et, v.t) or et
@@ -16082,6 +16588,8 @@ class Gen:
                 vs.append(b)
             if not given and (is_opt(jt) or is_tuple(jt)):
                 kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+            if not given and jt == "-":
+                kv[1] = self.items_union([b.t for b in vs], kv[1])  # (values of types with no other in common: their union)
             if not kgiven and is_tuple(kj):
                 kv[0] = self.none_items(kj)
             ks = [self.store_key(x, kv[0]) for x in ks]
@@ -16449,6 +16957,8 @@ class Gen:
             sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
             self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), "TypeError: unsupported format string passed to NoneType.__format__")
             return self.to_str(v)
+        if is_union(unopt(v.t)):
+            self.err(f"a format spec for a value of {typestr(v.t)} is not supported: narrow it to one of its types first, with isinstance()")
         if is_opt(v.t):
             # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
             if spec.kind == "str" and unopt(v.t) != "str" and not is_sopt(v.t):
@@ -16594,7 +17104,7 @@ class Gen:
             ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
             self.notnone(o, sub)
             return self.protocol(o, "__getitem__", [ik])
-        self.err(f"'{t}' object is not subscriptable")
+        self.err(f"'{t}' object is not subscriptable{unarrowed(t)}")
         return o
 
     def argtype(self, t: str, m: str, j: int, missing: str) -> str:
@@ -16711,6 +17221,15 @@ class Gen:
         if st >= 0:
             self.static_reads(n.kids[0])
             return self.expr(n.kids[1] if st == 1 else n.kids[2], want)
+        # (a union of its arms' types where it is expected, or where they have no other in common:
+        # each arm's value is boxed where it is made)
+        ut = want if is_union(unopt(want)) else ""
+        if want == "":
+            ga = self.guess(n.kids[1], self.curfn)
+            gb = self.guess(n.kids[2], self.curfn)
+            if ga != gb and ga != "" and gb != "" and "!" not in ga + gb and "?" not in ga + gb and self.join(ga, gb) == "":
+                u = self.union_type([ga, gb])
+                ut = u if not u.startswith("!") and is_union(unopt(u)) else ""
         c = self.cond(n.kids[0])
         l1 = self.label()
         l2 = self.label()
@@ -16719,6 +17238,8 @@ class Gen:
         self.place(l1)
         pre = self.narrow_by(n.kids[0], True)
         a = self.expr(n.kids[1], want)
+        if ut != "" and not self.term:
+            a = self.coerce(a, ut)
         # an arm that ends the program (sys.exit()) has no edge to the join, and no value
         e1 = "" if self.term else self.cur
         self.br(l3)
@@ -16729,6 +17250,8 @@ class Gen:
         if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
             wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
         b = self.expr(n.kids[2], wb)
+        if ut != "" and not self.term:
+            b = self.coerce(b, ut)
         self.narrowed = pre
         e2 = "" if self.term else self.cur
         t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
@@ -16940,7 +17463,7 @@ class Gen:
         # i1: is v None at run time
         if v.t == "None":
             return "true"
-        if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t):
+        if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t) or (is_union(v.t) and self.optional(v.t) == v.t and v.v not in self.nn):
             return self.ins(f"icmp eq ptr {v.v}, null")
         return "false"
 
@@ -17041,6 +17564,11 @@ class Gen:
         if is_opt(a.t) or is_opt(b.t):
             self.none_operands(op, a, b, shown)
             return self.arith(op, self.deref(a) if is_opt(a.t) else a, self.deref(b) if is_opt(b.t) else b, shown)
+        if is_union(a.t) or is_union(b.t):
+            if self.numbers(a.t) and self.numbers(b.t):
+                return self.uarith(op, a, b, shown)
+            u = a.t if is_union(a.t) else b.t
+            self.err(f"{shown if shown != '' else op} of a value of {typestr(u)} is not supported: narrow it to one of its types first, with isinstance()")
         if a.t == "bool" and b.t == "bool" and (op == "&" or op == "|" or op == "^"):
             return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
         if is_set(a.t) and is_set(b.t) and (op == "|" or op == "&" or op == "-" or op == "^"):
@@ -17179,6 +17707,11 @@ class Gen:
                     self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
+        if op in ORDOP or op == "==" or op == "!=":
+            if is_union(unopt(a.t)) or is_union(unopt(b.t)):
+                return self.ucmp(op, a, b)
+        if (op == "is" or op == "is not") and (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
+            self.err(f"'{op}' between a value of {typestr(a.t)} and one of {typestr(b.t)} is not supported, only with None: compare them with ==")
         if (op == "in" or op == "not in") and is_kw(b.t):
             b = self.kw_list(b)  # (x in kwargs: among the names)
         if (op == "==" or op == "!=" or op == "is" or op == "is not") and is_callable(unopt(a.t)) and is_fn(b.t):
@@ -18448,6 +18981,16 @@ class Gen:
         return Val("", "")
 
     def builtin(self, name: str, args: list[Node], want: str) -> Val:
+        if name == "__pys_utag" or name == "__pys_umember":
+            # (union_helpers: the tag of a union's box, and its value as of the member type given)
+            u = self.expr(args[0], "")
+            if name == "__pys_utag":
+                return Val(self.ins(f"load i64, ptr {u.v}"), "int")
+            return self.uget(u.v, umembers(unopt(u.t))[int(args[1].s)])
+        if name == "__pys_cmpfail":
+            op = self.expr(args[0], "int")
+            self.rt("pys_cmp_fail", "void", [f"i64 {op.v}", f"ptr {self.sconst(args[1].s)}", f"ptr {self.sconst(args[2].s)}"])
+            return Val("null", "None")
         if name == "__pys_exc_repr":
             return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
         if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -18513,6 +19056,8 @@ class Gen:
             self.isinst_reads(args[1])
             if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
                 return self.exc_isinst(v, args[1])
+            if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1:
+                return Val(self.uisinst(v, args[1]), "bool")
             known = self.isinst(v.t, args[1])
             if known < -1:
                 return Val(self.ins(f"icmp {'ne' if known == -2 else 'eq'} ptr {v.v}, null"), "bool")
@@ -18806,7 +19351,7 @@ class Gen:
             self.err(NONEARG[name].replace("NoneType", tname(t)))
         if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
             self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-        self.err(f"unsupported call {key}")
+        self.err(f"unsupported call {key}{''.join([unarrowed(x.t) for x in vals if is_union(unopt(x.t))][:1])}")
         return v
 
     def vnode(self, v: Val) -> Node:
@@ -19199,7 +19744,7 @@ class Gen:
         if key not in METHODS and o.t == "exc":
             self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
         if key not in METHODS:
-            self.err(f"'{o.t}' has no method '{m}'")
+            self.err(f"'{o.t}' has no method '{m}'{unarrowed(o.t)}")
         # d.get(k) and d.get(k, None): the value or None, for values that can be None
         optget = key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and self.optional(V) != ""
         if optget:
@@ -19805,6 +20350,8 @@ class Gen:
             return Val(self.select(self.ins(f"icmp eq ptr {v.v}, null"), Val(self.sconst("None"), "str"), Val(v.v, "str")), "str")
         if t == "exc":
             return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
+        if is_union(unopt(t)):
+            return Val(self.ucall("str", unopt(t), [v]), "str")  # (None: null)
         return self.repr(v)
 
     def obj_str(self, v: Val, m: str) -> Val:

@@ -1,0 +1,8 @@
+['#1', 'AB', 'empty'] 1 None
+#7 True
+['q', 'q'] [3, 3] ['q', 'q']
+[[1, 'a'], ['b', 2]] b 2
+{'a': 1, 'b': None, 'c': 'x'} 1 None None True
+321  z none
+[(1, 'a'), 'b'] True False
+[exit 0]

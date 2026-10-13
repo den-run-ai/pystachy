@@ -1153,8 +1153,13 @@ A third lowering, for the eligible `IFn`s. Containers stay Python objects, as #4
 > truthiness, early exits, `assert`, `and`/`or`), and checks a value that may be None where only a T
 > works, with CPython's error. The narrowing is not yet IR ops: Appendix B.3 recommends `isnone`,
 > `nonnull` and `narrow` ops with a pass that deletes dominated checks, which would also give
-> WasmGC its `ref null` types. A class type still means "C or None". Unions of unrelated types and
-> `Any` are not started.
+> WasmGC its `ref null` types. A class type still means "C or None". `Any` is not started.
+>
+> **Closed unions landed in part (#236).** `A | B` is the type `union[A,B]`, a pointer to a box
+> of the value's tag (one per type, the program's) and its slot (`rt ubox`); `isinstance` tests the
+> tag, and `Gen.narrowed` now records the type a local holds (a member's value is read from the
+> box). Their `==`, ordering, `repr()`, `str()` and truth are compiled per union type
+> (`union_helpers`). The box, the tag test and the read are not IR ops yet.
 
 - **New type forms:** `C|None` and scalar optionals (`int|None`), and later a tagged dynamic value.
 - **New ops:** box, tag test and unbox, each with R for CPython's `TypeError`.

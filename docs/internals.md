@@ -101,10 +101,12 @@ bottom-up while emitting IR. An expected type (`want`) flows top-down to type em
 literals and `None`. Types are canonical strings (`dict[str,list[int]]`, `opt[str]` for
 `str | None`), so the compiler needs no type objects.
 
-Narrowing follows the code as it is compiled: the set of optional locals known not to be `None`
-grows with the tests of an `if`, `while`, `assert`, `and`/`or` or conditional expression for the
-code they guard, an `if` keeps what holds at the end of each branch that goes on, and a loop
-drops what its body binds, then keeps what holds at each of its exits (each `break` records it).
+Narrowing follows the code as it is compiled: the optional locals known not to be `None`, and
+the union locals known to hold a value of some of their types (each with the type it holds),
+grow with the tests of an `if`, `while`, `assert`, `and`/`or` or conditional expression for the
+code they guard, an `if` keeps what holds alike at the end of each branch that goes on, and a
+loop drops what its body binds, then keeps what holds at each of its exits (each `break`
+records it).
 
 ### The typed IR
 
@@ -283,6 +285,18 @@ use `phi` nodes directly.
 Scalars map to `i64`, `double` and `i1`; strings, containers,
 tuples and objects are pointers. Container elements are uniform 8-byte slots, so one C
 implementation of `list`/`dict`/`tuple` serves every element type.
+
+A union (`union[A,B]`, sorted members, `A | B` in messages) is a pointer to a 16-byte box
+that the collector scans (`pys_ubox`): the value's tag, a number the program gives each type
+that a union holds (`Gen.utag`), and the value's 8-byte slot. The tags are the program's, the
+same in every union, so a union of fewer members is one of more as it is, with no code. None is
+null: in `opt[union[...]]`, and in a union that holds a class's objects, which may be None as
+the class's objects may. A local's narrowing (`Gen.narrowed`, mypy's) records the type it holds
+where tests and assignments show it: an optional's value, a member (whose slot a read loads) or
+fewer members (the same box). `==`, ordering, `repr()`, `str()` and truth of a union type's
+values are functions compiled for it from small syntax trees that branch on the tag
+(`union_helpers`: `@o.eq/cmp/repr/str/bool.U<n>`, leniently, as `obj_helpers` are), and the
+runtime reaches them for a container's items through the `O<id>` descriptor that objects use.
 
 ### Type descriptors
 
