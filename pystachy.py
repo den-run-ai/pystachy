@@ -13753,15 +13753,19 @@ class Gen:
                 y = self.umember(b, j)
                 # (numbers compare across their types, and so do a set and a frozenset, by their elements)
                 num = (self.isnum(ms[i]) and self.isnum(ms[j])) or (is_set(ms[i]) and is_set(ms[j]))
-                if i == j or num or self.eq_takes(ms[i], ms[j]):
+                eqi = ms[i] in self.classes and "__eq__" in self.classes[ms[i]].methods
+                eqj = ms[j] in self.classes and "__eq__" in self.classes[ms[j]].methods
+                if (i == j and not eqi) or num or self.eq_takes(ms[i], ms[j]):
                     ie.append(self.utagis(b, ms[j], [mk("return", "", line, [mk("cmp", "==", line, [x, y])])]))
                 elif self.eq_takes(ms[j], ms[i]):
                     ie.append(self.utagis(b, ms[j], [mk("return", "", line, [mk("cmp", "==", line, [y, x])])]))
-                elif (ms[i] in self.classes and "__eq__" in self.classes[ms[i]].methods) or (ms[j] in self.classes and "__eq__" in self.classes[ms[j]].methods):
+                elif eqi or eqj:
                     # (CPython would call the class's __eq__ with the other value, which it does not take)
-                    c = ms[i] if ms[i] in self.classes and "__eq__" in self.classes[ms[i]].methods else ms[j]
+                    c = ms[i] if eqi else ms[j]
                     o = ms[j] if c == ms[i] else ms[i]
-                    msg = f"comparing a {shown(c)} with a value of type {tname(o)} ({typestr(u)}) would call {shown(c)}.__eq__, which takes {typestr(self.classes[c].methods['__eq__'].ptypes[1])} values"
+                    p = self.classes[c].methods["__eq__"].ptypes[1]
+                    took = f"which takes {typestr(p)} values" if p != "" else f"which, without an annotation, is compiled for {shown(c)} values only"
+                    msg = f"comparing a {shown(c)} with a value of type {tname(o)} ({typestr(u)}) would call {shown(c)}.__eq__, {took}"
                     ie.append(self.utagis(b, ms[j], [mk("raise", "", line, [mk("call", "", line, [mk("name", "TypeError", line, []), mk("str", msg, line, [])])])]))
                 if (i == j and not is_dict(ms[i])) or num:
                     body: list[Node] = []
@@ -13793,11 +13797,18 @@ class Gen:
         self.lenient = False
 
     def eq_takes(self, c: str, m: str) -> bool:
-        # does class c's __eq__ take a value of type m (as annotated)
+        # does class c's __eq__ take a value of type m, as its annotation converts a call's argument
+        # (an A as an A | int: see fits); one without an annotation is compiled for c's own values
+        # only (union_helpers), as a direct comparison would compile it for any other's
         if c not in self.classes or "__eq__" not in self.classes[c].methods:
             return False
         f = self.classes[c].methods["__eq__"]
-        return f.bad == "" and len(f.params) == 2 and f.ptypes[1] == m
+        return f.bad == "" and len(f.params) == 2 and (self.fits(m, f.ptypes[1]) or (f.ptypes[1] == "" and m == c))
+
+    def fits(self, a: str, b: str) -> bool:
+        # is a value of type a passed as an argument of a parameter of type b: as it is, or boxed
+        # (see coerce)
+        return b != "" and (self.widens(a, b) or self.boxes(a, b))
 
     def umember(self, a: Node, i: int) -> Node:
         # __pys_umember(a, i): the value of union a's box, of its member type i
@@ -15295,10 +15306,10 @@ class Gen:
                 j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
                 if j != self.ret and j != "" and is_opt(j):
                     self.reopt(j)  # a template's function returns T and None (or T | None): T | None
-                if self.curfn.infer and j == "" and v.t != "None" and not is_opt(self.ret) and not is_opt(v.t) and self.ret != "None":
+                if self.curfn.infer and j == "" and v.t != "None" and self.ret != "None":
                     u = self.union_type([self.ret, v.t])
-                    if not u.startswith("!") and is_union(u):
-                        self.reunion(u)  # a function returns an A and a B: A | B
+                    if not u.startswith("!") and is_union(unopt(u)):
+                        self.reunion(u)  # a function returns an A and a B: A | B (and None, also before them: A | B | None)
                 if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (is_union(unopt(self.ret)) and self.union_type([self.ret, v.t]) == self.ret):
                     if v.t == "None":
                         self.err(self.nonemix(self.curfn, self.ret))
@@ -17517,7 +17528,7 @@ class Gen:
         if t not in self.classes or m not in self.classes[t].methods:
             return ""
         f = self.classes[t].methods[m]
-        if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes) or f.ptypes[1] == "")):
+        if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (self.fits(other, f.ptypes[1]) or f.ptypes[1] == "")):
             return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
         return ""
 

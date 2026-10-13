@@ -1,3 +1,6 @@
 True True False False
 TypeError: comparing a Node with a value of type int (Node | int) would call Node.__eq__, which takes Node values
+True True False True
+TypeError: comparing a Odd with a value of type Odd (Odd | str) would call Odd.__eq__, which takes int values
+TypeError: comparing a Loose with a value of type str (Loose | str) would call Loose.__eq__, which, without an annotation, is compiled for Loose values only
 [exit 0]

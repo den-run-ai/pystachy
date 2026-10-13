@@ -129,3 +129,39 @@ subsets(frozenset({1}), {1, 2})
 subsets({1, 2, 3}, frozenset({4}))
 groups: list[set[int] | frozenset[int]] = [{1, 2}, frozenset({1, 2}), frozenset({3})]
 print(groups.count(frozenset({2, 1})), groups.index({3}), {3} in groups, groups)
+
+
+def maybe(k):
+    # (its returns infer int | str | None in any order: None first too)
+    if k == 0:
+        return None
+    if k == 1:
+        return 1
+    return "x"
+
+
+def maybe2(k):
+    if k == 1:
+        return 1
+    if k == 2:
+        return None
+    return "x"
+
+
+print(maybe(0), maybe(1), maybe(2), maybe2(1), maybe2(2), maybe2(3), [maybe(i) for i in range(3)])
+
+
+class Money:
+    # __eq__ that takes the union's other member too: called with it, as CPython calls it
+    def __init__(self, cents: int) -> None:
+        self.cents = cents
+
+    def __eq__(self, other: "Money | int") -> bool:
+        return self.cents == (other if isinstance(other, int) else other.cents)
+
+
+def amount(k: int) -> Money | int:
+    return Money(k) if k > 0 else -k
+
+
+print(amount(2) == amount(-2), amount(-2) == amount(2), amount(3) == amount(3), amount(3) == amount(4), amount(-1) == amount(-1))

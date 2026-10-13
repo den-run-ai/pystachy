@@ -14,4 +14,6 @@ True False False True False True
 False True True True False False
 False True False False False False
 2 2 True [{1, 2}, frozenset({1, 2}), frozenset({3})]
+None 1 x 1 None x [None, 1, 'x']
+True True True False True
 [exit 0]

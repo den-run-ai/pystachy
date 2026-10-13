@@ -180,7 +180,8 @@ imports `annotations` from `__future__`.
   class's objects may (`Node | int`); any other may be None only as `A | B | None`. A conditional
   expression whose arms have types with nothing else in common is typed as their union (each arm
   narrowed by the test, as a statement's), and so are `x or y` and `x and y`, a list display's
-  items, a dict display's values and the returns of a function without a return annotation.
+  items, a dict display's values and the returns of a function without a return annotation (with
+  any returns of `None`, before or after them: `A | B | None`).
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
   or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
@@ -759,9 +760,10 @@ In these cases the program compiles but can behave differently from CPython:
   `C | None` for a class `C` (a dataclass or `NamedTuple` too). A function declared to return
   `T | None` for an `int`, `float`, `bool`, `str`, `list`, `dict` or `tuple` T, and a template
   that returns objects or `T | None`, return `None` there, as CPython does.
-- `==` of two values of a union that holds a class whose `__eq__` takes only its own class (as
-  annotated), where one holds an object of the class and the other a value of another member type,
-  raises `TypeError`; CPython calls `__eq__` with that value anyway. An ordering (`<` & co) of an
+- `==` of two values of a union that holds a class whose `__eq__` does not take the other value
+  (its annotation converts neither it nor, for two objects of the class, an object of the class;
+  one without an annotation is compiled for the class's own objects only) raises `TypeError`;
+  CPython calls `__eq__` with that value anyway. An ordering (`<` & co) of an
   object of a class in a union and a value of another member type raises CPython's `TypeError` for
   types it does not order, without calling the class's `__lt__` & co.
 - A left operand of `+ - * / // % @ & | ^ << >>` (or of their in-place forms) whose class
