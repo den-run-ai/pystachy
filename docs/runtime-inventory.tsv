@@ -251,7 +251,7 @@ line	loc	area	tier	hot	name	needs	note
 1801	7	io	A	no	tflush		Pure logic over bput/osflush (checked in the Model).
 1808	10	io	B	yes	wput	mutable byte buffer / raw string builder (memcpy into the fixed 8 KiB pb); memchr (str.find is fine)	Every non-tty print goes through it; measured 130 ns per print to a file vs CPython's 472. Appending to a subset list[str] instead would allocate on every write.
 1818	4	io	B	no	flush1	extern __fpurge	Logic is trivial.
-1822	8	io	C	no	shut	extern fclose + errno; free() of the malloc'd setvbuf buffer	Called from files_sweep inside the GC as well as from close/drop/exit.
+1822	8	io	C	no	shut	extern fclose + errno; free() of the malloc'd setvbuf buffer, taken back from the collector's counts (gc_extern)	Called from files_sweep inside the GC as well as from close/drop/exit.
 1832	10	io	B	no	defenc	extern setlocale/nl_langinfo -> C string	Lazily resets LC_CTYPE to "C"; may first run inside a collection (report<-files_sweep).
 1842	9	io	C	no	EBuf/eput	fixed stack byte buffer; guaranteed no allocation (runs inside a collection)	Exists only because report can run inside the GC.
 1851	6	io	C	no	erepr	raw char* into resc/rquote; stack buffer	Same no-allocation constraint as eput.
@@ -263,7 +263,7 @@ line	loc	area	tier	hot	name	needs	note
 1906	12	gc	D	no	files_sweep	runs between mark and sweep; weak-reference semantics	Called from collect (runtime.c:217).
 1919	1	io	A	no	closed_err		raise ValueError("I/O operation on closed file.").
 1920	5	io	B	yes	put1	extern fwrite/ferror for stderr and tty	Dispatches to wput; runs on every write.
-1925	5	io	C	no	setbuf1	malloc + setvbuf with a raw pointer	Confirmed UB: `8192 + bs` at line 1926 overflows signed I when buffering is near 2**63 (UBSan report); CPython raises OverflowError for any buffering above C int.
+1925	5	io	C	no	setbuf1	malloc + setvbuf with a raw pointer; extern collect() and the collector's counts (gc_extern), but for a standard stream	Confirmed UB: `8192 + bs` at line 1926 overflows signed I when buffering is near 2**63 (UBSan report); CPython raises OverflowError for any buffering above C int.
 1930	17	process	D	no	pys_init	@main frame address for the GC stack bottom; char** argv; sigaction with a function pointer; isatty/fstat	Called by generated @main (pystachy.py:7091).
 1947	1	process	A	no	pys_argv		Generated code calls it for sys.argv.
 1948	1	io	A	no	pys_std		Body is trivial, but the std File objects must stay visible to C (signal handler, pys_finish). Generated code calls it (pystachy.py:9511, 9853).

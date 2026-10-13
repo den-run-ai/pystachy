@@ -51,7 +51,7 @@ flowchart LR
 | **compiler** | `pystachy.py`, about 17,000 lines, written in the subset it compiles |
 | **runtime** | `runtime.c`, about 3,300 lines, with its own garbage collector, and `runtime.py`, its str methods, formatting and hashing written in the subset; needs only the C library |
 | **bootstrap** | the compiler running on CPython, the native compiler it builds, and the one that builds itself all emit byte-identical LLVM IR |
-| **tests** | over 550 programs that must print what CPython printed for them, JIT and AOT, and over 640 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
+| **tests** | about 700 programs that must print what CPython printed for them, JIT and AOT, and over 850 that must be rejected, with the compiler running on CPython and with the native one ([docs/testing.md](docs/testing.md)) |
 | **standard library** | 9 unmodified CPython 3.13 modules compile as they are, for the functions the subset supports ([`lib/`](lib/README.md)) |
 
 ### Speed
