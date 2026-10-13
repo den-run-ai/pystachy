@@ -6,4 +6,12 @@
 'y y y'
 'y y_y'
 'a\tb\nc\x0bd\x0ce\rf g'
+2147483648 'hello' OverflowError: Python int too large to convert to C int
+2147483648 '' OverflowError: Python int too large to convert to C int
+2147483648 'hello there'
+-2147483649 'hello' OverflowError: Python int too large to convert to C int
+-2147483649 '' OverflowError: Python int too large to convert to C int
+-2147483649 'hello there'
+2147483647 'hello'
+-2147483648 'hello'
 [exit 0]

@@ -482,7 +482,8 @@ Its regular expressions are `lib/re`'s.
   `str.replace()` of each name makes the same pattern.
 - `max_lines=None` is annotated `int | None`: a field that a class template gives `None` needs
   its type.
-- `_munge_whitespace()` skips tab expansion when there are no tabs, recognizes the default
+- `_munge_whitespace()` skips tab expansion when there are no tabs and `tabsize` is in the
+  supported C-int range, recognizes the default
   table by its six entries, and replaces only
   the ASCII whitespace characters present in the text. Custom or mutated tables still replace
   each character through `unicode_whitespace_trans` with

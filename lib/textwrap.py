@@ -150,8 +150,9 @@ class TextWrapper:
         whitespace characters to spaces.  Eg. " foo\\tbar\\n\\nbaz"
         becomes " foo    bar  baz".
         """
-        # Pystachy port: without a tab, expansion would only copy the unchanged text.
-        if self.expand_tabs and '\t' in text:
+        # Pystachy port: without a tab, skip the copy but retain expandtabs' C-int range check.
+        if self.expand_tabs and ('\t' in text or self.tabsize > 2147483647
+                                 or self.tabsize < -2147483648):
             text = text.expandtabs(self.tabsize)
         if self.replace_whitespace:
             # Pystachy port: no str.translate(); recognize the default mapping by contents,

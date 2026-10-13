@@ -23,3 +23,16 @@ w.unicode_whitespace_trans[ord(' ')] = ord('_')
 print(repr(w._munge_whitespace("x\tx x")))
 w.unicode_whitespace_trans = {}
 print(repr(w._munge_whitespace(text)))
+
+# expandtabs validates its C-int size even when the text has no tabs (or is empty).
+for size in [2147483648, -2147483649]:
+    overflow = TextWrapper(tabsize=size)
+    for text in ["hello", ""]:
+        try:
+            print(repr(overflow._munge_whitespace(text)))
+        except OverflowError as e:
+            print(size, repr(text), "OverflowError:", e)
+    disabled = TextWrapper(tabsize=size, expand_tabs=False)
+    print(size, repr(disabled._munge_whitespace("hello\tthere")))
+for size in [2147483647, -2147483648]:
+    print(size, repr(TextWrapper(tabsize=size)._munge_whitespace("hello")))
