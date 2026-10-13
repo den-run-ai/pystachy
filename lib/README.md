@@ -542,7 +542,11 @@ Where it differs from CPython (`tests/deviations/lib_textwrap.py`):
 mutation through an alias, and custom tables that omit whitespace or translate other characters. Run by
 CPython, the edited module passes that file's 66 tests.
 
-In an AOT executable, `wrap()` of a 500-character paragraph of 79 words takes 137 µs, `fill()`
+The following initial-port measurements predate module integer folding, ASCII class caching
+and the whitespace fast paths. See [the caching guide](../docs/caching.md) for later comparisons,
+their measurement protocols and shared-host variability.
+
+In that initial AOT executable, `wrap()` of a 500-character paragraph of 79 words takes 137 µs, `fill()`
 136 µs and `shorten()` 134 µs, against CPython's 64, 66 and 54 µs; `dedent()` of a 15-line
 block takes 45 µs (CPython: 11 µs) and `indent()` 1.2 µs (CPython: 2.3 µs). Most of the time
 is `lib/re`'s: `wordsep_re.split()` takes 122 µs of `wrap()`'s 137 (CPython's `_sre`: 38 of 64),
