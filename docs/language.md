@@ -166,21 +166,21 @@ imports `annotations` from `__future__`.
   `int`, `float`, `bool`, `str`, lists, dicts, sets, tuples and the program's classes (not exception
   classes), which `isinstance()` tells apart (not `list[int] | list[str]`: `list[int | str]` holds
   both). A value of a member type is boxed with its type's tag where a union is expected (an
-  annotated variable, parameter, field or return, an item of a list or a dict annotated so), and a
-  union of fewer members is one of more as it is. `isinstance(x, T)` tests the tag, and narrows a
+  annotated variable, parameter, field or return, an item of a list, a dict or a tuple annotated
+  so), and a union of fewer members is one of more as it is. `isinstance(x, T)` tests the tag, and narrows a
   local `x` as mypy does: in `if`, `elif` and `while`, after an early `return` or `continue`, in
   `and`, `or` and `not`, and to the type of a value assigned to it; narrowed to one member, `x` is a
   value of that type, and to several, a union of them. A union's value prints (`print()`, `str()`,
   `repr()`, f-strings without a format spec), compares (`==` and `!=`, and `<` & co where its
-  members order: numbers with numbers and values of one type, else CPython's `TypeError`) and is
-  true or false as its member's value is; lists and dicts of unions print, compare, sort and search
+  members order: numbers with numbers, a set with a frozenset and values of one type, else
+  CPython's `TypeError`) and is true or false as its member's value is; lists and dicts of unions print, compare, sort and search
   (`in`, `index()`, `count()`) the same way. Arithmetic takes unions of numbers (`int | float`), and
   gives a number or a union of numbers; any other operation needs one of the types, and is rejected
   with a hint to narrow the value first. A union that holds a class's objects may be None, as the
   class's objects may (`Node | int`); any other may be None only as `A | B | None`. A conditional
-  expression whose arms have types with nothing else in common is typed as their union, and so are
-  a list display's items, a dict display's values and the returns of a function without a return
-  annotation.
+  expression whose arms have types with nothing else in common is typed as their union (each arm
+  narrowed by the test, as a statement's), and so are `x or y` and `x and y`, a list display's
+  items, a dict display's values and the returns of a function without a return annotation.
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
   or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
@@ -947,7 +947,8 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
   loop over `x`, `x + 1` for an `x` of `int | str`), any operation but those of *Typing rules*;
   `is` between union values (`x is None` works); a format spec for a union's value; unions as dict
   keys or set elements; unions of types that `isinstance()` cannot tell apart
-  (`list[int] | list[str]`); exception classes, functions and `Callable`s in a union; and the
+  (`list[int] | list[str]`), or of a set and a frozenset whose elements do not compare
+  (`set[int] | frozenset[str]`); exception classes, functions and `Callable`s in a union; and the
   narrowing of a global or a field, which a call may change (copy it to a local)
 - reflected operator methods (`__radd__` & co), which CPython calls when the left operand's class
   has no method for the operator and the right operand's class is another (`3 & o` calls

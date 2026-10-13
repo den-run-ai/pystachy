@@ -10,4 +10,8 @@ q - 5
 bool int str True
 7 seven 7.5 [7, 'seven', 7.5] num 14 str seven num 15.0
 [1, 'two', 3.0, [4]] 11.0 {'a': 1, 'b': 'bee'} [1, 'two', 3.0]
+True False False True False True
+False True True True False False
+False True False False False False
+2 2 True [{1, 2}, frozenset({1, 2}), frozenset({3})]
 [exit 0]

@@ -1,0 +1,18 @@
+zero 0 none None 2.5 [1.5, 2]
+ 2.5 7 True
+3 s 4 s s [3, 's']
+4 1 True 3
+zero 0 none 0 x [1.5, 'x']
+x 2.5 7 True
+4
+4
+9
+4
+AB
+False
+True
+3
+neither 1.5 4 5 None 'a' None 5 3 2 'b'
+(1, 2) ('a', 3) False True [(1, 2), ('a', 3)] [2, 5]
+few [3]
+[exit 0]

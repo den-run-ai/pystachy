@@ -297,6 +297,10 @@ fewer members (the same box). `==`, ordering, `repr()`, `str()` and truth of a u
 values are functions compiled for it from small syntax trees that branch on the tag
 (`union_helpers`: `@o.eq/cmp/repr/str/bool.U<n>`, leniently, as `obj_helpers` are), and the
 runtime reaches them for a container's items through the `O<id>` descriptor that objects use.
+Boxing takes no branch (`pys_ubox_opt` keeps None null), so a value can be boxed at the end of a
+block it leaves: where the ways of `x if c else y`, `x or y` and `x and y` meet with types that
+only a union holds, the right one's value is boxed where it is made, and the left one's in a
+block of its own on its edge to the join (`Gen.detour`), once both are compiled.
 
 ### Type descriptors
 

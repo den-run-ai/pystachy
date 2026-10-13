@@ -117,3 +117,15 @@ def stats() -> None:
 
 
 stats()
+
+
+def subsets(a: set[int] | frozenset[int], b: set[int] | frozenset[int]) -> None:
+    # (a set and a frozenset compare by their elements, as CPython's do)
+    print(a == b, a != b, a < b, a <= b, a > b, a >= b)
+
+
+subsets({1, 2}, frozenset({1, 2}))
+subsets(frozenset({1}), {1, 2})
+subsets({1, 2, 3}, frozenset({4}))
+groups: list[set[int] | frozenset[int]] = [{1, 2}, frozenset({1, 2}), frozenset({3})]
+print(groups.count(frozenset({2, 1})), groups.index({3}), {3} in groups, groups)

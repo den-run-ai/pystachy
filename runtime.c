@@ -929,6 +929,9 @@ void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
 /* A union (int | str, A | B) is a pointer to a box of its value's tag, a number the program gives
    each type, and its value's 8 bytes, which the collector scans: they may be a pointer */
 void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
+/* a value that may be None (null) as a union's: None stays null; deref: the value is in p's box
+   (an int, float or bool | None), else p is the value */
+void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;

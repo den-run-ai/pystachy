@@ -5825,7 +5825,7 @@ RUNTIME: dict[str, str] = {
     # any type, by its descriptor
     "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A I rL rD U?|",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "cmp_fail": "None:int,str,str|R N|", "unpack_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "cmp_fail": "None:int,str,str|R N|", "unpack_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
@@ -6185,12 +6185,6 @@ def is_union(t: str) -> bool:
 def umembers(t: str) -> list[str]:
     # the member types of union t, in their (sorted) order
     return targs(t)
-
-
-def unarrowed(t: str) -> str:
-    # the hint for an error about a value of type t that only one of its types supports, if t is a
-    # union (or a union | None): narrow it first; else ""
-    return ": narrow it to one of its types first, with isinstance()" if is_union(unopt(t)) else ""
 
 
 def numres(op: str, a: str, b: str) -> str:
@@ -7777,7 +7771,7 @@ class Gen:
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # a local of an optional type exists: narrows has something to look for
         self.building: dict[str, bool] = {}  # the functions being compiled
-        self.wide: dict[str, bool] = {}  # optional values read from a global or a field (function + register), which no test narrows
+        self.wide: dict[str, bool] = {}  # optional and union values read from a global or a field (function + register), which no test narrows
         self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
@@ -8235,7 +8229,7 @@ class Gen:
         for i in range(len(targs(a))):
             x = targs(a)[i]
             y = targs(b)[i]
-            if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.reboxes(x, y):
+            if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y):
                 return False
         return True
 
@@ -8255,8 +8249,14 @@ class Gen:
         return self.boxes(a, b) or (is_sopt(a) and b == unopt(a))
 
     def boxes(self, a: str, b: str) -> bool:
-        # is a value of type a one of type b once boxed: an int as an int | None, also as tuple items
-        return (is_sopt(b) and a == unopt(b)) or self.reboxes(a, b)
+        # is a value of type a one of type b once boxed: an int as an int | None, a member as a
+        # union, also as tuple items
+        return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
+
+    def uboxes(self, a: str, b: str) -> bool:
+        # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
+        # may be None, where b may be: see to_union)
+        return is_union(unopt(b)) and a != "None" and unopt(a) in umembers(unopt(b))
 
     def convert_in(self, v: Val, t: str, blk: Blk) -> Val:
         # v as a t, at the end of block blk, which has ended (see convert_at)
@@ -8876,6 +8876,9 @@ class Gen:
                 o = [x for x in ms if self.ukind(x) == k]
                 return f"!a union of {typestr(o[0])} and {typestr(o[1])} is not supported: isinstance() cannot tell them apart (a union of the types they hold may do: {k}[A | B])"
             kinds.append(k)
+        ss = [m for m in ms if is_set(m)]
+        if len(ss) == 2 and self.wider(selem(ss[0]), selem(ss[1])) == "":
+            return f"!a union of {typestr(ss[0])} and {typestr(ss[1])} is not supported: a set and a frozenset compare by their elements, which these cannot (set[A] | frozenset[A] can)"
         ms.sort()
         u = self.ctype("union", ms)
         return self.optional(u) if none else u
@@ -8951,20 +8954,9 @@ class Gen:
             return Val(self.ubox(v, src), t)
         if not none_ok:
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
-        # an optional value: None stays null, any other value is boxed
-        l0 = self.cur
-        lbox = self.label()
-        lend = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lbox)
-        self.place(lbox)
-        b = self.ubox(self.deref(v), src)
-        l1 = self.cur
-        self.br(lend)
-        self.place(lend)
-        ph = Ins("phi", t, "")
-        self.incoming(ph, "null", l0)
-        self.incoming(ph, b, l1)
-        return Val(self.phi(ph), t)
+        # an optional value: None stays null, any other value is boxed (with no branch, so that
+        # convert_in can make it at the end of a block); an int | None's value is in its box
+        return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t)
 
     def narrow_val(self, v: Val, nt: str) -> Val:
         # v, a local's value of its own type, as of the type nt a test or an assignment narrowed it
@@ -9000,6 +8992,32 @@ class Gen:
         # union, where it can be one; else first's (the first item's), whose error coerce gives
         u = self.union_type(ts)
         return u if not u.startswith("!") and is_union(unopt(u)) else first
+
+    def ujoin(self, a: str, b: str) -> str:
+        # the type of values of types a and b that meet at a join (x if c else y, x or y), where no
+        # other type holds both: their union, or ""
+        if a == b or a == "None" or b == "None" or a == NONEVAR or b == NONEVAR or "?" in a + b or self.join(a, b) != "":
+            return ""
+        u = self.union_type([a, b])
+        return u if not u.startswith("!") and is_union(unopt(u)) else ""
+
+    def detour(self, frm: str, to: str) -> None:
+        # a block of its own on the edge from block frm to block to, placed here (the current block
+        # has ended): code made in it runs only on that edge, as a value's box where it reaches a phi
+        la = self.label()
+        for b in self.fn.blocks:
+            if b.label == frm:
+                b.code[-1].b = [la if x == to else x for x in b.code[-1].b]
+        self.place(la)
+
+    def unarrowed(self, v: Val) -> str:
+        # the hint for an error about value v that only some of its types support, where it is a
+        # union's (or a union | None's): narrow it first; else ""
+        if not is_union(unopt(v.t)):
+            return ""
+        if self.curfn.ll + v.v in self.wide:
+            return ": copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global or a field, which a call may change)"
+        return ": narrow it to one of its types first, with isinstance()"
 
     def numbers(self, t: str) -> bool:
         # is t a number's type, or a union of them (int | float)
@@ -9856,7 +9874,7 @@ class Gen:
             fv = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
             self.class_default(ci, name)
             r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
-            if is_opt(p.t):
+            if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             return Val(r, p.t)
         if name in ci.fflag:
@@ -9879,7 +9897,7 @@ class Gen:
             else:
                 self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
         r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
-        if is_opt(p.t):
+        if is_opt(p.t) or is_union(p.t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         return Val(r, p.t)
 
@@ -9958,7 +9976,7 @@ class Gen:
         if name in self.gtypes:
             t = self.gtypes[name]
             r = self.ins(f"load {lt(t)}, ptr @g.{name}")
-            if is_opt(t):
+            if is_opt(t) or is_union(t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             return Val(r, t)
         if name == "__name__":
@@ -13733,7 +13751,8 @@ class Gen:
             for j in range(len(ms)):
                 x = self.umember(a, i)
                 y = self.umember(b, j)
-                num = self.isnum(ms[i]) and self.isnum(ms[j])
+                # (numbers compare across their types, and so do a set and a frozenset, by their elements)
+                num = (self.isnum(ms[i]) and self.isnum(ms[j])) or (is_set(ms[i]) and is_set(ms[j]))
                 if i == j or num or self.eq_takes(ms[i], ms[j]):
                     ie.append(self.utagis(b, ms[j], [mk("return", "", line, [mk("cmp", "==", line, [x, y])])]))
                 elif self.eq_takes(ms[j], ms[i]):
@@ -15914,7 +15933,7 @@ class Gen:
             if is_set(s.t) and mode == "reversed":
                 self.err(f"'{tname(s.t)}' object is not reversible")
             if not (s.t == "str" or is_list(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]")):
-                self.err(f"cannot iterate over {s.t}{unarrowed(s.t)}" if s.t != "file" else "a file is not reversible")
+                self.err(f"cannot iterate over {s.t}{self.unarrowed(s)}" if s.t != "file" else "a file is not reversible")
             if s.t == "file":
                 st.append("")
                 used.append("")
@@ -16984,7 +17003,7 @@ class Gen:
             self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), "TypeError: unsupported format string passed to NoneType.__format__")
             return self.to_str(v)
         if is_union(unopt(v.t)):
-            self.err(f"a format spec for a value of {typestr(v.t)} is not supported: narrow it to one of its types first, with isinstance()")
+            self.err(f"a format spec for a value of {typestr(v.t)} is not supported{self.unarrowed(v)}")
         if is_opt(v.t):
             # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
             if spec.kind == "str" and unopt(v.t) != "str" and not is_sopt(v.t):
@@ -17130,7 +17149,7 @@ class Gen:
             ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
             self.notnone(o, sub)
             return self.protocol(o, "__getitem__", [ik])
-        self.err(f"'{t}' object is not subscriptable{unarrowed(t)}")
+        self.err(f"'{t}' object is not subscriptable{self.unarrowed(o)}")
         return o
 
     def argtype(self, t: str, m: str, j: int, missing: str) -> str:
@@ -17247,15 +17266,6 @@ class Gen:
         if st >= 0:
             self.static_reads(n.kids[0])
             return self.expr(n.kids[1] if st == 1 else n.kids[2], want)
-        # (a union of its arms' types where it is expected, or where they have no other in common:
-        # each arm's value is boxed where it is made)
-        ut = want if is_union(unopt(want)) else ""
-        if want == "":
-            ga = self.guess(n.kids[1], self.curfn)
-            gb = self.guess(n.kids[2], self.curfn)
-            if ga != gb and ga != "" and gb != "" and "!" not in ga + gb and "?" not in ga + gb and self.join(ga, gb) == "":
-                u = self.union_type([ga, gb])
-                ut = u if not u.startswith("!") and is_union(unopt(u)) else ""
         c = self.cond(n.kids[0])
         l1 = self.label()
         l2 = self.label()
@@ -17264,8 +17274,6 @@ class Gen:
         self.place(l1)
         pre = self.narrow_by(n.kids[0], True)
         a = self.expr(n.kids[1], want)
-        if ut != "" and not self.term:
-            a = self.coerce(a, ut)
         # an arm that ends the program (sys.exit()) has no edge to the join, and no value
         e1 = "" if self.term else self.cur
         self.br(l3)
@@ -17276,13 +17284,26 @@ class Gen:
         if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
             wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
         b = self.expr(n.kids[2], wb)
-        if ut != "" and not self.term:
-            b = self.coerce(b, ut)
         self.narrowed = pre
         e2 = "" if self.term else self.cur
         t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
         if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
             t = self.join(a.t, b.t)  # x if c else None: T | None
+        u = self.ujoin(a.t, b.t) if e1 != "" and e2 != "" else ""
+        if u != "":
+            # arms of types that no other type holds both: their union, each arm's value boxed on
+            # its way to the join (a's in a block of its own, see detour)
+            bv = self.coerce(b, u)
+            e2 = self.cur
+            self.br(l3)
+            self.detour(e1, l3)
+            av = self.coerce(a, u)
+            ph = Ins("phi", u, "")
+            self.incoming(ph, av.v, self.cur)
+            self.incoming(ph, bv.v, e2)
+            self.br(l3)
+            self.place(l3)
+            return Val(self.phi(ph), u)
         ph = Ins("phi", t, "")
         if e1 != "":
             self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
@@ -17340,6 +17361,21 @@ class Gen:
         self.narrowed = pre
         # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
         rt = a.t
+        u = self.ujoin(unopt(a.t) if n.s == "or" else a.t, b.t) if not ascond and not self.term else ""  # (a true x is no None)
+        if u != "":
+            # operands of types that no other type holds both: their union, each operand's value
+            # boxed on its way to the join (x's in a block of its own, see detour)
+            bv = self.coerce(b, u)
+            e2 = self.cur
+            self.br(l3)
+            self.detour(e1, l3)
+            av = self.coerce(self.deref(a) if n.s == "or" and is_opt(a.t) else a, u)
+            ph = Ins("phi", u, "")
+            self.incoming(ph, av.v, self.cur)
+            self.incoming(ph, bv.v, e2)
+            self.br(l3)
+            self.place(l3)
+            return Val(self.phi(ph), u)
         if not ascond and (is_opt(a.t) or is_opt(b.t) or b.t == "None"):
             # x or y with x T | None: a true x is a T; x or None, x and y: T | None
             rt = unopt(a.t) if n.s == "or" else a.t
@@ -17593,8 +17629,8 @@ class Gen:
         if is_union(a.t) or is_union(b.t):
             if self.numbers(a.t) and self.numbers(b.t):
                 return self.uarith(op, a, b, shown)
-            u = a.t if is_union(a.t) else b.t
-            self.err(f"{shown if shown != '' else op} of a value of {typestr(u)} is not supported: narrow it to one of its types first, with isinstance()")
+            u = a if is_union(a.t) else b
+            self.err(f"{shown if shown != '' else op} of a value of {typestr(u.t)} is not supported{self.unarrowed(u)}")
         if a.t == "bool" and b.t == "bool" and (op == "&" or op == "|" or op == "^"):
             return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
         if is_set(a.t) and is_set(b.t) and (op == "|" or op == "&" or op == "-" or op == "^"):
@@ -19380,7 +19416,7 @@ class Gen:
             self.err(NONEARG[name].replace("NoneType", tname(t)))
         if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
             self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-        self.err(f"unsupported call {key}{''.join([unarrowed(x.t) for x in vals if is_union(unopt(x.t))][:1])}")
+        self.err(f"unsupported call {key}{''.join([self.unarrowed(x) for x in vals if is_union(unopt(x.t))][:1])}")
         return v
 
     def vnode(self, v: Val) -> Node:
@@ -19773,7 +19809,7 @@ class Gen:
         if key not in METHODS and o.t == "exc":
             self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
         if key not in METHODS:
-            self.err(f"'{o.t}' has no method '{m}'{unarrowed(o.t)}")
+            self.err(f"'{o.t}' has no method '{m}'{self.unarrowed(o)}")
         # d.get(k) and d.get(k, None): the value or None, for values that can be None
         optget = key == "dict.get" and (len(args) == 1 or args[-1].kind == "None") and V not in self.classes and self.optional(V) != ""
         if optget:
