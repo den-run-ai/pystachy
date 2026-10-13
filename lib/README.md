@@ -50,9 +50,12 @@ character by character (code point by code point). Where it differs from CPython
 
 - A position (`pos`, `endpos`, `start()`, `end()`, `span()`, an error's `pos`) is an index into
   the str, which holds UTF-8, as slicing and `find()` count it: past ASCII, it counts bytes.
-- `findall()` of a pattern with 2 groups or more, and `split()` of a pattern with a group that
-  takes no part in a match, raise `NotImplementedError`: their tuples and their `None` have no
-  type here; and `Match.groups()` and `Match.regs` are errors where the program uses them.
+- `findall()` of a pattern with 2 groups or more raises `NotImplementedError`, and
+  `Match.groups()` and `Match.regs` are errors where the program uses them: their tuples are as
+  long as the pattern's group count, which runtime-length tuples (M4) would type.
+- `split()` returns a `list[str]`, so it raises `NotImplementedError` for a pattern with a group
+  that takes no part in a match, where CPython's list holds `None`. That is the signature's
+  choice: a `list[str | None]` would hold it.
 - `finditer()` returns a list of the matches, found before it returns.
 - `\N{...}` is a pattern error: Pystachy has no table of the characters' names.
 - The flags are ints, not `RegexFlag` members; `groupindex` is a dict; `re.error` is the base class

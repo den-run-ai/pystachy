@@ -6390,6 +6390,22 @@ def optnames(t: str) -> str:
     return t
 
 
+def literal(e: Node) -> bool:
+    # is e a constant that CPython's compiler always makes one of: a literal, a sign on a number, or
+    # a tuple of those (an operator's result may exceed its limits, "a" * 4097, and is left to run)
+    k = e.kind
+    if k == "int" or k == "float" or k == "str" or k == "True" or k == "False" or k == "None" or k == "ellipsis":
+        return True
+    if k == "unary" and (e.s == "-" or e.s == "+") and (e.kids[0].kind == "int" or e.kids[0].kind == "float"):
+        return True
+    if k == "tuple":
+        for x in e.kids:
+            if not literal(x):
+                return False
+        return True
+    return False
+
+
 def folds(e: Node) -> bool:
     # is e a constant once CPython's AST optimizer has run (ast_opt.c): a literal, a tuple of
     # constants, or an operator applied to constants (a set display of constants is then a
@@ -7800,6 +7816,7 @@ class Gen:
         self.cells: dict[str, str] = {}  # the function's variables that closures take: the cell of each (a pointer)
         self.adapters: dict[str, str] = {}  # "<function value type> <Callable type>" -> its adapter's symbol (Gen.adapter)
         self.adrets: dict[str, str] = {}  # "<function value type> <parameter types>" -> what it returns (Gen.adapter_ret)
+        self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
         self.decorated: dict[str, bool] = {}  # the defs of a module's top level that bind what their decorators give (decorate)
         self.decoexprs: dict[str, Node] = {}  # "<module> <line>" -> the dotted name of the decorator there (deco_callee)
         self.cvos: dict[str, bool] = {}  # the constant Callable objects defined (Gen.to_callable)
@@ -13902,6 +13919,15 @@ class Gen:
         self.emit(f"store {lt(v.t)} {v.v}, ptr {name}")
         return name
 
+    def dflt_fn(self, f: FnInfo) -> FnInfo:
+        # the function whose def statement evaluates f's default values (hoist): f, but for a method
+        # of a class template's specialization, the template's method, as each specialization's is
+        # the same def, whose defaults CPython evaluates once, when the class statement runs
+        o = self.classes[f.cls].origin if f.cls in self.classes else ""
+        if o != "" and f.name in self.classes[o].methods and self.classes[o].methods[f.name].node is f.node:
+            return self.classes[o].methods[f.name]
+        return f
+
     def early_default(self, f: FnInfo, j: int) -> None:
         # a call that leaves out parameter j of f, compiled before f's def statement (in a
         # template's function, or a function compiled early): the global that is to hold the
@@ -18209,7 +18235,8 @@ class Gen:
         if key in self.adapters:
             return self.adapters[key]
         ts = targs(t)
-        ll = f"@cv.{len(self.adapters)}"
+        ll = f"@cv.{self.ncv}"
+        self.ncv += 1
         self.adapters[key] = ll
         line = self.line
         f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
@@ -18280,7 +18307,8 @@ class Gen:
         if key in self.adrets:
             return self.adrets[key]
         line = self.line
-        ll = f"@cv.{len(self.adapters)}"
+        ll = f"@cv.{self.ncv}"  # (its key needs what it returns: it is registered once compiled)
+        self.ncv += 1
         f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
         f.params = ["_f"] + [f"_a{j}" for j in range(len(ps))]
         f.ptypes = [ft] + ps
@@ -18641,23 +18669,24 @@ class Gen:
             vals[f.kwarg] = self.kw_record(kwn, kwv)
         if none != "":
             self.notnone(pre[0], none)  # (CPython calls o once it has evaluated the arguments)
+        df = self.dflt_fn(f)
         for j in range(np):
             if vals[j].t == "":
                 t = f.ptypes[j]
-                if f.dglob[j] == "" and not is_const(f.defaults[j]):
-                    self.early_default(f, j)
-                if f.dglob[j].startswith("!"):
-                    self.err(f.dglob[j][1:])
-                if f.dglob[j] == "=None":
+                if df.dglob[j] == "" and not is_const(f.defaults[j]):
+                    self.early_default(df, j)
+                if df.dglob[j].startswith("!"):
+                    self.err(df.dglob[j][1:])
+                if df.dglob[j] == "=None":
                     vals[j] = Val("null", "None")
-                elif f.dglob[j].startswith("&"):
+                elif df.dglob[j].startswith("&"):
                     # a closure's default: in its env (pre[0]), evaluated where it was defined
-                    t = t if t != "" else f.dtypes[j]
-                    da = self.ins(f"getelementptr inbounds i64, ptr {pre[0].v}, i64 {f.dglob[j][1:]}")
+                    t = t if t != "" else df.dtypes[j]
+                    da = self.ins(f"getelementptr inbounds i64, ptr {pre[0].v}, i64 {df.dglob[j][1:]}")
                     vals[j] = Val(self.ins(f"load {lt(t)}, ptr {da}"), t)
-                elif f.dglob[j] != "":
-                    t = t if t != "" else f.dtypes[j]
-                    vals[j] = Val(self.ins(f"load {lt(t)}, ptr {f.dglob[j]}"), t)
+                elif df.dglob[j] != "":
+                    t = t if t != "" else df.dtypes[j]
+                    vals[j] = Val(self.ins(f"load {lt(t)}, ptr {df.dglob[j]}"), t)
                 else:
                     vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
         self.line = line
@@ -19912,10 +19941,11 @@ class Gen:
         # (SET_UPDATE), which can leave it a smaller table; folded: the iterable of a for loop or
         # a comprehension, of constants, which CPython's AST optimizer makes that frozenset. The
         # constant is the frozenset of the items inserted in order, made again of its elements
-        # in the order it has them (the compiler's merge_consts_recursive does that). It is made
-        # where the display first runs and kept in a global, which the collector scans: each run
-        # after that copies it into a new set, or (folded) is it, as CPython's code object keeps it
-        const = (folded or (len(n.kids) > 2 and folds(mk("tuple", "", n.line, n.kids)))) and not self.rtmode
+        # in the order it has them (the compiler's merge_consts_recursive does that). One of literals
+        # is made where the display first runs and kept in a global, which the collector scans: each
+        # run after that copies it into a new set, or (folded) is it, as CPython's code object keeps
+        # it (an operator's result is made on each run, as CPython leaves one beyond its limits)
+        const = (folded or (len(n.kids) > 2 and folds(mk("tuple", "", n.line, n.kids)))) and literal(mk("tuple", "", n.line, n.kids)) and not self.rtmode
         g = f"@fs.{len(self.globs)}"
         old = ""
         l0 = ""

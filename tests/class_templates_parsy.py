@@ -95,3 +95,21 @@ letters = char("a").alt(char("b")).many()
 print(number.parse("12345"), number.parse("12a"), sign.parse("+"), sign.parse("x"))
 print(pair.parse("(12,345)"), pair.parse("(12;3)"), letters.parse("abba"), letters.parse(""))
 print(number.name, sign.name, pair.name, letters.name)
+
+
+def double(n: int) -> int:
+    return n * 2
+
+
+def scaled(c: str) -> Parser:
+    def run(s: str, i: int):
+        # (an ordinary Callable in the function a Parser holds: its adapter is made while the
+        # Parser's is compiled)
+        f: Callable[[int], int] = double
+        ok = i < len(s) and s[i] == c
+        return Result(ok, i + 1 if ok else i, f(i))
+
+    return Parser(run, "scaled " + c)
+
+
+print(scaled("x").parse("x"), char("x").then(scaled("y")).parse("xy"), scaled("z").parse("y"))

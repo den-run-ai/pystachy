@@ -68,3 +68,13 @@ def bad() -> int:
 
 
 print(bad(), bad())
+
+
+def big() -> set[str]:
+    # (CPython leaves "a" * 4097 to run, beyond its folding limit: a new string on each run)
+    return {"a" * 4097, "b", "c"}
+
+
+x1 = [s for s in big() if len(s) > 1][0]
+x2 = [s for s in big() if len(s) > 1][0]
+print(x1 is x2, x1 == x2, len(x1), "a" * 4097 in {"a" * 4097, "b"}, "a" * 4096 in {"a" * 4097, "b"})

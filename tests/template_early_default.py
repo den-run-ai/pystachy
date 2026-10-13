@@ -18,8 +18,12 @@ def count(x):
     return Counter(x).total()
 
 
+def crate(x):
+    return Crate(x).count() + Crate([x]).count()
+
+
 if len(sys.argv) > 5:
-    print(t(1), make(1), count(1))
+    print(t(1), make(1), count(1), crate(1))
 
 
 def g(x, opt=len(sys.argv) * [0]):
@@ -58,9 +62,25 @@ class Counter:
         return self.base + self.step
 
 
+def none_yet() -> list[int]:
+    print("hits evaluated")
+    return []
+
+
+class Crate:
+    # a class template: the methods of its specializations share the template's defaults
+    def __init__(self, v):
+        self.v = v
+
+    def count(self, hits: list[int] = none_yet()) -> int:
+        hits.append(0)
+        return len(hits)
+
+
 print(t(2), t(3))
 print(make(2), make(3))
 print(count(2), count(3))
+print(crate(2), crate("s"))
 
 NODES = []
 

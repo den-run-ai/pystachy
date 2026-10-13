@@ -6,4 +6,5 @@ True False True False
 [True, False, True, False, True, False, False, True, False, True, False, True]
 40 8 24 
 200 200
+False True 4097 True False
 [exit 0]

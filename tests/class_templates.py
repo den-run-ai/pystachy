@@ -277,3 +277,33 @@ class Pong:
 pi = Ping(1, 2)
 ps = Ping("s", 1)
 print(pi.v, pi.pong.v, pi.pong.ping.pong.v, pi.pong.ping.pong.ping.pong.ping is None, ps.pong.ping.v, ps.pong.ping.pong.ping)
+
+
+made = 0
+
+
+def fresh() -> list[int]:
+    global made
+    made += 1
+    return []
+
+
+class Sack:
+    # a specialization's methods share the default values of the template's, which the class
+    # statement evaluates once: CPython's Sack.visit is one function, whatever the object's fields
+    def __init__(self, value):
+        self.value = value
+
+    def visit(self, seen: list[int] = []) -> int:
+        seen.append(1)
+        return len(seen)
+
+    def tally(self, acc: list[int] = fresh(), step=len("ab")) -> int:
+        acc.append(step)
+        return sum(acc)
+
+
+g1 = Sack(1)
+g2 = Sack("x")
+print(g1.visit(), g2.visit(), g1.visit(), g2.visit(seen=[]))
+print(g1.tally(), g2.tally(), g2.tally(step=10), g1.tally(), made)
