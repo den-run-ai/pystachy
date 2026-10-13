@@ -357,7 +357,8 @@ times slower than `_sre`.
 
 `tools/re_probe.py` (`make re-probe`, a step of `make verify`) runs the port on CPython for
 textwrap's patterns, on 20 paragraphs and 20 blocks `tools/re_bench.py` generates: each result must
-be CPython's `re`'s, and the matcher's entries and the contexts it makes must stay within fixed
+be CPython's `re`'s, and the matcher's entries, the contexts it makes and their activations
+(including reuse) must stay within fixed
 limits, deterministic counts that a change making the matcher do more exceeds. `tools/re_bench.py`
 times the same operations, compiled and under CPython (`make re-probe RE_PROBE="--time
 ./pystachy"`).
@@ -375,6 +376,13 @@ begins with a literal or a class repeated at least once (after groups' marks, fo
 character there is not that one, without the nested match that would fail at once
 (`tests/lib_re_first.py`): `wordsep_simple_re`'s split of a paragraph enters the matcher 79 times
 instead of 468, and takes 30% less time compiled.
+
+Assertions that start with a consuming character test fail without a nested match when that
+character cannot match; a repeated literal or class uses the same rejection only if its minimum
+is positive. If a single-character test is the whole assertion, it succeeds without a nested
+match too. Assertions with captures and other remaining operations still run the matcher
+(`tests/lib_re_assertions.py`). On `re_probe`'s 20 paragraphs, `wordsep_re.split` activates 47,381
+contexts instead of 60,364; its seven allocated contexts per paragraph are unchanged.
 
 ## `fnmatch`, a port of CPython's
 

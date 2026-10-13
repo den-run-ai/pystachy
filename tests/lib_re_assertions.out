@@ -1,0 +1,1053 @@
+(?=a)a
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?!a).
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(2, 3) 'b' [] None
+(0, 1) ' ' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?<=a).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(?<!a).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?=[ab]).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?![ab]).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(3, 4) 'c' [] None
+(0, 1) ' ' [] None
+None
+None
+None
+(?<=[ab]).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(?<![ab]).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?=\w).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?!\w).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(5, 6) '!' [] None
+(0, 1) ' ' [] None
+None
+None
+None
+(?<=\w).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(?<!\w).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?=.).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?!.).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(?<=.).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(?<!.).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?s)(?=.).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+(0, 1) '\n' [] None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?s)(?<!.).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+(0, 1) '\n' [] None
+None
+None
+(0, 1) ' ' [] None
+None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?i)(?=a).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?i)(?<![ab]).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?a)(?i)(?=a).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?a)(?i)(?<![ab]).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+None
+(0, 1) 'a' [] None
+(?=[^a]).
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(2, 3) 'b' [] None
+(0, 1) ' ' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?<![^a]).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(2, 3) 'b' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?=[ab]{2}).
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?<!a{2}).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+(0, 1) 'A' [] None
+None
+None
+None
+None
+None
+(0, 1) ' ' [] None
+(1, 2) 'a' [] None
+(0, 1) ' ' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?=a(b))a
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' ["'b'"] 1
+(1, 2) 'a' ["'b'"] 1
+(1, 2) 'a' ["'b'"] 1
+(2, 3) 'a' ["'b'"] 1
+(2, 3) 'a' ["'b'"] 1
+None
+(?!a(b))a
+None
+None
+None
+(0, 1) 'a' ['None'] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(4, 5) 'a' ['None'] None
+(4, 5) 'a' ['None'] None
+(4, 5) 'a' ['None'] None
+(0, 1) 'a' ['None'] None
+(1, 2) 'a' ['None'] None
+(0, 1) 'a' ['None'] None
+(?<=a(b))c
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(3, 4) 'c' ["'b'"] 1
+(3, 4) 'c' ["'b'"] 1
+(3, 4) 'c' ["'b'"] 1
+None
+None
+None
+(?<!a(b))c
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(?=a*)b
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?!a*)b
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(?=a+)a
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?!a+)b
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?=a+?)a
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?=a++)a
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?=a{0}b)b
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?=a{0}b*)b
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(2, 3) 'b' [] None
+(3, 4) 'b' [] None
+(3, 4) 'b' [] None
+None
+(?=a|b).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(1, 2) 'a' [] None
+(0, 1) 'a' [] None
+(?=a?b).
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(1, 2) 'a' [] None
+(2, 3) 'a' [] None
+(2, 3) 'a' [] None
+None
+(?=a$).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(2, 3) 'a' [] None
+(?=a\b).
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(4, 5) 'a' [] None
+(4, 5) 'a' [] None
+(4, 5) 'a' [] None
+None
+None
+(2, 3) 'a' [] None
+(?:(?=a)a|(?!a)b)+
+None
+None
+None
+(0, 1) 'a' [] None
+None
+None
+(0, 1) 'b' [] None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 3) 'ab' [] None
+(1, 3) 'ab' [] None
+(1, 3) 'ab' [] None
+(0, 4) 'aaab' [] None
+(1, 4) 'aab' [] None
+(0, 3) 'aaa' [] None
+(?:(?=a(b))a|b)+
+None
+None
+None
+None
+None
+None
+(0, 1) 'b' ['None'] None
+None
+None
+None
+None
+None
+None
+None
+None
+(1, 3) 'ab' ["'b'"] 1
+(1, 3) 'ab' ["'b'"] 1
+(1, 3) 'ab' ["'b'"] 1
+(2, 4) 'ab' ["'b'"] 1
+(2, 4) 'ab' ["'b'"] 1
+None
+(?<=[\w!\"'&.,?])(?=-{2,}\w)
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+None
+(7, 7) '' [] None
+(7, 7) '' [] None
+(7, 7) '' [] None
+None
+None
+None
+(?i)(?=k).
+'K' None
+(?i)(?<!k).
+'é' None
+'a' None
+'K' None
+'ſ' None
+'a' None
+'ı' None
+'a' None
+'σ' None
+'a' None
+'𝒜' None
+'a' None
+(?i)(?=[a-z]).
+'a' None
+'K' None
+'a' None
+'ſ' None
+'a' None
+'ı' None
+'a' None
+'a' None
+'a' None
+(?i)(?<![a-z]).
+'é' None
+'a' None
+'K' None
+'ſ' None
+'ı' None
+'σ' None
+'a' None
+'𝒜' None
+'a' None
+(?=\w).
+'é' None
+'a' None
+'K' None
+'a' None
+'ſ' None
+'a' None
+'ı' None
+'a' None
+'σ' None
+'a' None
+'𝒜' None
+'a' None
+(?a)(?=\w).
+'a' None
+'a' None
+'a' None
+'a' None
+'a' None
+'a' None
+(?<=\w).
+'a' None
+'a' None
+'a' None
+'a' None
+'a' None
+'a' None
+(?a)(?<=\w).
+[exit 0]

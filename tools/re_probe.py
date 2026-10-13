@@ -5,7 +5,8 @@ tools/re_fuzz.py). On re_bench.inputs(20), 20 paragraphs and 20 blocks made as t
 makes its inputs (the paragraphs are the first 20 it times; the blocks, drawn after them, are not
 the ones it times), it runs each operation of textwrap's patterns, checks its result against
 CPython's re, and counts the matcher's entries (calls of _sre.sre_match: a search's attempts, and
-sre_count()'s nested ones) and the contexts it makes (_sre.Ctx objects). The counts are
+sre_count()'s nested ones), the contexts it makes (_sre.Ctx objects), and their activations
+(including reused contexts for assertions, alternatives and repeats). The counts are
 deterministic: the run fails if one is above its limit, so a change to lib/re that makes the matcher
 do more fails here, and one that makes it do less lowers the limits.
 
@@ -32,7 +33,7 @@ port = importlib.util.module_from_spec(_spec)
 sys.modules["pys_re"] = port
 _spec.loader.exec_module(port)
 sre = sys.modules["pys_re._sre"]
-counts = {"entries": 0, "contexts": 0}
+counts = {"entries": 0, "contexts": 0, "activations": 0}
 _sre_match = sre.sre_match
 _Ctx = sre.Ctx
 
@@ -45,20 +46,25 @@ def _counted_match(state, code, start, toplevel):
 class _CountedCtx(_Ctx):
     def __init__(self, *args):
         counts["contexts"] += 1
+        counts["activations"] += 1
         super().__init__(*args)
+
+    def reuse(self, *args):
+        counts["activations"] += 1
+        super().reuse(*args)
 
 
 sre.sre_match = _counted_match
 sre.Ctx = _CountedCtx
 
-# name, pattern, flags, what it does to what, and the limits of its matcher entries and contexts
+# name, pattern, flags, what it does to what, and limits of entries, contexts and activations
 # over the 20 inputs
 OPERATIONS = [
-    ("wordsep_re.split", re_bench.WORDSEP, re.VERBOSE, "split", 3414, 140),
-    ("wordsep_simple_re.split", re_bench.WORDSEP_SIMPLE, 0, "split", 1580, 40),
-    ("whitespace_only_re.sub", re_bench.WHITESPACE_ONLY, re.MULTILINE, "sub", 320, 40),
-    ("leading_whitespace_re.findall", re_bench.LEADING_WHITESPACE, re.MULTILINE, "findall", 320, 40),
-    ("margin.sub", r"(?m)^    ", 0, "sub", 298, 20),
+    ("wordsep_re.split", re_bench.WORDSEP, re.VERBOSE, "split", 3414, 140, 47381),
+    ("wordsep_simple_re.split", re_bench.WORDSEP_SIMPLE, 0, "split", 1580, 40, 3160),
+    ("whitespace_only_re.sub", re_bench.WHITESPACE_ONLY, re.MULTILINE, "sub", 320, 40, 1327),
+    ("leading_whitespace_re.findall", re_bench.LEADING_WHITESPACE, re.MULTILINE, "findall", 320, 40, 733),
+    ("margin.sub", r"(?m)^    ", 0, "sub", 298, 20, 298),
 ]
 
 
@@ -73,11 +79,11 @@ def run(rx, what: str, text: str):
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
-    print(f"{'operation':30} {'entries':>8} {'contexts':>9}   (per input; limits over {len(paras)} inputs)")
-    for name, pattern, flags, what, max_entries, max_contexts in OPERATIONS:
+    print(f"{'operation':30} {'entries':>8} {'contexts':>9} {'active':>9}   (per input; limits over {len(paras)} inputs)")
+    for name, pattern, flags, what, max_entries, max_contexts, max_activations in OPERATIONS:
         mine = port.compile(pattern, flags)
         theirs = re.compile(pattern, flags)
-        counts["entries"] = counts["contexts"] = 0
+        counts["entries"] = counts["contexts"] = counts["activations"] = 0
         texts = paras if what == "split" else blocks
         for text in texts:
             if run(mine, what, text) != run(theirs, what, text):
@@ -85,9 +91,10 @@ def main() -> int:
                 failed += 1
         e = counts["entries"]
         c = counts["contexts"]
-        over = e > max_entries or c > max_contexts
+        a = counts["activations"]
+        over = e > max_entries or c > max_contexts or a > max_activations
         failed += over
-        print(f"{name:30} {e / len(texts):8.1f} {c / len(texts):9.1f}   ({e} of {max_entries}, {c} of {max_contexts}){'  OVER THE LIMIT' if over else ''}")
+        print(f"{name:30} {e / len(texts):8.1f} {c / len(texts):9.1f} {a / len(texts):9.1f}   ({e} of {max_entries}, {c} of {max_contexts}, {a} of {max_activations}){'  OVER THE LIMIT' if over else ''}")
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:

@@ -790,6 +790,14 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                     ret = 0
                     k = K_EXIT
                     continue
+                assertion = _assertion(state, code, pattern + 2, ptr - code[pattern + 1], pattern + code[pattern] - 1)
+                if assertion == 0:
+                    ret = 0
+                    k = K_EXIT
+                    continue
+                if assertion == 1:
+                    pattern += code[pattern]
+                    continue
                 state.ptr = ptr - code[pattern + 1]
                 nextp = pattern + 2
                 nextj = JUMP_ASSERT
@@ -797,6 +805,14 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
             elif op == ASSERT_NOT:
                 # <ASSERT_NOT> <skip> <back> <pattern>
                 if ptr >= code[pattern + 1]:
+                    assertion = _assertion(state, code, pattern + 2, ptr - code[pattern + 1], pattern + code[pattern] - 1)
+                    if assertion == 1:
+                        ret = 0
+                        k = K_EXIT
+                        continue
+                    if assertion == 0:
+                        pattern += code[pattern]
+                        continue
                     state.ptr = ptr - code[pattern + 1]
                     ctx.lastmark = state.lastmark
                     ctx.lastindex = state.lastindex
@@ -1311,3 +1327,31 @@ def _first(state: State, code: list[int], item: int, ptr: int) -> bool:
     if code[item] == LITERAL:
         return state.s[ptr] == code[item + 1]
     return charset(code, item + 2, state.s[ptr])
+
+
+def _assertion(state: State, code: list[int], p: int, ptr: int, tail: int) -> int:
+    # A literal or class first cannot match if that character fails. If SUCCESS follows it,
+    # there are no captures or other effects: the assertion is decided. A positive-minimum
+    # repeat can likewise fail on its first character, but still needs the matcher on success.
+    # -1 leaves other assertions, including case-folded tests, to the normal nested matcher.
+    op = code[p]
+    if op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE:
+        if code[p + 2] == 0:
+            return -1
+        p += 4
+        op = code[p]
+        tail = -1  # matching its first character never decides the whole repeat
+    after = p + 2
+    if op == LITERAL:
+        if ptr >= state.end or state.s[ptr] != code[p + 1]:
+            return 0
+    elif op == IN:
+        if ptr >= state.end or not charset(code, p + 2, state.s[ptr]):
+            return 0
+        after = p + 1 + code[p + 1]
+    elif op == CATEGORY:
+        if ptr >= state.end or not category(code[p + 1], state.s[ptr]):
+            return 0
+    else:
+        return -1
+    return 1 if after == tail else -1
