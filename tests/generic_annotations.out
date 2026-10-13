@@ -1,0 +1,8 @@
+Box([1, 0, 1, 4]) 4 Box([0, 1]) Box([]) True
+Box([1, 2]) Box(['a', 'b']) Box(['k', 'j']) Box([4, 5]) Box([7]) Box([[1], []])
+Box(['x']) Box([3]) Box([['y']]) True
+Box(['a']) [Box([7]), Box([8])] Box([]) 1.5
+Box([9])
+k 1 1 k 3.14
+['a', 'b'] [1] 0
+[exit 0]

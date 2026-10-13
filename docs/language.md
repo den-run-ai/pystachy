@@ -175,7 +175,8 @@ imports `annotations` from `__future__`.
   a type checker infers `Box[int]` from `Box(1)`, by matching those parameters' annotations with
   the arguments' types. `T` takes a type other than `None` (two arguments for one `T` join, `int`
   and `bool` making `int`), `list[T]`, `dict[K, V]`, `set[T]`, `tuple[A, *Ts]` and `T | None`
-  their parts (`None` binds nothing), and `Callable[[A, *Ts], R]` a function's: a def's or
+  their parts (`None` binds nothing), `Iterable[T]` (or `Iterator[T]`) the items' type of a list,
+  set, dict, str or tuple (`()` binds nothing), and `Callable[[A, *Ts], R]` a function's: a def's or
   lambda's annotated positional parameters and return, or a `Callable`'s. Such a parameter has
   its argument's type, as an unannotated one has (a function passed stays that function, called
   directly, with its `__name__`). In the specialization the call picks, the class's fields and
@@ -183,10 +184,15 @@ imports `annotations` from `__future__`.
   `Callable[[...], R]` and `*args: *Ts`, whose calls then pass exactly those:
   `fn: Callable[[*Ts], R]` and `def __call__(self, *args: *Ts) -> R` type a wrapper of any
   annotated function, as `lib/functools.py`'s cache does. Messages show a specialization with
-  its bindings (`Memo[int, int]`). A type variable that no argument binds is an error
-  (`Stack[int]()` is not supported), as are `class C[T]` (PEP 695) and `C[T]` in an annotation:
-  in its own methods and fields the class is named bare (`Self`), and a method's other type
-  variables make it a template.
+  its bindings (`Memo[int, int]`). `C[X, Y]` names the specialization whose type variables are
+  bound to `X` and `Y` (for a generic class whose `__init__` annotates each parameter, and without a
+  `TypeVarTuple`): in an annotation (a variable, a field, a parameter, a return, `list[C[int]]`),
+  where a call `C(...)` makes an object of it, its arguments binding first and the annotation the
+  type variables they leave (`q: Stack[int] = Stack()`, also `Stack([])`, whose arguments are then
+  compiled for those types), and as the call `Stack[int](...)`. A type variable that neither an
+  argument nor the call's context binds is an error that says so, as is `class C[T]` (PEP 695); in
+  its own methods and fields the class is named bare (`Self`) or with its type variables
+  (`"Pair[V, K]"`), and a method's other type variables make it a template.
 - Each variable has one type for its lifetime, fixed by its annotation or first assignment.
 - Empty `[]` and `{}` take their type from context: an annotation, a parameter, a field,
   or the variable being assigned. A variable without a type that is assigned `[]` or `{}`
@@ -560,7 +566,10 @@ deviations [`lib/README.md`](../lib/README.md#re-a-port-of-cpythons) lists. Its 
 Pystachy's own, with `cache()` and `lru_cache()` ([`lib/README.md`](../lib/README.md#functools-pystachys-own)):
 a function they decorate keeps its results in a cache of its own types, which its annotated
 parameters and return give (the wrapper is a generic class, *Typing rules*), and the cache
-counts, evicts and reports `cache_info()` as CPython's C wrapper does.
+counts, evicts and reports `cache_info()` as CPython's C wrapper does. Its `collections` is
+Pystachy's own `deque`, a generic class whose items' type the iterable it is made from, the
+annotation of where it goes (`q: deque[int] = deque()`) or the call (`deque[int]()`) gives
+([`lib/README.md`](../lib/README.md#collections-pystachys-own)).
 
 ## Expressions
 
@@ -1063,8 +1072,9 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
   no template, a field, a variable's annotation, or as a value), but a generic class's that its
   objects bind, a `TypeVarTuple` but unpacked (`*Ts`) in `tuple[...]`, `Callable[[...], R]` and
   `*args`, a generic class whose `Generic[...]` is not its one base, `class C[T]` (PEP 695), a type
-  variable of a generic class that no argument of a call binds (`C[int]()`), `C[T]` in an
-  annotation, a `TypeVar`'s constraints and a bound other than a string, a bare
+  variable of a generic class that neither an argument of a call nor its context (`C[int]`) binds,
+  `C[X]` of a generic class with a `TypeVarTuple` or an unannotated `__init__` parameter, a
+  `TypeVar`'s constraints and a bound other than a string, a bare
   `Final` but in an assignment (in a class body, of a constant), an `@overload` stub that the `def`
   implementing it does not follow in its block past other `def`s only (in an imported module, one
   that no `def` of its name follows, also a method, is an error where it is called; also one after

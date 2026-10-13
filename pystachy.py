@@ -3121,6 +3121,7 @@ class Mod:
         self.at = 0  # (until done: the line of the top-level statement whose imports are being loaded)
         # the names only name = f(...) statements bind, with each f: a TypeVar if every f is typing's
         self.tvars: dict[str, list[Node]] = {}
+        self.cbases: dict[str, Node] = {}  # the base of each class with one (class C(B):), by its name
 
 
 # Python's builtin names: in an imported module, a name it does not bind is one of these or an
@@ -3719,6 +3720,8 @@ class Loader:
                 aliases.append(st)
             elif k == "def" or k == "class" or k == "subclass":
                 m.kinds[st.s] = "f" if k == "def" else "c"
+                if k == "subclass" and len(st.kids) == 2:
+                    m.cbases[st.s] = st.kids[1]
                 for d in [st] if k == "def" else st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids:
                     if d.kind == "def":
                         ga: dict[str, bool] = {}
@@ -4010,12 +4013,39 @@ class Loader:
             return e.s != "|" or b.kind not in ANNKINDS[:5] or e.kids[1].kind not in ANNKINDS[:5]
         if k == "unary":
             return e.s != "-" or (b.kind != "int" and b.kind != "float")  # (Literal[-1])
+        if k == "index" and (self.kind_of(b) == "c" or self.kind_of(b).startswith("a:")) and self.generic_class(b):
+            return False  # (C[int] of a generic class runs typing's Generic.__class_getitem__)
         if k == "index" and (b.kind not in ANNKINDS[:2] or self.kind_of(b) == "f" or self.kind_of(b) == "c" or self.kind_of(b).startswith("a:")):
             return True
         p = self.bpath(e) if k == "attr" else ""
         if p != "" and not p.startswith("typing.") and p != "os.PathLike" and p != "collections.abc" and not (p.startswith("collections.abc.") and p[16:] in ABCS):
             return True  # (a builtin module may lack the attribute)
         return k not in ANNKINDS or (self.kind_of(b) == "v" and not (top and k == "name") and not (k == "name" and self.typevar(e))) or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)
+
+    def generic_class(self, b: Node) -> bool:
+        # is b (a name, an alias such as an imported class's, or a user module's attribute, that
+        # names a class) a class whose one base is typing.Generic[...]
+        m = self.dm
+        name = b.s
+        k = self.kind_of(b)
+        if k.startswith("a:"):
+            # (a:<module's prefix><name>: a def or class of that module)
+            for x in self.mods:
+                q = self.mods[x].q
+                if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q):]:
+                    m = self.mods[x]
+                    name = k[2 + len(q):]
+        elif b.kind == "attr":
+            k = self.kind_of(b.kids[0])
+            m = self.mods[k[2:]] if k.startswith("m:") and k[2:] in self.mods else self.dm
+        base = m.cbases.get(name, None)
+        if base is None or base.kind != "index":
+            return False
+        g = base.kids[0]
+        if g.kind == "name":
+            k = m.kinds.get(g.s, "")
+            return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
+        return False
 
     def bpath(self, e: Node) -> str:
         # what a name or an attribute chain on one names in a builtin module ("collections.abc.Mapping"), or ""
@@ -5511,7 +5541,7 @@ for _k in ("Awaitable Coroutine AsyncIterable AsyncIterator AsyncGenerator Hasha
     ABCS[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 OPTTYPES = "class types, str, int, float, bool, list, dict and tuple"
-TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) whose __init__'s parameters mention it, which each call binds"
+TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
@@ -8635,6 +8665,8 @@ class Gen:
             return self.opt(self.ann(n.kids[0]), n.kids[0])
         elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
             return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
+        elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
+            return self.generic_ann(n.kids[0].s, n.kids[1])  # (C[int] of a generic class: one of its specializations)
         elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
             base = self.ann_base(n.kids[0])
             if base.startswith("!"):
@@ -9199,7 +9231,9 @@ class Gen:
             if i == 0 and takes_self(f):
                 f.ptypes.append(cls)
             elif p.kids[0].kind == "noann":
-                if not f.generic:
+                if not f.generic and p not in held:
+                    # (a generic class's own method, whose annotation that names its type variables
+                    # is set aside: its specializations' methods have it)
                     self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
                 f.ptypes.append("")
             elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not template_ok(d.s)):
@@ -9667,7 +9701,7 @@ class Gen:
                 # a class template's object: of the specialization its arguments' types pick, once
                 # code is being compiled (a specialization compiles its special methods)
                 ts = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
-                return self.specialize(c, ts) if "!" not in ts else ""
+                return self.specialize(c, ts, {}, False) if "!" not in ts else ""
             if c in self.classes or c in self.unsupported:
                 return c if c in self.classes else "!" + self.unsupported[c]
             if c in self.funcs:
@@ -12359,6 +12393,8 @@ class Gen:
             return False
         for d in st.kids[0].kids:
             if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+                if st.s in self.tparams:
+                    return True  # (a generic class: its objects bind its type variables, from the call's arguments or its context, see bind)
                 ps = d.kids[0].kids
                 for i in range(1, len(ps)):
                     if ps[i].kids[0].kind == "noann" or (ps[i].kind == "param" and self.tmpl_ann(ps[i].kids[0])):
@@ -12383,6 +12419,8 @@ class Gen:
         # specializations being a type of its own, the annotation then types nothing, as if left out
         if a.kind == "name":
             return a.s in self.tmpl
+        if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.tparams:
+            return self.tmpl_ann(a.kids[1])  # (C[int] of a generic class names a specialization, see generic_ann)
         if a.kind == "str":
             w = ""
             for c in a.s + " ":
@@ -17872,6 +17910,14 @@ class Gen:
             self.err(f.s)
         if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
             return self.star_call(n, want)
+        if f.kind == "index" and f.kids[0].kind == "name" and f.kids[0].s in self.tparams and f.kids[0].s not in self.ltype:
+            # C[int](...) of a generic class: an object of the specialization C[int] names, its type
+            # variables bound where no argument binds them (see generic_ann)
+            self.modchk(f.kids[0])
+            sc = self.generic_ann(f.kids[0].s, f.kids[1])
+            if sc.startswith("!"):
+                self.err(sc[1:])
+            return self.call(mk("call", n.s, n.line, [f.kids[0]] + args), sc)
         if f.kind == "name":
             self.modchk(f)
         if f.kind == "name" and f.s not in self.ltype:
@@ -17893,7 +17939,7 @@ class Gen:
                     # a class template: the types of the arguments pick the specialization, whose
                     # object call_fn makes once it has them (in made[0])
                     made = [Val("", f.s)]
-                    self.call_fn(self.classes[f.s].methods["__init__"], made, args)
+                    self.call_fn(self.classes[f.s].methods["__init__"], made, args, want)
                     return made[0]
                 o = self.new_obj(f.s)
                 self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
@@ -18531,6 +18577,9 @@ class Gen:
         vals: list[Val] = []
         for i in range(np):
             vals.append(self.pcoerce(pre[i], f.ptypes[i], f, i) if i < len(pre) else Val("", ""))
+        # (c(args) of a generic class whose context expects c[X]: the arguments of the parameters
+        # that name its type variables are compiled for X, so that c([]) has a type, see want_params)
+        hint = self.want_params(f.cls, want) if f.name == "__init__" and len(pre) > 0 and pre[0].v == "" and f.cls in self.tparams else []
         pos = len(pre)
         extra: list[Val] = []
         kwn: list[str] = []
@@ -18557,7 +18606,7 @@ class Gen:
                 e = a.kids[0]
             else:
                 pos += 1
-            vals[j] = self.pcoerce(self.expr(e, f.ptypes[j]), f.ptypes[j], f, j)
+            vals[j] = self.pcoerce(self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else hint[j]), f.ptypes[j], f, j)
             if j in f.pats:
                 vals[j] = self.pat_arg(vals[j], f.pats[j])
         if f.vararg >= 0:
@@ -18590,7 +18639,7 @@ class Gen:
         if f.name == "__init__" and len(pre) > 0 and pre[0].v == "" and f.cls in self.tmpl:
             # C(args) of a class template C: its arguments' types decide the specialization the
             # object belongs to (see specialize), whose __init__ initializes it
-            sc = self.specialize(f.cls, [v.t for v in vals[1:]])
+            sc = self.specialize(f.cls, [v.t for v in vals[1:]], self.want_tvars(f.cls, want), False)
             vals[0] = self.new_obj(sc)
             pre[0] = vals[0]
             f = self.classes[sc].methods["__init__"]
@@ -18712,18 +18761,21 @@ class Gen:
                 return True
         return False
 
-    def specialize(self, c: str, ts: list[str]) -> str:
+    def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool) -> str:
         # the specialization of class template c that c(args) makes an object of, for arguments
         # of types ts (its __init__'s, after self, as call_fn has them): the fields its __init__
         # assigns are typed as for a class whose __init__ annotates its parameters with ts, and the
         # calls whose fields get the same types share one. A specialization is a class of its
         # own (c-1, c-2, ...): CPython's names for it are c's, messages about types show its
-        # fields' (Box[int]). It counts as a template specialization
+        # fields' (Box[int]). It counts as a template specialization. Of a generic class, given
+        # binds the type variables that no argument binds (from C[int] where the call's context
+        # expects one, see want_tvars), and named is the specialization the annotation C[int]
+        # names (see generic_ann), whose parameters' annotations then type its fields
         t = self.classes[c]
         init = t.methods["__init__"]
         # (an annotated parameter's argument has its type, as call_fn coerces it)
         ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
-        doing = c + "(" + ",".join(ts) + ")"
+        doing = c + ("[" if named else "(") + ",".join(ts) + ")" + "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
         if doing in self.specdone:
             # (the same argument types make the same fields: also where templates make objects of
             # each other, A's __init__ making a B whose __init__ makes an A, which gets the A made)
@@ -18757,7 +18809,9 @@ class Gen:
         self.selfcls = name  # (c names its specialization in its annotations, see ann)
         line = self.line
         if c in self.tparams:
-            s.tvars = self.bind(c, ts)  # (before its fields, which its type variables may type)
+            s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
+            if named:
+                fi.ptypes = [name] + self.named_params(c, init.node)
         self.scan_fields(s, fi, init.node.kids[2].kids)
         self.line = line
         # (a field that holds the specialization itself, self.next: Node | None, is the same in each)
@@ -18819,10 +18873,11 @@ class Gen:
                 return True
         return False
 
-    def bind(self, c: str, ts: list[str]) -> dict[str, str]:
+    def bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, str]:
         # the types that c(args) binds the type variables of generic class c to, for arguments of
         # types ts (its __init__'s, after self), as a type checker infers C[int] from C(1): each
-        # parameter whose annotation mentions them matches its argument's type (see match)
+        # parameter whose annotation mentions them matches its argument's type (see match), and
+        # given binds the others (C[int] where the call's context expects one, see want_tvars)
         tvs = self.tparams[c]
         tv: dict[str, str] = {}
         init = [d for d in self.classes[c].node.kids[0].kids if d.kind == "def" and d.s == "__init__"][0]
@@ -18841,9 +18896,82 @@ class Gen:
             if why != "":
                 self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a {typestr(t)}: {why}")
         for x in tvs:
-            if x not in tv:
-                self.err(f"{short(c)}() does not bind its type variable '{short(x)}': Pystachy binds a generic class's type variables from the arguments of the call that makes an object (C[int]() is not supported), and no argument's type gives it")
+            if x not in tv and x in given:
+                tv[x] = given[x]
+            elif x not in tv:
+                self.err(f"{short(c)}() does not bind its type variable '{short(x)}': no argument's type gives it; name it where the object goes (q: {short(c)}[int] = {short(c)}(...), a field or a parameter annotated so) or in the call ({short(c)}[int](...))")
         return tv
+
+    def want_tvars(self, c: str, want: str) -> dict[str, str]:
+        # the bindings of generic class c's type variables that the context of a call c(...) names,
+        # where it expects one of c's specializations (x: c[int] = c(), see generic_ann); else none
+        w = unopt(want)
+        if c in self.tparams and w in self.classes and self.classes[w].origin == c:
+            return dict(self.classes[w].tvars)
+        return {}
+
+    def want_params(self, c: str, want: str) -> list[str]:
+        # the types for which the arguments of c(...), a call of generic class c whose context
+        # expects its specialization want, are compiled: __init__'s annotations that name c's type
+        # variables, bound as in want (an Iterable[T] taken as a list[T]); "" for the others
+        w = unopt(want)
+        if c not in self.tparams or w not in self.classes or self.classes[w].origin != c:
+            return []
+        sel = self.selfcls
+        self.selfcls = w  # (c's type variables are bound as in want, see tvar)
+        out = [""]  # (self's)
+        for p in self.classes[c].methods["__init__"].node.kids[0].kids[1:]:
+            a = p.kids[0]
+            t = ""
+            if p.kind == "param" and a.kind != "noann" and self.names_tv(a, self.tparams[c]):
+                if a.kind == "index" and (a.kids[0].kind == "name" or a.kids[0].kind == "attr") and self.ann_base(a.kids[0]) in ("iterable", "iterator"):
+                    t = self.ann(a.kids[1])
+                    t = self.ctype("list", [t]) if not t.startswith("!") else ""
+                else:
+                    t = self.ann(a)
+            out.append("" if t.startswith("!") else t)
+        self.selfcls = sel
+        return out
+
+    def generic_ann(self, c: str, a: Node) -> str:
+        # c[X, Y] of generic class c (a subscript of a name, a): the specialization whose type
+        # variables are bound to X and Y, which the call c[X, Y](...), or c(...) where its context
+        # expects that type, makes objects of; or "!" and why not. Its fields are typed by
+        # __init__'s annotations (see named_params)
+        tvs = self.tparams[c]
+        xs = a.kids if a.kind == "tuple" else [a]
+        if "__init__" not in self.classes[c].methods:
+            return f"!{short(c)}[...] names a generic class that is declared further down: Pystachy needs its class statement before the annotation (or a generic class with an __init__)"
+        if len([x for x in tvs if x in self.tvtuples]) > 0:
+            return f"!{short(c)}[...] is not supported for a generic class with a TypeVarTuple: only its calls' arguments bind them"
+        if len(xs) != len(tvs):
+            return f"!{short(c)}[...] takes {len(tvs)} type{'s' if len(tvs) != 1 else ''} ({', '.join([short(x) for x in tvs])}), not {len(xs)}"
+        given: dict[str, str] = {}
+        for i in range(len(tvs)):
+            t = self.ann(xs[i])
+            if t.startswith("!"):
+                return t
+            given[tvs[i]] = t
+        return self.specialize(c, [], given, True)
+
+    def named_params(self, c: str, init: Node) -> list[str]:
+        # the types of the parameters (after self) of the __init__ of generic class c, as the
+        # specialization that c[X] names (see generic_ann) types them, its type variables bound:
+        # their annotations, an Iterable[T] (or Iterator[T]) taken as a list[T], for the fields
+        # they type
+        out: list[str] = []
+        for p in init.kids[0].kids[1:]:
+            a = p.kids[0]
+            if p.kind != "param" or a.kind == "noann":
+                self.err(f"{short(c)}[...] needs each parameter of {short(c)}.__init__ annotated, and no *args or **kwargs: '{p.s}' is not")
+            if a.kind == "index" and (a.kids[0].kind == "name" or a.kids[0].kind == "attr") and self.ann_base(a.kids[0]) in ("iterable", "iterator"):
+                t = self.ann(a.kids[1])
+                out.append(t if t.startswith("!") else self.ctype("list", [t]))
+            else:
+                out.append(self.ann(a))
+            if out[-1].startswith("!"):
+                self.err(f"{short(c)}[...]: the annotation of {short(c)}.__init__'s parameter '{p.s}': {out[-1][1:]}")
+        return out
 
     def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         # "" if a value of type t fits annotation a, binding (in tv) the type variables of tvs that
@@ -18881,13 +19009,18 @@ class Gen:
             return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs)
         if base == "tuple" and is_tuple(t):
             return self.match_items(xs, targs(t), tv, tvs)
+        if (base == "iterable" or base == "iterator") and len(xs) == 1:
+            if t == "tuple[]":
+                return ""  # (the empty tuple has no item to bind T: a call's context may, see want_tvars)
+            et = self.iter_elem(t)
+            return self.match(xs[0], et, tv, tvs) if et != "" else f"a {typestr(t)} is no iterable whose items have one type"
         if base == "callable" and len(xs) == 2 and xs[0].kind == "list":
             sig = self.fn_sig(t)
             if sig[0].startswith("!"):
                 return sig[0][1:]
             why = self.match_items(xs[0].kids, sig[1:], tv, tvs)
             return why if why != "" else self.match(xs[1], sig[0], tv, tvs)
-        return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], T | None and Callable[[T, *Ts], R])"
+        return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], Iterable[T], T | None and Callable[[T, *Ts], R])"
 
     def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
         # (see match) values of types ts for the items of tuple[...] or the parameters of

@@ -1,4 +1,4 @@
-# error: Stack() does not bind its type variable 'T': Pystachy binds a generic class's type variables from the arguments of the call that makes an object (C[int]() is not supported), and no argument's type gives it
+# error: Stack() does not bind its type variable 'T': no argument's type gives it; name it where the object goes (q: Stack[int] = Stack(...), a field or a parameter annotated so) or in the call (Stack[int](...))
 from typing import Generic, TypeVar
 
 T = TypeVar("T")

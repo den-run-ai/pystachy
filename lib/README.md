@@ -23,6 +23,52 @@ checks each against CPython.
 `curses/__init__.py` is Pystachy's own stand-in: CPython's wraps the C extension `_curses`, and
 so is `functools.py` (below).
 
+## `collections`, Pystachy's own
+
+CPython's `Lib/collections/__init__.py` does not compile (it imports `_collections_abc`, whose
+module code runs an `async def`, and `_weakref`), and its `deque` is the C type
+`_collections.deque` (`Modules/_collectionsmodule.c`). `collections/__init__.py` here has `deque`,
+written for the subset after that C code, with its messages: a generic class
+(`class deque(Generic[_T])`, see [docs/language.md](../docs/language.md#typing-rules)), whose
+items have one type.
+
+- **The items' type** is bound where the deque is made: by the iterable it is made from
+  (`deque([1, 2])`, `deque("abc")`), or else by the annotation of where it goes
+  (`q: deque[int] = deque()`, a field `self.recent: deque[str] = deque(maxlen=3)`, a parameter or a
+  return), or by the call (`deque[int]()`). A `deque()` that none of these types is a compile-time
+  error that says so.
+- `append`, `appendleft`, `pop`, `popleft`, `extend`, `extendleft`, `insert`, `remove`, `count`,
+  `index` (with `start` and `stop`), `rotate`, `reverse`, `clear`, `copy`, `maxlen`, indexing (also
+  negative, `d[i] = x`, `del d[i]`), `len()`, iteration, `in`, `==` and the orderings, `+`, `*`,
+  `+=`, `*=` and the repr (`deque([1, 2], maxlen=3)`), with CPython's errors (`pop from an empty
+  deque`, `deque index out of range`, `3 is not in deque`, `deque already at its maximum size`,
+  `maxlen must be non-negative`). A full deque discards from the other end, as CPython's does.
+- The items are in two typed lists, the left ones reversed, so that each end appends and pops in
+  amortized O(1): an end that runs out takes half of the other list's items.
+
+Where it differs from CPython (`tests/deviations/lib_collections.py`):
+
+- A `for` loop gets the items the deque has when it starts: an iterator class, which would see
+  the deque change, is not supported. So changing the deque during a loop, or during `count()`,
+  `index()`, `remove()` or `in` from an item's `__eq__`, does not raise CPython's `RuntimeError:
+  deque mutated during iteration`.
+- `maxlen` is a plain field, which an assignment changes; CPython's is read-only.
+- A deque compares and adds only with a deque of its type (`deque([1]) == [1]` is a compile-time
+  error, `tests/errors/lib_collections_eq_list.py`, where CPython's is `False`); `2 * d` (a
+  reflected operator) and `reversed(d)` (`tests/errors/lib_collections_reversed.py`) are not
+  supported; `reversed(list(d))` is.
+- There is no pickling, weak reference or subclass, nor `namedtuple`, `Counter`, `defaultdict`,
+  `OrderedDict`, `ChainMap` or `UserDict` (#256).
+
+`tests/lib_collections.py` compares it with CPython's `deque`. Run by CPython in place of its own,
+it passes 35 of the 48 tests of CPython's `Lib/test/test_deque.py` `TestBasic` (the others test
+the deviations above, pickling and `sys.getsizeof()`, and a deque that holds itself, which no type
+of Pystachy's can), and it agrees with `list.index()` for every start and stop of
+`test_index` and with a list for 20,000 random operations.
+[`examples/mazepath`](../examples/mazepath/README.md), shortest paths by breadth-first search, is
+an application of it: the search moves 2.1 million cells through a deque in 0.20 s, compiled,
+against 1.03 s with CPython's C deque.
+
 ## `re`, a port of CPython's
 
 `re/` is no copy: CPython's `re` is a pure-Python parser and compiler (`Lib/re/_parser.py` and

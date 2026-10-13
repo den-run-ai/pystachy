@@ -23,6 +23,10 @@ Lib/ directory (lib/README.md lists their SHA-256 sums). They are part of Python
 under the Python Software Foundation License Version 2, reproduced below, with the copyright
 notice below. lib/curses/__init__.py is Pystachy's own.
 
+lib/collections/__init__.py is Pystachy's own deque, written after the deque of CPython 3.13.16's
+Modules/_collectionsmodule.c, whose behaviour and messages it follows; it is derived from Python
+and is used under the same license and copyright notice.
+
 lib/re/__init__.py, lib/re/_constants.py and lib/re/_sre.py port CPython 3.13.16's
 Lib/re/__init__.py, _parser.py, _compiler.py and _constants.py, and the matching engine of its
 Modules/_sre/sre.c and sre_lib.h, to Pystachy's subset (lib/README.md). lib/re/_unicode.py is
@@ -233,7 +237,8 @@ Software Foundation License Version 2, reproduced below.
 Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved
 
 Summary of the changes made to Python (clause 3 of the license): the lib/ modules are not
-changed (lib/re and lib/functools are ports, described in lib/README.md). The functions of the sort
+changed, except the ports and Pystachy's own modules that lib/README.md describes, whose edits it
+lists. The functions of the sort
 (binarysort, count_run, gallop_left/gallop_right, merge_lo/merge_hi, merge_at, the
 powersort run stack) are translated from C over PyObject pointers to C over Pystachy's
 8-byte list slots. Comparisons go through Pystachy's type descriptors (or call back into the
