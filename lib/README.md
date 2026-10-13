@@ -115,6 +115,59 @@ costs 37 ns and a `readline()` 22 ns, the loop included, against 42 and 142 ns w
 `StringIO` (best of 5 runs over a million lines). [`examples/column`](../examples/column/README.md),
 a `column -t` that builds its table in a `StringIO`, is an application of it.
 
+## `shlex`, a port of CPython's
+
+`shlex.py` is CPython 3.13.16's `Lib/shlex.py` (SHA-256
+`f927227de5ba5b1b2bdd75e3d9c8cb72b602b3bba3cc8edbf8fb554de0dc1fd7`) with edits, each marked
+`# Pystachy port:`, over `collections`' `deque` and `io`'s `StringIO` (above). It has `split()`,
+`quote()`, `join()` and the `shlex` class: its POSIX and compatibility modes, `whitespace_split`,
+`punctuation_chars`, `commenters`, `wordchars`, `whitespace`, `quotes`, `escape` and
+`escapedquotes`, `get_token()`, `push_token()`, `read_token()`, `push_source()`, `pop_source()`,
+`sourcehook()` and the files that the `source` keyword reads, `lineno`, `infile`, `eof`,
+`error_leader()`, iteration and the messages of `debug`, with CPython's errors (`No closing
+quotation`, `No escaped character`). The edits:
+
+- The lexer reads a `StringIO`: a str's, as in CPython, or one of a file's text, which it reads
+  whole when it is made (or `sys.stdin`'s, when it is given no stream), where CPython's reads the
+  file itself: a field has one type. `push_source()` does the same, and closes the file there,
+  where CPython's `pop_source()` closes it.
+- `infile`, `eof`, `state` and `source` are annotated `str | None`, and `pushback` and `filestack`
+  are typed deques (`deque[str]`, `deque[tuple[str | None, StringIO, int]]`): `None` and `deque()`
+  give a field no type.
+- `punctuation_chars`, a bool or a str, is made a str in a variable of its own, and is a field, as
+  a class template's method has no decorator; `_pushback_chars` is made also without it, and the
+  punctuation characters leave `wordchars` through a comprehension (no `str.translate()`).
+- `read_token()` tests the state through a local, which its tests narrow (a field's are not), and
+  annotates its `result` (`str | None`); `get_token()`, which calls itself, and `__next__()`
+  annotate their returns. A character past ASCII is read whole: `read(1)` reads a byte of a str's
+  UTF-8, and the bytes that its first one says follow are read with it.
+- `sourcehook()` narrows its token, a str or `None` (whose `[0]` raises CPython's `TypeError`),
+  and calls `posixpath.isabs()` and `dirname()`: `os.path` is `posixpath` on POSIX, and
+  Pystachy's `os.path` has neither.
+- `__iter__()`, annotated `-> Iterator[str]`, returns an iterator over the tokens left, read when
+  the loop starts: an iterator class, which would read each token as the loop asks for it, is not
+  supported.
+
+Where it differs from CPython (`tests/deviations/lib_shlex.py`):
+
+- A file is read whole when the lexer is made, so a lexer over `sys.stdin` waits for its end
+  before its first token, and `instream` is a `StringIO`, not the file.
+- A file that `push_source()` is given is closed there, not by `pop_source()`.
+- `punctuation_chars` can be assigned (CPython's is a read-only property), and is a bool or a
+  str: a list of characters is a compile-time error (`tests/errors/lib_shlex_punctuation_list.py`).
+
+`tests/lib_shlex.py` compares it with CPython's: `split()` of quoting, escapes, comments, empty
+and unclosed quotes and characters past ASCII in both modes, punctuation characters, each option,
+pushed tokens and sources, the files that `source` includes, line numbers, the error leader,
+`debug`'s messages, `quote()` and `join()`. Run by CPython in place of its own, the edited module
+passes 43 of the 44 tests of CPython 3.13's `Lib/test/test_shlex.py` (the other checks that
+`punctuation_chars` is read-only), and compiled, it splits the 123 cases of that file's tables
+(`data` and `posix_data`) as CPython does. In an AOT executable, `split()` of a command line of
+100 characters takes 5.5 µs, against CPython's 29 µs; `quote()` takes 0.21 µs a word (CPython:
+0.16 µs, whose `_sre` searches faster than `lib/re`) and `join()` of 8 words 1.7 µs (CPython:
+1.7 µs). [`examples/cmdstat`](../examples/cmdstat/README.md), a report of what a shell history
+holds, is an application of it.
+
 ## `re`, a port of CPython's
 
 `re/` is no copy: CPython's `re` is a pure-Python parser and compiler (`Lib/re/_parser.py` and

@@ -571,7 +571,9 @@ Pystachy's own `deque`, a generic class whose items' type the iterable it is mad
 annotation of where it goes (`q: deque[int] = deque()`) or the call (`deque[int]()`) gives
 ([`lib/README.md`](../lib/README.md#collections-pystachys-own)). Its `io` is Pystachy's own
 `StringIO`, CPython's in-memory text stream, whose positions count a str's bytes past ASCII
-([`lib/README.md`](../lib/README.md#io-pystachys-own)).
+([`lib/README.md`](../lib/README.md#io-pystachys-own)). Its `shlex` is CPython's, edited in marked
+places, which splits and quotes as CPython's does, over a `StringIO` (of a file's text, read whole
+when the lexer is made) ([`lib/README.md`](../lib/README.md#shlex-a-port-of-cpythons)).
 
 ## Expressions
 

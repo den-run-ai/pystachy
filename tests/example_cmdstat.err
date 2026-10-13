@@ -1,0 +1,1 @@
+usage: cmdstat.py [--top N] [--quote] HISTORY

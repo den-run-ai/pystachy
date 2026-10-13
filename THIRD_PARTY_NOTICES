@@ -31,6 +31,9 @@ lib/io.py is Pystachy's own StringIO, written after CPython 3.13.16's Modules/_i
 whose behaviour and messages it follows and whose docstrings it keeps; it is derived from Python
 and is used under the same license and copyright notice.
 
+lib/shlex.py is CPython 3.13.16's Lib/shlex.py with the edits lib/README.md lists, each marked in
+the source; it is derived from Python and is used under the same license and copyright notice.
+
 lib/re/__init__.py, lib/re/_constants.py and lib/re/_sre.py port CPython 3.13.16's
 Lib/re/__init__.py, _parser.py, _compiler.py and _constants.py, and the matching engine of its
 Modules/_sre/sre.c and sre_lib.h, to Pystachy's subset (lib/README.md). lib/re/_unicode.py is

@@ -1,0 +1,1578 @@
+'ls -la' ['ls', '-la'] ['word', 'word'] ([['ls', '-la']], 1, 0)
+'a | b | c && d' ['a', '|', 'b', '|', 'c', '&&', 'd'] ['word', 'join', 'word', 'join', 'word', 'join', 'word'] ([['a'], ['b'], ['c'], ['d']], 3, 0)
+"grep -n 'x y' < in > out 2>&1" ['grep', '-n', 'x y', '<', 'in', '>', 'out', '2', '>&', '1'] ['word', 'word', 'word', 'redirect', 'word', 'redirect', 'word', 'word', 'redirect', 'word'] ([['grep', '-n', 'x y', '2']], 1, 3)
+'(cd src && make) ; echo done' ['(', 'cd', 'src', '&&', 'make', ')', ';', 'echo', 'done'] ['paren', 'word', 'word', 'join', 'word', 'paren', 'join', 'word', 'word'] ([['cd', 'src'], ['make'], ['echo', 'done']], 1, 0)
+'echo \'|\' "&&"' ['echo', '|', '&&'] ['word', 'join', 'join'] ([['echo']], 1, 0)
+'a>b' ['a', '>', 'b'] ['word', 'redirect', 'word'] ([['a']], 1, 1)
+'x||y|z' ['x', '||', 'y', '|', 'z'] ['word', 'join', 'word', 'join', 'word'] ([['x'], ['y'], ['z']], 2, 0)
+'cat <<EOF' ['cat', '<<', 'EOF'] ['word', 'redirect', 'word'] ([['cat']], 1, 1)
+'' [] [] ([], 0, 0)
+'   ' [] [] ([], 0, 0)
+'""' [''] ['word'] ([['']], 1, 0)
+'do \\; this' ['do', ';', 'this'] ['word', 'join', 'word'] ([['do'], ['this']], 1, 0)
+'f 2>/dev/null|g' ['f', '2', '>', '/dev/null', '|', 'g'] ['word', 'word', 'redirect', 'word', 'join', 'word'] ([['f', '2'], ['g']], 2, 1)
+'echo "open' ValueError: No closing quotation
+"echo 'open" ValueError: No closing quotation
+'trailing \\' ValueError: No escaped character
+cat '2026-10-13 12:00' src/main.py && mv | sed -i | python3 -u README.md "unclosed
+1532330
+1001 lines, 1521 commands, 230 redirections, 2 lines with an open quote
+the longest pipeline of a line: 1 command on 818 lines, 2 commands on 150 lines, 3 commands on 31 lines
+the 5 commonest of 25 commands, with their commonest options:
+       79  echo
+       75  cd
+       75  mkdir
+       70  cat
+       69  head       -n 53, -20 39
+line 500: No closing quotation
+line 1000: No closing quotation
+['--top', '5'] -> 0
+1001 lines, 1521 commands, 230 redirections, 2 lines with an open quote
+the longest pipeline of a line: 1 command on 818 lines, 2 commands on 150 lines, 3 commands on 31 lines
+the 0 commonest of 25 commands, with their commonest options:
+line 500: No closing quotation
+line 1000: No closing quotation
+['--top', '0'] -> 0
+1001 lines, 1521 commands, 230 redirections, 2 lines with an open quote
+the longest pipeline of a line: 1 command on 818 lines, 2 commands on 150 lines, 3 commands on 31 lines
+the 10 commonest of 25 commands, with their commonest options:
+       79  echo
+       75  cd
+       75  mkdir
+       70  cat
+       69  head       -n 53, -20 39
+       68  cp         -v 41, -r 38, -a 31
+       67  wc         -c 42, -l 41, -w 31
+       66  find       -print0 21, -maxdepth 19, -type 18, -name 16
+       65  grep       --color=auto 12, -l 12, -v 12, -c 10
+       65  rm         -f 34, -i 29, -r 28, -rf 24
+line 500: No closing quotation
+line 1000: No closing quotation
+[] -> 0
+cat '2026-10-13 12:00' src/main.py
+mv
+sed -i
+git log
+curl --fail -s '*.log' '*.log'
+echo tests
+pystachy
+grep -v --color=auto
+mkdir build/
+docker build -t README.md
+sed '*.py'
+sed -i -e -E main '*.py'
+mkdir '' /var/log/syslog
+wc -c -l -l README.md notes.txt
+grep -n Makefile 'café ☃'
+tar -C -czf -xzf 'My Documents' notes.txt
+head -n .
+cp -v -r -r '2026-10-13 12:00' main
+make -n 'fix: handle '"'"'quotes'"'"' in names' config.yaml
+sed
+git -b diff README.md
+head '$HOME'
+cp -v
+cd '*.py'
+docker -it -it '$HOME'
+ls -la out.txt
+sort -r -u -u '~/projects' /var/log/syslog
+make -C --keep-going -j8 '*.py'
+cat 'My Documents' 'it'"'"'s here'
+xargs -n1 -P4 'fix: handle '"'"'quotes'"'"' in names'
+head -20 data.csv notes.txt
+sort '$HOME' notes.txt
+cp src/main.py
+find tests
+git push
+grep main
+tail -f -f
+grep . data.csv 2
+curl -H '$HOME' /var/log/syslog
+pystachy src/main.py src/main.py
+grep '$HOME' ''
+head -20 - 'tab\there' 2
+sed -e -e tests
+mv
+curl 'a b c' '$HOME'
+wc -c build/ '*.py'
+grep -i
+echo ''
+mv
+rm -r -r 'say "hi"'
+cd '*.log' -
+tar -C out.txt 'tab\there'
+git -b commit config.yaml
+tail -f -100 -f
+cat '2026-10-13 12:00'
+head -n -20 -n 'café ☃'
+docker run tests
+ssh 'it'"'"'s here' 'My Documents'
+python3 -u '$HOME/.config'
+rm -r -f -i
+wc -c -c -c config.yaml
+mv '$HOME' '*.py'
+cd
+tar -tvf -xzf -xzf origin
+mkdir - src/main.py
+wc -w -c -c notes.txt '$HOME'
+ls -l '~/projects'
+cp -r -a -v Makefile tests
+cd '*.log'
+cp -v
+cp -r -r
+mkdir src/main.py '*.py'
+xargs config.yaml /var/log/syslog
+docker -a -t ps 'a b c' Makefile
+sort -r -k2
+cat origin
+cat
+make --keep-going
+curl -H out.txt config.yaml
+rm -i -f origin
+wc -l . ''
+rm -r -rf
+echo
+python3 -X -m
+make -n --keep-going main Makefile
+head origin
+sort -n -r origin
+tar -tvf -C -czf '*.py' README.md
+tail -f
+sed
+grep '*.log'
+cd - config.yaml
+wc -l -l -w '*.py'
+curl -o -o src/main.py 'it'"'"'s here'
+cd
+mv
+mkdir '*.py'
+make -j8 --keep-going -j8 '~/projects'
+sort -r -r '~/projects'
+grep -n --color=auto notes.txt
+curl
+cd 2
+cp -v 'a b c' -
+ssh notes.txt
+pystachy
+mv
+head origin '2026-10-13 12:00'
+docker '' '~/projects'
+git '*.py' '$HOME'
+tar -czf -C main .
+rm -i '*.py' src/main.py
+rm -rf -i build/
+echo '*.py' config.yaml
+docker -v
+curl
+tail '~/projects' main
+grep -l -v -i
+curl -o
+cat 2
+sort -u -r -u main
+rm -r
+git -n README.md
+echo
+grep -E 2
+mkdir - config.yaml
+grep '*.py'
+docker -v /var/log/syslog '~/projects'
+echo notes.txt
+cd
+sed -n -
+find -mtime -mtime -maxdepth data.csv '~/projects'
+mkdir 'say "hi"' 'fix: handle '"'"'quotes'"'"' in names'
+tail -100 -100 -n origin README.md
+python3 -c build/
+rm -r origin README.md
+xargs -n1 -n1 notes.txt
+mkdir data.csv data.csv
+grep 'fix: handle '"'"'quotes'"'"' in names'
+grep -r - ''
+find -print0 src/main.py
+python3 -m 2
+grep -E --color=auto --color=auto -
+cat out.txt
+sed -E -i -n
+wc
+rm tests
+wc -l tests
+git
+curl --fail -H
+docker config.yaml src/main.py
+echo
+tail -n '$HOME/.config' '*.py'
+head -20 -n -n
+ssh '2026-10-13 12:00' ''
+mv . ''
+python3 . '*.py' 2
+curl -X -s --fail
+rm -f -f -f - 'fix: handle '"'"'quotes'"'"' in names'
+docker 'tab\there' '*.log'
+curl -s main
+pystachy 'it'"'"'s here' '*.py'
+tar
+sort
+rm -r -f README.md ''
+git -n commit -n 'café ☃' '*.py'
+grep '2026-10-13 12:00'
+ls
+ssh tests '' 2
+ssh 'café ☃' data.csv
+xargs -0 -n1 -P4
+curl -s
+rm -f -i -i '*.log' README.md
+find -name config.yaml
+make -j8
+curl
+cat
+mkdir '*.py' 'tab\there'
+echo build/
+xargs -0 out.txt '~/projects'
+docker '$HOME'
+grep
+cd
+cat origin
+wc -c -w
+cd
+mkdir 'it'"'"'s here'
+find
+ssh config.yaml '2026-10-13 12:00'
+sort -k2 -r main
+echo
+docker -a 2
+find ''
+git checkout log --oneline
+tar -C -tvf main tests
+pystachy out.txt tests
+echo out.txt
+pystachy main 'it'"'"'s here'
+sed -i -E ''
+python3 -I -m notes.txt
+tar '$HOME/.config' '*.py'
+rm -i -f -f
+cp
+mkdir 'it'"'"'s here'
+cat
+tail -n '' .
+pystachy '~/projects' ''
+ssh 'fix: handle '"'"'quotes'"'"' in names' 2
+tar tests
+head -n -n -20 /var/log/syslog build/
+rm -r -rf tests 'a b c'
+rm -i -rf -f '2026-10-13 12:00'
+find -print0 -mtime '$HOME' 'My File.txt'
+find -maxdepth -name -print0
+head -20 main
+sort -u -k2 -r data.csv 'tab\there'
+mkdir build/ -
+grep -v --color=auto -l ''
+cp -a -a origin 2
+ssh build/ -
+echo '~/projects'
+python3 -c -m -I
+sed notes.txt
+ls -R -la 'fix: handle '"'"'quotes'"'"' in names'
+grep
+tar -czf -czf
+wc -w -c -
+cat build/ build/
+pystachy
+curl -H origin
+cd . 'café ☃'
+git log -n --oneline /var/log/syslog
+head -n -n 'My Documents'
+sed out.txt 'a b c'
+git -m push -b /var/log/syslog
+xargs -n1 -n1 -0
+tail -n -n -n '' -
+echo '~/projects'
+head main '*.py'
+mv
+sort -r 2
+echo
+rm -f -f -rf
+grep --color=auto -v -l '2026-10-13 12:00' '2026-10-13 12:00'
+docker run run ps
+cat 2
+sed /var/log/syslog 'My Documents'
+sed -E 'tab\there'
+cd '~/projects' 'it'"'"'s here'
+make -C 'café ☃' '*.py'
+mkdir src/main.py README.md
+make -C Makefile
+head -n -n data.csv '~/projects'
+curl -s -X --fail tests .
+grep -v -l
+find -type -name 'My File.txt'
+mkdir '2026-10-13 12:00' 'My Documents'
+pystachy 'say "hi"'
+sort -k2 'fix: handle '"'"'quotes'"'"' in names'
+find -maxdepth
+tail -100 -100 'café ☃' '2026-10-13 12:00'
+docker -a -v -v
+sort
+grep -v -l -n tests data.csv
+cat
+rm -rf -f -r 'it'"'"'s here' ''
+python3 -m -I -c
+head -n -20 data.csv build/
+grep -c -r -i
+make -j8 -n src/main.py '*.py'
+xargs -0 '$HOME' '$HOME/.config'
+ls -l -la
+ls -la -h
+tail - Makefile
+mkdir
+make -C --keep-going -j8 'My File.txt'
+mkdir
+docker '~/projects'
+sed '' data.csv
+find -print0 -name
+make --keep-going --keep-going 2
+make
+find
+wc -l
+ssh data.csv 'fix: handle '"'"'quotes'"'"' in names'
+docker -it -v
+ls .
+find -type ''
+git status log 'fix: handle '"'"'quotes'"'"' in names' '*.py'
+cd 'tab\there'
+mkdir
+rm -r -f -f
+mkdir
+cp -v -r README.md
+curl --fail -s --fail /var/log/syslog
+docker -it ps --rm
+cp -v 'My Documents' 2
+xargs -0 -n1 -n1 '~/projects' notes.txt
+sed -n -n build/ 'My File.txt'
+pystachy '~/projects'
+mv
+xargs -0 -P4 -0 '~/projects'
+ls -t
+python3 -m -u -I main src/main.py
+make -j8 --keep-going -j8 '' '*.py'
+head
+cd
+ssh 'say "hi"' tests
+ls -t Makefile
+wc -c -c '*.log'
+echo '*.py' '*.log'
+mkdir src/main.py 'café ☃'
+tail -100 -100 -n Makefile tests
+cat 'café ☃'
+mkdir .
+curl --fail README.md 'My Documents'
+cd '' '*.log'
+rm -rf -i -f '~/projects'
+mv '$HOME/.config' .
+cp -v -a
+mkdir
+cd 2
+cat
+tar out.txt README.md
+cat '$HOME'
+ls -R origin ''
+curl -o -s --fail
+head -20 main 2
+head -20 -n config.yaml
+sort -n -k2 -u '$HOME' build/
+pystachy '*.py'
+git --oneline checkout
+mv
+ls '*.log'
+ssh config.yaml data.csv
+sort -u -k2 -u '' origin
+rm
+cp -r -r -v '$HOME/.config' 'café ☃'
+git diff checkout status README.md 'tab\there'
+cat tests 'a b c'
+cd build/ -
+make -C '$HOME' 2
+tail -n -n -n '~/projects'
+head '' 2
+xargs '$HOME' '$HOME'
+pystachy build/
+tail -100
+ssh '*.py' '$HOME'
+find -mtime -type src/main.py
+head -n -n '*.py'
+echo 'My Documents'
+mkdir '2026-10-13 12:00' build/
+ssh out.txt .
+ssh config.yaml /var/log/syslog
+sed '~/projects' ''
+sed -i -e -i notes.txt
+docker run ps --rm
+mkdir 'say "hi"' tests
+python3 -c
+pystachy ''
+mkdir README.md '*.log'
+cat '~/projects'
+make -n -n -C
+tar config.yaml 'café ☃'
+tar -C -C '' notes.txt 2
+sort
+tail -n -n 'fix: handle '"'"'quotes'"'"' in names' '~/projects'
+ls
+pystachy '*.py' README.md
+tail -f -n '$HOME' '~/projects'
+make -j8
+xargs -0 -P4 .
+tail -f
+wc -l -l
+python3 -c -u -c
+mkdir
+sed -e -E -e config.yaml
+ssh .
+echo /var/log/syslog 'tab\there'
+git '*.py'
+echo
+tar -C data.csv
+ls -R -R
+xargs -0 -n1
+cp -a '~/projects' build/
+tar origin '*.log'
+pystachy '*.py' '*.py'
+ls README.md 'it'"'"'s here'
+make -j8 -j8
+wc -w -c
+head -20
+mkdir main tests
+xargs -0 -P4 config.yaml
+echo
+curl -X '*.py'
+git main ''
+echo . out.txt
+cd . 'café ☃'
+tail -f 'tab\there'
+mv 'a b c'
+wc -c '2026-10-13 12:00' 'say "hi"'
+grep -v -E -r
+mv '~/projects' out.txt
+mv data.csv '$HOME/.config'
+echo
+tar '~/projects'
+cp -a '$HOME/.config'
+rm -r -i -rf 2
+echo
+head -20 -n -20
+ls tests build/
+rm -r -f 2
+find -name -mtime 'it'"'"'s here' '2026-10-13 12:00'
+make -j8 -C -C
+head -n src/main.py build/
+cp -a -a -r README.md build/
+make --keep-going
+python3 -m -u -m tests 2
+python3 -c 'a b c' '$HOME'
+tar -C
+make
+wc data.csv
+grep -l src/main.py
+find
+git push -m -b src/main.py
+cat build/ out.txt
+find -name -type -maxdepth notes.txt 'a b c'
+find build/ 2
+wc
+cd
+sort -r '' '*.py'
+ssh 'tab\there' '~/projects'
+pystachy - notes.txt
+echo '*.log' 'fix: handle '"'"'quotes'"'"' in names'
+mkdir
+git
+sort -r config.yaml .
+ls -la -h -l /var/log/syslog out.txt
+sort -n -k2 config.yaml ''
+wc -c -c -c main
+sort 'tab\there' '2026-10-13 12:00'
+curl -L -o '$HOME'
+mv out.txt /var/log/syslog
+git checkout -u -n .
+ls -t -R
+mv 'say "hi"' 'fix: handle '"'"'quotes'"'"' in names'
+make --keep-going -n build/
+pystachy config.yaml /var/log/syslog
+cd
+sed data.csv out.txt
+sort Makefile '*.log'
+ssh
+rm -r -rf out.txt
+tar -czf -xzf -C 2
+rm -f .
+find tests data.csv
+grep -v -i main origin
+sort -u -k2 -r 'fix: handle '"'"'quotes'"'"' in names'
+wc -l README.md
+git -u --stat diff
+ssh 2
+docker ps 'café ☃' '~/projects'
+tail -n -n '*.py'
+find -maxdepth -type notes.txt 'My File.txt'
+sed
+pystachy '*.py'
+cp -r
+sed
+grep -c -c 'say "hi"' '~/projects'
+cat
+head -n -n
+echo 'fix: handle '"'"'quotes'"'"' in names'
+echo tests
+pystachy 'café ☃' ''
+grep data.csv
+head 'fix: handle '"'"'quotes'"'"' in names' config.yaml
+sort config.yaml '$HOME'
+wc -l -c -c build/ origin
+pystachy -
+cat
+head -20 config.yaml
+mkdir
+curl -s -L -H 'café ☃' build/
+python3 -m '*.log' README.md
+cd '$HOME' '2026-10-13 12:00'
+grep -c '$HOME' main
+wc -w -l -l '*.log'
+head -20 -20 '*.py' notes.txt
+rm notes.txt tests
+sed -E 'it'"'"'s here'
+cp -v -v
+head '' 'My File.txt'
+grep -i notes.txt
+tar config.yaml
+make -n -n build/
+sort -k2 -u -r notes.txt 'café ☃'
+head -n -20 -n README.md src/main.py
+cat '$HOME/.config' .
+rm -i config.yaml -
+cp tests
+tail -f -n -100 '*.log'
+pystachy Makefile
+wc -l -c -w '' 'say "hi"'
+ls -a 'say "hi"' 2
+docker 'a b c' config.yaml
+head -n tests
+mkdir data.csv
+ssh
+ssh config.yaml 'a b c'
+rm -i config.yaml notes.txt
+cat
+head -n -n
+ssh
+cd tests
+cd
+cp
+cd 'a b c' 'a b c' 2
+ls /var/log/syslog .
+ssh out.txt
+docker -v -v run config.yaml
+find -maxdepth -maxdepth
+docker 'My Documents'
+rm tests
+sed -n -e -n
+ssh
+head out.txt
+sort . 2
+xargs /var/log/syslog
+head -n -20 -n '' 2
+tar -xzf src/main.py
+mkdir
+git -b -u notes.txt out.txt
+cat '*.py' config.yaml
+grep src/main.py
+find -mtime -maxdepth -print0 origin
+find '$HOME'
+git
+wc -w -w out.txt 2
+cp -r -r '' data.csv
+git log diff checkout 'tab\there' 'My Documents'
+head -20
+echo '*.log'
+sort -u -u -n
+docker -v . src/main.py
+make -C -j8
+ls -t
+sort -n -r -r data.csv notes.txt
+git status -u status origin ''
+grep
+ssh '$HOME/.config' 2
+tar -tvf -C 'say "hi"' /var/log/syslog
+find -maxdepth -name -maxdepth origin
+make -n --keep-going '*.log'
+mkdir
+grep -i '2026-10-13 12:00'
+wc
+grep -v -c -n ''
+cat config.yaml .
+tail data.csv
+tar -xzf -C '' 2
+grep -v -c 'fix: handle '"'"'quotes'"'"' in names' src/main.py
+mv config.yaml /var/log/syslog
+cp -a -v out.txt
+cat
+sed -n
+make --keep-going -C -C '~/projects' src/main.py
+sed -e
+cp -r config.yaml
+curl -o --fail -o
+tar -xzf -czf
+ssh data.csv '$HOME'
+python3 build/
+rm -rf -rf -f notes.txt
+find build/ - 2
+cp -a -a
+cd README.md '$HOME/.config'
+cp -r -v -v '' Makefile
+echo README.md
+tar
+ssh
+python3 -m
+cd 'My Documents'
+cd .
+pystachy 'a b c'
+echo 'My Documents'
+mkdir
+find -type -name
+git -m - origin
+python3 -X tests 2
+curl --fail -X --fail config.yaml
+cp -v
+make -n out.txt
+mkdir 2
+wc -l
+rm -r -rf
+ssh /var/log/syslog 'café ☃'
+wc -l -w -l '*.py' 'tab\there'
+sed -i -E -e 'fix: handle '"'"'quotes'"'"' in names' '*.py'
+cd
+ls
+docker
+sort -u notes.txt out.txt
+grep data.csv '~/projects' 2
+mkdir '*.py' ''
+rm -rf -i ''
+echo 'café ☃'
+pystachy notes.txt
+mv 'My Documents' 'My Documents'
+cd
+head build/ 'say "hi"'
+cp -r -r -v
+xargs -0 -P4 notes.txt
+echo
+make ''
+git checkout
+python3 -I -m -c src/main.py
+find 'it'"'"'s here'
+make -j8
+cat build/
+make origin
+ssh 'My Documents'
+xargs -P4 'My Documents'
+grep
+tail '2026-10-13 12:00' 'tab\there'
+make -j8
+git diff 'tab\there' notes.txt
+cp tests
+python3 -c README.md build/
+head -n
+grep -r
+cd notes.txt '*.log'
+tar -C -C -czf - build/
+mv
+docker run -v
+tail -
+echo out.txt
+find -maxdepth -print0 -mtime . tests
+cat '*.py' 'say "hi"'
+rm -f -rf 'a b c'
+rm 'a b c' '2026-10-13 12:00'
+wc -l
+echo data.csv Makefile
+wc -l -l
+mkdir -
+cd '$HOME/.config' 'My File.txt'
+tail -f Makefile -
+make --keep-going -j8 -n '*.py' 'tab\there'
+cp '*.py' config.yaml
+find -mtime 'it'"'"'s here' ''
+rm origin '*.py'
+rm
+ls -a
+echo origin
+make -n -j8 --keep-going main
+xargs -n1 -0 tests 'say "hi"'
+git -u origin tests
+mkdir '~/projects' main
+wc data.csv 'My Documents'
+find -maxdepth
+head -n -20 -20 '~/projects' origin
+head -n -n '*.py' 2
+python3 -u -X tests
+xargs -P4 -0 -P4 '*.py'
+rm -f -rf -r '*.log'
+cd
+sed -E
+cp 'fix: handle '"'"'quotes'"'"' in names' main 2
+rm -f -r -f tests
+grep -l
+wc -c
+xargs -0 build/
+mkdir
+cat 'My Documents' 'a b c'
+mv config.yaml origin
+rm -r -r -i
+cd 'My Documents' '$HOME'
+pystachy
+rm
+docker -it -it -it 'say "hi"' /var/log/syslog
+sort -k2 -r config.yaml '$HOME/.config'
+pystachy build/
+mv Makefile
+sort -k2 -r -r 2
+ls -R -la data.csv src/main.py
+mkdir '$HOME' 'say "hi"'
+python3 -u -u
+python3 -m -I 'café ☃'
+pystachy '*.py' 'tab\there'
+tail -f -100 -f origin
+pystachy tests
+sed config.yaml data.csv
+ls -h
+cp - '$HOME'
+python3
+ls '*.py' out.txt
+python3 -u -I
+ssh origin
+cp -v -v -r /var/log/syslog ''
+cd
+sed -n -n -e
+cp -a -v
+pystachy '*.log'
+rm -f
+tar 'My Documents'
+find -print0 -type -print0
+git -b 'café ☃'
+python3 -I -u -m 'a b c'
+mkdir
+sort -n -n 'it'"'"'s here'
+python3 Makefile
+echo '*.log'
+wc
+tail -n -100 '~/projects' 'a b c'
+cp -r -r '$HOME/.config' 'My File.txt' 2
+head -n -20 -n
+cd . Makefile
+cat 'say "hi"' src/main.py
+wc -w -l -w
+make -C -C -j8
+grep -E 'café ☃' origin 2
+cat 'My Documents'
+docker -v -v src/main.py
+echo
+rm README.md
+head 'café ☃' 'a b c'
+grep -E tests
+rm -rf -f -i
+xargs -0 -P4 -0
+ssh
+tar -tvf
+tail
+tail -f -f -f 'say "hi"'
+mkdir /var/log/syslog 'tab\there'
+curl -o
+rm -f -f -rf
+wc -c -l -w '$HOME/.config' '$HOME/.config'
+make 'tab\there'
+docker build build
+ssh main
+ls -l -h -a data.csv 2
+pystachy origin
+mkdir
+find -name notes.txt tests
+mv
+pystachy
+echo
+python3 -m -X -u
+head -n src/main.py build/
+tar -C -C
+curl -o config.yaml
+mkdir README.md 'a b c'
+sort -k2 'My Documents'
+xargs -n1 -P4 '*.py'
+ssh 'fix: handle '"'"'quotes'"'"' in names'
+xargs -n1 -n1 - -
+tar tests
+find -maxdepth -name -print0 ''
+cat '*.py'
+xargs out.txt
+find build/ config.yaml
+curl
+cat
+sed 'it'"'"'s here'
+ls -la -l
+make Makefile
+cp -v /var/log/syslog main
+rm 'My File.txt'
+curl --fail
+git status '$HOME' src/main.py
+rm -f
+sort -k2 -n -k2 Makefile '~/projects'
+mkdir 'café ☃'
+find -mtime '~/projects'
+rm '~/projects'
+grep
+git 'it'"'"'s here' 2
+cp tests README.md
+find '*.py' data.csv
+sort origin
+mv 'café ☃'
+ssh 'tab\there'
+tar -xzf -czf -C
+git -b --stat
+git -n '*.py' 'My File.txt'
+sed -E -n -E
+echo README.md main
+pystachy '*.log'
+find -maxdepth -type '' README.md
+grep -i --color=auto out.txt 'fix: handle '"'"'quotes'"'"' in names'
+curl -L . '*.py'
+mv 'My File.txt'
+grep --color=auto -l
+python3 -m 'café ☃' src/main.py
+pystachy 2
+pystachy 2
+pystachy '' out.txt
+head
+find -name -maxdepth -mtime '*.py'
+xargs -P4
+tail -f origin -
+find -mtime 'café ☃'
+cd
+python3 -m -c /var/log/syslog '*.py'
+sed 'a b c' .
+echo src/main.py
+make -n --keep-going main 'fix: handle '"'"'quotes'"'"' in names'
+sort -r -u -u
+pystachy config.yaml '*.py'
+grep -n '*.log' tests
+python3 -u -X '' config.yaml
+docker -it 2
+cp -a -r -v 'tab\there' '2026-10-13 12:00'
+cd '$HOME'
+ls -la -h -R
+echo 2
+sed -i -i -E main
+xargs src/main.py origin
+tail -f config.yaml -
+cat build/
+rm -f -f out.txt
+cd notes.txt '$HOME'
+cd
+curl
+pystachy '~/projects' config.yaml
+sort -u -r
+git commit status push 'café ☃' notes.txt
+ssh 'it'"'"'s here'
+mv '*.log'
+docker run data.csv
+head '*.py'
+wc -l -c -c
+head -n -20 -20 data.csv '*.py'
+xargs -P4 -n1 -P4 'My Documents'
+rm /var/log/syslog 'it'"'"'s here'
+xargs -P4 '~/projects'
+cp -a 'it'"'"'s here'
+echo
+xargs -0 'café ☃'
+tail -100 -f -100 .
+rm -rf -i -r src/main.py 'café ☃'
+tail ''
+docker --rm -a
+mkdir README.md
+curl data.csv origin
+sort -n src/main.py '~/projects'
+tail -100 -f
+cd .
+cat build/
+rm 'My File.txt'
+find -name '$HOME' 'My File.txt' 2
+pystachy 'My Documents'
+echo 'say "hi"' /var/log/syslog
+tail -100 -100 -f - 'My File.txt'
+tail -f -f 'fix: handle '"'"'quotes'"'"' in names' data.csv
+cat 'fix: handle '"'"'quotes'"'"' in names'
+wc -l -l -c build/
+curl --fail -X '2026-10-13 12:00' out.txt
+make out.txt
+sort -u -k2 -k2
+cd
+sed -E -E ''
+curl
+cat README.md '$HOME'
+ls -h -la -l
+echo 'My Documents' data.csv
+echo 2
+find -type 'say "hi"'
+pystachy
+sort -r Makefile
+tail -f origin '2026-10-13 12:00'
+tar build/ '*.py'
+pystachy 'My Documents' .
+tail 'fix: handle '"'"'quotes'"'"' in names' 'it'"'"'s here'
+docker config.yaml -
+docker --rm ps run 'My Documents' out.txt
+ls
+ls -a -a -la 'café ☃' src/main.py
+ssh
+sort -r -r -k2 config.yaml main
+grep -r origin README.md
+cd 'café ☃' '*.py'
+docker src/main.py
+rm -i -r -rf out.txt
+cd
+tail -n -100 - '*.py'
+echo 'My Documents'
+sed -n -n
+cat '*.py' data.csv
+wc ''
+cd '' 2
+mkdir .
+tail -n -f
+mv
+mv Makefile
+sort 'a b c'
+cat notes.txt
+rm -i -i -r main '$HOME'
+pystachy '*.py'
+mv 'café ☃' 'say "hi"'
+curl --fail --fail
+make config.yaml Makefile
+echo tests 'café ☃'
+make -n -C -n
+mkdir .
+mv 'say "hi"'
+sort
+sed -n -i README.md
+find -print0 -maxdepth notes.txt build/ 2
+curl '$HOME/.config' /var/log/syslog
+mkdir 'a b c'
+wc -l -w 'tab\there'
+python3 -X -m out.txt ''
+cp -v 'it'"'"'s here' tests
+sort -u 'it'"'"'s here' '*.py'
+sort
+xargs -n1 -0 -P4
+mv out.txt '2026-10-13 12:00'
+mkdir Makefile
+mv
+sed -i -n README.md '2026-10-13 12:00'
+xargs -n1 -n1 -P4 /var/log/syslog
+xargs -P4
+tar '*.py'
+cat data.csv 'a b c'
+echo
+find -type -name 'tab\there'
+ls
+python3 -c -I
+sort -n -u -u data.csv
+wc -l -l -c '*.log' '$HOME'
+tar -xzf -xzf 'tab\there' '2026-10-13 12:00'
+git commit log push
+pystachy
+cat /var/log/syslog out.txt
+git --oneline diff --stat main 'fix: handle '"'"'quotes'"'"' in names'
+python3 -u
+cat src/main.py
+mv 'My File.txt' '2026-10-13 12:00'
+pystachy origin .
+find 'fix: handle '"'"'quotes'"'"' in names'
+mv origin '*.py'
+ls -la -R
+docker ps -t -a . 'fix: handle '"'"'quotes'"'"' in names'
+echo origin 2
+cat
+cd
+find . '$HOME'
+python3 README.md
+mkdir 'a b c'
+find -name -print0 Makefile README.md
+find -type -type -maxdepth
+sed -e -E
+git main .
+mv '~/projects'
+sort -k2 -k2 Makefile
+cd
+ls -h -a
+make --keep-going --keep-going -n Makefile /var/log/syslog
+echo
+sort -r tests 2
+ls -t -t '*.py' src/main.py
+cp -a
+echo
+git push -u commit 'it'"'"'s here' main
+mkdir 'a b c'
+sed -e '*.py' main 2
+echo
+make -C -C -j8 'My File.txt'
+curl -s -o --fail '*.py'
+pystachy notes.txt data.csv
+git -b --stat diff
+make notes.txt config.yaml
+xargs 'a b c'
+curl -L -o -o src/main.py config.yaml
+python3 -u -c '$HOME' /var/log/syslog
+git --stat 'café ☃'
+xargs -0 -0
+tail -f build/ data.csv
+pystachy build/
+ssh '~/projects'
+cat '*.log' build/
+docker ps
+sort -k2 -k2 - out.txt
+make src/main.py
+tail -n -n 'a b c'
+cat '~/projects'
+cd src/main.py 'My Documents'
+pystachy '~/projects'
+ls -la -t tests origin
+ls -a 2
+xargs -n1
+ssh
+grep --color=auto -c --color=auto out.txt
+tail notes.txt out.txt
+tar -xzf -czf -xzf 'My Documents' '2026-10-13 12:00'
+xargs -0
+find '2026-10-13 12:00'
+find -print0 -print0 -type
+mkdir /var/log/syslog /var/log/syslog
+python3 -X 'My File.txt'
+curl --fail - out.txt
+tail -100 -n -f build/
+python3 -u
+rm -i -rf -r 'café ☃'
+rm -i -f
+git --stat commit diff
+ls -l -t
+echo origin
+tar -xzf data.csv 2
+rm -r -r tests
+cp -a
+ssh '' Makefile
+cd '*.py' notes.txt
+git status origin src/main.py
+cp -r
+docker -v -v run
+tar
+echo origin -
+echo '$HOME'
+find /var/log/syslog
+tar '2026-10-13 12:00' '*.py'
+cd '' .
+git -b log log out.txt -
+cat
+python3 out.txt '$HOME'
+ls -R -t tests /var/log/syslog
+find -print0 'tab\there' 'say "hi"'
+tail -n -f -f 'it'"'"'s here'
+find -print0 '' data.csv
+mkdir 'fix: handle '"'"'quotes'"'"' in names' '*.py'
+wc -l '*.log'
+wc -c -l 'fix: handle '"'"'quotes'"'"' in names' 'say "hi"'
+ssh 'café ☃'
+rm -i 'it'"'"'s here' .
+xargs
+ssh
+echo origin '*.py'
+docker --rm -v build
+sort -u -n build/
+ls -R -h -R 'it'"'"'s here'
+cd
+sed -e -i -i
+sed -i
+rm -f 'say "hi"' tests
+docker ps build
+tar origin main
+head -20 -n
+docker build 2
+head -20 src/main.py
+pystachy config.yaml
+grep -l '~/projects'
+echo
+docker -a ps build .
+python3 -I -m -m
+cat
+mkdir
+tail config.yaml main
+find -name -type -type notes.txt
+mv config.yaml
+xargs -P4 -0 -P4
+mkdir config.yaml out.txt
+grep build/ '*.py'
+make '$HOME' README.md
+ls -a
+sed -e README.md
+python3 -X -u -
+echo data.csv
+tar -xzf -czf
+cp -r -v 'My Documents' out.txt
+sed -E -i
+python3 -m -I '' '$HOME' 2
+sed -n -e
+echo data.csv 'say "hi"'
+tail
+cd config.yaml -
+pystachy
+sort -k2 -u '*.log'
+head -n -20 -20 data.csv origin
+mkdir
+docker -it 'a b c'
+sort -k2 -u -k2 /var/log/syslog
+echo src/main.py
+ssh . out.txt
+git -m
+curl -H -L '' main
+make Makefile
+make -C -n
+head -n -n -20 Makefile 2
+ls -R -a notes.txt
+find -print0 -type -type 'fix: handle '"'"'quotes'"'"' in names' '*.log'
+make -C -C 'fix: handle '"'"'quotes'"'"' in names' tests
+cp -v /var/log/syslog
+mkdir '$HOME/.config' tests
+git config.yaml
+find
+ssh
+sed -i -e -i
+grep -n -v README.md
+docker build
+curl -L -X -L /var/log/syslog 'say "hi"'
+xargs '*.log' '$HOME'
+python3 -I 'say "hi"'
+wc -l -c 'tab\there' 'say "hi"'
+git
+tar -C -C -tvf 'café ☃' -
+xargs -0 -P4 src/main.py
+curl -H -o . tests
+ls
+sort -r -k2
+ssh
+sed '$HOME'
+find /var/log/syslog
+head -20 README.md src/main.py
+docker build .
+tail -100 . build/
+cat '~/projects'
+pystachy tests 'say "hi"'
+cp -v main 2
+git --stat
+mv '*.py'
+python3 -X main 'a b c' 2
+tail -100 -n
+cat config.yaml
+find -mtime -maxdepth '2026-10-13 12:00'
+mkdir Makefile
+pystachy
+sort -u 'tab\there'
+docker main
+python3 -X 'My Documents' Makefile
+curl --fail -H '$HOME'
+xargs -P4 -
+wc -c config.yaml notes.txt
+wc
+tail -f -n -n
+curl -L -o --fail main
+cd '$HOME'
+sed -n '*.py' tests
+make -C 'it'"'"'s here' . 2
+python3 -I -X -X 'My File.txt' main
+tail -f -100
+sed 2
+pystachy 2
+docker -v build 'say "hi"'
+make -n -j8 build/
+make
+cd /var/log/syslog
+tar -xzf -C
+xargs -n1 -P4 config.yaml
+python3
+git checkout '*.py' notes.txt
+ssh
+cat
+ls -la -t '*.py' 'it'"'"'s here'
+echo
+cat
+cp -r '2026-10-13 12:00' 'fix: handle '"'"'quotes'"'"' in names'
+wc -w -l - config.yaml
+cp
+ssh
+sort -k2 -u -r '*.py' 2
+pystachy
+tar -czf '*.log'
+mkdir README.md
+cat 'say "hi"'
+rm -f -r -f '*.py' -
+python3 config.yaml
+sort -r -r 2
+tar -xzf -czf -czf src/main.py
+grep data.csv
+cp -v -v .
+echo
+rm -i -rf
+xargs out.txt
+make -j8 -C --keep-going /var/log/syslog
+sed -e -E '2026-10-13 12:00' ''
+mv
+wc -w -c
+head '~/projects' '*.log'
+xargs '$HOME/.config' '*.log'
+tail -f -f -n main origin
+sort -n -k2 build/ Makefile
+wc -c -w -l data.csv 'it'"'"'s here'
+tar src/main.py
+wc -c -w
+tail -100 -n -100
+cd '~/projects' main
+xargs -P4 -n1 -P4
+cat
+mkdir README.md /var/log/syslog
+cp -v -r -r out.txt
+cat README.md notes.txt
+sed -E -n 'My Documents' /var/log/syslog
+git push --oneline log
+cd
+sed -n -e
+wc -c -c 'tab\there' 'My File.txt'
+sed -i . -
+head Makefile '$HOME'
+cd tests '~/projects'
+pystachy '$HOME/.config' '$HOME/.config'
+cd '*.log' /var/log/syslog
+sed -e -n -n '$HOME/.config' 'it'"'"'s here'
+tail -100
+cp -r -v -r out.txt '*.log'
+cp '' origin
+cp -v 'tab\there' out.txt
+find
+curl --fail '*.py' 'fix: handle '"'"'quotes'"'"' in names'
+grep
+cp -r '$HOME/.config'
+wc -w -l -w /var/log/syslog notes.txt
+mv src/main.py
+ssh '2026-10-13 12:00' '$HOME'
+pystachy '*.py' main
+mv
+python3 -m -m 2
+cp -r -a notes.txt 'fix: handle '"'"'quotes'"'"' in names'
+wc -w
+head -20 -n -20 -
+cat README.md src/main.py
+head -20 config.yaml
+wc /var/log/syslog data.csv
+git src/main.py
+xargs -n1 -0 -0
+cd '*.log'
+tar -xzf -xzf -C
+mv
+grep -i -i -n '*.py'
+mv build/ 'it'"'"'s here'
+echo 2
+git checkout 'say "hi"'
+ls -la -h -h - '~/projects'
+head '*.py'
+head Makefile -
+sort Makefile src/main.py
+cat
+echo main out.txt
+wc -w . ''
+cat main origin
+pystachy /var/log/syslog
+docker build -t out.txt tests
+curl build/ '2026-10-13 12:00' 2
+wc -w -c -w '$HOME'
+mkdir
+wc -w -l build/ README.md
+python3 -I -I -u '~/projects'
+mv '$HOME'
+mv notes.txt ''
+head -n Makefile config.yaml
+mv '' '*.py'
+ssh 'My File.txt' config.yaml
+docker --rm -t ps 2
+git log push 'café ☃'
+git build/
+cat '$HOME'
+tar -tvf -C - '*.log'
+ssh Makefile notes.txt
+git status src/main.py 'café ☃'
+cat
+sort -k2 -n -k2 README.md
+mv /var/log/syslog
+wc -c 'say "hi"' 'a b c'
+head 'it'"'"'s here' Makefile
+head -n '$HOME' 2
+git
+make
+pystachy
+ssh
+cp -a -v -v main ''
+ssh '*.py'
+grep -E
+ls -l -l -R out.txt config.yaml
+cd '2026-10-13 12:00' '~/projects'
+git checkout -u
+mv
+wc -c -l README.md
+ls -R -t -R '$HOME'
+echo
+grep --color=auto
+echo notes.txt
+docker -it ps --rm -
+head -20 -n -n '*.py' tests
+xargs -P4 config.yaml 'say "hi"'
+find '2026-10-13 12:00' /var/log/syslog
+python3 -X 'it'"'"'s here' build/
+grep -r -r -i 'My Documents' tests
+mkdir
+sed -i '$HOME' config.yaml
+head build/
+wc
+make -j8 -j8 --keep-going
+echo
+mv main '$HOME'
+find /var/log/syslog
+echo '2026-10-13 12:00' 'fix: handle '"'"'quotes'"'"' in names'
+cp -a -v -r
+tar -tvf README.md
+grep --color=auto -E -r
+tar -C -czf -czf origin
+wc -c '*.py'
+tail
+cd 2
+cd build/
+cp -a -a -v
+tail -f -100 -100
+pystachy
+wc -c -l -c config.yaml out.txt
+head
+find -print0 -print0 -name /var/log/syslog
+wc -
+docker -a
+cat build/
+ssh build/ origin
+docker -it run -it src/main.py
+git -n commit
+sort -k2
+echo . out.txt
+head -n -n 'a b c' '~/projects'
+make --keep-going -n -C
+cat
+cp -r -a -v Makefile build/
+echo
+sed -i
+tar -C -C config.yaml '$HOME'
+ssh '*.py' config.yaml
+rm -i -i -rf
+xargs -n1 build/
+mkdir
+rm -i -r README.md '$HOME/.config'
+cd tests build/
+cd main tests
+wc -l -w -c tests
+ls config.yaml 'fix: handle '"'"'quotes'"'"' in names'
+docker -it --rm --rm
+ssh '2026-10-13 12:00' -
+echo '2026-10-13 12:00'
+head -20 -n
+xargs -P4 config.yaml
+ssh 2
+python3 -u 'My File.txt' main
+git
+docker build --rm build src/main.py .
+pystachy '~/projects' 'tab\there' 2
+grep -n -v -
+docker build - build/
+ls -t -la 'fix: handle '"'"'quotes'"'"' in names' '2026-10-13 12:00'
+wc -w '2026-10-13 12:00'
+tar -C
+curl --fail -H Makefile
+grep
+cat '~/projects'
+cd /var/log/syslog
+mkdir
+cat ''
+ls -l -h README.md
+xargs
+mkdir out.txt '$HOME'
+cp -r README.md 'a b c'
+docker -t Makefile '*.py'
+grep
+head
+mv Makefile src/main.py
+docker --rm
+docker -v build
+tail /var/log/syslog '*.log'
+head -n 'café ☃' 2
+git -m main '$HOME/.config'
+find -type -maxdepth -print0 out.txt ''
+make 'it'"'"'s here' -
+grep -r
+cp -v -r -v '~/projects' '~/projects'
+mkdir
+python3 .
+mkdir
+head -20 -n -n tests
+docker 'say "hi"'
+git
+echo tests data.csv
+xargs -n1 -n1 -0 .
+echo
+echo /var/log/syslog
+find -mtime -print0 /var/log/syslog Makefile
+python3 -X -m '*.py'
+echo 'say "hi"'
+wc -c main 'a b c'
+cp -a -a
+xargs -P4 -0 -P4 /var/log/syslog
+pystachy
+cd - 2
+rm -i -i -r src/main.py out.txt
+git commit push status 2
+sed -E -E '$HOME' config.yaml
+xargs -P4 -n1 -0 'My File.txt' out.txt
+curl -o -L -s README.md /var/log/syslog
+mkdir 2
+python3 -c
+mkdir '' Makefile
+cp -a '' 'café ☃'
+git diff notes.txt 'it'"'"'s here'
+find -print0 -mtime '$HOME'
+ssh 'tab\there' '$HOME'
+cd '' src/main.py
+pystachy
+cp -v -a
+echo
+mv origin main
+wc
+cd main ''
+grep -l
+cat notes.txt ''
+xargs -0 build/
+grep -l 2
+tail
+cat
+cat tests '*.py'
+mkdir 'café ☃'
+tar 'a b c'
+head -20 main
+echo
+rm -i -rf origin config.yaml
+sed src/main.py
+cp -v -r
+cd main
+ls -a -h 'fix: handle '"'"'quotes'"'"' in names'
+ls -R 2
+rm
+cat
+sort notes.txt
+ssh tests /var/log/syslog
+pystachy
+wc -w -w -l
+curl -H -o -s src/main.py main
+tail -n -n -100 tests
+python3 -m
+mv 'café ☃' README.md
+python3 origin tests
+ls -la -a
+grep -c -l '$HOME/.config'
+cd
+echo
+mkdir src/main.py
+cd tests build/ 2
+cd 2
+head -n -n -20 '~/projects' notes.txt
+ssh
+rm -rf -r 'say "hi"'
+python3 -u -u -c build/ build/
+find config.yaml
+mv '*.py'
+ls -a -
+echo
+xargs -n1 . 'it'"'"'s here'
+sed -e -n -n - 2
+ssh '*.py' data.csv
+pystachy
+mkdir 2
+cd
+docker -it Makefile tests
+tail -100 -100 'My File.txt' '$HOME'
+ls -h -la
+echo '$HOME/.config'
+cat
+grep -c -c README.md
+python3 -m -u out.txt build/
+cd
+echo build/ '*.py'
+cp -r -r -a
+mv
+make -C --keep-going -n main out.txt
+cp -a -a config.yaml
+make '*.py' 2
+head -20 -n -20 'My File.txt' .
+xargs -n1 -n1 -0 out.txt
+cp -r -a -a
+wc -l -c 'My File.txt' out.txt
+mv '~/projects'
+tail -100 -100 -n '$HOME'
+xargs 'My File.txt'
+wc -w -w -l
+sort -u -r
+curl -X
+tar -tvf -czf -tvf .
+head -n
+tail -100 -n -100 data.csv .
+make
+cat .
+xargs
+sed -i
+make -C '~/projects' origin
+sed -i '*.py'
+mkdir '$HOME' 'café ☃'
+mkdir src/main.py notes.txt
+xargs main '$HOME'
+xargs -P4
+sed
+xargs -P4 -P4
+pystachy . '*.py'
+xargs -n1 -P4 data.csv '*.py'
+pystachy out.txt
+mkdir
+ls -a
+tar -C -C -czf
+xargs -P4 -n1
+xargs notes.txt
+mv 'fix: handle '"'"'quotes'"'"' in names' ''
+grep Makefile '~/projects' 2
+tail -f -f -100 'My File.txt'
+git -b diff
+sed -n -n origin ''
+mkdir
+cp -v -r -v README.md config.yaml 2
+tail -n
+git -u --stat '*.py' Makefile
+cat /var/log/syslog '~/projects'
+python3
+cd data.csv config.yaml
+echo data.csv
+find
+pystachy 'say "hi"' src/main.py
+sort '*.py' notes.txt
+cd config.yaml
+last line without a newline 'quoted words'
+0
+['--top'] -> 2
+['-x', 'D/history.txt'] -> 2
+[] -> 2
+['D/history.txt', 'D/history.txt'] -> 2
+[exit 0]
