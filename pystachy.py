@@ -8889,9 +8889,7 @@ class Gen:
             return t[: t.find("[")]
         if is_set(t):
             return "frozenset" if is_fset(t) else "set"
-        if t in self.classes and self.classes[t].origin != "":
-            return self.classes[t].origin  # (a class template's specializations are its class)
-        return t
+        return t  # (a class's, or a class template specialization's: its own tag tells it apart)
 
     def utag(self, t: str) -> int:
         # the tag of type t in a union's box: one number per type, for the whole program, so that
@@ -8992,6 +8990,96 @@ class Gen:
         # union, where it can be one; else first's (the first item's), whose error coerce gives
         u = self.union_type(ts)
         return u if not u.startswith("!") and is_union(unopt(u)) else first
+
+    def uclasses(self, t: str, name: str, method: bool) -> bool:
+        # is t a union (or a union | None) whose members are all classes with field name (method
+        # name, if method), which o.name reads (o.name(...) calls) by its value's tag
+        if not is_union(unopt(t)):
+            return False
+        for m in umembers(unopt(t)):
+            if m not in self.classes or (name not in self.classes[m].methods if method else name not in self.classes[m].ftypes):
+                return False
+        return True
+
+    def ufield(self, o: Val, name: str) -> Val:
+        # o.name for a union's value o whose members are all classes with a field name (see
+        # uclasses): each member's field, by the tag, as their types joined (T and None: T | None,
+        # else their union); objects keep their own layouts
+        ms = umembers(unopt(o.t))
+        rt = self.union_type([self.classes[m].ftypes[name] for m in ms])
+        if rt.startswith("!"):
+            self.err(f"field '{name}' of a value of {typestr(o.t)} has types that no one type holds: {rt[1:]}")
+        null = self.isnull(o)
+        if null != "false":
+            self.guard(null, f"AttributeError: 'NoneType' object has no attribute '{name}'")
+        if rt == "None":
+            return Val("null", "None")
+        lend = self.label()
+        ph = Ins("phi", rt, "")
+        for i in range(len(ms)):
+            lnext = ""
+            if i < len(ms) - 1:
+                lthis = self.label()
+                lnext = self.label()
+                self.cbr(self.utest(o.v, [ms[i]], False), lthis, lnext)
+                self.place(lthis)
+            x = self.uget(o.v, ms[i])
+            self.nn[x.v] = True
+            v = self.coerce(self.getfield(x, self.field(x, name), name), rt)
+            self.incoming(ph, v.v, self.cur)
+            self.br(lend)
+            if lnext != "":
+                self.place(lnext)
+        self.place(lend)
+        return Val(self.phi(ph), rt)
+
+    def umethod(self, o: Val, m: str, args: list[Node]) -> Val:
+        # o.m(args) for a union's value o whose members are all classes with a method m (see
+        # uclasses): the arguments evaluated once, by position, then the method of the member the
+        # tag names called with them; what they return as one type (their types joined), each
+        # value converted on its own way to the join (see detour)
+        ms = umembers(unopt(o.t))
+        for a in args:
+            if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
+                self.err(f"a call of {m}() on a value of {typestr(o.t)} passes its arguments by position only")
+        vals = [self.expr(a, "") for a in args]
+        null = self.isnull(o)
+        if null != "false":
+            self.guard(null, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+        lend = self.label()
+        rs: list[Val] = []
+        ls: list[str] = []
+        for i in range(len(ms)):
+            lnext = ""
+            if i < len(ms) - 1:
+                lthis = self.label()
+                lnext = self.label()
+                self.cbr(self.utest(o.v, [ms[i]], False), lthis, lnext)
+                self.place(lthis)
+            x = self.uget(o.v, ms[i])
+            self.nn[x.v] = True
+            r = self.call_fn(self.classes[ms[i]].methods[m], [x] + vals, [])
+            if not self.term:
+                rs.append(r)
+                ls.append(self.cur)
+            self.br(lend)
+            if lnext != "":
+                self.place(lnext)
+        rt = self.union_type([r.t for r in rs]) if len(rs) > 0 else "None"
+        if rt.startswith("!"):
+            self.err(f"{m}() of a value of {typestr(o.t)} returns values of types that no one type holds: {rt[1:]}")
+        ph = Ins("phi", rt, "")
+        for i in range(len(rs)):
+            if rs[i].t != rt and rt != "None":
+                self.detour(ls[i], lend)
+                rs[i] = self.coerce(rs[i], rt)
+                ls[i] = self.cur
+                self.br(lend)
+            self.incoming(ph, rs[i].v, ls[i])
+        self.place(lend)
+        if rt == "None" or len(rs) == 0:
+            return Val("null", "None")
+        return Val(self.phi(ph), rt)
 
     def ujoin(self, a: str, b: str) -> str:
         # the type of values of types a and b that meet at a join (x if c else y, x or y), where no
@@ -9675,7 +9763,9 @@ class Gen:
                     t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                     if t.startswith("!"):
                         why = t[1:]  # (a call of a function Pystachy cannot compile: its error)
-                    t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
+                    # (f() that returns None: a field has a value type, but for a specialization's,
+                    # whose None argument makes a field that holds None, Result(False, None))
+                    t = "" if (t == "None" and ci.origin == "") or why != "" else t
                     if t == "" and why == "":
                         why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                     if t == "" and ci.mod == "":
@@ -9896,6 +9986,8 @@ class Gen:
                 self.place(l2)
             else:
                 self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
+        if p.t == "None":
+            return Val("null", "None")  # (a specialization's field that holds None)
         r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
         if is_opt(p.t) or is_union(p.t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
@@ -9903,7 +9995,8 @@ class Gen:
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-        self.emit(f"store {lt(p.t)} {self.coerce(v, p.t, what).v}, ptr {p.v}")
+        x = self.coerce(v, p.t, what)
+        self.emit(f"store ptr null, ptr {p.v}" if p.t == "None" else f"store {lt(p.t)} {x.v}, ptr {p.v}")
         ci = self.classes[o.t]
         if name in ci.fflag:
             self.emit(f"store i1 true, ptr {self.fgep(o, ci.fflag[name])}")
@@ -13029,7 +13122,7 @@ class Gen:
         for ci in self.classes.values():
             if ci.name in self.tmpl:
                 continue  # (a class template's objects are its specializations')
-            ts = [lt(ci.ftypes[x]) for x in ci.fields]
+            ts = [lt(ci.ftypes[x]) if ci.ftypes[x] != "None" else "ptr" for x in ci.fields]  # (None: null)
             for _ in range(ci.nflag):
                 ts.append("i1")
             hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
@@ -16541,6 +16634,8 @@ class Gen:
             if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
                 r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
                 return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if n.s == "closed" else Val(r, "str")
+            if self.uclasses(o.t, n.s, False):
+                return self.ufield(o, n.s)
             bm = self.method_value(o, n.s)
             if bm.t != "":
                 return bm
@@ -18479,6 +18574,8 @@ class Gen:
                                                f"i64 {vals['buffering']}"]), "file")
 
     def method(self, o: Val, m: str, args: list[Node]) -> Val:
+        if self.uclasses(o.t, m, True):
+            return self.umethod(o, m, args)
         if (o.t == "fn[b:str]" or o.t == "fn[b:list]" or o.t == "fn[b:dict]") and has_method(o.t[5:-1], m):
             return self.unbound_call(o.t[5:-1], m, args)
         if is_kw(o.t):

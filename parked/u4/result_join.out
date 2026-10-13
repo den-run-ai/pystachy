@@ -1,0 +1,4 @@
+Result(True, 1, 7, -1, []) Result(False, -1, None, 0, ['a digit']) True False 7 None 1 0
+Result(False, -1, None, 0, ['a digit']) Result(True, 1, 7, -1, []) Result(False, -1, None, 0, ['a digit', 'a letter'])
+[Result(True, 1, 1, -1, []), Result(False, -1, None, 0, ['a digit']), Result(False, -1, None, 0, ['a digit'])] q
+[exit 0]

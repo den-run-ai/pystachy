@@ -1,0 +1,7 @@
+7 a 3 a digit | 'a'
+ValueError: expected one of ["'a'", 'a digit'] at 0
+ValueError: expected one of ["'a'", 'a digit'] at 0
+ValueError: expected one of [] at -1
+5 'a' digit
+ValueError: expected one of ['a digit'] at 1
+[exit 0]
