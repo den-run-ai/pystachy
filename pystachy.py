@@ -5775,7 +5775,7 @@ for _k in "ret br switch indirectbr invoke callbr resume catchswitch catchret cl
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1) and
 # tupleiter and listfast, choices of lowering (a tuple's slots in Gen.iterable, and checked
 # list[int] reads in Gen.list_read), which PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -6707,6 +6707,64 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
         for nm in names:
             count[nm] = count.get(nm, 0) + 1
     return count
+
+
+def constant_writes(n: Node, count: dict[str, int]) -> None:
+    # Count every binding in the qualified program, including module-attribute stores in other
+    # modules. Local bindings with the same spelling as a main-module name conservatively count
+    # too. A global declaration or deletion excludes a name even without an accompanying store.
+    names: dict[str, bool] = {}
+    targets(n, names)
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "except" or n.kind == "walrus" or n.kind == "typealias":
+        if n.s != "":
+            names[n.s] = True
+    if n.kind == "global" or n.kind == "import":
+        for k in n.kids:
+            names[k.s] = True
+    if n.kind == "del":
+        gone: list[str] = []
+        for k in n.kids:
+            names_in(k, gone)
+        for nm in gone:
+            names[nm] = True
+    for nm in names:
+        count[nm] = count.get(nm, 0) + 1
+    for k in n.kids:
+        constant_writes(k, count)
+
+
+def module_ints(mods: list[Mod], at: dict[str, int]) -> dict[str, str]:
+    # Only a single, direct module-level assignment of an int literal, or a from-import of
+    # another such name, qualifies. Keep the stores and all flow checks: the literal replaces
+    # the value load only, so a read before initialization still raises the usual error.
+    count: dict[str, int] = {}
+    for m in mods:
+        constant_writes(m.body, count)
+    out: dict[str, str] = {}
+    copies: list[Node] = []
+    for m in mods:
+        for st in m.body.kids:
+            if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or count.get(st.kids[0].s, 0) != 1:
+                continue
+            e = st.kids[1]
+            val = e.s if e.kind == "int" else ""
+            if e.kind == "unary" and (e.s == "-" or e.s == "+") and e.kids[0].kind == "int":
+                val = ("-" if e.s == "-" else "") + e.kids[0].s
+            if val != "" and int_fits(val):
+                out[st.kids[0].s] = val
+                at[st.kids[0].s] = st.line
+            elif st.s == "from" and e.kind == "name":
+                copies.append(st)
+    more = True
+    while more:
+        more = False
+        for st in copies:
+            nm = st.kids[0].s
+            if nm not in out and st.kids[1].s in out:
+                out[nm] = out[st.kids[1].s]
+                at[nm] = st.line
+                more = True
+    return out
 
 
 def needs_eh(body: list[Node]) -> bool:
@@ -7957,6 +8015,8 @@ class Gen:
         self.flagged: dict[str, bool] = {}  # globals whose "is assigned" flag effect() reads
         self.unraised: dict[str, bool] = {}  # the modules where a class left out held an operation that may raise, not evaluated (left_out)
         self.noneglobals: dict[str, bool] = {}  # module globals of imported modules that are always None
+        self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
+        self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.falseflags: dict[str, bool] = {}  # each module's TYPE_CHECKING that is a constant False (false_flag())
         # an imported module's globals (and defs and classes) that other code may find unbound:
         # not assigned on every path through its module code, or before an import that may run
@@ -10290,14 +10350,21 @@ class Gen:
         # a variable read; if flow analysis found it may be unassigned, check at run time
         name = n.s
         self.gtype(name)
+        constant = name in self.intglobals and self.globread(name) and self.gtypes.get(name, "") == "int"
+        # The function's own def cannot run before an earlier direct assignment in its module.
+        # That proves initialization even if flow conservatively marked an earlier import as
+        # a possible call. Module code, foreign reads and functions defined earlier keep checks.
+        initialized = constant and not self.modlevel and owner(name) == self.curfn.mod and self.curfn.node.kind == "def" and self.intat[name] < self.curfn.node.line
         if n.chk and name in self.ltype:
             if name in self.lflag and name not in self.compvars:
                 bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {self.lflag[name]}')}, true")
                 self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
-        elif (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
+        elif not initialized and (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
             # (a global, or a function whose def statement may not have run yet)
             bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
             self.guard(bad, self.unbound(name, self.copying))
+        if constant:
+            return Val(self.intglobals[name], "int")
         return self.load_name(name)
 
     def modchk(self, n: Node) -> None:
@@ -12826,6 +12893,8 @@ class Gen:
 
     def program(self, mods: list[Mod]) -> str:
         self.opts = optimizations()
+        if "moduleints" in self.opts:
+            self.intglobals = module_ints(mods, self.intat)
         # the modules in the order their code may first run, the main program last
         tops: list[list[Node]] = []
         for m in mods:

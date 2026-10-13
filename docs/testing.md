@@ -56,6 +56,7 @@ that may raise is left without one). The optimizations that run on the IR before
 hash lookup for `if k in d: d[k] += 1` and the like), and so can a choice of the lowering,
 `-tupleiter` (a for loop over a tuple reads the tuple's slots, not a list of its items) and
 `-listfast` (a `list[int]` read checks bounds inline and calls the runtime for negative or invalid indices),
+and `-moduleints` (single-binding module int literals and their from-import copies),
 comma-separated, or `-all`; the tests pass with each one off.
 The programs cover arithmetic and overflow edges,
 strings (also their Unicode whitespace), escapes and f-strings, a 400-case sample of the

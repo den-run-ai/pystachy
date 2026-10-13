@@ -1,0 +1,13 @@
+mods: init mods
+mods.shapes: init mods.shapes
+(19, -20, -9223372036854775808, 21) 22
+(16, 17) 18 (16, 17) 16 17 16
+(16, 23) (24, 17) 16 17 16
+(25, 26, 27, 28, 30)
+(32, 33, 31, 34, 35)
+deleted
+late unbound
+36
+cycle unbound
+37
+[exit 0]

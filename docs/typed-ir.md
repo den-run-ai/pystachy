@@ -1512,6 +1512,13 @@ that commit's. What has changed since, and where the code departs from the text:
   differential run (comma-separated; `-all` turns off every one), and the tests pass with each
   off. `tools/check_ir.sh` checks a `tests/ir/NAME.calls`, the runtime functions each function
   of the probe calls, as lowered with every pass on.
+  - `moduleints`: before generation, the qualified program is scanned for direct module-level
+    int-literal assignments with no other binding, deletion or `global` declaration. Stable
+    from-import copies qualify too. Reads use their literal after the normal initialization
+    checks; a function defined after the binding in its own module needs no such check, since
+    the assignment precedes its def. Earlier functions, foreign reads and module code retain
+    checks, as do imported names whose source or copy is rebound. Initialization stores stay
+    in place. `PYSTACHY_OPT=-moduleints` disables both choices.
   - `listget` (item 1): `for_seq` and `anyall` record in `Loop.tests` the block that each
     sequence's test leads to, and in `Loop.idx` the index of the item read there. From that
     block, the pass follows the one path through blocks that a single branch leads to (so that
