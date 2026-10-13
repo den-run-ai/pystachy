@@ -27,7 +27,7 @@ The prototype was built on `claude/typed-ir-prep` (commit `30b51d9`), and was th
   - `def f(...) -> T: ...` declares a C function;
   - `import _rt` gives 17 primitives, each a few LLVM instructions with their checks: byte reads, an in-place string builder, `memchr`/`memcmp`/`memmem`, wrapping and unsigned arithmetic (§1.2).
 
-  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py-<hash>.bc` and its `.o`; the hash is of the C flags, `-fexceptions` among them, and of the optimizations `PYSTACHY_OPT` turns off, if any), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
+  The driver links the result to runtime.c's bitcode in the cached runtime (`build/runtime-py-<L>-<K>.bc` and its `.o`, named by a hash of all they are built from: the sources' and the compiler's bytes, the C flags, `-fexceptions` among them, the optimizations `PYSTACHY_OPT` turns off and the LLVM tools, §1.4), so the JIT and AOT tiers both use it, and LLVM inlines across the two languages.
 - **Performance: at parity on whole programs, within 10% on most moved functions** (§2.4).
   - The eight programs of `bench/` take 0.99 to 1.01 times the C runtime's CPU time AOT, and 0.96 to 1.05 JIT. They execute 0.997 to 1.003 times its instructions (callgrind). The compiler compiles itself in the same time (0.999), with 1.2% more instructions.
   - The first measurement found `words` and `dictkeys` 10% and 5% slower, all of it in `join` and `split`. Both were fixed (§2.4.2).
@@ -124,17 +124,26 @@ There are no raw pointers and no pointer arithmetic. Every primitive works on a 
 
 ### 1.4 Building, caching and the bootstrap
 
-- **The cached runtime.** When the driver rebuilds `build/runtime-py-<hash>.bc`, it does the following:
-  - it compiles `runtime.c` with clang as before, with `-fexceptions` (so that a raise unwinds through the runtime's frames, §2.8);
-  - it compiles `runtime.py` in-process, with the compiler that is running;
+- **The cached runtime.** When the driver builds `build/runtime-py-<L>-<K>.bc`, it does the following:
+  - it reads `runtime.c` and `runtime.py` once, a character per byte under either compiler (as `RAW`, the encoding it reads source in), and hashes those bytes, which name the result (below);
+  - it compiles those bytes of `runtime.c` with clang as before, with `-fexceptions` (so that a raise unwinds through the runtime's frames, §2.8). They reach clang on its standard input, behind `#line 1 "runtime.c"`, so that clang's messages and UBSan's still name `runtime.c`;
+  - it compiles those bytes of `runtime.py` in-process, with the compiler that is running;
   - it links the two with `llvm-link` and optimizes the result once with `opt -O2`. LLVM then inlines runtime.c's helpers into `runtime.py`'s code, and the reverse: `hsh()` gets `pys_hash_int` inlined.
   - Each step is a separate command whose status counts. A pipe would let a failed `llvm-link` leave an empty module in the cache.
+  - The bitcode and its `.o` are written under names of the process's own (#225) and renamed into place once whole, so the cache holds complete runtimes only.
 
   Its `.o`, the JIT tier's precompiled runtime, is built from that bitcode, so the JIT tier gets the cross-language inlining too. The name says `runtime-py`: a compiler from before `runtime.py`, run with the same home, keeps its runtime.c-only cache apart. The driver stops at once when `runtime.py` is missing.
-- **When the cache is rebuilt.** The cache is rebuilt when `runtime.c`, `runtime.py` or the running compiler is newer than it.
-  - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython. The claims audit of this document found the `PATH` case missing; it is fixed.
-  - Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
-  - Regenerating the IR on every run would be exact, but costs 18 ms of a 34 ms JIT start.
+- **When the cache is built again.** A runtime's name is the key of what it is built from, and a run uses the runtime its inputs name, or builds it (#24).
+  - K, a 64-bit FNV-1a hash, covers the bytes of `runtime.c`, `runtime.py` and the running compiler, the C flags (`-fexceptions` among them) and the optimizations `PYSTACHY_OPT` turns off, the files of `clang`, `llvm-as`, `llvm-link` and `opt` (their real paths, sizes and times: another LLVM is other files, a symbolic link to the same LLVM the same), and, with a flag such as `-march=native`, the host CPU's lines of `/proc/cpuinfo`.
+  - The running compiler is its executable, found through `PATH` as the shell found it when it was run by name, or `pystachy.py` under CPython (opened as named, without a search). Another compiler may compile `runtime.py` differently. A stale cache would otherwise outlive a code generation change.
+  - An edit while the runtime is built is not in it: the build is of the bytes read before, under their hash, and the next run builds the new bytes. The rule this replaces, a cache newer than `runtime.c`, `runtime.py` and the compiler, trusted a cache written after such an edit, with the old code (the gap §2.10 left), and it missed an edit of the same size whose mtime was set back (`touch -r`).
+  - L, the same hash but of the paths, the flags and the CPU, groups the runtimes of one compiler, flag set and LLVM. Publishing a runtime removes the others of its group, so `build/` keeps one per group, as before.
+  - Hashing the inputs on every run, 2.2 MB with the native compiler, would cost 15 ms of a 43 ms JIT start natively, and about 0.2 s under CPython. `build/runtime-py.hashes` keeps each file's hash with the size, mtime and ctime it had when it was read, once those were 2 s old. A file that still has them holds the same bytes: a write sets both times, `touch -r` sets the mtime back but not the ctime, and nothing sets a ctime back. File systems keep coarse times, so a file changed twice within one tick could show the same times; a file changed in the last 2 s is hashed again, as git treats its "racily clean" files.
+  - The compiler's file must hold the code that runs: a compiler named by its path, or a script, must not have changed since the driver started, and a script not for 2 s before (CPython read it then). A runtime is published only if the tools' times had settled, and they and the compiler are as they were after the build. Otherwise the run builds a runtime for itself alone, which `lli` gets through a descriptor.
+  - `pystachy ext` caches the bitcode of its C glue, `pyembed.c` and `pyext.c` (per ABI), by the same rules: `build/runtime-py-<L>-<G>.<tag>.bc`, G hashing the runtime's key, the tag and the file's bytes, built from those bytes and published, or used by the run alone, with the runtime.
+  - What the key leaves out: the libraries the tools load (`libLLVM`), the C headers and clang's configuration files.
+  - Regenerating `runtime.py`'s IR on every run, to hash it, would be exact about the compiler, but costs 18 ms of a 34 ms JIT start.
+  - `tests/cache.sh` tests these rules with both compilers (`make test-cache`, a step of `make verify`).
 - **The fixed point.** `make` and `make verify` now also check that the three stages emit the same IR for `runtime.py` (`pystachy rt`): about 10,400 lines.
   - The Python-free stage of `make verify` rebuilds the runtime, `runtime.py` included, with the native compiler alone, and compares that IR too.
 - **Compile cost.** The native compiler emits `runtime.py`'s IR in 18 ms; under CPython it takes 0.23 s. This cost is paid only when the cache is rebuilt.
@@ -290,7 +299,7 @@ One inventory prototyped the dict in the subset, over `list[int]` tables. Lookup
 - The cached bitcode grows by 27% because it holds `runtime.py`'s code before `--only-needed` linking. The JIT tier's `runtime.o` grows by 5%.
 - AOT executables that format numbers grow by 4 to 8 KB (4 to 13 KB on the final code, §2.11). `runtime.py`'s `fmt()` with its checks and error paths is larger than runtime.c's `pys_format` was. The others do not grow.
 - The native compiler grows by 6%, which is its own new code (runtime mode and its checks, primitives, driver).
-- **New coupling.** The runtime now depends on the compiler that builds it. CPython's compiler, stage 1 and stage 2 must agree on `runtime.py`'s IR, and `make` checks that they do. The rule "a newer compiler rebuilds the cache" makes the first run after a rebuild of the compiler slower, by about 2 s for clang, `runtime.py` and `opt`.
+- **New coupling.** The runtime now depends on the compiler that builds it. CPython's compiler, stage 1 and stage 2 must agree on `runtime.py`'s IR, and `make` checks that they do. A compiler whose bytes changed builds the runtime again (§1.4), which makes the first run after a rebuild of the compiler slower, by about 2 s for clang, `runtime.py` and `opt`.
 
 ### 2.4 Performance
 
@@ -526,7 +535,7 @@ Six independent reviewers attacked the prototype before it was submitted. Each h
   | the JIT tier's `runtime.o` lost `PYSTACHY_CFLAGS` | `-march=native` no longer reached it | the flags are passed |
   | each `make` makes the cache stale | `tests/run.sh`'s workers each rebuilt it at once | `tests/run.sh` builds it first |
 
-  Two gaps were left. First, a cycle through runtime.c was not detected. If `pys_format_str` formatted with a nested spec, it would call runtime.c's `pys_format`, which calls `pys_format_str`, and the program would hang. `tools/check_runtime.py` now rejects such a cycle (§2.8). Second, an edit to a source during a cache rebuild can leave a stale cache. runtime.c has had that gap since the cache existed; §5 proposes a content stamp.
+  Two gaps were left. First, a cycle through runtime.c was not detected. If `pys_format_str` formatted with a nested spec, it would call runtime.c's `pys_format`, which calls `pys_format_str`, and the program would hang. `tools/check_runtime.py` now rejects such a cycle (§2.8). Second, an edit to a source during a cache rebuild can leave a stale cache. runtime.c has had that gap since the cache existed; §5 proposed a content stamp, and #24 made one: a runtime is named by a hash of the bytes it is built from (§1.4).
 - **Worst cases.** The performance reviewer timed about 60 adversarial programs against runtime.c: CPU time, pinned to one core, AOT and JIT. On the version it started from, substring search was O(n·m), up to 263 times slower with a 100 KB needle, and `strip(chars)` 11 times; the first table's fixes brought both back to runtime.c's time. On the final search code it found four more, fixed here (AOT ratios):
 
   | case | before | after | cause |
@@ -660,7 +669,7 @@ Sources and line counts: the research notes behind this table measured each repo
 | risk | handling |
 |---|---|
 | a code generation bug miscompiles the runtime | fixed point over `runtime.py`'s IR; `rtcheck` runs the same code on CPython, without the compiler; differential tests |
-| a stale cached runtime after a compiler change | the cache is rebuilt when the running compiler is newer, found through `PATH` if need be (§1.4) |
+| a stale cached runtime after a compiler change | the cache is named by a hash of the running compiler's bytes, found through `PATH` if need be, with the sources', the flags' and the tools' (§1.4) |
 | ABI mismatch between `runtime.py` and the program's declarations | no `bool` in exported or external signatures; `make verify`'s `rt-abi` step (`tools/rtabi.py`) requires one LLVM signature per function across `runtime.py`, runtime.c and the 301 programs of the corpus (1,131 uses), and reports a planted mismatch |
 | self-recursion through a lowering | the direct case is rejected at compile time (`Gen.rt`); a cycle through runtime.c by `tools/check_runtime.py`, a step of `make verify` (§2.8) |
 | `_rt` grows into a pointer layer | the rule in §1.2: `str` and `int` operands only, one Wasm GC counterpart each |
@@ -683,7 +692,7 @@ The follow-ups are filed: #31 tracks items 2 to 7, and the issues named below ho
    - str `repr` and `ascii` escaping over one shared UTF-8 decoder, which the lax character counts of §2.2 should use too (#29); `pys_str_list`; `str(int)`.
    - The M1 runtime gaps (#6): `math.fsum`, `modf`, `prod`, `dist`, `hex`/`oct`/`bin`, `dict.popitem` over the C dict API. Write them in `runtime.py` from the start. (`dict.update` and `fromkeys` are in runtime.c: they size and rebuild the table as CPython does, with its internals.)
 3. **Small language and compiler work that runtime code needs.**
-   - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule, and a test of the cache rules (#24).
+   - A content stamp for the cached runtime (a hash of runtime.c, `runtime.py`, the compiler and the flags) in place of the mtime rule, and a test of the cache rules (#24): done, with the LLVM tools in the hash too (§1.4).
    - A `buf` type for `str_new`'s result, and a nullable `str` for omitted arguments (#25): only `str_put` and `copy` write to it, only `str_done` turns it into a `str`, and nothing uses it after that. The builder rule of §1.2 then becomes a compile-time check, at no run-time cost.
    - Debug builds for memory safety (#23). Instrument `runtime.py`'s IR with ASan when the flags ask for it, and add an allocator option that gives each object its own `calloc` block. Add a collector option that poisons dead memory. The GC review built all three in about 30 lines.
    - Allow classes in runtime mode, as long as none ends up in a container.

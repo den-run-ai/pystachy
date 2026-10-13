@@ -147,7 +147,8 @@ Pystachy's builtin `ffi` is then not used (tests/ffi_own.py).
 
 Both come from the same program IR; the generic glue is `pyext.c`, compiled once per ABI
 without `Python.h` (it declares the stable-ABI functions it uses, as the ABI fixes them), and
-`pyembed.c`. The program, the glue and the runtime become one module, of which only the entry
+`pyembed.c`; their bitcode is cached beside the runtime's, by its rules
+([runtime-in-subset.md](runtime-in-subset.md) §1.4). The program, the glue and the runtime become one module, of which only the entry
 (`PyInit_<name>` or `PyModExport_<name>`) stays visible; `tools/abi_check.sh` checks that, and
 that every Py symbol it imports is in the stable ABI of its version.
 

@@ -1,0 +1,425 @@
+sub 'x' '\\400' 'x' -> octal escape value \400 outside of range 0-0o377 at position 0
+sub 'x' '\\777' 'x' -> octal escape value \777 outside of range 0-0o377 at position 0
+sub 'x' '\\1' 'x' -> invalid group reference 1 at position 1
+sub 'x' '\\8' 'x' -> invalid group reference 8 at position 1
+sub 'x' '\\9' 'x' -> invalid group reference 9 at position 1
+sub 'x' '\\11' 'x' -> invalid group reference 11 at position 1
+sub 'x' '\\18' 'x' -> invalid group reference 18 at position 1
+sub 'x' '\\1a' 'x' -> invalid group reference 1 at position 1
+sub 'x' '\\90' 'x' -> invalid group reference 90 at position 1
+sub 'x' '\\99' 'x' -> invalid group reference 99 at position 1
+sub 'x' '\\118' 'x' -> invalid group reference 11 at position 1
+sub 'x' '\\11a' 'x' -> invalid group reference 11 at position 1
+sub 'x' '\\181' 'x' -> invalid group reference 18 at position 1
+sub 'x' '\\800' 'x' -> invalid group reference 80 at position 1
+sub 'x' '\\8' '' -> invalid group reference 8 at position 1
+sub '(?P<a>x)' '\\g<a' 'xx' -> missing >, unterminated name at position 3
+sub '(?P<a>x)' '\\g<' 'xx' -> missing group name at position 3
+sub '(?P<a>x)' '\\g' 'xx' -> missing < at position 2
+sub '(?P<a>x)' '\\g<a a>' 'xx' -> bad character in group name 'a a' at position 3
+sub '(?P<a>x)' '\\g<>' 'xx' -> missing group name at position 3
+sub '(?P<a>x)' '\\g<1a1>' 'xx' -> bad character in group name '1a1' at position 3
+sub '(?P<a>x)' '\\g<2>' 'xx' -> invalid group reference 2 at position 3
+sub '(?P<a>x)' '\\2' 'xx' -> invalid group reference 2 at position 1
+sub '(?P<a>x)' '\\g<-1>' 'xx' -> bad character in group name '-1' at position 3
+sub '(?P<a>x)' '\\g<+1>' 'xx' -> bad character in group name '+1' at position 3
+sub '()()()()()()()()()()' '\\g<1_0>' 'xx' -> bad character in group name '1_0' at position 3
+sub '(?P<a>x)' '\\g< 1 >' 'xx' -> bad character in group name ' 1 ' at position 3
+sub '(?P<a>x)' '\\g<©>' 'xx' -> bad character in group name '©' at '\\g<'
+sub '(?P<a>x)' '\\g<㊀>' 'xx' -> bad character in group name '㊀' at '\\g<'
+sub '(?P<a>x)' '\\g<¹>' 'xx' -> bad character in group name '¹' at '\\g<'
+sub '(?P<a>x)' '\\g<१>' 'xx' -> bad character in group name '१' at '\\g<'
+sub '()' '\\g<1073741823>' 'xx' -> invalid group reference 1073741823 at position 3
+sub '(?P<a>x)' '\\g<ab>' -> IndexError: unknown group name 'ab'
+sub 'a' '\\c' -> bad escape \c at position 0
+sub 'a' '\\d' -> bad escape \d at position 0
+sub 'a' '\\e' -> bad escape \e at position 0
+sub 'a' '\\h' -> bad escape \h at position 0
+sub 'a' '\\i' -> bad escape \i at position 0
+sub 'a' '\\j' -> bad escape \j at position 0
+sub 'a' '\\k' -> bad escape \k at position 0
+sub 'a' '\\l' -> bad escape \l at position 0
+sub 'a' '\\m' -> bad escape \m at position 0
+sub 'a' '\\o' -> bad escape \o at position 0
+sub 'a' '\\p' -> bad escape \p at position 0
+sub 'a' '\\q' -> bad escape \q at position 0
+sub 'a' '\\s' -> bad escape \s at position 0
+sub 'a' '\\u' -> bad escape \u at position 0
+sub 'a' '\\w' -> bad escape \w at position 0
+sub 'a' '\\x' -> bad escape \x at position 0
+sub 'a' '\\y' -> bad escape \y at position 0
+sub 'a' '\\z' -> bad escape \z at position 0
+sub 'a' '\\A' -> bad escape \A at position 0
+sub 'a' '\\B' -> bad escape \B at position 0
+sub 'a' '\\C' -> bad escape \C at position 0
+sub 'a' '\\D' -> bad escape \D at position 0
+sub 'a' '\\E' -> bad escape \E at position 0
+sub 'a' '\\F' -> bad escape \F at position 0
+sub 'a' '\\G' -> bad escape \G at position 0
+sub 'a' '\\H' -> bad escape \H at position 0
+sub 'a' '\\I' -> bad escape \I at position 0
+sub 'a' '\\J' -> bad escape \J at position 0
+sub 'a' '\\K' -> bad escape \K at position 0
+sub 'a' '\\L' -> bad escape \L at position 0
+sub 'a' '\\M' -> bad escape \M at position 0
+sub 'a' '\\N' -> bad escape \N at position 0
+sub 'a' '\\O' -> bad escape \O at position 0
+sub 'a' '\\P' -> bad escape \P at position 0
+sub 'a' '\\Q' -> bad escape \Q at position 0
+sub 'a' '\\R' -> bad escape \R at position 0
+sub 'a' '\\S' -> bad escape \S at position 0
+sub 'a' '\\T' -> bad escape \T at position 0
+sub 'a' '\\U' -> bad escape \U at position 0
+sub 'a' '\\V' -> bad escape \V at position 0
+sub 'a' '\\W' -> bad escape \W at position 0
+sub 'a' '\\X' -> bad escape \X at position 0
+sub 'a' '\\Y' -> bad escape \Y at position 0
+sub 'a' '\\Z' -> bad escape \Z at position 0
+compile '(?P<a>)(?P<a>)' -> redefinition of group name 'a' as group 2; was group 1 at position 11
+compile '(?P<a>(?P=a))' -> cannot refer to an open group at position 10
+compile '(?Pxy)' -> unknown extension ?Px at position 1
+compile '(?P<a>)(?P=a' -> missing ), unterminated name at position 11
+compile '(?P=' -> missing group name at position 4
+compile '(?P=)' -> missing group name at position 4
+compile '(?P=1)' -> bad character in group name '1' at position 4
+compile '(?P=a)' -> unknown group name 'a' at position 4
+compile '(?P=a1)' -> unknown group name 'a1' at position 4
+compile '(?P=a.)' -> bad character in group name 'a.' at position 4
+compile '(?P<)' -> missing >, unterminated name at position 4
+compile '(?P<a' -> missing >, unterminated name at position 4
+compile '(?P<' -> missing group name at position 4
+compile '(?P<>)' -> missing group name at position 4
+compile '(?P<1>)' -> bad character in group name '1' at position 4
+compile '(?P<a.>)' -> bad character in group name 'a.' at position 4
+compile '(?(' -> missing group name at position 3
+compile '(?())' -> missing group name at position 3
+compile '(?(a))' -> unknown group name 'a' at position 3
+compile '(?(-1))' -> bad character in group name '-1' at position 3
+compile '(?(1a))' -> bad character in group name '1a' at position 3
+compile '(?(a.))' -> bad character in group name 'a.' at position 3
+compile '(?P<©>x)' -> bad character in group name '©' at '(?P<'
+compile '(?P=©)' -> bad character in group name '©' at '(?P='
+compile '(?(©)y)' -> bad character in group name '©' at '(?('
+compile '(?P<a>)(?(0)a|b)' -> bad group number at position 10
+compile '()(?(-1)a|b)' -> bad character in group name '-1' at position 5
+compile '()(?(+1)a|b)' -> bad character in group name '+1' at position 5
+compile '()()()()()()()()()()(?(1_0)a|b)' -> bad character in group name '1_0' at position 23
+compile '()(?( 1 )a|b)' -> bad character in group name ' 1 ' at position 5
+compile '()(?(㊀)a|b)' -> bad character in group name '㊀' at '()(?('
+compile '()(?(¹)a|b)' -> bad character in group name '¹' at '()(?('
+compile '()(?(१)a|b)' -> bad character in group name '१' at '()(?('
+compile '()(?(1' -> missing ), unterminated name at position 5
+compile '()(?(1)a' -> missing ), unterminated subpattern at position 2
+compile '()(?(1)a|b' -> missing ), unterminated subpattern at position 2
+compile '()(?(1)a|b|c' -> conditional backref with more than two branches at position 10
+compile '()(?(1)a|b|c)' -> conditional backref with more than two branches at position 10
+compile '()(?(2)a)' -> invalid group reference 2 at position 5
+compile '(?P<a>)(?(1073741823))' -> invalid group reference 1073741823 at position 10
+compile '(abc\\1)' -> cannot refer to an open group at position 4
+compile 'x{2,1}' -> min repeat greater than max repeat at position 2
+compile '\\' -> bad escape (end of pattern) at position 0
+compile '\\N' -> missing { at position 2
+compile '[\\N]' -> missing { at position 3
+compile '\\N{' -> missing character name at position 3
+compile '[\\N{' -> missing character name at position 4
+compile '\\N{}' -> missing character name at position 3
+compile '[\\N{}]' -> missing character name at position 4
+compile '\\NSNAKE}' -> missing { at position 2
+compile '[\\NSNAKE}]' -> missing { at position 3
+compile '\\N{SNAKE' -> missing }, unterminated name at position 3
+compile '[\\N{SNAKE]' -> missing }, unterminated name at position 4
+compile '\\567' -> octal escape value \567 outside of range 0-0o377 at position 0
+compile '\\911' -> invalid group reference 91 at position 1
+compile '\\x1' -> incomplete escape \x1 at position 0
+compile '\\x1z' -> incomplete escape \x1 at position 0
+compile '\\u123' -> incomplete escape \u123 at position 0
+compile '\\u123z' -> incomplete escape \u123 at position 0
+compile '\\U0001234' -> incomplete escape \U0001234 at position 0
+compile '\\U0001234z' -> incomplete escape \U0001234 at position 0
+compile '\\U00110000' -> bad escape \U00110000 at position 0
+compile '[\\567]' -> octal escape value \567 outside of range 0-0o377 at position 1
+compile '[\\911]' -> bad escape \9 at position 1
+compile '[\\x1z]' -> incomplete escape \x1 at position 1
+compile '[\\u123z]' -> incomplete escape \u123 at position 1
+compile '[\\U0001234z]' -> incomplete escape \U0001234 at position 1
+compile '[\\U00110000]' -> bad escape \U00110000 at position 1
+compile '[' -> unterminated character set at position 0
+compile '[^' -> unterminated character set at position 0
+compile '[a' -> unterminated character set at position 0
+compile '[a-' -> unterminated character set at position 0
+compile '[\\w-b]' -> bad character range \w-b at position 1
+compile '[a-\\w]' -> bad character range a-\w at position 1
+compile '[b-a]' -> bad character range b-a at position 1
+compile 'Ạ(?i)' -> global flags not at the start of the expression at 'Ạ'
+compile '(?s).(?i)Ạ' -> global flags not at the start of the expression at '(?s).'
+compile '(?i) Ạ (?x)' -> global flags not at the start of the expression at '(?i) Ạ '
+compile ' (?x) (?i) Ạ' -> global flags not at the start of the expression at ' '
+compile '^(?i)Ạ' -> global flags not at the start of the expression at '^'
+compile '$|(?i)Ạ' -> global flags not at the start of the expression at '$|'
+compile '(?:(?i)Ạ)' -> global flags not at the start of the expression at '(?:'
+compile '(^)?(?(1)(?i)Ạ)' -> global flags not at the start of the expression at '(^)?(?(1)'
+compile '($)?(?(1)|(?i)Ạ)' -> global flags not at the start of the expression at '($)?(?(1)|'
+compile '(?a)(?-a:\\w)' -> bad inline flags: cannot turn off flags 'a', 'u' and 'L' at position 8
+compile '(?i-i:a)' -> bad inline flags: flag turned on and off at position 5
+compile '(?au:a)' -> bad inline flags: flags 'a', 'u' and 'L' are incompatible at position 4
+compile '(?-' -> missing flag at position 3
+compile '(?-+' -> missing flag at position 3
+compile '(?-z' -> unknown flag at position 3
+compile '(?-i' -> missing : at position 4
+compile '(?-i)' -> missing : at position 4
+compile '(?-i+' -> missing : at position 4
+compile '(?-iz' -> unknown flag at position 4
+compile '(?i:' -> missing ), unterminated subpattern at position 0
+compile '(?i' -> missing -, : or ) at position 3
+compile '(?i+' -> missing -, : or ) at position 3
+compile '(?iz' -> unknown flag at position 3
+compile '(?P=<foo>)' -> bad character in group name '<foo>' at position 4
+compile '(?P<?foo>)' -> bad character in group name '?foo' at position 4
+compile '(' -> missing ), unterminated subpattern at position 0
+compile '((a|b)' -> missing ), unterminated subpattern at position 0
+compile '(a|b))' -> unbalanced parenthesis at position 5
+compile '(?P' -> unexpected end of pattern at position 3
+compile '(?z)' -> unknown extension ?z at position 1
+compile '(?iz)' -> unknown flag at position 3
+compile '(?i' -> missing -, : or ) at position 3
+compile '(?#abc' -> missing ), unterminated comment at position 0
+compile '(?<' -> unexpected end of pattern at position 3
+compile '(?<>)' -> unknown extension ?<> at position 1
+compile '(?' -> unexpected end of pattern at position 2
+compile '*' -> nothing to repeat at position 0
+compile '(?:*)' -> nothing to repeat at position 3
+compile '*?' -> nothing to repeat at position 0
+compile '(?:*?)' -> nothing to repeat at position 3
+compile '+' -> nothing to repeat at position 0
+compile '(?:+)' -> nothing to repeat at position 3
+compile '+?' -> nothing to repeat at position 0
+compile '(?:+?)' -> nothing to repeat at position 3
+compile '?' -> nothing to repeat at position 0
+compile '(?:?)' -> nothing to repeat at position 3
+compile '??' -> nothing to repeat at position 0
+compile '(?:??)' -> nothing to repeat at position 3
+compile '{1,2}' -> nothing to repeat at position 0
+compile '(?:{1,2})' -> nothing to repeat at position 3
+compile '{1,2}?' -> nothing to repeat at position 0
+compile '(?:{1,2}?)' -> nothing to repeat at position 3
+compile 'x**' -> multiple repeat at position 2
+compile 'x*?*' -> multiple repeat at position 3
+compile 'x*+*' -> multiple repeat at position 3
+compile 'x+*' -> multiple repeat at position 2
+compile 'x+?*' -> multiple repeat at position 3
+compile 'x++*' -> multiple repeat at position 3
+compile 'x?*' -> multiple repeat at position 2
+compile 'x??*' -> multiple repeat at position 3
+compile 'x?+*' -> multiple repeat at position 3
+compile 'x{1,2}*' -> multiple repeat at position 6
+compile 'x{1,2}?*' -> multiple repeat at position 7
+compile 'x{1,2}+*' -> multiple repeat at position 7
+compile 'x**?' -> multiple repeat at position 2
+compile 'x*?*?' -> multiple repeat at position 3
+compile 'x*+*?' -> multiple repeat at position 3
+compile 'x+*?' -> multiple repeat at position 2
+compile 'x+?*?' -> multiple repeat at position 3
+compile 'x++*?' -> multiple repeat at position 3
+compile 'x?*?' -> multiple repeat at position 2
+compile 'x??*?' -> multiple repeat at position 3
+compile 'x?+*?' -> multiple repeat at position 3
+compile 'x{1,2}*?' -> multiple repeat at position 6
+compile 'x{1,2}?*?' -> multiple repeat at position 7
+compile 'x{1,2}+*?' -> multiple repeat at position 7
+compile 'x**+' -> multiple repeat at position 2
+compile 'x*?*+' -> multiple repeat at position 3
+compile 'x*+*+' -> multiple repeat at position 3
+compile 'x+*+' -> multiple repeat at position 2
+compile 'x+?*+' -> multiple repeat at position 3
+compile 'x++*+' -> multiple repeat at position 3
+compile 'x?*+' -> multiple repeat at position 2
+compile 'x??*+' -> multiple repeat at position 3
+compile 'x?+*+' -> multiple repeat at position 3
+compile 'x{1,2}*+' -> multiple repeat at position 6
+compile 'x{1,2}?*+' -> multiple repeat at position 7
+compile 'x{1,2}+*+' -> multiple repeat at position 7
+compile 'x*?+' -> multiple repeat at position 3
+compile 'x*++' -> multiple repeat at position 3
+compile 'x+?+' -> multiple repeat at position 3
+compile 'x+++' -> multiple repeat at position 3
+compile 'x??+' -> multiple repeat at position 3
+compile 'x?++' -> multiple repeat at position 3
+compile 'x{1,2}?+' -> multiple repeat at position 7
+compile 'x{1,2}++' -> multiple repeat at position 7
+compile 'x*?+?' -> multiple repeat at position 3
+compile 'x*++?' -> multiple repeat at position 3
+compile 'x+?+?' -> multiple repeat at position 3
+compile 'x+++?' -> multiple repeat at position 3
+compile 'x??+?' -> multiple repeat at position 3
+compile 'x?++?' -> multiple repeat at position 3
+compile 'x{1,2}?+?' -> multiple repeat at position 7
+compile 'x{1,2}++?' -> multiple repeat at position 7
+compile 'x*?++' -> multiple repeat at position 3
+compile 'x*+++' -> multiple repeat at position 3
+compile 'x+?++' -> multiple repeat at position 3
+compile 'x++++' -> multiple repeat at position 3
+compile 'x??++' -> multiple repeat at position 3
+compile 'x?+++' -> multiple repeat at position 3
+compile 'x{1,2}?++' -> multiple repeat at position 7
+compile 'x{1,2}+++' -> multiple repeat at position 7
+compile 'x*??' -> multiple repeat at position 3
+compile 'x*+?' -> multiple repeat at position 3
+compile 'x+??' -> multiple repeat at position 3
+compile 'x++?' -> multiple repeat at position 3
+compile 'x???' -> multiple repeat at position 3
+compile 'x?+?' -> multiple repeat at position 3
+compile 'x{1,2}??' -> multiple repeat at position 7
+compile 'x{1,2}+?' -> multiple repeat at position 7
+compile 'x*???' -> multiple repeat at position 3
+compile 'x*+??' -> multiple repeat at position 3
+compile 'x+???' -> multiple repeat at position 3
+compile 'x++??' -> multiple repeat at position 3
+compile 'x????' -> multiple repeat at position 3
+compile 'x?+??' -> multiple repeat at position 3
+compile 'x{1,2}???' -> multiple repeat at position 7
+compile 'x{1,2}+??' -> multiple repeat at position 7
+compile 'x*??+' -> multiple repeat at position 3
+compile 'x*+?+' -> multiple repeat at position 3
+compile 'x+??+' -> multiple repeat at position 3
+compile 'x++?+' -> multiple repeat at position 3
+compile 'x???+' -> multiple repeat at position 3
+compile 'x?+?+' -> multiple repeat at position 3
+compile 'x{1,2}??+' -> multiple repeat at position 7
+compile 'x{1,2}+?+' -> multiple repeat at position 7
+compile 'x*{1,2}' -> multiple repeat at position 2
+compile 'x*?{1,2}' -> multiple repeat at position 3
+compile 'x*+{1,2}' -> multiple repeat at position 3
+compile 'x+{1,2}' -> multiple repeat at position 2
+compile 'x+?{1,2}' -> multiple repeat at position 3
+compile 'x++{1,2}' -> multiple repeat at position 3
+compile 'x?{1,2}' -> multiple repeat at position 2
+compile 'x??{1,2}' -> multiple repeat at position 3
+compile 'x?+{1,2}' -> multiple repeat at position 3
+compile 'x{1,2}{1,2}' -> multiple repeat at position 6
+compile 'x{1,2}?{1,2}' -> multiple repeat at position 7
+compile 'x{1,2}+{1,2}' -> multiple repeat at position 7
+compile 'x*{1,2}?' -> multiple repeat at position 2
+compile 'x*?{1,2}?' -> multiple repeat at position 3
+compile 'x*+{1,2}?' -> multiple repeat at position 3
+compile 'x+{1,2}?' -> multiple repeat at position 2
+compile 'x+?{1,2}?' -> multiple repeat at position 3
+compile 'x++{1,2}?' -> multiple repeat at position 3
+compile 'x?{1,2}?' -> multiple repeat at position 2
+compile 'x??{1,2}?' -> multiple repeat at position 3
+compile 'x?+{1,2}?' -> multiple repeat at position 3
+compile 'x{1,2}{1,2}?' -> multiple repeat at position 6
+compile 'x{1,2}?{1,2}?' -> multiple repeat at position 7
+compile 'x{1,2}+{1,2}?' -> multiple repeat at position 7
+compile 'x*{1,2}+' -> multiple repeat at position 2
+compile 'x*?{1,2}+' -> multiple repeat at position 3
+compile 'x*+{1,2}+' -> multiple repeat at position 3
+compile 'x+{1,2}+' -> multiple repeat at position 2
+compile 'x+?{1,2}+' -> multiple repeat at position 3
+compile 'x++{1,2}+' -> multiple repeat at position 3
+compile 'x?{1,2}+' -> multiple repeat at position 2
+compile 'x??{1,2}+' -> multiple repeat at position 3
+compile 'x?+{1,2}+' -> multiple repeat at position 3
+compile 'x{1,2}{1,2}+' -> multiple repeat at position 6
+compile 'x{1,2}?{1,2}+' -> multiple repeat at position 7
+compile 'x{1,2}+{1,2}+' -> multiple repeat at position 7
+compile '\\c' 0 -> bad escape \c at position 0
+compile '\\e' 0 -> bad escape \e at position 0
+compile '\\g' 0 -> bad escape \g at position 0
+compile '\\h' 0 -> bad escape \h at position 0
+compile '\\i' 0 -> bad escape \i at position 0
+compile '\\j' 0 -> bad escape \j at position 0
+compile '\\k' 0 -> bad escape \k at position 0
+compile '\\l' 0 -> bad escape \l at position 0
+compile '\\m' 0 -> bad escape \m at position 0
+compile '\\o' 0 -> bad escape \o at position 0
+compile '\\p' 0 -> bad escape \p at position 0
+compile '\\q' 0 -> bad escape \q at position 0
+compile '\\y' 0 -> bad escape \y at position 0
+compile '\\z' 0 -> bad escape \z at position 0
+compile '\\C' 0 -> bad escape \C at position 0
+compile '\\E' 0 -> bad escape \E at position 0
+compile '\\F' 0 -> bad escape \F at position 0
+compile '\\G' 0 -> bad escape \G at position 0
+compile '\\H' 0 -> bad escape \H at position 0
+compile '\\I' 0 -> bad escape \I at position 0
+compile '\\J' 0 -> bad escape \J at position 0
+compile '\\K' 0 -> bad escape \K at position 0
+compile '\\L' 0 -> bad escape \L at position 0
+compile '\\M' 0 -> bad escape \M at position 0
+compile '\\N' 0 -> missing { at position 2
+compile '\\O' 0 -> bad escape \O at position 0
+compile '\\P' 0 -> bad escape \P at position 0
+compile '\\Q' 0 -> bad escape \Q at position 0
+compile '\\R' 0 -> bad escape \R at position 0
+compile '\\T' 0 -> bad escape \T at position 0
+compile '\\V' 0 -> bad escape \V at position 0
+compile '\\X' 0 -> bad escape \X at position 0
+compile '\\Y' 0 -> bad escape \Y at position 0
+compile '[\\c]' 0 -> bad escape \c at position 1
+compile '[\\e]' 0 -> bad escape \e at position 1
+compile '[\\g]' 0 -> bad escape \g at position 1
+compile '[\\h]' 0 -> bad escape \h at position 1
+compile '[\\i]' 0 -> bad escape \i at position 1
+compile '[\\j]' 0 -> bad escape \j at position 1
+compile '[\\k]' 0 -> bad escape \k at position 1
+compile '[\\l]' 0 -> bad escape \l at position 1
+compile '[\\m]' 0 -> bad escape \m at position 1
+compile '[\\o]' 0 -> bad escape \o at position 1
+compile '[\\p]' 0 -> bad escape \p at position 1
+compile '[\\q]' 0 -> bad escape \q at position 1
+compile '[\\y]' 0 -> bad escape \y at position 1
+compile '[\\z]' 0 -> bad escape \z at position 1
+compile '[\\A]' 0 -> bad escape \A at position 1
+compile '[\\B]' 0 -> bad escape \B at position 1
+compile '[\\C]' 0 -> bad escape \C at position 1
+compile '[\\E]' 0 -> bad escape \E at position 1
+compile '[\\F]' 0 -> bad escape \F at position 1
+compile '[\\G]' 0 -> bad escape \G at position 1
+compile '[\\H]' 0 -> bad escape \H at position 1
+compile '[\\I]' 0 -> bad escape \I at position 1
+compile '[\\J]' 0 -> bad escape \J at position 1
+compile '[\\K]' 0 -> bad escape \K at position 1
+compile '[\\L]' 0 -> bad escape \L at position 1
+compile '[\\M]' 0 -> bad escape \M at position 1
+compile '[\\N]' 0 -> missing { at position 3
+compile '[\\O]' 0 -> bad escape \O at position 1
+compile '[\\P]' 0 -> bad escape \P at position 1
+compile '[\\Q]' 0 -> bad escape \Q at position 1
+compile '[\\R]' 0 -> bad escape \R at position 1
+compile '[\\T]' 0 -> bad escape \T at position 1
+compile '[\\V]' 0 -> bad escape \V at position 1
+compile '[\\X]' 0 -> bad escape \X at position 1
+compile '[\\Y]' 0 -> bad escape \Y at position 1
+compile '[\\Z]' 0 -> bad escape \Z at position 1
+compile '(a)b(?<=(?(2)b|x))(c)' 0 -> cannot refer to an open group at position 13
+compile '(a)b(?<=(.)\\2)(c)' 0 -> cannot refer to group defined in the same lookbehind subpattern at position 13
+compile '(a)b(?<=(?P<a>.)(?P=a))(c)' 0 -> cannot refer to group defined in the same lookbehind subpattern at position 22
+compile '(a)b(?<=(a)(?(2)b|x))(c)' 0 -> cannot refer to group defined in the same lookbehind subpattern at position 16
+compile '(a)b(?<=(.)(?<=\\2))(c)' 0 -> cannot refer to group defined in the same lookbehind subpattern at position 17
+compile '\\w' 288 -> ValueError: ASCII and UNICODE flags are incompatible
+compile '(?u)\\w' 256 -> ValueError: ASCII and UNICODE flags are incompatible
+compile '(?a)\\w' 32 -> ValueError: ASCII and UNICODE flags are incompatible
+compile '(?au)\\w' 0 -> bad inline flags: flags 'a', 'u' and 'L' are incompatible at position 4
+compile '' 4 -> ValueError: cannot use LOCALE flag with a str pattern
+compile '(?L)' 0 -> bad inline flags: cannot use 'L' flag with a str pattern at position 3
+compile '.{340282366920938463463374607431768211456}' 0 -> OverflowError: the repetition number is too large
+compile '.{,340282366920938463463374607431768211456}' 0 -> OverflowError: the repetition number is too large
+compile '.{340282366920938463463374607431768211456,}?' 0 -> OverflowError: the repetition number is too large
+compile '.{680564733841876926926749214863536422912,340282366920938463463374607431768211456}' 0 -> OverflowError: the repetition number is too large
+compile '(?<=((.{4194304}){4194304}){4194304})' 0 -> looks too much behind
+compile '(?<!((.{4194304}){4194304}){4194304})' 0 -> looks too much behind
+compile '(€))' -> 'unbalanced parenthesis' '(€)' 1
+compile VERBOSE -> 'unbalanced parenthesis at position 77 (line 5, column 17)' unbalanced parenthesis 77 5 17
+match ValueError: cannot process flags argument with a compiled pattern
+search ValueError: cannot process flags argument with a compiled pattern
+findall ValueError: cannot process flags argument with a compiled pattern
+compile ValueError: cannot process flags argument with a compiled pattern
+compile(0) TypeError: first argument must be string or compiled pattern
+group -1 IndexError: no such group
+group 3 IndexError: no such group
+group 'x' IndexError: no such group
+m[-1] IndexError: no such group
+m[4] IndexError: no such group
+m['X'] IndexError: no such group
+m[0, 1] IndexError: no such group
+[exit 0]

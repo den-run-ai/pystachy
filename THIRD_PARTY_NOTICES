@@ -358,6 +358,23 @@ names of their own; the sys.modules and traceback assertions are left out, as Py
 neither; each test also checks that the name its failed import would bind stays unbound.
 Differential output is recorded with CPython 3.13.16.
 
+CPython's re tests (tests/upstream_re_*.py, tools/re_fuzz.py)
+-------------------------------------------------------------
+
+tests/upstream_re_tests.py and tests/upstream_re_tests_perl.py hold the benchmarks and tests
+tables of CPython 3.13.16's Lib/test/re_tests.py, with their comments, and adapt
+ExternalTests.test_re_tests and test_re_benchmarks of Lib/test/test_re.py, which run them;
+tests/upstream_re_errors.py, tests/upstream_re_match.py, tests/upstream_re_sub.py and
+tests/upstream_re_flags.py adapt cases of Lib/test/test_re.py's ReTests and PatternReprTests, and
+tools/re_fuzz.py runs some of them at their full size; all at commit
+cbc944f4bc59639a444dd971c737788ba2283a91. They are used under the Python Software Foundation
+License Version 2; the complete CPython license and copyright notices are retained in
+tests/upstream/CPYTHON-LICENSE.txt.
+
+Summary of changes: the unittest scaffolding becomes tables of the upstream arguments and
+expected values, and each case prints its result (the recorded output is CPython's re's); the
+cases each file's header lists are left out, and some run on smaller inputs.
+
 APACHE LICENSE VERSION 2.0
 --------------------------
 

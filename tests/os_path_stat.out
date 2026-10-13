@@ -1,0 +1,19 @@
+5 0
+True True True True
+True True
+13 True True
+[True, True, True]
+getsize FileNotFoundError [Errno 2] No such file or directory: 'pystachy-no-such-file'
+getmtime FileNotFoundError [Errno 2] No such file or directory: 'pystachy-no-such-file'
+getctime FileNotFoundError [Errno 2] No such file or directory: 'pystachy-no-such-file'
+getsize FileNotFoundError [Errno 2] No such file or directory: ''
+getmtime FileNotFoundError [Errno 2] No such file or directory: ''
+getctime FileNotFoundError [Errno 2] No such file or directory: ''
+getsize ValueError stat: embedded null character in path
+getmtime ValueError stat: embedded null character in path
+getctime ValueError stat: embedded null character in path
+getsize NotADirectoryError [Errno 20] Not a directory: 'tests/os_path_stat.py/x'
+getmtime NotADirectoryError [Errno 20] Not a directory: 'tests/os_path_stat.py/x'
+getctime NotADirectoryError [Errno 20] Not a directory: 'tests/os_path_stat.py/x'
+False
+[exit 1]

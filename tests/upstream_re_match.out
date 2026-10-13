@@ -1,0 +1,336 @@
+search 'x*' 'axx' (0, 0) ''
+search 'x+' 'axx' (1, 3) 'xx'
+search 'x' 'aaa' None
+match 'a*' 'xxx' (0, 0) ''
+match 'x*' 'xxxa' (0, 3) 'xxx'
+match 'a+' 'xxx' None
+match '(ab|ba)' 'ab' (0, 2) 'ab' ['ab'] (0, 2) last=1/None
+match '(ab|ba)' 'ba' (0, 2) 'ba' ['ba'] (0, 2) last=1/None
+match '(abc|bac|ca|cb)' 'abc' (0, 3) 'abc' ['abc'] (0, 3) last=1/None
+match '(abc|bac|ca|cb)' 'bac' (0, 3) 'bac' ['bac'] (0, 3) last=1/None
+match '(abc|bac|ca|cb)' 'ca' (0, 2) 'ca' ['ca'] (0, 2) last=1/None
+match '(abc|bac|ca|cb)' 'cb' (0, 2) 'cb' ['cb'] (0, 2) last=1/None
+match '((a)|(b)|(c))' 'a' (0, 1) 'a' ['a', 'a', None, None] (0, 1) (0, 1) (-1, -1) (-1, -1) last=1/None
+match '((a)|(b)|(c))' 'b' (0, 1) 'b' ['b', None, 'b', None] (0, 1) (-1, -1) (0, 1) (-1, -1) last=1/None
+match '((a)|(b)|(c))' 'c' (0, 1) 'c' ['c', None, None, 'c'] (0, 1) (-1, -1) (-1, -1) (0, 1) last=1/None
+match 'a' 'a' (0, 1) 'a'
+match '(a)' 'a' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match 'à' 'à' ('', 'à') 'à'
+match '(à)' 'à' ('', 'à') 'à' ['à'] ('', 'à') last=1/None
+match 'а' 'а' ('', 'а') 'а'
+match '(а)' 'а' ('', 'а') 'а' ['а'] ('', 'а') last=1/None
+match '𝒜' '𝒜' ('', '𝒜') '𝒜'
+match '(𝒜)' '𝒜' ('', '𝒜') '𝒜' ['𝒜'] ('', '𝒜') last=1/None
+match '((a)|(b))(c)?' 'a' (0, 1) 'a' ['a', 'a', None, None] (0, 1) (0, 1) (-1, -1) (-1, -1) last=1/None
+match '((a)|(b))(c)?' 'b' (0, 1) 'b' ['b', None, 'b', None] (0, 1) (-1, -1) (0, 1) (-1, -1) last=1/None
+match '((a)|(b))(c)?' 'ac' (0, 2) 'ac' ['a', 'a', None, 'c'] (0, 1) (0, 1) (-1, -1) (1, 2) last=4/None
+match '((a)|(b))(c)?' 'bc' (0, 2) 'bc' ['b', None, 'b', 'c'] (0, 1) (-1, -1) (0, 1) (1, 2) last=4/None
+match '(?:(?P<a1>a)|(?P<b2>b))(?P<c3>c)?' 'a' (0, 1) 'a' ['a', None, None] (0, 1) (-1, -1) (-1, -1) last=1/a1
+match '(?:(?P<a1>a)|(?P<b2>b))(?P<c3>c)?' 'b' (0, 1) 'b' [None, 'b', None] (-1, -1) (0, 1) (-1, -1) last=2/b2
+match '(?:(?P<a1>a)|(?P<b2>b))(?P<c3>c)?' 'ac' (0, 2) 'ac' ['a', None, 'c'] (0, 1) (-1, -1) (1, 2) last=3/c3
+fullmatch 'a' 'a' (0, 1) 'a'
+fullmatch 'a|ab' 'ab' (0, 2) 'ab'
+fullmatch '\\xe0|\\xe0\\xdf' 'àß' ('', 'àß') 'àß'
+fullmatch 'а|аб' 'аб' ('', 'аб') 'аб'
+fullmatch '𝒜|𝒜𝒞' '𝒜𝒞' ('', '𝒜𝒞') '𝒜𝒞'
+fullmatch '.*?$' 'abc' (0, 3) 'abc'
+fullmatch '.*?' 'abc' (0, 3) 'abc'
+fullmatch 'a.*?b' 'ab' (0, 2) 'ab'
+fullmatch 'a.*?b' 'abb' (0, 3) 'abb'
+fullmatch 'a.*?b' 'axxb' (0, 4) 'axxb'
+fullmatch 'a+' 'ab' None
+fullmatch 'abc$' 'abc\n' None
+fullmatch 'abc\\Z' 'abc\n' None
+fullmatch '(?m)abc$' 'abc\n' None
+fullmatch 'ab(?=c)cd' 'abcd' (0, 4) 'abcd'
+fullmatch 'ab(?<=b)cd' 'abcd' (0, 4) 'abcd'
+fullmatch '(?=a|ab)ab' 'ab' (0, 2) 'ab'
+match '^(\\()?([^()]+)(?(1)\\))$' '(a)' (0, 3) '(a)' ['(', 'a'] (0, 1) (1, 2) last=2/None
+match '^(\\()?([^()]+)(?(1)\\))$' 'a' (0, 1) 'a' [None, 'a'] (-1, -1) (0, 1) last=2/None
+match '^(\\()?([^()]+)(?(1)\\))$' 'a)' None
+match '^(\\()?([^()]+)(?(1)\\))$' '(a' None
+match '^(?:(a)|c)((?(1)b|d))$' 'ab' (0, 2) 'ab' ['a', 'b'] (0, 1) (1, 2) last=2/None
+match '^(?:(a)|c)((?(1)b|d))$' 'cd' (0, 2) 'cd' [None, 'd'] (-1, -1) (1, 2) last=2/None
+match '^(?:(a)|c)((?(1)|d))$' 'cd' (0, 2) 'cd' [None, 'd'] (-1, -1) (1, 2) last=2/None
+match '^(?:(a)|c)((?(1)|d))$' 'a' (0, 1) 'a' ['a', ''] (0, 1) (1, 1) last=2/None
+match '(?P<g1>a)(?P<g2>b)?((?(g2)c|d))' 'abc' (0, 3) 'abc' ['a', 'b', 'c'] (0, 1) (1, 2) (2, 3) last=3/None
+match '(?P<g1>a)(?P<g2>b)?((?(g2)c|d))' 'ad' (0, 2) 'ad' ['a', None, 'd'] (0, 1) (-1, -1) (1, 2) last=3/None
+match '(?P<g1>a)(?P<g2>b)?((?(g2)c|d))' 'abd' None
+match '(?P<g1>a)(?P<g2>b)?((?(g2)c|d))' 'ac' None
+match '(?P<quote>)(?(quote))' '' (0, 0) '' [''] (0, 0) last=1/quote
+match '^(\\|)?([^()]+)\\1$' '|a|' (0, 3) '|a|' ['|', 'a'] (0, 1) (1, 2) last=2/None
+match '^(\\|)?([^()]+)\\1?$' 'a' (0, 1) 'a' [None, 'a'] (-1, -1) (0, 1) last=2/None
+match '^(\\|)?([^()]+)\\1$' 'a|' None
+match '^(\\|)?([^()]+)\\1$' '|a' None
+match '^(?:(a)|c)(\\1)$' 'aa' (0, 2) 'aa' ['a', 'a'] (0, 1) (1, 2) last=2/None
+match '^(?:(a)|c)(\\1)?$' 'c' (0, 1) 'c' [None, None] (-1, -1) (-1, -1) last=None/None
+match '(?P<a>x)(?P=a)(?(a)y)' 'xxy' (0, 3) 'xxy' ['x'] (0, 1) last=1/a
+match '(?P<a1>x)(?P=a1)(?(a1)y)' 'xxy' (0, 3) 'xxy' ['x'] (0, 1) last=1/a1
+match '(?P<a1>x)\\1(?(1)y)' 'xxy' (0, 3) 'xxy' ['x'] (0, 1) last=1/a1
+match '(?P<µ>x)(?P=µ)(?(µ)y)' 'xxy' (0, 3) 'xxy' ['x'] (0, 1) last=1/µ
+match '(?P<𝔘𝔫𝔦𝔠𝔬𝔡𝔢>x)(?P=𝔘𝔫𝔦𝔠𝔬𝔡𝔢)(?(𝔘𝔫𝔦𝔠𝔬𝔡𝔢)y)' 'xxy' (0, 3) 'xxy' ['x'] (0, 1) last=1/𝔘𝔫𝔦𝔠𝔬𝔡𝔢
+match '^(\\w){1}$' 'abc' None
+match '^(\\w){1}?$' 'abc' None
+match '^(\\w){1,2}$' 'abc' None
+match '^(\\w){1,2}?$' 'abc' None
+match '^(\\w){3}$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,3}$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,4}$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){3,4}?$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){3}?$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,3}?$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,4}?$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^x{1}$' 'xxx' None
+match '^x{1}?$' 'xxx' None
+match '^x{1,2}$' 'xxx' None
+match '^x{1,2}?$' 'xxx' None
+match '^x{3}$' 'xxx' (0, 3) 'xxx'
+match '^x{1,3}$' 'xxx' (0, 3) 'xxx'
+match '^x{3,3}$' 'xxx' (0, 3) 'xxx'
+match '^x{1,4}$' 'xxx' (0, 3) 'xxx'
+match '^x{3,4}?$' 'xxx' (0, 3) 'xxx'
+match '^x{3}?$' 'xxx' (0, 3) 'xxx'
+match '^x{1,3}?$' 'xxx' (0, 3) 'xxx'
+match '^x{1,4}?$' 'xxx' (0, 3) 'xxx'
+match '^x{}$' 'xxx' None
+match '^x{}$' 'x{}' (0, 3) 'x{}'
+match '(a(?=\\s[^a]))' 'a b' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a(?=\\s[^a]*))' 'a b' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a(?=\\s[abc]))' 'a b' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a(?=\\s[abc]*))' 'a bc' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a)(?=\\s\\1)' 'a a' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a)(?=\\s\\1*)' 'a aa' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a)(?=\\s(abc|a))' 'a a' (0, 1) 'a' ['a', 'a'] (0, 1) (2, 3) last=2/None
+match '(a(?!\\s[^a]))' 'a a' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a(?!\\s[abc]))' 'a d' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a)(?!\\s\\1)' 'a b' (0, 1) 'a' ['a'] (0, 1) last=1/None
+match '(a)(?!\\s(abc|a))' 'a b' (0, 1) 'a' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(a)b(?=\\1)a' 'aba' (0, 3) 'aba' ['a'] (0, 1) last=1/None
+match '(a)b(?=\\1)c' 'abac' None
+match '(?:(a)|(x))b(?=(?(2)x|c))c' 'abc' (0, 3) 'abc' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(?:(a)|(x))b(?=(?(2)c|x))c' 'abc' None
+match '(?:(a)|(x))b(?=(?(1)b|x))c' 'abc' None
+match '(?:(a)|(x))b(?=(?(1)c|x))c' 'abc' (0, 3) 'abc' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(a)b(?=(?(2)x|c))(c)' 'abc' (0, 3) 'abc' ['a', 'c'] (0, 1) (2, 3) last=2/None
+match '(a)b(?=(?(2)b|x))(c)' 'abc' None
+match '(a)b(?=(?(1)c|x))(c)' 'abc' (0, 3) 'abc' ['a', 'c'] (0, 1) (2, 3) last=2/None
+match 'ab(?<=b)c' 'abc' (0, 3) 'abc'
+match 'ab(?<=c)c' 'abc' None
+match 'ab(?<!b)c' 'abc' None
+match 'ab(?<!c)c' 'abc' (0, 3) 'abc'
+match '(a)a(?<=\\1)c' 'aac' (0, 3) 'aac' ['a'] (0, 1) last=1/None
+match '(a)b(?<=\\1)a' 'abaa' None
+match '(a)a(?<!\\1)c' 'aac' None
+match '(a)b(?<!\\1)a' 'abaa' (0, 3) 'aba' ['a'] (0, 1) last=1/None
+match '(?:(a)|(x))b(?<=(?(2)x|c))c' 'abc' None
+match '(?:(a)|(x))b(?<=(?(2)b|x))c' 'abc' None
+match '(?:(a)|(x))b(?<=(?(2)x|b))c' 'abc' (0, 3) 'abc' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(?:(a)|(x))b(?<=(?(1)c|x))c' 'abc' None
+match '(?:(a)|(x))b(?<=(?(1)b|x))c' 'abc' (0, 3) 'abc' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(a)b(?<=(?(1)c|x))(c)' 'abc' None
+match '(a)b(?<=(?(1)b|x))(c)' 'abc' (0, 3) 'abc' ['a', 'c'] (0, 1) (2, 3) last=2/None
+match '(a)|(b)' 'b' (0, 1) 'b' [None, 'b'] (-1, -1) (0, 1) last=2/None
+match '(a)?a' 'a' (0, 1) 'a' [None] (-1, -1) last=None/None
+match '(a)(b)?b' 'ab' (0, 2) 'ab' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(?P<a>a)(?P<b>b)?b' 'ab' (0, 2) 'ab' ['a', None] (0, 1) (-1, -1) last=1/a
+match '(?P<a>a(b))' 'ab' (0, 2) 'ab' ['ab', 'b'] (0, 2) (1, 2) last=1/a
+match '((a))' 'a' (0, 1) 'a' ['a', 'a'] (0, 1) (0, 1) last=1/None
+match '(?:a?)*y' 'z' None
+match '(?:a?)+y' 'z' None
+match '(?:a?){2,}y' 'z' None
+match '(?:a?)*?y' 'z' None
+match '(?:a?)+?y' 'z' None
+match '(?:a?){2,}?y' 'z' None
+match '((.):)?z' 'z' (0, 1) 'z' [None, None] (-1, -1) (-1, -1) last=None/None
+match '((.):)?z' 'a:z' (0, 3) 'a:z' ['a:', 'a'] (0, 2) (0, 1) last=1/None
+match '((.?):)?z' 'z' (0, 1) 'z' [None, None] (-1, -1) (-1, -1) last=None/None
+match '((.?):)?z' 'a:z' (0, 3) 'a:z' ['a:', 'a'] (0, 2) (0, 1) last=1/None
+match '((.*):)?z' 'z' (0, 1) 'z' [None, None] (-1, -1) (-1, -1) last=None/None
+match '((.*):)?z' 'a:z' (0, 3) 'a:z' ['a:', 'a'] (0, 2) (0, 1) last=1/None
+match '^((a)|b)*' 'abc' (0, 2) 'ab' ['b', 'a'] (1, 2) (0, 1) last=1/None
+match '^(([ab])|c)*' 'abc' (0, 3) 'abc' ['c', 'b'] (2, 3) (1, 2) last=1/None
+match '^((d)|[ab])*' 'abc' (0, 2) 'ab' ['b', None] (1, 2) (-1, -1) last=1/None
+match '^((a)c|[ab])*' 'abc' (0, 2) 'ab' ['b', None] (1, 2) (-1, -1) last=1/None
+match '^((a)|b)*?c' 'abc' (0, 3) 'abc' ['b', 'a'] (1, 2) (0, 1) last=1/None
+match '^(([ab])|c)*?d' 'abcd' (0, 4) 'abcd' ['c', 'b'] (2, 3) (1, 2) last=1/None
+match '^((d)|[ab])*?c' 'abc' (0, 3) 'abc' ['b', None] (1, 2) (-1, -1) last=1/None
+match '^((a)c|[ab])*?c' 'abc' (0, 3) 'abc' ['b', None] (1, 2) (-1, -1) last=1/None
+match '(a)(?:(?=(b)*)c)*' 'abb' (0, 1) 'a' ['a', None] (0, 1) (-1, -1) last=1/None
+match '(a)((?!(b)*))*' 'abb' (0, 1) 'a' ['a', None, None] (0, 1) (-1, -1) (-1, -1) last=1/None
+search '\\b(?=(\\t)|(x))x' 'a\tx' (2, 3) 'x' [None, 'x'] (-1, -1) (2, 3) last=2/None
+match '(ab|a)*?b' 'ab' (0, 2) 'ab' ['a'] (0, 1) last=1/None
+match '(ab|a)+?b' 'ab' (0, 2) 'ab' ['a'] (0, 1) last=1/None
+match '(ab|a){0,2}?b' 'ab' (0, 2) 'ab' ['a'] (0, 1) last=1/None
+match '(.b|a)*?b' 'ab' (0, 2) 'ab' ['a'] (0, 1) last=1/None
+match '(?:(?:a|bc)*?(xx)??z)*' 'axxzbcz' (0, 7) 'axxzbcz' ['xx'] (1, 3) last=1/None
+match '((x|yz)+?(t)??c)*' 'xtcxyzxc' (0, 8) 'xtcxyzxc' ['xyzxc', 'x', 't'] (3, 8) (6, 7) (1, 2) last=1/None
+match '(?:[^b]*a(?=(b)|(a))ab)*' 'aabaab' (0, 6) 'aabaab' [None, 'a'] (-1, -1) (4, 5) last=2/None
+match '(?:[^b]*(?=(b)|(a))ab)*' 'abab' (0, 4) 'abab' [None, 'a'] (-1, -1) (2, 3) last=2/None
+match '(ab?)*?b' 'ab' (0, 2) 'ab' ['a'] (0, 1) last=1/None
+match '(?:.*?(?=(a)|(b))b)*' 'abab' (0, 4) 'abab' [None, 'b'] (-1, -1) (3, 4) last=2/None
+match '(?:a*?(xx)??z)*' 'axxzaz' (0, 6) 'axxzaz' ['xx'] (1, 3) last=1/None
+match '(?!(..)c)' 'ab' (0, 0) '' [None] (-1, -1) last=None/None
+match '((?!(ab)c)(.))*' 'abab' (0, 4) 'abab' ['b', None, 'b'] (3, 4) (-1, -1) (3, 4) last=1/None
+match 'e*+e' 'eeee' None
+match 'e++a' 'eeea' (0, 4) 'eeea'
+match 'e?+a' 'ea' (0, 2) 'ea'
+match 'e{2,4}+a' 'eeea' (0, 4) 'eeea'
+match '(.)++.' 'ee' None
+match '(ae)*+a' 'aea' (0, 3) 'aea' ['ae'] (0, 2) last=1/None
+match '([ae][ae])?+a' 'aea' (0, 3) 'aea' ['ae'] (0, 2) last=1/None
+match '(e?){2,4}+a' 'eeea' (0, 4) 'eeea' [''] (3, 3) last=1/None
+match '()*+a' 'a' (0, 1) 'a' [''] (0, 0) last=1/None
+search 'x*+' 'axx' (0, 0) ''
+search 'x++' 'axx' (1, 3) 'xx'
+match 'a*+' 'xxx' (0, 0) ''
+match 'x*+' 'xxxa' (0, 3) 'xxx'
+match 'a++' 'xxx' None
+match '^(\\w){1}+$' 'abc' None
+match '^(\\w){1,2}+$' 'abc' None
+match '^(\\w){3}+$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,3}+$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^(\\w){1,4}+$' 'abc' (0, 3) 'abc' ['c'] (2, 3) last=1/None
+match '^x{1}+$' 'xxx' None
+match '^x{1,2}+$' 'xxx' None
+match '^x{3}+$' 'xxx' (0, 3) 'xxx'
+match '^x{1,3}+$' 'xxx' (0, 3) 'xxx'
+match '^x{1,4}+$' 'xxx' (0, 3) 'xxx'
+match '^x{}+$' 'xxx' None
+match '^x{}+$' 'x{}' (0, 3) 'x{}'
+fullmatch 'a++' 'a' (0, 1) 'a'
+fullmatch 'a*+' 'a' (0, 1) 'a'
+fullmatch 'a?+' 'a' (0, 1) 'a'
+fullmatch 'a{1,3}+' 'a' (0, 1) 'a'
+fullmatch 'a++' 'ab' None
+fullmatch 'a*+' 'ab' None
+fullmatch 'a?+' 'ab' None
+fullmatch 'a{1,3}+' 'ab' None
+fullmatch 'a++b' 'ab' (0, 2) 'ab'
+fullmatch 'a*+b' 'ab' (0, 2) 'ab'
+fullmatch 'a?+b' 'ab' (0, 2) 'ab'
+fullmatch 'a{1,3}+b' 'ab' (0, 2) 'ab'
+fullmatch '(?:ab)++' 'ab' (0, 2) 'ab'
+fullmatch '(?:ab)*+' 'ab' (0, 2) 'ab'
+fullmatch '(?:ab)?+' 'ab' (0, 2) 'ab'
+fullmatch '(?:ab){1,3}+' 'ab' (0, 2) 'ab'
+fullmatch '(?:ab)++' 'abc' None
+fullmatch '(?:ab)*+' 'abc' None
+fullmatch '(?:ab)?+' 'abc' None
+fullmatch '(?:ab){1,3}+' 'abc' None
+fullmatch '(?:ab)++c' 'abc' (0, 3) 'abc'
+fullmatch '(?:ab)*+c' 'abc' (0, 3) 'abc'
+fullmatch '(?:ab)?+c' 'abc' (0, 3) 'abc'
+fullmatch '(?:ab){1,3}+c' 'abc' (0, 3) 'abc'
+match 'a(?>bc|b)c' 'abc' None
+match 'a(?>bc|b)c' 'abcc' (0, 4) 'abcc'
+match '(?>.*).' 'abc' None
+match '(?>x)++' 'xxx' (0, 3) 'xxx'
+match '(?>x++)' 'xxx' (0, 3) 'xxx'
+match '(?>x)++x' 'xxx' None
+match '(?>x++)x' 'xxx' None
+fullmatch '(?>a+)' 'a' (0, 1) 'a'
+fullmatch '(?>a*)' 'a' (0, 1) 'a'
+fullmatch '(?>a?)' 'a' (0, 1) 'a'
+fullmatch '(?>a{1,3})' 'a' (0, 1) 'a'
+fullmatch '(?>a+)' 'ab' None
+fullmatch '(?>a*)' 'ab' None
+fullmatch '(?>a?)' 'ab' None
+fullmatch '(?>a{1,3})' 'ab' None
+fullmatch '(?>a+)b' 'ab' (0, 2) 'ab'
+fullmatch '(?>a*)b' 'ab' (0, 2) 'ab'
+fullmatch '(?>a?)b' 'ab' (0, 2) 'ab'
+fullmatch '(?>a{1,3})b' 'ab' (0, 2) 'ab'
+fullmatch '(?>(?:ab)+)' 'ab' (0, 2) 'ab'
+fullmatch '(?>(?:ab)*)' 'ab' (0, 2) 'ab'
+fullmatch '(?>(?:ab)?)' 'ab' (0, 2) 'ab'
+fullmatch '(?>(?:ab){1,3})' 'ab' (0, 2) 'ab'
+fullmatch '(?>(?:ab)+)' 'abc' None
+fullmatch '(?>(?:ab)*)' 'abc' None
+fullmatch '(?>(?:ab)?)' 'abc' None
+fullmatch '(?>(?:ab){1,3})' 'abc' None
+fullmatch '(?>(?:ab)+)c' 'abc' (0, 3) 'abc'
+fullmatch '(?>(?:ab)*)c' 'abc' (0, 3) 'abc'
+fullmatch '(?>(?:ab)?)c' 'abc' (0, 3) 'abc'
+fullmatch '(?>(?:ab){1,3})c' 'abc' (0, 3) 'abc'
+fullmatch '(?s:(?>.*?\\.).*)\\Z' 'a.txt' (0, 5) 'a.txt'
+fullmatch '(?s:(?=(?P<g0>.*?\\.))(?P=g0).*)\\Z' 'a.txt' (0, 5) 'a.txt' ['a.'] (0, 2) last=1/g0
+match '(?>(?:.(?!D))+)' 'ABCDE' (0, 2) 'AB'
+match '(?:.(?!D))++' 'ABCDE' (0, 2) 'AB'
+match '(?>(?:.(?!D))*)' 'ABCDE' (0, 2) 'AB'
+match '(?:.(?!D))*+' 'ABCDE' (0, 2) 'AB'
+match '(?>(?:.(?!D))?)' 'CDE' (0, 0) ''
+match '(?:.(?!D))?+' 'CDE' (0, 0) ''
+match '(?>(?:.(?!D)){1,3})' 'ABCDE' (0, 2) 'AB'
+match '(?:.(?!D)){1,3}+' 'ABCDE' (0, 2) 'AB'
+match '(?>(?:ab?c)+)' 'aca' (0, 2) 'ac'
+match '(?:ab?c)++' 'aca' (0, 2) 'ac'
+match '(?>(?:ab?c)*)' 'aca' (0, 2) 'ac'
+match '(?:ab?c)*+' 'aca' (0, 2) 'ac'
+match '(?>(?:ab?c)?)' 'a' (0, 0) ''
+match '(?:ab?c)?+' 'a' (0, 0) ''
+match '(?>(?:ab?c){1,3})' 'aca' (0, 2) 'ac'
+match '(?:ab?c){1,3}+' 'aca' (0, 2) 'ac'
+match '((x)|y|z)*+' 'xyz' (0, 3) 'xyz' ['z', 'x'] (2, 3) (0, 1) last=1/None
+match '((x)|y|z){3}+' 'xyz' (0, 3) 'xyz' ['z', 'x'] (2, 3) (0, 1) last=1/None
+match '((x)|y|z){3,}+' 'xyz' (0, 3) 'xyz' ['z', 'x'] (2, 3) (0, 1) last=1/None
+search '12(?!)|3' '123' (2, 3) '3'
+fullmatch '(?:[\\s\\S])+' '1x\n' (0, 3) '1x\n'
+fullmatch '(?:[\\d\\D])+' '1x\n' (0, 3) '1x\n'
+fullmatch '(?:[\\w\\W])+' '1x\n' (0, 3) '1x\n'
+fullmatch '(?:[\\S\\s])+' '1x\n' (0, 3) '1x\n'
+fullmatch '(?:\\s|\\S)+' '1x\n' (0, 3) '1x\n'
+search '[^\\s\\S]' '1x\n' None
+search '[^\\d\\D]' '1x\n' None
+search '[^\\w\\W]' '1x\n' None
+search '[^\\S\\s]' '1x\n' None
+search '(?s:.)[^\\s\\S]' '1x\n' None
+search '(?s:.)[^\\d\\D]' '1x\n' None
+search '(?s:.)[^\\w\\W]' '1x\n' None
+search '(?s:.)[^\\S\\s]' '1x\n' None
+bug_2537 '^((x|y){0,}){0,}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)*){0,}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)?){0,}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y){0,})*' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)*)*' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)?)*' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y){0,})+' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)*)+' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)?)+' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y){0,}){1,187}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)*){1,187}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+bug_2537 '^((x|y)?){1,187}' (0, 3) 'xyy' ['', 'y'] (3, 3) (2, 3) last=1/None
+a a ('a', 'a')
+'a' ('a', None, None) ('a', None, None) ('a', None, None) a None None a a None None
+'b' (None, 'b', None) (None, 'b', None) (None, 'b', None) None b None b None b None
+'ac' ('a', None, 'c') ('a', None, 'c') ('a', None, 'c') a None c ac a None c
+ab ab a ('b', 'a')
+-1 -1 (-1, -1)
+(1, 3) 'bc' (1, 3) 'bc' (1, 3) 'bc'
+(7, 9) 'ab' ['ab'] (7, 9) last=1/None (7, 9) 'ab' ['ab'] (7, 9) last=1/None (7, 9) 'ab' ['ab'] (7, 9) last=1/None ['ab'] ['', 'ab', 'racadabra']
+(0, 5) c8 None 200 a200
+(0, 5) c8 None 200 a200
+256
+1001
+1003
+3001
+1001
+x (0, 2500)
+x (0, 2501)
+x (0, 2501)
+'.{65535}' (0, 65535)
+'.{,65535}' (0, 65535)
+'.{65535,}?' (0, 65535)
+'.{65536}' (0, 65536)
+'.{,65536}' (0, 65536)
+'.{65536,}?' (0, 65536)
+(512, 512)
+(0, 0)
+2 2
+2 2
+2 2
+'\\Ay' None True [] [] True
+'^y' None True [] [] True
+(0, 1) '1' (0, 1) '2' 1089
+1000 1000
+'a(function() {\n            ///////////////////////////////////////////////////////////////////\n        });'
+[exit 0]

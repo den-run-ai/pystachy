@@ -7,6 +7,11 @@
 #   tests-native   tests/run.sh with the stage-2 native compiler, JIT and AOT
 #   tests-opt-off  tests/run.sh with the stage-2 compiler and every optimization on the IR turned off
 #                  (PYSTACHY_OPT=-all): the passes change no output
+#   runtime-cache  tests/cache.sh with both compilers: the cached runtime is used while nothing it is
+#                  built from changes, built again when runtime.c, runtime.py, the compiler or a tool
+#                  changes (also by a same-size edit whose mtime is set back, or one made while it is
+#                  built), keyed by the flags too, never left by a failed build; ext's glue cached
+#                  beside it; a run's own runtime while a tool is not settled; PATH's rules
 #   python-free    PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools that the
 #                  driver and tests/run.sh call (no python3): the native compiler rebuilds its runtime
 #                  and itself, reproduces the same IR and passes the tests
@@ -25,6 +30,9 @@
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
+#   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
+#                  errors CPython's re does and matches, splits and substitutes as it does, on CPython's
+#                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
 #   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
 #                  signature in runtime.py, runtime.c and every program of the corpus
 #   inherited-ast tools/inheritprobe.py: unused inherited methods retain linear AST storage
@@ -37,8 +45,9 @@
 #                  including ordering and list searches, normally and with GC stress
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings)
-#   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types and
-#                  specialization breadth under 256 MiB / ten CPU seconds, with short diagnostics;
+#   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types,
+#                  specialization breadth and the signature bytes specializations retain under
+#                  256 MiB / ten CPU seconds, with short diagnostics;
 #                  finite controls and reuse at the retained-instance boundary still compile
 #   jit-dead-code  tools/jitprobe.py: unused functions never reach lli; live code and runtime callbacks
 #                  still execute as in CPython, with both compilers
@@ -170,6 +179,15 @@ for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
 x=$(tests $((nl * ALL)) $logs 2>> "$L") && r=pass || r=fail
 step tests-opt-off $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"']'"$x"
 
+# ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
+# whose checks are 56 with the native compiler and 55 with CPython's, which runs no PATH search)
+L=$V/runtime-cache.log; s=$(now)
+PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
+tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
+for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
+x=$(tests $((56 + 55)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
+
 # ---- python-free: the native compiler and the tests with only LLVM + POSIX tools on PATH
 L=$V/python-free.log; s=$(now); r=fail; py=true
 NP=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-path.XXXXXX")
@@ -269,6 +287,11 @@ step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\
 L=$V/rtcheck.log; s=$(now); r=fail
 $PY tools/rtcheck.py > "$L" 2>&1 && r=pass
 step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
+
+# ---- re-fuzz: lib/re on CPython against CPython's own re, on random patterns and test_re's largest cases
+L=$V/re-fuzz.log; s=$(now); r=fail
+$PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
+step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
 
 # ---- rt-abi: one signature per runtime function across runtime.py, runtime.c and the corpus
 L=$V/rt-abi.log; s=$(now); r=fail

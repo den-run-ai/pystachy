@@ -1,0 +1,324 @@
+match '^pattern$' 'pattern' 2 (0, 7) 'pattern'
+match '^pattern$' 'pattern' 8 (0, 7) 'pattern'
+match '^pattern$' 'pattern' 64 (0, 7) 'pattern'
+match '^pattern$' 'pattern' 16 (0, 7) 'pattern'
+match '^pattern$' 'pattern' 256 (0, 7) 'pattern'
+match '^pattern$' 'pattern' 32 (0, 7) 'pattern'
+match 'abc' 'ABC' 2 (0, 3) 'ABC'
+match '(a\\s[^a])' 'a b' 2 (0, 3) 'a b' ['a b']
+match '(a\\s[^a]*)' 'a bb' 2 (0, 4) 'a bb' ['a bb']
+match '(a\\s[abc])' 'a b' 2 (0, 3) 'a b' ['a b']
+match '(a\\s[abc]*)' 'a bb' 2 (0, 4) 'a bb' ['a bb']
+match '((a)\\s\\2)' 'a a' 2 (0, 3) 'a a' ['a a', 'a']
+match '((a)\\s\\2*)' 'a aa' 2 (0, 4) 'a aa' ['a aa', 'a']
+match '((a)\\s(abc|a))' 'a a' 2 (0, 3) 'a a' ['a a', 'a', 'a']
+match '((a)\\s(abc|a)*)' 'a aa' 2 (0, 4) 'a aa' ['a aa', 'a', 'a']
+match 'K' 'K' 2 ('', 'K') 'K'
+match 'k' 'K' 2 ('', 'K') 'K'
+match '\\u212a' 'K' 2 (0, 1) 'K'
+match '\\u212a' 'k' 2 (0, 1) 'k'
+match 'S' 'ſ' 2 ('', 'ſ') 'ſ'
+match 's' 'ſ' 2 ('', 'ſ') 'ſ'
+match '\\u017f' 'S' 2 (0, 1) 'S'
+match '\\u017f' 's' 2 (0, 1) 's'
+match '\\u0412' 'в' 2 ('', 'в') 'в'
+match '\\u0412' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '\\u0432' 'В' 2 ('', 'В') 'В'
+match '\\u0432' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '\\u1c80' 'В' 2 ('', 'В') 'В'
+match '\\u1c80' 'в' 2 ('', 'в') 'в'
+match '\\ufb05' 'ﬆ' 2 ('', 'ﬆ') 'ﬆ'
+match '\\ufb06' 'ﬅ' 2 ('', 'ﬅ') 'ﬅ'
+match '[19A]' 'A' 2 (0, 1) 'A'
+match '[19a]' 'a' 2 (0, 1) 'a'
+match '[19a]' 'A' 2 (0, 1) 'A'
+match '[19A]' 'a' 2 (0, 1) 'a'
+match '[19\\xc7]' 'Ç' 2 ('', 'Ç') 'Ç'
+match '[19\\xc7]' 'ç' 2 ('', 'ç') 'ç'
+match '[19\\xe7]' 'Ç' 2 ('', 'Ç') 'Ç'
+match '[19\\xe7]' 'ç' 2 ('', 'ç') 'ç'
+match '[19\\u0400]' 'Ѐ' 2 ('', 'Ѐ') 'Ѐ'
+match '[19\\u0400]' 'ѐ' 2 ('', 'ѐ') 'ѐ'
+match '[19\\u0450]' 'Ѐ' 2 ('', 'Ѐ') 'Ѐ'
+match '[19\\u0450]' 'ѐ' 2 ('', 'ѐ') 'ѐ'
+match '[19\\U00010400]' '𐐀' 2 ('', '𐐀') '𐐀'
+match '[19\\U00010400]' '𐐨' 2 ('', '𐐨') '𐐨'
+match '[19\\U00010428]' '𐐀' 2 ('', '𐐀') '𐐀'
+match '[19\\U00010428]' '𐐨' 2 ('', '𐐨') '𐐨'
+match '[19A]' 'A' 258 (0, 1) 'A'
+match '[19a]' 'a' 258 (0, 1) 'a'
+match '[19a]' 'A' 258 (0, 1) 'A'
+match '[19A]' 'a' 258 (0, 1) 'a'
+match '[19\\xc7]' 'Ç' 258 ('', 'Ç') 'Ç'
+match '[19\\xc7]' 'ç' 258 None
+match '[19\\xe7]' 'Ç' 258 None
+match '[19\\xe7]' 'ç' 258 ('', 'ç') 'ç'
+match '[19\\u0400]' 'Ѐ' 258 ('', 'Ѐ') 'Ѐ'
+match '[19\\u0400]' 'ѐ' 258 None
+match '[19\\u0450]' 'Ѐ' 258 None
+match '[19\\u0450]' 'ѐ' 258 ('', 'ѐ') 'ѐ'
+match '[19\\U00010400]' '𐐀' 258 ('', '𐐀') '𐐀'
+match '[19\\U00010400]' '𐐨' 258 None
+match '[19\\U00010428]' '𐐀' 258 None
+match '[19\\U00010428]' '𐐨' 258 ('', '𐐨') '𐐨'
+match '[19K]' 'K' 2 ('', 'K') 'K'
+match '[19k]' 'K' 2 ('', 'K') 'K'
+match '[19\\u212a]' 'K' 2 (0, 1) 'K'
+match '[19\\u212a]' 'k' 2 (0, 1) 'k'
+match '[19S]' 'ſ' 2 ('', 'ſ') 'ſ'
+match '[19s]' 'ſ' 2 ('', 'ſ') 'ſ'
+match '[19\\u017f]' 'S' 2 (0, 1) 'S'
+match '[19\\u017f]' 's' 2 (0, 1) 's'
+match '[19\\u0412]' 'в' 2 ('', 'в') 'в'
+match '[19\\u0412]' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '[19\\u0432]' 'В' 2 ('', 'В') 'В'
+match '[19\\u0432]' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '[19\\u1c80]' 'В' 2 ('', 'В') 'В'
+match '[19\\u1c80]' 'в' 2 ('', 'в') 'в'
+match '[19\\ufb05]' 'ﬆ' 2 ('', 'ﬆ') 'ﬆ'
+match '[19\\ufb06]' 'ﬅ' 2 ('', 'ﬅ') 'ﬅ'
+match '[9-a]' '_' 2 (0, 1) '_'
+match '[9-A]' '_' 2 None
+match '[\\xc0-\\xde]' '×' 2 ('', '×') '×'
+match '[\\xc0-\\xde]' 'ç' 2 ('', 'ç') 'ç'
+match '[\\xc0-\\xde]' '÷' 2 None
+match '[\\xe0-\\xfe]' '÷' 2 ('', '÷') '÷'
+match '[\\xe0-\\xfe]' 'Ç' 2 ('', 'Ç') 'Ç'
+match '[\\xe0-\\xfe]' '×' 2 None
+match '[\\u0430-\\u045f]' 'ѐ' 2 ('', 'ѐ') 'ѐ'
+match '[\\u0430-\\u045f]' 'Ѐ' 2 ('', 'Ѐ') 'Ѐ'
+match '[\\u0400-\\u042f]' 'ѐ' 2 ('', 'ѐ') 'ѐ'
+match '[\\u0400-\\u042f]' 'Ѐ' 2 ('', 'Ѐ') 'Ѐ'
+match '[\\U00010428-\\U0001044f]' '𐐨' 2 ('', '𐐨') '𐐨'
+match '[\\U00010428-\\U0001044f]' '𐐀' 2 ('', '𐐀') '𐐀'
+match '[\\U00010400-\\U00010427]' '𐐨' 2 ('', '𐐨') '𐐨'
+match '[\\U00010400-\\U00010427]' '𐐀' 2 ('', '𐐀') '𐐀'
+match '[\\xc0-\\xde]' '×' 258 ('', '×') '×'
+match '[\\xc0-\\xde]' 'ç' 258 None
+match '[\\xe0-\\xfe]' '÷' 258 ('', '÷') '÷'
+match '[\\xe0-\\xfe]' 'Ç' 258 None
+match '[\\u0430-\\u045f]' 'ѐ' 258 ('', 'ѐ') 'ѐ'
+match '[\\u0430-\\u045f]' 'Ѐ' 258 None
+match '[\\u0400-\\u042f]' 'ѐ' 258 None
+match '[\\u0400-\\u042f]' 'Ѐ' 258 ('', 'Ѐ') 'Ѐ'
+match '[\\U00010428-\\U0001044f]' '𐐨' 258 ('', '𐐨') '𐐨'
+match '[\\U00010428-\\U0001044f]' '𐐀' 258 None
+match '[\\U00010400-\\U00010427]' '𐐨' 258 None
+match '[\\U00010400-\\U00010427]' '𐐀' 258 ('', '𐐀') '𐐀'
+match '[N-\\x7f]' 'A' 258 (0, 1) 'A'
+match '[n-\\x7f]' 'Z' 258 (0, 1) 'Z'
+match '[J-M]' 'K' 2 ('', 'K') 'K'
+match '[j-m]' 'K' 2 ('', 'K') 'K'
+match '[\\u2129-\\u212b]' 'K' 2 (0, 1) 'K'
+match '[\\u2129-\\u212b]' 'k' 2 (0, 1) 'k'
+match '[R-T]' 'ſ' 2 ('', 'ſ') 'ſ'
+match '[r-t]' 'ſ' 2 ('', 'ſ') 'ſ'
+match '[\\u017e-\\u0180]' 'S' 2 (0, 1) 'S'
+match '[\\u017e-\\u0180]' 's' 2 (0, 1) 's'
+match '[\\u0411-\\u0413]' 'в' 2 ('', 'в') 'в'
+match '[\\u0411-\\u0413]' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '[\\u0431-\\u0433]' 'В' 2 ('', 'В') 'В'
+match '[\\u0431-\\u0433]' 'ᲀ' 2 ('', 'ᲀ') 'ᲀ'
+match '[\\u1c80-\\u1c82]' 'В' 2 ('', 'В') 'В'
+match '[\\u1c80-\\u1c82]' 'в' 2 ('', 'в') 'в'
+match '[\\ufb04-\\ufb05]' 'ﬆ' 2 ('', 'ﬆ') 'ﬆ'
+match '[\\ufb06-\\ufb07]' 'ﬅ' 2 ('', 'ﬅ') 'ﬅ'
+fullmatch '[a-c]+' 'ABC' 2 (0, 3) 'ABC'
+match '.Ạ' '\nạ' 18 ('', '\nạ') '\nạ'
+match '.ạ' '\nẠ' 18 ('', '\nẠ') '\nẠ'
+match '(?i).Ạ' '\nạ' 16 ('', '\nạ') '\nạ'
+match '(?i).ạ' '\nẠ' 16 ('', '\nẠ') '\nẠ'
+match '(?is).Ạ' '\nạ' 0 ('', '\nạ') '\nạ'
+match '(?is).ạ' '\nẠ' 0 ('', '\nẠ') '\nẠ'
+match '(?s)(?i).Ạ' '\nạ' 0 ('', '\nạ') '\nạ'
+match '(?s)(?i).ạ' '\nẠ' 0 ('', '\nẠ') '\nẠ'
+match '(?ix) Ạ' 'ạ' 0 ('', 'ạ') 'ạ'
+match '(?ix) ạ' 'Ạ' 0 ('', 'Ạ') 'Ạ'
+match ' (?i) Ạ' 'ạ' 64 ('', 'ạ') 'ạ'
+match '(?x) (?i) Ạ' 'ạ' 0 ('', 'ạ') 'ạ'
+match ' (?x) (?i) Ạ' 'ạ' 64 ('', 'ạ') 'ạ'
+match 'À' 'à' 2 ('', 'à') 'à'
+match '\\w' 'à' 0 ('', 'à') 'à'
+match 'À' 'à' 34 ('', 'à') 'à'
+match '\\w' 'à' 32 ('', 'à') 'à'
+match 'À' 'à' 258 None
+match '(?a)À' 'à' 2 None
+match '\\w' 'à' 256 None
+match '(?a)\\w' 'à' 0 None
+match '(?i:a)b' 'Ab' 0 (0, 2) 'Ab'
+match '(?i:a)b' 'aB' 0 None
+match '(?-i:a)b' 'Ab' 2 None
+match '(?-i:a)b' 'aB' 2 (0, 2) 'aB'
+match '(?i:(?-i:a)b)' 'Ab' 0 None
+match '(?i:(?-i:a)b)' 'aB' 0 (0, 2) 'aB'
+match '\\w(?a:\\W)\\w' 'ààà' 0 ('', 'ààà') 'ààà'
+match '(?a:\\W(?u:\\w)\\W)' 'ààà' 0 ('', 'ààà') 'ààà'
+match '\\W(?u:\\w)\\W' 'ààà' 256 ('', 'ààà') 'ààà'
+fullmatch ' a' 'a' 64 (0, 1) 'a'
+fullmatch '\ta' 'a' 64 (0, 1) 'a'
+fullmatch '\na' 'a' 64 (0, 1) 'a'
+fullmatch '\ra' 'a' 64 (0, 1) 'a'
+fullmatch '\x0ba' 'a' 64 (0, 1) 'a'
+fullmatch '\x0ca' 'a' 64 (0, 1) 'a'
+fullmatch '(?x) a' 'a' 0 (0, 1) 'a'
+fullmatch ' (?x) a' 'a' 64 (0, 1) 'a'
+fullmatch '(?x) (?x) a' 'a' 0 (0, 1) 'a'
+fullmatch ' a(?x: b) c' ' ab c' 0 (0, 5) ' ab c'
+fullmatch ' a(?-x: b) c' 'a bc' 64 (0, 4) 'a bc'
+fullmatch '(?x) a(?-x: b) c' 'a bc' 0 (0, 4) 'a bc'
+fullmatch '(?x) a| b' 'a' 0 (0, 1) 'a'
+fullmatch '(?x) a| b' 'b' 0 (0, 1) 'b'
+fullmatch '#x\na' 'a' 64 (0, 1) 'a'
+fullmatch '(?x)#x\na' 'a' 0 (0, 1) 'a'
+fullmatch '#x\n(?x)#y\na' 'a' 64 (0, 1) 'a'
+fullmatch '(?x)#x\n(?x)#y\na' 'a' 0 (0, 1) 'a'
+fullmatch '#x\na(?x:#y\nb)#z\nc' '#x\nab#z\nc' 0 (0, 9) '#x\nab#z\nc'
+fullmatch '#x\na(?-x:#y\nb)#z\nc' 'a#y\nbc' 64 (0, 6) 'a#y\nbc'
+fullmatch '(?x)#x\na(?-x:#y\nb)#z\nc' 'a#y\nbc' 0 (0, 6) 'a#y\nbc'
+fullmatch '(?x)#x\na|#y\nb' 'a' 0 (0, 1) 'a'
+fullmatch '(?x)#x\na|#y\nb' 'b' 0 (0, 1) 'b'
+search '\\b(b.)\\b' 'abcd abc bcd bx' 0 (13, 15) 'bx' ['bx']
+search '\\B(b.)\\B' 'abc bcd bc abxd' 0 (12, 14) 'bx' ['bx']
+search '\\b(b.)\\b' 'abcd abc bcd bx' 256 (13, 15) 'bx' ['bx']
+search '\\B(b.)\\B' 'abc bcd bc abxd' 256 (12, 14) 'bx' ['bx']
+search '^abc$' '\nabc\n' 8 (1, 4) 'abc'
+search '^\\Aabc\\Z$' 'abc' 8 (0, 3) 'abc'
+search '^\\Aabc\\Z$' '\nabc\n' 8 None
+search '\\d\\D\\w\\W\\s\\S' '1aa! a' 0 (0, 6) '1aa! a'
+search '\\d\\D\\w\\W\\s\\S' '1aa! a' 256 (0, 6) '1aa! a'
+match '\\(' '(' 0 (0, 1) '('
+match '\\(' ')' 0 None
+match '\\\\' '\\' 0 (0, 1) '\\'
+match '[\\]]' ']' 0 (0, 1) ']'
+match '[\\]]' '[' 0 None
+match '[a\\-c]' '-' 0 (0, 1) '-'
+match '[a\\-c]' 'b' 0 None
+match '[\\^a]+' 'a^' 0 (0, 2) 'a^'
+match '[\\^a]+' 'b' 0 None
+search '\\b(abc)\\b' 'abc' 0 (0, 3) 'abc' ['abc']
+search '\\b(abc)\\b' 'abc' 256 (0, 3) 'abc' ['abc']
+search '\\b(ьюя)\\b' 'ьюя' 0 ('', 'ьюя') 'ьюя' ['ьюя']
+search '\\b(ьюя)\\b' 'ьюя' 256 None
+match '.\\b' 'a=' 0 (0, 1) 'a'
+match '.\\b' 'a=' 256 (0, 1) 'a'
+match '.\\b' 'я=' 0 ('', 'я') 'я'
+match '.\\b' 'я=' 256 None
+match '.\\b' '=a' 0 (0, 1) '='
+match '.\\b' '=a' 256 (0, 1) '='
+match '.\\b' '=я' 0 ('', '=') '='
+match '.\\b' '=я' 256 None
+match '.\\b' 'ab' 0 None
+match '.\\b' 'ab' 256 None
+match '.\\b' 'юя' 0 None
+match '.\\b' 'юя' 256 None
+match '.\\b' '=-' 0 None
+match '.\\b' '=-' 256 None
+match '.\\B' 'a=' 0 None
+match '.\\B' 'a=' 256 None
+match '.\\B' 'я=' 0 None
+match '.\\B' 'я=' 256 ('', 'я') 'я'
+match '.\\B' '=a' 0 None
+match '.\\B' '=a' 256 None
+match '.\\B' '=я' 0 None
+match '.\\B' '=я' 256 ('', '=') '='
+match '.\\B' 'ab' 0 (0, 1) 'a'
+match '.\\B' 'ab' 256 (0, 1) 'a'
+match '.\\B' 'юя' 0 ('', 'ю') 'ю'
+match '.\\B' 'юя' 256 ('', 'ю') 'ю'
+match '.\\B' '=-' 0 (0, 1) '='
+match '.\\B' '=-' 256 (0, 1) '='
+match '\\b' 'abc' 0 (0, 0) ''
+match '\\b' 'abc' 256 (0, 0) ''
+match '\\b' 'ьюя' 0 ('', '') ''
+match '\\b' 'ьюя' 256 None
+fullmatch '.+\\b' 'abc' 0 (0, 3) 'abc'
+fullmatch '.+\\b' 'abc' 256 (0, 3) 'abc'
+fullmatch '.+\\b' 'ьюя' 0 ('', 'ьюя') 'ьюя'
+search '\\b' 'ьюя' 256 None
+search '\\B' 'abc' 0 (1, 1) ''
+search '\\B' 'abc' 256 (1, 1) ''
+search '\\B' 'ьюя' 0 ('ь', 'ь') ''
+search '\\B' 'ьюя' 256 ('', '') ''
+match '\\B' 'abc' 0 None
+match '\\B' 'abc' 256 None
+match '\\B' 'ьюя' 0 None
+match '\\B' 'ьюя' 256 ('', '') ''
+fullmatch '.+\\B' 'abc' 0 None
+fullmatch '.+\\B' 'abc' 256 None
+fullmatch '.+\\B' 'ьюя' 0 None
+fullmatch '.+\\B' 'ьюя' 256 ('', 'ьюя') 'ьюя'
+search '\\b' '' 0 None
+search '\\b' '' 256 None
+search '\\B' '' 0 None
+search '\\B' '' 256 None
+match 'a.b' 'a\nb' 16 (0, 3) 'a\nb'
+match 'a.*b' 'a\n\nb' 16 (0, 4) 'a\n\nb'
+match '^\\d$' '7' 0 (0, 1) '7'
+match '^\\d$' '๘' 0 ('', '๘') '๘'
+match '^\\d$' '０' 0 ('', '０') '０'
+match '^\\d$' 'Ⅵ' 0 None
+match '^\\d$' '〹' 0 None
+match '^\\d$' '₂' 0 None
+match '^\\d$' '㊴' 0 None
+search '123.*-' '123abc-' 0 (0, 7) '123abc-'
+search '123.*-' '123é-' 0 ('', '123é-') '123é-'
+search '123.*-' '123€-' 0 ('', '123€-') '123€-'
+search '123.*-' '123\U0010ffff-' 0 ('', '123\U0010ffff-') '123\U0010ffff-'
+search '123.*-' '123é€\U0010ffff-' 0 ('', '123é€\U0010ffff-') '123é€\U0010ffff-'
+match '(\\s)' ' ' 0 (0, 1) ' ' [' ']
+search '\\s([^a])' ' b' 0 (0, 2) ' b' ['b']
+search '\\s([^a]*)' ' bb' 0 (0, 3) ' bb' ['bb']
+search '\\s(b)' ' b' 0 (0, 2) ' b' ['b']
+search 'a\\s' 'a ' 0 (0, 2) 'a '
+match '([∢∣])' '∢' 0 ('', '∢') '∢' ['∢']
+match '[Āǿ˾ϽӼ\u05fbۺ߹ࣸ৷\u0af6௵\u0cf4ෳ\u0ef2\u0ff1ჰᇯዮᏭᓬᗫᛪ៩ᣨ᧧\u1ae6ᯥ᳤ᷣỢῡ⃠⇟⋞⏝ⓜ◛⛚⟙⣘⧗⫖⯕Ⳕⷓ⻒⿑バ㇏㋎㏍㓌㗋㛊㟉㣈㧇㫆㯅㳄㷃㻂㿁䃀䆿䊾䎽䒼䖻䚺䞹䢸䦷䪶䮵䲴䶳亲侱傰冯劮厭咬喫嚪垩墨妧媦宥岤嶣庢御悠憟択掝撜斛暚枙梘榗檖殕沔涓溒澑炐熏犎玍璌疋皊瞉碈禇窆箅粄綃纂羁肀腿艾荽葼蕻虺蝹衸襷詶譵豴赳蹲轱遰酯鉮鍭鑬镫陪革顨饧驦魥鱤鵣鹢齡ꁠꅟꉞꍝꑜꕛꙚꝙꡘ\ua957꩖ꭕ걔굓깒꽑끐녏뉎덍둌땋뙊띉롈륇멆뭅뱄뵃빂뽁쁀섿숾쌽쐼씻옺윹져줷쨶쬵찴촳츲켱퀰턯툮팭퐬픫혪휩\ud828\ud927\uda26\udb25\udc24\udd23\ude22\udf21\ue020\ue11f\ue21e\ue31d\ue41c\ue51b\ue61a\ue719\ue818\ue917\uea16\ueb15\uec14\ued13\uee12\uef11\uf010\uf10f\uf20e\uf30d\uf40c\uf50b\uf60a\uf709\uf808龜暴ﬅﰄﴃ︂！]' '！' 0 ('', '！') '！'
+match '[‹]' '‹' 0 ('', '‹') '‹'
+match '[\\U0001d49c-\\U0001d4b5]' '𝒞' 0 ('', '𝒞') '𝒞'
+findall '\\b' 'a' 2 2
+findall '\\B' 'a' 0 0
+findall '\\b' ' ' 0 0
+findall '\\b' '   ' 0 0
+findall '\\B' ' ' 2 2
+0 (0, 1) '\x00' (0, 2) '\x000' (0, 2) '\x008' (0, 1) '\x00' (0, 2) '\x000' (0, 2) '\x00z' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 2) '\x000' (0, 2) '\x00z' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00' (0, 2) '\x000' (0, 2) '\x00z' (0, 1) '\x00' (0, 1) '\x00' (0, 1) '\x00'
+8 (0, 1) '\x08' (0, 2) '\x080' (0, 2) '\x088' (0, 1) '\x08' (0, 2) '\x080' (0, 2) '\x08z' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 2) '\x080' (0, 2) '\x08z' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08' (0, 2) '\x080' (0, 2) '\x08z' (0, 1) '\x08' (0, 1) '\x08' (0, 1) '\x08'
+16 (0, 1) '\x10' (0, 2) '\x100' (0, 2) '\x108' (0, 1) '\x10' (0, 2) '\x100' (0, 2) '\x10z' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 2) '\x100' (0, 2) '\x10z' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10' (0, 2) '\x100' (0, 2) '\x10z' (0, 1) '\x10' (0, 1) '\x10' (0, 1) '\x10'
+32 (0, 1) ' ' (0, 2) ' 0' (0, 2) ' 8' (0, 1) ' ' (0, 2) ' 0' (0, 2) ' z' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 2) ' 0' (0, 2) ' z' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 1) ' ' (0, 2) ' 0' (0, 2) ' z' (0, 1) ' ' (0, 1) ' ' (0, 1) ' '
+64 (0, 1) '@' (0, 2) '@0' (0, 2) '@8' (0, 1) '@' (0, 2) '@0' (0, 2) '@z' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 2) '@0' (0, 2) '@z' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 1) '@' (0, 2) '@0' (0, 2) '@z' (0, 1) '@' (0, 1) '@' (0, 1) '@'
+127 (0, 1) '\x7f' (0, 2) '\x7f0' (0, 2) '\x7f8' (0, 1) '\x7f' (0, 2) '\x7f0' (0, 2) '\x7fz' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 2) '\x7f0' (0, 2) '\x7fz' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f' (0, 2) '\x7f0' (0, 2) '\x7fz' (0, 1) '\x7f' (0, 1) '\x7f' (0, 1) '\x7f'
+128 ('', '\x80') '\x80' ('', '\x800') '\x800' ('', '\x808') '\x808' ('', '\x80') '\x80' ('', '\x800') '\x800' ('', '\x80z') '\x80z' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x800') '\x800' ('', '\x80z') '\x80z' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x800') '\x800' ('', '\x80z') '\x80z' ('', '\x80') '\x80' ('', '\x80') '\x80' ('', '\x80') '\x80'
+255 ('', 'ÿ') 'ÿ' ('', 'ÿ0') 'ÿ0' ('', 'ÿ8') 'ÿ8' ('', 'ÿ') 'ÿ' ('', 'ÿ0') 'ÿ0' ('', 'ÿz') 'ÿz' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ0') 'ÿ0' ('', 'ÿz') 'ÿz' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ0') 'ÿ0' ('', 'ÿz') 'ÿz' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ' ('', 'ÿ') 'ÿ'
+256 ('', 'Ā') 'Ā' ('', 'Ā0') 'Ā0' ('', 'Āz') 'Āz' ('', 'Ā') 'Ā' ('', 'Ā') 'Ā' ('', 'Ā') 'Ā' ('', 'Ā') 'Ā' ('', 'Ā0') 'Ā0' ('', 'Āz') 'Āz' ('', 'Ā') 'Ā' ('', 'Ā') 'Ā' ('', 'Ā') 'Ā'
+65535 ('', '\uffff') '\uffff' ('', '\uffff0') '\uffff0' ('', '\uffffz') '\uffffz' ('', '\uffff') '\uffff' ('', '\uffff') '\uffff' ('', '\uffff') '\uffff' ('', '\uffff') '\uffff' ('', '\uffff0') '\uffff0' ('', '\uffffz') '\uffffz' ('', '\uffff') '\uffff' ('', '\uffff') '\uffff' ('', '\uffff') '\uffff'
+65536 ('', '𐀀') '𐀀' ('', '𐀀0') '𐀀0' ('', '𐀀z') '𐀀z' ('', '𐀀') '𐀀' ('', '𐀀') '𐀀' ('', '𐀀') '𐀀'
+1114111 ('', '\U0010ffff') '\U0010ffff' ('', '\U0010ffff0') '\U0010ffff0' ('', '\U0010ffffz') '\U0010ffffz' ('', '\U0010ffff') '\U0010ffff' ('', '\U0010ffff') '\U0010ffff' ('', '\U0010ffff') '\U0010ffff'
+'\\0' (0, 1) '\x00'
+'\\08' (0, 2) '\x008'
+'\\01' (0, 1) '\x01'
+'\\018' (0, 2) '\x018'
+768 ['\\', '\\', '\\', '\\', '\\'] '\x00\x01\x02\x03\x04\x05\x06\x07\x08\\\t\\\n\\\x0b\\\x0c\\\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\\ !"\\#\\$%\\&\'\\(\\)\\*\\+,\\-\\./0123456789:;<=>\\?@ABCDEFGHIJKLMNOPQRSTUVWXYZ\\[\\\\\\]\\^_`abcdefghijklmnopqrstuvwxyz\\{\\|\\}\\~\x7f'
+True
+True True True True True 256 2 4 8 16 32 64 0
+(?i)(a)(b) 34 34 2 {}
+{'first': 1, 'other': 2} ['first', 'other'] 2
+0 1 a True 1
+True True True
+True False
+True
+True
+True
+<re.Match object; span=(1, 12), match='abracadabra'>
+2 <re.Match object; span=(0, 2), match='aa'> <re.Match object; span=(3, 5), match='bb'>
+re.compile('random pattern')
+re.compile('random pattern', re.IGNORECASE)
+re.compile('random pattern', re.IGNORECASE|re.DOTALL|re.VERBOSE)
+re.compile('random pattern')
+re.compile('random pattern', re.IGNORECASE|re.DOTALL)
+re.compile('(?i)pattern', re.IGNORECASE)
+re.compile('random pattern', 0x123000)
+re.compile('random pattern', re.IGNORECASE|0x123000)
+re.compile('random "double quoted" pattern')
+re.compile("random 'single quoted' pattern")
+re.compile('both \'single\' and "double" quotes')
+True re.compile('Very long long lon re.compile('Very long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long)
+True re.compile('Very long long lon , re.IGNORECASE)
+[exit 0]

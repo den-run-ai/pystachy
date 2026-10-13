@@ -644,7 +644,7 @@ translation and positions for `"+"` modes, and files' `read`/`readline`/
 `sys.argv/exit/stdin/stdout/stderr/maxsize/platform/setrecursionlimit/getrecursionlimit` (the streams
 are files), `sys.float_info.max/max_exp/max_10_exp/min/min_exp/min_10_exp/dig/mant_dig/epsilon/radix/rounds`
 (CPython's for IEEE 754 doubles; `sys.float_info` itself is not a value),
-`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
+`os.system/execv/getpid/getenv/remove/rmdir/fspath/path.exists/path.realpath/path.join/path.getsize/path.getmtime/path.getctime` and `os.name/sep/curdir/pardir/extsep/pathsep/linesep/
 devnull`, `tempfile.mkdtemp`, `time.time/time_ns/monotonic/perf_counter/process_time` (and
 their `_ns` forms) and `time.sleep`, the `errno` constants, and the `math` functions and
 constants, which raise CPython's domain and range errors, with `fsum`, `prod` (and its
@@ -936,6 +936,11 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
   over many small type combinations, even when active signatures and nesting remain small.
   Exceeding it reports a source error before allocating the next specialization; annotate
   template parameters or reduce the distinct type combinations.
+- more than 16,777,216 bytes of template signatures in one compilation. Each specialization of
+  a template function keeps its argument types (its key and its parameters' types), so long
+  types could otherwise hold hundreds of MiB under the 4,096 bound. Exceeding it reports a
+  source error before allocating the next specialization, naming the template whose
+  specializations keep the most.
 - an empty container whose first use stores an empty `[]` or `{}` into it (`d[k] = []`)
 - an empty `[]` or `{}` that nothing gives a type (`{}["k"]` alone)
 - an empty list or dict that a template's function returns empty, used where the `list[int]` /

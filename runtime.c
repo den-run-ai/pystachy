@@ -1559,25 +1559,47 @@ List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
 static uint64_t hsh(Dict *d, I k);
+static uint64_t hstrd(Str *s) {                      /* a str key's hash */
+  if (!s->dict_hash) {                  /* zeroed allocations and writable literals start uncached */
+    uint64_t h = (uint64_t)pys_hash_str(s);
+    s->dict_hash = h ? h : 1;           /* cache the dictionary's normalized hash, also for tuple items */
+  }
+  return s->dict_hash;
+}
 static uint64_t hval(I k, const char *d) {           /* a tuple key's hash (or its item's), by its descriptor */
   if ((*d == '?' || *d == 's' || *d == 'T') && !k) return 0x9E3779B97F4A7C15ULL;   /* None (also a looked-up key's) */
   if (*d == '?') d++;
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
-  for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) h = (h ^ hval(((I *)k)[i], e)) * 0x100000001B3ULL;
+  for (int i = 0; i < d[1] - '0'; i++) {
+    /* an int, bool, str or str | None item (a key's tuple holds only those, and such tuples) is
+       hashed in place, as the call for it would hash it, without walking its descriptor again */
+    I x = ((I *)k)[i]; uint64_t v;
+    if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
+    else if (*e == 's' || (*e == '?' && e[1] == 's')) { v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL; e += 1 + (*e == '?'); }
+    else { v = hval(x, e); e = skip(e); }
+    h = (h ^ v) * 0x100000001B3ULL;
+  }
   return h ^ h >> 29;
 }
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple key's descriptor */
-  if (d->kind == 1) {
-    Str *s = (Str *)k;
-    if (!s->dict_hash) {                /* zeroed allocations and writable literals start uncached */
-      uint64_t h = (uint64_t)pys_hash_str(s);
-      s->dict_hash = h ? h : 1;         /* cache the dictionary's normalized hash, also for tuple items */
-    }
-    return s->dict_hash;
-  }
+  if (d->kind == 1) return hstrd((Str *)k);
   uint64_t h = d->kind > 1 ? hval(k, ((Str *)d->kind)->s) : (uint64_t)pys_hash_int(k);
   return h ? h : 1;                                  /* 0 marks a hole */
+}
+static int keq(I a, I b, const char *d) {            /* tuple keys of descriptor d: eqv's answer */
+  I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+  if (!x || !y) return x == y;
+  for (int i = 0; i < d[1] - '0'; i++) {
+    /* an int, bool, str or str | None item in place, another as eqitem compares it */
+    if (*e == 'i' || *e == 'b') { if (x[i] != y[i]) return 0; e++; }
+    else if (*e == 's' || (*e == '?' && e[1] == 's')) {
+      if (x[i] != y[i] && (!x[i] || !y[i] || !pys_str_eq((Str *)x[i], (Str *)y[i]))) return 0;
+      e += 1 + (*e == '?');
+    }
+    else { if (!eqitem(x[i], y[i], e)) return 0; e = skip(e); }
+  }
+  return 1;
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *free: where to insert k */
@@ -1589,7 +1611,7 @@ static I dfind(Dict *d, I k, uint64_t h, I *free) {    /* k's idx slot or -1; *f
     if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
     else if (d->hs[e - 1] == h && (d->keys[e - 1] == k || (d->kind == 1 && pys_str_eq((Str *)d->keys[e - 1], (Str *)k)) ||
-                                   (d->kind > 1 && eqv(d->keys[e - 1], k, ((Str *)d->kind)->s)))) return i;
+                                   (d->kind > 1 && keq(d->keys[e - 1], k, ((Str *)d->kind)->s)))) return i;
   }
 }
 static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
@@ -2474,19 +2496,24 @@ Str *pys_file_read(File *f, I n) {
 Str *pys_file_readline(File *f) {      /* a line ends as newline= says: None "\n" after translation; "" any of
                                           "\n" "\r" "\r\n"; otherwise exactly that string */
   if (in_hook && f == &std_in && !f->closed) return in_hook(1, 0, 0);
-  io_in(); use(f, 1); Buf b = {0}; int c;
+  /* the bytes gather in t, and go to b only when t is full: a put() per byte took most of a
+     line's time. A line that fits in t becomes its str without b */
+  io_in(); use(f, 1); Buf b = {0}; int c; char t[256]; I k = 0;
   while ((c = get(f)) != EOF) {
-    char ch = getnl(f, c); put(&b, &ch, 1);
+    char ch = getnl(f, c); t[k++] = ch;
+    if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
     if (ch == '\n' && f->nl != 3 && f->nl != 4) break;
     if (ch == '\r' && f->nl == 3) break;
     if (ch == '\r' && (f->nl == 1 || f->nl == 4)) {
       int d = get(f);
-      if (d == '\n') { put(&b, "\n", 1); break; }
+      if (d == '\n') { t[k++] = '\n'; break; }   /* (t has room: a full t went to b above) */
       if (d != EOF) unget(f, d);
       if (f->nl == 1) break;
     }
   }
   io_out();
+  if (b.n) put(&b, t, k);
+  else b = (Buf){t, k, k};             /* the line fit in t: decode() reads it from there */
   return decode(f, &b);
 }
 List *pys_file_readlines(File *f) {
@@ -2610,6 +2637,19 @@ Str *pys_platform(void) {              /* sys.platform */
 #endif
 }
 I pys_exists(Str *p) { return !nul(p) && access(p->s, F_OK) == 0; }
+static struct stat stat1(Str *p) {     /* os.stat(p), which os.path.getsize, getmtime and getctime read */
+  struct stat st;
+  if (nul(p)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(p->s, &st)) oserr(p->s);
+  return st;
+}
+static double stat_secs(struct timespec t) {   /* CPython's float of a time, sec + nsec * 1e-9: in two */
+  double f = t.tv_nsec * 1e-9;                 /* statements, which clang does not fuse into an FMA */
+  return t.tv_sec + f;
+}
+I pys_getsize(Str *p) { return stat1(p).st_size; }
+double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtim); }
+double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctim); }
 Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
   if ((b->len && b->s[0] == '/') || !a->len) return b;
   if (a->s[a->len - 1] == '/') return pys_str_add(a, b);

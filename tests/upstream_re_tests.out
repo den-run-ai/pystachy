@@ -1,0 +1,201 @@
+1 '(?P<foo_123' error: missing >, unterminated name at position 4
+2 '(?P<1>a)' error: bad character in group name '1' at position 4
+3 '(?P<!>a)' error: bad character in group name '!' at position 4
+4 '(?P<foo!>a)' error: bad character in group name 'foo!' at position 4
+5 '(?P<foo_123>a)(?P=foo_123' error: missing ), unterminated name at position 18
+6 '(?P<foo_123>a)(?P=1)' error: bad character in group name '1' at position 18
+7 '(?P<foo_123>a)(?P=!)' error: bad character in group name '!' at position 18
+8 '(?P<foo_123>a)(?P=foo_124' error: missing ), unterminated name at position 18
+9 '(?P<foo_123>a)' 'a' (0, 1) ['a'] (0, 1) last=1/foo_123 | g1='a' | range = | I = | U =
+10 '(?P<foo_123>a)(?P=foo_123)' 'aa' (0, 2) ['a'] (0, 1) last=1/foo_123 | g1='a' | range = | I = | U =
+11 '\\1' error: invalid group reference 1 at position 1
+12 '[\\1]' '\x01' (0, 1) | found='\x01' | range = | I = | U =
+13 '\\09' '\x009' (0, 2) | found='\x009' | range = | I = | U =
+14 '\\141' 'a' (0, 1) | found='a' | range = | I = | U =
+15 '(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)\\119' 'abcdefghijklk9' (0, 14) ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'] (0, 1) (1, 2) (2, 3) (3, 4) (4, 5) (5, 6) (6, 7) (7, 8) (8, 9) (9, 10) (10, 11) (11, 12) last=12/None | found+"-"+g11='abcdefghijklk9-k' | range = | I = | U =
+16 '\\0' '\x00' (0, 1) | found='\x00' | range = | I = | U =
+17 '[\\0a]' '\x00' (0, 1) | found='\x00' | range = | I = | U =
+18 '[a\\0]' '\x00' (0, 1) | found='\x00' | range = | I = | U =
+19 '[^a\\0]' '\x00' None | I = | U =
+20 '\\a[\\b]\\f\\n\\r\\t\\v' '\x07\x08\x0c\n\r\t\x0b' (0, 7) | found='\x07\x08\x0c\n\r\t\x0b' | range = | I = | U =
+21 '[\\a][\\b][\\f][\\n][\\r][\\t][\\v]' '\x07\x08\x0c\n\r\t\x0b' (0, 7) | found='\x07\x08\x0c\n\r\t\x0b' | range = | I = | U =
+22 '\\u' error: incomplete escape \u at position 0
+23 '\\x00ffffffffffffff' 'ÿ' None | I = | U =
+24 '\\x00f' '\x0f' None | I = | U =
+25 '\\x00fe' 'þ' None | I = | U =
+26 '^\\w+=(\\\\[\\000-\\277]|[^\\n\\\\])*' 'SRC=eval.c g.c blah blah blah \\\\\n\tapes.c' (0, 32) ['\\\\'] (30, 32) last=1/None | found='SRC=eval.c g.c blah blah blah \\\\' | range = | I = | U =
+27 'a.b' 'acb' (0, 3) | found='acb' | range = | I = | U =
+28 'a.b' 'a\nb' None | I = | U =
+29 'a.*b' 'acc\nccb' None | I = | U =
+30 'a.{4,5}b' 'acc\nccb' None | I = | U =
+31 'a.b' 'a\rb' (0, 3) | found='a\rb' | range = | I = | U =
+32 '(?s)a.b' 'a\nb' (0, 3) | found='a\nb' | range = | I = | U =
+33 '(?s)a.*b' 'acc\nccb' (0, 7) | found='acc\nccb' | range = | I = | U =
+34 '(?s)a.{4,5}b' 'acc\nccb' (0, 7) | found='acc\nccb' | range = | I = | U =
+35 '(?s)a.b' 'a\rb' (0, 3) | found='a\rb' | range = | I = | U =
+36 ')' error: unbalanced parenthesis at position 0
+37 '' '' (0, 0) | found='' | range = | I = | U =
+38 'abc' 'abc' (0, 3) | found='abc' | range = | I = | U =
+39 'abc' 'xbc' None | I = | U =
+40 'abc' 'axc' None | I = | U =
+41 'abc' 'abx' None | I = | U =
+42 'abc' 'xabcy' (1, 4) | found='abc' | range = | I = | U =
+43 'abc' 'ababc' (2, 5) | found='abc' | range = | I = | U =
+44 'ab*c' 'abc' (0, 3) | found='abc' | range = | I = | U =
+45 'ab*bc' 'abc' (0, 3) | found='abc' | range = | I = | U =
+46 'ab*bc' 'abbc' (0, 4) | found='abbc' | range = | I = | U =
+47 'ab*bc' 'abbbbc' (0, 6) | found='abbbbc' | range = | I = | U =
+48 'ab+bc' 'abbc' (0, 4) | found='abbc' | range = | I = | U =
+49 'ab+bc' 'abc' None | I = | U =
+50 'ab+bc' 'abq' None | I = | U =
+51 'ab+bc' 'abbbbc' (0, 6) | found='abbbbc' | range = | I = | U =
+52 'ab?bc' 'abbc' (0, 4) | found='abbc' | range = | I = | U =
+53 'ab?bc' 'abc' (0, 3) | found='abc' | range = | I = | U =
+54 'ab?bc' 'abbbbc' None | I = | U =
+55 'ab?c' 'abc' (0, 3) | found='abc' | range = | I = | U =
+56 '^abc$' 'abc' (0, 3) | found='abc' | range = | I = | U =
+57 '^abc$' 'abcc' None | I = | U =
+58 '^abc' 'abcc' (0, 3) | found='abc' | range = | I = | U =
+59 '^abc$' 'aabc' None | I = | U =
+60 'abc$' 'aabc' (1, 4) | found='abc' | range = | I = | U =
+61 '^' 'abc' (0, 0) | found+"-"='-' | range = | I = | U =
+62 '$' 'abc' (3, 3) | found+"-"='-' | range = | I = | U =
+63 'a.c' 'abc' (0, 3) | found='abc' | range = | I = | U =
+64 'a.c' 'axc' (0, 3) | found='axc' | range = | I = | U =
+65 'a.*c' 'axyzc' (0, 5) | found='axyzc' | range = | I = | U =
+66 'a.*c' 'axyzd' None | I = | U =
+67 'a[bc]d' 'abc' None | I = | U =
+68 'a[bc]d' 'abd' (0, 3) | found='abd' | range = | I = | U =
+69 'a[b-d]e' 'abd' None | I = | U =
+70 'a[b-d]e' 'ace' (0, 3) | found='ace' | range = | I = | U =
+71 'a[b-d]' 'aac' (1, 3) | found='ac' | range = | I = | U =
+72 'a[-b]' 'a-' (0, 2) | found='a-' | range = | I = | U =
+73 'a[\\-b]' 'a-' (0, 2) | found='a-' | range = | I = | U =
+74 'a[]b' error: unterminated character set at position 1
+75 'a[' error: unterminated character set at position 1
+76 'a\\' error: bad escape (end of pattern) at position 1
+77 'abc)' error: unbalanced parenthesis at position 3
+78 '(abc' error: missing ), unterminated subpattern at position 0
+79 'a]' 'a]' (0, 2) | found='a]' | range = | I = | U =
+80 'a[]]b' 'a]b' (0, 3) | found='a]b' | range = | I = | U =
+81 'a[\\]]b' 'a]b' (0, 3) | found='a]b' | range = | I = | U =
+82 'a[^bc]d' 'aed' (0, 3) | found='aed' | range = | I = | U =
+83 'a[^bc]d' 'abd' None | I = | U =
+84 'a[^-b]c' 'adc' (0, 3) | found='adc' | range = | I = | U =
+85 'a[^-b]c' 'a-c' None | I = | U =
+86 'a[^]b]c' 'a]c' None | I = | U =
+87 'a[^]b]c' 'adc' (0, 3) | found='adc' | range = | I = | U =
+88 '\\ba\\b' 'a-' (0, 1) | "-"='-' | range = | I = | U =
+89 '\\ba\\b' '-a' (1, 2) | "-"='-' | range = | I = | U =
+90 '\\ba\\b' '-a-' (1, 2) | "-"='-' | range = | I = | U =
+91 '\\by\\b' 'xy' None | I = | U =
+92 '\\by\\b' 'yz' None | I = | U =
+93 '\\by\\b' 'xyz' None | I = | U =
+94 'x\\b' 'xyz' None | I = | U =
+95 'x\\B' 'xyz' (0, 1) | "-"='-' | I = | U =
+96 '\\Bz' 'xyz' (2, 3) | "-"='-' | I = | U =
+97 'z\\B' 'xyz' None | I = | U =
+98 '\\Bx' 'xyz' None | I = | U =
+99 '\\Ba\\B' 'a-' None | I = | U =
+100 '\\Ba\\B' '-a' None | I = | U =
+101 '\\Ba\\B' '-a-' None | I = | U =
+102 '\\By\\B' 'xy' None | I = | U =
+103 '\\By\\B' 'yz' None | I = | U =
+104 '\\By\\b' 'xy' (1, 2) | "-"='-' | I = | U =
+105 '\\by\\B' 'yz' (0, 1) | "-"='-' | I = | U =
+106 '\\By\\B' 'xyz' (1, 2) | "-"='-' | I = | U =
+107 'ab|cd' 'abc' (0, 2) | found='ab' | range = | I = | U =
+108 'ab|cd' 'abcd' (0, 2) | found='ab' | range = | I = | U =
+109 '()ef' 'def' (1, 3) [''] (1, 1) last=1/None | found+"-"+g1='ef-' | range = | I = | U =
+110 '$b' 'b' None | I = | U =
+111 'a\\(b' 'a(b' (0, 3) | found+"-"+g1='a(b-Error' | range = | I = | U =
+112 'a\\(*b' 'ab' (0, 2) | found='ab' | range = | I = | U =
+113 'a\\(*b' 'a((b' (0, 4) | found='a((b' | range = | I = | U =
+114 'a\\\\b' 'a\\b' (0, 3) | found='a\\b' | range = | I = | U =
+115 '((a))' 'abc' (0, 1) ['a', 'a'] (0, 1) (0, 1) last=1/None | found+"-"+g1+"-"+g2='a-a-a' | range = | I = | U =
+116 '(a)b(c)' 'abc' (0, 3) ['a', 'c'] (0, 1) (2, 3) last=2/None | found+"-"+g1+"-"+g2='abc-a-c' | range = | I = | U =
+117 'a+b+c' 'aabbabc' (4, 7) | found='abc' | range = | I = | U =
+118 '(a+|b)*' 'ab' (0, 2) ['b'] (1, 2) last=1/None | found+"-"+g1='ab-b' | range = | I = | U =
+119 '(a+|b)+' 'ab' (0, 2) ['b'] (1, 2) last=1/None | found+"-"+g1='ab-b' | range = | I = | U =
+120 '(a+|b)?' 'ab' (0, 1) ['a'] (0, 1) last=1/None | found+"-"+g1='a-a' | range = | I = | U =
+121 ')(' error: unbalanced parenthesis at position 0
+122 '[^ab]*' 'cde' (0, 3) | found='cde' | range = | I = | U =
+123 'abc' '' None | I = | U =
+124 'a*' '' (0, 0) | found='' | range = | I = | U =
+125 'a|b|c|d|e' 'e' (0, 1) | found='e' | range = | I = | U =
+126 '(a|b|c|d|e)f' 'ef' (0, 2) ['e'] (0, 1) last=1/None | found+"-"+g1='ef-e' | range = | I = | U =
+127 'abcd*efg' 'abcdefg' (0, 7) | found='abcdefg' | range = | I = | U =
+128 'ab*' 'xabyabbbz' (1, 3) | found='ab' | range = | I = | U =
+129 'ab*' 'xayabbbz' (1, 2) | found='a' | range = | I = | U =
+130 '(ab|cd)e' 'abcde' (2, 5) ['cd'] (2, 4) last=1/None | found+"-"+g1='cde-cd' | range = | I = | U =
+131 '[abhgefdc]ij' 'hij' (0, 3) | found='hij' | range = | I = | U =
+132 '^(ab|cd)e' 'abcde' None | I = | U =
+133 '(abc|)ef' 'abcdef' (4, 6) [''] (4, 4) last=1/None | found+"-"+g1='ef-' | range = | I = | U =
+134 '(a|b)c*d' 'abcd' (1, 4) ['b'] (1, 2) last=1/None | found+"-"+g1='bcd-b' | range = | I = | U =
+135 '(ab|ab*)bc' 'abc' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='abc-a' | range = | I = | U =
+136 'a([bc]*)c*' 'abc' (0, 3) ['bc'] (1, 3) last=1/None | found+"-"+g1='abc-bc' | range = | I = | U =
+137 'a([bc]*)(c*d)' 'abcd' (0, 4) ['bc', 'd'] (1, 3) (3, 4) last=2/None | found+"-"+g1+"-"+g2='abcd-bc-d' | range = | I = | U =
+138 'a([bc]+)(c*d)' 'abcd' (0, 4) ['bc', 'd'] (1, 3) (3, 4) last=2/None | found+"-"+g1+"-"+g2='abcd-bc-d' | range = | I = | U =
+139 'a([bc]*)(c+d)' 'abcd' (0, 4) ['b', 'cd'] (1, 2) (2, 4) last=2/None | found+"-"+g1+"-"+g2='abcd-b-cd' | range = | I = | U =
+140 'a[bcd]*dcdcde' 'adcdcde' (0, 7) | found='adcdcde' | range = | I = | U =
+141 'a[bcd]+dcdcde' 'adcdcde' None | I = | U =
+142 '(ab|a)b*c' 'abc' (0, 3) ['ab'] (0, 2) last=1/None | found+"-"+g1='abc-ab' | range = | I = | U =
+143 '((a)(b)c)(d)' 'abcd' (0, 4) ['abc', 'a', 'b', 'd'] (0, 3) (0, 1) (1, 2) (3, 4) last=4/None | g1+"-"+g2+"-"+g3+"-"+g4='abc-a-b-d' | range = | I = | U =
+144 '[a-zA-Z_][a-zA-Z0-9_]*' 'alpha' (0, 5) | found='alpha' | range = | I = | U =
+145 '^a(bc+|b[eh])g|.h$' 'abh' (1, 3) [None] (-1, -1) last=None/None | found+"-"+g1='bh-None' | range = | I = | U =
+146 '(bc+d$|ef*g.|h?i(j|k))' 'effgz' (0, 5) ['effgz', None] (0, 5) (-1, -1) last=1/None | found+"-"+g1+"-"+g2='effgz-effgz-None' | range = | I = | U =
+147 '(bc+d$|ef*g.|h?i(j|k))' 'ij' (0, 2) ['ij', 'j'] (0, 2) (1, 2) last=1/None | found+"-"+g1+"-"+g2='ij-ij-j' | range = | I = | U =
+148 '(bc+d$|ef*g.|h?i(j|k))' 'effg' None | I = | U =
+149 '(bc+d$|ef*g.|h?i(j|k))' 'bcdd' None | I = | U =
+150 '(bc+d$|ef*g.|h?i(j|k))' 'reffgz' (1, 6) ['effgz', None] (1, 6) (-1, -1) last=1/None | found+"-"+g1+"-"+g2='effgz-effgz-None' | range = | I = | U =
+151 '(((((((((a)))))))))' 'a' (0, 1) ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'] (0, 1) (0, 1) (0, 1) (0, 1) (0, 1) (0, 1) (0, 1) (0, 1) (0, 1) last=1/None | found='a' | range = | I = | U =
+152 'multiple words of text' 'uh-uh' None | I = | U =
+153 'multiple words' 'multiple words, yeah' (0, 14) | found='multiple words' | range = | I = | U =
+154 '(.*)c(.*)' 'abcde' (0, 5) ['ab', 'de'] (0, 2) (3, 5) last=2/None | found+"-"+g1+"-"+g2='abcde-ab-de' | range = | I = | U =
+155 '\\((.*), (.*)\\)' '(a, b)' (0, 6) ['a', 'b'] (1, 2) (4, 5) last=2/None | g2+"-"+g1='b-a' | range = | I = | U =
+156 '[k]' 'ab' None | I = | U =
+157 'a[-]?c' 'ac' (0, 2) | found='ac' | range = | I = | U =
+158 '(abc)\\1' 'abcabc' (0, 6) ['abc'] (0, 3) last=1/None | g1='abc' | range = | I = | U =
+159 '([a-c]*)\\1' 'abcabc' (0, 6) ['abc'] (0, 3) last=1/None | g1='abc' | range = | I = | U =
+160 '^(.+)?B' 'AB' (0, 2) ['A'] (0, 1) last=1/None | g1='A' | range = | I = | U =
+161 '(a+).\\1$' 'aaaaa' (0, 5) ['aa'] (0, 2) last=1/None | found+"-"+g1='aaaaa-aa' | range = | I = | U =
+162 '^(a+).\\1$' 'aaaa' None | I = | U =
+163 '(abc)\\1' 'abcabc' (0, 6) ['abc'] (0, 3) last=1/None | found+"-"+g1='abcabc-abc' | range = | I = | U =
+164 '([a-c]+)\\1' 'abcabc' (0, 6) ['abc'] (0, 3) last=1/None | found+"-"+g1='abcabc-abc' | range = | I = | U =
+165 '(a)\\1' 'aa' (0, 2) ['a'] (0, 1) last=1/None | found+"-"+g1='aa-a' | range = | I = | U =
+166 '(a+)\\1' 'aa' (0, 2) ['a'] (0, 1) last=1/None | found+"-"+g1='aa-a' | range = | I = | U =
+167 '(a+)+\\1' 'aa' (0, 2) ['a'] (0, 1) last=1/None | found+"-"+g1='aa-a' | range = | I = | U =
+168 '(a).+\\1' 'aba' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='aba-a' | range = | I = | U =
+169 '(a)ba*\\1' 'aba' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='aba-a' | range = | I = | U =
+170 '(aa|a)a\\1$' 'aaa' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='aaa-a' | range = | I = | U =
+171 '(a|aa)a\\1$' 'aaa' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='aaa-a' | range = | I = | U =
+172 '(a+)a\\1$' 'aaa' (0, 3) ['a'] (0, 1) last=1/None | found+"-"+g1='aaa-a' | range = | I = | U =
+173 '([abc]*)\\1' 'abcabc' (0, 6) ['abc'] (0, 3) last=1/None | found+"-"+g1='abcabc-abc' | range = | I = | U =
+174 '(a)(b)c|ab' 'ab' (0, 2) [None, None] (-1, -1) (-1, -1) last=None/None | found+"-"+g1+"-"+g2='ab-None-None' | range = | I = | U =
+175 '(a)+x' 'aaax' (0, 4) ['a'] (2, 3) last=1/None | found+"-"+g1='aaax-a' | range = | I = | U =
+176 '([ac])+x' 'aacx' (0, 4) ['c'] (2, 3) last=1/None | found+"-"+g1='aacx-c' | range = | I = | U =
+177 '([^/]*/)*sub1/' 'd:msgs/tdir/sub1/trial/away.cpp' (0, 17) ['tdir/'] (7, 12) last=1/None | found+"-"+g1='d:msgs/tdir/sub1/-tdir/' | range = | I = | U =
+178 '([^.]*)\\.([^:]*):[T ]+(.*)' 'track1.title:TBlah blah blah' (0, 28) ['track1', 'title', 'Blah blah blah'] (0, 6) (7, 12) (14, 28) last=3/None | found+"-"+g1+"-"+g2+"-"+g3='track1.title:TBlah blah blah-track1-title-Blah blah blah' | range = | I = | U =
+179 '([^N]*N)+' 'abNNxyzN' (0, 8) ['xyzN'] (4, 8) last=1/None | found+"-"+g1='abNNxyzN-xyzN' | range = | I = | U =
+180 '([^N]*N)+' 'abNNxyz' (0, 4) ['N'] (3, 4) last=1/None | found+"-"+g1='abNN-N' | range = | I = | U =
+181 '([abc]*)x' 'abcx' (0, 4) ['abc'] (0, 3) last=1/None | found+"-"+g1='abcx-abc' | range = | I = | U =
+182 '([abc]*)x' 'abc' None | I = | U =
+183 '([xyz]*)x' 'abcx' (3, 4) [''] (3, 3) last=1/None | found+"-"+g1='x-' | range = | I = | U =
+184 '(a)+b|aac' 'aac' (0, 3) [None] (-1, -1) last=None/None | found+"-"+g1='aac-None' | range = | I = | U =
+185 '(?P<i d>aaa)a' error: bad character in group name 'i d' at position 4
+186 '(?P<id>aaa)a' 'aaaa' (0, 4) ['aaa'] (0, 3) last=1/id | found+"-"+id='aaaa-aaa' | range = | I = | U =
+187 '(?P<id>aa)(?P=id)' 'aaaa' (0, 4) ['aa'] (0, 2) last=1/id | found+"-"+id='aaaa-aa' | range = | I = | U =
+188 '(?P<id>aa)(?P=xd)' error: unknown group name 'xd' at position 14
+189 '\\1' error: invalid group reference 1 at position 1
+'Python|Perl' 'Perl' (0, 4) | (0, 4) | (0, 4) | (1000, 1004) | (1000, 1004) | (1000, 1004) | (1000, 1004)
+'(Python|Perl)' 'Perl' (0, 4) ['Perl'] (0, 4) last=1/None | (0, 4) ['Perl'] (0, 4) last=1/None | (0, 4) ['Perl'] (0, 4) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None
+'Python|Perl|Tcl' 'Perl' (0, 4) | (0, 4) | (0, 4) | (1000, 1004) | (1000, 1004) | (1000, 1004) | (1000, 1004)
+'(Python|Perl|Tcl)' 'Perl' (0, 4) ['Perl'] (0, 4) last=1/None | (0, 4) ['Perl'] (0, 4) last=1/None | (0, 4) ['Perl'] (0, 4) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None | (1000, 1004) ['Perl'] (1000, 1004) last=1/None
+'(Python)\\1' 'PythonPython' (0, 12) ['Python'] (0, 6) last=1/None | (0, 12) ['Python'] (0, 6) last=1/None | (0, 12) ['Python'] (0, 6) last=1/None | (1000, 1012) ['Python'] (1000, 1006) last=1/None | (1000, 1012) ['Python'] (1000, 1006) last=1/None | (1000, 1012) ['Python'] (1000, 1006) last=1/None | (1000, 1012) ['Python'] (1000, 1006) last=1/None
+'([0a-z][a-z0-9]*,)+' 'a5,b7,c9,' (0, 9) ['c9,'] (6, 9) last=1/None | (0, 9) ['c9,'] (6, 9) last=1/None | (0, 9) ['c9,'] (6, 9) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None
+'([a-z][a-z0-9]*,)+' 'a5,b7,c9,' (0, 9) ['c9,'] (6, 9) last=1/None | (0, 9) ['c9,'] (6, 9) last=1/None | (0, 9) ['c9,'] (6, 9) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None | (1000, 1009) ['c9,'] (1006, 1009) last=1/None
+'Python' 'Python' (0, 6) | (0, 6) | (0, 6) | (1000, 1006) | (1000, 1006) | (1000, 1006) | (1000, 1006)
+'.*Python' 'Python' (0, 6) | (0, 6) | (0, 6) | (0, 1006) | (1000, 1006) | (1000, 1006) | (1000, 1006)
+'.*Python.*' 'Python' (0, 6) | (0, 6) | (0, 6) | (0, 2006) | (1000, 2006) | (1000, 1006) | (1000, 1006)
+'.*(Python)' 'Python' (0, 6) ['Python'] (0, 6) last=1/None | (0, 6) ['Python'] (0, 6) last=1/None | (0, 6) ['Python'] (0, 6) last=1/None | (0, 1006) ['Python'] (1000, 1006) last=1/None | (1000, 1006) ['Python'] (1000, 1006) last=1/None | (1000, 1006) ['Python'] (1000, 1006) last=1/None | (1000, 1006) ['Python'] (1000, 1006) last=1/None
+[exit 0]

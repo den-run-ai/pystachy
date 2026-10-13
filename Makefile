@@ -28,6 +28,12 @@ test-py:
 	$(PY) -c 'import py_compile as c; c.compile("pystachy.py", doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH)'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
+# the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
+# with the native compiler, then the CPython-hosted one ($(PY) loads the extension modules)
+test-cache: pystachy
+	PY="$(PY)" tests/cache.sh ./pystachy
+	tests/cache.sh "$(PY) -m pystachy"
+
 # the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, extension modules
 test-ffi: pystachy
 	PY="$(PY)" tests/ffi/run.sh ./pystachy "jit aot"
@@ -82,8 +88,8 @@ eqprobe: tools/eqprobe.c runtime.c runtime.py pystachy
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
 
-# Full verification (bootstrap, both compilers, Python-free stage, UBSan, GC stress, IR check, benchmarks, dict probes,
-# scaling) -> build/verification.json
+# Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
+# benchmarks, dict probes, scaling) -> build/verification.json
 verify:
 	PY="$(PY)" tests/verify.sh
 
@@ -129,6 +135,13 @@ check-runtime:
 check-recordings:
 	PYTHON="$(PY)" tests/record.sh --check
 
+# lib/re, run by CPython, must compile random patterns to CPython's code and errors and match, split
+# and substitute as CPython's re, also on Pystachy's UTF-8 strs, and so must test_re's largest cases
+# (tools/re_fuzz.py; deterministic: N=2000 patterns, SEED=1, e.g. make re-fuzz RE_FUZZ="20000 7")
+RE_FUZZ ?=
+re-fuzz:
+	$(PY) tools/re_fuzz.py $(RE_FUZZ)
+
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint:
@@ -140,4 +153,4 @@ lint:
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings lint clean
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings re-fuzz lint clean

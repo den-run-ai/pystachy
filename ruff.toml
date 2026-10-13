@@ -19,3 +19,4 @@ fixable = []
 
 [lint.per-file-ignores]
 "tools/rtcheck.py" = ["B023"]  # closures called inside their loop, by design
+"tools/re_fuzz.py" = ["B023"]  # (the same)

@@ -8,6 +8,8 @@ None
 {'a': 1}
 3
 error: \N{EM DASH} is not supported: Pystachy's re has no table of the Unicode character names at position 0
+error: unknown flag 3
+error: unknown flag 3
 NotImplementedError: re.split() of a pattern whose group 1 did not take part in the match gives None, which the list[str] Pystachy returns cannot hold
 NotImplementedError: re.findall() of a pattern with 2 groups returns tuples of that many items, which Pystachy does not have: use finditer() and m.group(1, 2, ...)
 [exit 1]

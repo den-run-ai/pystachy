@@ -105,18 +105,33 @@ character by character (code point by code point). Where it differs from CPython
   choice: a `list[str | None]` would hold it.
 - `finditer()` returns a list of the matches, found before it returns.
 - `\N{...}` is a pattern error: Pystachy has no table of the characters' names.
+- An inline flag that is no flag, `(?iⅠ)` or `(?-Ⅰ:x)`, is an "unknown flag" where the character
+  may begin an identifier, else "missing -, : or )" or "missing flag": CPython asks
+  `str.isalpha()`, which differs for 262 characters such as U+2160 ROMAN NUMERAL ONE (`Ⅰ`).
 - The flags are ints, not `RegexFlag` members; `groupindex` is a dict; `re.error` is the base class
   of the `PatternError` the module raises (CPython 3.13 has one class); a replacement function
   must return a str (CPython's may return `None`); and there is no `DEBUG` output, `Scanner`,
   `__index__` group number, warning or `bytes` pattern.
 
-`tests/lib_re.py` compares it with CPython's `re`. Run by CPython as a package of its own, it
-passes CPython 3.13's `Lib/test/test_re.py` but for the cases above, the tests of CPython's
-internals (`re._compiler`), of its C types' own behaviour (immutable objects, `copy`, no
-instantiation, the `TypeError` of a non-str argument), of str subclasses and of a time limit;
-and it makes the same code, errors and results as CPython's `re` for 18,000 random patterns,
-each matched against 19 strings. With it, unmodified roman 5.2 prints what CPython prints. It
-is about 3 times slower than `_sre`.
+`tests/lib_re.py` compares it with CPython's `re`, and `tests/upstream_re_*.py` with CPython
+3.13.16's own tests of it, JIT and AOT, against what CPython's `re` printed: the 403 cases of
+`Lib/test/re_tests.py` (each also searched with IGNORECASE, with UNICODE and within its match,
+as `test_re_tests` does) and its benchmarks, and some 1,200 cases of `Lib/test/test_re.py`, the
+ones that apply to str patterns: matches and the groups backtracking restores, atomic groups and
+possessive repeats, lookaround, backreferences and conditionals, flags and case folding, escapes
+and Unicode classes, `sub()` and its templates, `split()`, `findall()` and `finditer()` past
+empty matches, and the errors, with their messages and positions. Their headers list what they
+leave out and why: the deviations above, bytes patterns, warnings, CPython's internals
+(`re._compiler`, `DEBUG`) and its C types' own behaviour (immutable objects, `copy`, pickling,
+the `TypeError` of a non-str argument), str subclasses, and the cases too big for `make
+verify`'s run with a collection at every allocation, which run there on smaller inputs.
+`tools/re_fuzz.py` (`make re-fuzz`, a step of `make verify`) runs the port on CPython against
+CPython's `re`, deterministically: 2,000 random patterns must compile to the same code (or raise
+the same error), and match, split and substitute 19 strings each as CPython's `re` does, every
+other pattern on strs that hold UTF-8 as Pystachy's do; and the test cases too big for the
+compiled tests run there at upstream's size (`make re-fuzz RE_FUZZ="20000 2"` runs 20,000
+patterns of seed 2). With it, unmodified roman 5.2 prints what CPython prints. It is about 3
+times slower than `_sre`.
 
 ## `functools`, Pystachy's own
 

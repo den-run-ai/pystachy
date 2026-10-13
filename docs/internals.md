@@ -39,14 +39,14 @@ flowchart TD
 | `lib/` | 9 modules | unmodified CPython 3.13 standard library modules that compile as they are ([`lib/README.md`](../lib/README.md)) |
 | `tests/` | 539 programs, 634 rejection cases, 16 deviation cases, 12 IR probes | each program must print exactly what CPython prints, JIT and AOT ([testing.md](testing.md)) |
 | `bench/` | 9 programs | the benchmarks of [performance.md](performance.md) |
-| `tools/` | | the IR oracle, the IR check over the corpus, the check of the `RUNTIME` table against `runtime.c` and `runtime.py`, `runtime.py`'s fuzzer against CPython, ABI check and microbenchmarks, the syntax and import sweeps, the scaling check, the dict probe counter, the stdlib census, and the count of a port's edits by cause |
+| `tools/` | | the IR oracle, the IR check over the corpus, the check of the `RUNTIME` table against `runtime.c` and `runtime.py`, `runtime.py`'s fuzzer against CPython, `lib/re`'s fuzzer against CPython's `re`, ABI check and microbenchmarks, the syntax and import sweeps, the scaling check, the dict probe counter, the stdlib census, and the count of a port's edits by cause |
 | `ports/` | 15 packages | PyPI packages with the few edits each needs to compile, marked "Pystachy port:" and listed in its `PORT.md`: convertdate 2.5.1's calendar conversions and holidays ([`ports/convertdate/PORT.md`](../ports/convertdate/PORT.md)); iniconfig 2.3.1, pytest's INI parser ([`ports/iniconfig/PORT.md`](../ports/iniconfig/PORT.md)); jdcal 1.4.1, Julian date conversions ([`ports/jdcal/PORT.md`](../ports/jdcal/PORT.md)); ordered-set 4.1.0's OrderedSet, of str ([`ports/ordered_set/PORT.md`](../ports/ordered_set/PORT.md)); pyaes 1.6.1's AES block cipher ([`ports/pyaes/PORT.md`](../ports/pyaes/PORT.md)); pyfiglet 1.0.4, FIGlet's text banners in its standard, slant and small fonts ([`ports/pyfiglet/PORT.md`](../ports/pyfiglet/PORT.md)); pylev 1.4.0, Levenshtein distances ([`ports/pylev/PORT.md`](../ports/pylev/PORT.md)); qrcode 8.2's encoder and text output ([`ports/qrcode/PORT.md`](../ports/qrcode/PORT.md)); roman 5.2, the Roman numeral converter ([`ports/roman/PORT.md`](../ports/roman/PORT.md)); sgp4 2.27, the SGP4/SDP4 satellite propagator under Skyfield ([`ports/sgp4/PORT.md`](../ports/sgp4/PORT.md)); snowballstemmer 3.1.1's English (Porter2) and Porter stemmers, Sphinx's search-index stemmers ([`ports/snowballstemmer/PORT.md`](../ports/snowballstemmer/PORT.md)); sortedcontainers 2.4.0's SortedList, of ints ([`ports/sortedcontainers/PORT.md`](../ports/sortedcontainers/PORT.md)); sqids 0.5.2, short unique ids from numbers ([`ports/sqids/PORT.md`](../ports/sqids/PORT.md)); tomli-w 1.2.0's TOML writer, `dumps()` ([`ports/tomli_w/PORT.md`](../ports/tomli_w/PORT.md)); and wcwidth 0.9.2's `wcwidth()` and `wcswidth()`, the columns a terminal gives text ([`ports/wcwidth/PORT.md`](../ports/wcwidth/PORT.md)); `tests/port_*.py` run their test cases, and `tools/port_edits.py` sorts the markers by cause and, given the upstream package, lists the census blockers the edits removed |
 
 ## Environment variables
 
 | variable | effect |
 |---|---|
-| `PYSTACHY_LLVM` | directory of the LLVM 18 tools (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`) when they are not on `PATH` under those names, e.g. `/usr/lib/llvm-18/bin` |
+| `PYSTACHY_LLVM` | directory of the LLVM 18 tools (`clang`, `llvm-link`, `opt`, `lli`, `llvm-as`) when they are not on `PATH` under those names, e.g. `/usr/lib/llvm-18/bin`; the cached runtime is keyed by the tools' files, wherever they are found |
 | `PYSTACHY_HOME` | the checkout that holds `runtime.c`, `lib/` and the `build/` cache, for a compiler installed elsewhere (by default the compiler looks next to itself, or in its parent directory) |
 | `PYSTACHY_PATH` | extra directories, separated by `:`, to search for imported modules |
 | `PYSTACHY_CFLAGS` | extra clang flags (such as sanitizers) for the runtime and the AOT build, with a runtime cache per flag set |
@@ -389,10 +389,13 @@ compiles it in a runtime mode: its `pys_*` functions keep runtime.c's C names an
 `def f(...) -> T: ...` declares a C function, and `import _rt` gives a few primitives (byte
 reads, an in-place string builder, `memchr`, `memcmp` and `memmem`, wrapping and unsigned
 arithmetic), each a few checked LLVM instructions. The driver links it to runtime.c's bitcode
-and optimizes the two as one module (`build/runtime-py-<hash>.bc` and its `.o`) when it
-rebuilds the cached runtime, which it does when `runtime.c`, `runtime.py` or the running
-compiler is newer; programs' IR does not change (but for an `invoke` inside a `try` where a
-moved function can raise). A raise in a `runtime.py` function unwinds to
+and optimizes the two as one module (`build/runtime-py-<L>-<K>.bc` and its `.o`) when it
+builds the cached runtime. The name is a hash of all the runtime is built from: the bytes of
+`runtime.c`, `runtime.py` and the running compiler, the flags and the LLVM tools' files, so an
+edit of any of them, also one made while the runtime is built, makes a run build it again
+([runtime-in-subset.md](runtime-in-subset.md) §1.4; `tests/cache.sh` tests the rules).
+Programs' IR does not change (but for an `invoke` inside a `try` where a moved function can
+raise). A raise in a `runtime.py` function unwinds to
 a program's handler like one in runtime.c. `tools/rtcheck.py` runs `runtime.py` on CPython
 against CPython's own str methods, `math` and `format()`.
 [runtime-in-subset.md](runtime-in-subset.md) evaluates the approach.

@@ -38,6 +38,15 @@ try:
 except re.error as e:
     print("error:", e)
 
+# An inline flag that is no flag: the message is "unknown flag" for a character an identifier may
+# begin with, where CPython's is for a letter (str.isalpha()), which U+2160 ROMAN NUMERAL ONE is
+# not. CPython prints "missing -, : or ) 3" and "missing flag 3"
+for p in ["(?i\u2160)", "(?-\u2160:x)"]:
+    try:
+        re.compile(p)
+    except re.error as e:
+        print("error:", e.msg, e.pos)
+
 # re.split() of a pattern with a group that does not take part in a match: CPython puts None in
 # the list, which a list[str] cannot hold. CPython prints ['a', None, 'b']
 try:

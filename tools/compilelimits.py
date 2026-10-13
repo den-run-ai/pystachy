@@ -23,6 +23,7 @@ TYPE_ERROR = "type representation exceeds 65536 bytes"
 SIGNATURE_ERROR = "template signature exceeds 1048576 bytes"
 ACTIVE_ERROR = "active template signatures exceed 1048576 bytes"
 INSTANCES_ERROR = "compilation needs more than 4096 template specializations"
+RETAINED_ERROR = "retained template signatures exceed 16777216 bytes"
 
 
 def limits():
@@ -44,15 +45,35 @@ def wide_calls(params, depth):
     return "\n".join(src) + "\n"
 
 
-def branching_calls(depth):
+def branching_calls(depth, leaves=0):
     # Source, active nesting and individual types grow linearly, but each function
     # calls the next with two different types: 2**(depth + 1) - 1 retained instances.
-    src = []
+    # The argument starts as x{leaves}, 2**leaves ints nested in pairs, whose type every
+    # signature then holds (x12's is 45 KB: issue #179's gen.py DEPTH LEAVES).
+    src = ["x0 = 1"] + [f"x{i} = (x{i - 1}, x{i - 1})" for i in range(1, leaves + 1)]
     for i in range(depth):
         src += [f"def f{i}(x, choose: bool) -> int:", "    if choose:",
                 f"        return f{i + 1}((x, 1), choose)",
                 f'    return f{i + 1}((x, ""), choose)']
-    src += [f"def f{depth}(x, choose: bool) -> int:", "    return 1", "print(f0(0, True))"]
+    src += [f"def f{depth}(x, choose: bool) -> int:", "    return 1", f"print(f0(x{leaves}, True))"]
+    return "\n".join(src) + "\n"
+
+
+def fanned_calls(params, ways, depth):
+    # params arguments start as x12, and each branch of each function passes all of them on
+    # wrapped with one of `ways` types: with 4, 15 and 3, issue #179's 4.3 KB variant, 3,616
+    # instances of 180 KB signatures.
+    vals = ["1", '""', "1.0", "True", "None", "(1,)", "(1, 1)", '("",)', "(1.0,)", "(True,)",
+            "((1,),)", '(1, "")', '("", 1)', "(1.0, 1)", "(None,)"][:ways]
+    names = [f"p{i}" for i in range(params)]
+    src = ["x0 = 1"] + [f"x{i} = (x{i - 1}, x{i - 1})" for i in range(1, 13)]
+    for i in range(depth):
+        src.append(f"def f{i}({', '.join(names)}, n: int) -> int:")
+        for j, v in enumerate(vals):
+            src += [f"    if n == {j}:", f"        return f{i + 1}({', '.join([f'({p}, {v})' for p in names])}, n)"]
+        src.append("    return 0")
+    src += [f"def f{depth}({', '.join(names)}, n: int) -> int:", "    return 1",
+            f"print(f0({', '.join(['x12'] * params)}, 0))"]
     return "\n".join(src) + "\n"
 
 
@@ -81,7 +102,9 @@ def main():
             sources.append((name, ROOT / "tests" / "errors" / f"{name}.py", TYPE_ERROR))
         for name, src, error in (("wide_signature", wide_calls(24, 1), SIGNATURE_ERROR),
                                  ("active_signatures", wide_calls(12, 2), ACTIVE_ERROR),
-                                 ("branching_instances", branching_calls(16), INSTANCES_ERROR)):
+                                 ("branching_instances", branching_calls(16), INSTANCES_ERROR),
+                                 ("retained_signatures", branching_calls(11, 12), RETAINED_ERROR),
+                                 ("retained_wide_signatures", fanned_calls(4, 15, 3), RETAINED_ERROR)):
             source = temp / f"{name}.py"
             source.write_text(src)
             sources.append((name, source, error))
