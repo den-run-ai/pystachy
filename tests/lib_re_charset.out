@@ -1,0 +1,204 @@
+'[a-z0-9]+'
+['0123456789', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'a', '1', '123']
+[]
+['b', '1', 'a', '2']
+['0123456789', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'a', '1', '123']
+[]
+['b', '1', 'a', '2']
+A<>C<> -- <>Z<>
+<> WORLD <>
+['A', 'C', ' -- ', 'Z', '\n', ' WORLD ', '']
+'[^a-z0-9]+'
+['\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./', ':;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`', '{|}~\x7f']
+[' ABC ', 'B', ' !&.,? \t\r\n ']
+['éÉKſİıĀȀ̀ЀԀ１２３']
+['A', 'C', ' -- ', 'Z']
+['\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./', ':;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`', '{|}~\x7f']
+[' ABC ', 'B', ' !&.,? \t\r\n ']
+['éÉKſİıĀȀ̀ЀԀ１２３']
+['A', 'C', ' -- ', 'Z']
+<>b<>1<>a<>2<>hello<>123
+['', 'b', '1', 'a', '2', 'hello', '123']
+'[aefijkpquvz]+'
+['a', 'ef', 'ijk', 'pq', 'uv', 'z']
+['a', 'a']
+[]
+['a']
+['a', 'ef', 'ijk', 'pq', 'uv', 'z']
+['a', 'a']
+[]
+['a']
+AbC1 -- <>Z2
+h<>llo WORLD 123
+['AbC1 -- ', 'Z2\nh', 'llo WORLD 123']
+'[\\w!\\"\'&.,?]+'
+['!"', "&'", ',', '.', '0123456789', '?', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB1', '!&.,?', '123']
+['éÉKſİıĀȀ', 'ЀԀ１２３']
+['AbC1', 'aZ2']
+['!"', "&'", ',', '.', '0123456789', '?', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB1', '!&.,?', '123']
+['éÉKſİıĀȀ', 'ЀԀ１２３']
+['AbC1', 'aZ2']
+<> -- <>
+<> <> <>
+['', ' -- ', '\n', ' ', ' ', '']
+'[^\\d\\W]+'
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+['éÉKſİıĀȀ', 'ЀԀ']
+['AbC', 'aZ']
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+['éÉKſİıĀȀ', 'ЀԀ']
+['AbC', 'aZ']
+<>1 -- <>2
+<> <> 123
+['', '1 -- ', '2\n', ' ', ' 123']
+'[\\s\\d]+'
+['\t\n\x0b\x0c\r', '\x1c\x1d\x1e\x1f ', '0123456789']
+[' ', ' ', '1 ', ' \t\r\n 123']
+['１２３']
+['1 ', ' ', '2']
+['\t\n\x0b\x0c\r', '\x1c\x1d\x1e\x1f ', '0123456789']
+[' ', ' ', '1 ', ' \t\r\n 123']
+['１２３']
+['1 ', ' ', '2']
+AbC<>--<>aZ<>hello<>WORLD<>
+['AbC', '--', 'aZ', 'hello', 'WORLD', '']
+'[^\\s\\d]+'
+['\x00\x01\x02\x03\x04\x05\x06\x07\x08', '\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b', '!"#$%&\'()*+,-./', ':;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f']
+['abc', 'ABC', 'aB', '!&.,?']
+['éÉKſİıĀȀ̀ЀԀ']
+['AbC', '--', 'aZ']
+['\x00\x01\x02\x03\x04\x05\x06\x07\x08', '\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b', '!"#$%&\'()*+,-./', ':;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f']
+['abc', 'ABC', 'aB', '!&.,?']
+['éÉKſİıĀȀ̀ЀԀ']
+['AbC', '--', 'aZ']
+<>1 <> <>2
+<> <> 123
+['', '1 ', ' ', '2\n', ' ', ' 123']
+'[a\\u0100\\u0200\\u0300\\u0400\\u0500]+'
+['a']
+['a', 'a']
+['ĀȀ̀ЀԀ']
+['a']
+['a']
+['a', 'a']
+['ĀȀ̀ЀԀ']
+['a']
+AbC1 -- <>Z2
+hello WORLD 123
+['AbC1 -- ', 'Z2\nhello WORLD 123']
+'(?i)[a-z]+'
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+['Kſİı']
+['AbC', 'aZ']
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+['Kſİı']
+['AbC', 'aZ']
+<>1 -- <>2
+<> <> 123
+['', '1 -- ', '2\n', ' ', ' 123']
+'(?ai)[a-z]+'
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+[]
+['AbC', 'aZ']
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB']
+[]
+['AbC', 'aZ']
+<>1 -- <>2
+<> <> 123
+['', '1 -- ', '2\n', ' ', ' 123']
+'(?i)[A-\\u0100]+'
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f']
+['abc', 'ABC', 'aB']
+['éÉKſİıĀ']
+['AbC', 'aZ']
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f']
+['abc', 'ABC', 'aB']
+['éÉKſİıĀ']
+['AbC', 'aZ']
+<>1 -- <>2
+<> <> 123
+['', '1 -- ', '2\n', ' ', ' 123']
+'(?i:[a-z]+)(?-i:[A-Z]+)'
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ']
+['ABC', 'aB']
+[]
+['AbC', 'aZ']
+['ABCDEFGHIJKLMNOPQRSTUVWXYZ']
+['ABC', 'aB']
+[]
+['AbC', 'aZ']
+<>1 -- <>2
+hello <> 123
+['', '1 -- ', '2\nhello ', ' 123']
+'(?i:[a-z]+)|(?a:\\w+)'
+['0123456789', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB', '1', '123']
+['Kſİı']
+['AbC', '1', 'aZ', '2']
+['0123456789', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '_', 'abcdefghijklmnopqrstuvwxyz']
+['abc', 'ABC', 'aB', '1', '123']
+['Kſİı']
+['AbC', '1', 'aZ', '2']
+<><> -- <><>
+<> <> <>
+['', '', ' -- ', '', '\n', ' ', ' ', '']
+'(?<=[a-z])[A-Z](?=[0-9])'
+[]
+['B']
+[]
+['C', 'Z']
+[]
+['B']
+[]
+['C', 'Z']
+Ab<>1 -- a<>2
+hello WORLD 123
+['Ab', '1 -- a', '2\nhello WORLD 123']
+'(?:[a-z]+|[0-9]+|[^\\w])'
+['\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\x08', '\t', '\n', '\x0b', '\x0c', '\r', '\x0e', '\x0f', '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', '\x17', '\x18', '\x19', '\x1a', '\x1b', '\x1c', '\x1d', '\x1e', '\x1f', ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0123456789', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', 'abcdefghijklmnopqrstuvwxyz', '{', '|', '}', '~', '\x7f']
+['abc', ' ', ' ', 'a', '1', ' ', '!', '&', '.', ',', '?', ' ', '\t', '\r', '\n', ' ', '123']
+['̀']
+['b', '1', ' ', '-', '-', ' ', 'a', '2']
+['\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\x08', '\t', '\n', '\x0b', '\x0c', '\r', '\x0e', '\x0f', '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', '\x17', '\x18', '\x19', '\x1a', '\x1b', '\x1c', '\x1d', '\x1e', '\x1f', ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0123456789', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', 'abcdefghijklmnopqrstuvwxyz', '{', '|', '}', '~', '\x7f']
+['abc', ' ', ' ', 'a', '1', ' ', '!', '&', '.', ',', '?', ' ', '\t', '\r', '\n', ' ', '123']
+['̀']
+['b', '1', ' ', '-', '-', ' ', 'a', '2']
+A<>C<><><><><><>Z<><><><>WORLD<><>
+['A', 'C', '', '', '', '', '', 'Z', '', '', '', 'WORLD', '', '']
+'[a-z]+?[0-9]'
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+AbC1 -- aZ2
+hello WORLD 123
+['AbC1 -- aZ2\nhello WORLD 123']
+'[a-z]++[0-9]'
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+[]
+AbC1 -- aZ2
+hello WORLD 123
+['AbC1 -- aZ2\nhello WORLD 123']
+[one,again] [two,again] [three,again]
+['four', 'six']
+[exit 0]

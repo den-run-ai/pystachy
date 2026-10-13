@@ -376,6 +376,16 @@ character there is not that one, without the nested match that would fail at onc
 (`tests/lib_re_first.py`): `wordsep_simple_re`'s split of a paragraph enters the matcher 79 times
 instead of 468, and takes 30% less time compiled.
 
+Each `Pattern` also keeps a 128-entry ASCII membership table for each character class it uses,
+built on that class's first ASCII test and shared by later matches, searches and substitutions.
+The table is indexed by the class's position in the bytecode; integer offsets into flattened
+tables keep the warm path on inline `list[int]` reads. Case folding remains at the opcode that
+requests the test, including scoped flags, and non-ASCII characters still use the original
+`charset()` evaluator. The bytecode stays CPython's. The tables belong to the pattern, so evicting
+it from `re`'s or `fnmatch`'s caches can release them; repeated matching adds no global cache.
+`tests/lib_re_charset.py` checks all ASCII characters, Unicode fallback and case folding, scoped
+flags, repeated use, nested substitutions and a pattern retained across `purge()`.
+
 ## `fnmatch`, a port of CPython's
 
 `fnmatch.py` is CPython 3.13.16's `Lib/fnmatch.py` (SHA-256

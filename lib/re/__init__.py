@@ -1772,6 +1772,11 @@ class Pattern:
         self.groups = groups
         self.groupindex = groupindex
         self._code = code
+        # Classes are evaluated for ASCII only on first use. Their lifetime is this Pattern's,
+        # so purge() or cache eviction can release them with the pattern. Integer offsets into
+        # the flattened tables keep the warm lookup on the compiler's inline list[int] reads.
+        self._charset_offsets = [-1] * len(code)
+        self._charset_ascii: list[int] = []
         self._indexgroup: list[str | None] = [None] * (groups + 1)
         for k in groupindex:
             self._indexgroup[groupindex[k]] = k
@@ -1786,6 +1791,8 @@ class Pattern:
         codes = _codes(string)
         offs = _last_offs
         st = _sre.State(codes, _to_char(offs, pos), _to_char_floor(offs, endpos), self.groups)
+        st.charset_offsets = self._charset_offsets
+        st.charset_ascii = self._charset_ascii
         st.offs = offs
         st.pos = pos
         st.endpos = endpos

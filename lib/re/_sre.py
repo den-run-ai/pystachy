@@ -277,6 +277,10 @@ class State:
         # in use, by sre_match() and the calls nested in it through sre_count(), the others free)
         self.ctxs: list[Ctx] = []
         self.top = 0
+        # Pattern's lazily built ASCII class tables, shared by its states. Empty until _state
+        # attaches them; direct engine callers retain charset()'s bytecode evaluation.
+        self.charset_offsets: list[int] = []
+        self.charset_ascii: list[int] = []
 
     def reset(self) -> None:
         # state_reset
@@ -284,6 +288,26 @@ class State:
         self.lastindex = -1
         self.repeat = None
         self.data = []
+
+
+def _charset_table(state: State, code: list[int], i: int) -> int:
+    start = len(state.charset_ascii)
+    for c in range(128):
+        state.charset_ascii.append(int(charset(code, i, c)))
+    state.charset_offsets[i] = start
+    return start
+
+
+def _charset(state: State, code: list[int], i: int, ch: int) -> bool:
+    # The caller applies an IN_IGNORE/IN_UNI_IGNORE's folding before arriving here. Each code
+    # position therefore has one fixed set, including scoped flags, independent of the string.
+    # Keep CPython's bytecode untouched and non-ASCII characters on its original evaluator.
+    if ch >= 128 or len(state.charset_offsets) == 0:
+        return charset(code, i, ch)
+    start = state.charset_offsets[i]
+    if start < 0:
+        start = _charset_table(state, code, i)
+    return state.charset_ascii[start + ch] != 0
 
 
 class Ctx:
@@ -385,7 +409,7 @@ def sre_count(state: State, code: list[int], p: int, maxcount: int) -> int:
         end = ptr + maxcount
     op = code[p]
     if op == IN:
-        while ptr < end and charset(code, p + 2, s[ptr]):
+        while ptr < end and _charset(state, code, p + 2, s[ptr]):
             ptr += 1
     elif op == ANY:
         while ptr < end and s[ptr] != 10:
@@ -503,7 +527,7 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 pattern += 1
                 ptr += 1
             elif op == IN:
-                if ptr >= end or not charset(code, pattern + 1, s[ptr]):
+                if ptr >= end or not _charset(state, code, pattern + 1, s[ptr]):
                     ret = 0
                     k = K_EXIT
                     continue
@@ -577,7 +601,7 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 pattern += 1
                 ptr += 1
             elif op == IN_IGNORE or op == IN_UNI_IGNORE:
-                if ptr >= end or not charset(code, pattern + 1, lower_ascii(s[ptr]) if op == IN_IGNORE else lower_unicode(s[ptr])):
+                if ptr >= end or not _charset(state, code, pattern + 1, lower_ascii(s[ptr]) if op == IN_IGNORE else lower_unicode(s[ptr])):
                     ret = 0
                     k = K_EXIT
                     continue
@@ -984,7 +1008,7 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 if code[pattern + 1] == LITERAL and (ptr >= end or s[ptr] != code[pattern + 2]):
                     pattern += code[pattern]
                     continue
-                if code[pattern + 1] == IN and (ptr >= end or not charset(code, pattern + 3, s[ptr])):
+                if code[pattern + 1] == IN and (ptr >= end or not _charset(state, code, pattern + 3, s[ptr])):
                     pattern += code[pattern]
                     continue
                 op = code[pattern + 1]
@@ -1202,7 +1226,7 @@ def sre_search(state: State, code: list[int]) -> int:
         end = state.end
         state.must_advance = False
         while True:
-            while ptr < end and not charset(code, charset_at, s[ptr]):
+            while ptr < end and not _charset(state, code, charset_at, s[ptr]):
                 ptr += 1
             if ptr >= end:
                 return 0
@@ -1310,4 +1334,4 @@ def _first(state: State, code: list[int], item: int, ptr: int) -> bool:
         return False
     if code[item] == LITERAL:
         return state.s[ptr] == code[item + 1]
-    return charset(code, item + 2, state.s[ptr])
+    return _charset(state, code, item + 2, state.s[ptr])
