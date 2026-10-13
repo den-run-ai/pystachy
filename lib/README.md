@@ -362,6 +362,12 @@ limits, deterministic counts that a change making the matcher do more exceeds. `
 times the same operations, compiled and under CPython (`make re-probe RE_PROBE="--time
 ./pystachy"`).
 
+The replacement-template cache keys a template by the original pattern string, flags and
+replacement string, so a hit builds no temporary concatenated key string. `tests/lib_re_cache.py`
+checks cache hits, purge, eviction and flag-dependent template group indices against CPython.
+`tools/re_cache_bench.py` times warm compilation, an equal fresh pattern and cached `Match.expand()`
+with CPU time, with the same checksum under CPython and compiled.
+
 One search is not `_sre`'s: a pattern that begins with `^` of `MULTILINE` (after groups' marks)
 enters the matcher only where a line begins, at the string's start or after a `\n`, where `_sre`
 enters it at every position and fails at once at all the others (`tests/lib_re_lines.py`). For a

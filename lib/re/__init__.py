@@ -2088,7 +2088,7 @@ class Match:
 
 _cache: dict[tuple[str, int], Pattern] = {}
 _MAXCACHE = 512
-_tcache: dict[tuple[str, str], Template] = {}
+_tcache: dict[tuple[str, int, str], Template] = {}
 
 
 def _compile(pattern, flags: int) -> Pattern:
@@ -2120,7 +2120,8 @@ def _compile(pattern, flags: int) -> Pattern:
 
 def _compile_template(pattern: Pattern, repl: str) -> Template:
     # internal: compile replacement pattern
-    key = (pattern.pattern + "\x00" + str(pattern.flags), repl)
+    # Keep the immutable components: a hit needs no formatted or concatenated key string.
+    key = (pattern.pattern, pattern.flags, repl)
     if key in _tcache:
         return _tcache[key]
     t = parse_template(repl, pattern)

@@ -1,0 +1,13 @@
+equal hit True
+flags False True
+purged False
+evicted False
+flagged templates <a> <a>
+flagged templates <a> <a>
+flagged templates <a> <a>
+nul '<a\x00b>'
+template churn 1970 <a>
+template purge <a>
+uncached error invalid group reference 2 at position 1
+uncached error invalid group reference 2 at position 1
+[exit 0]
