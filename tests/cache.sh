@@ -160,7 +160,7 @@ check "the same flags then build the runtime" "$out" 1 PYSTACHY_CFLAGS=-DPYSTACH
 npairs 2 "PYSTACHY_CFLAGS: an entry of their own"
 check "PYSTACHY_OPT=-all: built" "$out" 1 PYSTACHY_OPT=-all
 npairs 3 "PYSTACHY_OPT: an entry of its own"
-check "the same passes turned off by name: the same entry" "$out" 0 PYSTACHY_OPT=-tupleiter,-dictfuse,-listget,-listfast
+check "the same passes turned off by name: the same entry" "$out" 0 PYSTACHY_OPT=-tupleiter,-dictfuse,-listget,-listfast,-moduleints
 check "without them, the first entry is used" "$out" 0
 echo "# changed" >> "$T/llvm/opt"
 sleep 3
