@@ -1,10 +1,10 @@
-# error: a call of scale(), which lru_cache() wraps, passes a keyword argument (k=), which is not supported yet: pass its arguments by position
+# error: a call of square(), which lru_cache() wraps, passes its argument by keyword (n=), which CPython caches apart from a call that passes it by position, and Pystachy's key for one int or str parameter is the argument alone: pass it by position
 from functools import lru_cache
 
 
 @lru_cache(maxsize=4)
-def scale(x: int, k: int) -> int:
-    return x * k
+def square(n: int) -> int:
+    return n * n
 
 
-print(scale(2, k=3))
+print(square(2), square(n=2))

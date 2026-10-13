@@ -7509,6 +7509,7 @@ class ClassInfo:
         # are (see cache_types), and the function it wraps
         self.tvars: dict[str, str] = {}
         self.cachefn = ""
+        self.forms: dict[str, int] = {}  # the forms of the calls through it, numbered as cache_key sees them
 
 
 class Flow:
@@ -18432,7 +18433,11 @@ class Gen:
     def cache_key(self, args: list[Node]) -> Val:
         # __pys_cache_key(self, *args, **kwds) in _lru_cache_wrapper.__call__ of lib/functools: the key
         # of the call, of self's _Key (cache_types), the arguments checked as a call of the function
-        # checks them. A call passes every argument by position, its form 0 (a tuple key's first item)
+        # checks them. CPython's key is the positional arguments, then a marker and each keyword
+        # argument's name and value in the call's order, so it keeps each form of a call apart:
+        # f(1), f(1, 2) and f(1, b=2) are three entries. A tuple key starts with the number that
+        # self's class gives the call's form, then holds an item per parameter: its argument, or a
+        # zero of its type where the form leaves it out (as it does at each call of that form)
         w = self.expr(args[0], "")
         if w.t not in self.classes or self.classes[w.t].cachefn == "":
             self.err("__pys_cache_key() is lib/functools' (its _lru_cache_wrapper's)")
@@ -18441,20 +18446,48 @@ class Gen:
         first = 1 if f.clo >= 0 else 0
         call = args[1:]
         self.arity(f, first, call)
-        what = f"a call of {short(f.name)}(), which lru_cache() wraps,"
-        for a in call:
-            if a.kind == "kw":
-                self.err(f"{what} passes a keyword argument ({a.s}=), which is not supported yet: pass its arguments by position")
-        if len(call) < len(f.params) - first:
-            self.err(f"{what} leaves out an argument that has a default value ('{f.params[first + len(call)]}'), which is not supported yet: pass every argument")
+        n = len(f.params) - first
         vals: list[Val] = []
-        for j in range(len(call)):
+        for _ in range(n):
+            vals.append(Val("", ""))
+        npos = 0
+        kws: list[str] = []
+        for a in call:
+            j = npos
+            e = a
+            if a.kind == "kw":
+                j = f.params.index(a.s) - first
+                e = a.kids[0]
+                kws.append(a.s)
+            else:
+                npos += 1
             t = f.ptypes[first + j]
-            vals.append(self.pcoerce(self.expr(call[j], t), t, f, first + j))
+            vals[j] = self.pcoerce(self.expr(e, t), t, f, first + j)
         key = ci.tvars[self.cachecls[: self.cachecls.find("$") + 1] + "_Key"]
         if not is_tuple(key):
-            return vals[0] if len(vals) > 0 else Val("0", "int")
-        return self.tuple_([Val("0", "int")] + vals)
+            if len(kws) > 0:
+                self.err(f"a call of {short(f.name)}(), which lru_cache() wraps, passes its argument by keyword ({kws[0]}=), which CPython caches apart from a call that passes it by position, and Pystachy's key for one int or str parameter is the argument alone: pass it by position")
+            return vals[0] if n > 0 else Val("0", "int")
+        form = f"{npos}:{','.join(kws)}"
+        if form not in ci.forms:
+            ci.forms[form] = len(ci.forms)
+        items = [Val(str(ci.forms[form]), "int")]
+        for j in range(n):
+            items.append(vals[j] if vals[j].t != "" else self.zero_key(f.ptypes[first + j]))
+        return self.tuple_(items)
+
+    def zero_key(self, t: str) -> Val:
+        # the item of a cache's tuple key (cache_key) for a parameter of type t that a call leaves
+        # out: t is a dict key's item type (int, bool, str, str | None, tuples of those)
+        if t == "int":
+            return Val("0", "int")
+        if t == "bool":
+            return Val("false", "bool")
+        if t == "str":
+            return Val(self.sconst(""), "str")
+        if is_tuple(t):
+            return self.tuple_([self.zero_key(x) for x in targs(t)])
+        return Val("null", t)  # (str | None: None)
 
     def instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
         # the function template f compiles to for arguments of types ts, compiled when first

@@ -1,0 +1,46 @@
+  scale 3 2 ''
+  scale 3 2 ''
+  scale 3 2 ''
+  scale 3 2 ''
+  scale 3 2 ''
+6 6 6 6 6
+CacheInfo(hits=0, misses=5, maxsize=8, currsize=5)
+6 6 6 6 6
+CacheInfo(hits=5, misses=5, maxsize=8, currsize=5)
+  scale 3 2 'a'
+  scale 3 2 'a'
+  scale 4 2 'a'
+a6 a6 a6 a8
+CacheInfo(hits=6, misses=8, maxsize=8, currsize=8)
+  scale 5 2 ''
+  scale 5 1 ''
+  scale 6 2 ''
+  scale 3 2 ''
+10 5 12 6 CacheInfo(hits=6, misses=12, maxsize=8, currsize=8)
+6 CacheInfo(hits=7, misses=12, maxsize=8, currsize=8)
+  fmt 'ab' 8 ' ' False None
+  fmt 'ab' 4 ' ' False None
+  fmt 'ab' 4 ' ' False None
+  fmt 'ab' 8 '.' False None
+  fmt 'ab' 8 '.' True None
+      ab   ab   ab ......ab ......AB
+  fmt 'ab' 8 '.' True None
+  fmt 'ab' 8 ' ' False t
+  fmt 'ab' 8 ' ' False None
+  fmt 'ab' 4 ' ' False t
+......AB t:      ab       ab t:  ab
+CacheInfo(hits=0, misses=9, maxsize=None, currsize=9)
+      ab   ab   ab ......AB       ab
+CacheInfo(hits=5, misses=9, maxsize=None, currsize=9)
+  pair (1, 2) 0
+  pair (1, 2) 0
+  pair (1, 2) 0
+  pair (1, 2) 0
+2 2 2 2 CacheInfo(hits=0, misses=4, maxsize=2, currsize=2)
+  area 2 3
+  area 2 3
+  area 2 1
+  area 2 1
+6 6 6 2 2 CacheInfo(hits=1, misses=1, maxsize=4, currsize=1) CacheInfo(hits=0, misses=3, maxsize=None, currsize=3)
+465 CacheInfo(hits=0, misses=31, maxsize=None, currsize=31)
+[exit 0]

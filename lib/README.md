@@ -98,6 +98,13 @@ written after that C code, with `lru_cache`'s docstring:
   (`__pys_cache_key`). For one `int` or `str` parameter without a default the key is the
   argument, as CPython's is; otherwise it is a tuple of the arguments, after an int that names
   the form of the call.
+- CPython's key of a call is its positional arguments, then a marker and each keyword argument's
+  name and value in the call's order, so each form of a call has entries of its own: `f(3)`,
+  `f(3, 2)`, `f(3, k=2)`, `f(x=3, k=2)` and `f(k=2, x=3)` are five, also where the function sees the
+  same arguments, and share the cache's capacity, order and statistics. Here a form is the
+  number of positional arguments and the keywords' names in order, which the wrapper's class
+  numbers as the calls it compiles show them, and a parameter that a form leaves out has a zero of
+  its type in the key, as it has at each call of that form.
 
 What it does not have, each a compile-time error (`tests/errors/lib_functools_*.py`):
 
@@ -106,15 +113,14 @@ What it does not have, each a compile-time error (`tests/errors/lib_functools_*.
   those): the parameters are `int`, `bool`, `str`, `str | None` and tuples of those;
 - `lru_cache()` of a builtin, a method or a lambda (it caches a def's results, of the program or
   of a function), and of a method in a class body, where Pystachy applies no decorator;
-- a call through the cache that passes a keyword argument or leaves out one that has a default
-  value: CPython caches each form of a call apart (`f(1)`, `f(1, 2)` and `f(1, b=2)` are three
-  entries), and this version passes every argument by position;
+- a call that passes the argument by keyword where the key is the argument alone (one `int` or
+  `str` parameter without a default): CPython caches `f(n=2)` apart from `f(2)`;
 - `cache_parameters()`, whose dict mixes `int | None` and `bool` values.
 
 `typed=True` is accepted and keeps no calls apart: a parameter has one type, so the calls it
 would keep apart (`f(1)` and `f(1.0)`) cannot both compile. The cache needs no lock, as a
-Pystachy program has one thread. `tests/lib_functools.py` and `tests/lib_functools_mod.py`
-compare it with CPython's C wrapper.
+Pystachy program has one thread. `tests/lib_functools.py`, `tests/lib_functools_forms.py` and
+`tests/lib_functools_mod.py` compare it with CPython's C wrapper.
 
 In an AOT executable, a cache hit costs 10 ns (unbounded) to 20 ns (bounded) for an `int`
 argument, 15 ns for a `str` one and 49 ns for a `(str, int)` pair, whose key tuple is made and

@@ -1089,9 +1089,10 @@ CPython would run these programs, but Pystachy rejects them at compile time, wit
 - an `encoding=` constant other than UTF-8 and Latin-1
 - `functools.lru_cache()` and `cache()` of a function whose parameters or return are not
   annotated, that takes `*args` or `**kwargs`, or whose parameter is no dict key type (a `float`,
-  an object), or of a builtin, a method or a lambda; a call through the cache that passes a
-  keyword argument or leaves out one with a default value (CPython keys each form of a call
-  apart); and `cache_parameters()`
+  an object), or of a builtin, a method or a lambda; a call through the cache that passes by
+  keyword the one `int` or `str` parameter of a function without a default (CPython caches
+  `f(n=2)` apart from `f(2)`, and the cache's key is then the argument alone); and
+  `cache_parameters()`
 
 ### Source text
 

@@ -10,7 +10,8 @@ A Pystachy dict holds keys of one type and values of another, so each decorated 
 cache of its own types: _lru_cache_wrapper is a class template (its __init__ takes the function
 without an annotation), and the compiler binds _Key and _Result in the specialization each function
 makes, from that function's signature: _Result is its return type, and _Key the type of the key
-__pys_cache_key() makes of a call (docs/language.md, *functools*).
+__pys_cache_key() makes of a call, which keeps each form of a call apart as CPython's key does
+(f(3), f(3, 2) and f(3, k=2) are three entries) (lib/README.md, *functools*).
 """
 
 from typing import NamedTuple, TypeVar
