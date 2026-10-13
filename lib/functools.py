@@ -57,20 +57,29 @@ class _lru_cache_wrapper:
         self._prev: list[int] = [0]
         self._next: list[int] = [0]
 
-    def _extract(self, link: int) -> None:
-        # lru_cache_extract_link
-        prev = self._prev[link]
-        nxt = self._next[link]
-        self._next[prev] = nxt
-        self._prev[nxt] = prev
-
     def _append(self, link: int) -> None:
         # lru_cache_append_link: the most recently used
-        last = self._prev[0]
-        self._next[last] = link
-        self._prev[0] = link
-        self._prev[link] = last
-        self._next[link] = 0
+        prev = self._prev
+        nxt = self._next
+        last = prev[0]
+        nxt[last] = link
+        prev[0] = link
+        prev[link] = last
+        nxt[link] = 0
+
+    def _move_to_end(self, link: int) -> None:
+        # lru_cache_extract_link, then lru_cache_append_link
+        prev = self._prev
+        nxt = self._next
+        p = prev[link]
+        n = nxt[link]
+        nxt[p] = n
+        prev[n] = p
+        last = prev[0]
+        nxt[last] = link
+        prev[0] = link
+        prev[link] = last
+        nxt[link] = 0
 
     def __call__(self, *args, **kwds) -> _Result:
         if self._maxsize == 0:
@@ -91,8 +100,7 @@ class _lru_cache_wrapper:
         link = self._links.get(key, 0)
         if link != 0:
             if self._prev[0] != link:  # (moving the most recently used link changes nothing)
-                self._extract(link)
-                self._append(link)
+                self._move_to_end(link)
             self._hits += 1
             return self._results[link - 1]
         self._misses += 1
@@ -112,12 +120,11 @@ class _lru_cache_wrapper:
             return result
         # full: the least recently used link takes the new key and result
         link = self._next[0]
-        self._extract(link)
         del self._links[self._keys[link - 1]]
         self._keys[link - 1] = key
         self._results[link - 1] = result
         self._links[key] = link
-        self._append(link)
+        self._move_to_end(link)
         return result
 
     def cache_info(self) -> CacheInfo:
