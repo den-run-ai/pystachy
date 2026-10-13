@@ -156,6 +156,18 @@ check-runtime:
 check-recordings:
 	PYTHON="$(PY)" tests/record.sh --check
 
+# Prototype port acceptance: pinned upstream inputs, reviewed adaptations, case inventory,
+# and the unedited upstream suites on CPython against the edited fnmatch/textwrap modules.
+port-check:
+	$(PY) -m unittest discover -s tools -p test_port_check.py
+	$(PY) tools/port_check.py --json build/port-check.json
+
+# Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
+# Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
+PORT_COMPILER ?= ./pystachy
+port-check-large: $(PORT_COMPILER)
+	$(PY) tools/re_upstream_large.py $(if $(PYSTACHY_LLVM),--llvm "$(PYSTACHY_LLVM)") "$(PORT_COMPILER)"
+
 # lib/re, run by CPython, must compile random patterns to CPython's code and errors and match, split
 # and substitute as CPython's re, also on Pystachy's UTF-8 strs, and so must test_re's largest cases
 # (tools/re_fuzz.py; deterministic: N=2000 patterns, SEED=1, e.g. make re-fuzz RE_FUZZ="20000 7")
@@ -181,4 +193,4 @@ lint:
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings re-fuzz re-probe lint clean
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check port-check-large re-fuzz re-probe lint clean

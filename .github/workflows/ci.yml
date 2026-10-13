@@ -62,10 +62,47 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  port-check:
+    name: upstream port preservation (CPython)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: make port-check
+      - name: Upload port report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: port-check
+          path: build/port-check.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  upstream-large:
+    name: upstream large regex (JIT and AOT, normal GC)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: tools/setup.sh
+      - run: make port-check-large
+
   verify:
     name: make verify (Linux x86-64, LLVM 18, Python 3.13)
     if: always()
-    needs: verification
+    needs: [verification, port-check, upstream-large]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -91,7 +128,12 @@ jobs:
         if: always()
         env:
           GROUP_RESULT: ${{ needs.verification.result }}
-        run: test "$GROUP_RESULT" = success
+          PORT_RESULT: ${{ needs.port-check.result }}
+          LARGE_RESULT: ${{ needs.upstream-large.result }}
+        run: |
+          test "$GROUP_RESULT" = success
+          test "$PORT_RESULT" = success
+          test "$LARGE_RESULT" = success
 
       - name: Upload combined verification report
         if: always()

@@ -1,0 +1,5 @@
+FnmatchTestCase.test_fnmatch 18
+FnmatchTestCase.test_slow_fnmatch 2
+FnmatchTestCase.test_fnmatchcase 8
+TranslateTestCase.test_translate 18
+[exit 0]

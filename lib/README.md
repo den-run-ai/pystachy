@@ -2,11 +2,14 @@
 
 A program's `import NAME` finds `NAME.py` or `NAME/__init__.py` next to the program, then on
 `PYSTACHY_PATH`, then here (Pystachy's builtin modules, `sys`, `os`, `math` and the others
-listed in [docs/language.md](../docs/language.md#builtins-and-library-modules), come first). The modules here are **unmodified** copies of CPython
-3.13.16's pure-Python standard library modules that Pystachy compiles as they are: their
-unannotated functions are templates, compiled for the argument types of each call, and the
-code they never run (CPython's C accelerators, generators) is never compiled. `tests/lib_*.py`
-checks each against CPython.
+listed in [docs/language.md](../docs/language.md#builtins-and-library-modules), come first).
+This directory contains unmodified CPython modules, modules adapted with marked edits, and
+Pystachy's own implementations, identified in the sections below. The table lists the
+**unmodified** copies from CPython 3.13.16. Their unannotated functions are templates, compiled
+for the argument types of each call, and code they never run is never compiled.
+`tests/lib_*.py` checks the supported compiled behavior against CPython. The
+[porting checklist](../docs/porting.md) explains the separate upstream-suite checks and the
+initial `make port-check` coverage for fnmatch and textwrap.
 
 | module | from CPython 3.13.16 | SHA-256 | what works |
 |---|---|---|---|

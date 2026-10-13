@@ -1,0 +1,653 @@
+{
+  "schema": 1,
+  "upstream": {
+    "repository": "https://github.com/python/cpython",
+    "tag": "v3.13.16",
+    "commit": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "python": "3.13.16"
+  },
+  "files": {
+    "tests/upstream/ports/cpython/LICENSE": {
+      "upstream": "LICENSE",
+      "sha256": "78b12c3a81360b357002334f0e70ea0e92eebf7a9b358805c03c48484945f3bb"
+    },
+    "tests/upstream/ports/cpython/Lib/fnmatch.py": {
+      "upstream": "Lib/fnmatch.py",
+      "sha256": "95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963"
+    },
+    "tests/upstream/ports/cpython/Lib/test/test_fnmatch.py": {
+      "upstream": "Lib/test/test_fnmatch.py",
+      "sha256": "8b1705a63c0947192afcb8f3cba1b6b02819eb69e9fbea82e337bcc22022bf33"
+    },
+    "tests/upstream/ports/cpython/Lib/test/test_textwrap.py": {
+      "upstream": "Lib/test/test_textwrap.py",
+      "sha256": "1f16be769aa2aa32028b821bca3e90c3bdfabb37ffdbafa20db09ee627009214"
+    },
+    "tests/upstream/ports/cpython/Lib/textwrap.py": {
+      "upstream": "Lib/textwrap.py",
+      "sha256": "30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46"
+    }
+  },
+  "modules": {
+    "fnmatch": {
+      "source": "tests/upstream/ports/cpython/Lib/fnmatch.py",
+      "test": "tests/upstream/ports/cpython/Lib/test/test_fnmatch.py",
+      "port": "lib/fnmatch.py",
+      "adaptation": "tests/upstream/ports/fnmatch.patch",
+      "bindings": [
+        "fnmatch",
+        "fnmatchcase",
+        "translate",
+        "filter"
+      ],
+      "expected_tests": 17,
+      "expected_skips": {},
+      "cases": {
+        "test_fnmatch.FnmatchTestCase.test_fnmatch": {
+          "status": "compiled",
+          "evidence": [
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
+          ],
+          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+        },
+        "test_fnmatch.FnmatchTestCase.test_slow_fnmatch": {
+          "status": "compiled",
+          "evidence": [
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
+          ],
+          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+        },
+        "test_fnmatch.FnmatchTestCase.test_mix_bytes_str": {
+          "status": "unsupported",
+          "evidence": [
+            "lib/README.md"
+          ],
+          "reason": "The compiled fnmatch port accepts str patterns; upstream bytes and mixed bytes/str cases are outside its declared scope."
+        },
+        "test_fnmatch.FnmatchTestCase.test_fnmatchcase": {
+          "status": "compiled",
+          "evidence": [
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
+          ],
+          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+        },
+        "test_fnmatch.FnmatchTestCase.test_bytes": {
+          "status": "unsupported",
+          "evidence": [
+            "lib/README.md"
+          ],
+          "reason": "The compiled fnmatch port accepts str patterns; upstream bytes and mixed bytes/str cases are outside its declared scope."
+        },
+        "test_fnmatch.FnmatchTestCase.test_case": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_sep": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_char_set": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_range": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_sep_in_char_set": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_sep_in_range": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FnmatchTestCase.test_warnings": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.TranslateTestCase.test_translate": {
+          "status": "compiled",
+          "evidence": [
+            "tests/upstream_fnmatch.py",
+            "tests/upstream_fnmatch.out"
+          ],
+          "reason": "Complete upstream method, with the same inputs and assertions, translated to standalone subset assertions; differential corpus exercises JIT and AOT."
+        },
+        "test_fnmatch.FilterTestCase.test_filter": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FilterTestCase.test_mix_bytes_str": {
+          "status": "unsupported",
+          "evidence": [
+            "lib/README.md"
+          ],
+          "reason": "The compiled fnmatch port accepts str patterns; upstream bytes and mixed bytes/str cases are outside its declared scope."
+        },
+        "test_fnmatch.FilterTestCase.test_case": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_fnmatch.FilterTestCase.test_sep": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_fnmatch.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        }
+      }
+    },
+    "textwrap": {
+      "source": "tests/upstream/ports/cpython/Lib/textwrap.py",
+      "test": "tests/upstream/ports/cpython/Lib/test/test_textwrap.py",
+      "port": "lib/textwrap.py",
+      "adaptation": "tests/upstream/ports/textwrap.patch",
+      "bindings": [
+        "TextWrapper",
+        "wrap",
+        "fill",
+        "dedent",
+        "indent",
+        "shorten"
+      ],
+      "expected_tests": 66,
+      "expected_skips": {},
+      "cases": {
+        "test_textwrap.WrapTestCase.test_simple": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_empty_string": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_empty_string_with_initial_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_whitespace": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_fix_sentence_endings": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_wrap_short": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_wrap_short_1line": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_hyphenated": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_hyphenated_numbers": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_em_dash": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_unix_options": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_funky_hyphens": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_punct_hyphens": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_funky_parens": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_false": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_false_whitespace_only": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_false_whitespace_only_with_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_only": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_leading_whitespace": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_line": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_only_with_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_drop_whitespace_whitespace_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_split": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_break_on_hyphens": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_bad_width": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_no_split_at_umlaut": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_umlaut_followed_by_dash": {
+          "status": "deviation",
+          "evidence": [
+            "tests/deviations/lib_textwrap.py",
+            "tests/deviations/lib_textwrap.out"
+          ],
+          "reason": "UTF-8 byte-counted widths change these exact line breaks; tracked in #120."
+        },
+        "test_textwrap.WrapTestCase.test_non_breaking_space": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.WrapTestCase.test_narrow_non_breaking_space": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.MaxLinesTestCase.test_simple": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.MaxLinesTestCase.test_spaces": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.MaxLinesTestCase.test_placeholder": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.MaxLinesTestCase.test_placeholder_backtrack": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordTestCase.test_break_long": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordTestCase.test_nobreak_long": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordTestCase.test_max_lines_long": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_on_hyphen": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_not_on_hyphen": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordWithHyphensTestCase.test_break_on_hyphen_but_not_long_words": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.LongWordWithHyphensTestCase.test_do_not_break_long_words_or_on_hyphens": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCases.test_fill": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCases.test_initial_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCases.test_subsequent_indent": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_nomargin": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_even": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_uneven": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_declining": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_preserve_internal_tabs": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.DedentTestCase.test_dedent_preserve_margin_tabs": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_nomargin_default": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_nomargin_explicit_default": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_nomargin_all_lines": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_no_lines": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_roundtrip_spaces": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_roundtrip_tabs": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_roundtrip_mixed": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_default": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_explicit_default": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_all_lines": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.IndentTestCase.test_indent_empty_lines": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_simple": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_placeholder": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_empty_string": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_whitespace": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_width_too_small_for_placeholder": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        },
+        "test_textwrap.ShortenTestCase.test_first_word_too_long_but_placeholder_fits": {
+          "status": "unmapped",
+          "evidence": [
+            "tests/lib_textwrap.py"
+          ],
+          "reason": "Related differential coverage exists; this complete upstream case has not been audited against it."
+        }
+      }
+    }
+  }
+}
