@@ -10364,7 +10364,9 @@ class Gen:
             bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
             self.guard(bad, self.unbound(name, self.copying))
         if constant:
-            return Val(self.intglobals[name], "int")
+            # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
+            # folds the identity operation to a literal for opcode dispatch and other arithmetic.
+            return Val(self.ins(f"add i64 {self.intglobals[name]}, 0"), "int")
         return self.load_name(name)
 
     def modchk(self, n: Node) -> None:
