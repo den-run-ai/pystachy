@@ -111,3 +111,50 @@ for i in range(25):
     del s3[(i * 3) % len(s3)]
 print(s3, s3.index(-24), s3.count(-1), -3 in s3, s3 == deque(list(s3)), s3 != s3.copy(), s3 >= s3)
 print(deque(["b", "a"]) < deque(["b", "a", "c"]), deque([2]) > deque([1, 9]), deque([1]) <= deque([1]))
+
+
+# in, count(), index() and remove() compare from the left, an item with the value looked for
+# (item == x), and an item that is the value is equal to it without a call of __eq__: also where
+# appendleft() and a popleft() that takes half of the right items hold them in the left list
+log: list[str] = []
+
+
+class Eq:
+    def __init__(self, v: int, tag: str) -> None:
+        self.v = v
+        self.tag = tag
+
+    def __eq__(self, other: "Eq") -> bool:
+        log.append(f"{self.tag}={other.tag}")
+        return self.v == other.v
+
+    def __repr__(self) -> str:
+        return self.tag
+
+
+eqs = deque([Eq(3, "c"), Eq(4, "d")])
+eqs.appendleft(Eq(2, "b"))
+eqs.appendleft(Eq(1, "a"))
+c = eqs[2]
+for look in [Eq(4, "x"), Eq(9, "y"), c]:
+    log.clear()
+    print(eqs, look in eqs, eqs.count(look), " ".join(log))
+log.clear()
+print(eqs.index(c), eqs.index(Eq(2, "z"), 1), eqs.index(c, -2, 3), " ".join(log))
+log.clear()
+try:
+    eqs.index(c, 3)
+except ValueError as err:
+    print("ValueError", err, " ".join(log))
+log.clear()
+eqs.remove(c)
+print(eqs, " ".join(log))
+log.clear()
+try:
+    eqs.remove(Eq(7, "w"))
+except ValueError as err:
+    print("ValueError", err, " ".join(log))
+f = deque([Eq(i, "pqrst"[i - 1]) for i in range(1, 6)])
+f.popleft()
+log.clear()
+print(f, Eq(5, "u") in f, f.count(f[1]), f.index(f[2]), " ".join(log))

@@ -43,6 +43,8 @@ items have one type.
   `+=`, `*=` and the repr (`deque([1, 2], maxlen=3)`), with CPython's errors (`pop from an empty
   deque`, `deque index out of range`, `3 is not in deque`, `deque already at its maximum size`,
   `maxlen must be non-negative`). A full deque discards from the other end, as CPython's does.
+  `in`, `count()`, `index()` and `remove()` compare the items from the left, as CPython's do:
+  `item == x`, where an item that is `x` is equal to it without a call of its `__eq__`.
 - The items are in two typed lists, the left ones reversed, so that each end appends and pops in
   amortized O(1): an end that runs out takes half of the other list's items.
 

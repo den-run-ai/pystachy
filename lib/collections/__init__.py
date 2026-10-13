@@ -104,11 +104,18 @@ class deque(Generic[_T]):
 
     def count(self, x: _T) -> int:
         """Return number of occurrences of value."""
-        n = 0
-        for y in self._items():
-            if y == x:
-                n += 1
-        return n
+        return self._items().count(x)
+
+    def _find(self, items: list[_T], x: _T, start: int, stop: int) -> int:
+        # the index of the first of items[start:stop] equal to x, or -1, compared from the left as
+        # CPython's deque compares (item == x, where an item that is x is equal to it without a call
+        # of __eq__): `x in one`, of a list whose item is each item in turn, compares so
+        one = [x]
+        for i in range(start, stop):
+            one[0] = items[i]
+            if x in one:
+                return i
+        return -1
 
     def index(self, x: _T, start: int = 0, stop: int = 9223372036854775807) -> int:
         """Return first index of value.
@@ -121,10 +128,10 @@ class deque(Generic[_T]):
             start = max(start + n, 0)
         if stop < 0:
             stop = max(stop + n, 0)
-        for i in range(start, min(stop, n)):
-            if items[i] == x:
-                return i
-        raise ValueError(f"{x!r} is not in deque")
+        i = self._find(items, x, start, min(stop, n))
+        if i < 0:
+            raise ValueError(f"{x!r} is not in deque")
+        return i
 
     def insert(self, i: int, x: _T) -> None:
         """Insert value before index."""
@@ -142,12 +149,11 @@ class deque(Generic[_T]):
     def remove(self, x: _T) -> None:
         """Remove first occurrence of value."""
         items = self._items()
-        for i in range(len(items)):
-            if items[i] == x:
-                del items[i]
-                self._set(items)
-                return
-        raise ValueError(f"{x!r} is not in deque")
+        i = self._find(items, x, 0, len(items))
+        if i < 0:
+            raise ValueError(f"{x!r} is not in deque")
+        del items[i]
+        self._set(items)
 
     def reverse(self) -> None:
         """Reverse *IN PLACE*."""
@@ -200,7 +206,7 @@ class deque(Generic[_T]):
         return len(self._left) + len(self._right) > 0
 
     def __contains__(self, x: _T) -> bool:
-        return x in self._left or x in self._right
+        return x in self._items()  # (from the left, as count())
 
     def __iter__(self) -> Iterator[_T]:
         # the items when the loop starts (an iterator class, which CPython's deque has, is not
