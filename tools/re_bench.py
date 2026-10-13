@@ -1,6 +1,6 @@
 """re_bench: textwrap's regular expressions (CPython 3.13's patterns), timed.
 
-usage: python3 tools/re_bench.py [--time]
+usage: python3 tools/re_bench.py [--time] [--cpu]
        pystachy build tools/re_bench.py -o re_bench && ./re_bench --time
 
 It makes 200 paragraphs of about 470 characters and 200 blocks of 15 indented lines, from a linear
@@ -10,6 +10,7 @@ and dedent()'s substitutions and findall(). With --time, it prints each operatio
 the median of 5 rounds over all the inputs: each call reads a str of its own. tools/re_probe.py
 --time runs it with CPython and compiled; tools/re_probe.py counts what lib/re does for
 inputs(20), 20 paragraphs and 20 blocks made the same way.
+--cpu uses process CPU time for timings, excluding scheduling waits on a busy host.
 """
 import re
 import sys
@@ -67,10 +68,11 @@ def main() -> None:
         check += len(only.sub("", b)) + len(leading.findall(b)) + len(margin.sub("", b))
     print("checksum", check)
     if "--time" in sys.argv:
+        cpu = "--cpu" in sys.argv
         for name in ["wordsep_re.split", "wordsep_simple_re.split", "whitespace_only_re.sub", "leading_whitespace_re.findall", "margin.sub"]:
             best: list[float] = []
             for _ in range(5):
-                t = time.perf_counter()
+                t = time.process_time() if cpu else time.perf_counter()
                 if name == "wordsep_re.split":
                     for p in paras:
                         wordsep.split(p)
@@ -86,7 +88,8 @@ def main() -> None:
                 else:
                     for b in blocks:
                         margin.sub("", b)
-                best.append((time.perf_counter() - t) / 200 * 1e6)
+                elapsed = (time.process_time() if cpu else time.perf_counter()) - t
+                best.append(elapsed / 200 * 1e6)
             best.sort()
             print(f"{name:30} {best[2]:8.2f} us")
 

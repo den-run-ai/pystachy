@@ -118,3 +118,7 @@ events, and the trace of new names that fills `route()`'s cache past its 4,096 n
 
 `bench.py` runs the table above: `python3 -I bench.py ../../pystachy 5`, from anywhere. It
 writes its traces and executable to `build/route/`.
+
+For reproducible regex, textwrap and warm result-cache benchmarks, see
+[`docs/caching.md`](../../docs/caching.md). It measures cache hits separately from regex work
+on misses and documents the current character-class and replacement-template caches.
