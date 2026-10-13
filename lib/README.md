@@ -71,6 +71,50 @@ of Pystachy's can), and it agrees with `list.index()` for every start and stop o
 an application of it: the search moves 2.1 million cells through a deque in 0.20 s, compiled,
 against 1.03 s with CPython's C deque.
 
+## `io`, Pystachy's own
+
+CPython's `io` is the C module `_io` (`Modules/_io/`); its pure-Python twin `Lib/_pyio.py` makes
+`StringIO` a `TextIOWrapper` over a `BytesIO`, and neither compiles. `io.py` here has `StringIO`,
+written after CPython 3.13.16's `Modules/_io/stringio.c` and keeping its docstrings, and
+`SEEK_SET`, `SEEK_CUR` and `SEEK_END`:
+
+- `StringIO(initial_value='', newline='\n')`, `read(size)`, `readline(size)`,
+  `readlines(hint)`, iteration, `write(s)` (which returns `len(s)`), `writelines()`,
+  `getvalue()`, `seek(pos, whence)`, `tell()`, `truncate(pos)`, `close()` and `closed`, `flush()`,
+  `readable()`, `writable()`, `seekable()`, `isatty()`, `encoding`, `errors` and
+  `line_buffering`.
+- It does what `stringio.c` does. The newline modes translate what is written (`None`: `\r\n` and
+  `\r` become `\n`; `"\r"` and `"\r\n"`: `\n` becomes them) and end the lines that are read (`""`:
+  at `\n`, `\r` and `\r\n`). A write past the end pads the gap with NULs. `seek()` takes a nonzero
+  offset only from the start. Its errors, `truncate()`'s and those of a closed stream are
+  CPython's, word for word, with or without the full stop as each method has it.
+- Writes at the end gather in a list that is joined when the text is read, so a text built from
+  many writes takes linear time.
+- `print(..., file=buf)` writes into it: the compiler passes each piece of a `print()` to the
+  `write()` method of an object of the program's classes, a call each, as CPython does
+  (`tests/print_file_object.py`).
+
+Where it differs from CPython (`tests/deviations/lib_io.py`):
+
+- Sizes and positions (`read(n)`, `readline(n)`, `tell()`, `seek()`, `truncate()`, what `write()`
+  returns) count a str's bytes past ASCII, as `len()` and slicing do; CPython's count characters.
+- A `for` loop over it reads the lines left when it starts: an iterator class, which would read
+  each line as the loop asks for it, is not supported.
+- `with io.StringIO() as f:` is a compile-time error: Pystachy's `with` takes files only
+  (`tests/errors/lib_io_with.py`).
+- There is no `newlines` (a str, a tuple or `None`), `detach()`, `fileno()` (CPython raises
+  `UnsupportedOperation`) or pickling, and `StringIO(5)` is a compile-time type error where CPython
+  raises `TypeError`.
+
+`tests/lib_io.py` compares it with CPython's `StringIO`. Run by CPython in place of its own, it
+passes 29 of the 39 `StringIO` tests of CPython's `Lib/test/test_memoryio.py` (with its `IntLike`
+an int: Pystachy has no `__index__`); the others test pickling, `detach()`, `newlines`, an
+iterator that is the stream itself, and the `TypeError` of an argument of another type, which
+Pystachy reports at compile time. In an AOT executable, a `write()` at the end
+costs 37 ns and a `readline()` 22 ns, the loop included, against 42 and 142 ns with CPython's C
+`StringIO` (best of 5 runs over a million lines). [`examples/column`](../examples/column/README.md),
+a `column -t` that builds its table in a `StringIO`, is an application of it.
+
 ## `re`, a port of CPython's
 
 `re/` is no copy: CPython's `re` is a pure-Python parser and compiler (`Lib/re/_parser.py` and

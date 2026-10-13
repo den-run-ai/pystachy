@@ -27,6 +27,10 @@ lib/collections/__init__.py is Pystachy's own deque, written after the deque of 
 Modules/_collectionsmodule.c, whose behaviour and messages it follows; it is derived from Python
 and is used under the same license and copyright notice.
 
+lib/io.py is Pystachy's own StringIO, written after CPython 3.13.16's Modules/_io/stringio.c,
+whose behaviour and messages it follows and whose docstrings it keeps; it is derived from Python
+and is used under the same license and copyright notice.
+
 lib/re/__init__.py, lib/re/_constants.py and lib/re/_sre.py port CPython 3.13.16's
 Lib/re/__init__.py, _parser.py, _compiler.py and _constants.py, and the matching engine of its
 Modules/_sre/sre.c and sre_lib.h, to Pystachy's subset (lib/README.md). lib/re/_unicode.py is

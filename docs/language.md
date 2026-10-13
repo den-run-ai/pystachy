@@ -569,7 +569,9 @@ parameters and return give (the wrapper is a generic class, *Typing rules*), and
 counts, evicts and reports `cache_info()` as CPython's C wrapper does. Its `collections` is
 Pystachy's own `deque`, a generic class whose items' type the iterable it is made from, the
 annotation of where it goes (`q: deque[int] = deque()`) or the call (`deque[int]()`) gives
-([`lib/README.md`](../lib/README.md#collections-pystachys-own)).
+([`lib/README.md`](../lib/README.md#collections-pystachys-own)). Its `io` is Pystachy's own
+`StringIO`, CPython's in-memory text stream, whose positions count a str's bytes past ASCII
+([`lib/README.md`](../lib/README.md#io-pystachys-own)).
 
 ## Expressions
 
@@ -621,7 +623,9 @@ CPython's error when it runs.
 
 ## Builtins and library modules
 
-`print` (with `sep`, `end`, `file`, `flush`), `len`, `str`, `repr`, `ascii`,
+`print` (with `sep`, `end`, `file`, `flush`; `file` a file or an object with a `write()` method,
+such as `io.StringIO`, which gets each piece in a call of its own, as CPython makes them), `len`,
+`str`, `repr`, `ascii`,
 `int` (also with `base=`), `float`, `bool`, `ord`, `chr`, `hex`, `oct` and `bin` (of an int
 or a bool), `abs`, `min` and `max` (with `key=`), `sum`, `sorted` (and
 `list.sort`, with `key=` and `reverse=`), `list`, `dict`, `set` and `frozenset` (of any iterable of

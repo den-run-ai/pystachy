@@ -19839,11 +19839,13 @@ class Gen:
 
     def print_(self, args: list[Node]) -> Val:
         # every argument is evaluated in the order written, then each is converted as it is
-        # written; sys.stdout and sys.stderr directly, any other file through its checks
+        # written; sys.stdout and sys.stderr directly, any other file through its checks, and an
+        # object with write() (io.StringIO) through that method, a call for each piece
         sep = self.sconst(" ")
         end = self.sconst("\n")
         fd = "1"
         fv = ""
+        fo = Val("", "")
         flush = ""
         vals: list[Val] = []
         temp: list[Node] = []  # file=open(...): closed after the print, as close_temp does
@@ -19869,33 +19871,45 @@ class Gen:
                     fd = "2" if p == "sys.stderr" else "1"
                 elif x.kind != "None":
                     v = self.expr(x, "file")
-                    if v.t != "file":
-                        self.err(f"print(file=...) needs a file, not {v.t}")
-                    fv = v.v
-                    temp.append(x)
+                    if v.t in self.classes and "write" in self.classes[v.t].methods:
+                        fo = v
+                    elif v.t != "file":
+                        self.err(f"print(file=...) needs a file, or an object with a write() method, not {v.t}")
+                    else:
+                        fv = v.v
+                        temp.append(x)
             elif a.s == "flush":
                 flush = self.truth(self.expr(x, "bool"))
             else:
                 self.err(f"print() got an unexpected keyword argument '{a.s}'")
         for i in range(len(vals)):
             if i > 0:
-                self.pwrite(fd, fv, sep)
-            self.pwrite(fd, fv, self.to_str(vals[i]).v)
-        self.pwrite(fd, fv, end)
-        if flush != "":
+                self.pwrite(fd, fv, sep, fo)
+            self.pwrite(fd, fv, self.to_str(vals[i]).v, fo)
+        self.pwrite(fd, fv, end, fo)
+        if flush != "" and fo.t != "" and "flush" not in self.classes[fo.t].methods:
+            # CPython looks flush() up only where flush is true
+            self.guard(flush, f"AttributeError: '{tname(fo.t)}' object has no attribute 'flush'")
+        elif flush != "":
             l1 = self.label()
             l2 = self.label()
             self.cbr(flush, l1, l2)
             self.place(l1)
-            self.rt("pys_file_flush", "void", [f"ptr {fv if fv != '' else self.rt('pys_std', 'ptr', [f'i64 {fd}'])}"])
+            if fo.t != "":
+                self.call(mk("call", "", self.line, [mk("attr", "flush", self.line, [self.vnode(fo)])]), "")
+            else:
+                self.rt("pys_file_flush", "void", [f"ptr {fv if fv != '' else self.rt('pys_std', 'ptr', [f'i64 {fd}'])}"])
             self.br(l2)
             self.place(l2)
         for x in temp:
             self.close_temp(x, Val(fv, "file"))
         return Val("null", "None")
 
-    def pwrite(self, fd: str, fv: str, s: str) -> None:
-        if fv != "":
+    def pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
+        if fo.t != "":
+            # file.write(s): what it returns is not used
+            self.call(mk("call", "", self.line, [mk("attr", "write", self.line, [self.vnode(fo)]), self.vnode(Val(s, "str"))]), "")
+        elif fv != "":
             self.rt("pys_file_write", "i64", [f"ptr {fv}", f"ptr {s}"])
         else:
             self.rt("pys_write", "void", [f"ptr {s}", f"i64 {fd}"])

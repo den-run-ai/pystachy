@@ -1,0 +1,60 @@
+'ab\n' 'cd\r\n' 'ef\rgh' 12 ''
+'hel' '' 3 'lo\nworld\n' '' 12
+'he' '' 'llo\n' 'world\n' ''
+['hello\n', 'world\n'] [] 0 ['hello\n'] ['world\n']
+1 ['a\n'] ['ab\n']
+2 ['a\n', 'b\n'] ['ab\n']
+3 ['a\n', 'b\n'] ['ab\n', 'cd\n']
+4 ['a\n', 'b\n', 'c\n'] ['ab\n', 'cd\n']
+5 ['a\n', 'b\n', 'c\n'] ['ab\n', 'cd\n']
+6 ['a\n', 'b\n', 'c\n'] ['ab\n', 'cd\n']
+'ello\nworld\n' 0 'hello\n'
+'hello\n'
+'world\n'
+['x\n', 'y'] [] ['one']
+None 'ab\ncd\nef\ngh' ['ab\n', 'cd\n', 'ef\n', 'gh']
+2 3 'a\n\nb\n' 5
+'' 'ab\ncd\r\nef\rgh' ['ab\n', 'cd\r\n', 'ef\r', 'gh']
+2 3 'a\r\nb\n' 5
+'\n' 'ab\ncd\r\nef\rgh' ['ab\n', 'cd\r\n', 'ef\rgh', '']
+2 3 'a\r\nb\n' 5
+'\r' 'ab\rcd\r\ref\rgh' ['ab\r', 'cd\r', '\r', 'ef\r']
+2 3 'a\r\rb\r' 5
+'\r\n' 'ab\r\ncd\r\r\nef\rgh' ['ab\r\n', 'cd\r\r\n', 'ef\rgh', '']
+2 3 'a\r\r\nb\r\n' 7
+['a', '\r', 'b\r', '\n']
+'x\r' ''
+3 1 1 'aZc' 2
+None 'aZ123' 5
+10 'xyzzy-long' 10
+8 1 'hello\x00\x00\x00X' 9 20 0 'hello\x00\x00\x00X' 20
+6 'hello ' 6 2 'he' 6 50 'he'
+'' 1 'he\x00\x00\x00\x00!'
+3890 0,1,2,3,4,5,6,7,8,9, 7,998,999, 3890
+True True 0
+3 3 3 5 0 0 1 2
+ValueError: Negative seek position -1
+OSError: Can't do nonzero cur-relative seeks
+OSError: Can't do nonzero cur-relative seeks
+OSError: Can't do nonzero cur-relative seeks
+ValueError: Invalid whence (3, should be 0, 1 or 2)
+ValueError: Invalid whence (-1, should be 0, 1 or 2)
+ValueError: Negative size value -1
+ValueError: illegal newline value: 'x'
+False True True True False False None None
+True
+getvalue ValueError: I/O operation on closed file
+read ValueError: I/O operation on closed file
+readline ValueError: I/O operation on closed file
+readlines ValueError: I/O operation on closed file.
+write ValueError: I/O operation on closed file
+writelines ValueError: I/O operation on closed file.
+tell ValueError: I/O operation on closed file
+seek ValueError: I/O operation on closed file
+truncate ValueError: I/O operation on closed file
+readable ValueError: I/O operation on closed file
+isatty ValueError: I/O operation on closed file.
+iter ValueError: I/O operation on closed file.
+'total, 3, 4.5\ndone' 18
+['total, 3, 4.5\n', 'done']
+[exit 0]
