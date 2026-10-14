@@ -14,6 +14,7 @@ import platform
 import re
 import resource
 import shlex
+import shutil
 import statistics
 import subprocess
 import sys
@@ -184,6 +185,55 @@ def paired_ratios(samples, baseline, selected):
     return result
 
 
+def inspect_online_image(name, target, fixture, native_compiler, source, env, build, inline):
+    """Untimed loaded-image evidence, separate from every measured process."""
+    stats = build / f"{name}-image-proof.tsv"
+    options = dict(env, PYSTACHY_ONLINE_COMPILER=str(native_compiler),
+                   PYSTACHY_ONLINE_STATS=str(stats), PYSTACHY_ONLINE_KEEP="1")
+    if inline:
+        options["PYSTACHY_ONLINE_INLINE_RUNTIME"] = "1"
+    before = set(Path("/tmp").glob("pystachy-online-*"))
+    record = execute([str(target), "phases", "1", str(fixture), "101", "2", "1"], options)
+    record["phases"] = parse_phases(record["stdout"], {"cold": 101, "warm": 1, "shift": 2, "recovery": 1})
+    record["online_stats"] = parse_online_stats(stats, 105, 1)
+    directories = []
+    for candidate in set(Path("/tmp").glob("pystachy-online-*")) - before:
+        manifest = candidate / "expected"
+        if manifest.is_file() and f"source\t{source}\t" in manifest.read_text():
+            directories.append(candidate)
+    if len(directories) != 1:
+        raise RuntimeError(f"Could not identify the one retained {name} image: {directories}")
+    directory = directories[0]
+    try:
+        library = directory / "trace.so"
+        artifact = build / f"{name}-image-proof.so"
+        shutil.copy2(library, artifact)
+        definitions = execute(["nm", "--defined-only", str(library)], env)["stdout"]
+        exports = execute(["nm", "-D", "--defined-only", str(library)], env)["stdout"]
+        imports = execute(["nm", "-D", "--undefined-only", str(library)], env)["stdout"]
+        assembly = execute(["objdump", "-d", str(library)], env)["stdout"]
+        exported_names = {row.split()[-1] for row in exports.splitlines()}
+        wanted = {"pystachy_online_entry", "pystachy_online_abi", "pystachy_online_selection"}
+        if exported_names != wanted:
+            raise RuntimeError(f"Unexpected exports in {name} image: {exported_names}")
+        defined_names = {row.split()[-1] for row in definitions.splitlines()}
+        forbidden = {"fl", "sfl", "ch1", "xr", "xthrow", "unw", "nunw", "cunw", "online_sites", "online_n"}
+        if defined_names & forbidden or any(value.startswith("gc_") for value in defined_names):
+            raise RuntimeError(f"Online image duplicated host runtime state: {defined_names & forbidden}")
+        calls = {}
+        for symbol in re.findall(r"\bcall\w*\s+[^\n]*<((?:pys_)[^>+@]+)@plt>", assembly):
+            calls[symbol] = calls.get(symbol, 0) + 1
+        record.update({"image_path": str(artifact), "image_bytes": artifact.stat().st_size,
+                       "image_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+                       "defined_symbols": definitions, "dynamic_exports": exports,
+                       "dynamic_imports": imports, "runtime_plt_call_sites": calls,
+                       "compiler_log": (directory / "compiler.log").read_text(),
+                       "note": "Untimed diagnostic process; PLT call-site counts describe code, not execution frequencies."})
+    finally:
+        shutil.rmtree(directory)
+    return record
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compiler", default=shlex.join([sys.executable, "-m", "pystachy"]))
@@ -195,9 +245,12 @@ def main():
     parser.add_argument("--recovery", type=int, default=4000)
     parser.add_argument("--samples", type=int, default=7)
     parser.add_argument("--jit-samples", type=int, default=3)
+    parser.add_argument("--runtime-inline", action=argparse.BooleanOptionalAction, default=True,
+                        help="include a paired online image with stateless runtime imports (default: enabled)")
     parser.add_argument("--timing-cpu", type=int,
                         help="allowed CPU for timing; defaults to the first allowed CPU")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/benchmarks/stream-online.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "build/stream-online/results.json",
+                        help="measurement JSON; defaults to build/ so the committed original results are preserved")
     args = parser.parse_args()
     if args.cold < 101 or min(args.warm, args.shift, args.recovery) < 1:
         parser.error("cold must exceed threshold 100; warm, shift and recovery must be positive")
@@ -221,7 +274,8 @@ def main():
                 "PYSTACHY_FEEDBACK_OUT", "PYSTACHY_SKEW_PROFILE", "PYSTACHY_GC_STRESS",
                 "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_IRFX", "PYSTACHY_SUMMARY_STATS",
                 "PYSTACHY_ONLINE", "PYSTACHY_ONLINE_COMPILER", "PYSTACHY_ONLINE_STATS", "PYSTACHY_ONLINE_KEEP",
-                "PYSTACHY_ONLINE_CHILD", "PYSTACHY_ONLINE_SITE", "PYSTACHY_ONLINE_MEMBER", "PYSTACHY_ONLINE_EXPECT"):
+                "PYSTACHY_ONLINE_CHILD", "PYSTACHY_ONLINE_SITE", "PYSTACHY_ONLINE_MEMBER", "PYSTACHY_ONLINE_EXPECT",
+                "PYSTACHY_ONLINE_INLINE_RUNTIME"):
         env.pop(key, None)
     sources = [SOURCE, ROOT / "lib/shlex.py", ROOT / "lib/io.py", ROOT / "runtime.c",
                ROOT / "runtime.py", Path(__file__).resolve()]
@@ -247,6 +301,7 @@ def main():
         "git_status": execute(["git", "status", "--short"], env)["stdout"],
         "counts": counts, "file_calls": file_calls, "samples": args.samples,
         "jit_samples": args.jit_samples, "timing_affinity_cpu": cpu,
+        "runtime_inline_control": args.runtime_inline,
         "allowed_affinity": sorted(original_affinity),
         "timers": {
             "wall_seconds": "external perf_counter includes process startup, all phases, and synchronous compilation/loading",
@@ -259,7 +314,7 @@ def main():
         "online_policy": "threshold 100, minimum 90% share, one compilation attempt/site, fresh process per sample, no persistent cache",
         "inputs": inputs,
         "input_adaptation": "Generic and online hosts remove concrete wrapper definitions and replace their calls with the union wrapper. The tokenize AST is checked unchanged. Concrete control is a byte-exact copy of bench/stream_skew.py.",
-        "builds": {}, "checks": {}, "samples_raw": {}, "summary": {},
+        "builds": {}, "checks": {}, "samples_raw": {}, "summary": {}, "execution_order": [],
     }
     llvm = env.get("PYSTACHY_LLVM", "")
     if llvm:
@@ -268,10 +323,13 @@ def main():
     try:
         expected = execute([sys.executable, "-c", ORACLE, str(SOURCE), "check", "1", str(fixture)], env)["stdout"]
         info["checks"]["upstream_cpython"] = expected
-        for name, input_name, options in (("generic", "generic", {}),
-                                          ("online", "generic", {"PYSTACHY_ONLINE": "1",
-                                                                  "PYSTACHY_ONLINE_COMPILER": str(native_compiler)}),
-                                          ("concrete", "concrete", {})):
+        builds = [("generic", "generic", {}),
+                  ("online", "generic", {"PYSTACHY_ONLINE": "1", "PYSTACHY_ONLINE_COMPILER": str(native_compiler)})]
+        if args.runtime_inline:
+            builds.append(("online_inline", "generic", {"PYSTACHY_ONLINE": "1",
+                          "PYSTACHY_ONLINE_COMPILER": str(native_compiler), "PYSTACHY_ONLINE_INLINE_RUNTIME": "1"}))
+        builds.append(("concrete", "concrete", {}))
+        for name, input_name, options in builds:
             target = build / name
             record = execute([*compiler, "build", inputs[input_name]["path"], "-o", str(target)], dict(env, **options))
             record.update({"executable_bytes": target.stat().st_size,
@@ -299,6 +357,12 @@ def main():
                                  "tokenizer_definitions": tokenizer_definitions,
                                  "read_tokens_ir": wrapper[0]}
 
+        info["image_checks"] = {}
+        for name in (["online", "online_inline"] if args.runtime_inline else ["online"]):
+            info["image_checks"][name] = inspect_online_image(
+                name, build / name, fixture, native_compiler, inputs["generic"]["path"],
+                env, build, name == "online_inline")
+
         # The ordinary JIT driver's runtime object cache is shared by its run
         # processes. Prepare it explicitly so only the first measured generic
         # sample does not pay a one-time cache construction cost.
@@ -315,6 +379,8 @@ def main():
             if online:
                 stats.unlink(missing_ok=True)
                 options.update(PYSTACHY_ONLINE_COMPILER=str(native_compiler), PYSTACHY_ONLINE_STATS=str(stats))
+                if name == "online_inline":
+                    options["PYSTACHY_ONLINE_INLINE_RUNTIME"] = "1"
             record = execute([*command, *parameters], options)
             record["phases"] = parse_phases(record["stdout"], counts)
             if online:
@@ -325,12 +391,15 @@ def main():
                 cold_phase["self_plus_compile_cpu_seconds"] = (
                     cold_phase["self_cpu_seconds"] + record["online_stats"]["site"]["compile_cpu_s"])
             info["samples_raw"].setdefault(name, []).append(record)
+            info["execution_order"].append({"variant": name, "round": round_number})
 
         os.sched_setaffinity(0, {cpu})
         try:
             variants = [("aot_generic", [str(build / "generic")], "phases", False),
-                        ("online", [str(build / "online")], "phases", True),
-                        ("aot_concrete", [str(build / "concrete")], "phases-static", False)]
+                        ("online", [str(build / "online")], "phases", True)]
+            if args.runtime_inline:
+                variants.append(("online_inline", [str(build / "online_inline")], "phases", True))
+            variants.append(("aot_concrete", [str(build / "concrete")], "phases-static", False))
             for round_number in range(args.samples):
                 offset = round_number % len(variants)
                 for name, command, mode, online in variants[offset:] + variants[:offset]:
@@ -350,6 +419,11 @@ def main():
             "aot_generic_over_concrete": paired_ratios(info["samples_raw"], "aot_generic", "aot_concrete"),
             "jit_generic_over_concrete": paired_ratios(info["samples_raw"], "jit_generic", "jit_concrete"),
         }
+        if args.runtime_inline:
+            info["paired_ratios"].update({
+                "aot_generic_over_online_inline": paired_ratios(info["samples_raw"], "aot_generic", "online_inline"),
+                "online_over_online_inline": paired_ratios(info["samples_raw"], "online", "online_inline"),
+            })
         if hashes() != source_hashes or hashlib.sha256(native_compiler.read_bytes()).hexdigest() != native_hash:
             raise RuntimeError("Compiler, runtime or workload changed during measurement; rerun")
         info["status"] = "complete"

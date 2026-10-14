@@ -10,7 +10,22 @@ from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import RAW, shown
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, mentions, names_in
-from src.pystachy_compiler.utils import umembers, unopt
+from src.pystachy_compiler.utils import is_callable, targs, umembers, unopt
+
+
+def online_callback_eligible(self, key: str) -> bool:
+    # A Callable adapter can coerce its input and result. Replacing it by a
+    # direct function must retain that contract. This tier admits only exact
+    # annotated signatures; generic callbacks and coercing adapters fall back.
+    split = key.find(" ")
+    if split < 0 or not key.startswith("fn[f:"):
+        return False
+    name = key[5:split - 1]
+    if name not in self.funcs or not is_callable(key[split + 1:]):
+        return False
+    f = self.funcs[name]
+    ts = targs(key[split + 1:])
+    return not f.generic and f.clo < 0 and f.vararg < 0 and f.kwarg < 0 and f.ptypes == ts[1:] and f.ret == ts[0]
 
 
 def load_feedback() -> dict[str, str]:
@@ -140,7 +155,7 @@ def online_note(self, site: str, member: str) -> str:
     return self.rt("pys_online", "ptr", ["ptr " + self.sconst(site), "ptr " + self.sconst(member)])
 
 
-def online_call(self, site: str, baseline: FnInfo, value: Val) -> Val:
+def online_reference(self, site: str, value: Val) -> str:
     # Argument binding has finished. The observer can return code only for the
     # current member; null/unknown members and failed compilation keep the same
     # generic native call. The indirect call is typed IR, so ordinary exception
@@ -173,7 +188,16 @@ def online_call(self, site: str, baseline: FnInfo, value: Val) -> Val:
     entry = Ins("phi", "env", "")
     for i in range(len(pointers)):
         self.incoming(entry, pointers[i], edges[i])
-    code = self.phi(entry)
+    return self.phi(entry)
+
+
+def online_call(self, site: str, baseline: FnInfo, value: Val) -> Val:
+    if is_callable(value.t):
+        # Only immutable top-level Callable singletons are registered. Closures,
+        # bound methods and unknown values keep the ordinary native call.
+        code = self.rt("pys_online_callable", "ptr", ["ptr " + self.sconst(site), "ptr " + value.v])
+    else:
+        code = online_reference(self, site, value)
     hot = self.label()
     cold = self.label()
     join = self.label()
@@ -212,7 +236,14 @@ def gen_online_build(self) -> bool:
     f = self.online_candidates[site]
     baseline = self.online_baselines[site]
     member = self.online_member
-    if member not in umembers(unopt(baseline.ptypes[0])):
+    callable_arg = is_callable(baseline.ptypes[0])
+    if callable_arg:
+        key = member + " " + baseline.ptypes[0]
+        if key not in self.adapters or not online_callback_eligible(self, key):
+            self.err("online callback is outside the baseline callable identities")
+        if "@cvo." + self.adapters[key][4:] not in self.cvos:
+            self.err("online callback has no immutable baseline singleton")
+    elif member not in umembers(unopt(baseline.ptypes[0])):
         self.err("online compilation member is outside the baseline union")
     nnp = [f.params[0]] if member in self.classes and self.dispatches(f, f.params[0]) else []
     self.feedback_active[f.ll] = True
@@ -231,7 +262,8 @@ def gen_online_build(self) -> bool:
     self.lenient = False
     self.enter(wrapper, [])
     self.fn.ps.append(0)
-    result = self.call_bound(clone, [self.uget("%a0", member)], "int")
+    value = Val("null", member) if callable_arg else self.uget("%a0", member)
+    result = self.call_bound(clone, [value], "int")
     self.ret_(result)
     self.fn.n = self.n
     self.fns.append(self.fn)
@@ -247,7 +279,7 @@ def gen_feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None
         return None
     if not f.generic or f.cls != "" or f.clo >= 0 or f.vararg >= 0 or f.kwarg >= 0 or f.ll in self.feedback_active:
         return None
-    js = [j for j in range(len(vals)) if self.reference_union(unopt(vals[j].t))]
+    js = [j for j in range(len(vals)) if self.reference_union(unopt(vals[j].t)) or ((self.online_host or self.online_child) and is_callable(vals[j].t))]
     if len(js) != 1:
         return None
     j = js[0]
@@ -263,13 +295,16 @@ def gen_feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None
     site = shown(self.curfn.name) + "(" + ",".join(self.curfn.ptypes) + "):" + str(self.line) + ":" + shown(f.name) + ":" + f.params[j]
     if len(site) > 500:
         return None
-    ms = umembers(unopt(vals[j].t))
+    callable_arg = is_callable(vals[j].t)
+    ms: list[str] = []
+    if not callable_arg:
+        ms = umembers(unopt(vals[j].t))
     self.feedback_active[f.ll] = True
     nnp = [f.params[k] for k in range(len(vals)) if vals[k].t in self.classes and vals[k].v in self.nn and self.dispatches(f, f.params[k])]
     baseline = self.instance(f, [v.t for v in vals], nnp)
     if self.online_host or self.online_child:
         del self.feedback_active[f.ll]
-        # The first online tier has one stable native ABI: int(ref-union).
+        # One pointer argument: a reference union or immutable Callable object.
         # Unsupported sites retain generic execution and never compile a hot
         # clone in the host, even if offline profile flags are also present.
         if len(vals) != 1 or baseline.ret != "int" or baseline.noret:
@@ -287,11 +322,12 @@ def gen_feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None
             # emitting an observer. Later semantic literals keep their original
             # numbers and can import the running host's exact string pointers.
             self.sconst(site)
-            self.sconst("<none>")
-            for m in ms:
-                self.utag(m)
-                self.sconst(m)
-            self.sconst("<other>")
+            if not callable_arg:
+                self.sconst("<none>")
+                for m in ms:
+                    self.utag(m)
+                    self.sconst(m)
+                self.sconst("<other>")
             return self.call_bound(baseline, vals, want)
         return online_call(self, site, baseline, vals[0])
     chosen = self.feedback.get(site, "")

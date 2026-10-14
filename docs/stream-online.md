@@ -1,5 +1,9 @@
 # Online call-site type tracing for shlex
 
+A later [callback identity experiment](callback-online.md) targets a larger
+optimization gap and adds a separate, opt-in runtime-inlining control. The
+measurements on this page describe the original host-import-only tier.
+
 This extends [the offline stream probe](stream-skew.md) with compilation during
 application execution. The running native program observes the stream member at
 the `tokenize` call site. After 100 observations, a member with at least 90%

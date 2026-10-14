@@ -724,9 +724,13 @@ double pys_float_str(Str *s) {
    ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
 #define ZDE "ZeroDivisionError: integer division or modulo by zero"
 #define OVF "OverflowError: integer result does not fit in 64 bits"
+/* Keep exception literals in the host's cold paths. Stateless online imports
+   can then inline the ordinary arithmetic body without copying runtime data. */
+__attribute__((noinline, cold, noreturn)) void pys_floordiv_zero_error(void) { pys_fail(ZDE); }
+__attribute__((noinline, cold, noreturn)) void pys_integer_overflow_error(void) { pys_fail(OVF); }
 I pys_floordiv(I a, I b) {
-  if (!b) pys_fail(ZDE);
-  if (b == -1) { if (a == INT64_MIN) pys_fail(OVF); return -a; }
+  if (!b) pys_floordiv_zero_error();
+  if (b == -1) { if (a == INT64_MIN) pys_integer_overflow_error(); return -a; }
   I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
 }
 I pys_mod(I a, I b) {
@@ -1046,6 +1050,16 @@ static int online_n;
 static char *online_source, *online_function, *online_manifest, *online_compiler;
 static size_t online_manifest_len;
 static const char *online_config_failure;
+/* Exact immutable Callable object identities, not just code pointers: a
+   closure with the same adapter must never lose its environment. */
+static struct { Str *member; void *value; } online_callbacks[64];
+static int online_callback_n;
+
+void pys_online_register(Str *member, void *value) {
+  if (!value || member->len < 1 || member->len > 200 || online_callback_n == 64) return;
+  online_callbacks[online_callback_n].member = member;
+  online_callbacks[online_callback_n++].value = value;
+}
 
 static char *online_copy(Str *s, I limit) {
   if (s->len < 0 || s->len > limit || memchr(s->s, 0, (size_t)s->len)) return NULL;
@@ -1100,8 +1114,6 @@ static void online_compile(OnlineSite *s) {
         setenv("PYSTACHY_ONLINE_MEMBER", s->selected, 1) ||
         setenv("PYSTACHY_ONLINE_EXPECT", expected, 1) ||
         setenv("PYSTACHY_FEEDBACK_FUNCTION", online_function, 1) ||
-        setenv("PYSTACHY_CLOSED_UNIONS", "1", 1) ||
-        setenv("PYSTACHY_REFERENCE_UNIONS", "1", 1) ||
         setenv("PYSTACHY_ONLINE_STATS", "", 1)) _exit(126);
     unsetenv("PYSTACHY_FEEDBACK_PROFILE");
     unsetenv("PYSTACHY_FEEDBACK_RECORD");
@@ -1202,6 +1214,12 @@ void *pys_online(Str *site, Str *member) {
   if (s->entry && !strcmp(s->selected, member->s)) { s->hits++; return s->entry; }
   s->misses++;
   return NULL;
+}
+void *pys_online_callable(Str *site, void *value) {
+  for (int i = 0; i < online_callback_n; i++)
+    if (online_callbacks[i].value == value) return pys_online(site, online_callbacks[i].member);
+  static struct { I len, hash; char text[8]; } other = {7, 0, "<other>"};
+  return pys_online(site, (Str *)&other);
 }
 static void online_finish(void) {
   const char *path = getenv("PYSTACHY_ONLINE_STATS");
@@ -1414,7 +1432,13 @@ static void reserve(List *l, I n) {
 typedef struct { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
 void pys_list_append(List *l, I v) { if (l->len == l->cap) reserve(l, l->len + 1); AT(l, l->len++) = v; }
-I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
+__attribute__((noinline, cold, noreturn)) void pys_list_index_error(void) { pys_fail("IndexError: list index out of range"); }
+I pys_list_get(List *l, I i) {
+  I n = l->len;
+  if (i < 0) i += n;
+  if (i < 0 || i >= n) pys_list_index_error();
+  return AT(l, i);
+}
 void pys_list_set(List *l, I i, I v) { AT(l, idx(i, l->len, "IndexError: list assignment index out of range")) = v; }
 /* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
    pointer there would keep the removed item alive (and a removed file open) */

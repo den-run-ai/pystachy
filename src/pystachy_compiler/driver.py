@@ -10,7 +10,7 @@ from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.online import online_identity
+from src.pystachy_compiler.online import online_identity, online_runtime_import
 from src.pystachy_compiler.specs import JIT_INLINE, LINKDL, MODULES, OPTS
 from src.pystachy_compiler.utils import optimizations
 
@@ -305,9 +305,9 @@ def main() -> None:
             f.write(ir)
             f.close()
         return
-    if cmd == "trace":
-        if out == "" or len(rest) > 0:
-            fail("trace requires exactly SOURCE.py -o OUTPUT.so", 0)
+    if cmd == "trace" and (out == "" or len(rest) > 0):
+        fail("trace requires exactly SOURCE.py -o OUTPUT.so", 0)
+    if cmd == "trace" and os.getenv("PYSTACHY_ONLINE_INLINE_RUNTIME", "") != "1":
         # The image imports every runtime/global address from the running AOT
         # executable. Linking runtime.bc here would create a second heap and
         # exception state. No code or module initializer is run by this command.
@@ -587,6 +587,21 @@ def main() -> None:
     libs = " -ldl" if len(LINKDL) > 0 or cmd == "ext" or online else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c, online images)
     if code != 0:
         msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
+    elif cmd == "trace":
+        # Make selected runtime bodies available to LLVM without importing any
+        # runtime storage. Allocation, GC, exceptions and all rejected helpers
+        # still resolve to the running host; no runtime initializer is linked.
+        code = sh(f"{llvm}opt -S {q(usebc)} -o {q(rll)}")
+        if code == 0:
+            f = open(rll, "r", encoding=RAW)
+            imported = online_runtime_import(f.read())
+            f.close()
+            f = open(rsl, "w", encoding=RAW)
+            f.write(imported)
+            f.close()
+            code = sh(f"{llvm}llvm-link --only-needed {q(ll)} {q(rsl)} -o {q(bc)} && {llvm}opt -passes='globaldce,default<O2>' {q(bc)} -o {q(bc)} && {llvm}clang -O2 -fPIC -shared {q(bc)} -o {q(obj)} -lm{cflags}")
+            if code == 0:
+                code = sh(f"mv {q(obj)} {q(out)}")
     elif cmd == "ext":
         # a CPython extension module: program, pyext.c, pyembed.c and runtime as one module, of which
         # only PyInit_<name> stays visible (the C files' bitcode is cached as the runtime's is: glue)

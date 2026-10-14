@@ -4,6 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.analysis import all_imports, collect, module_ints, needs_eh, none_assigns
 from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.feedback import online_callback_eligible
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import short
@@ -824,6 +825,12 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.global_var(f"@g.{nm}.def", "i1")
                     defmade[nm] = True
             if not self.rtmode and (self.online_host or self.online_child) and self.online_baseline == "":
+                # All callable conversions are now known, independent of which
+                # function body was visited first. Reserve registry identities
+                # in both host and child before capturing their shared ABI.
+                for key in sorted(self.adapters):
+                    if online_callback_eligible(self, key):
+                        self.sconst(key[:key.find(" ")])
                 online_capture(self)
                 if self.online_child and self.online_build():
                     continue  # drain helpers newly required by the selected concrete body
@@ -886,9 +893,17 @@ def gen_program(self, mods: list[Mod]) -> str:
             ts.append("i1")
         hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
     online_args: list[str] = []
+    online_callbacks: list[str] = []
     if self.online_host and not self.rtmode:
         online_args = [self.sconst(self.online_source), self.sconst(self.feedback_function), self.sconst(self.online_identity + self.online_baseline)]
         self.runtime("pys_online_init")
+        for key in sorted(self.adapters):
+            obj = "@cvo." + self.adapters[key][4:]
+            if online_callback_eligible(self, key) and obj in self.cvos:
+                member = self.sconst(key[:key.find(" ")])
+                online_callbacks.append(f"  call void @pys_online_register(ptr {member}, ptr {obj})")
+        if len(online_callbacks) > 0:
+            self.runtime("pys_online_register")
     hdr.extend(online_globals(self))
     roots = ", ".join([f"ptr {g}" for g in self.gcroots])
     if not self.rtmode:
@@ -930,6 +945,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         hdr.append("  call void @pys_eh_on()")  # (from now on, the runtime raises exceptions)
     if len(online_args) > 0:
         hdr.append(f"  call void @pys_online_init(ptr {online_args[0]}, ptr {online_args[1]}, ptr {online_args[2]})")
+        hdr.extend(online_callbacks)
     hdr.append("  call void @main.init()")
     hdr.append("  call void @pys_finish()")
     hdr.append("  ret i32 0")

@@ -42,7 +42,7 @@ def online_identity(sources: dict[str, str], home: str, components: list[str]) -
         rows.append("compiler\t" + path + "\t" + online_file(home + "/" + path))
     compiler = os.getenv("PYSTACHY_ONLINE_COMPILER", "")
     rows.append("binary\t" + os.path.realpath(compiler) + "\t" + online_file(compiler))
-    for key in ["PYSTACHY_CLOSED_UNIONS", "PYSTACHY_REFERENCE_UNIONS", "PYSTACHY_OPT", "PYSTACHY_FLOW_LOCALS", "PYSTACHY_CFLAGS"]:
+    for key in ["PYSTACHY_CLOSED_UNIONS", "PYSTACHY_REFERENCE_UNIONS", "PYSTACHY_OPT", "PYSTACHY_FLOW_LOCALS", "PYSTACHY_CFLAGS", "PYSTACHY_ONLINE_INLINE_RUNTIME"]:
         rows.append("option\t" + key + "\t" + os.getenv(key, ""))
     return "\n".join(rows) + "\n"
 
@@ -64,6 +64,9 @@ def online_abi(self) -> str:
         rows.append("object\t" + name + "\t" + str(self.ocls[name]))
     for site in sorted(self.online_signatures):
         rows.append("site\t" + site + "\t" + self.online_signatures[site])
+    for key in sorted(self.adapters):
+        if key.startswith("fn[f:"):
+            rows.append("adapter\t" + key + "\t" + self.adapters[key])
     for c in self.consts:
         info = online_constant(c)
         rows.append("literal\t" + info[0] + "\t" + info[1] + "\t" + online_hash(c))
@@ -187,3 +190,131 @@ def online_image(ir: str) -> str:
             row = "define internal " + row[7:]
         rows.append(row)
     return "\n".join(rows) + "\n"
+
+
+def online_runtime_symbols(row: str) -> list[str]:
+    # opt's printed IR uses unquoted names here. Quoted identifiers and inline
+    # assembly are deliberately outside this importer's grammar. Ignore strings
+    # and comments, which may contain an @ that does not name an LLVM value.
+    names: list[str] = []
+    i = 0
+    while i < len(row):
+        c = row[i]
+        if c == ";":
+            break
+        if c == '"':
+            i += 1
+            while i < len(row) and row[i] != '"':
+                i += 2 if row[i] == "\\" else 1
+        elif c == "@":
+            j = i + 1
+            while j < len(row) and row[j] in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.$_":
+                j += 1
+            if j == i + 1:
+                return [""]
+            names.append(row[i + 1 : j])
+            i = j - 1
+        i += 1
+    return names
+
+
+def online_runtime_declaration(header: str) -> str:
+    # Keep the exact ABI and parameter attributes, but no body-only attributes,
+    # personality or metadata. An imported symbol must not remain dso_local.
+    start = header.find("@")
+    end = header.find("(", start)
+    depth = 1
+    end += 1
+    while end < len(header) and depth > 0:
+        if header[end] == "(":
+            depth += 1
+        elif header[end] == ")":
+            depth -= 1
+        end += 1
+    if start < 0 or depth != 0:
+        fail("online runtime import encountered an unsupported function signature", 0)
+    prefix = header[7 : start]
+    for word in ["dso_local ", "dso_preemptable ", "available_externally ", "linkonce_odr ", "weak_odr ", "linkonce ", "weak ", "external "]:
+        prefix = prefix.replace(word, "")
+    return "declare " + prefix + header[start:end]
+
+
+def online_runtime_import(ir: str) -> str:
+    # Import code, never storage. Public bodies with no global-data references
+    # may inline, while their residual calls still resolve to the running host.
+    # A private helper must have a safe body too and may only be called directly:
+    # copying its address could change an observable callback identity. No data
+    # global is copied, even an immutable constant or a literal's hash cache.
+    bodies: dict[str, list[str]] = {}
+    public: dict[str, bool] = {}
+    declared: dict[str, bool] = {}
+    refs: dict[str, list[str]] = {}
+    safe: dict[str, bool] = {}
+    other: list[str] = []
+    name = ""
+    for row in ir.splitlines():
+        if row.startswith("define "):
+            symbols = online_runtime_symbols(row)
+            if name != "" or len(symbols) == 0 or symbols[0] == "" or not row.endswith("{"):
+                fail("online runtime import encountered an unsupported definition", 0)
+            name = symbols[0]
+            bodies[name] = [row]
+            refs[name] = symbols[1:]
+            prefix = row[: row.find("@")]
+            public[name] = " internal " not in prefix and " private " not in prefix
+            safe[name] = not any(word in prefix for word in [" weak ", " weak_odr ", " linkonce ", " linkonce_odr ", " available_externally "])
+        elif name != "":
+            bodies[name].append(row)
+            refs[name] = refs[name] + online_runtime_symbols(row)
+            if " asm " in row or "blockaddress(" in row:
+                safe[name] = False
+            if row == "}":
+                name = ""
+        elif row.startswith("declare "):
+            symbols = online_runtime_symbols(row)
+            if len(symbols) != 1 or symbols[0] == "":
+                fail("online runtime import encountered an unsupported declaration", 0)
+            declared[symbols[0]] = True
+            other.append(row.replace("dso_local ", ""))
+        elif not row.startswith("@"):
+            if len(online_runtime_symbols(row)) > 0:
+                fail("online runtime import encountered a global metadata reference", 0)
+            other.append(row)
+    if name != "":
+        fail("online runtime import encountered an incomplete function", 0)
+    # External functions are valid host boundaries whether their bodies are
+    # importable or not. Private dependencies require a fixed-point check.
+    for name in bodies:
+        for ref in refs[name]:
+            if ref not in bodies and ref not in declared:
+                safe[name] = False
+        for ref in online_runtime_symbols(bodies[name][0])[1:]:
+            if ref in bodies and not public[ref]:
+                safe[name] = False
+        for row in bodies[name][1:]:
+            symbols = online_runtime_symbols(row)
+            for ref in symbols:
+                if ref in bodies and not public[ref]:
+                    direct = (" call " in row or " invoke " in row) and symbols[0] == ref and symbols.count(ref) == 1 and "@" + ref + "(" in row
+                    if not direct:
+                        safe[name] = False
+    changed = True
+    while changed:
+        changed = False
+        for name in bodies:
+            if safe[name]:
+                for ref in refs[name]:
+                    if ref in bodies and not public[ref] and not safe[ref]:
+                        safe[name] = False
+                        changed = True
+    for name in bodies:
+        body = bodies[name]
+        if safe[name]:
+            if public[name]:
+                other.append("define available_externally " + body[0][7:].replace("dso_local ", "").replace("dso_preemptable ", ""))
+                other = other + body[1:]
+            else:
+                other = other + body
+        elif public[name]:
+            other.append(online_runtime_declaration(body[0]))
+    return "\n".join(other) + "\n"
