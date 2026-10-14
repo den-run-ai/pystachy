@@ -21,6 +21,7 @@ from src.pystachy_compiler.utils import (
     is_opt,
     is_set,
     is_tuple,
+    is_union,
     kw_names,
     kw_types,
     lt,
@@ -538,6 +539,8 @@ def gen_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return self.kw_method(o, m, args)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+    if is_union(o.t):
+        return self.umethod(o, m, args)
     if o.t in self.nts and m == "__init__":
         # p.__init__(args) of a NamedTuple (also through p.__init__ as a value): object.__init__,
         # as tuple.__new__ set the fields. It takes any arguments where the class has a __new__
@@ -888,6 +891,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
+    feedback = self.feedback_call(f, vals, want)
+    if feedback is not None:
+        return feedback
     if f.generic:
         nnp: list[str] = []
         for j in range(np):

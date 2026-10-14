@@ -1,7 +1,10 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.feedback import gen_feedback_call, load_feedback
 from src.pystachy_compiler.unions import (
+    gen_reference_union as unions_reference_union,
+    gen_umethod as unions_umethod,
     gen_uboxes as unions_uboxes,
     gen_umember_problem as unions_umember_problem,
     gen_union_type as unions_union_type,
@@ -571,6 +574,13 @@ class Gen:
         self.specing: dict[str, str] = {}  # the specializations being made, by template and argument types
         self.utags: dict[str, int] = {}
         self.closed_unions = os.getenv("PYSTACHY_CLOSED_UNIONS", "") == "1"
+        self.reference_unions = os.getenv("PYSTACHY_REFERENCE_UNIONS", "") == "1"
+        self.feedback_function: str = os.getenv("PYSTACHY_FEEDBACK_FUNCTION", "")
+        self.feedback_record = os.getenv("PYSTACHY_FEEDBACK_RECORD", "") == "1"
+        self.feedback_counters = os.getenv("PYSTACHY_FEEDBACK_COUNTERS", "") == "1"
+        self.feedback: dict[str, str] = load_feedback()
+        self.feedback_active: dict[str, bool] = {}
+        self.feedback_clones: dict[str, bool] = {}
         self.specdone: dict[str, str] = {}  # and those made, which the same call gets again
         self.selfcls = ""  # the class whose method or fields are being declared: what typing.Self is
         self.funcs: dict[str, FnInfo] = {}
@@ -2015,6 +2025,9 @@ class Gen:
     def call_bound(self, f: FnInfo, vals: list[Val], want: str) -> Val:
         return calls_call_bound(self, f, vals, want)
 
+    def feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
+        return gen_feedback_call(self, f, vals, want)
+
     def skew_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
         return skew_call(self, f, vals, want)
 
@@ -2215,6 +2228,12 @@ class Gen:
 
     def repr(self, v: Val) -> Val:
         return containers_repr(self, v)
+
+    def reference_union(self, t: str) -> bool:
+        return unions_reference_union(self, t)
+
+    def umethod(self, o: Val, m: str, args: list[Node]) -> Val:
+        return unions_umethod(self, o, m, args)
 
     def uboxes(self, a: str, b: str) -> bool:
         return unions_uboxes(self, a, b)

@@ -986,6 +986,43 @@ void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
 void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
+/* Opt-in training/counter calls emitted by the compiler. Fixed copied strings
+   retain no GC objects. Overflow invalidates the profile instead of biasing it. */
+typedef struct { char site[501], member[201]; I count; } Feedback;
+static Feedback feedback[256];
+static int feedback_n, feedback_overflow;
+void pys_feedback(Str *site, Str *member) {
+  if (site->len > 500 || member->len > 200 ||
+      memchr(site->s, '\t', site->len) || memchr(site->s, '\n', site->len) ||
+      memchr(member->s, '\t', member->len) || memchr(member->s, '\n', member->len)) {
+    feedback_overflow = 1; return;
+  }
+  for (int i = 0; i < feedback_n; i++) {
+    Feedback *f = &feedback[i];
+    if ((I)strlen(f->site) == site->len && (I)strlen(f->member) == member->len &&
+        !memcmp(f->site, site->s, site->len) && !memcmp(f->member, member->s, member->len)) {
+      if (f->count < 999999999999LL) f->count++;
+      else feedback_overflow = 1;
+      return;
+    }
+  }
+  if (feedback_n == 256) { feedback_overflow = 1; return; }
+  Feedback *f = &feedback[feedback_n++];
+  memcpy(f->site, site->s, site->len);
+  memcpy(f->member, member->s, member->len);
+  f->count = 1;
+}
+static void feedback_finish(void) {
+  const char *path = getenv("PYSTACHY_FEEDBACK_OUT");
+  if (!path || !*path || (!feedback_n && !feedback_overflow)) return;
+  FILE *out = fopen(path, "w");
+  if (!out) { fprintf(stderr, "cannot write Pystachy feedback: %s\n", strerror(errno)); return; }
+  fputs(feedback_overflow ? "pystachy-feedback-overflow\n" : "pystachy-feedback-v1\n", out);
+  if (!feedback_overflow) for (int i = 0; i < feedback_n; i++)
+    fprintf(out, "%s\t%s\t%lld\n", feedback[i].site, feedback[i].member, (long long)feedback[i].count);
+  if (fclose(out)) fputs("cannot finish Pystachy feedback\n", stderr);
+}
+
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;
@@ -2329,6 +2366,7 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
   static int done;
   if (done++) return;
   out_flush();
+  feedback_finish();
   if (gc_stats) gc_report();
   int bad = 0, e;
   if (!std_out.closed && (e = flush1(&std_out))) {

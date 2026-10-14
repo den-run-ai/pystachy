@@ -69,6 +69,11 @@ flow-analysis-check: $(FLOW_ANALYSIS_COMPILER)
 	$(PY) tools/check_flow_locals.py --compiler "$(FLOW_ANALYSIS_COMPILER)"
 	$(PY) tools/flow_analysis_check.py --compiler "$(FLOW_ANALYSIS_COMPILER)" --json build/flow-analysis.json
 
+# Native reference unions and guarded caller feedback, with no timing thresholds.
+STREAM_COMPILER ?= ./pystachy
+stream-feedback-check: $(STREAM_COMPILER)
+	PYSTACHY_STREAM_TEST_COMPILER="$(STREAM_COMPILER)" $(PY) -m unittest discover -s tools -p test_stream_feedback.py
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also

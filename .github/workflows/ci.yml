@@ -51,6 +51,7 @@ jobs:
         run: |
           make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
           make skew-check SKEW_COMPILER=build/verify/pystachy2
+          make stream-feedback-check STREAM_COMPILER=build/verify/pystachy2
 
       - name: Experimental flow analysis correctness
         if: matrix.group == 'benchmarks'

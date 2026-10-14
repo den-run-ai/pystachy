@@ -1,19 +1,27 @@
-"""Opt-in explicit closed scalar unions, adapted from draft PR #238."""
+"""Opt-in explicit closed scalar and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Ins, Val
-from src.pystachy_compiler.syntax import Node
+from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import is_opt, is_sopt, is_union, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
     # may be None, where b may be: see to_union)
-    return is_union(unopt(b)) and a != "None" and unopt(a) in umembers(unopt(b))
+    if not is_union(unopt(b)) or a == "None":
+        return False
+    src = unopt(a)
+    return src in umembers(unopt(b)) or (src in self.classes and len([m for m in umembers(unopt(b)) if m in self.classes and self.derives(src, m)]) == 1)
+
+def gen_reference_union(self, t: str) -> bool:
+    return is_union(unopt(t)) and all([m == "file" or m in self.classes for m in umembers(unopt(t))])
 
 def gen_umember_problem(self, t: str) -> str:
     # why a value of type t cannot be one of a union's (A | B), or ""
     if t == "int" or t == "float" or t == "bool" or t == "str":
         return ""
+    if t == "file" or (t in self.classes and self.classes[t].exc == ""):
+        return "" if self.reference_unions else "native reference unions require PYSTACHY_REFERENCE_UNIONS=1 (experimental)"
     return f"{typestr(t)} in a closed union is not supported by this prototype (use int, float, bool or str)"
 
 def gen_union_type(self, ts: list[str]) -> str:
@@ -41,6 +49,16 @@ def gen_union_type(self, ts: list[str]) -> str:
     for m in ms:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
+    refs = [m for m in ms if m == "file" or m in self.classes]
+    if len(refs) > 0:
+        if len(refs) != len(ms):
+            return "!reference unions cannot mix native references with scalar members"
+        if len(ms) > 4:
+            return "!reference unions support at most four members"
+        for a in refs:
+            for b in refs:
+                if a != b and a in self.classes and b in self.classes and self.derives(a, b):
+                    return "!reference unions cannot contain overlapping class families"
     ms.sort()
     u = self.ctype("union", ms)
     return self.optional(u) if none else u
@@ -101,7 +119,11 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
         return Val(v.v, t)
     if src not in ms:
-        self.err(f"expected {typestr(t)}, got {typestr(v.t)}")
+        bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
+        if len(bases) != 1:
+            self.err(f"expected {typestr(t)}, got {typestr(v.t)}")
+        src = bases[0]
+        v = self.coerce(v, src)
     if not is_opt(v.t):
         return Val(self.ubox(v, src), t)
     if not none_ok:
@@ -152,8 +174,12 @@ def gen_uisinst(self, v: Val, c: Node) -> str:
     # i1: isinstance(v, c) for a union value v (or one that may be None): its tag is that of a
     # member type c names, or it is None and c names NoneType
     ms: list[str] = []
+    dynamic: list[str] = []
     for m in umembers(unopt(v.t)):
         k = self.isinst(m, c)
+        if k == -1 and m in self.classes and self.classes[m].tag > 0 and self.puretype(c, False):
+            dynamic.append(m)
+            continue
         if k == -1 or k == -3:
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         if k == 1 or k == -2:
@@ -162,7 +188,74 @@ def gen_uisinst(self, v: Val, c: Node) -> str:
     r = self.utest(v.v, ms, may_none)
     if may_none and self.isinst("None", c) == 1:
         r = self.ins(f"or i1 {r}, {self.ins(f'icmp eq ptr {v.v}, null')}")
+    for m in dynamic:
+        hit = self.label()
+        end = self.label()
+        test = self.utest(v.v, [m], may_none)
+        before = self.cur
+        self.cbr(test, hit, end)
+        self.place(hit)
+        match = self.obj_isinst(self.uget(v.v, m), c)
+        result = self.ins(f"or i1 {r}, {match.v}")
+        after = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, r, before)
+        self.incoming(ph, result, after)
+        r = self.phi(ph)
     return r
+
+def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
+    # Resolve the receiver before evaluating arguments. Each expression is then
+    # evaluated once; only the selected native member performs its call/defaults.
+    if not self.reference_union(o.t):
+        self.err("closed scalar union method calls require narrowing with isinstance() first")
+    members = umembers(unopt(o.t))
+    for member in members:
+        if member in self.classes and m not in self.classes[member].methods:
+            self.err(f"reference union member {typestr(member)} must declare method {m}() (callable fields are not supported)")
+    self.guard(self.ins(f"icmp eq ptr {o.v}, null"), f"AttributeError: 'NoneType' object has no attribute '{m}'")
+    bound: list[Node] = []
+    for a in args:
+        if a.kind == "kw":
+            bound.append(mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
+        else:
+            bound.append(self.vnode(self.expr(a, "")))
+    tag = self.ins(f"load i64, ptr {o.v}")
+    end = self.label()
+    results: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for i in range(len(members)):
+        hit = self.label()
+        miss = self.label() if i + 1 < len(members) else ""
+        if miss != "":
+            self.cbr(self.ins(f"icmp eq i64 {tag}, {self.utag(members[i])}"), hit, miss)
+        else:
+            self.br(hit)
+        self.place(hit)
+        self.narrowed = dict(narrow)
+        result = self.method(self.uget(o.v, members[i]), m, bound)
+        if len(results) > 0 and result.t != results[0].t:
+            self.err("reference union methods must have identical return types")
+        if not self.term:
+            results.append(result)
+            edges.append(self.cur)
+            self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.narrowed = narrow
+    self.place(end)
+    if len(results) == 0:
+        self.unreachable()
+        return Val("null", "None")
+    if results[0].t == "None":
+        return Val("null", "None")
+    ph = Ins("phi", results[0].t, "")
+    for i in range(len(results)):
+        self.incoming(ph, results[i].v, edges[i])
+    return Val(self.phi(ph), results[0].t)
 
 def gen_now_type(self, name: str) -> str:
     # the type local name has here: as a test or an assignment narrowed it, else its own

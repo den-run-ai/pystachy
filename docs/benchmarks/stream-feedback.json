@@ -1,0 +1,348 @@
+{
+  "schema": "pystachy-stream-feedback-v1",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "compiler": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-m",
+    "pystachy"
+  ],
+  "git_head": "5be2744fd675a20bb5421b47d4993d0fee0c6393",
+  "git_status": "M lib/shlex.py\n M runtime.c\n M src/pystachy_compiler/calls.py\n M src/pystachy_compiler/declarations.py\n M src/pystachy_compiler/driver.py\n M src/pystachy_compiler/gen.py\n M src/pystachy_compiler/specs.py\n M src/pystachy_compiler/unions.py\n?? bench/stream_skew.py\n?? docs/stream-skew.md\n?? src/pystachy_compiler/feedback.py\n?? tools/bench_stream_feedback.py\n?? tools/test_stream_feedback.py",
+  "repeats": 1000,
+  "samples": 7,
+  "timer": "time.process_time inside program; process startup and compilation excluded",
+  "training": "controlled 199 StringIO calls and 1 TextIO call; not natural application skew",
+  "builds": {
+    "baseline": {
+      "wall_seconds": 4.007872243004385,
+      "executable_bytes": 309208,
+      "compile_options": {}
+    },
+    "record": {
+      "wall_seconds": 3.8153929819964105,
+      "executable_bytes": 309544,
+      "compile_options": {
+        "PYSTACHY_FEEDBACK_RECORD": "1"
+      }
+    },
+    "optimized": {
+      "wall_seconds": 3.655013035007869,
+      "executable_bytes": 309208,
+      "compile_options": {
+        "PYSTACHY_FEEDBACK_PROFILE": "/workspace/scratch/d83aa8e08446/pystachy/build/stream-feedback/training.profile"
+      }
+    },
+    "counters": {
+      "wall_seconds": 4.2132908619969385,
+      "executable_bytes": 309520,
+      "compile_options": {
+        "PYSTACHY_FEEDBACK_PROFILE": "/workspace/scratch/d83aa8e08446/pystachy/build/stream-feedback/training.profile",
+        "PYSTACHY_FEEDBACK_COUNTERS": "1"
+      }
+    }
+  },
+  "checks": {
+    "upstream_cpython": "check 586964006 14087136144",
+    "baseline": "check 586964006 14087136144",
+    "record": "check 586964006 14087136144",
+    "training": "train 117392801200",
+    "optimized": "check 586964006 14087136144",
+    "counters": "check 586964006 14087136144",
+    "jit_baseline": "check 586964006 14087136144",
+    "jit_optimized": "check 586964006 14087136144"
+  },
+  "timings": {
+    "generic": {
+      "process_cpu_seconds": [
+        0.605853422,
+        0.517843155,
+        0.5974729310000001,
+        0.682380251,
+        0.752589881,
+        0.736129898,
+        0.497222264
+      ],
+      "median": 0.605853422,
+      "min": 0.497222264,
+      "max": 0.752589881
+    },
+    "selected": {
+      "process_cpu_seconds": [
+        0.588260526,
+        0.5419427259999999,
+        0.49332314299999996,
+        0.693247226,
+        0.702618741,
+        0.6924609820000001,
+        0.562150493
+      ],
+      "median": 0.588260526,
+      "min": 0.49332314299999996,
+      "max": 0.702618741
+    },
+    "concrete": {
+      "process_cpu_seconds": [
+        0.558441918,
+        0.541564305,
+        0.60941456,
+        0.7102596569999999,
+        0.593546457,
+        0.569758564,
+        0.552858836
+      ],
+      "median": 0.569758564,
+      "min": 0.541564305,
+      "max": 0.7102596569999999
+    }
+  },
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "profile": [
+    {
+      "site": "read_tokens(union[file,io$StringIO]):37:tokenize:stream",
+      "member": "io$StringIO",
+      "count": 199
+    },
+    {
+      "site": "read_tokens(union[file,io$StringIO]):37:tokenize:stream",
+      "member": "file",
+      "count": 1
+    }
+  ],
+  "counters": [
+    {
+      "site": "read_tokens(union[file,io$StringIO]):37:tokenize:stream",
+      "member": "<hot>",
+      "count": 7
+    },
+    {
+      "site": "read_tokens(union[file,io$StringIO]):37:tokenize:stream",
+      "member": "<miss>",
+      "count": 17
+    }
+  ],
+  "ratios": {
+    "generic_over_selected": 1.0299066403785864,
+    "generic_over_concrete": 1.06335114604789
+  },
+  "source_sha256": {
+    "bench/stream_skew.py": "05926d5ff7920e58bf423245d91bf5f08d8766555072faa0c13c58430161c436",
+    "lib/shlex.py": "4a50a920cd4d320072ea6a6b8277c2204b5a17a826a515e7de9a84713400cc22",
+    "lib/io.py": "21bd420f53410efabe83d07e7078e7a653fb06c1b72e7850577af4cc238f37a9",
+    "runtime.c": "c611388a49956c228d4576bb2c552284f0f28d885c5fa2e11f9b975f487a0fc7",
+    "runtime.py": "297946f0ad822285f610a017ce390ba75e871f7dbe5fb1d549279f0e3eb44de3",
+    "tools/bench_stream_feedback.py": "32381e170d88e69f1b6cedde565f7afabae251612ef6f3544cc5d59737f75001",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "716f5f454fea06ed91f60f6834650464cbe3f3fd1058adca3e53c48669055c1d",
+    "src/pystachy_compiler/builtins.py": "14216c213c652d6970cb956fbef89eeda2ff2cc38c2f4e0b41a115ea7a6df204",
+    "src/pystachy_compiler/calls.py": "ebfd6825d841486125a92e03999351e845220c2668117b7099119271728cd28c",
+    "src/pystachy_compiler/containers.py": "131992fcd136fe0f675e6d66c75c6bf35b5421f19fc4a0778f214fb3253c0153",
+    "src/pystachy_compiler/conversions.py": "6e0e6ffb18f7d02e02bea2fb4ba971c30d8a232deaeaf897522e6134c915634c",
+    "src/pystachy_compiler/declarations.py": "b339727697dc25f77475d2e5d7382d4a582c8ac284c4f6377d785d2933b99e8a",
+    "src/pystachy_compiler/diagnostics.py": "cc6c0e1babc61abce28d19e61c73818665b0afc93896daa9e4cb931973cddacb",
+    "src/pystachy_compiler/driver.py": "a3740d83f4bc3125a9647724c4c6bb86009adf5661e70f935f802707242cb0d3",
+    "src/pystachy_compiler/emission.py": "86f39bb798e25669307f0709c9b9a511199586fd86916e97a3bfc66490ecb222",
+    "src/pystachy_compiler/exceptions.py": "39b27ff00022471ceeefc5bb9788badf04fa6399ab37ce8f3e0f3cf63e99f1bf",
+    "src/pystachy_compiler/expressions.py": "a213e46cbe7c8668ee34c0277bd67fe84aaa52351e612a2bc1722860fc96cc4f",
+    "src/pystachy_compiler/feedback.py": "669f8f405d67e44e64ded67dd95db0fabc231ae9e3d151c0314f254593459077",
+    "src/pystachy_compiler/flow.py": "81dbee484c5025c2eb6749657e5ba79310c473f4062426f5494477028be5811b",
+    "src/pystachy_compiler/functions.py": "3b54281f34311223be4de4675a8398a036229927c1a561fb05d9cd627837efb9",
+    "src/pystachy_compiler/gen.py": "56e84f0d0827279af32f14dd661bad66c7a5e6a4bd32d2117e835866f69ee1df",
+    "src/pystachy_compiler/ir.py": "6fd9cb7942d000f77d4c0fea54cac1752b296e744a3fa8bd9bc8efa60173d831",
+    "src/pystachy_compiler/ircheck.py": "be6a60329c4efc6e064a46e677697cab78e9987adafa9374a4f719ccdd3becc5",
+    "src/pystachy_compiler/lexer.py": "7760507b7eedf73f05396b5a481b5b893071327e0ea8cc1ec38954b721cfa1eb",
+    "src/pystachy_compiler/loader.py": "996e4319a95dfca018ed2875e4bb42ebe830ab7953daef0442a7e6db4756c515",
+    "src/pystachy_compiler/local_versions.py": "79d374832073027e18106986a3d5e2c85a021654bb5e94b3304ed79723113e7d",
+    "src/pystachy_compiler/lowering.py": "c7e65e0707a32f55cb76a6933fd92d0c93f3ba631849fe914c0cc04e7783b9a1",
+    "src/pystachy_compiler/module.py": "b052e2d38d996840b3e7c190294874163f04a3d8c67b9071193adc1683c2113b",
+    "src/pystachy_compiler/names.py": "1bea4fc8d42d671a7da5e0931d690e27e7f2f0d072d46ff4682d3be4173ea82d",
+    "src/pystachy_compiler/optimizations.py": "ee43f47713663f9fb433d15581fd9b14a8ed0c378a569c4f292237d69482fc48",
+    "src/pystachy_compiler/parser.py": "dfb8594159b72db92bac4e1128ac0f03f95f1106d884269c7d5cd834858e0f9b",
+    "src/pystachy_compiler/program.py": "609809bd48df0d37fb69223f20a06267df8e2fd2b78efe1acdb7324a7ace045b",
+    "src/pystachy_compiler/scope.py": "d5a885c17fff663af0fe1101adc5ecb4e4b619849917662e5799fd30fdedc23e",
+    "src/pystachy_compiler/skew.py": "d188c242c7279da88a0af5e97e68af1f728fce232add6594df1bdaf5a91ba534",
+    "src/pystachy_compiler/specs.py": "56f49db61d898b83baf2e646a5428ad8274e35b01dfdb88fd0103bfcffba552e",
+    "src/pystachy_compiler/statements.py": "09c2bf3b1d7f28c6d4f44ed96f93feef373ad5a639a1ff7ed03786349c3d3dbd",
+    "src/pystachy_compiler/syntax.py": "37191ef377704976eb7bb05080ed00863c5b49501a42b49e2177614237d15986",
+    "src/pystachy_compiler/templates.py": "aa821feccdf59d2722753865711f24d6902f5b658681690b5bb214eee35f68cf",
+    "src/pystachy_compiler/unions.py": "bdccec184e5cb9d313d2fe0e375e72da07d62f0f3b33e139133f7456f0094252",
+    "src/pystachy_compiler/utils.py": "4657950caf84a42e6e4ac30876887e3ce18b8205515aac15f4a4fee042648563",
+    "src/pystachy_compiler/variables.py": "07551237853f8b869d3bc56afa7708fd001560828f1747f85a627f3b2f7c5e36"
+  },
+  "initial_unpinned_run": {
+    "repeats": 1000,
+    "samples": 7,
+    "timings": {
+      "generic": {
+        "process_cpu_seconds": [
+          0.605853422,
+          0.517843155,
+          0.5974729310000001,
+          0.682380251,
+          0.752589881,
+          0.736129898,
+          0.497222264
+        ],
+        "median": 0.605853422,
+        "min": 0.497222264,
+        "max": 0.752589881
+      },
+      "selected": {
+        "process_cpu_seconds": [
+          0.588260526,
+          0.5419427259999999,
+          0.49332314299999996,
+          0.693247226,
+          0.702618741,
+          0.6924609820000001,
+          0.562150493
+        ],
+        "median": 0.588260526,
+        "min": 0.49332314299999996,
+        "max": 0.702618741
+      },
+      "concrete": {
+        "process_cpu_seconds": [
+          0.558441918,
+          0.541564305,
+          0.60941456,
+          0.7102596569999999,
+          0.593546457,
+          0.569758564,
+          0.552858836
+        ],
+        "median": 0.569758564,
+        "min": 0.541564305,
+        "max": 0.7102596569999999
+      }
+    },
+    "ratios": {
+      "generic_over_selected": 1.0299066403785864,
+      "generic_over_concrete": 1.06335114604789
+    },
+    "note": "Concurrent compiler bootstrap was running; sample ranges are wide."
+  },
+  "affinity_followup": {
+    "repeats": 4000,
+    "samples": 7,
+    "affinity_cpu": 4,
+    "allowed_cpu_count": 9,
+    "sample_order": [
+      [
+        "generic",
+        "selected",
+        "concrete"
+      ],
+      [
+        "selected",
+        "concrete",
+        "generic"
+      ],
+      [
+        "concrete",
+        "generic",
+        "selected"
+      ],
+      [
+        "generic",
+        "selected",
+        "concrete"
+      ],
+      [
+        "selected",
+        "concrete",
+        "generic"
+      ],
+      [
+        "concrete",
+        "generic",
+        "selected"
+      ],
+      [
+        "generic",
+        "selected",
+        "concrete"
+      ]
+    ],
+    "executable_sha256": {
+      "baseline": "237cd7f5e76e59abb4fce2806b5ac40752dcd2cdd490d722075988d7a78430f4",
+      "optimized": "d170991b4e1b5957c51fce8a39b94191dfeb51720f1a47bc995a808af8c8da79"
+    },
+    "timings": {
+      "generic": {
+        "process_cpu_seconds": [
+          2.1507374269999997,
+          2.0835781989999997,
+          2.112980554,
+          2.071439737,
+          2.123358317,
+          2.102203367,
+          2.12647531
+        ],
+        "median": 2.112980554,
+        "min": 2.071439737,
+        "max": 2.1507374269999997
+      },
+      "selected": {
+        "process_cpu_seconds": [
+          2.042072092,
+          2.2510660729999996,
+          2.062380271,
+          2.0214023830000003,
+          2.090527314,
+          2.006456452,
+          2.005687105
+        ],
+        "median": 2.042072092,
+        "min": 2.005687105,
+        "max": 2.2510660729999996
+      },
+      "concrete": {
+        "process_cpu_seconds": [
+          2.326169627,
+          2.057743205,
+          2.1127876199999998,
+          2.134260881,
+          2.055638139,
+          1.9876245879999999,
+          1.99062707
+        ],
+        "median": 2.057743205,
+        "min": 1.9876245879999999,
+        "max": 2.326169627
+      }
+    },
+    "paired_ratios": {
+      "generic_over_selected": {
+        "values": [
+          1.0532132706899555,
+          0.9255961981707678,
+          1.024534894806507,
+          1.0247537820380612,
+          1.0157046515394155,
+          1.0477194084648889,
+          1.0602228556482642
+        ],
+        "median": 1.0247537820380612,
+        "min": 0.9255961981707678,
+        "max": 1.0602228556482642
+      },
+      "generic_over_concrete": {
+        "values": [
+          0.9245832298884193,
+          1.0125550136368935,
+          1.0000913172711605,
+          0.9705653865657861,
+          1.0329436279251676,
+          1.0576460865355326,
+          1.0682439428496269
+        ],
+        "median": 1.0125550136368935,
+        "min": 0.9245832298884193,
+        "max": 1.0682439428496269
+      }
+    },
+    "note": "Existing binaries only. Run pinned to one allowed CPU after concurrent bootstrap completed. No recompilation or recording instrumentation."
+  }
+}

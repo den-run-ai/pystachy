@@ -45,6 +45,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/program.py',
     'src/pystachy_compiler/scope.py',
     'src/pystachy_compiler/skew.py',
+    'src/pystachy_compiler/feedback.py',
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/syntax.py',

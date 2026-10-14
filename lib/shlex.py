@@ -27,21 +27,32 @@ def _empty_sources() -> list[tuple[str | None, StringIO, int]]:
     return []
 
 
+def _input_stream(instream, probe):
+    # Keep one constructor field assignment: field inference scans assignments
+    # before pruning branches, while this helper specializes on its arguments.
+    if not isinstance(probe, bool):
+        return probe
+    if isinstance(instream, str):
+        return StringIO(instream)
+    if isinstance(instream, StringIO):
+        return instream
+    if instream is not None:
+        return StringIO(instream.read())
+    return StringIO(sys.stdin.read())
+
+
 class shlex:
     "A lexical analyzer class for simple shell-like syntaxes."
     def __init__(self, instream=None, infile=None, posix=False,
-                 punctuation_chars=False):
+                 punctuation_chars=False, _stream=False):
+        # Pystachy experiment: _stream retains a native stream for read_token() probes.
+        # Its boolean default is folded by constructor specialization, preserving the
+        # ordinary port below. Source stacking is not supported through this hook.
+        self._stream_probe = _stream
         # Pystachy port: the lexer reads a StringIO, also of the text of a file, which it reads
         # whole here (CPython's reads the file as it asks for characters): a field has one type,
         # and the streams of a str and of the sources it pushes are StringIOs
-        if isinstance(instream, str):
-            self.instream = StringIO(instream)
-        elif isinstance(instream, StringIO):
-            self.instream = instream
-        elif instream is not None:
-            self.instream = StringIO(instream.read())
-        else:
-            self.instream = StringIO(sys.stdin.read())
+        self.instream = _input_stream(instream, _stream)
         self.infile: str | None = infile if instream is not None else None  # Pystachy port: (above)
         self.posix = posix
         self.eof: str | None = None if posix else ''  # Pystachy port: annotated, None or ''
@@ -334,15 +345,25 @@ class shlex:
         # Pystachy port: annotated, and the tokens left, read when the loop starts (an iterator
         # class, which reads each token as the loop asks for it, is not supported)
         tokens = []
+        probe = self._stream_probe
         while True:
-            token = self.get_token()
+            # Special methods compile eagerly; the private probe supports only raw
+            # tokens, while ordinary instances retain source-stack processing.
+            if isinstance(probe, bool):
+                token = self.get_token()
+            else:
+                token = self.read_token()
             if token is None or token == self.eof:
                 break
             tokens.append(token)
         return iter(tokens)
 
     def __next__(self) -> str | None:  # Pystachy port: annotated (a special method of a class template)
-        token = self.get_token()
+        probe = self._stream_probe
+        if isinstance(probe, bool):
+            token = self.get_token()
+        else:
+            token = self.read_token()
         if token == self.eof:
             raise StopIteration
         return token
