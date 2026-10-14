@@ -88,13 +88,15 @@ Early AOT benchmark results against CPython, rounded for readability:
 | Workload | Result |
 |---|---|
 | Selected compute workloads | Up to about **70× faster** |
-| `fnmatch` event router, without event classification caching | About **2× faster** |
-| [Event router, with each event name's classification cached](https://github.com/den-run-ai/pystachy/pull/294) | About **1.5× faster** |
+| `fnmatch` event router, with only compiled-pattern caching | **About the same speed** in the paired launch check |
+| [Event router, with each event name's classification cached](examples/route/README.md#current-paired-snapshot) | About **1.9× faster** in the paired launch check |
 | [Large integer list](https://github.com/den-run-ai/pystachy/pull/201) | About **one-fifth the peak memory** |
 
 Both router comparisons use the same caching policy for CPython and Pystachy.
 The `fnmatch` variant still caches compiled patterns; caching classifications lets repeated
 names skip matching altogether.
+The paired launch check uses repeated names on one shared host; raw rounds and historical
+measurements are recorded in the router guide. Regex misses can be slower than CPython.
 
 These are workload-specific results, not a general speedup for all Python code.
 AOT timings exclude compilation; JIT startup includes it. Reproduction commands, exact

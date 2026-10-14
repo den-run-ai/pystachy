@@ -34,6 +34,15 @@ Caching event classifications skips matching entirely on repeated names. Both im
 use the same cache policy in these comparisons; fnmatch's pattern cache alone still matches
 each event. See the [router example](../examples/route/README.md) for inputs and reproduction.
 
+The [2026-10-14 paired router rerun](../examples/route/README.md#current-paired-snapshot)
+includes the current regex optimizations and raw revision/trace evidence. On that shared host,
+cached repeating names are 1.79× faster AOT, while fnmatch per-rule routing is 1.01× and
+precompiled-regex misses are slower than CPython. Results vary with the cache policy, input
+and host; the self-hosted launch candidate `a74efdf` reproduces that conclusion at 1.88×
+for cached classifications and 0.95× for fnmatch per rule. Neither rerun confirms a current
+2× fnmatch speedup. The following table
+preserves the older published measurements from another host.
+
 | Workload | CPython | AOT | Source |
 |---|---:|---:|---|
 | Router, fnmatch per rule, 1M events | 2.927 s | 1.866 s | Initial [#294](https://github.com/den-run-ai/pystachy/pull/294) table |

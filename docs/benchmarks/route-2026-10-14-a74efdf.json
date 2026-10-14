@@ -1,0 +1,164 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-10-14T01:54:05Z",
+    "revision": "a12cdd600f2fca7046a15d16d43c9678253b2b54",
+    "working_tree_diff": "diff --git a/examples/route/README.md b/examples/route/README.md\nindex 18d8067..264e131 100644\n--- a/examples/route/README.md\n+++ b/examples/route/README.md\n@@ -41,6 +41,39 @@ precompiled regexes as `--no-cache`. Both implementations use the same caching p\n \n ## What the cache buys\n \n+### Current paired snapshot\n+\n+A launch check on **2026-10-14 UTC** uses main `1438ac4`'s compiler/runtime/library tree\n+plus the router validation changes at `a12cdd6`. It includes the regex and caching optimizations\n+merged since #294. The CPython-hosted compiler builds AOT with LLVM 18.1.3; compilation is\n+excluded from execution time. The comparison uses CPython 3.13.16, an AMD EPYC 9V74 shared\n+Linux x86-64 host, one assigned CPU (affinity 8), and five paired rounds that alternate\n+CPython/AOT order. Both implementations use the same traces and cache policies.\n+The [raw rounds and provenance](../../docs/benchmarks/route-2026-10-14-a12cdd6.json) include\n+source/executable/trace hashes, environment, all reports and peak RSS. Every report agrees.\n+\n+| Trace | Mode | CPython wall | AOT wall | AOT speedup | CPython routing | AOT routing |\n+|---|---|---:|---:|---:|---:|---:|\n+| Repeated names | Cached classifications | 0.332 s | 0.185 s | 1.79\u00d7 | 140 ns | 90 ns |\n+| Repeated names | `--no-cache` | 2.023 s | 2.903 s | 0.70\u00d7 | 1,759 ns | 3,796 ns |\n+| Repeated names | `--fnmatch` | 3.111 s | 3.069 s | 1.01\u00d7 | 2,895 ns | 3,767 ns |\n+| Unique names | Cached classifications | 0.212 s | 0.328 s | 0.65\u00d7 | 1,755 ns | 3,263 ns |\n+| Unique names | `--no-cache` | 0.218 s | 0.302 s | 0.72\u00d7 | 1,588 ns | 2,944 ns |\n+| Unique names | `--fnmatch` | 0.363 s | 0.314 s | 1.15\u00d7 | 2,835 ns | 3,422 ns |\n+\n+These are host-specific observations, with substantial variation: cached repeated-name wall\n+times span 0.299\u20130.381 s for CPython and 0.165\u20130.228 s AOT; the fnmatch row spans\n+2.959\u20134.155 s and 2.936\u20133.344 s respectively. This rerun **does not reproduce a 2\u00d7\n+fnmatch whole-program speedup**. Classification-cache hits help both runtimes; new names\n+still pay regex matching and eviction costs. This host differs from the historical VM, so\n+the old and new absolute timings alone do not establish a performance regression.\n+\n+Streaming RSS is 12.2\u201312.8 MiB CPython and 34.4\u201336.3 MiB AOT. Keeping distinct names\n+raises unique-trace RSS to 24.1 and 47.8 MiB respectively. Reading the whole trace into\n+memory is only used for the routing-time column; it is not the streaming memory measurement.\n+\n+### Historical snapshots\n+\n Measurements recorded in [#294](https://github.com/den-run-ai/pystachy/pull/294): 4-core x86-64 VM,\n CPython 3.13.16, median of five whole-program wall-time runs including startup. AOT compilation\n is excluded. Repeating traces contain 1M events over 2,476 names; unique traces contain",
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpus": 9,
+    "cpu_affinity": [
+      8
+    ],
+    "compiler": "/workspace/scratch/439fdc468a0c/pystachy/pystachy",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "settings": {
+      "PYSTACHY_LLVM": "/workspace/scratch/439fdc468a0c/toolchain/usr/lib/llvm-18/bin",
+      "PYSTACHY_HOME": "/workspace/scratch/439fdc468a0c/pystachy"
+    },
+    "sha256": {
+      "examples/route/route.py": "352f80197e02e796f889a8b6a7789db6487b6e28f35d435b2c04d4eea6314c0d",
+      "examples/route/rules.txt": "b06b3ee307b896daaeb9e73ad6f9a5fb069403c55e705b44e1a0537c5d963854",
+      "examples/route/genevents.py": "80ed5a5defa93c336e857c4dee75c63a0b5f7c0293ff620aed573ade174e53a9",
+      "examples/route/bench.py": "47cf2652c460ac38276ceb51979450a219abc79e0ab2e2d9f687d6839bd9d1aa",
+      "build/route/route-launch-candidate": "d1fa90745222667c7a0cb021af4d67bd82ec0e2730ec4b39b1922e6a5a7c3a80",
+      "build/route/ev_repeat.tsv": "0e24be20e80860f057417c89bd085f63452fda12224c9ea01fd13235b39dd975"
+    },
+    "compiler_source_revision": "a74efdff9665b5841c69af7a397914439bbff226",
+    "compiler_source_diff": "",
+    "compiler_executable_sha256": "0cd9b24bdeb57db33124f01d0085f48feebbb256c3098103fd99be0ee1caf65c"
+  },
+  "runs": 5,
+  "build_s": 6.07991394399869,
+  "records": [
+    {
+      "trace": "repeat",
+      "events": 1000000,
+      "mode": "cached",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route-launch-candidate",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            0.2880141770001501,
+            0.3255353929998819,
+            0.3306053510023048,
+            0.2912301729993487,
+            0.3085607880020689
+          ],
+          "routing_s": [
+            0.128,
+            0.1612,
+            0.13,
+            0.1429,
+            0.1274
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\nroute: CacheInfo(hits=997524, misses=2476, maxsize=4096, currsize=2476)\n"
+        },
+        {
+          "wall_s": [
+            0.16070407900042483,
+            0.19312558499950683,
+            0.16450701100256993,
+            0.16317685000103666,
+            0.17527805599820567
+          ],
+          "routing_s": [
+            0.0649,
+            0.0821,
+            0.0663,
+            0.0685,
+            0.0691
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\nroute: CacheInfo(hits=997524, misses=2476, maxsize=4096, currsize=2476)\n"
+        }
+      ],
+      "rss_kib": [
+        12572,
+        35252
+      ]
+    },
+    {
+      "trace": "repeat",
+      "events": 1000000,
+      "mode": "--fnmatch",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--fnmatch"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route-launch-candidate",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--fnmatch"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            2.9534104830017895,
+            2.8669434709991037,
+            2.922715025000798,
+            3.128564048998669,
+            2.8736769580027612
+          ],
+          "routing_s": [
+            3.0749,
+            2.6664,
+            2.8167,
+            2.7651,
+            2.8035
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\npatterns: CacheInfo(hits=13142230, misses=21, maxsize=32768, currsize=21)\n"
+        },
+        {
+          "wall_s": [
+            3.1517758520021744,
+            3.1815016200016544,
+            3.0116711480004597,
+            2.9437557119999838,
+            3.071164172997669
+          ],
+          "routing_s": [
+            3.9279,
+            3.7509,
+            3.661,
+            3.5771,
+            3.8194
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\npatterns: CacheInfo(hits=13142230, misses=21, maxsize=32768, currsize=21)\n"
+        }
+      ],
+      "rss_kib": [
+        12472,
+        35144
+      ]
+    }
+  ],
+  "publication_context": {
+    "harness_revision_kind": "local measured commit; see the publishing PR for its public counterpart",
+    "compiler_source_revision_kind": "local measured commit",
+    "compiler_published_revision": "5ec733c1d3fe412f177b2681943974826b09ebbe",
+    "compiler_published_tree_sha": "1bb57ca28b1b77498f222f08d4fe4866130c6377",
+    "compiler_source_tree_matches_published_revision": true
+  }
+}

@@ -140,11 +140,9 @@ In these cases a program can compile but behave differently from CPython.
 
 ### Modules and libraries
 
-- An import of a builtin module binds its names for the whole program, wherever it appears
-  (an import of a Python module in a function binds its names in that function only, as in
-  CPython, also where the name is a builtin module it re-exports: `from helper import os`). A program that reads a module's attribute before the import of the module has
-  run reads its zero value instead of raising `NameError` (but after an import in a `try`
-  statement that raised, as CPython does).
+- An import of a builtin module binds its names for the whole program, wherever it appears.
+  An import of a Python module in a function binds its names in that function only, as in
+  CPython, including a builtin module it re-exports: `from helper import os`.
 
 - The `lib/` modules behave as their pure-Python code, which CPython replaces with C
   accelerators: errors can be worded differently, the functions accept keyword arguments the
