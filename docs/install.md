@@ -1,6 +1,6 @@
 # Installation
 
-Pystachy needs **LLVM 18**, **Python 3.11+** to bootstrap, and `make`.
+Pystachy needs **LLVM 18 on Linux / LLVM 20 on macOS**, **Python 3.11+** to bootstrap, and `make`.
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 
@@ -17,22 +17,25 @@ make install
 
 ## macOS
 
-Install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
+On macOS 14 or later, install [Homebrew](https://brew.sh) and the Xcode Command Line Tools first
 (`xcode-select --install` if they are missing). Then:
 
 ```sh
-brew install llvm@18 python@3.13
+brew install llvm@20 python@3.13
 git clone https://github.com/den-run-ai/pystachy
 cd pystachy
 make
 make install
 ```
 
-Homebrew's LLVM 18 is keg-only. Pystachy discovers its standard Intel and Apple Silicon
+Homebrew's LLVM 20 is keg-only. Pystachy discovers its standard Intel and Apple Silicon
 locations automatically, as well as Ubuntu's versioned toolchain. For a custom Homebrew
-prefix, use `export PYSTACHY_LLVM="$(brew --prefix llvm@18)/bin"`.
+prefix, use `export PYSTACHY_LLVM="$(brew --prefix llvm@20)/bin"`.
 `make` prefers `python3.13` when available, then `python3`; `make PY=/path/to/python`
 selects a different bootstrap interpreter.
+
+LLVM 20 supplies the Apple Silicon JIT's compact unwind registration; LLVM 18 remains
+the Linux toolchain used by full verification.
 
 The installation CI checks bootstrap, ordinary JIT/AOT, exceptions, files and garbage
 collection on Linux and both macOS architectures. The full verification suite and
@@ -74,12 +77,12 @@ CPython. [Compiler commands and settings](internals.md) covers other modes.
 ## Check or prepare dependencies
 
 ```sh
-tools/setup.sh --check       # validate Python, make and all five LLVM 18 tools; no installation
+tools/setup.sh --check       # validate Python, make and all five supported LLVM tools; no installation
 tools/setup.sh --minimal     # install missing build dependencies with apt/Homebrew
 ```
 
 An explicit `PYSTACHY_LLVM` takes precedence over discovery; it must point to a complete
-LLVM 18 `bin` directory. Set it to an empty string to explicitly select `PATH`.
+platform's LLVM `bin` directory. Set it to an empty string to explicitly select `PATH`.
 If no standard installation exists, Pystachy uses the unversioned
 `clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`.
 

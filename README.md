@@ -40,7 +40,7 @@ Repeated event names reuse their classification. The larger
 
 ## Quick start
 
-Install **LLVM 18**, **Python 3.11+** and `make` with your package manager.
+Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
 
 ```sh
@@ -48,10 +48,10 @@ sudo apt update
 sudo apt install git make python3 clang-18 llvm-18 llvm-18-runtime
 ```
 
-On macOS, with [Homebrew](https://brew.sh) and the Xcode Command Line Tools installed:
+On macOS 14+, with [Homebrew](https://brew.sh) and the Xcode Command Line Tools installed:
 
 ```sh
-brew install llvm@18 python@3.13
+brew install llvm@20 python@3.13
 ```
 
 Then build and install on either platform. LLVM is discovered automatically; no pip

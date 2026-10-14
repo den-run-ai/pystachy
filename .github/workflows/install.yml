@@ -39,10 +39,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime
 
-      - name: LLVM 18 (macOS)
+      - name: LLVM 20 (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install llvm@18
+          brew install llvm@20
 
       - name: Check dependencies and installer
         run: |

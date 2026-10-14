@@ -17,13 +17,15 @@ find_llvm() {
   fi
 }
 
+major=18
+[ "$(uname -s)" != Darwin ] || major=20
 LLVM=$(find_llvm)
 valid=true
 for t in clang opt lli llvm-link llvm-as; do
-  "${LLVM:+$LLVM/}$t" --version 2> /dev/null | grep -q 'version 18\.' || valid=false
+  "${LLVM:+$LLVM/}$t" --version 2> /dev/null | grep -q "version $major\." || valid=false
 done
 if [ -n "${PYSTACHY_LLVM:-}" ] && [ "$valid" = false ]; then
-  echo "tools/setup.sh: PYSTACHY_LLVM=$PYSTACHY_LLVM must contain a complete LLVM 18 toolchain" >&2
+  echo "tools/setup.sh: PYSTACHY_LLVM=$PYSTACHY_LLVM must contain a complete LLVM $major toolchain" >&2
   exit 1
 fi
 
@@ -53,7 +55,7 @@ if [ "$mode" != --check ]; then
       command -v brew > /dev/null 2>&1 || {
         echo "tools/setup.sh: install Homebrew from https://brew.sh first" >&2; exit 1;
       }
-      [ "$valid" = true ] || brew install llvm@18
+      [ "$valid" = true ] || brew install llvm@20
       if ! "$PY" -c 'import sys; assert sys.version_info >= (3, 11)' 2> /dev/null; then
         brew install python@3.13
         PY="$(brew --prefix python@3.13)/bin/python3.13"
@@ -69,8 +71,8 @@ LLVM=$(find_llvm)
 for t in clang opt lli llvm-link llvm-as; do
   tool=${LLVM:+$LLVM/}$t
   version=$("$tool" --version) || { echo "tools/setup.sh: missing $tool" >&2; exit 1; }
-  printf '%s\n' "$version" | grep -q 'version 18\.' || {
-    echo "tools/setup.sh: $tool must be LLVM 18; set PYSTACHY_LLVM to a complete LLVM 18 bin directory" >&2; exit 1;
+  printf '%s\n' "$version" | grep -q "version $major\." || {
+    echo "tools/setup.sh: $tool must be LLVM $major; set PYSTACHY_LLVM to a complete LLVM $major bin directory" >&2; exit 1;
   }
   printf '%s\n' "$version" | head -1
 done

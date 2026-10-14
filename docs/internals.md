@@ -168,7 +168,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 
 | Variable | Effect |
 |---|---|
-| `PYSTACHY_LLVM` | Override the LLVM 18 tool directory; standard apt/Homebrew locations are discovered before falling back to `PATH` |
+| `PYSTACHY_LLVM` | Override the LLVM tool directory (Linux 18, macOS 20); standard apt/Homebrew locations are discovered before falling back to `PATH` |
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
