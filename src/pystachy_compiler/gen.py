@@ -36,6 +36,7 @@ from src.pystachy_compiler.calls import (
     gen_bound as calls_bound,
     gen_cached_wrapper as calls_cached_wrapper,
     gen_call as calls_call,
+    gen_call_bound as calls_call_bound,
     gen_call_cache as calls_call_cache,
     gen_call_callable as calls_call_callable,
     gen_call_fn as calls_call_fn,
@@ -419,6 +420,7 @@ from src.pystachy_compiler.program import (
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
+from src.pystachy_compiler.skew import gen_skew_call as skew_call, load_skew
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.statements import (
     gen_augassign as statements_augassign,
@@ -637,6 +639,9 @@ class Gen:
         self.making: list[str] = []  # the template functions being compiled, each with its call site
         self.template_bytes = 0  # bytes in the signatures of the active instance() calls
         self.template_instances = 0  # retained instances in this compilation, including completed ones
+        self.skew: dict[str, list[str]] = load_skew()
+        self.skewclones: dict[str, bool] = {}
+        self.skewactive: dict[str, bool] = {}
         self.template_retained = 0  # and the bytes of their signatures
         self.retainers: dict[str, int] = {}  # and those of each template, by the name messages give it
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
@@ -1986,6 +1991,12 @@ class Gen:
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False) -> Val:
         return calls_call_fn(self, f, pre, args, want, none, cache, direct)
+
+    def call_bound(self, f: FnInfo, vals: list[Val], want: str) -> Val:
+        return calls_call_bound(self, f, vals, want)
+
+    def skew_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
+        return skew_call(self, f, vals, want)
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none)

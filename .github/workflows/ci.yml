@@ -48,7 +48,9 @@ jobs:
         if: matrix.group == 'benchmarks'
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
-        run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
+        run: |
+          make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
+          make skew-check SKEW_COMPILER=build/verify/pystachy2
 
       - name: Upload group report
         if: always()

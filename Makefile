@@ -56,6 +56,11 @@ bench-extended-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_extended.py
 	$(PY) tools/bench_extended.py --compiler "$(BENCH_COMPILER)" --smoke --json build/extended-smoke.json
 
+# Opt-in receiver feedback: native guards, baseline typing, and HTML callbacks.
+SKEW_COMPILER ?= ./pystachy
+skew-check: $(SKEW_COMPILER)
+	PYSTACHY_SKEW_TEST_COMPILER="$(SKEW_COMPILER)" $(PY) -m unittest discover -s tools -p test_skew_specialization.py
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
