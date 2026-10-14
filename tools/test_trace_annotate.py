@@ -117,6 +117,35 @@ class TraceAnnotateTests(unittest.TestCase):
             self.assertEqual(self.signature(tree, method), "run(self, item: Item) -> int | None")
         self.assertEqual(report["unannotated"], [])
 
+    def test_constructors_keep_their_own_parameter_types(self):
+        tree, report, out = self.annotate("""
+            class Packet:
+                pass
+            class Task:
+                def __init__(self, w):
+                    self.input = w
+            class Worker(Task):
+                def __init__(self, w):
+                    Task.__init__(self, w)
+            class Device(Task):
+                def __init__(self, w):
+                    Task.__init__(self, w)
+            class Idle(Task):
+                def __init__(self, w):
+                    Task.__init__(self, None)
+            tasks = [Worker(Packet()), Device(None), Idle(10000)]
+            print(sum(t.input is None for t in tasks))
+        """)
+        self.assertEqual(out, "2\n")
+        # Idle ignores its argument, as Richards' IdleTask does: its int must not reach the base or
+        # its siblings. Device saw only None, so it borrows the base constructor's observations.
+        self.assertEqual(self.signature(tree, "Task.__init__"), "__init__(self, w: Packet | None) -> None")
+        self.assertEqual(self.signature(tree, "Worker.__init__"), "__init__(self, w: Packet) -> None")
+        self.assertEqual(self.signature(tree, "Device.__init__"), "__init__(self, w: Packet | None) -> None")
+        self.assertEqual(self.signature(tree, "Idle.__init__"), "__init__(self, w: int) -> None")
+        self.assertEqual(self.fields(tree, "Task"), ["input: Packet | None"])
+        self.assertEqual(report["unannotated"], [])
+
     def test_fields_written_through_arguments_and_globals(self):
         tree, report, out = self.annotate("""
             class Node:

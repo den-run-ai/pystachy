@@ -11,13 +11,17 @@ method returns, of user objects passed as arguments, and of module-level objects
 nearest common base, an empty container takes its item type from the other observations, and
 `int`, `bool` and `float` stay distinct. A call through a base annotation must accept every
 override, so same-named methods of one hierarchy with the same number of parameters share one
-joined signature (subclass constructors join the same way: they usually forward to the base).
+joined signature. Constructors are not dispatched: each keeps its own observations, and a
+parameter that saw only `None` borrows the nearest base constructor's.
 
 Only missing annotations are added: parameters, returns, and the first plain `self.f = ...` of each
-`__init__` (a field first stored another way, as in `self.x = x = ...`, is declared in the class body). A position whose observations do not join (mixed types, only `None`, or only empty
-containers) is left unannotated and listed in the report with its sample counts: that is where a
-static subset needs another representation, and where type skew shows. The output is `ast.unparse`d with `from __future__ import annotations`, since recorded
-classes may be forward references; comments are not kept. Observations cover one run's paths only.
+`__init__` (a field first stored another way, as in `self.x = x = ...`, is declared in the class
+body). A position whose observations do not join (mixed types, only `None`, or only empty
+containers) is left unannotated and listed in the report with its counts: calls for parameters and
+returns, sampled snapshots for fields. They show where a static subset needs another
+representation; they are not counts of operations. The output is `ast.unparse`d with
+`from __future__ import annotations`, since recorded classes may be forward references; comments
+are not kept. Observations cover one run's paths only.
 """
 import argparse
 import ast
@@ -179,11 +183,33 @@ def annotate(source, recorder, classes):
     added = 0
     # Same-named, same-arity methods of one hierarchy share one joined signature.
     family = defaultdict(list)
+    inits = {}
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name in classes:
             for f in node.body:
                 if isinstance(f, ast.FunctionDef) and f.args.args and f.args.args[0].arg == "self":
-                    family[(hierarchy_root(classes[node.name]), f.name, len(f.args.args))].append(f)
+                    if f.name == "__init__":
+                        inits[node.name] = f
+                    else:
+                        family[(hierarchy_root(classes[node.name]), f.name, len(f.args.args))].append(f)
+    # Constructors are not dispatched through a base: each keeps its own observations (a subclass
+    # may ignore an argument, as Richards' IdleTask does). A parameter that saw only None borrows
+    # the nearest base constructor's observations at its position, since constructors usually
+    # forward to it.
+    for name, f in inits.items():
+        k = (f.name, f.lineno if not f.decorator_list else f.decorator_list[0].lineno)
+        for i in range(1, len(f.args.args)):
+            own = params[k].get(f.args.args[i].arg)
+            if own and set(own) != {"None"}:
+                continue
+            for base in classes[name].__mro__[1:]:
+                g = inits.get(base.__qualname__)
+                if g is None or len(g.args.args) != len(f.args.args):
+                    continue
+                theirs = params[(g.name, g.lineno if not g.decorator_list else g.decorator_list[0].lineno)].get(g.args.args[i].arg)
+                if theirs:
+                    params[k][f.args.args[i].arg] = Counter(own or {}) + Counter(theirs)
+                    break
     for methods in family.values():
         if len(methods) < 2:
             continue

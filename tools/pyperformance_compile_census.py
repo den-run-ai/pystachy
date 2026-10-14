@@ -12,7 +12,7 @@ is unchanged. Stages, each compiled with `pystachy build`:
 - original: the unannotated source;
 - traced: tools/trace_annotate.py records the types of one CPython run and adds the missing
   annotations (skipped when the original stops at an unsupported module, which no type fixes);
-- edited: for Richards, two labeled source edits whose CPython output is checked to be unchanged,
+- edited: for Richards, one labeled source edit whose CPython output is checked to be unchanged,
   then traced again.
 
 Each stage records the first compile error, a coarse kind (module, types or language) and, for
@@ -43,9 +43,6 @@ DRIVERS = {
 }
 EDITS = {
     "richards": [
-        ("IdleTask(I_IDLE, 1, 10000, TaskState().running(), IdleTaskRec())",
-         "IdleTask(I_IDLE, 1, None, TaskState().running(), IdleTaskRec())",
-         "Task.input holds Packet | None in five tasks; the idle task stores the int 10000 there and never reads it"),
         ("BUFSIZE_RANGE = range(BUFSIZE)", "BUFSIZE_RANGE = list(range(BUFSIZE))",
          "a range object kept in a global; it is only iterated"),
     ],
