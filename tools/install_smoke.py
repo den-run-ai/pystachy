@@ -101,6 +101,16 @@ def smoke(compiler):
         execute([sys.executable, str(ROOT / "tools/install.py"), "--prefix", str(prefix)],
                 work, environment)
         installed = prefix / "bin/pystachy"
+        data = prefix / "libexec/pystachy"
+        version = (data / "VERSION").read_text().strip()
+        revision = (data / "REVISION").read_text().strip()
+        expected_version = f"pystachy {version} (commit {revision})\n"
+        for command in (installed, data / "pystachy"):
+            current = dict(environment, PATH="", PYSTACHY_LLVM="/unavailable")
+            for option in ("--version", "-V"):
+                if execute([str(command), option], work, current) != expected_version:
+                    raise RuntimeError("installed compiler did not report its version and commit")
+        print(expected_version.strip() + ": installed and native --version, without LLVM or Python")
         for stress in (False, True):
             current = dict(environment)
             if stress:

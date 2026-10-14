@@ -10,6 +10,7 @@
 !pyembed.c
 !LICENSE
 !THIRD_PARTY_NOTICES
+!VERSION
 !src/
 !src/**
 !lib/

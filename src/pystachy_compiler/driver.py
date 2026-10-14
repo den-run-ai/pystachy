@@ -163,11 +163,44 @@ def llvm_dir() -> str:
     return ""  # otherwise use the unversioned tools on PATH
 
 
+def compiler_home() -> str:
+    home = os.getenv("PYSTACHY_HOME", "")
+    if home == "":
+        s = sys.argv[0].rfind("/")
+        home = sys.argv[0][:s] if s >= 0 else "."
+        if not os.path.exists(home + "/runtime.c"):
+            home = home + "/.."
+    return home
+
+
+def compiler_version(home: str) -> str:
+    # Metadata is adjacent to the runtime, so one native compiler can be packaged
+    # for an exact release without recompiling it or requiring Python, Git or LLVM.
+    version = "unknown"
+    revision = "unknown"
+    try:
+        f = open(home + "/VERSION", "r", encoding="utf-8")
+        version = f.read().strip()
+        f.close()
+    except OSError:
+        pass
+    try:
+        f = open(home + "/REVISION", "r", encoding="utf-8")
+        revision = f.read().strip()
+        f.close()
+    except OSError:
+        pass
+    return f"pystachy {version} (commit {revision})"
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
     sys.setrecursionlimit(MAXNEST * 40)
     argv = sys.argv
+    if len(argv) == 2 and (argv[1] == "--version" or argv[1] == "-V"):
+        print(compiler_version(compiler_home()))
+        return
     if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
@@ -175,6 +208,7 @@ def main() -> None:
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
         print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
         print("       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset", file=sys.stderr)
+        print("       pystachy --version               show version and source commit", file=sys.stderr)
         sys.exit(2)
     cmd = argv[1]
     diagnostics.SRC = argv[2]
@@ -209,12 +243,7 @@ def main() -> None:
         compdir = realme[: realme.rfind("/")]
         sources = [compdir + "/" + p for p in COMPILER_SOURCES]
     sourceborn = [stat3(p) for p in sources]
-    home = os.getenv("PYSTACHY_HOME", "")
-    if home == "":
-        s = argv[0].rfind("/")
-        home = argv[0][:s] if s >= 0 else "."
-        if not os.path.exists(home + "/runtime.c"):
-            home = home + "/.."
+    home = compiler_home()
     # where imported modules are found: the directory of the program's real path (symbolic links
     # resolved, as CPython's sys.path[0]; spelled as given where that is the same), PYSTACHY_PATH,
     # lib/ of the checkout

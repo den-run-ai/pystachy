@@ -9,6 +9,7 @@ on:
       - tools/release*.py
       - tools/test_release*.py
       - tools/docker_smoke.sh
+      - VERSION
   push:
     tags: [v*]
   workflow_dispatch:
@@ -53,6 +54,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
+          from pathlib import Path
           import re
           import subprocess
           commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
@@ -63,6 +65,8 @@ jobs:
               version = os.environ['INPUT_VERSION'] if os.environ['EVENT'] == 'workflow_dispatch' else os.environ['REF_NAME']
               if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
                   raise SystemExit('Version must be a v-prefixed semantic version')
+              if Path('VERSION').read_text().strip() != version:
+                  raise SystemExit('Release tag must match VERSION; bump VERSION on main before releasing')
               subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], check=True)
           else:
               version = 'v0.0.0-test.' + commit[:8]
@@ -123,6 +127,7 @@ jobs:
         run: |
           make
           python3 -m unittest discover -s tools -p 'test_release*.py'
+          make test-install
           python3 tools/release.py --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" \
             --target "$RELEASE_TARGET" --output-dir dist
           python3 tools/release_smoke.py "dist/pystachy-$RELEASE_VERSION-$RELEASE_TARGET.tar.gz"

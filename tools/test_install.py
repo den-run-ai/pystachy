@@ -20,6 +20,7 @@ class InstallTests(unittest.TestCase):
         self.source.mkdir()
         for name in ("runtime.c", "runtime.py", "pyext.c", "pyembed.c", "LICENSE", "THIRD_PARTY_NOTICES"):
             (self.source / name).write_text(f"fixture: {name}\n")
+        (self.source / "VERSION").write_text("v0.1.0-alpha.1\n")
         for name in ("lib", "ryu"):
             (self.source / name).mkdir()
             (self.source / name / "fixture.txt").write_text(name)
@@ -56,8 +57,9 @@ class InstallTests(unittest.TestCase):
     def test_install_preserves_arguments_and_resolves_data_outside_checkout(self):
         self.install()
         data = self.prefix / "libexec/pystachy"
-        for name in ("pystachy", "runtime.c", "runtime.py", "pyext.c", "pyembed.c", "LICENSE", "THIRD_PARTY_NOTICES"):
+        for name in installer.FILES:
             self.assertEqual((data / name).read_bytes(), (self.source / name).read_bytes())
+        self.assertEqual((data / "REVISION").read_text(), "unknown\n")
         for name in ("lib", "ryu"):
             self.assertEqual((data / name / "fixture.txt").read_text(), name)
         self.assertTrue(os.access(data / "pystachy", os.X_OK))
@@ -68,6 +70,55 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(result["home"], str(data))
         self.assertEqual(result["cache"], str(Path(self.environment["HOME"]) / ".cache/pystachy"))
         self.assertIsNone(result["llvm"])
+
+    def test_install_records_explicit_release_version_and_commit(self):
+        revision = "a" * 40
+        installer.install(self.prefix, source=self.source, version="v1.2.3-beta.1", revision=revision)
+        data = self.prefix / "libexec/pystachy"
+        self.assertEqual((data / "VERSION").read_text(), "v1.2.3-beta.1\n")
+        self.assertEqual((data / "REVISION").read_text(), revision + "\n")
+
+    def test_install_preserves_packaged_commit_metadata(self):
+        (self.source / "REVISION").write_text("b" * 40 + "\n")
+        self.install()
+        self.assertEqual((self.prefix / "libexec/pystachy/REVISION").read_text(), "b" * 40 + "\n")
+
+    @unittest.skipUnless(shutil.which("git"), "Git is unavailable")
+    def test_source_commit_is_exact_only_for_a_clean_checkout(self):
+        def git(*arguments):
+            return subprocess.check_output(["git", "-C", str(self.source), *arguments],
+                                           text=True, stderr=subprocess.DEVNULL).strip()
+
+        git("init")
+        git("add", ".")
+        git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false",
+            "commit", "-m", "fixture")
+        self.assertEqual(installer.source_revision(self.source), git("rev-parse", "HEAD"))
+        (self.source / "runtime.py").write_text("modified\n")
+        self.assertEqual(installer.source_revision(self.source), "unknown")
+
+    def test_hosted_version_needs_no_llvm_and_reports_metadata(self):
+        (self.source / "REVISION").write_text("c" * 40 + "\n")
+        expected = "pystachy v0.1.0-alpha.1 (commit " + "c" * 40 + ")\n"
+        environment = dict(self.environment, PYSTACHY_HOME=str(self.source), PATH="",
+                           PYSTACHY_LLVM="/unavailable", PYSTACHY_CACHE=str(self.root / "unused cache"))
+        for option in ("--version", "-V"):
+            result = subprocess.run([sys.executable, str(installer.ROOT / "pystachy.py"), option],
+                                    cwd=self.work, env=environment, capture_output=True, text=True, timeout=10)
+            self.assertEqual((result.returncode, result.stdout, result.stderr), (0, expected, ""))
+        self.assertFalse((self.root / "unused cache").exists())
+
+    def test_invalid_release_metadata_creates_no_partial_installation(self):
+        for overrides in ({"version": "../escape"}, {"version": "v01.2.3"}, {"revision": "abcdef"}):
+            with self.subTest(overrides=overrides), self.assertRaises(ValueError):
+                installer.install(self.prefix, source=self.source, **overrides)
+            self.assertFalse(self.prefix.exists())
+
+    def test_development_docker_metadata_needs_no_git_identity(self):
+        installer.install(self.prefix, source=self.source, version="dev", revision="unknown")
+        data = self.prefix / "libexec/pystachy"
+        self.assertEqual((data / "VERSION").read_text(), "dev\n")
+        self.assertEqual((data / "REVISION").read_text(), "unknown\n")
 
     def test_cache_uses_xdg_and_preserves_environment_overrides(self):
         self.install()

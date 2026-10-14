@@ -7,6 +7,13 @@ compiler=${1:-pystachy}
 work=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-docker-smoke.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 export PYSTACHY_CACHE="$work/cache"
+version=$(cat /usr/local/libexec/pystachy/VERSION)
+revision=$(cat /usr/local/libexec/pystachy/REVISION)
+expected_version="pystachy $version (commit $revision)"
+test "$("$compiler" --version)" = "$expected_version"
+test "$(env PATH= PYSTACHY_LLVM=/unavailable /usr/local/libexec/pystachy/pystachy -V)" = "$expected_version"
+test ! -e "$PYSTACHY_CACHE"
+printf '%s\n' "$expected_version: installed and native --version passed without LLVM"
 cat > "$work/demo.py" <<'PY'
 import fnmatch
 from functools import lru_cache

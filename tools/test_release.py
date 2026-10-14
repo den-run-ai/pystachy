@@ -26,6 +26,7 @@ class ReleaseTests(unittest.TestCase):
         self.source.mkdir()
         for name in release.FILES:
             (self.source / name).write_text(f"fixture: {name}\n", encoding="utf-8")
+        (self.source / "VERSION").write_text("v0.1.0-alpha.1\n", encoding="utf-8")
         # A native shell fixture verifies the launcher without Python. macOS's
         # system /bin/sh can be a universal Mach-O: compile a thin native helper
         # that forwards to it, keeping release validation restricted to thin files.
@@ -85,6 +86,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("Python is not required", (directory / "README.txt").read_text())
         for name in release.FILES:
             self.assertEqual((directory / "libexec/pystachy" / name).read_bytes(), (self.source / name).read_bytes())
+        self.assertEqual((directory / "libexec/pystachy/REVISION").read_text(), self.commit + "\n")
         self.assertTrue((directory / "libexec/pystachy/lib/module.py").is_file())
         self.assertTrue((directory / "libexec/pystachy/ryu/LICENSE-Boost").is_file())
         self.assertEqual((directory / "LICENSE").read_bytes(), (self.source / "LICENSE").read_bytes())
@@ -108,6 +110,14 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual((member.uid, member.gid, member.uname, member.gname, member.mtime),
                                  (0, 0, "", "", self.epoch))
                 self.assertIn(member.mode, (0o644, 0o755))
+
+    def test_requested_version_replaces_source_metadata_and_is_hashed(self):
+        directory = self.unpack(self.package(version="v1.2.3"))
+        manifest = release_smoke.verify_manifest(directory)
+        self.assertEqual((directory / "libexec/pystachy/VERSION").read_text(), "v1.2.3\n")
+        self.assertEqual((directory / "libexec/pystachy/REVISION").read_text(), self.commit + "\n")
+        for name in ("VERSION", "REVISION"):
+            self.assertIn("libexec/pystachy/" + name, manifest["files_sha256"])
 
     def test_launcher_remains_usable_after_relocation_and_preserves_arguments(self):
         directory = self.unpack(self.package())
@@ -212,6 +222,16 @@ class ReleaseTests(unittest.TestCase):
         path.write_text(json.dumps(manifest))
         with self.assertRaisesRegex(ValueError, "target"):
             release_smoke.verify_manifest(directory)
+
+    def test_manifest_metadata_matches_native_version_resources(self):
+        directory = self.unpack(self.package())
+        path = directory / "manifest.json"
+        original = json.loads(path.read_text())
+        for field, value in (("version", "v9.0.0"), ("commit", "b" * 40)):
+            manifest = dict(original, **{field: value})
+            path.write_text(json.dumps(manifest))
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "metadata"):
+                release_smoke.verify_manifest(directory)
 
     def test_extractor_rejects_traversal_and_links(self):
         archive = self.root / "unsafe.tar.gz"

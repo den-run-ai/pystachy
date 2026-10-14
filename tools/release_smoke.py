@@ -53,6 +53,10 @@ def verify_manifest(directory):
         raise ValueError("release manifest hashes do not match extracted files")
     if binary_target(directory / "libexec/pystachy/pystachy") != manifest.get("target"):
         raise ValueError("release manifest target does not match the native compiler")
+    data = directory / "libexec/pystachy"
+    if ((data / "VERSION").read_text(encoding="utf-8").strip() != manifest.get("version")
+            or (data / "REVISION").read_text(encoding="utf-8").strip() != manifest.get("commit")):
+        raise ValueError("release manifest metadata does not match the native compiler resources")
     return manifest
 
 
@@ -108,6 +112,18 @@ def smoke(archive, llvm=None):
         installed = relocated / "bin/pystachy"
         # Test the common symlink-in-PATH use case after relocation as well.
         (commands / "pystachy").symlink_to(installed)
+        version = f"pystachy {manifest['version']} (commit {manifest['commit']})\n"
+        # The native executable itself and the symlinked launcher must both report
+        # exact release provenance without invoking an external tool or creating a cache.
+        native = relocated / "libexec/pystachy/pystachy"
+        for executable, path in ((str(native), ""), ("pystachy", str(commands))):
+            current = dict(environment, PATH=path, PYSTACHY_LLVM="/unavailable")
+            for option in ("--version", "-V"):
+                if execute([executable, option], work, current) != version:
+                    raise RuntimeError("release compiler version differs from the manifest")
+        if (scratch / "user cache").exists():
+            raise RuntimeError("--version created a runtime cache")
+        print(version.strip() + ": native and installed --version, without LLVM or Python")
         for stress in (False, True):
             current = dict(environment)
             if stress:

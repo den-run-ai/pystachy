@@ -11,19 +11,21 @@ RUN apt-get update \
 ENV PYSTACHY_LLVM=/usr/lib/llvm-18/bin
 
 FROM toolchain AS build
+ARG VERSION=dev
+ARG REVISION=unknown
 RUN apt-get update \
     && apt-get install -y --no-install-recommends make python3 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 # Copy only the build/install inputs; credentials and unrelated files never enter
 # a layer even when present in the local checkout.
-COPY Makefile pystachy.py runtime.c runtime.py pyext.c pyembed.c LICENSE THIRD_PARTY_NOTICES ./
+COPY Makefile pystachy.py runtime.c runtime.py pyext.c pyembed.c LICENSE THIRD_PARTY_NOTICES VERSION ./
 COPY src/ ./src/
 COPY lib/ ./lib/
 COPY ryu/ ./ryu/
 COPY tools/install.py ./tools/install.py
 RUN make PY=python3 \
-    && python3 tools/install.py --prefix /usr/local --destdir /out
+    && python3 tools/install.py --prefix /usr/local --destdir /out --version "$VERSION" --revision "$REVISION"
 
 FROM toolchain AS runtime
 ARG VERSION=dev

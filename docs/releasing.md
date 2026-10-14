@@ -22,15 +22,25 @@ only build inputs and excludes environment files, keys and caches.
 
 ## Publish a version
 
-1. Merge the intended fixes and packaging changes into `main`.
+1. Set [VERSION](../VERSION) to the intended semantic version (initially
+   `v0.1.0-alpha.1`), then merge the version bump, intended fixes and packaging changes
+   into `main`.
 2. Wait for **CI**, **Installation** and **Lint** to succeed on the exact `main` commit.
-3. Run **Release** manually from `main`, with a new tag such as `v0.1.0-alpha.1`.
+3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
 
 The workflow verifies that the source commit belongs to `main` and waits up to 20
 minutes for all three verification workflows on that commit. A failure or cancellation
 blocks publication. A published version cannot be replaced, and an existing tag must
 resolve to the selected commit. Create a new version for changed code.
+
+The same version identifies the Git tag, GitHub release, binary archive names, manifest,
+Docker version tag and OCI labels. `pystachy --version` (or `-V`) reports the release
+version and exact source commit from adjacent metadata, without starting LLVM or Python.
+Ordinary source builds report the declared version; a commit may be `unknown` before
+installation. Increment the patch version for fixes, the minor version for new features,
+and the major version for incompatible changes. Use a prerelease suffix while the
+compiler is experimental.
 
 Every platform rebuilds the compiler to its bootstrap fixed point. Archives include a
 relative launcher, runtime sources, libraries, licenses, source metadata and checksums.

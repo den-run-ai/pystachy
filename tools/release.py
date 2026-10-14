@@ -171,6 +171,8 @@ def package(source, output_dir, version, target, commit, epoch):
         directory = Path(temporary) / basename
         data = directory / "libexec/pystachy"
         copy_resources(source, data)
+        (data / "VERSION").write_text(version + "\n", encoding="utf-8")
+        (data / "REVISION").write_text(commit + "\n", encoding="utf-8")
         (directory / "bin").mkdir()
         (directory / "bin/pystachy").write_text(LAUNCHER, encoding="utf-8")
         for name in ("LICENSE", "THIRD_PARTY_NOTICES"):

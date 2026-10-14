@@ -42,6 +42,8 @@ Replace `VERSION` with the release tag, such as `v0.1.0-alpha.1`, and use your
 platform's archive name. Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
+Check the installed release and commit with `pystachy --version` or `pystachy -V`;
+this command works without LLVM or Python.
 
 ## Docker
 
@@ -52,6 +54,7 @@ the release notes:
 
 ```sh
 IMAGE=DOCKERHUB_NAMESPACE/pystachy:VERSION
+docker run --rm "$IMAGE" --version
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" run demo.py
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" build demo.py -o demo
 ```
