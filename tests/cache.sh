@@ -30,7 +30,7 @@ case $PYS in
   *" -m pystachy") PY=${PYS% -m pystachy}; CPY=$PY; me=pystachy.py; from=pystachy.py ;;
   *) PY=; me=pystachy; from=$PYS ;;
 esac
-unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX
+unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX PYSTACHY_CACHE
 T=${TMPDIR:-/tmp}/pystachy-cache.$$
 rm -rf "$T"
 mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" || exit 1

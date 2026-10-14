@@ -40,28 +40,46 @@ Repeated event names reuse their classification. The larger
 
 ## Quick start
 
-You need **LLVM 18** and **Python 3.11+** to bootstrap the compiler. CI and full verification
-use Python 3.13 on Linux x86-64. On Ubuntu 24.04:
+Install LLVM, **Python 3.11+** and `make` with your package manager.
+On Ubuntu 24.04:
 
 ```sh
-sudo apt install clang-18 llvm-18 llvm-18-runtime libclang-rt-18-dev
-export PYSTACHY_LLVM=/usr/lib/llvm-18/bin
+sudo apt update
+sudo apt install git make python3 clang-18 llvm-18 llvm-18-runtime
+```
+
+On macOS 14+, with [Homebrew](https://brew.sh) and the Xcode Command Line Tools installed:
+
+```sh
+brew install llvm@20 python@3.13
+```
+
+Then build and install on either platform. LLVM is discovered automatically; no pip
+dependencies are needed:
+
+```sh
 git clone https://github.com/den-run-ai/pystachy
 cd pystachy
 make
+make install                          # installs to ~/.local; no sudo
+export PATH="$HOME/.local/bin:$PATH"   # add to your shell configuration once if needed
 ```
 
 Save the example above as `demo.py`, then run it with CPython, JIT or AOT:
 
 ```sh
 python3 demo.py
-./pystachy run demo.py
-./pystachy build demo.py -o build/demo
-./build/demo
+pystachy run demo.py
+pystachy build demo.py -o demo
+./demo
 ```
 
-Before bootstrapping, `python3 -m pystachy run demo.py` runs the compiler under CPython.
-See [compiler commands and settings](docs/internals.md) for more options.
+You can also use `./pystachy` from the checkout without installing. Before bootstrapping,
+use `python3 -m pystachy run demo.py` with Python 3.11+ on Ubuntu, or
+`python3.13 -m pystachy run demo.py` with Homebrew.
+See [installation and setup](docs/install.md) for uv, custom prefixes and dependency checks,
+or [compiler commands and settings](docs/internals.md). Full verification uses Python 3.13
+on Linux x86-64.
 
 ## Performance
 

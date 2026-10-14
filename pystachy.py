@@ -3,6 +3,7 @@ from src.pystachy_compiler import diagnostics as diagnostics
 from src.pystachy_compiler.driver import (
     compile_program as compile_program,
     runtime_ir as runtime_ir,
+    llvm_dir as llvm_dir,
     main as main,
 )
 from src.pystachy_compiler.gen import Gen as Gen

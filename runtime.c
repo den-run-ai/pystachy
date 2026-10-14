@@ -9,6 +9,9 @@
 #include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
 #include <stdarg.h>
 #include <math.h>
 #include <signal.h>
@@ -16,10 +19,18 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#ifdef __APPLE__
+#define pys_fpurge(f) ((void)fpurge(f))  /* Darwin's stdio.h: discard buffered input or output */
+#else
 #include <stdio_ext.h>
+#define pys_fpurge(f) __fpurge(f)
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef __APPLE__
+#include <sys/random.h>
+#endif
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
@@ -2206,7 +2217,7 @@ static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or t
                                              drops the data, which CPython keeps when keep */
   if (!fflush(f->f) && !ferror(f->f)) return 0;
   int e = errno ? errno : EIO;
-  __fpurge(f->f); clearerr(f->f);
+  pys_fpurge(f->f); clearerr(f->f);
   if (keep && !f->kept) f->kept = e;
   return e;
 }
@@ -2236,7 +2247,7 @@ static int wput(File *f, const char *s, I n) {   /* TextIOWrapper.write() of n b
   return osflush(f, 1);
 }
 static int flush1(File *f) {           /* flush(): 0 or an errno */
-  if (f->kept) { __fpurge(f->f); f->pn = f->bn = 0; return f->kept; }   /* CPython writes the kept data first, which fails again */
+  if (f->kept) { pys_fpurge(f->f); f->pn = f->bn = 0; return f->kept; }   /* CPython writes the kept data first, which fails again */
   return f->emu ? tflush(f) : osflush(f, 0);
 }
 static int shut(File *f) {             /* close(): a flush, then the file is closed even if it failed; 0 or an errno */
@@ -2714,8 +2725,13 @@ static double stat_secs(struct timespec t) {   /* CPython's float of a time, sec
   return t.tv_sec + f;
 }
 I pys_getsize(Str *p) { return stat1(p).st_size; }
+#ifdef __APPLE__
+double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtimespec); }
+double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctimespec); }
+#else
 double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtim); }
 double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctim); }
+#endif
 Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
   if ((b->len && b->s[0] == '/') || !a->len) return b;
   if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
@@ -2992,8 +3008,14 @@ static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *
   switch (enc & 0x70) {
   case 0x00: break;                                       /* absptr */
   case 0x10: base = (uintptr_t)p; break;                  /* pcrel: from where it is stored */
+#ifdef __APPLE__
+  /* Darwin has no text/data-relative unwind bases. Reject these encodings, as an unknown
+     encoding below, rather than treating their offset as an absolute pointer. */
+  case 0x20: case 0x30: return 0;
+#else
   case 0x20: base = _Unwind_GetTextRelBase(ctx); break;   /* textrel */
   case 0x30: base = _Unwind_GetDataRelBase(ctx); break;   /* datarel */
+#endif
   case 0x40: base = _Unwind_GetRegionStart(ctx); break;   /* funcrel */
   case 0x50: p = (const uint8_t *)(((uintptr_t)p + 7) & ~(uintptr_t)7); break;   /* aligned */
   default: return 0;
@@ -3004,7 +3026,11 @@ static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *
 }
 _Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind_Exception_Class cls,
                                     struct _Unwind_Exception *ue, struct _Unwind_Context *ctx) {
+#ifdef __APPLE__
+  const uint8_t *p = (const uint8_t *)_Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#else
   const uint8_t *p = _Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#endif
   uint64_t start = _Unwind_GetRegionStart(ctx), lpbase = start, n, cs, len, lp, act;
   int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
   _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;

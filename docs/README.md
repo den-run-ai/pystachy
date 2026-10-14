@@ -8,6 +8,7 @@ are linked from the relevant guide.
 
 | Guide | Use it for |
 |---|---|
+| [Installation](install.md) | Linux/macOS setup, dependency checks, uv and custom installation prefixes |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
