@@ -1,0 +1,7 @@
+[
+  {"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"replay-0","type":"function","function":{"name":"done","arguments":"{}"}}]}}]},
+  {"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"replay-1","type":"function","function":{"name":"read","arguments":"{\"path\":\"value.txt\"}"}}]}}]},
+  {"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"replay-2","type":"function","function":{"name":"edit","arguments":"{\"path\":\"value.txt\",\"old\":\"wrong\",\"new\":\"fixed\"}"}}]}}]},
+  {"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"replay-3","type":"function","function":{"name":"run_test","arguments":"{}"}}]}}]},
+  {"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"replay-4","type":"function","function":{"name":"done","arguments":"{}"}}]}}]}
+]

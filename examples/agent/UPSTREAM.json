@@ -1,0 +1,37 @@
+{
+  "repository": "https://github.com/den-run-ai/askme",
+  "commit": "9256333b07628f6e4b399f41916f36d463914501",
+  "pull_request": "https://github.com/den-run-ai/askme/pull/126",
+  "files": [
+    {
+      "path": "agent.py",
+      "source_path": "examples/native_agent/agent.py",
+      "sha256": "c53aaa882047b8928c860e4c2e8eb81e8f1a0856b8604758910ee7260489de92"
+    },
+    {
+      "path": "wire_json.py",
+      "source_path": "examples/native_agent/wire_json.py",
+      "sha256": "323ba0b89f08cc5e74d2ef30db29f7bb64a911ac17cb316cbfc8be6b1e5c47a5"
+    },
+    {
+      "path": "http_smoke.py",
+      "source_path": "examples/native_agent/http_smoke.py",
+      "sha256": "f59fecbfa958272af950109b0950c7c37d02ef8490d53f1b43aeb83ad2a71b93"
+    },
+    {
+      "path": "fixtures/repair.json",
+      "source_path": "examples/native_agent/fixtures/repair.json",
+      "sha256": "0a40581ee4a165750119e6a51e30d5c580d7c21d944d513e2431556eab190c90"
+    },
+    {
+      "path": "fixtures/value.txt",
+      "source_path": "examples/native_agent/fixtures/value.txt",
+      "sha256": "543df89fec85b1c280e5be7bc6a33e31203503cd6edb3084312de4db5a9b436c"
+    },
+    {
+      "path": "UPSTREAM_LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    }
+  ]
+}

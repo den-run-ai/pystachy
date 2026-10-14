@@ -1,0 +1,29 @@
+{"event":"step","step":0,"action":"done","path":"","ok":false,"output":"","error":"run_test must pass after the latest mutation"}
+{"event":"step","step":1,"action":"read","path":"value.txt","ok":true,"output":"wrong\u000a","error":""}
+{"event":"step","step":2,"action":"edit","path":"value.txt","ok":true,"output":"edited value.txt","error":""}
+{"event":"step","step":3,"action":"run_test","path":"","ok":true,"output":"","error":""}
+{"event":"step","step":4,"action":"done","path":"","ok":true,"output":"","error":""}
+{"event":"result","status":"complete"}
+complete
+True
+{"event":"step","step":0,"action":"run_test","path":"","ok":true,"output":"","error":""}
+{"event":"step","step":1,"action":"edit","path":"value.txt","ok":true,"output":"edited value.txt","error":""}
+{"event":"step","step":2,"action":"done","path":"","ok":false,"output":"","error":"run_test must pass after the latest mutation"}
+{"event":"result","status":"exhausted"}
+exhausted
+{"event":"step","step":0,"action":"run_test","path":"","ok":false,"output":"","error":"test exit 1"}
+{"event":"step","step":1,"action":"done","path":"","ok":false,"output":"","error":"run_test must pass after the latest mutation"}
+{"event":"result","status":"exhausted"}
+exhausted
+rejected
+rejected
+rejected
+rejected
+café 😀 10 "café 😀"
+-2.5e+3
+rejected
+rejected
+rejected
+rejected
+rejected
+[exit 0]

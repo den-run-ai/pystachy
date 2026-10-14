@@ -38,6 +38,9 @@ print(classify("api.request"), classify("worker.done"))
 Repeated event names reuse their classification. The larger
 [event router example](examples/route/README.md) applies this to log and trace routing.
 
+The [minimal coding agent](examples/agent/README.md) demonstrates a complete
+typed control loop, native tool calls and file edits in a standalone executable.
+
 ## Quick start
 
 Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
