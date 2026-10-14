@@ -52,22 +52,28 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_subclass_problem(self, st: Node) -> str:
-    # why class statement st, which names bases, cannot be compiled, or "": only an exception
-    # class can, whose one base is a builtin exception class or an exception class of the
-    # program declared before it
+    # why class statement st, which names bases, cannot be compiled, or "": one ordinary
+    # class declared before it, or one of the supported exception bases
     if st.kids[1].kind == "typeparams":
         return "generic classes (class C[T]) are not supported: write class C(Generic[T]), with T = TypeVar(\"T\")"
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
+    if len(st.kids) > 2:
+        return "multiple inheritance is not supported: a class may have only one base"
+    if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
+        base_ci = self.classes[st.kids[1].s]
+        if self.is_dc(base_ci.name) or base_ci.name in self.nts:
+            return "inheritance from a dataclass or NamedTuple is not supported"
+        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]):
+            return "inheritance with generic class templates is not supported: annotate __init__ parameters"
+        if len(st.kids[0].kids) > 1:
+            return "a class with inheritance and a decorator is not supported"
+        return ""
     b = self.exc_base(st.kids[1])
     if b == "" and len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
         return UNSUPPORTED["subclass"] + " (the module may have rebound the name 'object' before this statement)"
-    if b == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes:
-        return UNSUPPORTED["subclass"] + " (only an exception class may have a base)"
     if b == "":
-        return UNSUPPORTED["subclass"] + " (only an exception class may have a base, which names a builtin exception class or an exception class of the program)"
-    if len(st.kids) > 2:
-        return "an exception class with more than one base is not supported"
+        return "unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
     if b not in self.classes and (EXCEPTIONS.get(b, "-") == "-" or exc_derives(b, "SyntaxError")):
         return f"deriving from {b} is not supported"
     if len(st.kids[0].kids) > 1:
@@ -92,14 +98,13 @@ def gen_exc_base(self, b: Node) -> str:
     return ""
 
 def gen_inherit(self, ci: ClassInfo) -> None:
-    # an exception class has the methods of its base that it does not define: the same
+    # a class has the methods of its base that it does not define: the same
     # functions, compiled for the base (its objects begin as the base's do), but for a class
     # method that uses cls, which is compiled again with cls naming this class (unless a
     # default value of it needs evaluating when its def runs, or the base is another
     # module's: cls_bound rejects its calls).
-    # It may define __init__, __str__ and __repr__ again (str() and repr() call those of the
-    # object's class, see exc_helpers), but no other method: calls are not dispatched on the
-    # object's class
+    # Ordinary instance methods specialize for the receiver and dispatch on its class.
+    # Exception methods retain their existing restricted override rules.
     if ci.base not in self.classes:
         return
     b = self.classes[ci.base]
@@ -126,7 +131,10 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             self.lazy[ci.methods[m].ll] = ci.methods[m]  # (compiled only if called: cls(...) may not fit this class)
         elif m not in ci.methods:
             ci.methods[m] = f
-        elif m != "__init__" and m != "__str__" and m != "__repr__":
+        elif ci.exc == "" and (f.deco != "" or ci.methods[m].deco != ""):
+            self.line = ci.methods[m].node.line
+            self.err(f"overriding static or class method '{m}' in '{short(ci.name)}' is not supported")
+        elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
 
@@ -565,12 +573,12 @@ def gen_program(self, mods: list[Mod]) -> str:
                 # where the program uses it
                 self.unsupported[st.s] = f"class {st.s} is not supported: {why}"
             elif st.kind == "subclass":
-                # an exception class (subclass_problem)
+                # an ordinary class or an exception class (subclass_problem)
                 if st.s in self.classes:
                     self.err(f"redefinition of class '{st.s}' is not supported")
                 ci = ClassInfo(st.s, st.kids[0])
                 ci.mod = m.name
-                ci.base = self.exc_base(st.kids[1])
+                ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
                 self.classes[st.s] = ci
             elif st.kind == "class":
@@ -585,6 +593,17 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.err(f"unsupported decorator @{st.kids[1].s}" + (" (import dataclass from dataclasses)" if st.kids[1].s == "dataclass" else ""))
                 if len(st.kids) > 2:
                     self.err(f"unsupported decorator @{st.kids[2].s}")
+    # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
+    # classes unchanged preserves their compact layout, including dataclasses and tuples.
+    for ci in self.classes.values():
+        if ci.exc == "" and ci.base in self.classes:
+            ci.tag = 1
+            self.classes[ci.base].tag = 1
+    tag = 0
+    for ci in self.classes.values():
+        if ci.tag != 0:
+            tag += 1
+            ci.tag = tag
     grow = True
     while grow:
         # the class templates: an __init__ parameter without an annotation, or with one that
@@ -594,6 +613,10 @@ def gen_program(self, mods: list[Mod]) -> str:
             if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node):
                 self.tmpl[ci.name] = True
                 grow = True
+    for ci in self.classes.values():
+        if ci.tag != 0 and ci.name in self.tmpl:
+            self.line = ci.node.line
+            self.err("inheritance with generic class templates is not supported: annotate __init__ parameters")
     for m in mods:
         top: list[Node] = []
         for st in m.body.kids:

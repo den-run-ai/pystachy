@@ -70,6 +70,11 @@ unannotated function parameters cause specialization at calls. Constructor-infer
 templates create ordinary compiled classes for their field types. The
 [typing reference](language/typing.md) describes the supported forms and limits.
 
+Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
+select a concrete implementation, then reuse method specialization for that receiver.
+Inherited fields keep the base layout; unrelated classes retain their existing layout.
+Explicit base calls and `super()` select a body directly while preserving the receiver.
+
 A known function value can become a direct call. Closures keep captured variables in shared
 cells, so `nonlocal` assignments remain visible. A typed `Callable` uses an adapter with a
 code pointer and an environment pointer for indirect calls.

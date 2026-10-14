@@ -75,7 +75,9 @@ Some consumers materialize input before processing it; see the
 
 ## Object protocols
 
-Object operations are resolved from the static class:
+Object operations use the following methods. In supported ordinary hierarchies, instance-method
+overrides dispatch on the concrete receiver; the static type still controls which operations
+and fields are available. See [single inheritance](typing.md#single-inheritance).
 
 | Operation | Methods |
 |---|---|

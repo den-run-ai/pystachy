@@ -65,7 +65,7 @@ def gen_call(self, n: Node, want: str) -> Val:
                 self.call_fn(self.classes[f.s].methods["__init__"], made, args)
                 return made[0]
             o = self.new_obj(f.s)
-            self.call_fn(self.classes[f.s].methods["__init__"], [o], args)
+            self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True)
             return o
         if f.s in self.mvars:
             self.not_callable(f.s, self.gtype(f.s))
@@ -296,6 +296,30 @@ def gen_adapter(self, ft: str, t: str) -> str:
     # the code of a Callable of type t (callable[R,A,B]) that holds function value type ft: a
     # function R(ptr env, A a0, B a1) whose body calls the function, def <callable>(f, a0, a1):
     # return f(a0, a1), with f typed ft (a closure's value is its env), compiled when first needed
+    # The same virtual method viewed through a base or derived type remains one bound
+    # method. Reuse its family's adapter when this Callable signature fits every member.
+    # Return inference in adapter_ret stays receiver-specific for differing result types.
+    if ft.startswith("fn[m:"):
+        cls = ft[5 : ft.rfind(".")]
+        method = ft[ft.rfind(".") + 1 : -1]
+        if cls in self.classes and self.classes[cls].tag != 0:
+            family = cls
+            while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
+                family = self.classes[family].base
+            fits = True
+            signature = targs(t)
+            for ci in self.classes.values():
+                if ci.tag != 0 and self.derives(ci.name, family) and method in ci.methods:
+                    member = ci.methods[method]
+                    if member.ret == "" or not self.widens(member.ret, signature[0]):
+                        fits = False
+                    for j in range(1, len(signature)):
+                        if j >= len(member.ptypes) or (member.ptypes[j] != "" and not self.widens(signature[j], member.ptypes[j])):
+                            fits = False
+            if fits:
+                ft = f"fn[m:{family}.{method}]"
+            else:
+                self.err(f"converting inherited method {short(cls)}.{method} to Callable requires compatible signatures and annotated return types throughout its hierarchy")
     key = ft + " " + t
     if key in self.adapters:
         return self.adapters[key]
@@ -691,6 +715,8 @@ def gen_new_obj(self, c: str) -> Val:
     size = f"ptrtoint (ptr getelementptr (%C.{c}, ptr null, i32 1) to i64)"
     o = Val(self.rt("pys_alloc", "ptr", [f"i64 {size}"]), c)
     self.nn[o.v] = True
+    if self.classes[c].tag > 0:
+        self.emit(f"store i64 {self.classes[c].tag}, ptr {o.v}")
     if not (self.is_dc(c) and self.classes[c].methods["__init__"].node.kids[0].kind == "noann"):
         line = self.line
         self.class_defaults(o)
@@ -706,12 +732,71 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         what = f"argument {j if takes_self(f) else j + 1} of {short(f.name)}()" if j < f.npos else f"argument '{f.params[j]}' of {short(f.name)}()"
     return self.coerce(v, t, what)
 
-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None) -> Val:
+def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str) -> Val:
+    # Closed-world dispatch, before argument binding: an override owns its defaults. Each
+    # selected body is a normal method-template instance, specialized for the concrete self.
+    o = pre[0]
+    cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, o.t)]
+    if len(cs) == 1:
+        return self.call_fn(cs[0].methods[f.name], pre, args, want, none, direct=True)
+    # Evaluate explicit arguments once, before reading the receiver tag (also for a None
+    # callable). Defaults remain inside the selected branch. Overrides have the same typed
+    # parameter interface; an unannotated argument is specialized from its value.
+    bound: list[Node] = []
+    pos = len(pre)
+    for a in args:
+        j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
+        t = f.ptypes[j] if j < len(f.ptypes) and j != f.vararg and j != f.kwarg else ""
+        argnode = self.vnode(self.expr(a.kids[0] if a.kind == "kw" else a, t))
+        bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
+        if a.kind != "kw":
+            pos += 1
+    self.notnone(o, none if none != "" else f"AttributeError: 'NoneType' object has no attribute '{f.name}'")
+    tag = self.ins(f"load i64, ptr {o.v}")
+    end = self.label()
+    vals: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for i in range(len(cs)):
+        c = cs[i]
+        nxt = self.label() if i + 1 < len(cs) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.ins(f"icmp eq i64 {tag}, {c.tag}"), arm, nxt)
+            self.place(arm)
+        self.narrowed = dict(narrow)
+        v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True)
+        if not self.term:
+            vals.append(v)
+            edges.append(self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.narrowed = narrow
+    t = vals[0].t if len(vals) > 0 else "None"
+    for v in vals[1:]:
+        t = self.join(t, v.t)
+        if t == "":
+            self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
+    ph = Ins("phi", t, "")
+    for i in range(len(vals)):
+        self.incoming(ph, self.convert_at(vals[i], t, edges[i]).v, edges[i])
+    self.place(end)
+    if len(vals) == 0:
+        self.unreachable()
+    return Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+
+def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False) -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
+    if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
+        if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
+            self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
+        if not direct:
+            return self.virtual_call(f, pre, args, want, none)
     if f.ll not in self.called and f.ll in self.lazyat:
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True

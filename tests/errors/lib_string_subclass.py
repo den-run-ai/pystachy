@@ -1,6 +1,5 @@
-# error: class inheritance is not supported (only an exception class may have a base)
-# lib/string's Template with another delimiter, as a subclass of it (lib/README.md): Pystachy has
-# no inheritance but an exception class's
+# error: a base that defines __init_subclass__ is not supported
+# Template customizes subclasses through __init_subclass__, which remains unsupported.
 from string import Template
 
 

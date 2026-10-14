@@ -1,0 +1,8 @@
+value Child.value
+True True True
+3 3
+value Child.value
+True False
+True True
+False 5 5
+[exit 0]

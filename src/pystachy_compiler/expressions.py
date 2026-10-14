@@ -156,6 +156,8 @@ def gen_static(self, n: Node) -> int:
         return r if r < 0 or n.s == "is" or n.s == "==" else 1 - r
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
         t = self.static_type(n.kids[1], True)
+        if t in self.classes and self.classes[t].tag > 0:
+            return -1  # the concrete class may add attributes beyond the static type
         h = self.has(t, n.kids[2].s) if t != "" else -1
         return 1 if h == -1 and self.knownobj(n.kids[1]) else max(h, -1)
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
@@ -286,6 +288,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if c.kind != "name":
         return -1
     if c.s in self.classes:
+        if t in self.classes and self.classes[t].tag > 0:
+            return -2 if self.derives(t, c.s) else -1 if self.derives(c.s, t) else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
         xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t))))
         return -2 if t == c.s or (t in self.classes and self.classes[t].origin == c.s) else -1 if xc else 0
@@ -308,6 +312,36 @@ def gen_isinst(self, t: str, c: Node) -> int:
 def gen_isnone(self, t: str) -> int:
     # isinstance(x, type(None)) for x of static type t, not an optional one (see isinst)
     return 1 if t == "None" else -3 if t in self.classes else 0
+
+def gen_class_matches(self, c: str, t: Node) -> bool:
+    # isinstance's type expression, for an exact ordinary class rather than a static upper bound.
+    if t.kind == "tuple" or (t.kind == "binop" and t.s == "|"):
+        return any([self.class_matches(c, x) for x in t.kids])
+    if t.kind == "name" and t.s in self.classes:
+        return self.derives(c, t.s)
+    return self.isinst(c, t) in [1, -2]
+
+def gen_obj_isinst(self, v: Val, t: Node) -> Val:
+    if not self.puretype(t, False):
+        self.err("isinstance() is only supported with the builtin types and classes as its second argument")
+    end = self.label()
+    nonnull = self.label()
+    start = self.cur
+    self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), end, nonnull)
+    self.place(nonnull)
+    tag = self.ins(f"load i64, ptr {v.v}")
+    r = "false"
+    for c in self.classes.values():
+        if c.tag > 0 and self.derives(c.name, v.t) and self.class_matches(c.name, t):
+            hit = self.ins(f"icmp eq i64 {tag}, {c.tag}")
+            r = hit if r == "false" else self.ins(f"or i1 {r}, {hit}")
+    done = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "true" if self.isinst("None", t) == 1 else "false", start)
+    self.incoming(ph, r, done)
+    return Val(self.phi(ph), "bool")
 
 def gen_isinst_reads(self, c: Node) -> None:
     # c, isinstance's second argument, is built before the test, all of a tuple's or union's
@@ -387,6 +421,44 @@ def gen_truth(self, v: Val) -> str:
         self.incoming(ph, r, e1)
         return self.phi(ph)
     nz = self.ins(f"icmp ne ptr {v.v}, null")
+    if t in self.classes and self.classes[t].tag > 0:
+        cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, t)]
+        if any(["__bool__" in c.methods or "__len__" in c.methods for c in cs]):
+            # Truth has its own fallback: a subclass can add __bool__ or __len__ even
+            # when the static base has neither. Select the concrete protocol before
+            # falling back to object.__bool__, and never inspect a None receiver's tag.
+            end = self.label()
+            nonnull = self.label()
+            start = self.cur
+            ph = Ins("phi", "bool", "")
+            self.incoming(ph, "false", start)
+            self.cbr(nz, nonnull, end)
+            self.place(nonnull)
+            tag = self.ins(f"load i64, ptr {v.v}")
+            narrow = dict(self.narrowed)
+            for i in range(len(cs)):
+                c = cs[i]
+                nxt = self.label() if i + 1 < len(cs) else ""
+                if nxt != "":
+                    arm = self.label()
+                    self.cbr(self.ins(f"icmp eq i64 {tag}, {c.tag}"), arm, nxt)
+                    self.place(arm)
+                self.narrowed = dict(narrow)
+                r = "true"
+                if "__bool__" in c.methods:
+                    r = self.coerce(self.call_fn(c.methods["__bool__"], [Val(v.v, c.name)], [], direct=True), "bool").v
+                elif "__len__" in c.methods:
+                    size = self.coerce(self.call_fn(c.methods["__len__"], [Val(v.v, c.name)], [], direct=True), "int")
+                    self.guard(self.ins(f"icmp slt i64 {size.v}, 0"), "ValueError: __len__() should return >= 0")
+                    r = self.ins(f"icmp ne i64 {size.v}, 0")
+                if not self.term:
+                    self.incoming(ph, r, self.cur)
+                    self.br(end)
+                if nxt != "":
+                    self.place(nxt)
+            self.narrowed = narrow
+            self.place(end)
+            return self.phi(ph)
     if t in self.classes and ("__bool__" in self.classes[t].methods or "__len__" in self.classes[t].methods):
         # None is false; otherwise __bool__, else __len__() != 0
         l1 = self.label()
@@ -495,7 +567,19 @@ def gen_expr(self, n: Node, want: str) -> Val:
                 return Val(self.sconst(fk[fk.find(".") + 1 :] if n.s == "__name__" else fk), "str")
             if o.t.startswith("fn[m:"):
                 mn = fk[fk.rfind(".") + 1 :]
-                return Val(self.sconst(mn if n.s == "__name__" else short(fk[: fk.rfind(".")]) + "." + mn), "str")
+                if n.s == "__name__":
+                    return Val(self.sconst(mn), "str")
+                cn = fk[: fk.rfind(".")]
+                ci = self.classes[cn]
+                qn = self.sconst(short(ci.methods[mn].cls) + "." + mn)
+                if ci.tag > 0:
+                    tag = self.ins(f"load i64, ptr {o.v}")
+                    for cc in self.classes.values():
+                        if cc.tag > 0 and cc.name != cn and self.derives(cc.name, cn):
+                            matches = self.ins(f"icmp eq i64 {tag}, {cc.tag}")
+                            subname = self.sconst(short(cc.methods[mn].cls) + "." + mn)
+                            qn = self.ins(f"select i1 {matches}, ptr {subname}, ptr {qn}")
+                return Val(qn, "str")
             if o.t.startswith("fn[d:"):
                 mn = fk[: fk.find(":")]
                 return Val(self.sconst(mn if n.s == "__name__" else tname(fk[fk.find(":") + 1 :]) + "." + mn), "str")
@@ -673,7 +757,8 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                     # (and of the exception classes that share it, see cvar)
                     h = self.default_home(self.classes[c], t.s)
                     for x in self.classes.values():
-                        if t.s in x.fdefault and self.default_home(x, t.s) is h:
+                        related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
+                        if t.s in x.ftypes and (related or (t.s in x.fdefault and self.default_home(x, t.s) is h)):
                             self.cvars[x.name + "." + t.s] = True
         self.cvar_stores(n.kids)
 
@@ -692,7 +777,7 @@ def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
         how = f" (cls in class method {self.curfn.name}(), which {short(c)} inherits)" if self.curfn.deco == "classmethod" and self.curfn.cls == c and self.curfn.name not in self.body_names(ci.node) else ""
         self.err(f"assigning class attribute '{a}' through {short(c)}{how}, which inherits it from {short(h.name)}, is not supported (CPython would give {short(c)} an attribute of its own; {short(h.name)}.{a} = ... changes the one they share)")
     for x in self.classes.values():
-        if a in x.fdefault and x is not ci and (self.derives(x.name, c) or self.derives(c, x.name)) and self.default_home(x, a) is not h:
+        if ci.tag == 0 and a in x.fdefault and x is not ci and (self.derives(x.name, c) or self.derives(c, x.name)) and self.default_home(x, a) is not h:
             self.err(f"assigning class attribute {short(c)}.{a} is not supported where {short(x.name)} binds '{a}' in its class body too: an object's class attribute is read through the class of its static type (no dispatch on the object's class)")
     return self.class_ready(cn)
 
@@ -738,6 +823,14 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str) -> Val:
     if f.bad == STUB.replace("NAME", m):
         self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
     if f.deco == "":
+        if ci.tag > 0:
+            if len(args) == 0 or args[0].kind in ["kw", "starred", "dstar"]:
+                self.err(f"{short(cn.s)}.{m}() needs an instance as its first argument")
+            o = self.expr(args[0], cn.s)
+            if o.t not in self.classes or not self.derives(o.t, cn.s):
+                self.err(f"{short(cn.s)}.{m}() needs an instance of {short(cn.s)}")
+            self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            return self.call_fn(f, [o], args[1:], want, direct=True)
         self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
     self.cls_bound(f, cn.s, False)
     return self.call_fn(f, [], args, want)
@@ -953,6 +1046,44 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
     # format()'s argument
     empty = spec.kind == "str" and spec.s == ""
+    if v.t in self.classes and self.classes[v.t].tag > 0:
+        cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
+        if any(["__format__" in c.methods for c in cs]):
+            # A subclass's __format__ takes precedence over the object's str fallback,
+            # even with an empty spec. Evaluate a computed spec once before dispatch.
+            sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+            nonempty = self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0")
+            absent = self.label()
+            present = self.label()
+            done = self.label()
+            ph = Ins("phi", "str", "")
+            self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), absent, present)
+            self.place(absent)
+            self.guard(nonempty, "TypeError: unsupported format string passed to NoneType.__format__")
+            self.incoming(ph, self.sconst("None"), self.cur)
+            self.br(done)
+            self.place(present)
+            tag = self.ins(f"load i64, ptr {v.v}")
+            for i in range(len(cs)):
+                ci = cs[i]
+                nxt = self.label() if i + 1 < len(cs) else ""
+                if nxt != "":
+                    arm = self.label()
+                    self.cbr(self.ins(f"icmp eq i64 {tag}, {ci.tag}"), arm, nxt)
+                    self.place(arm)
+                obj = Val(v.v, ci.name)
+                if "__format__" in ci.methods:
+                    text = self.coerce(self.call_fn(ci.methods["__format__"], [obj, sv], [], direct=True), "str", "__format__()'s result")
+                else:
+                    self.guard(nonempty, f"TypeError: unsupported format string passed to {tname(ci.name)}.__format__")
+                    text = self.to_str(obj)
+                if not self.term:
+                    self.incoming(ph, text.v, self.cur)
+                    self.br(done)
+                if nxt != "":
+                    self.place(nxt)
+            self.place(done)
+            return Val(self.phi(ph), "str")
     if v.t in self.classes and "__format__" in self.classes[v.t].methods:
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         if v.v not in self.nn:
@@ -1583,7 +1714,7 @@ def gen_unary(self, n: Node) -> Val:
     return v
 
 def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
-    # operator overloading, resolved statically: a + b -> A.__add__(a, b)
+    # operator overloading: guard unsupported reflected dispatch before selecting __add__ & co
     m = DUNDER.get(op, "")
     if m != "" and (a.t in self.nts or b.t in self.nts):
         r = self.ntop(op, a, b, shown)
@@ -1611,12 +1742,27 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if pw != "":
             self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {pw})")
     rm = "__r" + m[2:]
-    if m != "" and op != "==" and op != "!=" and b.t in self.classes and not same and rm in self.classes[b.t].methods and not (op == "%" and a.t == "str"):
-        # CPython calls b.__radd__(a) & co where a's class has no method for the operator, and
-        # first where b's class derives from a's and has the reflected method a's has not (str
-        # % b formats b)
-        if a.t not in self.classes or m not in self.classes[a.t].methods or (self.derives(b.t, a.t) and rm not in self.classes[a.t].methods):
-            self.err(f"reflected operator methods are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {tname(b.t)}.{rm})")
+    if m != "" and op != "==" and op != "!=" and b.t in self.classes and not (op == "%" and a.t == "str"):
+        # A base-typed value may hold a subclass on either side. Python gives a strict
+        # subclass's distinct reflected method priority over the left forward method,
+        # including when it overrides a reflected method already present on the base.
+        # Reject any such possible pair until reflected arithmetic is implemented.
+        left = [a.t]
+        right = [b.t]
+        if a.t in self.classes and self.classes[a.t].tag > 0:
+            left = [c.name for c in self.classes.values() if c.tag > 0 and self.derives(c.name, a.t)]
+        if self.classes[b.t].tag > 0:
+            right = [c.name for c in self.classes.values() if c.tag > 0 and self.derives(c.name, b.t)]
+        for at in left:
+            for bt in right:
+                pair_same = at == bt or (self.tmpl_of(at) != "" and self.tmpl_of(at) == self.tmpl_of(bt))
+                if pair_same or rm not in self.classes[bt].methods:
+                    continue
+                reflected = at not in self.classes or m not in self.classes[at].methods
+                if at in self.classes and self.derives(bt, at):
+                    reflected = reflected or rm not in self.classes[at].methods or self.classes[bt].methods[rm] is not self.classes[at].methods[rm]
+                if reflected:
+                    self.err(f"reflected operator methods are not supported ({tname(unopt(at))} {sh} {tname(bt)} calls {tname(bt)}.{rm})")
     if a.t not in self.classes:
         return Val("", "")
     ms = self.classes[a.t].methods
@@ -1684,9 +1830,118 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     if t not in self.classes or m not in self.classes[t].methods:
         return ""
     f = self.classes[t].methods[m]
-    if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (f.ptypes[1] == other or (other == "None" and f.ptypes[1] in self.classes) or f.ptypes[1] == "")):
+    if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (self.widens(other, f.ptypes[1]) or f.ptypes[1] == "")):
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
     return ""
+
+def gen_inherit_cmp(self, op: str, a: Val, b: Val, phase: int = 0) -> Val:
+    # Compare concrete runtime types, including None. Both operands matter: Python gives
+    # the right operand's reflected comparison priority when its class is a strict subtype.
+    if phase == 2:
+        return self.concrete_cmp(op, a, b)
+    v = a if phase == 0 else b
+    if v.t not in self.classes:
+        return self.inherit_cmp(op, a, b, phase + 1)
+    cs = [v.t]
+    if self.classes[v.t].tag != 0:
+        cs = [c.name for c in self.classes.values() if c.tag != 0 and self.derives(c.name, v.t)]
+    if len(cs) == 1 and v.v in self.nn:
+        return self.inherit_cmp(op, a, b, phase + 1)
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    if v.v not in self.nn:
+        null = self.label()
+        some = self.label()
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), null, some)
+        self.place(null)
+        r = self.inherit_cmp(op, Val("null", "None") if phase == 0 else a, b if phase == 0 else Val("null", "None"), phase + 1)
+        if not self.term:
+            self.incoming(ph, r.v, self.cur)
+            self.br(end)
+        self.place(some)
+    tag = self.ins(f"load i64, ptr {v.v}") if len(cs) > 1 else ""
+    for i in range(len(cs)):
+        nxt = self.label() if i + 1 < len(cs) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.ins(f"icmp eq i64 {tag}, {self.classes[cs[i]].tag}"), arm, nxt)
+            self.place(arm)
+        r = self.inherit_cmp(op, Val(v.v, cs[i]) if phase == 0 else a, b if phase == 0 else Val(v.v, cs[i]), phase + 1)
+        if not self.term:
+            self.incoming(ph, r.v, self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val("false", "bool")
+    return Val(self.phi(ph), "bool")
+
+def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
+    # Both objects now have known, non-null concrete classes. NotImplemented is outside
+    # the subset; a supported comparison method returns bool, so the first one completes.
+    right = a.t in self.classes and b.t in self.classes and a.t != b.t and self.derives(b.t, a.t)
+    vals = [b, a] if right else [a, b]
+    methods = [DUNDER[REFL[op]] if op in REFL else DUNDER[op], DUNDER[op]] if right else [DUNDER[op], DUNDER[REFL[op]] if op in REFL else DUNDER[op]]
+    for i in range(2):
+        lhs = vals[i]
+        rhs = vals[1 - i]
+        m = methods[i]
+        invert = False
+        if lhs.t in self.classes:
+            ms = self.classes[lhs.t].methods
+            if op == "!=" and m not in ms and "__eq__" in ms:
+                m = "__eq__"
+                invert = True
+            if m in ms:
+                if self.cmp_method(lhs.t, m, rhs.t) == "":
+                    self.err(f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}")
+                r = self.coerce(self.call_fn(ms[m], [lhs, rhs], [], direct=True), "bool")
+                return Val(self.ins(f"xor i1 {r.v}, true"), "bool") if invert else r
+    if op == "==" or op == "!=":
+        # object.__eq__ declines, then Python falls back to object identity.
+        if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None"):
+            return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+        return Val("false" if op == "==" else "true", "bool")
+    self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'"))
+    return Val("false", "bool")
+
+def gen_inherit_contains(self, op: str, a: Val, b: Val) -> Val:
+    # Membership chooses __contains__ before the iterator fallback on the concrete class.
+    # A subclass can add __contains__ even when its base already supplies __iter__.
+    self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
+    cs = [c for c in self.classes.values() if c.tag != 0 and self.derives(c.name, b.t)]
+    tag = self.ins(f"load i64, ptr {b.v}") if len(cs) > 1 else ""
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    for i in range(len(cs)):
+        ci = cs[i]
+        nxt = self.label() if i + 1 < len(cs) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.ins(f"icmp eq i64 {tag}, {ci.tag}"), arm, nxt)
+            self.place(arm)
+        obj = Val(b.v, ci.name)
+        result = Val("false", "bool")
+        if "__contains__" in ci.methods:
+            hit = self.truth(self.call_fn(ci.methods["__contains__"], [obj, a], [], direct=True))
+            result = Val(hit if op == "in" else self.ins(f"xor i1 {hit}, true"), "bool")
+        elif "__iter__" in ci.methods or "__getitem__" in ci.methods:
+            items = self.obj_iter(obj, "TypeError: argument of type 'NoneType' is not iterable", f"argument of type '{short(ci.name)}' is not iterable")
+            result = self.cmp2(op, a, items)
+        else:
+            self.raise_("TypeError", self.sconst(f"argument of type '{short(ci.name)}' is not iterable"))
+        if not self.term:
+            self.incoming(ph, result.v, self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val("false", "bool")
+    return Val(self.phi(ph), "bool")
 
 def gen_isnull(self, v: Val) -> str:
     # i1: is v None at run time
@@ -1936,6 +2191,10 @@ def gen_exc_eq(self, t: str, what: str = "") -> None:
                 self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
+        return self.inherit_cmp(op, a, b)
+    if (op == "in" or op == "not in") and b.t in self.classes and self.classes[b.t].tag != 0:
+        return self.inherit_contains(op, a, b)
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
     if (op == "==" or op == "!=" or op == "is" or op == "is not") and is_callable(unopt(a.t)) and is_fn(b.t):
@@ -1969,6 +2228,16 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_fn(a.t) or is_fn(b.t)) and (op == "==" or op == "!=" or op == "is" or op == "is not"):
         # a function value is the function its type names: never None, and the same function as
         # another value of its type only (a closure, as the same def or lambda run once: its env)
+        if a.t.startswith("fn[m:") and b.t.startswith("fn[m:"):
+            ac = a.t[5 : a.t.rfind(".")]
+            bc = b.t[5 : b.t.rfind(".")]
+            am = a.t[a.t.rfind(".") + 1 : -1]
+            bm = b.t[b.t.rfind(".") + 1 : -1]
+            if ac in self.classes and bc in self.classes and self.classes[ac].tag != 0 and self.classes[bc].tag != 0 and (self.derives(ac, bc) or self.derives(bc, ac)):
+                if op == "is" or op == "is not":
+                    self.err(f"'{op}' between bound methods is not supported: CPython makes a new method object each time one is read (compare them with ==)")
+                if am == bm:
+                    return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
         if a.t == b.t and (a.t.startswith("fn[m:") or a.t.startswith("fn[d:")) and (op == "is" or op == "is not"):
             self.err(f"'{op}' between bound methods is not supported: CPython makes a new method object each time one is read (compare them with ==)")
         if a.t == b.t and (a.t.startswith("fn[c:") or a.t.startswith("fn[m:") or a.t.startswith("fn[d:")):

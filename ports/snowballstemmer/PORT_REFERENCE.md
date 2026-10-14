@@ -19,41 +19,34 @@ Archive SHA-256: `e07bbc54a0d798fe6010a12398422e62a8bfbba95c394fd0956ef58cb4d3e2
 | `__init__.py` | `b7deb373e5cfeb67267dde276350bebfc4b35221949145806090706cec3f681a` | 2 |
 | `among.py` | `4b8b17bf3f97d46a1a536c288defe193147b15bd8edb01bbd3f64c57b8b5e2af` | 2 lines |
 | `basestemmer.py` | `e60fd08f93826b9c428f038ace77500a68ba594d504cd64b1501a6fab2becbc1` | 26: 22 signatures, the fields, an import, 2 branches |
-| `english_stemmer.py` | `350d71588d33ce8e2dd5084efa48c50cbaec90bec9ac3f7e97623fd640856dea` | 22, mechanical: the base class and a copy of its body, 15 return types, 4 groupings, 1 tuple |
-| `porter_stemmer.py` | `b7e27d0486805a9ce69be3362dc3f995b988c4d607de438df189c21e4482b8b0` | 19, mechanical: the base class and a copy of its body, 12 return types, 2 groupings, 3 tuples |
+| `english_stemmer.py` | `350d71588d33ce8e2dd5084efa48c50cbaec90bec9ac3f7e97623fd640856dea` | 20: 15 return types, 4 groupings, 1 tuple |
+| `porter_stemmer.py` | `b7e27d0486805a9ce69be3362dc3f995b988c4d607de438df189c21e4482b8b0` | 17: 12 return types, 2 groupings, 3 tuples |
 
 ## Adaptation record
 
-- Each generated stemmer contains a marked copy of the typed `BaseStemmer` body instead of inheriting it. Reapply that mechanical transformation from the upstream release when updating.
+- The generated stemmers retain upstream's `BaseStemmer` inheritance. The typed base body is shared, with no copy in either subclass.
 - Methods and fields receive types; groupings and variable-index replacement tables become lists.
 - `Among` method callbacks and the class-valued language factory are removed; only the two English modules are imported.
 - List groupings retain exact membership semantics. The rejected faster string-grouping experiment and its timing remain in the benchmark snapshot.
 
-### The flattening
+<a id="the-flattening"></a>
 
-Edits 1, 3, 7 and 8 of the two generated modules are mechanical, as the Snowball compiler writes
-every module from one template, and can be redone for a new release or another language:
+### Restored inheritance
 
-1. Copy the module from the sdist.
-2. `class XStemmer(BaseStemmer):` becomes `class XStemmer:`, and after the class docstring comes
-   a copy of the class body of the ported `basestemmer.py` (every line after
-   `class BaseStemmer:`) between the comments `BEGIN copy of BaseStemmer` and
-   `END copy of BaseStemmer`, with `"BaseStemmer"` (the annotation of `copy_from`'s parameter)
-   renamed to the class's name.
-3. Each `def __r_NAME(self):` and `def _stem(self):` gets `-> bool`.
-4. Each grouping `g_NAME = {"a", "b"}` becomes `g_NAME = ["a", "b"]`, and `g_NAME = "ab"`
-   becomes `["a", "b"]`.
-5. Each `as_NAME = (...)` becomes `as_NAME = [...]`.
+The initial port flattened `BaseStemmer` into each generated class because ordinary
+inheritance was unsupported. The hierarchy now matches upstream: `EnglishStemmer` and
+`PorterStemmer` derive from `BaseStemmer`. Removing the two copied bodies deletes 568 lines
+and 56 duplicated or flattening-related `Pystachy port:` markers. The remaining source has
+67 markers.
 
-Each changed line gets its `# Pystachy port:` comment. This checks that a module's copy is
-`basestemmer.py`'s (it prints nothing):
+Inherited `stemWord()` calls the concrete subclass's `_stem()`; `stemWords()` uses the same
+path. The inherited constructor and cursor operations share the base fields. The existing
+adaptations to annotations, list groupings, replacement tables and callback scope remain.
+The differential program's CPython output is identical before and after this restoration.
 
-```sh
-cd ports/snowballstemmer
-sed '1,/^class BaseStemmer:/d' basestemmer.py > /tmp/body
-sed -n '/BEGIN copy of BaseStemmer/,/END copy of BaseStemmer/{//!p;}' english_stemmer.py |
-  sed 's/"EnglishStemmer"/"BaseStemmer"/' | diff - /tmp/body
-```
+When refreshing the generated modules, retain their base class, annotate their return types,
+and adapt the groupings and variable-index replacement tables as above. No base-body copy
+is needed.
 
 ## Validation snapshot
 
@@ -96,7 +89,7 @@ came within 0.03 s of its wall-clock time. With the rejected string-grouping alt
 takes 0.40 s (17.2 times); the evaluation measured 0.426 s for them, against 6.565 s for
 CPython (15.4 times). So the list groupings cost about a third more than strings would. For
 these groupings, all ASCII letters, strings would stem exactly as lists do; lists keep the
-flattening one rule that is exact for every language's groupings.
+grouping adaptation one rule that is exact for every language's groupings.
 `snowballstemmer.stemmer()` returns PyStemmer's stemmers, a C extension, when that is installed;
 it is not installed here (`import Stemmer` fails), and the workload makes the pure-Python classes
 itself in any case.

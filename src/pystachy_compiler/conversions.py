@@ -88,8 +88,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return v
     if v.t == "None" and t in self.classes:
         return Val("null", t)
-    if v.t in self.classes and t in self.classes and self.classes[v.t].exc != "" and self.derives(v.t, t):
-        return Val(v.v, t)  # (an exception object is an object of its base classes too)
+    if v.t in self.classes and t in self.classes and self.derives(v.t, t):
+        return Val(v.v, t)  # an object is an object of its base classes too
     if v.t in self.classes and t == "exc" and self.classes[v.t].exc != "":
         self.err(f"expected a builtin exception, got an object of {short(v.t)} (annotate it with {short(v.t)} or a base class of the program)")
     if v.t == "exc" and t in self.classes and self.classes[t].exc != "":

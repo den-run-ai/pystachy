@@ -1,0 +1,50 @@
+Child.eq
+Child.ne
+True False
+Child.ge
+Child.le
+True True
+Child.eq
+Child.ne
+Child.gt
+Child.lt
+Child.ge
+Child.le
+False True False True False True
+Child.eq
+Child.ne
+Child.lt
+Child.gt
+Child.le
+Child.ge
+False True True False True False
+Base.eq
+Base.ne
+Base.lt
+Base.gt
+Base.le
+Base.ge
+False True True False True False
+Child.eq
+Child.ne
+Child.lt
+Child.gt
+Child.le
+Child.ge
+False True True False True False
+Child.eq
+Child.eq
+2
+Child.eq
+Child.eq
+Child.ne
+Child.ne
+False False True True
+Child.lt
+Child.lt
+Child.gt
+Child.gt
+False False False False
+True False
+TypeError: '<' not supported between instances of 'Plain' and 'Plain'
+[exit 0]

@@ -16,6 +16,7 @@ print(EnglishStemmer().stemWords(["connection", "connected", "connecting"]))
 ## Coverage
 
 - The two English classes, `stemWord()`, `stemWords(list[str])` and their tested cursor operations.
+- Both classes inherit the shared `BaseStemmer`, as upstream does; inherited `stemWord()` calls each subclass's `_stem()`.
 - `algorithms()` reports `english` and `porter`. Construct the classes directly; the pure-Python `stemmer(lang)` factory is omitted.
 - The other 34 languages, `Among` method callbacks and PyStemmer’s C extension are outside this port.
 
@@ -63,4 +64,4 @@ use the [language guide](../../docs/language.md) for present support.
 <a id="snowballstemmer-311-ported-to-pystachy"></a>
 <a id="the-flattening"></a>
 
-The stemmer [flattening procedure](PORT_REFERENCE.md#the-flattening) is in the port reference.
+The [inheritance record](PORT_REFERENCE.md#the-flattening) describes the restored upstream hierarchy.

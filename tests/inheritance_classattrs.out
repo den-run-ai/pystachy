@@ -1,0 +1,10 @@
+parent 1 parent1
+child 1 child1
+child 3 child3
+child 20 child20
+5 5 3 20
+5 5 3
+instance 5 instance5
+child 5 child5
+['parent!', 'child!', 'child!', 'child!', 'instance!', 'child!'] True True
+[exit 0]

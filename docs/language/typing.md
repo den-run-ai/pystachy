@@ -307,14 +307,45 @@ inferred result is unavailable at field declaration time; annotate that field ex
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
-required. Exception subclasses also inherit their base's fields and class attributes.
+required. Supported subclasses also inherit their base's fields and class attributes.
 
 An annotated `NamedTuple` class supports defaults, methods, unpacking, constant indexing,
 iteration, length, comparisons with tuples, `_replace()`, `_fields` and `_asdict()` when all
 fields share a type. Only construction can assign its fields. There is no functional
 `NamedTuple("Name", ...)` form, `_make()`, slicing, or a NamedTuple without fields.
 
-Static and class methods can be called through their class or an instance. General inheritance
-is unsupported; exception classes may inherit, and an inherited class method can specialize
-for the exception subclass. See [compatibility](compatibility.md#classes-dataclasses-and-namedtuples)
+Static and class methods can be called through their class or an instance, subject to the
+inheritance restrictions below. See [compatibility](compatibility.md#classes-dataclasses-and-namedtuples)
 for dataclass options and further restrictions.
+
+## Single inheritance
+
+An ordinary class may derive from one previously declared ordinary class, including an
+imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
+`Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
+types, and the existing field-inference rules still apply.
+
+Subclasses inherit fields, class attributes, methods and `__init__` when they do not define
+their own. Instance methods can override inherited methods. Calls through a base annotation
+or `list[Base]` select the receiver's concrete implementation, including calls made inside
+inherited methods and bound methods. Each possible implementation must accept the call's
+arguments, and its results must have a common supported type.
+Converting a bound method to `Callable` also requires compatible parameter types and
+annotated return types throughout that method's hierarchy, preserving method equality
+across base and derived views of the same receiver.
+
+`super().method(...)` starts at the base of the class defining the method, even when a further
+subclass inherits that method. `super(C, self)` may name that class or one of its ancestors;
+`Base.method(obj, ...)` explicitly selects the named base's implementation. These forms keep
+the concrete receiver for further method calls. Runtime `isinstance(obj, Derived)` checks the
+hierarchy, but does not narrow a base-typed value to expose derived-only fields.
+
+Instance reads of class attributes honor subclass defaults and instance assignments. A class
+attribute may be rebound through its defining class; assigning an inherited attribute through
+a subclass that has not declared its own default is unsupported.
+
+Multiple inheritance, builtin subclasses, dataclass and NamedTuple inheritance, decorated
+subclasses, field/method name collisions, and overriding static or class methods are
+unsupported. Inherited class methods
+using `cls` retain restrictions on default values, imports and calls through a base-typed
+object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).

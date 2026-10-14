@@ -329,10 +329,11 @@ class ClassInfo:
         self.bad = ""  # why a class of an imported module cannot be compiled: an error where it is used
         self.hook = ""  # the same for a special method Pystachy never calls (UNCALLED): its class statement compiles
         self.kwonly = False  # @dataclass(kw_only=True): its __init__ takes the fields by keyword only
-        # an exception class: its base (a class of the program or a builtin exception class), and
-        # the builtin exception class it derives from through it ("" for any other class)
+        # its single base (a class of the program or a builtin exception class), and the
+        # builtin exception class it derives from through it ("" for an ordinary class)
         self.base = ""
         self.exc = ""
+        self.tag = 0  # ordinary inheritance: the object's concrete class; zero outside a hierarchy
         self.nflag = 0  # the "is assigned" flags at the end of its struct (its own fields')
         self.leak = False  # its __init__ lets self escape before it ends
         self.flowed = False  # fl_fields has decided its flags

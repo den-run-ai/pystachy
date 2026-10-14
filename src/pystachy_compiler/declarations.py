@@ -461,6 +461,12 @@ def gen_join(self, a: str, b: str) -> str:
         return a
     if self.widens(a, b):
         return b
+    if a in self.classes and b in self.classes:
+        c = self.classes[a].base
+        while c in self.classes:
+            if self.derives(b, c):
+                return c
+            c = self.classes[c].base
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):
@@ -477,6 +483,8 @@ def gen_wider(self, a: str, b: str) -> str:
     # containers made of both; "" if there is none (an int is no int | None as it is: that is a box)
     if a == b:
         return a
+    if a in self.classes and b in self.classes:
+        return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
         return ""
     if "?" in a or "?" in b:
@@ -551,7 +559,7 @@ def gen_widens(self, a: str, b: str) -> bool:
     if is_opt(b):
         return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
     if b in self.classes:
-        return a == "None" or (a in self.classes and self.classes[a].exc != "" and self.derives(a, b))
+        return a == "None" or (a in self.classes and self.derives(a, b))
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     bs = targs(b)
@@ -637,6 +645,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
         self.err(tvbad)
     init = d.s == "__init__" and self.tmpl_of(cls) != ""  # (a class template's: see specialize)
+    receiver = cls in self.classes and self.classes[cls].tag != 0 and f.deco == ""
+    if receiver:
+        # A base's inherited body must see the concrete receiver: it can call a method
+        # provided by a derived class, while f.cls still anchors lexical super().
+        f.generic = True
     for i in range(len(ps)):
         # a method's are too, as M2 makes them (but its self or cls; see template_ok), and a
         # class template's __init__; an annotation that names a class template types nothing
@@ -693,7 +706,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.dglob.append("")
         f.dtypes.append("")
         if i == 0 and takes_self(f):
-            f.ptypes.append(cls)
+            f.ptypes.append("" if receiver else cls)
         elif p.kids[0].kind == "noann":
             if not f.generic:
                 self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
@@ -865,6 +878,8 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
             self.add_field(ci, x, b.ftypes[x])
             if x in b.fdefault:
                 ci.fdefault[x] = b.fdefault[x]
+    elif ci.tag != 0:
+        self.add_field(ci, " class", "int")
     elif ci.exc != "":
         # what its constructor sets (exc_object): its ExcClass, str(e) and the text between repr(e)'s
         # parentheses, and a SystemExit's status and whether its code is one (None, an int or a bool)
@@ -933,11 +948,22 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
         self.line = ci.node.line
         owner = short(b.methods["__init_subclass__"].cls if "__init_subclass__" in b.methods else self.default_home(b, "__init_subclass__").name)
         self.err(f"a base that defines __init_subclass__ is not supported (CPython calls {owner}.__init_subclass__() when it creates class {short(ci.name)})")
+    if "__init__" not in ci.methods and ci.base in self.classes and "__init__" in self.classes[ci.base].methods:
+        # A base with no explicit initializer acquired its empty one while its fields were
+        # declared, after inherit() copied its other methods.
+        ci.methods["__init__"] = self.classes[ci.base].methods["__init__"]
     if "__init__" in ci.methods or ci.exc != "":
         # (an exception class without __init__ of its own takes its base's, or none)
         if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name and ci.name not in self.tmpl:
             f = ci.methods["__init__"]
             self.scan_fields(ci, f, f.node.kids[2].kids)
+    if ci.tag > 0:
+        for name in ci.ftypes:
+            if name in ci.methods:
+                self.line = ci.node.line
+                owner = short(ci.methods[name].cls)
+                self.err(f"field '{name}' of '{short(ci.name)}' conflicts with method '{owner}.{name}': method and field shadowing in an inheritance hierarchy is not supported")
+    if "__init__" in ci.methods or ci.exc != "":
         return
     # synthesize __init__: @dataclass takes every field as a parameter
     body: list[Node] = []
@@ -945,7 +971,8 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
     f = FnInfo("__init__", f"@m.{ci.name}.__init__", d, ci.name)
     me = "self" if "self" not in ci.ftypes else "__pys_self"  # (a field may be named self)
     f.params.append(me)
-    f.ptypes.append(ci.name)
+    f.ptypes.append("" if ci.tag != 0 else ci.name)
+    f.generic = ci.tag != 0
     f.defaults.append(noann)
     f.dglob.append("")
     if self.is_dc(ci.name):
@@ -1123,6 +1150,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
     if k == "name" and e.s in f.params:
         t = f.ptypes[f.params.index(e.s)]
+        if t == "" and takes_self(f) and e.s == f.params[0] and self.classes[f.cls].tag != 0:
+            return f.cls  # field inference precedes specialization of the concrete receiver
         return t if t != "" or f.bad == "" else "!" + f.bad  # (a parameter whose annotation failed)
     if k == "name" and (e.s in self.funcs or (e.s in PYBUILTINS and e.s[0].islower() and not self.bound(e.s))):
         # a function, which the field then holds (unless a local of the method has its name)
@@ -1264,26 +1293,57 @@ def gen_fgep(self, o: Val, i: int) -> str:
 def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
     ci = self.classes[o.t]
+    r = ""
+    bad = ""
     if o.t + "." + name in self.cvars:
         # a class variable: the object's own value once it has assigned one, else the class's
         own = self.ins(f"load i1, ptr {self.fgep(o, ci.fflag[name])}")
         fv = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
-        self.class_default(ci, name)
-        r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
-        if is_opt(p.t):
-            self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-        return Val(r, p.t)
+        if ci.tag != 0:
+            # Each concrete class may shadow its base's class attribute. All related
+            # mutable defaults share the inherited instance-assignment flag, but their
+            # fallback globals still belong to the classes that define those defaults.
+            tag = self.ins(f"load i64, ptr {self.fgep(o, ci.fpos[' class'])}")
+            cv = fv
+            assigned = own
+            for sub in self.classes.values():
+                if sub.tag != 0 and self.derives(sub.name, ci.name) and name in sub.fdefault:
+                    match = self.ins(f"icmp eq i64 {tag}, {sub.tag}")
+                    if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]):
+                        self.class_default(sub, name)
+                        dv = Val(self.ins(f"load {lt(p.t)}, ptr {sub.fglob[name]}"), p.t)
+                    else:
+                        dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
+                    cv = Val(self.select(match, dv, cv), p.t)
+                    assigned = self.ins(f"or i1 {assigned}, {match}")
+            bad = self.ins(f"xor i1 {assigned}, true")
+            r = self.select(own, fv, cv)
+        else:
+            self.class_default(ci, name)
+            r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
+            if is_opt(p.t):
+                self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
+            return Val(r, p.t)
     if name in ci.fflag:
         f = self.fgep(o, ci.fflag[name])
-        bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true")
+        if bad == "":
+            bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true")
         subs = [x for x in self.classes.values() if x.base == o.t]
-        if len(subs) > 0:
-            # an exception object, of o.t or a class deriving from it: CPython names its class
+        if len(subs) > 0 and (ci.exc != "" or ci.tag != 0):
+            # CPython's missing-attribute error names the concrete object's class.
             l1 = self.label()
             l2 = self.label()
             self.cbr(bad, l1, l2)
             self.place(l1)
-            c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
+            if ci.exc != "":
+                c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
+            else:
+                tag = self.ins(f"load i64, ptr {self.fgep(o, ci.fpos[' class'])}")
+                c = self.sconst(short(ci.name))
+                for sub in self.classes.values():
+                    if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name):
+                        match = self.ins(f"icmp eq i64 {tag}, {sub.tag}")
+                        c = self.select(match, Val(self.sconst(short(sub.name)), "str"), Val(c, "str"))
             q = self.sconst("'")
             t = self.sconst("' object has no attribute '" + name + "'")
             m = self.rt("pys_str_add", "ptr", [f"ptr {q}", f"ptr {c}"])
@@ -1292,7 +1352,8 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.place(l2)
         else:
             self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
-    r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
+    if r == "":
+        r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
     if is_opt(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
     return Val(r, p.t)

@@ -355,13 +355,23 @@ supported alternatives.
 
 ### Classes, dataclasses and NamedTuples
 
+- multiple inheritance; ordinary inheritance involving a class template, `Generic`, dataclass,
+  NamedTuple or builtin type; a decorated subclass; overriding a static or class method;
+  calls whose possible instance-method overrides cannot accept the arguments or return a
+  common supported type. See [single inheritance](typing.md#single-inheritance).
+- assigning an inherited class attribute through a subclass that does not declare its own
+  default; changing an inherited field's type; reading derived-only fields through a base
+  annotation, even after an `isinstance()` test
+- an inherited class method using `cls` called through a base-typed object, or inherited across
+  modules or with nonconstant defaults; `super()` outside a supported instance-method context,
+  or explicit `super(C, self)` with an unrelated class or a different receiver expression
 - a class method's `cls` used as a value or assigned, `@staticmethod` or `@classmethod` on a
-  special method, a method of objects called through its class (`C.m(o)`), and decorators other
-  than these, `@dataclass` and `@overload`
+  special method, a method of objects called through its class (`C.m(o)`) outside an ordinary
+  inheritance hierarchy, and decorators other than these, `@dataclass` and `@overload`
 - a class that defines (by a `def` or a class attribute) or inherits `__new__`, `__getattr__`,
   `__getattribute__`, `__setattr__` or `__delattr__`, which CPython calls implicitly and Pystachy
   never does (in an imported module, an error where the program uses the class; its class
-  statement still runs), and an exception class whose base defines `__init_subclass__`, which
+  statement still runs), and a class whose base defines `__init_subclass__`, which
   CPython calls when it creates the class (also in an imported module, whose code creates it when
   it is imported)
 - `@dataclass` arguments other than `kw_only` (`frozen=`, `order=`, ...), and `dataclasses.field()`
@@ -476,7 +486,7 @@ supported alternatives.
   a field of the base unassigned where the base's code reads it (call `super().__init__()` first),
   keyword arguments where no class of its line has an `__init__` (but those its builtin base's
   takes, such as `ImportError`'s `name` and `path`), more than three arguments for one deriving
-  from `OSError` (or for `OSError` itself), and `super()` outside the methods of exception classes,
+  from `OSError` (or for `OSError` itself); for exception classes, `super()` outside their methods,
   in a static method without parameters, without arguments in a class method (where it binds the
   class), or with arguments other than the method's own class and `self` (`super(Base, self)`, or a
   local that hides the class's name), or calling a class method of the base that uses `cls`

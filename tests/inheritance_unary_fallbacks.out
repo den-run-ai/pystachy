@@ -1,0 +1,18 @@
+True True False
+False True
+ValueError: __len__() should return >= 0
+repr:3 repr:3 str:4
+True
+True
+True
+False None None
+True repr:6 repr:6
+format:7: format:7:
+format:7:custom
+repr:8 repr:8
+repr:8
+str:9 str:9
+TypeError: unsupported format string passed to StrOnly.__format__
+None None
+TypeError: unsupported format string passed to NoneType.__format__
+[exit 0]

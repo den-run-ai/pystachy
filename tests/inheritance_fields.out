@@ -1,0 +1,11 @@
+1 True
+2
+99 99 True
+2 False
+AttributeError: 'Inherited' object has no attribute 'optional'
+99 99 True
+11 12 99 99
+1
+AttributeError: 'Late' object has no attribute 'ready'
+1 8
+[exit 0]

@@ -1,0 +1,11 @@
+True False False False
+base
+True True False False
+left
+True True True False
+deep
+True False False True
+right
+True True False
+False False
+[exit 0]

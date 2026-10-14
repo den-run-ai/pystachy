@@ -1,4 +1,4 @@
-# error: an exception class with more than one base is not supported
+# error: multiple inheritance is not supported: a class may have only one base
 class Both(ValueError, KeyError):
     pass
 

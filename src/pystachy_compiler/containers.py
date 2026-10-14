@@ -557,6 +557,43 @@ def gen_to_str(self, v: Val) -> Val:
 def gen_obj_str(self, v: Val, m: str) -> Val:
     # str()/repr() of an object through __str__/__repr__; None prints as "None". An exception
     # object's are those of its class (its ExcClass's: exc_helpers)
+    if self.classes[v.t].tag > 0:
+        # Select the concrete class before selecting __str__/__repr__ or object.__repr__:
+        # a subclass may introduce the protocol where its static base has no method.
+        cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
+        end = self.label()
+        nonnull = self.label()
+        start = self.cur
+        ph = Ins("phi", "str", "")
+        self.incoming(ph, self.sconst("None"), start)
+        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), end, nonnull)
+        self.place(nonnull)
+        tag = self.ins(f"load i64, ptr {v.v}")
+        narrow = dict(self.narrowed)
+        for i in range(len(cs)):
+            c = cs[i]
+            nxt = self.label() if i + 1 < len(cs) else ""
+            if nxt != "":
+                arm = self.label()
+                self.cbr(self.ins(f"icmp eq i64 {tag}, {c.tag}"), arm, nxt)
+                self.place(arm)
+            self.narrowed = dict(narrow)
+            method = m if m in c.methods else "__repr__"
+            if method in c.methods and c.methods[method].bad != "" and self.lenient:
+                method = ""
+            if method in c.methods:
+                r = self.call_fn(c.methods[method], [Val(v.v, c.name)], [], direct=True)
+            else:
+                qn = shown(c.name) if "$" in c.name and not c.name.startswith("__main__$") else "__main__." + short(c.name)
+                r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
+            if not self.term:
+                self.incoming(ph, r.v, self.cur)
+                self.br(end)
+            if nxt != "":
+                self.place(nxt)
+        self.narrowed = narrow
+        self.place(end)
+        return Val(self.phi(ph), "str")
     ms = self.classes[v.t].methods
     exc = self.classes[v.t].exc != ""
     if m not in ms and not exc:

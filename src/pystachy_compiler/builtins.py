@@ -138,6 +138,38 @@ def gen_builtin(self, name: str, args: list[Node], want: str) -> Val:
     if name == "hasattr" and len(args) == 2 and args[1].kind == "str":
         # decided by the static type of the object (for an object: is it None)
         hv = self.expr(args[0], "")
+        if hv.t in self.classes and self.classes[hv.t].tag > 0:
+            # A derived class may add this attribute, or leave its field unassigned.
+            # Read a field's flag only in its concrete class's arm: it may lie beyond
+            # the end of an object belonging to a smaller base class.
+            attr = args[1].s
+            start = self.cur
+            present = self.label()
+            done = self.label()
+            ph = Ins("phi", "bool", "")
+            self.incoming(ph, "true" if self.has("None", attr) == 1 else "false", start)
+            self.cbr("true" if hv.v in self.nn else self.ins(f"icmp ne ptr {hv.v}, null"), present, done)
+            self.place(present)
+            tag = self.ins(f"load i64, ptr {hv.v}")
+            cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, hv.t)]
+            for i in range(len(cs)):
+                ci = cs[i]
+                nxt = self.label() if i + 1 < len(cs) else ""
+                if nxt != "":
+                    arm = self.label()
+                    self.cbr(self.ins(f"icmp eq i64 {tag}, {ci.tag}"), arm, nxt)
+                    self.place(arm)
+                hy = self.has(ci.name, attr)
+                if attr in ci.fflag and attr not in ci.fdefault and attr not in ci.methods:
+                    value = self.ins(f"load i1, ptr {self.fgep(Val(hv.v, ci.name), ci.fflag[attr])}")
+                else:
+                    value = "false" if hy == 0 else "true"
+                self.incoming(ph, value, self.cur)
+                self.br(done)
+                if nxt != "":
+                    self.place(nxt)
+            self.place(done)
+            return Val(self.phi(ph), "bool")
         hy = self.has(hv.t, args[1].s)
         if hy == -2:
             # a field that may be unassigned: not None, and its "is assigned" flag
@@ -167,6 +199,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str) -> Val:
         if known < -1:
             return Val(self.ins(f"icmp {'ne' if known == -2 else 'eq'} ptr {v.v}, null"), "bool")
         if known < 0:
+            if v.t in self.classes and self.classes[v.t].tag > 0:
+                return self.obj_isinst(v, args[1])
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):

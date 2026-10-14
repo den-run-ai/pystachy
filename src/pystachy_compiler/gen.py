@@ -68,6 +68,7 @@ from src.pystachy_compiler.calls import (
     gen_tests as calls_tests,
     gen_to_callable as calls_to_callable,
     gen_unbound_call as calls_unbound_call,
+    gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
     gen_affix_any as containers_affix_any,
@@ -256,8 +257,11 @@ from src.pystachy_compiler.expressions import (
     gen_cls_bound as expressions_cls_bound,
     gen_cmp2 as expressions_cmp2,
     gen_cmp_method as expressions_cmp_method,
+    gen_concrete_cmp as expressions_concrete_cmp,
     gen_comparable as expressions_comparable,
     gen_compare as expressions_compare,
+    gen_inherit_cmp as expressions_inherit_cmp,
+    gen_inherit_contains as expressions_inherit_contains,
     gen_concat as expressions_concat,
     gen_cond as expressions_cond,
     gen_conversion as expressions_conversion,
@@ -276,6 +280,8 @@ from src.pystachy_compiler.expressions import (
     gen_ifexp as expressions_ifexp,
     gen_index as expressions_index,
     gen_isinst as expressions_isinst,
+    gen_class_matches as expressions_class_matches,
+    gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
     gen_isnone as expressions_isnone,
     gen_isnull as expressions_isnull,
@@ -1678,6 +1684,12 @@ class Gen:
     def isinst(self, t: str, c: Node) -> int:
         return expressions_isinst(self, t, c)
 
+    def class_matches(self, c: str, t: Node) -> bool:
+        return expressions_class_matches(self, c, t)
+
+    def obj_isinst(self, v: Val, t: Node) -> Val:
+        return expressions_obj_isinst(self, v, t)
+
     def isnone(self, t: str) -> int:
         return expressions_isnone(self, t)
 
@@ -1828,6 +1840,15 @@ class Gen:
     def cmp_method(self, t: str, m: str, other: str) -> str:
         return expressions_cmp_method(self, t, m, other)
 
+    def inherit_cmp(self, op: str, a: Val, b: Val, phase: int=0) -> Val:
+        return expressions_inherit_cmp(self, op, a, b, phase)
+
+    def inherit_contains(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_inherit_contains(self, op, a, b)
+
+    def concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_concrete_cmp(self, op, a, b)
+
     def isnull(self, v: Val) -> str:
         return expressions_isnull(self, v)
 
@@ -1963,8 +1984,11 @@ class Gen:
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None) -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct)
+
+    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str) -> Val:
+        return calls_virtual_call(self, f, pre, args, want, none)
 
     def fname(self, f: FnInfo) -> str:
         return calls_fname(self, f)

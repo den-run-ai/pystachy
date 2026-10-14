@@ -89,13 +89,17 @@ Lambdas, closures and decorators of functions are supported. Functions with `*ar
 fully dynamic Python.
 
 Classes support fields, methods, class attributes, `@staticmethod`, `@classmethod` and
-statically resolved operator and container methods. Dataclasses support `kw_only=True` and
+supported operator and container methods. Dataclasses support `kw_only=True` and
 `__post_init__`; options such as `frozen=True`, `order=True` and `dataclasses.field()` are
 not supported.
 
-General inheritance is not supported. The exceptions are user-defined exception classes and
-the `Generic[...]` base used to declare a generic class. Dynamic attribute hooks, metaclasses
-and general class or method decorators are outside the supported subset.
+Ordinary classes support single inheritance, inherited fields and constructors, instance-method
+overrides, `super()` and runtime `isinstance()` checks. A base-typed receiver calls its concrete
+class's override. Constructors in these hierarchies need annotated parameters; inheritance
+involving class templates, dataclasses, NamedTuples or builtin types is unsupported. Exception
+classes retain their separate inheritance rules, and `Generic[...]` declares a generic class.
+Multiple inheritance, dynamic attribute hooks, metaclasses and general class or method
+decorators remain outside the supported subset.
 
 See [functions and classes](language/typing.md) and
 [object protocols](language/semantics.md#object-protocols) for the detailed rules.
@@ -120,7 +124,7 @@ arbitrary context managers are not supported. Exceptions use the normal
 | Indexing and slicing | Negative indices; string and list slices without a step |
 | Iterator-like expressions | `range`, `enumerate`, `zip`, `reversed` in supported loops and consumers |
 | Generator expressions, `map`, `filter` | Direct arguments of supported consumers such as `sum`, `list`, `sorted`, `any` and `str.join` |
-| Object operations | Supported operator and container methods, resolved statically |
+| Object operations | Supported operator and container methods, with runtime overrides in single-inheritance hierarchies |
 
 Generator expressions consumed this way do not provide general generator objects. Functions
 using `yield`, standalone iterators with `__next__`, dict comprehensions and multi-clause
@@ -190,7 +194,7 @@ CPython extension builds are documented separately in [FFI](ffi.md).
 
 ## Unsupported features
 
-The main gaps are general inheritance, arbitrary unions and `Any`, generators, `async`,
+The main gaps are multiple inheritance, arbitrary unions and `Any`, generators, `async`,
 `bytes` and binary files, complex and arbitrary-precision numbers, `match`, `:=`,
 dynamic attribute access, stepped slices and unrestricted argument expansion.
 

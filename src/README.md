@@ -36,9 +36,8 @@ separate type-checking pass.
 live in the operation modules as generic `gen_*` functions taking an explicit
 `self`, specialized to `Gen` by the self-hosted compiler. This keeps dependencies
 one-way: operation modules import shared records and helpers, while `gen.py`
-imports the operations. They do not import `Gen`. Normal class inheritance is
-unsupported by the compiler subset, so these are explicit calls rather than
-mixins or dynamic method installation.
+imports the operations. They do not import `Gen`. Explicit forwarding keeps this
+module boundary visible and requires neither mixins nor dynamic method installation.
 
 ## Entry points and bootstrap
 

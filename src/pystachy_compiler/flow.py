@@ -421,7 +421,11 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         fl.exposed()
         ci.leak = fl.escaped
     for f in ci.fields:
-        if (f in fl.unsafe or ci.name + "." + f in self.cvars) and f not in ci.fflag:  # (a class variable's: has the object its own value)
+        # A derived constructor can omit the base constructor, or call an override before
+        # assigning its own fields. Keep assignment bits in the root layout so base-typed
+        # reads remain safe for every ordinary subclass, including future call paths.
+        checked = ci.tag > 0 and not f.startswith(" ")
+        if (checked or f in fl.unsafe or ci.name + "." + f in self.cvars) and f not in ci.fflag:
             if ci.fpos[f] < nb and f in fl.unsafe:
                 # (the base's code, which reads it with no flag to test)
                 self.line = ci.node.line

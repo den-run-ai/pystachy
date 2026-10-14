@@ -901,20 +901,30 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     # (super(C, self), in a method of class C, is super(): C as the loader qualifies it, m$C in
     # module m, and read as the module's name, not a local's)
     same = len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s == cls and self.globread(cls) and sc.kids[2].kind == "name" and sc.kids[2].s == me0
-    if (len(sc.kids) > 1 and not same) or cls == "" or self.classes[cls].exc == "":
-        self.err("super() is only supported without arguments, in the methods of exception classes (super(C, self) in a method of C is super())")
+    ordinary = cls in self.classes and self.classes[cls].tag > 0
+    if ordinary and len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s in self.classes and self.derives(cls, sc.kids[1].s) and self.globread(sc.kids[1].s) and sc.kids[2].kind == "name" and sc.kids[2].s == me0:
+        same = True
+    if (len(sc.kids) > 1 and not same) or cls == "" or (self.classes[cls].exc == "" and not ordinary):
+        self.err("super() is only supported without arguments in a method of a class with a supported base (super(C, self) in a method of C is super())")
     if me0 == "":
         self.err("super() in a class method (which binds cls, the class) or a static method without parameters is not supported")
     me = self.expr(mk("name", me0, sc.line, []), "")
-    b = self.classes[cls].base
+    start = sc.kids[1].s if ordinary and len(sc.kids) == 3 else cls
+    b = self.classes[start].base
     if b in self.classes and m in self.classes[b].methods:
         bm = self.classes[b].methods[m]
         if bm.deco != "" and not based:
             # a static or class method of the base gets no object (Base.m(self, ...) passes
             # self as its first argument), and a class method's cls would be the object's class
             self.cls_bound(bm, cls, True)
-            return self.call_fn(bm, [], args)
-        return self.call_fn(bm, [me], args)
+            return self.call_fn(bm, [], args, direct=True)
+        return self.call_fn(bm, [me], args, direct=True)
+    if ordinary:
+        if m == "__init__" and b == "":
+            if len(args) != 0:
+                self.err("object.__init__() takes exactly one argument (the instance to initialize)")
+            return Val("null", "None")
+        self.err(f"super() has no supported method '{m}' in the base of {short(cls)}")
     if m == "__init__":
         self.exc_kw(b, args, f"{short(b)}.__init__()")
         vals = self.exc_vals(args)

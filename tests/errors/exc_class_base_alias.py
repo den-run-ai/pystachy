@@ -1,4 +1,4 @@
-# error: class inheritance is not supported (only an exception class may have a base, which names a builtin exception class or an exception class of the program)
+# error: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class
 VE = ValueError
 
 

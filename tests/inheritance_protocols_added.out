@@ -1,0 +1,17 @@
+True False True
+False True True
+True False True
+True True
+iterate
+iterate
+True False
+contains 1
+contains 1
+False True
+contains 1
+contains 1
+False True
+True False
+argument of type 'Empty' is not iterable
+argument of type 'NoneType' is not iterable
+[exit 0]

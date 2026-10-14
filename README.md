@@ -131,7 +131,8 @@ Native C calls and experimental CPython extension builds are described in the
 Pystachy is experimental and supports a subset of Python. It is a good fit for typed,
 algorithmic code; broad compatibility with arbitrary PyPI packages is still limited.
 
-- Generators, `async`, general class inheritance and `bytes` are not supported.
+- Ordinary single inheritance is supported; multiple inheritance, generators, `async` and
+  `bytes` are not. See the [class rules](docs/language/typing.md#single-inheritance).
 - Integers are checked 64-bit values; overflow raises `OverflowError`.
 - Strings store UTF-8 bytes, so indexing and length differ from CPython for non-ASCII text.
 - Unsupported constructs produce compile-time diagnostics. Known semantic differences are
