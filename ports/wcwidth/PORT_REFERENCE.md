@@ -17,7 +17,7 @@ Archive SHA-256: `ae0ef90b90f6af38b54f1fe6d58662ec33b3cb4b8391958a62416d65423172
 | file | upstream SHA-256 | edits |
 |---|---|---|
 | `__init__.py` | `646c6b7a3dc93d36475da57f1da58b83879ca323f97c8d7b0345614de51ad9cc` | 12 regions: imports, `os.environ`, the C extension's branch, `__all__` |
-| `_wcwidth.py` | `d90e01620d4bacb231cc15584cd20c36f36bd1084894d93c5e26eec06fc0e688` | 4 regions: `lru_cache` |
+| `_wcwidth.py` | `d90e01620d4bacb231cc15584cd20c36f36bd1084894d93c5e26eec06fc0e688` | 1 region: legacy variable-length-tuple helper's cache |
 | `_wcswidth.py` | `674f1420fce6114b02b7e371fc574c4553776efa5b7b0982df5fcaef93e40b4e` | 9 regions |
 | `_constants.py` | `04425f05bce4197bac837bbb40c07e10e070da21fc1dd39c28be0f6052425a68` | 11 regions |
 | `bisearch.py` | `63f15dbd84f31570f6a5ae5ca6951e803e525dfcbe07c1c2e00f6bac939d6f8d` | 1 line |
@@ -33,7 +33,9 @@ Archive SHA-256: `ae0ef90b90f6af38b54f1fe6d58662ec33b3cb4b8391958a62416d65423172
 ## Adaptation record
 
 - Binary-search tables become lists; the grapheme file keeps the four tables used by the two exposed functions.
-- C-extension/per-terminal branches and cache decorators are omitted; dictionary membership replaces frozenset code-point membership.
+- C-extension/per-terminal branches are omitted; dictionary membership replaces frozenset code-point membership.
+- Upstream's `wcwidth` and `_wcmatch_version` cache decorators are retained. Only the cache
+  on the unsupported `_wcversion_value` variable-length-tuple helper is omitted.
 - `_split_chars()` decodes UTF-8 sequences and bounds work by `n=`; the CPython branch preserves character-based input during differential recording.
 - The adapted parameter checks use static integer types, and the ASCII fast path spells out printable-character bounds.
 

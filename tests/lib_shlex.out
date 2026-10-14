@@ -1,0 +1,210 @@
+'word' ['word'] ['word']
+  compat ['word'] ['word']
+  split, not POSIX ['word']
+'two words' ['two', 'words'] ['two', 'words']
+  compat ['two', 'words'] ['two', 'words']
+  split, not POSIX ['two', 'words']
+'  padded   out  ' ['padded', 'out'] ['padded', 'out']
+  compat ['padded', 'out'] ['padded', 'out']
+  split, not POSIX ['padded', 'out']
+'tab\tand\nnewline' ['tab', 'and', 'newline'] ['tab', 'and', 'newline']
+  compat ['tab', 'and', 'newline'] ['tab', 'and', 'newline']
+  split, not POSIX ['tab', 'and', 'newline']
+'back\\slash' ['backslash'] ['backslash']
+  compat ['back', '\\', 'slash'] ['backslash']
+  split, not POSIX ['back\\slash']
+'\\ lead' [' lead'] [' lead']
+  compat ['\\', 'lead'] [' lead']
+  split, not POSIX ['\\', 'lead']
+'trail\\ ' ['trail '] ['trail ']
+  compat ['trail', '\\'] ['trail ']
+  split, not POSIX ['trail\\']
+'mid\\ dle word' ['mid dle', 'word'] ['mid dle', 'word']
+  compat ['mid', '\\', 'dle', 'word'] ['mid dle', 'word']
+  split, not POSIX ['mid\\', 'dle', 'word']
+'say "two words"' ['say', 'two words'] ['say', 'two words']
+  compat ['say', '"two words"'] ['say', 'two words']
+  split, not POSIX ['say', '"two words"']
+"say 'two words'" ['say', 'two words'] ['say', 'two words']
+  compat ['say', "'two words'"] ['say', 'two words']
+  split, not POSIX ['say', "'two words'"]
+'"a" "b" "c"' ['a', 'b', 'c'] ['a', 'b', 'c']
+  compat ['"a"', '"b"', '"c"'] ['a', 'b', 'c']
+  split, not POSIX ['"a"', '"b"', '"c"']
+"'a' b 'c'" ['a', 'b', 'c'] ['a', 'b', 'c']
+  compat ["'a'", 'b', "'c'"] ['a', 'b', 'c']
+  split, not POSIX ["'a'", 'b', "'c'"]
+'glued"quoted"parts\'and\'more' ['gluedquotedpartsandmore'] ['gluedquotedpartsandmore']
+  compat ['glued"quoted"parts\'and\'more'] ['gluedquotedpartsandmore']
+  split, not POSIX ['glued"quoted"parts\'and\'more']
+'""' [''] ['']
+  compat ['""'] ['']
+  split, not POSIX ['""']
+"''" [''] ['']
+  compat ["''"] ['']
+  split, not POSIX ["''"]
+'empty "" args \'\' here' ['empty', '', 'args', '', 'here'] ['empty', '', 'args', '', 'here']
+  compat ['empty', '""', 'args', "''", 'here'] ['empty', '', 'args', '', 'here']
+  split, not POSIX ['empty', '""', 'args', "''", 'here']
+'\\"' ['"'] ['"']
+  compat ['\\', 'ValueError: No closing quotation'] ['"']
+  split, not POSIX ['\\"']
+'"\\""' ['"'] ['"']
+  compat ['"\\"', 'ValueError: No closing quotation'] ['"']
+  split, not POSIX ['ValueError: No closing quotation']
+'"esc\\ape"' ['esc\\ape'] ['esc\\ape']
+  compat ['"esc\\ape"'] ['esc\\ape']
+  split, not POSIX ['"esc\\ape"']
+'"back\\\\slash"' ['back\\slash'] ['back\\slash']
+  compat ['"back\\\\slash"'] ['back\\slash']
+  split, not POSIX ['"back\\\\slash"']
+'"quote\\"inside"' ['quote"inside'] ['quote"inside']
+  compat ['"quote\\"', 'inside"'] ['quote"inside']
+  split, not POSIX ['"quote\\"', 'inside"']
+"'no\\escape'" ['no\\escape'] ['no\\escape']
+  compat ["'no\\escape'"] ['no\\escape']
+  split, not POSIX ["'no\\escape'"]
+'\'it\'"\'"\'s\'' ["it's"] ["it's"]
+  compat ["'it'", '"\'"', "'s'"] ["it's"]
+  split, not POSIX ["'it'", '"\'"', "'s'"]
+'a#comment' ['a#comment'] ['a']
+  compat ['a'] ['a']
+  split, not POSIX ['a']
+'a # comment\nb' ['a', '#', 'comment', 'b'] ['a', 'b']
+  compat ['a', 'b'] ['a', 'b']
+  split, not POSIX ['a', 'b']
+'#whole line\nnext' ['#whole', 'line', 'next'] ['next']
+  compat ['next'] ['next']
+  split, not POSIX ['next']
+'x=1 y=2' ['x=1', 'y=2'] ['x=1', 'y=2']
+  compat ['x', '=', '1', 'y', '=', '2'] ['x', '=', '1', 'y', '=', '2']
+  split, not POSIX ['x=1', 'y=2']
+'--opt=val -f file' ['--opt=val', '-f', 'file'] ['--opt=val', '-f', 'file']
+  compat ['-', '-', 'opt', '=', 'val', '-', 'f', 'file'] ['-', '-', 'opt', '=', 'val', '-', 'f', 'file']
+  split, not POSIX ['--opt=val', '-f', 'file']
+'a;b' ['a;b'] ['a;b']
+  compat ['a', ';', 'b'] ['a', ';', 'b']
+  split, not POSIX ['a;b']
+'a&&b||c' ['a&&b||c'] ['a&&b||c']
+  compat ['a', '&', '&', 'b', '|', '|', 'c'] ['a', '&', '&', 'b', '|', '|', 'c']
+  split, not POSIX ['a&&b||c']
+'a>out 2>&1' ['a>out', '2>&1'] ['a>out', '2>&1']
+  compat ['a', '>', 'out', '2', '>', '&', '1'] ['a', '>', 'out', '2', '>', '&', '1']
+  split, not POSIX ['a>out', '2>&1']
+':-) ;-)' [':-)', ';-)'] [':-)', ';-)']
+  compat [':', '-', ')', ';', '-', ')'] [':', '-', ')', ';', '-', ')']
+  split, not POSIX [':-)', ';-)']
+'café naïve ☃' ['café', 'naïve', '☃'] ['café', 'naïve', '☃']
+  compat ['caf', 'é', 'na', 'ï', 've', '☃'] ['café', 'naïve', '☃']
+  split, not POSIX ['café', 'naïve', '☃']
+'"café ☃"' ['café ☃'] ['café ☃']
+  compat ['"café ☃"'] ['café ☃']
+  split, not POSIX ['"café ☃"']
+'é\\é' ['éé'] ['éé']
+  compat ['é', '\\', 'é'] ['éé']
+  split, not POSIX ['é\\é']
+'a\\\nb' ['a\nb'] ['a\nb']
+  compat ['a', '\\', 'b'] ['a\nb']
+  split, not POSIX ['a\\', 'b']
+'' [] []
+  compat [] []
+  split, not POSIX []
+'"open' ValueError: No closing quotation
+"'open" ValueError: No closing quotation
+'end\\' ValueError: No escaped character
+'"end\\' ValueError: No escaped character
+ValueError: s argument must not be None
+'a && b || c' ['a', '&&', 'b', '||', 'c'] ['a', '&', '&', 'b', '||', 'c'] ['a', '&&', 'b', '||', 'c'] ['a', '&', '&', 'b', '|', '|', 'c']
+  whitespace_split ['a', '&&', 'b', '||', 'c']
+  _ False ['a', '&', '&', 'b', '|', '|', 'c'] _
+'a&&b||c' ['a', '&&', 'b', '||', 'c'] ['a', '&', '&', 'b', '||', 'c'] ['a', '&&', 'b', '||', 'c'] ['a', '&', '&', 'b', '|', '|', 'c']
+  whitespace_split ['a', '&&', 'b||c']
+  _ False ['a', '&', '&', 'b', '|', '|', 'c'] _
+'a ; b;c' ['a', ';', 'b', ';', 'c'] ['a', ';', 'b', ';', 'c'] ['a', ';', 'b', ';', 'c'] ['a', ';', 'b', ';', 'c']
+  whitespace_split ['a', ';', 'b;c']
+  _ False ['a', ';', 'b', ';', 'c'] _
+'a > b >> c < d' ['a', '>', 'b', '>>', 'c', '<', 'd'] ['a', '>', 'b', '>', '>', 'c', '<', 'd'] ['a', '>', 'b', '>>', 'c', '<', 'd'] ['a', '>', 'b', '>', '>', 'c', '<', 'd']
+  whitespace_split ['a', '>', 'b', '>>', 'c', '<', 'd']
+  _ False ['a', '>', 'b', '>', '>', 'c', '<', 'd'] _
+'(a) && (b)' ['(', 'a', ')', '&&', '(', 'b', ')'] ['(', 'a', ')', '&', '&', '(', 'b', ')'] ['(', 'a', ')', '&&', '(', 'b', ')'] ['(', 'a', ')', '&', '&', '(', 'b', ')']
+  whitespace_split ['(a)', '&&', '(b)']
+  _ False ['(', 'a', ')', '&', '&', '(', 'b', ')'] _
+'echo $(ls)|wc -l' ['echo', '$', '(', 'ls', ')|', 'wc', '-l'] ['echo', '$', '(', 'ls', ')', '|', 'wc', '-l'] ['echo', '$', '(', 'ls', ')|', 'wc', '-l'] ['echo', '$', '(', 'ls', ')', '|', 'wc', '-', 'l']
+  whitespace_split ['echo', '$(ls)|wc', '-l']
+  _ False ['echo', '$', '(', 'ls', ')', '|', 'wc', '-l'] _
+'~/a&&b-c --color=auto||d *.py?' ['~/a', '&&', 'b-c', '--color=auto', '||', 'd', '*.py?'] ['~/a', '&', '&', 'b-c', '--color=auto', '||', 'd', '*.py?'] ['~/a', '&&', 'b-c', '--color=auto', '||', 'd', '*.py?'] ['~', '/', 'a', '&', '&', 'b', '-', 'c', '-', '-', 'color', '=', 'auto', '|', '|', 'd', '*', '.', 'py', '?']
+  whitespace_split ['~/a', '&&', 'b-c', '--color=auto||d', '*.py?']
+  _ False ['~/a', '&', '&', 'b-c', '--color=auto', '|', '|', 'd', '*.py?'] _
+'f >"abc"' ['f', '>', '"abc"'] ['f', '>', '"abc"'] ['f', '>', 'abc'] ['f', '>', 'abc']
+  whitespace_split ['f', '>"abc"']
+  _ False ['f', '>', '"abc"'] _
+'f >\\"abc\\"' ['f', '>', '\\', '"abc\\"'] ['f', '>', '\\', '"abc\\"'] ['f', '>', '"abc"'] ['f', '>', '"abc"']
+  whitespace_split ['f', '>\\"abc\\"']
+  _ False ['f', '>', '\\', '"abc\\"'] _
+"'')abc" ["''", ')', 'abc'] ["''", ')', 'abc'] ['', ')', 'abc'] ['', ')', 'abc']
+  whitespace_split ["''", ')abc']
+  _ False ["''", ')', 'abc'] _
+'a_b__c' ['a_b__c'] ['a_b__c'] ['a_b__c'] ['a_b__c']
+  whitespace_split ['a_b__c']
+  _ False ['a', '_', 'b', '__', 'c'] _
+'' ['a', '(', 'b', ')', '|', 'c']
+'();<>|&' ['a', '(', 'b', ')|', 'c']
+[('a', 'a'), ('&&', 'c'), ('b', 'a'), ('||', 'c'), ('c', 'a')]
+['ℙƴ☂ℌøἤ'] ['ℙ', 'ƴ', '☂', 'ℌ', 'ø', 'ἤ']
+['é', 't', 'é', 'caf', 'é'] ['été', 'café']
+['a;b', 'c']
+['a', 'b', 'c d']
+['a b', "'", 'c', 'd', "'", 'xe fy', '<', 'g', '>']
+['a b', '^c']
+["a'b", 'c"d']
+first 1 second 2
+last-in pushed third 2 fourth 3
+'' '' 3 '"None", line 3: ' '"other", line 7: '
+raw tokens None None None
+['pushed', 'source', 'one', 'two']
+from stream ['a', 'stream', 'one', 'two'] None
+shlex: pushing token 'pushed'
+shlex: popping token 'pushed'
+shlex: token='noisy'
+pushed noisy None
+shlex: in state ' ' I see character: 'a'
+shlex: in state 'a' I see character: ' '
+shlex: I see whitespace in word state
+shlex: raw token='a'
+shlex: token='a'
+shlex: in state ' ' I see character: "'"
+shlex: in state "'" I see character: 'b'
+shlex: in state "'" I see character: ''
+shlex: I see EOF in quotes state
+['ValueError: No closing quotation']
+['a', 'x', 'y z', 'b', 'x', 'y z', 'c'] 3 True '"D/main.txt", line 3: '
+['a', 'source', 'inc.txt', 'b', 'source', 'inc.txt', 'c']
+True x 'y z'
+
+True
+'' '' ['']
+'safe-word_1@%+=:,./' safe-word_1@%+=:,./ ['safe-word_1@%+=:,./']
+'test file name' 'test file name' ['test file name']
+"it's" 'it'"'"'s' ["it's"]
+'a"b' 'a"b' ['a"b']
+'$HOME' '$HOME' ['$HOME']
+'back`tick`' 'back`tick`' ['back`tick`']
+'x\\y' 'x\y' ['x\\y']
+'bang!' 'bang!' ['bang!']
+'café' 'café' ['café']
+'éàß' 'éàß' ['éàß']
+'tab\there' 'tab	here' ['tab\there']
+'new\nline' 'new
+line' ['new\nline']
+'*.py' '*.py' ['*.py']
+'~user' '~user' ['~user']
+"a'b'c" 'a'"'"'b'"'"'c' ["a'b'c"]
+['a ', 'b'] 'a ' b True
+['a', ' b'] a ' b' True
+['a', ' ', 'b'] a ' ' b True
+['"a', 'b"'] '"a' 'b"' True
+['ls', '-l', 'my file', "it's"] ls -l 'my file' 'it'"'"'s' True
+[]  True
+['é', 'lève', 'caf', 'é']
+['élève', 'café', '中']
+[exit 0]

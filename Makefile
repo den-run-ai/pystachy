@@ -158,6 +158,7 @@ check-runtime:
 # the tree (tests/record.sh --check; CI's Lint workflow runs it)
 check-recordings:
 	PYTHON="$(PY)" tests/record.sh --check
+	$(PY) tools/check_agent_source.py
 
 # Prototype port acceptance: pinned upstream inputs, reviewed adaptations, case inventory,
 # and the unedited upstream suites on CPython against the edited fnmatch/textwrap modules.

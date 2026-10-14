@@ -1,4 +1,11 @@
-"""functools for Pystachy: cache() and lru_cache(), written in the subset.
+"""functools for Pystachy: caching, reduction and comparison keys.
+
+reduce() and cmp_to_key() adapt the Python fallback algorithms from CPython
+3.13.16 Lib/functools.py, commit cbc944f4bc59639a444dd971c737788ba2283a91,
+SHA-256 c95756a4d9bfb159e9cbda243f9d62b0d10860bb68f9a5a37880d3cae44b2175.
+Their subset specializations require fixed accumulator/key types. Both adapted
+algorithms also run under CPython; tests compare compiled execution separately
+with CPython's native public implementations.
 
 Pystachy's own stand-in for CPython 3.13's Lib/functools.py, whose lru_cache() wraps the C type
 _functools._lru_cache_wrapper (Modules/_functoolsmodule.c). The wrapper below follows that C code:
@@ -19,10 +26,88 @@ When this module runs under CPython, the public decorators use its native _funct
 
 from typing import Callable, Generic, NamedTuple, TypeVar, TypeVarTuple
 
-__all__ = ["cache", "lru_cache"]
+__all__ = ["cache", "lru_cache", "reduce", "cmp_to_key"]
 
 _Ts = TypeVarTuple("_Ts")  # the decorated function's parameter types
 _R = TypeVar("_R")  # and its return type
+_T = TypeVar("_T")
+_F = TypeVar("_F")
+
+
+class _CmpKey(Generic[_T, _F]):
+    # Pystachy port: CPython's cmp_to_key() Python fallback defines its K class
+    # inside the function and closes over mycmp. Classes must be module-level
+    # in the subset, so a typed field carries that same comparator.
+    def __init__(self, obj: _T, mycmp: _F) -> None:
+        self.obj = obj
+        self._cmp = mycmp
+
+    def _compare(self, other) -> int:
+        # The native public wrapper rejects an unrelated object even when it
+        # happens to expose .obj; the Python fallback's duck typing does not.
+        if not isinstance(other, _CmpKey):
+            raise TypeError("other argument must be K instance")
+        return self._cmp(self.obj, other.obj)
+
+    def __lt__(self, other) -> bool:
+        return self._compare(other) < 0
+
+    def __gt__(self, other) -> bool:
+        return self._compare(other) > 0
+
+    def __eq__(self, other) -> bool:
+        return self._compare(other) == 0
+
+    def __le__(self, other) -> bool:
+        return self._compare(other) <= 0
+
+    def __ge__(self, other) -> bool:
+        return self._compare(other) >= 0
+
+    # Pystachy port: defining __eq__ disables __hash__ under CPython without
+    # an explicit None class attribute (unsupported in the subset). Pystachy
+    # rejects hash() on user-class instances at compile time.
+
+
+def cmp_to_key(mycmp):
+    """Convert a two-argument comparator into a sorting key function."""
+    # Pystachy port: the closure is the key factory; its objects retain the
+    # fallback's obj attribute and five comparison methods.
+    def key(obj):
+        return _CmpKey(obj, mycmp)
+
+    return key
+
+
+def reduce(function, sequence, /, *initial):
+    """Apply a function cumulatively to the items, from left to right.
+
+    The initial value, when supplied, precedes the sequence's first item.
+    Without it an empty sequence raises TypeError. The accumulator and callback
+    have the types inferred for this call, as with the other subset templates.
+    """
+    # Pystachy port: CPython 3.13.16's Python fallback uses an object() default
+    # sentinel and iter()/next(), none of which have subset types. A zero-or-one
+    # positional tuple distinguishes an omitted initial from an explicit None.
+    # One for loop remembers whether its first item supplies the accumulator,
+    # preserving single-pass streams, iteration order and list mutation.
+    if len(initial) > 1:
+        raise TypeError("reduce expected at most 3 arguments, got " + str(2 + len(initial)))
+    if len(initial) == 0:
+        have_value = False
+        for element in sequence:
+            if not have_value:
+                value = element
+                have_value = True
+            else:
+                value = function(value, element)
+        if not have_value:
+            raise TypeError("reduce() of empty iterable with no initial value")
+    else:
+        value = initial[0]
+        for element in sequence:
+            value = function(value, element)
+    return value
 
 
 class CacheInfo(NamedTuple):

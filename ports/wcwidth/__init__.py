@@ -26,7 +26,7 @@ __lazy_modules__ = [
 
 # std imports
 import os
-# from functools import lru_cache  # Pystachy port: no functools (#11); the C branch below used it
+# from functools import lru_cache  # Pystachy port: the omitted C-extension branch used it
 
 # local
 # Pystachy port: the lines commented out here and below import the rest of the API, which needs

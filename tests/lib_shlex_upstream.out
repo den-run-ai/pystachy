@@ -1,0 +1,2 @@
+shlex upstream testCompat 61 testSplitPosix 62 testJoinRoundtrip 123
+[exit 0]

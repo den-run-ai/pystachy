@@ -18,7 +18,10 @@ print(wcwidth("中"), wcswidth("中文"))
 - `wcwidth()` and `wcswidth()`, ambiguous width 1/2, character-count `n=` and the included Unicode width/grapheme tables.
 - The Unicode-version parameter follows upstream’s accepted/ignored behavior for this release.
 - Per-terminal overrides, `wcstwidth()`, terminal discovery, wrapping/alignment/escape-sequence APIs and the C extension are outside the tested port coverage.
-- The adaptation removes `lru_cache` decorators, so cache inspection/clearing APIs are absent.
+- `wcwidth` retains upstream's 1,024-entry LRU cache, including `cache_info`, `cache_clear`
+  and `__wrapped__`. Default and keyword calls keep their upstream cache-key forms.
+  The private `_wcmatch_version` helper also retains its eight-entry cache; the legacy
+  variable-length-tuple parser `_wcversion_value` remains outside the compiled API.
 
 <a id="deviations-it-hits"></a>
 
@@ -41,7 +44,9 @@ PYSTACHY_PATH=ports ./pystachy run tests/port_wcwidth_core.py
 
 The tests adapt upstream core/emoji/ambiguous-width cases and add table boundaries, controls, UTF-8/raw-byte edges and character-count limits.
 
-Cases: [port_wcwidth_core.py](../../tests/port_wcwidth_core.py), [port_wcwidth_edges.py](../../tests/port_wcwidth_edges.py).
+Cases: [port_wcwidth_core.py](../../tests/port_wcwidth_core.py), [port_wcwidth_edges.py](../../tests/port_wcwidth_edges.py),
+[port_wcwidth_cache.py](../../tests/port_wcwidth_cache.py). The cache case checks warm hits,
+default/keyword keys, clearing, error misses and eviction while retaining Unicode width results.
 
 <a id="speed"></a>
 
