@@ -1,0 +1,4404 @@
+{
+  "schema_version": 1,
+  "profile": {
+    "schema_version": 1,
+    "iterations": 24,
+    "samples": 3,
+    "numeric_inner": 4096,
+    "method": {
+      "selection_phase": "steady",
+      "selection_metric": "eligible region cProfile cumulative_time_s",
+      "profile_times_are_speed_benchmarks": false,
+      "scope": [
+        "/workspace/scratch/467800d8dcf8/pystachy/examples/adaptive",
+        "/workspace/scratch/467800d8dcf8/pystachy/examples/route",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13"
+      ],
+      "argument_values_recorded": false,
+      "container_contents_recorded": false,
+      "notes": [
+        "cProfile and sys.setprofile are separate passes; both perturb execution.",
+        "Only uninstrumented_median_s measures application wall time.",
+        "Eligibility is conservative adaptive purity policy, not the full Pystachy language subset.",
+        "AST-admissible sources have not been compiled by this profile-only tool.",
+        "source_feature_tags describe visible syntax; many tagged features are already supported by the full compiler.",
+        "Exact int/float types do not establish native value bounds, finiteness, or intermediate overflow safety.",
+        "Fixed-budget context coverage assigns one body slot per (caller site, signature); it measures coverage, not dispatch or inlining gains.",
+        "Static-known entry signatures are supplied by the benchmark; they are not runtime discovery.",
+        "Per-function cumulative times overlap and must not be summed for coverage.",
+        "The int/float stream fits a two-variant cache; region cloning alone adds no type-discovery evidence."
+      ]
+    },
+    "applications": [
+      {
+        "name": "event",
+        "phases": {
+          "steady": {
+            "uninstrumented_median_s": 3.520300015225075e-05,
+            "uninstrumented_samples_s": [
+              5.1627001084852964e-05,
+              3.520300015225075e-05,
+              3.323999771964736e-05
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.000107491,
+              "native_builtin_self_time_s": 5.3712e-05
+            }
+          },
+          "unseen": {
+            "uninstrumented_median_s": 4.962499951943755e-05,
+            "uninstrumented_samples_s": [
+              4.962499951943755e-05,
+              3.5904002288589254e-05,
+              5.441200119093992e-05
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.00010668,
+              "native_builtin_self_time_s": 5.3372e-05
+            }
+          },
+          "shifted": {
+            "uninstrumented_median_s": 3.267899955972098e-05,
+            "uninstrumented_samples_s": [
+              4.602899934980087e-05,
+              3.267899955972098e-05,
+              3.111700061708689e-05
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.00010080600000000001,
+              "native_builtin_self_time_s": 5.1533e-05
+            }
+          }
+        },
+        "source": "examples/route/route.py (original router functions)",
+        "steady_ast_policy_coverage": {
+          "all_in_scope_python_calls": 737,
+          "eligible_region_python_calls": 0,
+          "eligible_call_fraction": 0.0,
+          "unrecorded_function_calls": 0,
+          "coverage_is_lower_bound": false,
+          "python_self_time_s": 0.000107491,
+          "eligible_python_self_time_s": 0,
+          "native_builtin_self_time_s": 5.3712e-05,
+          "all_profiled_self_time_s": 0.000161203,
+          "eligible_python_self_time_fraction": 0.0,
+          "eligible_all_profiled_self_time_fraction": 0.0
+        }
+      },
+      {
+        "name": "text",
+        "phases": {
+          "steady": {
+            "uninstrumented_median_s": 0.0003212040028301999,
+            "uninstrumented_samples_s": [
+              0.0003903090000676457,
+              0.0002955559975816868,
+              0.0003212040028301999
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.0004575170000000001,
+              "native_builtin_self_time_s": 0.000562832
+            }
+          },
+          "unseen": {
+            "uninstrumented_median_s": 0.00031678800223744474,
+            "uninstrumented_samples_s": [
+              0.000489898997329874,
+              0.0002934619988081977,
+              0.00031678800223744474
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.00040266499999999997,
+              "native_builtin_self_time_s": 0.000399425
+            }
+          },
+          "shifted": {
+            "uninstrumented_median_s": 0.00032325799838872626,
+            "uninstrumented_samples_s": [
+              0.00032325799838872626,
+              0.00033953300226130523,
+              0.0003068129990424495
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.000419659,
+              "native_builtin_self_time_s": 0.000570775
+            }
+          }
+        },
+        "source": "stdlib textwrap/re (original functions), small driver",
+        "steady_ast_policy_coverage": {
+          "all_in_scope_python_calls": 316,
+          "eligible_region_python_calls": 0,
+          "eligible_call_fraction": 0.0,
+          "unrecorded_function_calls": 0,
+          "coverage_is_lower_bound": false,
+          "python_self_time_s": 0.0004575170000000001,
+          "eligible_python_self_time_s": 0,
+          "native_builtin_self_time_s": 0.000562832,
+          "all_profiled_self_time_s": 0.001020349,
+          "eligible_python_self_time_fraction": 0.0,
+          "eligible_all_profiled_self_time_fraction": 0.0
+        }
+      },
+      {
+        "name": "numeric",
+        "phases": {
+          "steady": {
+            "uninstrumented_median_s": 0.0059144520018890034,
+            "uninstrumented_samples_s": [
+              0.0059144520018890034,
+              0.0058040260009875055,
+              0.0060841270023956895
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.017829668,
+              "native_builtin_self_time_s": 2.6517000000000004e-05
+            }
+          },
+          "unseen": {
+            "uninstrumented_median_s": 0.006106581997300964,
+            "uninstrumented_samples_s": [
+              0.006106581997300964,
+              0.005975161999231204,
+              0.00619960200128844
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.018847937000000002,
+              "native_builtin_self_time_s": 3.4197e-05
+            }
+          },
+          "shifted": {
+            "uninstrumented_median_s": 0.007144195998989744,
+            "uninstrumented_samples_s": [
+              0.0076844010000058915,
+              0.007144195998989744,
+              0.006223106996912975
+            ],
+            "profiled_hotness": {
+              "in_scope_python_self_time_s": 0.022035662,
+              "native_builtin_self_time_s": 0.000150554
+            }
+          }
+        },
+        "source": "synthetic scalar mini-application, Python orchestration",
+        "steady_ast_policy_coverage": {
+          "all_in_scope_python_calls": 98353,
+          "eligible_region_python_calls": 98352,
+          "eligible_call_fraction": 0.9999898325419662,
+          "unrecorded_function_calls": 0,
+          "coverage_is_lower_bound": false,
+          "python_self_time_s": 0.017829668,
+          "eligible_python_self_time_s": 0.017771976000000002,
+          "native_builtin_self_time_s": 2.6517000000000004e-05,
+          "all_profiled_self_time_s": 0.017856185,
+          "eligible_python_self_time_fraction": 0.9967642695309863,
+          "eligible_all_profiled_self_time_fraction": 0.9952840430360685
+        }
+      }
+    ],
+    "functions": [
+      {
+        "id": "examples/adaptive/workloads.py:51:run_numeric",
+        "name": "run_numeric",
+        "file": "examples/adaptive/workloads.py",
+        "line": 51,
+        "calls": 3,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 5.7692e-05,
+        "cumulative_time_s": 0.017837778000000002,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "examples/adaptive/workloads.py:45:numeric_batch",
+        "name": "numeric_batch",
+        "qualname": "numeric_batch",
+        "file": "examples/adaptive/workloads.py",
+        "line": 45,
+        "workloads": [
+          "numeric"
+        ],
+        "calls": 72,
+        "signatures": [
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.int",
+                "type_id": 2
+              },
+              {
+                "name": "n",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 36
+          },
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.float",
+                "type_id": 19
+              },
+              {
+                "name": "n",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 30
+          },
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.bool",
+                "type_id": 9
+              },
+              {
+                "name": "n",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 6
+          }
+        ],
+        "unrecorded_signature_calls": 0,
+        "top1_coverage": 0.5,
+        "top2_coverage": 0.9166666666666666,
+        "coverage_is_lower_bound": false,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 66,
+        "self_time_s": 0.011029166,
+        "cumulative_time_s": 0.017771976000000002,
+        "eligibility": {
+          "leaf": false,
+          "region": true,
+          "reason": "source-checked pure scalar call graph",
+          "helpers": [
+            "numeric_step"
+          ]
+        },
+        "phases": {
+          "steady": {
+            "calls": 24,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 18
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.75,
+            "top2_coverage": 1.0,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.011029166,
+            "cumulative_time_s": 0.017771976000000002
+          },
+          "unseen": {
+            "calls": 24,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 12
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.bool",
+                    "type_id": 9
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.5,
+            "top2_coverage": 0.75,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.011685034,
+            "cumulative_time_s": 0.018808805
+          },
+          "shifted": {
+            "calls": 24,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 18
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.75,
+            "top2_coverage": 1.0,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.013704669000000001,
+            "cumulative_time_s": 0.021977172
+          }
+        },
+        "caller_sites": [
+          {
+            "caller": "examples/adaptive/workloads.py:51:run_numeric",
+            "caller_line": 69,
+            "bytecode_offset": 326,
+            "calls": 72,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 36
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 30
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.bool",
+                    "type_id": 9
+                  },
+                  {
+                    "name": "n",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.5,
+            "top2_coverage": 0.9166666666666666,
+            "coverage_is_lower_bound": false,
+            "phases": {
+              "steady": {
+                "calls": 24,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 18
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 6
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.75,
+                "top2_coverage": 1.0,
+                "coverage_is_lower_bound": false
+              },
+              "unseen": {
+                "calls": 24,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 12
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.bool",
+                        "type_id": 9
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 6
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 6
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.5,
+                "top2_coverage": 0.75,
+                "coverage_is_lower_bound": false
+              },
+              "shifted": {
+                "calls": 24,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 18
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "n",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 6
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.75,
+                "top2_coverage": 1.0,
+                "coverage_is_lower_bound": false
+              }
+            }
+          }
+        ],
+        "source_feature_tags": [],
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 18,
+            "caller_context_covered_calls": 18,
+            "callee_coverage": 0.75,
+            "caller_context_coverage": 0.75,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ],
+        "unrecorded_site_calls": 0
+      },
+      {
+        "id": "examples/adaptive/workloads.py:41:numeric_step",
+        "name": "numeric_step",
+        "qualname": "numeric_step",
+        "file": "examples/adaptive/workloads.py",
+        "line": 41,
+        "workloads": [
+          "numeric"
+        ],
+        "calls": 294984,
+        "signatures": [
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.int",
+                "type_id": 2
+              },
+              {
+                "name": "i",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 172068
+          },
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.float",
+                "type_id": 19
+              },
+              {
+                "name": "i",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 122910
+          },
+          {
+            "arguments": [
+              {
+                "name": "x",
+                "type": "builtins.bool",
+                "type_id": 9
+              },
+              {
+                "name": "i",
+                "type": "builtins.int",
+                "type_id": 2
+              }
+            ],
+            "calls": 6
+          }
+        ],
+        "unrecorded_signature_calls": 0,
+        "top1_coverage": 0.5833129932470914,
+        "top2_coverage": 0.999979659913758,
+        "coverage_is_lower_bound": false,
+        "training_calls": 98328,
+        "exact_numeric_signature_calls": 294978,
+        "self_time_s": 0.00674281,
+        "cumulative_time_s": 0.00674281,
+        "eligibility": {
+          "leaf": true,
+          "region": true,
+          "reason": "source-checked pure scalar call graph",
+          "helpers": []
+        },
+        "phases": {
+          "steady": {
+            "calls": 98328,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 73746
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 24582
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.75,
+            "top2_coverage": 1.0,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.00674281,
+            "cumulative_time_s": 0.00674281
+          },
+          "unseen": {
+            "calls": 98328,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 73740
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 24582
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.bool",
+                    "type_id": 9
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.7499389797412741,
+            "top2_coverage": 0.9999389797412741,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.007123771,
+            "cumulative_time_s": 0.007123771
+          },
+          "shifted": {
+            "calls": 98328,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 73746
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 24582
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.75,
+            "top2_coverage": 1.0,
+            "coverage_is_lower_bound": false,
+            "self_time_s": 0.008272503,
+            "cumulative_time_s": 0.008272503
+          }
+        },
+        "caller_sites": [
+          {
+            "caller": "examples/adaptive/workloads.py:45:numeric_batch",
+            "caller_line": 47,
+            "bytecode_offset": 42,
+            "calls": 294984,
+            "signatures": [
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 172068
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.float",
+                    "type_id": 19
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 122910
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "x",
+                    "type": "builtins.bool",
+                    "type_id": 9
+                  },
+                  {
+                    "name": "i",
+                    "type": "builtins.int",
+                    "type_id": 2
+                  }
+                ],
+                "calls": 6
+              }
+            ],
+            "unrecorded_signature_calls": 0,
+            "top1_coverage": 0.5833129932470914,
+            "top2_coverage": 0.999979659913758,
+            "coverage_is_lower_bound": false,
+            "phases": {
+              "steady": {
+                "calls": 98328,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 73746
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 24582
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.75,
+                "top2_coverage": 1.0,
+                "coverage_is_lower_bound": false
+              },
+              "unseen": {
+                "calls": 98328,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 73740
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 24582
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.bool",
+                        "type_id": 9
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 6
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.7499389797412741,
+                "top2_coverage": 0.9999389797412741,
+                "coverage_is_lower_bound": false
+              },
+              "shifted": {
+                "calls": 98328,
+                "signatures": [
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.float",
+                        "type_id": 19
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 73746
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "name": "x",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      },
+                      {
+                        "name": "i",
+                        "type": "builtins.int",
+                        "type_id": 2
+                      }
+                    ],
+                    "calls": 24582
+                  }
+                ],
+                "unrecorded_signature_calls": 0,
+                "top1_coverage": 0.75,
+                "top2_coverage": 1.0,
+                "coverage_is_lower_bound": false
+              }
+            }
+          }
+        ],
+        "source_feature_tags": [],
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 98328,
+            "callee_covered_calls": 73746,
+            "caller_context_covered_calls": 73746,
+            "callee_coverage": 0.75,
+            "caller_context_coverage": 0.75,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 98328,
+            "callee_covered_calls": 98328,
+            "caller_context_covered_calls": 98328,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ],
+        "unrecorded_site_calls": 0
+      },
+      {
+        "id": "examples/adaptive/workloads.py:95:run_text",
+        "name": "run_text",
+        "file": "examples/adaptive/workloads.py",
+        "line": 95,
+        "calls": 3,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.9012e-05,
+        "cumulative_time_s": 0.001006058,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "examples/adaptive/workloads.py:90:normalize_text",
+        "name": "normalize_text",
+        "file": "examples/adaptive/workloads.py",
+        "line": 90,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 2.1634e-05,
+        "cumulative_time_s": 0.000980149,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:386:fill",
+        "name": "fill",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 386,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.8178e-05,
+        "cumulative_time_s": 0.0008749290000000001,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:361:TextWrapper.fill",
+        "name": "fill",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 361,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.107e-05,
+        "cumulative_time_s": 0.000852443,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:347:TextWrapper.wrap",
+        "name": "wrap",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 347,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.5681e-05,
+        "cumulative_time_s": 0.000837671,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:238:TextWrapper._wrap_chunks",
+        "name": "_wrap_chunks",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 238,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0.00029810700000000004,
+        "cumulative_time_s": 0.0005179410000000001,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:341:TextWrapper._split_chunks",
+        "name": "_split_chunks",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 341,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.0943e-05,
+        "cumulative_time_s": 0.00030404900000000003,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit, unshadowed helper",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:157:TextWrapper._split",
+        "name": "_split",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 157,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 2.1974e-05,
+        "cumulative_time_s": 0.000234565,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "examples/adaptive/workloads.py:74:run_event",
+        "name": "run_event",
+        "file": "examples/adaptive/workloads.py",
+        "line": 74,
+        "calls": 3,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.3791e-05,
+        "cumulative_time_s": 0.00014770200000000002,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "examples/route/route.py:35:load",
+        "name": "load",
+        "file": "examples/route/route.py",
+        "line": 35,
+        "calls": 3,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.4332000000000001e-05,
+        "cumulative_time_s": 9.1618e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py:183:sub",
+        "name": "sub",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py",
+        "line": 183,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.3882e-05,
+        "cumulative_time_s": 8.016100000000001e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py:74:translate",
+        "name": "translate",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py",
+        "line": 74,
+        "calls": 16,
+        "training_calls": 8,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 6.9230000000000005e-06,
+        "cumulative_time_s": 6.692200000000001e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:143:TextWrapper._munge_whitespace",
+        "name": "_munge_whitespace",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 143,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.1745e-05,
+        "cumulative_time_s": 5.8541e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py:85:_translate",
+        "name": "_translate",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py",
+        "line": 85,
+        "calls": 16,
+        "training_calls": 8,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.5815e-05,
+        "cumulative_time_s": 4.3155e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "examples/route/route.py:58:route_fnmatch",
+        "name": "route_fnmatch",
+        "file": "examples/route/route.py",
+        "line": 58,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.4039e-05,
+        "cumulative_time_s": 4.0226000000000004e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit helper",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py:64:fnmatchcase",
+        "name": "fnmatchcase",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py",
+        "line": 64,
+        "calls": 164,
+        "training_calls": 52,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.5118000000000002e-05,
+        "cumulative_time_s": 2.4377e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 52,
+            "callee_covered_calls": 52,
+            "caller_context_covered_calls": 52,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 52,
+            "callee_covered_calls": 52,
+            "caller_context_covered_calls": 52,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py:305:escape",
+        "name": "escape",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py",
+        "line": 305,
+        "calls": 152,
+        "training_calls": 76,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.255e-05,
+        "cumulative_time_s": 2.2995000000000003e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 76,
+            "callee_covered_calls": 76,
+            "caller_context_covered_calls": 76,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 76,
+            "callee_covered_calls": 76,
+            "caller_context_covered_calls": 76,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py:330:_compile",
+        "name": "_compile",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py",
+        "line": 330,
+        "calls": 88,
+        "training_calls": 32,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.2886000000000002e-05,
+        "cumulative_time_s": 1.8625000000000002e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 0.8181818181818182,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 32,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 0.75,
+            "caller_context_coverage": 0.75,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 32,
+            "callee_covered_calls": 32,
+            "caller_context_covered_calls": 32,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py:157:_join_translated_parts",
+        "name": "_join_translated_parts",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py",
+        "line": 157,
+        "calls": 16,
+        "training_calls": 8,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 1.0547e-05,
+        "cumulative_time_s": 1.6844e-05,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py:287:compile",
+        "name": "compile",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/__init__.py",
+        "line": 287,
+        "calls": 16,
+        "training_calls": 8,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 2.4730000000000003e-06,
+        "cumulative_time_s": 5.137e-06,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "defaults, keyword-only and variadic parameters are outside the prototype",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:112:TextWrapper.__init__",
+        "name": "__init__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 112,
+        "calls": 72,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 4.308e-06,
+        "cumulative_time_s": 4.308e-06,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "defaults, keyword-only and variadic parameters are outside the prototype",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 24,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:573:isstring",
+        "name": "isstring",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 573,
+        "calls": 10,
+        "training_calls": 10,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit helper",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:743:compile",
+        "name": "compile",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 743,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 0.8,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 0.8,
+            "caller_context_coverage": 0.8,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:970:parse",
+        "name": "parse",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 970,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 0.8,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 0.8,
+            "caller_context_coverage": 0.8,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:230:Tokenizer.__init__",
+        "name": "__init__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 230,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:239:Tokenizer.__next",
+        "name": "__next",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 239,
+        "calls": 77,
+        "training_calls": 77,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "ordinary function could not be resolved",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 77,
+            "callee_covered_calls": 77,
+            "caller_context_covered_calls": 64,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.8311688311688312,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 77,
+            "callee_covered_calls": 77,
+            "caller_context_covered_calls": 72,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.935064935064935,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:76:State.__init__",
+        "name": "__init__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 76,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "assignment targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:451:_parse_sub",
+        "name": "_parse_sub",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 451,
+        "calls": 9,
+        "training_calls": 9,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "List is outside the numeric kernel subset",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5555555555555556,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:292:Tokenizer.tell",
+        "name": "tell",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 292,
+        "calls": 18,
+        "training_calls": 18,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "Attribute is outside the numeric kernel subset",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 18,
+            "callee_covered_calls": 18,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 18,
+            "callee_covered_calls": 18,
+            "caller_context_covered_calls": 14,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.7777777777777778,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:511:_parse",
+        "name": "_parse",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 511,
+        "calls": 9,
+        "training_calls": 9,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:112:SubPattern.__init__",
+        "name": "__init__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 112,
+        "calls": 14,
+        "training_calls": 14,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "defaults, keyword-only and variadic parameters are outside the prototype",
+          "helpers": []
+        },
+        "top1_coverage": 0.6428571428571429,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 14,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 0.6428571428571429,
+            "caller_context_coverage": 0.6428571428571429,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 14,
+            "callee_covered_calls": 14,
+            "caller_context_covered_calls": 14,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:260:Tokenizer.get",
+        "name": "get",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 260,
+        "calls": 64,
+        "training_calls": 64,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 64,
+            "callee_covered_calls": 64,
+            "caller_context_covered_calls": 56,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.875,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 64,
+            "callee_covered_calls": 64,
+            "caller_context_covered_calls": 60,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.9375,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:255:Tokenizer.match",
+        "name": "match",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 255,
+        "calls": 27,
+        "training_calls": 27,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 27,
+            "callee_covered_calls": 27,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.3333333333333333,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 27,
+            "callee_covered_calls": 27,
+            "caller_context_covered_calls": 14,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5185185185185185,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:894:_parse_flags",
+        "name": "_parse_flags",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 894,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:175:SubPattern.append",
+        "name": "append",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 175,
+        "calls": 51,
+        "training_calls": 51,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit, unshadowed helper",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 51,
+            "callee_covered_calls": 51,
+            "caller_context_covered_calls": 33,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.6470588235294118,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 51,
+            "callee_covered_calls": 51,
+            "caller_context_covered_calls": 43,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.8431372549019608,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:371:_escape",
+        "name": "_escape",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 371,
+        "calls": 10,
+        "training_calls": 10,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "Try is outside the numeric kernel subset",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:163:SubPattern.__len__",
+        "name": "__len__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 163,
+        "calls": 24,
+        "training_calls": 24,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit helper",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.375,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 24,
+            "callee_covered_calls": 24,
+            "caller_context_covered_calls": 14,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5833333333333334,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:167:SubPattern.__getitem__",
+        "name": "__getitem__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 167,
+        "calls": 132,
+        "training_calls": 132,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit helper",
+          "helpers": []
+        },
+        "top1_coverage": 0.9621212121212122,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 132,
+            "callee_covered_calls": 127,
+            "caller_context_covered_calls": 56,
+            "callee_coverage": 0.9621212121212122,
+            "caller_context_coverage": 0.42424242424242425,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 132,
+            "callee_covered_calls": 132,
+            "caller_context_covered_calls": 107,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.8106060606060606,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:171:SubPattern.__setitem__",
+        "name": "__setitem__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 171,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "assignment targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:954:fix_flags",
+        "name": "fix_flags",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 954,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 0.8,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 0.8,
+            "caller_context_coverage": 0.8,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:576:_code",
+        "name": "_code",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 576,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "List is outside the numeric kernel subset",
+          "helpers": []
+        },
+        "top1_coverage": 0.8,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 0.8,
+            "caller_context_coverage": 0.8,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:514:_compile_info",
+        "name": "_compile_info",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 514,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "assignment targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:177:SubPattern.getwidth",
+        "name": "getwidth",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 177,
+        "calls": 14,
+        "training_calls": 14,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "loop targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 14,
+            "callee_covered_calls": 14,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.35714285714285715,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 14,
+            "callee_covered_calls": 14,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.7142857142857143,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:439:_get_literal_prefix",
+        "name": "_get_literal_prefix",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 439,
+        "calls": 9,
+        "training_calls": 9,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "loop targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5555555555555556,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 9,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:431:_get_iscased",
+        "name": "_get_iscased",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 431,
+        "calls": 10,
+        "training_calls": 10,
+        "exact_numeric_signature_calls": 10,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "only numeric constants are supported",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 9,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.9,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:31:_combine_flags",
+        "name": "_combine_flags",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 31,
+        "calls": 8,
+        "training_calls": 8,
+        "exact_numeric_signature_calls": 8,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "defaults, keyword-only and variadic parameters are outside the prototype",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 8,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:410:_generate_overlap_table",
+        "name": "_generate_overlap_table",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 410,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:37:_compile",
+        "name": "_compile",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 37,
+        "calls": 14,
+        "training_calls": 14,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 0.6428571428571429,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 14,
+            "callee_covered_calls": 9,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 0.6428571428571429,
+            "caller_context_coverage": 0.35714285714285715,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 14,
+            "callee_covered_calls": 14,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.7142857142857143,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:401:_simple",
+        "name": "_simple",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 401,
+        "calls": 5,
+        "training_calls": 5,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "assignment targets must be local names",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 5,
+            "callee_covered_calls": 5,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py:82:State.groups",
+        "name": "groups",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_parser.py",
+        "line": 82,
+        "calls": 10,
+        "training_calls": 10,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "ordinary function could not be resolved",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 5,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.5,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 10,
+            "callee_covered_calls": 10,
+            "caller_context_covered_calls": 10,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py:1609:Flag.__and__",
+        "name": "__and__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py",
+        "line": 1609,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py:1591:Flag._get_value",
+        "name": "_get_value",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py",
+        "line": 1591,
+        "calls": 12,
+        "training_calls": 12,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "calls must directly name range or an explicit helper",
+          "helpers": []
+        },
+        "top1_coverage": 0.6666666666666666,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 12,
+            "callee_covered_calls": 8,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 0.6666666666666666,
+            "caller_context_coverage": 0.3333333333333333,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 12,
+            "callee_covered_calls": 12,
+            "caller_context_covered_calls": 8,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 0.6666666666666666,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py:696:EnumType.__call__",
+        "name": "__call__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py",
+        "line": 696,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py:1158:Enum.__new__",
+        "name": "__new__",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py",
+        "line": 1158,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py:38:_compile_pattern",
+        "name": "_compile_pattern",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/fnmatch.py",
+        "line": 38,
+        "calls": 4,
+        "training_calls": 4,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's code",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 4,
+            "callee_covered_calls": 4,
+            "caller_context_covered_calls": 4,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:470:_get_charset_prefix",
+        "name": "_get_charset_prefix",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 470,
+        "calls": 1,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:241:_optimize_charset",
+        "name": "_optimize_charset",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 241,
+        "calls": 1,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py:214:_compile_charset",
+        "name": "_compile_charset",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/re/_compiler.py",
+        "line": 214,
+        "calls": 1,
+        "training_calls": 1,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": [
+          {
+            "compiled_body_budget": 1,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          },
+          {
+            "compiled_body_budget": 2,
+            "calls": 1,
+            "callee_covered_calls": 1,
+            "caller_context_covered_calls": 1,
+            "callee_coverage": 1.0,
+            "caller_context_coverage": 1.0,
+            "coverage_is_lower_bound": false
+          }
+        ]
+      },
+      {
+        "id": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py:197:TextWrapper._handle_long_word",
+        "name": "_handle_long_word",
+        "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/textwrap.py",
+        "line": 197,
+        "calls": 12,
+        "training_calls": 0,
+        "exact_numeric_signature_calls": 0,
+        "self_time_s": 0,
+        "cumulative_time_s": 0,
+        "eligibility": {
+          "leaf": false,
+          "region": false,
+          "reason": "source does not match the function's constants",
+          "helpers": []
+        },
+        "top1_coverage": 1.0,
+        "top2_coverage": 1.0,
+        "steady_fixed_budget_policy": []
+      }
+    ],
+    "coverage": {
+      "all_in_scope_python_calls": 296934,
+      "eligible_region_python_calls": 295056,
+      "eligible_call_fraction": 0.9936753622017014,
+      "eligible_region_exact_numeric_signature_calls": 295044,
+      "unrecorded_function_calls": 0,
+      "eligible_coverage_is_lower_bound": false,
+      "steady_python_self_time_s": 0.018394676,
+      "steady_eligible_python_self_time_s": 0.017771976000000002,
+      "steady_eligible_python_self_time_fraction": 0.9661478136391205,
+      "steady_native_builtin_self_time_s": 0.000643061,
+      "steady_all_profiled_self_time_s": 0.019037737,
+      "steady_eligible_all_profiled_self_time_fraction": 0.933513053573542,
+      "ast_policy_function_counts": {
+        "leaf": 1,
+        "region_including_leaf": 2,
+        "unsupported": 60
+      }
+    },
+    "selected_region": {
+      "id": "examples/adaptive/workloads.py:45:numeric_batch",
+      "function": "numeric_batch",
+      "workload": "numeric",
+      "helpers": [
+        "numeric_step"
+      ],
+      "training_calls": 24,
+      "cumulative_time_s": 0.017771976000000002
+    },
+    "total_profile_evaluation_wall_s": 1.6559563580012764
+  },
+  "selection": {
+    "id": "examples/adaptive/workloads.py:45:numeric_batch",
+    "function": "numeric_batch",
+    "workload": "numeric",
+    "helpers": [
+      "numeric_step"
+    ],
+    "training_calls": 24,
+    "cumulative_time_s": 0.017771976000000002
+  },
+  "metadata": {
+    "host_python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_count": 9,
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "environment": {
+      "PYSTACHY_LLVM": "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin"
+    },
+    "compiler": [
+      "/workspace/scratch/0f1a45a62217/pystachy-env/bin/python",
+      "/workspace/scratch/467800d8dcf8/pystachy/pystachy.py"
+    ],
+    "created_utc": "2026-10-14T05:09:58Z",
+    "revision": "9951c20a3799032bccbc098786fd4e4483900074",
+    "source_sha256": {
+      "tools/adaptive.py": "f3836e9d7f1afe6b5e68bd0a64a23db3e39030f12ef352cff670c80c239152b2",
+      "tools/adaptive_profile.py": "daf45926f61d0e42c5a4851fe3927e45c18fe20d4f5df6d493bcd8483dae81b2",
+      "tools/adaptive_regions.py": "7d33131cfcfc7ee0891879496bc87f596482984823b49d60b988dc2fe2aad6c8",
+      "examples/adaptive/workloads.py": "c4fab2b68fbae53b84d888baeb2a614587af82e034e92a58c81aeaeec0cd6544"
+    }
+  },
+  "settings": {
+    "inner": 4096,
+    "batches": 24,
+    "samples": 7,
+    "warmup": 3,
+    "max_variants": 2,
+    "cache_states": [
+      "fresh",
+      "populated"
+    ]
+  },
+  "method": "CPython orchestration and output construction are included in every application sample. Independent oracle computation and equality checks are outside timing. No type/hotness tracing runs during performance samples. Static types are supplied before observing values; its Python boundary retains safety/fallback checks. Shared host results have no timing thresholds.",
+  "type_resolution": {
+    "adaptive_entry": "Exact int/int and float/int types observed at the CPython boundary",
+    "static_entry": "The same two entry signatures are explicitly supplied before observing application values",
+    "helpers": "Unannotated numeric_step parameters are inferred statically from the typed entry and range loop in every native region",
+    "additional_signature_coverage_from_caller_cloning": false
+  },
+  "runs": [
+    {
+      "cache_state": "fresh",
+      "cache_prime_compile_s_excluded": {},
+      "cold": {
+        "leaf": {
+          "first_application_s": 3.9262852339998062,
+          "wrapper_setup_and_first_application_wall_s": 3.9267085130013584,
+          "profile_setup_and_first_application_wall_s": 5.582664871002635,
+          "compile_import_s": 3.7006400659956853,
+          "dispatch_after_first_application": {
+            "signatures": {
+              "int,int": 73746,
+              "float,int": 24582
+            },
+            "variants": [
+              "int,int",
+              "float,int"
+            ],
+            "attempted": [
+              "float,int",
+              "int,int"
+            ],
+            "profile_limit": 8,
+            "profile_evictions": 0,
+            "native_hits": 98322,
+            "fallbacks": 6,
+            "compile_failures": 0,
+            "compile_seconds": 3.7006400659956853,
+            "source_bytes": {
+              "int,int": 92,
+              "float,int": 96
+            },
+            "native_bytes": {
+              "int,int": 47040,
+              "float,int": 38096
+            },
+            "region_functions": 1,
+            "compile_errors": {},
+            "native_errors": {},
+            "disabled_reason": ""
+          }
+        },
+        "region": {
+          "first_application_s": 3.5623597250014427,
+          "wrapper_setup_and_first_application_wall_s": 3.5631204820019775,
+          "profile_setup_and_first_application_wall_s": 5.219076840003254,
+          "compile_import_s": 3.556069557002047,
+          "dispatch_after_first_application": {
+            "signatures": {
+              "int,int": 18,
+              "float,int": 6
+            },
+            "variants": [
+              "int,int",
+              "float,int"
+            ],
+            "attempted": [
+              "float,int",
+              "int,int"
+            ],
+            "profile_limit": 8,
+            "profile_evictions": 0,
+            "native_hits": 18,
+            "fallbacks": 6,
+            "compile_failures": 0,
+            "compile_seconds": 3.556069557002047,
+            "source_bytes": {
+              "int,int": 196,
+              "float,int": 200
+            },
+            "native_bytes": {
+              "int,int": 47040,
+              "float,int": 38096
+            },
+            "region_functions": 2,
+            "compile_errors": {},
+            "native_errors": {},
+            "disabled_reason": ""
+          }
+        },
+        "static": {
+          "compile_import_s": 3.6581331039997167,
+          "first_application_s": 0.00020330700135673396,
+          "compile_and_first_application_s": 3.6583364110010734
+        }
+      },
+      "phases": [
+        {
+          "phase": "steady",
+          "samples_s": {
+            "cpython": [
+              0.006149935998109868,
+              0.0065360480002709664,
+              0.006429266999475658,
+              0.006778152997867437,
+              0.006079430000681896,
+              0.006261383998207748,
+              0.006422637001378462
+            ],
+            "leaf": [
+              0.23469790300077875,
+              0.22038409399829106,
+              0.21921654300240334,
+              0.21609001699835062,
+              0.2090624980010034,
+              0.22189173799779383,
+              0.2223582719998376
+            ],
+            "region": [
+              0.0001912280022224877,
+              0.00018608000027597882,
+              0.0001947939999809023,
+              0.0001825360013754107,
+              0.0001766360001056455,
+              0.00019015699945157394,
+              0.00030883599902153946
+            ],
+            "static": [
+              0.00014815400209045038,
+              0.0001503570019849576,
+              0.00013985099940327927,
+              0.00015379199976450764,
+              0.00019676699957926758,
+              0.00019973099915659986,
+              0.0001800520003598649
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.006422637001378462,
+              "min_s": 0.006079430000681896,
+              "max_s": 0.006778152997867437,
+              "mad_s": 0.00016125300317071378,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.22038409399829106,
+              "min_s": 0.2090624980010034,
+              "max_s": 0.23469790300077875,
+              "mad_s": 0.0019741780015465338,
+              "speedup_vs_cpython": 0.029142924450020723
+            },
+            "region": {
+              "median_s": 0.00019015699945157394,
+              "min_s": 0.0001766360001056455,
+              "max_s": 0.00030883599902153946,
+              "mad_s": 4.637000529328361e-06,
+              "speedup_vs_cpython": 33.77544355402007
+            },
+            "static": {
+              "median_s": 0.00015379199976450764,
+              "min_s": 0.00013985099940327927,
+              "max_s": 0.00019973099915659986,
+              "mad_s": 1.3941000361228362e-05,
+              "speedup_vs_cpython": 41.76184074082563
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 688296,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 168,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 168,
+              "fallback_calls": 0,
+              "overflow_replays": 0
+            }
+          }
+        },
+        {
+          "phase": "unseen",
+          "samples_s": {
+            "cpython": [
+              0.006106460001319647,
+              0.00614533800035133,
+              0.006014741000399226,
+              0.006030506003298797,
+              0.006315916001767619,
+              0.0063869930017972365,
+              0.0063814650020503905
+            ],
+            "leaf": [
+              0.20315432699862868,
+              0.19962234999911743,
+              0.20447208500263514,
+              0.21743864100062638,
+              0.2057414000009885,
+              0.1963568050014146,
+              0.19940999699974782
+            ],
+            "region": [
+              0.0032966020007734187,
+              0.0032638630000292324,
+              0.0033427820017095655,
+              0.0033366429997840896,
+              0.003625649002060527,
+              0.0032229710013780277,
+              0.0033054859995900188
+            ],
+            "static": [
+              0.0034889719972852618,
+              0.003165885002090363,
+              0.0032306930006598122,
+              0.003192725998815149,
+              0.003185713998391293,
+              0.0031810079999559093,
+              0.0031827999991946854
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.00614533800035133,
+              "min_s": 0.006014741000399226,
+              "max_s": 0.0063869930017972365,
+              "mad_s": 0.00013059699995210394,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.20315432699862868,
+              "min_s": 0.1963568050014146,
+              "max_s": 0.21743864100062638,
+              "mad_s": 0.0035319769995112438,
+              "speedup_vs_cpython": 0.030249604284297682
+            },
+            "region": {
+              "median_s": 0.0033054859995900188,
+              "min_s": 0.0032229710013780277,
+              "max_s": 0.003625649002060527,
+              "mad_s": 3.7296002119546756e-05,
+              "speedup_vs_cpython": 1.8591329689835443
+            },
+            "static": {
+              "median_s": 0.003185713998391293,
+              "min_s": 0.003165885002090363,
+              "max_s": 0.0034889719972852618,
+              "mad_s": 7.01200042385608e-06,
+              "speedup_vs_cpython": 1.929030039562426
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 516180,
+              "fallbacks": 172116,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 84,
+              "fallbacks": 84,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 84,
+              "fallback_calls": 84,
+              "overflow_replays": 0
+            }
+          }
+        },
+        {
+          "phase": "shifted",
+          "samples_s": {
+            "cpython": [
+              0.006403009003406623,
+              0.006465391998062842,
+              0.006136657000752166,
+              0.006259058998693945,
+              0.005953047999355476,
+              0.006329897001705831,
+              0.005896432998270029
+            ],
+            "leaf": [
+              0.2076998580014333,
+              0.24243401100102346,
+              0.20377407499836409,
+              0.2044699229991238,
+              0.20524472599936416,
+              0.2040157019982871,
+              0.20601036199877854
+            ],
+            "region": [
+              0.00018135299978894182,
+              0.00018380699839326553,
+              0.00020151400167378597,
+              0.00018429799820296466,
+              0.00019591599993873388,
+              0.0002130309985659551,
+              0.00031107899849303067
+            ],
+            "static": [
+              0.00015145799989113584,
+              0.0001619139984541107,
+              0.0001478730009694118,
+              0.00015685600010328926,
+              0.00015848899784032255,
+              0.00015603500287397765,
+              0.00014919499881216325
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.006259058998693945,
+              "min_s": 0.005896432998270029,
+              "max_s": 0.006465391998062842,
+              "mad_s": 0.0001439500047126785,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.20524472599936416,
+              "min_s": 0.20377407499836409,
+              "max_s": 0.24243401100102346,
+              "mad_s": 0.0012290240010770503,
+              "speedup_vs_cpython": 0.03049558992669724
+            },
+            "region": {
+              "median_s": 0.00019591599993873388,
+              "min_s": 0.00018135299978894182,
+              "max_s": 0.00031107899849303067,
+              "mad_s": 1.2109001545468345e-05,
+              "speedup_vs_cpython": 31.947666350125843
+            },
+            "static": {
+              "median_s": 0.00015603500287397765,
+              "min_s": 0.0001478730009694118,
+              "max_s": 0.0001619139984541107,
+              "mad_s": 4.577002982841805e-06,
+              "speedup_vs_cpython": 40.11317257929044
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 688296,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 168,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 168,
+              "fallback_calls": 0,
+              "overflow_replays": 0
+            }
+          }
+        }
+      ],
+      "static_extension_artifact_bytes": {
+        "int,int": 47032,
+        "float,int": 38088
+      },
+      "final_dispatch": {
+        "leaf": {
+          "signatures": {
+            "int,int": 1106148,
+            "float,int": 884952
+          },
+          "variants": [
+            "int,int",
+            "float,int"
+          ],
+          "attempted": [
+            "float,int",
+            "int,int"
+          ],
+          "profile_limit": 8,
+          "profile_evictions": 0,
+          "native_hits": 1991094,
+          "fallbacks": 172122,
+          "compile_failures": 0,
+          "compile_seconds": 3.7006400659956853,
+          "source_bytes": {
+            "int,int": 92,
+            "float,int": 96
+          },
+          "native_bytes": {
+            "int,int": 47040,
+            "float,int": 38096
+          },
+          "region_functions": 1,
+          "compile_errors": {},
+          "native_errors": {},
+          "disabled_reason": ""
+        },
+        "region": {
+          "signatures": {
+            "int,int": 228,
+            "float,int": 216
+          },
+          "variants": [
+            "int,int",
+            "float,int"
+          ],
+          "attempted": [
+            "float,int",
+            "int,int"
+          ],
+          "profile_limit": 8,
+          "profile_evictions": 0,
+          "native_hits": 438,
+          "fallbacks": 90,
+          "compile_failures": 0,
+          "compile_seconds": 3.556069557002047,
+          "source_bytes": {
+            "int,int": 196,
+            "float,int": 200
+          },
+          "native_bytes": {
+            "int,int": 47040,
+            "float,int": 38096
+          },
+          "region_functions": 2,
+          "compile_errors": {},
+          "native_errors": {},
+          "disabled_reason": ""
+        }
+      },
+      "estimated_applications_to_amortize_compile": {
+        "leaf": null,
+        "region": 570.5705523166736,
+        "static": 583.5418012501357
+      }
+    },
+    {
+      "cache_state": "populated",
+      "cache_prime_compile_s_excluded": {
+        "leaf": 3.3365695949978544,
+        "region": 3.3147961659997236,
+        "static": 3.3707150539994473
+      },
+      "cold": {
+        "leaf": {
+          "first_application_s": 1.0213980080006877,
+          "wrapper_setup_and_first_application_wall_s": 1.021791350998683,
+          "profile_setup_and_first_application_wall_s": 2.6777477089999593,
+          "compile_import_s": 0.7923412140007713,
+          "dispatch_after_first_application": {
+            "signatures": {
+              "int,int": 73746,
+              "float,int": 24582
+            },
+            "variants": [
+              "int,int",
+              "float,int"
+            ],
+            "attempted": [
+              "float,int",
+              "int,int"
+            ],
+            "profile_limit": 8,
+            "profile_evictions": 0,
+            "native_hits": 98322,
+            "fallbacks": 6,
+            "compile_failures": 0,
+            "compile_seconds": 0.7923412140007713,
+            "source_bytes": {
+              "int,int": 92,
+              "float,int": 96
+            },
+            "native_bytes": {
+              "int,int": 47040,
+              "float,int": 38096
+            },
+            "region_functions": 1,
+            "compile_errors": {},
+            "native_errors": {},
+            "disabled_reason": ""
+          }
+        },
+        "region": {
+          "first_application_s": 0.7720404069987126,
+          "wrapper_setup_and_first_application_wall_s": 0.7727058509990457,
+          "profile_setup_and_first_application_wall_s": 2.428662209000322,
+          "compile_import_s": 0.768978218002303,
+          "dispatch_after_first_application": {
+            "signatures": {
+              "int,int": 18,
+              "float,int": 6
+            },
+            "variants": [
+              "int,int",
+              "float,int"
+            ],
+            "attempted": [
+              "float,int",
+              "int,int"
+            ],
+            "profile_limit": 8,
+            "profile_evictions": 0,
+            "native_hits": 18,
+            "fallbacks": 6,
+            "compile_failures": 0,
+            "compile_seconds": 0.768978218002303,
+            "source_bytes": {
+              "int,int": 196,
+              "float,int": 200
+            },
+            "native_bytes": {
+              "int,int": 47040,
+              "float,int": 38096
+            },
+            "region_functions": 2,
+            "compile_errors": {},
+            "native_errors": {},
+            "disabled_reason": ""
+          }
+        },
+        "static": {
+          "compile_import_s": 0.8511964259996603,
+          "first_application_s": 0.0001601510011823848,
+          "compile_and_first_application_s": 0.8513565770008427
+        }
+      },
+      "phases": [
+        {
+          "phase": "steady",
+          "samples_s": {
+            "cpython": [
+              0.007444168000802165,
+              0.005816734003019519,
+              0.006047823000699282,
+              0.007282254002348054,
+              0.006300182998529635,
+              0.006215205001353752,
+              0.005961863000266021
+            ],
+            "leaf": [
+              0.22809286399933626,
+              0.20740805199966417,
+              0.21233899000071688,
+              0.2293549919995712,
+              0.20862116200078162,
+              0.2249666370007617,
+              0.22031329899982666
+            ],
+            "region": [
+              0.00018393700156593695,
+              0.0001756450001266785,
+              0.00018343599731451832,
+              0.000180082002771087,
+              0.00018138399900635704,
+              0.00023388299814541824,
+              0.00024653199943713844
+            ],
+            "static": [
+              0.0001450180025130976,
+              0.0001498060009907931,
+              0.00014407700291485526,
+              0.00025000700043165125,
+              0.0001429959993402008,
+              0.00022986700059846044,
+              0.0002201630013587419
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.006215205001353752,
+              "min_s": 0.005816734003019519,
+              "max_s": 0.007444168000802165,
+              "mad_s": 0.00025334200108773075,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.22031329899982666,
+              "min_s": 0.20740805199966417,
+              "max_s": 0.2293549919995712,
+              "mad_s": 0.00797430899910978,
+              "speedup_vs_cpython": 0.02821075726962194
+            },
+            "region": {
+              "median_s": 0.00018343599731451832,
+              "min_s": 0.0001756450001266785,
+              "max_s": 0.00024653199943713844,
+              "mad_s": 3.3539945434313267e-06,
+              "speedup_vs_cpython": 33.8821446844874
+            },
+            "static": {
+              "median_s": 0.0001498060009907931,
+              "min_s": 0.0001429959993402008,
+              "max_s": 0.00025000700043165125,
+              "mad_s": 6.810001650592312e-06,
+              "speedup_vs_cpython": 41.48835801134382
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 688296,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 168,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 168,
+              "fallback_calls": 0,
+              "overflow_replays": 0
+            }
+          }
+        },
+        {
+          "phase": "unseen",
+          "samples_s": {
+            "cpython": [
+              0.006184769001265522,
+              0.0063103579996095505,
+              0.006243047002499225,
+              0.006130977999418974,
+              0.00641755000106059,
+              0.0062579699988418724,
+              0.006195935999130597
+            ],
+            "leaf": [
+              0.2002924099979282,
+              0.19988005699997302,
+              0.20405789599681157,
+              0.2016039410009398,
+              0.20083036399955745,
+              0.21324486000230536,
+              0.2053751990024466
+            ],
+            "region": [
+              0.003292197001428576,
+              0.0031514229995082133,
+              0.003472788001090521,
+              0.003277523999713594,
+              0.003140026998153189,
+              0.003292016001068987,
+              0.0035201200007577427
+            ],
+            "static": [
+              0.0031066960000316612,
+              0.0036102250014664605,
+              0.0031050129982759245,
+              0.0032900929982133675,
+              0.003178844999638386,
+              0.0036439670002437197,
+              0.0032802170026116073
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.006243047002499225,
+              "min_s": 0.006130977999418974,
+              "max_s": 0.00641755000106059,
+              "mad_s": 5.8278001233702525e-05,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.2016039410009398,
+              "min_s": 0.19988005699997302,
+              "max_s": 0.21324486000230536,
+              "mad_s": 0.001723884000966791,
+              "speedup_vs_cpython": 0.030966889692251212
+            },
+            "region": {
+              "median_s": 0.003292016001068987,
+              "min_s": 0.003140026998153189,
+              "max_s": 0.0035201200007577427,
+              "mad_s": 0.0001405930015607737,
+              "speedup_vs_cpython": 1.8964206129228947
+            },
+            "static": {
+              "median_s": 0.0032802170026116073,
+              "min_s": 0.0031050129982759245,
+              "max_s": 0.0036439670002437197,
+              "mad_s": 0.00017352100257994607,
+              "speedup_vs_cpython": 1.9032420713412264
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 516180,
+              "fallbacks": 172116,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 84,
+              "fallbacks": 84,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 84,
+              "fallback_calls": 84,
+              "overflow_replays": 0
+            }
+          }
+        },
+        {
+          "phase": "shifted",
+          "samples_s": {
+            "cpython": [
+              0.006120953999925405,
+              0.0063386609981535,
+              0.005938737998803845,
+              0.006203437998919981,
+              0.0065132849995279685,
+              0.006212109998159576,
+              0.006104097999923397
+            ],
+            "leaf": [
+              0.2088579529990966,
+              0.2115576840005815,
+              0.2114390659990022,
+              0.20990157699998235,
+              0.2100145970034646,
+              0.21106709499872522,
+              0.22282200699919485
+            ],
+            "region": [
+              0.00024252499861177057,
+              0.00019357199926162139,
+              0.0002806130032695364,
+              0.00018028200065600686,
+              0.000197588000446558,
+              0.00020772399875568226,
+              0.00021125899729668163
+            ],
+            "static": [
+              0.00014777300020796247,
+              0.0001577180009917356,
+              0.00014784299855818972,
+              0.00021268099953886122,
+              0.00016985600086627528,
+              0.00018694200116442516,
+              0.00020422800298547372
+            ]
+          },
+          "summary": {
+            "cpython": {
+              "median_s": 0.006203437998919981,
+              "min_s": 0.005938737998803845,
+              "max_s": 0.0065132849995279685,
+              "mad_s": 9.933999899658374e-05,
+              "speedup_vs_cpython": 1.0
+            },
+            "leaf": {
+              "median_s": 0.21106709499872522,
+              "min_s": 0.2088579529990966,
+              "max_s": 0.22282200699919485,
+              "mad_s": 0.0010524979952606373,
+              "speedup_vs_cpython": 0.029390834222442146
+            },
+            "region": {
+              "median_s": 0.00020772399875568226,
+              "min_s": 0.00018028200065600686,
+              "max_s": 0.0002806130032695364,
+              "mad_s": 1.4151999494060874e-05,
+              "speedup_vs_cpython": 29.863848356858604
+            },
+            "static": {
+              "median_s": 0.00016985600086627528,
+              "min_s": 0.00014777300020796247,
+              "max_s": 0.00021268099953886122,
+              "mad_s": 2.201300230808556e-05,
+              "speedup_vs_cpython": 36.521747640837496
+            }
+          },
+          "dispatch_deltas": {
+            "leaf": {
+              "native_hits": 688296,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "region": {
+              "native_hits": 168,
+              "fallbacks": 0,
+              "compile_failures": 0,
+              "compile_seconds": 0.0
+            },
+            "static": {
+              "native_calls": 168,
+              "fallback_calls": 0,
+              "overflow_replays": 0
+            }
+          }
+        }
+      ],
+      "static_extension_artifact_bytes": {
+        "int,int": 47032,
+        "float,int": 38088
+      },
+      "final_dispatch": {
+        "leaf": {
+          "signatures": {
+            "int,int": 1106148,
+            "float,int": 884952
+          },
+          "variants": [
+            "int,int",
+            "float,int"
+          ],
+          "attempted": [
+            "float,int",
+            "int,int"
+          ],
+          "profile_limit": 8,
+          "profile_evictions": 0,
+          "native_hits": 1991094,
+          "fallbacks": 172122,
+          "compile_failures": 0,
+          "compile_seconds": 0.7923412140007713,
+          "source_bytes": {
+            "int,int": 92,
+            "float,int": 96
+          },
+          "native_bytes": {
+            "int,int": 47040,
+            "float,int": 38096
+          },
+          "region_functions": 1,
+          "compile_errors": {},
+          "native_errors": {},
+          "disabled_reason": ""
+        },
+        "region": {
+          "signatures": {
+            "int,int": 228,
+            "float,int": 216
+          },
+          "variants": [
+            "int,int",
+            "float,int"
+          ],
+          "attempted": [
+            "float,int",
+            "int,int"
+          ],
+          "profile_limit": 8,
+          "profile_evictions": 0,
+          "native_hits": 438,
+          "fallbacks": 90,
+          "compile_failures": 0,
+          "compile_seconds": 0.768978218002303,
+          "source_bytes": {
+            "int,int": 196,
+            "float,int": 200
+          },
+          "native_bytes": {
+            "int,int": 47040,
+            "float,int": 38096
+          },
+          "region_functions": 2,
+          "compile_errors": {},
+          "native_errors": {},
+          "disabled_reason": ""
+        }
+      },
+      "estimated_applications_to_amortize_compile": {
+        "leaf": null,
+        "region": 127.48800849093345,
+        "static": 140.33642732303744
+      }
+    }
+  ],
+  "one_variant_phase_budget": {
+    "before_shift": {
+      "signatures": {
+        "int,int": 3
+      },
+      "variants": [
+        "int,int"
+      ],
+      "attempted": [
+        "int,int"
+      ],
+      "profile_limit": 8,
+      "profile_evictions": 0,
+      "native_hits": 1,
+      "fallbacks": 2,
+      "compile_failures": 0,
+      "compile_seconds": 0.4251476860008552,
+      "source_bytes": {
+        "int,int": 196
+      },
+      "native_bytes": {
+        "int,int": 47040
+      },
+      "region_functions": 2,
+      "compile_errors": {},
+      "native_errors": {},
+      "disabled_reason": ""
+    },
+    "after_shift": {
+      "signatures": {
+        "int,int": 3,
+        "float,int": 8
+      },
+      "variants": [
+        "int,int"
+      ],
+      "attempted": [
+        "int,int"
+      ],
+      "profile_limit": 8,
+      "profile_evictions": 0,
+      "native_hits": 1,
+      "fallbacks": 10,
+      "compile_failures": 0,
+      "compile_seconds": 0.4251476860008552,
+      "source_bytes": {
+        "int,int": 196
+      },
+      "native_bytes": {
+        "int,int": 47040
+      },
+      "region_functions": 2,
+      "compile_errors": {},
+      "native_errors": {},
+      "disabled_reason": ""
+    },
+    "interpretation": "The first compiled int signature exhausts the fixed attempt budget; later floats remain Python. No eviction/recompilation is claimed."
+  },
+  "status": "passed",
+  "report_kind": "Compact evidence extract. Retains all timing samples, workload totals, function eligibility inventory and full selected numeric distributions. Other per-site distributions are omitted; tools/adaptive_regions.py emits the complete report."
+}

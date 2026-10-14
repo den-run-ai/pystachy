@@ -5,9 +5,14 @@ functions through Pystachy's existing typed IR and CPython extension backend.
 The surrounding application runs in CPython. Observed argument types select
 compiled implementations; runtime guards decide whether each call can use them.
 
-This is a function-boundary prototype of type feedback and guarded specialization.
-It does not implement machine-code polymorphic inline caches, call-site profiling,
-caller-context cloning, or a general dynamic Python runtime.
+This is a function-entry prototype of type feedback and guarded specialization.
+It can include an explicitly supplied pure helper call graph behind one native
+boundary. A separate profile-only tool records function and caller-site types
+before selecting a region; the runtime cache still dispatches on function-entry
+signatures. It does not implement machine-code polymorphic inline caches,
+caller-context cloning, or a general dynamic Python runtime. See the
+[profile-first region experiment](adaptive-regions.md) for that workflow and its
+matched static baseline.
 
 ## Try it
 
@@ -35,8 +40,12 @@ weighted_sum(0.5, 200_000)     # observes a float/int signature
 ```
 
 After warmup for each signature, the wrapper generates a typed version, builds
-it with `pystachy ext`, and loads it into the host. The cache retains at most
-`max_variants` compiled versions. The original function is available as
+it with `pystachy ext`, and loads it into the host. `max_variants` bounds lifetime
+compilation attempts, including failed attempts. A separate replaceable profile
+table, bounded by `max_profiles` (default `max(8, max_variants)`), lets later hot
+signatures warm up even when rare signatures arrive first. Profile eviction
+does not replenish the compilation budget or evict compiled versions. The
+original function is available as
 `weighted_sum.__wrapped__`; diagnostics are available through
 `weighted_sum.adaptive_stats()`.
 
@@ -111,16 +120,20 @@ benefit over CPython.
 
 The prototype accepts a deliberately small, side-effect-free numeric subset:
 local scalar computation, branches, and loops over builtin `range`. It requires
-source that can be checked against the original function's code. Closures,
-external function calls, mutable containers, attributes and global state are
-outside this first experiment. Unsupported functions keep running in CPython.
+source that can be checked against the original function's code. Direct calls
+to ordinary helpers explicitly supplied in `helpers={name: function}` are allowed
+when the entire reachable call graph passes the same checks and is acyclic.
+Closures, arbitrary external calls, mutable containers, attributes and global
+state are outside this experiment. Unsupported functions keep running in CPython.
 
 Native dispatch requires exact supported scalar types and representable inputs.
 Booleans, subclasses, large integers, non-finite floats and unsupported call shapes
 use the original function. Calls under tracing/profiling or from another thread
 also use CPython, because the extension
-runtime belongs to the thread that imported it. Changes to the original code or
-the builtin bindings it uses invalidate the native path.
+runtime belongs to the thread that imported it. Changes to any member's code,
+the helper bindings used by each caller, or its builtin `range` binding invalidate
+the native path. Helpers are privately renamed in generated source; the ordinary
+Python functions and their namespaces remain available for fallback.
 
 The native runtime uses checked signed 64-bit integers. An intermediate overflow
 can occur even when the arguments fit. The verified purity restriction lets the

@@ -49,6 +49,44 @@ def range_sum(n):
     return total
 
 
+def region_step(a, b):
+    return (a + b) % 97
+
+
+def region_adjust(a, b):
+    return region_step(a, b) + 1
+
+
+def region_batch(a, n):
+    total = a
+    for i in range(n):
+        total = region_adjust(total, i)
+    return total
+
+
+def recursive_helper(a):
+    if a > 0:
+        return recursive_helper(a - 1)
+    return 0
+
+
+def helper_value(a):
+    other = region_step
+    return other(a, a)
+
+
+def helper_keyword(a):
+    return region_step(a=a, b=2)
+
+
+def helper_shadowed(region_step, b):
+    return region_step(b, b)
+
+
+def effectful_caller(a):
+    return side_effect(a)
+
+
 EFFECTS = []
 
 
@@ -262,6 +300,131 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(wrapped.adaptive_stats()["compile_failures"], 1)
         self.assertEqual(wrapped.adaptive_stats()["variants"], [])
 
+    def test_rare_early_signatures_do_not_pin_the_profile_table(self):
+        wrapped, _backend, compiler = self.specialize(max_variants=1, max_profiles=2)
+        self.assertEqual(wrapped(1, 2.0), 3.0)
+        self.assertEqual(wrapped(1.0, 2), 3.0)
+        compiler.assert_not_called()
+        for a, b in [(1, 2), (2, 3), (3, 4)]:
+            self.assertEqual(wrapped(a, b), a + b)
+        stats = wrapped.adaptive_stats()
+        compiler.assert_called_once()
+        self.assertEqual(stats["variants"], ["int,int"])
+        self.assertEqual(stats["profile_limit"], 2)
+        self.assertEqual(len(stats["signatures"]), 2)
+        self.assertEqual(stats["profile_evictions"], 1)
+        self.assertEqual(len(wrapped._warmups), 2)
+
+    def test_profile_eviction_cannot_replenish_failed_compilation_budget(self):
+        wrapped, _backend, compiler = self.specialize(max_variants=1, max_profiles=1)
+        compiler.side_effect = RuntimeError("fixture compiler failed")
+        for _ in range(3):
+            wrapped(1, 2)
+        for args in [(1.0, 2.0), (1, 2.0), (1, 2)]:
+            for _ in range(3):
+                wrapped(*args)
+        compiler.assert_called_once()
+        self.assertEqual(wrapped.adaptive_stats()["attempted"], ["int,int"])
+        self.assertEqual(len(wrapped._profiles), 1)
+        self.assertEqual(len(wrapped._warmups), 1)
+
+    def region(self):
+        # Each member retains its own globals dict: guards must consult the
+        # namespace used by that caller, including transitive helper bindings.
+        step = types.FunctionType(region_step.__code__, dict(region_step.__globals__), "region_step")
+        adjust_globals = dict(region_adjust.__globals__, region_step=step)
+        adjust = types.FunctionType(region_adjust.__code__, adjust_globals, "region_adjust")
+        batch_globals = dict(region_batch.__globals__, region_adjust=adjust)
+        batch = types.FunctionType(region_batch.__code__, batch_globals, "region_batch")
+        helpers = {"region_step": step, "region_adjust": adjust}
+        return batch, helpers
+
+    def test_region_clones_private_helpers_and_compiles_one_native_entry(self):
+        original, helpers = self.region()
+        wrapped, backend, compiler = self.specialize(original, helpers=helpers)
+        for _ in range(3):
+            self.assertEqual(wrapped(2, 10), original(2, 10))
+        compiler.assert_called_once()
+        self.assertEqual(backend.call_count, 1)
+        stats = wrapped.adaptive_stats()
+        self.assertEqual(stats["region_functions"], 3)
+        source = stats["sources"]["int,int"]
+        self.assertIn("def kernel(a: int, n: int) -> int:", source)
+        self.assertEqual(source.count("@export"), 1)
+        self.assertEqual(source.count("def _adaptive_helper_"), 2)
+        self.assertNotIn("region_step(", source)
+        self.assertNotIn("region_adjust(", source)
+        self.assertEqual(stats["source_bytes"]["int,int"], len(source.encode()))
+        json.dumps(stats)
+
+    def test_transitive_region_binding_and_code_changes_fall_back(self):
+        for mutation in ["entry_binding", "helper_binding", "helper_code", "entry_range", "helper_range"]:
+            with self.subTest(mutation=mutation):
+                original, helpers = self.region()
+                if mutation == "helper_range":
+                    helper = types.FunctionType(range_sum.__code__, dict(range_sum.__globals__), "range_sum")
+                    # A caller with a helper that itself uses range exercises a
+                    # binding absent from the entry's own namespace.
+                    source = "def region_entry(a, b):\n    return range_sum(a) + b\n"
+                    with tempfile.TemporaryDirectory() as directory:
+                        path = Path(directory) / "caller.py"
+                        path.write_text(source)
+                        namespace = {"range_sum": helper}
+                        exec(compile(source, str(path), "exec"), namespace)
+                        original = namespace["region_entry"]
+                        wrapped, backend, compiler = self.specialize(original, helpers={"range_sum": helper})
+                        for _ in range(3):
+                            self.assertEqual(wrapped(2, 10), original(2, 10))
+                    helper.__globals__["range"] = lambda _n: [40, 2]
+                else:
+                    wrapped, backend, compiler = self.specialize(original, helpers=helpers)
+                    for _ in range(3):
+                        self.assertEqual(wrapped(2, 10), original(2, 10))
+                    if mutation == "entry_binding":
+                        original.__globals__["region_adjust"] = lambda a, b: 7
+                    elif mutation == "helper_binding":
+                        helpers["region_adjust"].__globals__["region_step"] = lambda a, b: 7
+                    elif mutation == "helper_code":
+                        helpers["region_step"].__code__ = scalar_subtract.__code__
+                    elif mutation == "entry_range":
+                        original.__globals__["range"] = lambda _n: [2, 3]
+                before = backend.call_count
+                self.assertEqual(wrapped(2, 10), original(2, 10))
+                self.assertEqual(backend.call_count, before)
+                compiler.assert_called_once()
+
+    def test_region_rejects_recursion_callbacks_shadowing_and_effects(self):
+        for function, helpers in [
+            (recursive_helper, {"recursive_helper": recursive_helper}),
+            (helper_value, {"region_step": region_step}),
+            (helper_keyword, {"region_step": region_step}),
+            (helper_shadowed, {"region_step": region_step}),
+            (effectful_caller, {"side_effect": side_effect}),
+        ]:
+            with self.subTest(function=function.__name__):
+                wrapped, _backend, compiler = self.specialize(function, helpers=helpers)
+                self.assertTrue(wrapped.adaptive_stats()["disabled_reason"])
+                compiler.assert_not_called()
+
+    def test_region_rejects_an_unlisted_or_mismatched_helper(self):
+        for helpers in [{}, {"region_adjust": region_step}]:
+            with self.subTest(helpers=helpers):
+                wrapped, _backend, compiler = self.specialize(region_batch, helpers=helpers)
+                for _ in range(3):
+                    self.assertEqual(wrapped(2, 10), region_batch(2, 10))
+                self.assertTrue(wrapped.adaptive_stats()["disabled_reason"])
+                compiler.assert_not_called()
+
+    def test_native_error_replay_remains_safe_across_the_pure_region(self):
+        original, helpers = self.region()
+        wrapped, backend, compiler = self.specialize(original, helpers=helpers)
+        for _ in range(3):
+            wrapped(2, 10)
+        backend.side_effect = OverflowError("helper overflowed")
+        self.assertEqual(wrapped(2, 10), original(2, 10))
+        self.assertEqual(wrapped.adaptive_stats()["native_errors"], {"OverflowError": 1})
+        compiler.assert_called_once()
+
     def test_non_owner_thread_uses_python_without_entering_native_code(self):
         wrapped, backend, compiler = self.specialize()
         self.prime(wrapped, compiler)
@@ -415,6 +578,20 @@ class NativeTests(unittest.TestCase):
                     return 1
                 return -1
 
+            def region_step(a, b):
+                return (a + b + 1) % 97
+
+            def region_adjust(a, b):
+                return region_step(a, b) + 1
+
+            @specialize(warmup=2, helpers={'region_adjust': region_adjust,
+                                         'region_step': region_step})
+            def region_batch(a, n):
+                total = a
+                for i in range(n):
+                    total = region_adjust(total, i)
+                return total
+
             values = []
             for a, b in [(2, 3), (3, 4), (4, 5), (5, 6),
                          (2.0, 0.5), (3.0, 0.5), (4.0, 0.5), (5.0, 0.5)]:
@@ -445,9 +622,22 @@ class NativeTests(unittest.TestCase):
                 actual = compare_numbers(a, b)
                 assert type(actual) is type(expected)
                 assert actual == expected, (a, b, actual, expected)
+            for a, n in [(2, 10), (3, 10), (4, 10),
+                         (2.5, 10), (3.5, 10), (4.5, 10), (7.5, 30)]:
+                expected = region_batch.__wrapped__(a, n)
+                actual = region_batch(a, n)
+                assert type(actual) is type(expected)
+                assert actual == expected, (a, n, actual, expected)
+            expected = region_batch.__wrapped__((1 << 63) - 1, 3)
+            assert region_batch((1 << 63) - 1, 3) == expected
+            before_rebind = region_batch.adaptive_stats()['native_hits']
+            region_step = lambda a, b: 7
+            assert region_batch(2, 10) == 8
+            assert region_batch.adaptive_stats()['native_hits'] == before_rebind
             print(json.dumps({'values': values, 'poly': polynomial.adaptive_stats(),
                               'overflow': overflow_branch.adaptive_stats(),
                               'mixed': mixed_reports,
+                              'region': region_batch.adaptive_stats(),
                               'comparisons': compare_numbers.adaptive_stats()}))
             """)
         with tempfile.TemporaryDirectory(prefix="pystachy-adaptive-test-") as directory:
@@ -473,6 +663,13 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(set(report["comparisons"]["variants"]), {"int,float", "float,int"})
         self.assertEqual(report["comparisons"]["compile_failures"], 0, report["comparisons"])
         self.assertGreaterEqual(report["comparisons"]["native_hits"], 6)
+        region = report["region"]
+        self.assertEqual(set(region["variants"]), {"int,int", "float,int"})
+        self.assertEqual(region["region_functions"], 3)
+        self.assertEqual(region["compile_failures"], 0, region)
+        self.assertGreaterEqual(region["native_hits"], 3)
+        self.assertEqual(region["native_errors"].get("OverflowError"), 1)
+        self.assertTrue(all(size > 0 for size in region["native_bytes"].values()))
 
 
 if __name__ == "__main__":

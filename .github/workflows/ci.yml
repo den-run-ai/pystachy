@@ -57,6 +57,7 @@ jobs:
         run: |
           make test-adaptive
           make bench-adaptive-check
+          make bench-adaptive-regions-check
 
       - name: Upload group report
         if: always()
@@ -67,6 +68,7 @@ jobs:
             build/verification.json
             build/extended-smoke.json
             build/adaptive-smoke.json
+            build/adaptive-regions-smoke.json
             build/verify/*.log
           if-no-files-found: error
           retention-days: 7
