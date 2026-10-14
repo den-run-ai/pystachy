@@ -1,11 +1,52 @@
-# Bounded regex value specialization
+# Regex specialization headroom probe
 
-This is an offline experiment following [#384](https://github.com/den-run-ai/pystachy/pull/384).
-That receiver-feedback experiment found no useful HTML speedup: ordinary compilation
-already supplied the same concrete parser methods. The regex engine's `Pattern`,
-`State`, `Ctx`, `list[int]` bytecode and `str` subject types are also already known.
-The opportunity here is to specialize **pattern values**, eliminating interpreter
-dispatch and making the result's capture count a compile-time constant.
+**This draft adds no Pystachy compiler, runtime or regex-engine machinery.** It
+adds an explicitly invoked Python source generator and benchmark to test whether
+fixed regex values expose useful native-code headroom. It does not extend
+[#384's receiver type-feedback implementation](https://github.com/den-run-ai/pystachy/pull/384).
+
+## The engine, bottleneck and approach
+
+"VM" in the benchmark means the existing **regex bytecode interpreter** in
+`lib/re/_sre.py`. That Python port is itself compiled to native machine code by
+Pystachy. Its `sre_match` loop still reads instructions such as `LITERAL`, `IN`,
+`REPEAT_ONE` and `MARK` from a pattern's `list[int]` and maintains `State`/`Ctx`
+objects and capture marks while executing them. Native compilation of an
+interpreter does not make its runtime instruction list a compile-time constant.
+
+The probe's external tool parses a supplied pattern, emits direct character
+checks and fixed capture slices, and asks the **unchanged ordinary compiler** to
+compile that emitted Python. For `(\d{4})-(\d{2})-(\d{2})`, the scanner checks
+four digits, a hyphen, two digits, a hyphen and two digits. It bypasses both the
+regex instruction interpreter and general match-state handling. Timings measure
+their combined removal; they do not isolate dispatch cost from allocation cost.
+The earlier HTML CPU samples identified regex as an aggregate hot component, not
+this date pattern or a per-instruction cost breakdown.
+
+| Mechanism | Status in this draft |
+|---|---|
+| External fixed-pattern Python source generator | Implemented |
+| Pystachy compiler optimization or IR specialization pass | Not implemented |
+| Runtime recording/selection of frequent pattern values | Not implemented |
+| Hot recompilation, patching or execution-path tracing | Not implemented |
+| New dynamic-value representation or new tuple type | Not implemented |
+
+## Relationship to skewed types
+
+The regex engine's `Pattern`, `State`, `Ctx`, `list[int]` bytecode and `str`
+subject types are already known. Different patterns share the same `Pattern`
+class, so receiver-class skew does not distinguish their instructions. The
+connection is a possible **value-feedback specialization**: frequent pattern
+values could justify guarded compiled versions even when their receiver type
+is unchanged. This draft measures that opportunity, but does not implement the
+feedback or automatic call-site integration.
+
+The next compiler step would recognize constant or selected pattern values,
+emit/invoke specialized match code through the normal compilation pipeline,
+and guard nonconstant patterns with fallback. Capture-arity inference and a
+shared representation for dynamically different result shapes are additional
+work. Missing compile-time types and arbitrary unannotated Python execution are
+not solved by this source generator.
 
 ## The unsupported result type
 
@@ -16,7 +57,10 @@ its `tuple[str | None, ...]` annotation. The current port instead exposes fixed
 `Match.group(1, 2, ...)` calls through existing variadic templates.
 
 For the date-extraction pattern `(\d{4})-(\d{2})-(\d{2})`, a residual helper can
-declare `list[tuple[str, str, str]]`. All of its fallback paths must return that
+declare `list[tuple[str, str, str]]` using types the compiler already supports.
+This bypasses the current API restriction through an explicit helper; the
+ordinary `re.findall()` implementation and compiler's type support are unchanged.
+All of its fallback paths must return that
 same type. A pattern with a different capture count therefore cannot be accepted
 silently. This is an explicit typed helper, not automatic support for arbitrary
 `re.findall()` or variable-length tuple types.
