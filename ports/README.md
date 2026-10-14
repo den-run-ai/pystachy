@@ -40,6 +40,20 @@ The CPython command runs the adapted sources and is useful for checking semantic
 An upstream comparison must use the pinned upstream package instead of putting `ports` first.
 Read each guide’s coverage and compatibility notes before adopting its API.
 
+## Ship the ports as a wheel
+
+```sh
+uv build ports -o dist
+uv pip install --target build/deps dist/pystachy_ports-0.1.0-py3-none-any.whl
+PYSTACHY_PATH=build/deps ./pystachy build program.py -o build/program
+```
+
+`pystachy-ports` bundles these adapted packages with their existing import names,
+licenses and port notes. Use a dedicated target to avoid overlapping upstream
+installations. It does not include `lib/` or claim unchanged upstream compatibility.
+See the [tiny dependent package](../examples/package/README.md) and
+[locked installs](../docs/packages.md#lock-an-apps-dependencies).
+
 ## Validation and measurements
 
 Each guide links its differential tests and gives a command to run selected cases through

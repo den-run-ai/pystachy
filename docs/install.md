@@ -114,6 +114,10 @@ collection on Linux and both macOS architectures. The full verification suite an
 experimental CPython extension/embedding support remain Linux-focused; see
 [testing](testing.md) and [FFI](ffi.md).
 
+To install or ship reusable libraries, use ordinary wheels with uv/pip and
+`PYSTACHY_PATH`; see the [short package tutorial](../examples/package/README.md)
+and [dependency/deployment guide](packages.md). The compiler installation stays the same.
+
 ## Run a program
 
 `make` verifies that the self-compiled compiler and runtime reach a byte-identical IR

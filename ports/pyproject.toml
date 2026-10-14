@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pystachy-ports"
+version = "0.1.0"
+description = "Adapted Python library subsets for Pystachy and CPython"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+license-files = ["*/LICENSE", "THIRD_PARTY_NOTICES"]
+
+[project.urls]
+Source = "https://github.com/den-run-ai/pystachy/tree/main/ports"
+
+[tool.setuptools]
+include-package-data = false
+packages = [
+    "convertdate",
+    "convertdate.data",
+    "iniconfig",
+    "jdcal",
+    "ordered_set",
+    "pyaes",
+    "pyfiglet",
+    "pylev",
+    "qrcode",
+    "roman",
+    "sgp4",
+    "snowballstemmer",
+    "sortedcontainers",
+    "sqids",
+    "tomli_w",
+    "wcwidth",
+]
+
+[tool.setuptools.package-data]
+"*" = ["LICENSE", "PORT.md", "PORT_REFERENCE.md"]

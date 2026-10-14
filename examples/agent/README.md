@@ -5,6 +5,11 @@ AOT. The native executable manages the tools and loop; an external
 OpenAI-compatible server supplies model responses. No compiler or runtime
 feature changes are needed.
 
+To ship it, distribute `build/askme-mini` for the matching platform, recorded inputs
+if used, and the external commands listed below. Recipients need no Pystachy or
+Python. For reusable source libraries and dependency locks, see the
+[short package example](../package/README.md).
+
 The canonical source is in
 [AskMe's native-agent example](https://github.com/den-run-ai/askme/tree/codex/native-agent-prototype/examples/native_agent).
 `UPSTREAM.json` pins the copied files and their SHA-256 hashes. AskMe retains

@@ -9,6 +9,7 @@ are linked from the relevant guide.
 | Guide | Use it for |
 |---|---|
 | [Installation](install.md) | Native releases, Docker, Linux/macOS source setup, uv and custom prefixes |
+| [Packages and apps](packages.md) | Source wheels, dependency locks, CPython reuse and standalone deployment |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |

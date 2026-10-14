@@ -129,6 +129,11 @@ bootstrap consistency and garbage-collection stress. Details are in
 Native C calls and experimental CPython extension builds are described in the
 [interoperability guide](docs/ffi.md).
 
+Reuse and ship libraries as ordinary Python wheels; uv/pip handles dependencies,
+and Pystachy compiles the installed `.py` sources. The [short package tutorial](examples/package/README.md)
+shares one library between CPython and native apps. See [packages and deployment](docs/packages.md)
+for locked installs, the ports wheel and standalone executables.
+
 ## Status and limitations
 
 Pystachy is experimental and supports a subset of Python. It is a good fit for typed,
