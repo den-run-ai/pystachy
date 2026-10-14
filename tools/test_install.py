@@ -64,7 +64,7 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(os.access(self.prefix / "bin/pystachy", os.X_OK))
         result = self.run_launcher()
         self.assertEqual(result["args"], ["run", "name with spaces.py", "'quoted'", "$cash"])
-        self.assertEqual(result["cwd"], str(self.work))
+        self.assertEqual(result["cwd"], str(self.work.resolve()))
         self.assertEqual(result["home"], str(data))
         self.assertEqual(result["cache"], str(Path(self.environment["HOME"]) / ".cache/pystachy"))
         self.assertIsNone(result["llvm"])
