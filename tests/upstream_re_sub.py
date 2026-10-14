@@ -22,11 +22,11 @@
 #   None in CPython's list, which the port's list[str] cannot hold (a documented deviation:
 #   NotImplementedError; issue #242).
 # - findall() of a pattern of 2 groups or more (test_re_findall's "(:)(:*)", test_bug_117612,
-#   test_bug_34294): CPython's list of tuples has no type in Pystachy (a documented deviation,
-#   NotImplementedError; tuple[T, ...] is issue #121); the same matches are checked here through
+#   test_bug_34294): the port still returns list[str] and raises NotImplementedError for
+#   multi-group results (documented); the same matches are checked here through
 #   finditer() and m.group(1, 2), which CPython's findall() would give with '' for None.
-# - Match.groups() (test_bug_34294's finditer() groups): no type in Pystachy (documented);
-#   m.group(1, 2) is printed instead.
+# - Match.groups() is covered in tuple_runtime_regex.py; these tables retain their
+#   existing per-group output for test_bug_34294's finditer() matches.
 # - test_possible_set_operations' patterns that warn (FutureWarning: possible set difference,
 #   intersection, union, symmetric difference or nested set): the port has no warnings; its four
 #   patterns that do not warn are here.

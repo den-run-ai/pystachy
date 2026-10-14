@@ -147,12 +147,14 @@ lazy and possessive), groups and backreferences, lookarounds, conditionals,
 atomic groups, scoped flags, escapes and Unicode character classes/case folding.
 The module and `Pattern` expose matching, searching, splitting, substitution,
 escaping and cache purging. `Match` supports group queries (up to five groups
-per `group` call), indexing, dictionaries, positions, spans and expansion.
+per `group` call), runtime-length `groups(default=None)` tuples, indexing,
+dictionaries, positions, spans and expansion.
 
 - Matches decode code points, but positions (`pos`, `endpos`, group spans and
   pattern-error positions) are byte indices.
-- `findall` with two or more groups raises `NotImplementedError`;
-  `Match.groups` and `Match.regs` are unsupported variable-length tuples.
+- `findall` with two or more groups still raises `NotImplementedError`; its
+  ported result contract remains `list[str]`. `Match.regs` remains unsupported
+  because its runtime-length tuple contains tuple elements.
 - `split` returns `list[str]` and raises `NotImplementedError` if an unmatched
   capturing group would add `None`.
 - `finditer` eagerly returns a list of matches.

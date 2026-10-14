@@ -24,8 +24,8 @@
 # EXCLUDED (not in the tables):
 # - bytes patterns and strings, str subclasses (S, B, test_bug_764548) and memoryview/bytearray
 #   subjects: the port has str patterns and strs only.
-# - test_re_match's groups("") (a default for groups()): Match.groups() has no type in Pystachy (a
-#   documented deviation); groupdict() with a default is in upstream_re_sub.py.
+# - test_re_match's groups("") default is covered in tuple_runtime_regex.py; these tables
+#   retain their per-group output. groupdict() with a default is in upstream_re_sub.py.
 # - test_group's Index objects (__index__) and 1<<1000, test_match_getitem's format_map(), item
 #   assignment and len(): unsupported (64-bit ints, no __index__ groups, no format_map).
 # - test_getattr's m.regs, and groupindex as a mappingproxy (a dict in the port): documented
