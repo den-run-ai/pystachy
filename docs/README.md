@@ -8,7 +8,7 @@ are linked from the relevant guide.
 
 | Guide | Use it for |
 |---|---|
-| [Installation](install.md) | Linux/macOS setup, dependency checks, uv and custom installation prefixes |
+| [Installation](install.md) | Native releases, Docker, Linux/macOS source setup, uv and custom prefixes |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
@@ -27,6 +27,7 @@ are linked from the relevant guide.
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |
 | [Testing](testing.md) | Bootstrap, differential tests, CI and targeted checks |
+| [Releases](releasing.md) | Binary packaging, Docker publishing and release gates |
 | [History](history.md) | Design decisions and project lineage |
 
 Historical surveys, prototypes and development reports are retained in [the archive](archive/).

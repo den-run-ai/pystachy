@@ -1,6 +1,75 @@
 # Installation
 
-Pystachy needs **LLVM 18 on Linux / LLVM 20 on macOS**, **Python 3.11+** to bootstrap, and `make`.
+Choose a native release package, the Docker image, or a source build.
+Native packages need **LLVM 18 on Linux / LLVM 20 on macOS** to compile programs;
+the Docker image includes LLVM. Neither requires Python to run the compiler.
+
+## Native release packages
+
+Download the matching archive and `SHA256SUMS` from
+[GitHub Releases](https://github.com/den-run-ai/pystachy/releases).
+
+| Package target | Requirements |
+|---|---|
+| `linux-x86_64` | Ubuntu 24.04 or compatible Linux with glibc 2.39+, LLVM 18 |
+| `macos-arm64` | Apple Silicon, macOS 15+, Xcode Command Line Tools, LLVM 20 |
+| `macos-x86_64` | Intel, macOS 15+, Xcode Command Line Tools, LLVM 20 |
+
+Install the toolchain once:
+
+```sh
+# Ubuntu
+sudo apt update
+sudo apt install clang-18 llvm-18 llvm-18-runtime
+
+# macOS
+brew install llvm@20
+```
+
+Check the downloaded archive's entry in `SHA256SUMS` (`sha256sum` on Linux,
+`shasum -a 256` on macOS), then extract it. For example, with a Linux archive:
+
+```sh
+tar -xzf pystachy-VERSION-linux-x86_64.tar.gz
+mkdir -p "$HOME/.local/bin"
+mv pystachy-VERSION-linux-x86_64 "$HOME/.local/pystachy-VERSION"
+ln -sfn "$HOME/.local/pystachy-VERSION/bin/pystachy" "$HOME/.local/bin/pystachy"
+export PATH="$HOME/.local/bin:$PATH"
+pystachy run demo.py
+```
+
+Replace `VERSION` with the release tag, such as `v0.1.0-alpha.1`, and use your
+platform's archive name. Keep the complete extracted directory: it contains the
+runtime and libraries alongside the compiler. The directory can be moved, and its
+launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
+
+## Docker
+
+The image runs on **Linux amd64**, including Docker Desktop on Intel hosts.
+Apple Silicon can use `--platform linux/amd64` with Docker's emulation; there is
+currently no native Linux arm64 release image. Use the image name and version from
+the release notes:
+
+```sh
+IMAGE=DOCKERHUB_NAMESPACE/pystachy:VERSION
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" run demo.py
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" "$IMAGE" build demo.py -o demo
+```
+
+The generated executable targets Linux, even on Docker Desktop. Run it in the image
+when your host is macOS:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" --entrypoint /work/demo "$IMAGE"
+```
+
+The image includes LLVM 18, the native compiler and its libraries; runtime caches go
+to `/tmp` unless `PYSTACHY_CACHE` is overridden. Release tags identify a tested source
+commit. `latest` advances only for stable releases; prereleases use explicit version tags.
+
+## Build from source
+
+Source builds need **Python 3.11+** to bootstrap and `make`, in addition to LLVM.
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 

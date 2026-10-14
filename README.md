@@ -40,6 +40,9 @@ Repeated event names reuse their classification. The larger
 
 ## Quick start
 
+Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
+Release packages require LLVM; the image includes it. For a source build:
+
 Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
 

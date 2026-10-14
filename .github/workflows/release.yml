@@ -1,0 +1,332 @@
+name: Release
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - Dockerfile
+      - .dockerignore
+      - tools/release*.py
+      - tools/test_release*.py
+      - tools/docker_smoke.sh
+  push:
+    tags: [v*]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New release tag, for example v0.1.0-alpha.1'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || inputs.version || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+      publish: ${{ steps.version.outputs.publish }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve immutable source and release version
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          publish = os.environ['EVENT'] != 'pull_request'
+          if publish:
+              if os.environ['EVENT'] == 'workflow_dispatch' and os.environ['REF'] != 'refs/heads/main':
+                  raise SystemExit('Dispatch releases from main only')
+              version = os.environ['INPUT_VERSION'] if os.environ['EVENT'] == 'workflow_dispatch' else os.environ['REF_NAME']
+              if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
+                  raise SystemExit('Version must be a v-prefixed semantic version')
+              subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], check=True)
+          else:
+              version = 'v0.0.0-test.' + commit[:8]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\ncommit={commit}\npublish={str(publish).lower()}\nprerelease={str("-" in version).lower()}\n')
+          PY
+
+      - name: Require green CI on the release commit
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ steps.version.outputs.commit }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 tools/release_gate.py --repository "$GITHUB_REPOSITORY" \
+            --commit "$RELEASE_COMMIT" --version "$RELEASE_VERSION" --wait-seconds 1200
+
+  binaries:
+    needs: prepare
+    name: Binary (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: linux-x86_64
+          - os: macos-15
+            target: macos-arm64
+          - os: macos-15-intel
+            target: macos-x86_64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: LLVM 18 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime
+
+      - name: LLVM 20 (macOS)
+        if: runner.os == 'macOS'
+        run: brew install llvm@20
+
+      - name: Bootstrap, package, and test relocation without Python
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          make
+          python3 -m unittest discover -s tools -p 'test_release*.py'
+          python3 tools/release.py --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" \
+            --target "$RELEASE_TARGET" --output-dir dist
+          python3 tools/release_smoke.py "dist/pystachy-$RELEASE_VERSION-$RELEASE_TARGET.tar.gz"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  container:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - name: Build the Linux amd64 image
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
+        run: |
+          docker buildx build --platform linux/amd64 --load \
+            --build-arg "VERSION=$RELEASE_VERSION" --build-arg "REVISION=$RELEASE_COMMIT" \
+            --tag pystachy:release-test .
+
+      - name: Test JIT/AOT and bind mounts as an unprivileged user
+        run: |
+          docker run --rm --user 10001:10001 --entrypoint pystachy-smoke pystachy:release-test
+          mkdir -p build/container-smoke
+          chmod 777 build/container-smoke
+          printf 'print(332833500)\n' > build/container-smoke/demo.py
+          docker run --rm --user 10001:10001 -v "$PWD/build/container-smoke:/work" \
+            pystachy:release-test run demo.py | tee build/container-smoke/jit.out
+          test "$(cat build/container-smoke/jit.out)" = 332833500
+          docker run --rm --user 10001:10001 -v "$PWD/build/container-smoke:/work" \
+            pystachy:release-test build demo.py -o demo
+          test "$(build/container-smoke/demo)" = 332833500
+
+      - name: Save the tested image for publication
+        run: |
+          mkdir -p dist
+          docker save pystachy:release-test | gzip -n > dist/pystachy-image.tar.gz
+          cd dist
+          sha256sum pystachy-image.tar.gz > pystachy-image.tar.gz.sha256
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: container-linux-amd64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: needs.prepare.outputs.publish == 'true'
+    needs: [prepare, binaries, container]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+
+      - name: Recheck version and exact commit immediately before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/release_gate.py --repository "$GITHUB_REPOSITORY" \
+            --commit "$RELEASE_COMMIT" --version "$RELEASE_VERSION"
+
+      - name: Require publishing credentials
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: test -n "$DOCKERHUB_USERNAME" && test -n "$DOCKERHUB_TOKEN"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: dist/binaries
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: container-linux-amd64
+          path: dist/container
+
+      - name: Verify downloads and load the tested image
+        run: |
+          cd dist/binaries
+          sha256sum -c ./*.sha256
+          sha256sum ./*.tar.gz > SHA256SUMS
+          cd ../container
+          sha256sum -c pystachy-image.tar.gz.sha256
+          docker load --input pystachy-image.tar.gz
+
+      - name: Push the versioned image to Docker Hub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+        run: |
+          image=${DOCKERHUB_IMAGE:-$DOCKERHUB_USERNAME/pystachy}
+          export DOCKER_IMAGE="$image"
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+          image = os.environ['DOCKER_IMAGE']
+          if not re.fullmatch(r'[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*', image):
+              raise SystemExit('DOCKERHUB_IMAGE must be namespace/repository')
+          url = 'https://hub.docker.com/v2/repositories/' + image + '/'
+          with urllib.request.urlopen(url, timeout=30) as response:
+              repository = json.load(response)
+          if repository.get('is_private') is not False:
+              raise SystemExit('Create a public Docker Hub repository before publishing')
+          try:
+              with urllib.request.urlopen(url + 'tags/' + os.environ['RELEASE_VERSION'] + '/', timeout=30):
+                  exists = True
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              exists = False
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'DOCKER_IMAGE={image}\n')
+          with open(os.environ['RUNNER_TEMP'] + '/docker-version-exists', 'w') as output:
+              output.write(str(exists).lower())
+          PY
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          trap 'docker logout >/dev/null 2>&1' EXIT
+          if [ "$(cat "$RUNNER_TEMP/docker-version-exists")" = true ]; then
+            tested_id=$(docker image inspect pystachy:release-test --format '{{.Id}}')
+            docker pull "$image:$RELEASE_VERSION"
+            existing_id=$(docker image inspect "$image:$RELEASE_VERSION" --format '{{.Id}}')
+            test "$tested_id" = "$existing_id" || { echo 'Docker version already exists with different contents; choose a new version' >&2; exit 1; }
+          else
+            docker tag pystachy:release-test "$image:$RELEASE_VERSION"
+            docker push "$image:$RELEASE_VERSION"
+          fi
+
+      - name: Determine whether to advance latest
+        if: needs.prepare.outputs.prerelease == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, 'tools')
+          from release_gate import get_json, should_promote
+          latest = get_json('repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/latest', os.environ['GH_TOKEN'], missing_ok=True)
+          promote = should_promote(os.environ['RELEASE_VERSION'], latest['tag_name'] if latest else None)
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'PROMOTE_LATEST={str(promote).lower()}\n')
+          PY
+
+      - name: Publish GitHub release binaries and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf 'Native compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n' > release-notes.md
+          printf 'Docker image: `%s:%s` (linux/amd64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION" >> release-notes.md
+          printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
+            "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT" >> release-notes.md
+          if ! gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
+              --draft --title "Pystachy $RELEASE_VERSION" --notes-file release-notes.md
+          fi
+          gh release upload "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" dist/binaries/* --clobber
+          if [ "$PRERELEASE" = true ]; then
+            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest=false
+          fi
+
+      - name: Update latest for newer stable releases
+        if: needs.prepare.outputs.prerelease == 'false'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$PROMOTE_LATEST" = true ] || exit 0
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          trap 'docker logout >/dev/null 2>&1' EXIT
+          docker tag pystachy:release-test "$DOCKER_IMAGE:latest"
+          docker push "$DOCKER_IMAGE:latest"
+          gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --latest
