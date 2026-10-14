@@ -62,6 +62,51 @@ populated. These numbers describe this small compute kernel on a shared host,
 not general Python application performance; short-lived workloads may lose to
 compilation cost.
 
+## Comparison with existing Pystachy
+
+The first table compares only with CPython. Pystachy already specializes
+unannotated functions when a caller's argument types are known statically. This
+prototype discovers those types at a CPython boundary and compiles them through
+the existing AOT extension pipeline. It does not supply branch frequencies or
+other profile data to LLVM's optimizer.
+
+Run the matched comparison from the repository root:
+
+```sh
+python3 tools/adaptive_bench.py --json build/adaptive-comparison.json
+```
+
+The controller checks five modes against CPython, with the same function body and
+varying runtime inputs. A direct extension uses the identical generated typed
+source and ABI, removing only the adaptive wrapper. The standalone JIT and AOT
+programs keep the kernel unannotated; argument conversions from `sys.argv` give
+the ordinary compiler enough information for static template specialization.
+
+On the same host and toolchain, 200,000 base iterations and the median of seven
+checked samples gave these warm times:
+
+| Argument types | CPython | Adaptive AOT extension | Direct AOT extension | Existing JIT | Existing AOT |
+|---|---:|---:|---:|---:|---:|
+| `int, int` | 8.40 ms | 0.219 ms | 0.201 ms | 0.380 ms | 0.202 ms |
+| `float, int` | 9.35 ms | 0.199 ms | 0.166 ms | 1.171 ms | 0.169 ms |
+
+All fourteen adaptive samples used native code. Every result's type and value
+matched the CPython oracle. Each sample varies `x` and `n`, and the compiled
+driver retains a live compute loop between its timer calls. Printing and result
+checks are outside the warm timings. The JSON report includes every sample and
+separate compilation, import and process times. CLI JIT runtime setup is primed
+once; these setup costs are process-cold, not cache-cold.
+
+The matched extension is the best comparison for the wrapper: adaptive dispatch
+was about 9–20% slower in this run. Standalone AOT was also slightly faster. The
+advantage over this kernel's existing JIT reflects backend differences: JIT uses
+a precompiled runtime object, while AOT and extensions can optimize across the
+runtime boundary. This experiment demonstrates near-AOT execution inside a
+CPython application with runtime type discovery and fallback. It provides no
+evidence of a new optimization gain over statically specialized AOT code.
+For very short functions, guard and conversion overhead can also outweigh the
+benefit over CPython.
+
 ## Initial scope and correctness
 
 The prototype accepts a deliberately small, side-effect-free numeric subset:
@@ -101,11 +146,14 @@ interoperability and deoptimization machinery.
 ```sh
 make test-adaptive
 PYSTACHY_ADAPTIVE_REQUIRE_NATIVE=1 make test-adaptive
+make bench-adaptive-check
 ```
 
 The first command runs guard and fallback tests, with native tests when a suitable
 toolchain is available. The second requires native compilation and dispatch;
 CI uses this mode. There are no timing thresholds in CI.
+`bench-adaptive-check` runs a small checked workload through all five comparison
+modes and requires actual adaptive native calls.
 
 ## Background
 

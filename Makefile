@@ -217,4 +217,8 @@ test-install:
 test-adaptive:
 	$(PY) -m unittest discover -s tools -p test_adaptive.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install test-adaptive
+# Correctness of the same numeric kernel in CPython, adaptive/direct ext, JIT and AOT.
+bench-adaptive-check:
+	$(PY) tools/adaptive_bench.py --iterations 2 --samples 2 --json build/adaptive-smoke.json
+
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install test-adaptive bench-adaptive-check

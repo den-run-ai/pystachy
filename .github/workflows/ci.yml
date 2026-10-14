@@ -50,11 +50,13 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
-      - name: Adaptive prototype guards and native dispatch
+      - name: Adaptive prototype guards and native baselines
         if: matrix.group == 'benchmarks'
         env:
           PYSTACHY_ADAPTIVE_REQUIRE_NATIVE: '1'
-        run: make test-adaptive
+        run: |
+          make test-adaptive
+          make bench-adaptive-check
 
       - name: Upload group report
         if: always()
@@ -64,6 +66,7 @@ jobs:
           path: |
             build/verification.json
             build/extended-smoke.json
+            build/adaptive-smoke.json
             build/verify/*.log
           if-no-files-found: error
           retention-days: 7
