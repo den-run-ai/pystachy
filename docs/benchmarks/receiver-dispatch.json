@@ -1,0 +1,105 @@
+{
+  "schema": "pystachy-receiver-dispatch-v1",
+  "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+  "compiler": [
+    "/home/user/pystachy/pystachy"
+  ],
+  "git_head": "fdbfe264ade9545486738680bf2abc23812f82af",
+  "git_status": "",
+  "constraints": 1000,
+  "rounds": 200000,
+  "samples": 7,
+  "timing_cpu": 2,
+  "inputs": {
+    "receiver_skew.py": "fbb46c0b36a64c78c95cfc426ab01628324ad1b51bc07e8189b5e3c2f88ae172",
+    "receiver_generic.py": "fbb46c0b36a64c78c95cfc426ab01628324ad1b51bc07e8189b5e3c2f88ae172",
+    "receiver_concrete.py": "107f7227f9eb8da77a20f843a28c954d10901bbb3c4762e011fea31473ca0dc1",
+    "receiver_generic": "8a302c50b972d1c7696b51ce31b0245c746e7f9cb1dfe3315280b7475a8b995e",
+    "receiver_concrete": "f330eb8efabacc93b90a404d2a68d2ec97e150be95a21a76a59a064b8af69292"
+  },
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "cpython_checks": {
+    "base_mixed": "mixed 20 1800 20",
+    "base_mono": "mono 20 0 1",
+    "concrete_mono": "mono 20 0 1"
+  },
+  "generic_execute": {
+    "tag_compares": 6,
+    "direct_method_calls": [
+      "m.Constraint.execute.1",
+      "m.Constraint.is_input.1",
+      "m.Constraint.is_input.2",
+      "m.Constraint.is_input.3",
+      "m.EditConstraint.execute.1",
+      "m.EditConstraint.is_input.1",
+      "m.EqualityConstraint.execute.1",
+      "m.ScaleConstraint.execute.1"
+    ],
+    "indirect_calls": 0,
+    "ir": "entry:\n  %plan.1 = alloca ptr\n  store ptr zeroinitializer, ptr %plan.1\n  %inputs.2 = alloca i64\n  store i64 zeroinitializer, ptr %inputs.2\n  %h.4 = alloca i64\n  store i64 zeroinitializer, ptr %h.4\n  %c.15 = alloca ptr\n  store ptr zeroinitializer, ptr %c.15\n  store ptr %a0, ptr %plan.1\n  store i64 0, ptr %inputs.2\n  %t3 = load ptr, ptr %plan.1\n  store i64 0, ptr %h.4\n  %t5 = load i64, ptr %t3\n  br label %L6\nL6:\n  %t9 = load i64, ptr %h.4\n  %t10 = load i64, ptr %t3\n  %t11 = icmp slt i64 %t9, %t10\n  br i1 %t11, label %L12, label %L8\nL12:\n  %t66 = getelementptr inbounds {i64, i64, ptr}, ptr %t3, i64 0, i32 2\n  %t67 = load ptr, ptr %t66\n  %t68 = getelementptr inbounds i64, ptr %t67, i64 %t9\n  %t13 = load i64, ptr %t68\n  %t14 = inttoptr i64 %t13 to ptr\n  store ptr %t14, ptr %c.15\n  %t16 = load ptr, ptr %c.15\n  %t17 = icmp eq ptr %t16, null\n  br i1 %t17, label %L18, label %L19\nL19:\n  %t20 = icmp eq ptr %t16, null\n  br i1 %t20, label %L18, label %L21\nL21:\n  %t22 = load i64, ptr %t16\n  %t26 = icmp eq i64 %t22, 1\n  br i1 %t26, label %L25, label %L24\nL25:\n  call void @m.Constraint.execute.1(ptr %t16)\n  br label %L23\nL24:\n  %t29 = icmp eq i64 %t22, 2\n  br i1 %t29, label %L28, label %L27\nL28:\n  call void @m.EqualityConstraint.execute.1(ptr %t16)\n  br label %L23\nL27:\n  %t32 = icmp eq i64 %t22, 3\n  br i1 %t32, label %L31, label %L30\nL31:\n  call void @m.ScaleConstraint.execute.1(ptr %t16)\n  br label %L23\nL30:\n  call void @m.EditConstraint.execute.1(ptr %t16)\n  br label %L23\nL23:\n  %t33 = load ptr, ptr %c.15\n  %t34 = icmp eq ptr %t33, null\n  br i1 %t34, label %L35, label %L36\nL36:\n  %t37 = icmp eq ptr %t33, null\n  br i1 %t37, label %L35, label %L38\nL38:\n  %t39 = load i64, ptr %t33\n  %t43 = icmp eq i64 %t39, 1\n  br i1 %t43, label %L42, label %L41\nL42:\n  %t44 = call i1 @m.Constraint.is_input.1(ptr %t33)\n  br label %L40\nL41:\n  %t47 = icmp eq i64 %t39, 2\n  br i1 %t47, label %L46, label %L45\nL46:\n  %t48 = call i1 @m.Constraint.is_input.2(ptr %t33)\n  br label %L40\nL45:\n  %t51 = icmp eq i64 %t39, 3\n  br i1 %t51, label %L50, label %L49\nL50:\n  %t52 = call i1 @m.Constraint.is_input.3(ptr %t33)\n  br label %L40\nL49:\n  %t53 = call i1 @m.EditConstraint.is_input.1(ptr %t33)\n  br label %L40\nL40:\n  %t54 = phi i1 [%t44, %L42], [%t48, %L46], [%t52, %L50], [%t53, %L49]\n  br i1 %t54, label %L55, label %L56\nL55:\n  %t58 = load i64, ptr %inputs.2\n  %t59 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t58, i64 1)\n  %t60 = extractvalue {i64, i1} %t59, 0\n  %t61 = extractvalue {i64, i1} %t59, 1\n  br i1 %t61, label %L62, label %L63\nL63:\n  store i64 %t60, ptr %inputs.2\n  br label %L57\nL56:\n  br label %L57\nL57:\n  br label %L7\nL7:\n  %t64 = add i64 %t9, 1\n  store i64 %t64, ptr %h.4\n  br label %L6\nL8:\n  %t65 = load i64, ptr %inputs.2\n  ret i64 %t65\nL18:\n  call void @pys_raise(ptr @s.10, ptr @s.27)\n  unreachable\nL35:\n  call void @pys_raise(ptr @s.10, ptr @s.28)\n  unreachable\nL62:\n  call void @pys_raise(ptr @s.16, ptr @s.15)\n  unreachable\n"
+  },
+  "ns_per_constraint": {
+    "base_mixed": [
+      1.6862558849999232,
+      1.6542632599998797,
+      1.7659553099997538,
+      1.6108153999999786,
+      1.634337649999793,
+      1.6677704650004443,
+      1.632446204999951
+    ],
+    "base_mono": [
+      1.5577298149997887,
+      1.4147961300000134,
+      1.4232887349999146,
+      1.4147653899999568,
+      1.4426158800000621,
+      1.4331004000001712,
+      1.6028628099996922
+    ],
+    "concrete_mono": [
+      1.1668336750000208,
+      1.1746649200000547,
+      1.1586529549998659,
+      1.3660081950001768,
+      1.1913662050000084,
+      1.1713604950000445,
+      1.1813932300003671
+    ]
+  },
+  "summary": {
+    "base_mixed": {
+      "median": 1.6542632599998797,
+      "min": 1.6108153999999786,
+      "max": 1.7659553099997538
+    },
+    "base_mono": {
+      "median": 1.4331004000001712,
+      "min": 1.4147653899999568,
+      "max": 1.6028628099996922
+    },
+    "concrete_mono": {
+      "median": 1.1746649200000547,
+      "min": 1.1586529549998659,
+      "max": 1.3660081950001768
+    }
+  },
+  "paired_ratios": {
+    "base_mono_over_concrete_mono": {
+      "median": 1.2234494898174937,
+      "min": 1.035693193626685,
+      "max": 1.3567563866936956
+    },
+    "base_mixed_over_concrete_mono": {
+      "median": 1.408285232523844,
+      "min": 1.1792135697983643,
+      "max": 1.524145174255356
+    },
+    "base_mixed_over_base_mono": {
+      "median": 1.1385742197156998,
+      "min": 1.018456598291319,
+      "max": 1.2407568939269795
+    }
+  }
+}
