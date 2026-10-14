@@ -1,0 +1,4 @@
+one two '' True
+True one two three first
+;
+[exit 0]

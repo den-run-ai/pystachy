@@ -23,6 +23,10 @@ observable contract.
 | `string` | `Lib/string.py` | `c000d9c4340c910b869399f0f0acc1b70e39391ad9344c4e08d8d0f80210a916` |
 | `statistics` | `Lib/statistics.py` | `80b677e786418c299ced99993f4a89804d4532e0b5e26971286713a6de538c18` |
 | `urllib.parse` | `Lib/urllib/parse.py` | `491b233e8d87a2ab73964afff029717177d53ad8def328ed9b00575db983da27` |
+| `html` | `Lib/html/__init__.py` | `923d82d821e75e8d235392c10c145ab8587927b3faf9c952bbd48081eebd8522` |
+| `html.entities` | `Lib/html/entities.py` | `d9c65fb2828dbc1f3e399058a341d51e9375ec5bca95a8e92599c41bd5b78bde` |
+| `keyword` | `Lib/keyword.py` | `18c2be738c04ad20ad375f6a71db34b3823c7f40b0340f5294d0e89f3c9b093b` |
+| `shlex` | `Lib/shlex.py` | `f927227de5ba5b1b2bdd75e3d9c8cb72b602b3bba3cc8edbf8fb554de0dc1fd7` |
 
 `heapq` adapts its top-k routines while retaining the other upstream code.
 `statistics` also ports `math_sumprod_impl` from `Modules/mathmodule.c` for
@@ -37,7 +41,8 @@ CPython runs the source.
 |---|---|---|
 | `io` | `Modules/_io/stringio.c` | Typed `StringIO`, with append chunks joined when read |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
-| `functools` | `Modules/_functoolsmodule.c` | Generic cache wrapper with compiler-assisted call binding |
+| `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
+| `functools` | `Modules/_functoolsmodule.c`, `Lib/functools.py` | Generic cache wrapper, plus adapted reduction and comparison-key fallbacks |
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
@@ -65,11 +70,22 @@ Historical upstream-suite checks recorded with the ports:
 | `statistics` | `test_statistics` | All 401 tests passed, including a run with the ported `sumprod` |
 | `urllib.parse` | `test_urlparse` | All 77 passed, with five upstream subtest skips |
 | `urllib.parse` | `test_urllib` quoting/query classes | 28 of 29 passed; strict codec exception subclass differs |
+| `html` | `test_html` | Both tests passed |
+| `keyword` | `test_keyword` | All 11 tests passed |
+| `shlex` | `test_shlex` | 43 of 44 passed; punctuation field is writable |
 
 These counts describe specific recorded checks of the adapted source under
 CPython, not the number of APIs or upstream tests executed by the compiled
 subset. Current test commands and CI coverage are in
 [the testing guide](../docs/testing.md).
+
+The deque reference at the same pinned CPython commit has SHA-256
+`02d5bcaea730fc7af1fed5f50f87eacad710022dbebb1efebbbd1737ec940cae`.
+`tests/lib_collections.py` and `tests/lib_collections_mutation.py` exercise compiled
+queue operations, callback mutation and bounded repetition. Shlex's differential
+upstream selection retains its three split/join table methods; HTML retains both
+upstream methods, and keyword retains nine methods while excluding dynamic `exec`.
+Test headers record source-test hashes and exclusions.
 
 Regex validation also includes `tests/upstream_re_*.py`, deterministic
 `tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of

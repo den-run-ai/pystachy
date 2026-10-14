@@ -98,10 +98,15 @@ _WHATWG_C0_CONTROL_OR_SPACE = '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\
 # Unsafe bytes to be removed per WHATWG spec
 _UNSAFE_URL_BYTES_TO_REMOVE = ['\t', '\r', '\n']
 
-def clear_cache():
+def clear_cache() -> None:
     """Clear internal performance caches. Undocumented; some tests want it."""
     urlsplit.cache_clear()
-    _byte_quoter_factory.cache_clear()
+    _quoters.clear()  # Pystachy port: the string API's equivalent of byte quoters.
+    try:
+        import types
+        _byte_quoter_factory.cache_clear()
+    except ImportError:
+        pass
 
 # Helpers for bytes handling
 # For 3.2, we deliberately require applications that
@@ -601,9 +606,10 @@ def _is_ipv6(ip_str):
 
 # typed=True avoids BytesWarnings being emitted during cache key
 # comparison since this API supports both bytes and str input.
-# Pystachy port: cached in CPython only (below): lib/functools caches a function whose parameters
-# are annotated, called with each of them by position
-def urlsplit(url, scheme='', allow_fragments=True):
+# Pystachy port: annotate the string API for functools's typed cache. CPython
+# continues to accept bytes through the original coercion/result branches.
+@functools.lru_cache(typed=True)
+def urlsplit(url: str, scheme: str = '', allow_fragments: bool = True) -> SplitResult:
     """Parse a URL into 5 components:
     <scheme>://<netloc>/<path>?<query>#<fragment>
 
@@ -657,12 +663,6 @@ def urlsplit(url, scheme='', allow_fragments=True):
     _checknetloc(netloc)
     v = SplitResult(scheme, netloc, url, query, fragment)
     return _coerce_result(v)
-
-try:
-    import types  # Pystachy port: (above; Pystachy has no types module, and drops this block)
-    urlsplit = functools.lru_cache(typed=True)(urlsplit)
-except ImportError:
-    pass
 
 def urlunparse(components):
     """Put a parsed URL back together again.  This may result in a
@@ -791,7 +791,11 @@ def urldefrag(url):
     return _coerce_result(DefragResult(defrag, frag))
 
 _hexdig = '0123456789ABCDEFabcdef'
-_hextobyte = None
+try:
+    import types
+    _hextobyte = None
+except ImportError:
+    pass  # Pystachy port: only the unavailable byte APIs use this table.
 
 def unquote_to_bytes(string):
     """unquote_to_bytes('abc%20def') -> b'abc def'."""

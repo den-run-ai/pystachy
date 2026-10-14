@@ -20,15 +20,19 @@ Imports search builtin modules first, then the program's directory,
 | `difflib` | Adapted CPython | `SequenceMatcher`, `get_close_matches`, junk predicates and `Match` | String items; generator APIs unavailable |
 | `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
 | `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
+| `html`, `html.entities` | Adapted CPython | `escape`, `unescape`, HTML4 and HTML5 entity tables | No configurable integer digit limit |
+| `keyword` | Adapted CPython | Keyword lists, `iskeyword`, `issoftkeyword` | Compiled predicates accept strings and `None` |
+| `collections` | Subset implementation | Typed `deque`, both ends, bounded queues, searches and comparisons | Constructor needs a typed list; iteration is a snapshot |
+| `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
 | `io` | Subset implementation | `StringIO` and seek constants | Byte positions; eager line iteration |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
 | `re` | Subset port of parser/compiler and C engine | String regex syntax and matching, substitution, caches | Byte positions; selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
-| `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics and clearing | Annotated functions with supported key types |
+| `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key` | Typed callables and supported value/key types |
 | `textwrap` | Adapted CPython | `TextWrapper`, `wrap`, `fill`, `shorten`, `dedent`, `indent` | Byte widths; no subclassing |
 | `string` | Adapted CPython | Constants, `capwords`, `Template` | No compiled `Formatter` or `Template` subclasses |
 | `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode | Selected numeric types and APIs |
-| `urllib.parse` | Adapted CPython | String quoting, query parsing/encoding and URL parsing/joining | Three codecs; no bytes, result properties or URL cache API |
+| `urllib.parse` | Adapted CPython | String quoting, query parsing/encoding and cached URL parsing/joining | Three codecs; no bytes or result properties |
 
 The [compatibility reference](compatibility.md) defines each module's accepted
 inputs, unsupported APIs and observable differences from CPython. The

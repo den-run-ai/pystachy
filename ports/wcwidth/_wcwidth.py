@@ -62,9 +62,7 @@ Latest version: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
 from __future__ import annotations
 
 # std imports
-# Pystachy port: no functools (#11), so no @lru_cache below (decorators are M3, #8): the caches
-# only save time.
-# from functools import lru_cache
+from functools import lru_cache
 
 __lazy_modules__ = [
     "wcwidth.bisearch",
@@ -79,7 +77,8 @@ from ._constants import (_LATEST_VERSION,
                          _clamp_ambiguous_width)
 
 
-# @lru_cache(maxsize=128)  # Pystachy port
+# Pystachy port: this legacy helper returns a variable-length tuple, so it remains
+# outside the compiled API and is not decorated by the typed cache.
 def _wcversion_value(ver_string: str) -> tuple[int, ...]:  # pragma: no cover
     """
     Integer-mapped value of given dotted version string.
@@ -96,7 +95,7 @@ def _wcversion_value(ver_string: str) -> tuple[int, ...]:  # pragma: no cover
     return retval
 
 
-# @lru_cache(maxsize=8)  # Pystachy port
+@lru_cache(maxsize=8)
 def _wcmatch_version(given_version: str) -> str:  # pylint: disable=unused-argument
     """
     Return the supported Unicode version level.
@@ -117,7 +116,7 @@ def _wcmatch_version(given_version: str) -> str:  # pylint: disable=unused-argum
 # CJK sessions may use ~2000 of ~3500 common hanzi/kanji. 1024 accommodates
 # heavy CJK use. Performance floor at 32; bisearch is ~100ns per miss.
 
-# @lru_cache(maxsize=1024)  # Pystachy port
+@lru_cache(maxsize=1024)
 def wcwidth(wc: str, unicode_version: str = 'auto', ambiguous_width: int = 1) -> int:  # pylint: disable=unused-argument
     r"""
     Given one Unicode codepoint, return its printable length on a terminal.

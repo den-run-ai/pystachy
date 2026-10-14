@@ -70,7 +70,8 @@ copyright notice.
 
 lib/functools.py is Pystachy's own code for cache() and lru_cache(), which follows the C
 wrapper of CPython 3.13.16's Modules/_functoolsmodule.c (_lru_cache_wrapper) and keeps
-docstrings of Lib/functools.py (lib/README.md). It is derived from Python and is used under the
+docstrings of Lib/functools.py (lib/README.md). Its reduce() and cmp_to_key() adapt the
+Python fallbacks in Lib/functools.py. It is derived from Python and is used under the
 same license and copyright notice.
 
 lib/textwrap.py is CPython 3.13.16's Lib/textwrap.py with the edits lib/README.md lists, each
@@ -97,6 +98,19 @@ notice.
 lib/urllib/parse.py is CPython 3.13.16's Lib/urllib/parse.py with the edits lib/README.md lists,
 each marked in the source; it is derived from Python and is used under the same license and
 copyright notice. lib/urllib/__init__.py is CPython's, which is empty.
+
+lib/html/__init__.py, lib/html/entities.py and lib/keyword.py adapt CPython 3.13.16's
+files of the same paths under Lib/, at commit cbc944f4bc59639a444dd971c737788ba2283a91.
+tests/lib_html.py and tests/lib_keyword.py adapt selected methods of Lib/test/test_html.py
+and Lib/test/test_keyword.py from the same commit; their headers pin the source hashes
+and identify exclusions. These sources and tests use the same PSF license and copyright
+notice. Every source adaptation is marked # Pystachy port:.
+
+lib/shlex.py adapts CPython 3.13.16's Lib/shlex.py at the same commit. Its upstream
+table assertions in tests/lib_shlex_upstream.py derive from Lib/test/test_shlex.py.
+lib/collections/__init__.py implements a typed deque after Modules/_collectionsmodule.c,
+including its comparison mutation checks and messages. These sources, their retained
+docstrings and upstream-derived tests use the same PSF license and copyright notice.
 
 CPython's math tests (tests/)
 ----------------------------
