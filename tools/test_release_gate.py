@@ -45,8 +45,14 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(workflow_states([run("CI", conclusion="cancelled")], COMMIT)["CI"], "cancelled")
 
     def test_new_version_or_draft_can_proceed(self):
-        for release in (None, {"draft": True}):
+        for release in (None, {"draft": True, "target_commitish": COMMIT}):
             with self.subTest(release=release), patch("release_gate.get_json", side_effect=[release, None]):
+                validate_version("den-run-ai/pystachy", COMMIT, "v0.1.0", "test")
+
+    def test_unresolved_draft_must_target_exact_source_commit(self):
+        for target in ("b" * 40, "main", None):
+            with self.subTest(target=target), patch("release_gate.get_json", side_effect=[
+                    {"draft": True, "target_commitish": target}, None]), self.assertRaises(RuntimeError):
                 validate_version("den-run-ai/pystachy", COMMIT, "v0.1.0", "test")
 
     def test_published_version_cannot_be_replaced(self):

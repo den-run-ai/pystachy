@@ -312,9 +312,9 @@ jobs:
           fi
           gh release upload "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" dist/binaries/* --clobber
           if [ "$PRERELEASE" = true ]; then
-            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
+            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" --draft=false --prerelease --latest=false
           else
-            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest=false
+            gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" --draft=false --prerelease=false --latest=false
           fi
 
       - name: Update latest for newer stable releases
@@ -327,6 +327,5 @@ jobs:
           [ "$PROMOTE_LATEST" = true ] || exit 0
           printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
           trap 'docker logout >/dev/null 2>&1' EXIT
-          docker tag pystachy:release-test "$DOCKER_IMAGE:latest"
-          docker push "$DOCKER_IMAGE:latest"
-          gh release edit "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --latest
+          python3 tools/release_promote.py --repository "$GITHUB_REPOSITORY" \
+            --version "$RELEASE_VERSION" --image "$DOCKER_IMAGE"

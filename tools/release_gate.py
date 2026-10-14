@@ -74,6 +74,8 @@ def validate_version(repository: str, commit: str, version: str, token: str) -> 
             obj = get_json(prefix + "git/tags/" + obj["sha"], token)["object"]
         if obj["type"] != "commit" or obj["sha"] != commit:
             raise RuntimeError("The release tag points to a different commit")
+    elif release and release.get("target_commitish") != commit:
+        raise RuntimeError("The existing draft targets a different commit; choose a new version")
 
 
 def main() -> int:

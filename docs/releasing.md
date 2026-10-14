@@ -47,9 +47,24 @@ versions advance both `latest` pointers after the GitHub release is published; p
 an older stable version cannot move them backwards. Publication jobs are serialized.
 
 If publication fails before the draft GitHub release becomes public, a retry may complete
-the draft. An existing Docker version tag is accepted only if its image matches the tested
-image exactly; otherwise choose a new version. If the GitHub release is already public,
-use a new version rather than overwrite its assets.
+the draft only for its original source commit. An existing Docker version tag is accepted
+only if its image matches the tested image exactly; otherwise choose a new version. If the
+GitHub release is already public, use a new version for changed assets.
+
+If a transient failure interrupts the final stable `latest` promotion, recover it without
+rebuilding or uploading assets. Authenticate `gh` and `docker`, set `GH_TOKEN` in your
+environment, then run:
+
+```sh
+python3 tools/release_promote.py --repository den-run-ai/pystachy \
+  --version v0.1.0 --image DOCKERHUB_NAMESPACE/pystachy
+```
+
+The same helper runs in the workflow. It requires a published stable release, resolves its
+tag commit, and verifies the versioned image's revision and version labels before updating
+either `latest` pointer. It can repair Docker when GitHub already points to this version,
+and it refuses to displace a newer version. Run recovery after other release publication
+jobs finish, so manual promotion does not race an active release.
 
 ## Local packaging checks
 
