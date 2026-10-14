@@ -301,8 +301,12 @@ are unsupported when the class is used.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. A template function's
-inferred result is unavailable at field declaration time; annotate that field explicitly.
+function values, and supported container displays and operations. When specializing a class
+template, a field can also use an ordinary generic function's inferred return type if its
+positional arguments and omitted defaults have known types. This uses normal function
+specialization and does not execute the helper or its defaults during inference. Keyword or
+unpacked arguments, local call targets, and helpers whose return is needed before class
+specialization still require an explicit field annotation.
 
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body

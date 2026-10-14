@@ -1197,7 +1197,42 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if c in self.classes or c in self.unsupported:
             return c if c in self.classes else "!" + self.unsupported[c]
         if c in self.funcs:
-            return self.funcs[c].ret if self.funcs[c].bad == "" else "!" + self.funcs[c].bad
+            helper = self.funcs[c]
+            if helper.bad != "":
+                return "!" + helper.bad
+            if self.compiling and helper.generic and helper.ret == "" and helper.cls == "" and helper.clo < 0 and helper.vararg < 0 and helper.kwarg < 0 and not helper.extern and not helper.pyexport:
+                # A constructor field can keep the return type of an ordinary
+                # helper specialized for its known argument types. This compiles
+                # the existing template; it neither evaluates source nor guesses
+                # the return from one branch of the helper's body.
+                assigned: dict[str, bool] = {}
+                local_names(f.node.kids[2].kids, assigned)
+                args = e.kids[1:]
+                if c in f.params or c in assigned or len(args) > len(helper.params) or (helper.npos >= 0 and len(args) > helper.npos):
+                    return ""
+                ts: list[str] = []
+                for i in range(len(helper.params)):
+                    if i < len(args):
+                        arg = args[i]
+                        if arg.kind == "kw" or arg.kind == "starred" or arg.kind == "dstar":
+                            return ""
+                        t = "None" if arg.kind == "None" else self.guess(arg, f)
+                    elif helper.defaults[i].kind == "noann":
+                        return ""
+                    else:
+                        t = helper.dtypes[i]
+                        if t == "":
+                            t = "None" if helper.defaults[i].kind == "None" else self.guess(helper.defaults[i], FnInfo("", "", helper.node, ""))
+                    if t == "" or t.startswith("!"):
+                        return ""
+                    target = helper.ptypes[i]
+                    if target != "" and t != target:
+                        if not self.widens(t, target) and not (is_sopt(target) and t == unopt(target)):
+                            return ""
+                        t = target
+                    ts.append(t)
+                return self.instance(helper, ts, []).ret
+            return helper.ret
         if c == "str" or c == "int" or c == "float" or c == "bool":
             return c
         if c == "len" or c == "ord":

@@ -1,0 +1,11 @@
+default
+retain implicit 1
+retain explicit 2
+True True
+a bc d
+retain implicit 3
+retain explicit 4
+True True
+10 10
+calls 4
+[exit 0]
