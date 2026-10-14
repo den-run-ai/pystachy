@@ -19,7 +19,9 @@ class ReleaseTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pystachy-package-test-")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # macOS exposes /var through a symlink to /private/var; the launcher uses
+        # physical paths (cd -P), so fixtures and expected paths must do the same.
+        self.root = Path(temporary.name).resolve()
         self.source = self.root / "source"
         self.source.mkdir()
         for name in release.FILES:
