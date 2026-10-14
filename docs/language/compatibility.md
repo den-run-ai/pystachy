@@ -92,6 +92,12 @@ In these cases a program can compile but behave differently from CPython.
 
 ### Functions and object identity
 
+- Runtime-length tuples use a different layout from fixed-shape tuples. Converting a
+  fixed-shape tuple to `tuple[T, ...]`, or boxing its scalar elements for an optional-element
+  annotation, creates a new tuple. Values compare equally, but identity across such a
+  conversion is not preserved. Empty runtime-length tuples are not interned. `tuple(t)`
+  preserves identity when `t` already has the requested runtime-length representation.
+
 - `is` between `Callable`s compares the function they hold and its env or bound object, as `==`
   does, so two reads of one bound method (`o.m`) made `Callable`s are the same object, where
   CPython makes a new method object at each read.
@@ -333,7 +339,7 @@ supported alternatives.
   `int | None` and a `str | None`, which CPython finds equal only when both are `None`)
 - comparing or sorting objects in a container when the `__eq__` or ordering method the operation
   calls is annotated to take another class, which CPython calls anyway
-- a constant tuple index out of range (CPython raises `IndexError` where it runs)
+- a constant fixed-shape tuple index out of range (CPython raises `IndexError` where it runs; runtime-length tuples check indices at runtime)
 - `sum(iterable, start)` with a `bool` start: its result is the original bool when the iterable
   is empty, and an `int` or `float` otherwise, which cannot share one static type here. Use
   `sum(iterable, int(start))` for a numeric result, including on empty inputs.

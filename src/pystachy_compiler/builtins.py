@@ -37,6 +37,7 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_sopt,
     is_tuple,
+    is_vtuple,
     kw_names,
     lt,
     rtt,
@@ -109,6 +110,21 @@ def gen_builtin(self, name: str, args: list[Node], want: str) -> Val:
         name = name[6:]
     if name.startswith("builtins."):
         name = name[9:]
+    if name == "tuple":
+        if len(args) > 1 or any(a.kind == "kw" for a in args):
+            self.err("tuple() takes zero or one positional iterable argument")
+        if len(args) == 0:
+            return self.coerce(self.tuple_([]), want) if is_vtuple(unopt(want)) else self.tuple_([])
+        v = self.unwrap(self.expr(args[0], self.ctype("list", [targs(unopt(want))[0]]) if is_vtuple(unopt(want)) else ""), "TypeError: 'NoneType' object is not iterable")
+        if is_vtuple(v.t) or is_tuple(v.t):
+            return self.coerce(v, want) if is_vtuple(unopt(want)) else v
+        if v.t == "str":
+            v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
+        if not is_list(v.t):
+            self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
+        if unopt(elem(v.t)) not in ["int", "float", "bool", "str"]:
+            self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+        return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
         self.err("the functional NamedTuple form is not supported: write a class, class P(NamedTuple): with annotated fields")
     if "." not in name and name not in PYBUILTINS:
@@ -411,7 +427,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str) -> Val:
             # (tagged as the primitives' loads are, and bounded: LLVM then sees that index
             # arithmetic on lengths cannot overflow)
             return Val(self.ins(f"load i64, ptr {v.v}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}"), "int")
-        if t == "str" or is_list(t) or is_dict(t) or is_set(t):
+        if t == "str" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
             return Val(self.ins(f"load i64, ptr {v.v}"), "int")
         if is_tuple(t):
             return Val(str(len(targs(t))), "int")
@@ -877,6 +893,8 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_set(v.t):
         return Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)]))
+    if is_vtuple(v.t):
+        return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
         ts = targs(v.t)
         et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)

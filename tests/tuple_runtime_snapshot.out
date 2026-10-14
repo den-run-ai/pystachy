@@ -1,0 +1,62 @@
+snapshot 0 () () () 0
+attributes True True True False False
+equal True False False
+changed True False
+bounds 0 tuple index out of range
+bounds -1 tuple index out of range
+snapshot 1 (0,) (0,) (0,) 1
+attributes True True True False False
+equal True False False
+changed False True
+member 0
+ends 0 0
+bounds 1 tuple index out of range
+bounds -2 tuple index out of range
+snapshot 2 (0, 1) (0, 1) (0, 1) 2
+attributes True True True False False
+equal True False False
+changed False True
+member 0
+member 1
+ends 0 1
+bounds 2 tuple index out of range
+bounds -3 tuple index out of range
+snapshot 3 (0, 1, 2) (0, 1, 2) (0, 1, 2) 3
+attributes True True True False False
+equal True False False
+changed False True
+member 0
+member 1
+member 2
+ends 0 2
+bounds 3 tuple index out of range
+bounds -4 tuple index out of range
+snapshot 4 (0, 1, 2, 3) (0, 1, 2, 3) (0, 1, 2, 3) 4
+attributes True True True False False
+equal True False False
+changed False True
+member 0
+member 1
+member 2
+member 3
+ends 0 3
+bounds 4 tuple index out of range
+bounds -5 tuple index out of range
+snapshot 10 (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) 10
+attributes True True True False False
+equal True False False
+changed False True
+member 0
+member 1
+member 2
+member 3
+member 4
+member 5
+member 6
+member 7
+member 8
+member 9
+ends 0 9
+bounds 10 tuple index out of range
+bounds -11 tuple index out of range
+[exit 0]

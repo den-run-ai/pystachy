@@ -56,6 +56,7 @@ __attribute__((unused)) static char *d2s(double f);
 typedef int64_t I;
 typedef struct { I len; uint64_t dict_hash; char s[]; } Str; /* immutable bytes, NUL-terminated; lazy dict hash (0: unset) */
 typedef struct { I len, cap; I *a; } List;
+typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple keys; see dicts */
 typedef struct { I len, kind, fill, mask, finger; I *keys, *hs; } Set; /* a set or frozenset, kind as Dict's; see sets */
 typedef struct { char *p; I n, cap; } Buf;
@@ -952,7 +953,7 @@ I pys_floor(double d) { return pys_f2i(floor(d)); }
 I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
-   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, S<e> set, F<e>
+   i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
    frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
    has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
    ?<e> None (null) or a value of <e>; E an exception (an Exc) */
@@ -985,7 +986,7 @@ static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' 
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'O') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
-  if (c == 'L' || c == '?' || c == 'S' || c == 'F') return skip(d);
+  if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   return d;
@@ -1054,6 +1055,15 @@ static const char *repr(Buf *b, I v, const char *d) {
     for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
+  case 'V': {
+    if (!v) { put(b, "None", 4); return skip(d); }
+    VTuple *t = (VTuple *)v;
+    if (!pys_repr_enter(t)) { put(b, "(...)", 5); return skip(d); }
+    put(b, "(", 1);
+    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr(b, t->a[i], d); }
+    put(b, t->len == 1 ? ",)" : ")", t->len == 1 ? 2 : 1);
+    pys_repr_leave(t); return skip(d);
+  }
   case 'O': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
   case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
   case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
@@ -1069,7 +1079,7 @@ static int eqv(I a, I b, const char *d);
    and an optional scalar's box does not give that scalar Python object identity. */
 static int eqitem(I a, I b, const char *d) {
   char c = d[*d == '?'];
-  return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'S' || c == 'F')) || eqv(a, b, d);
+  return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
 }
 #ifndef EQ_PROBE
 #define EQ_PROBE()
@@ -1102,6 +1112,14 @@ static int eqv(I a, I b, const char *d) {
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return 0;
     return 1;
   }
+  case 'V': {
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b;
+    if (x == y) return 1;
+    if (!x || !y) return x == y;
+    if (x->len != y->len) return 0;
+    for (I i = 0; i < x->len; i++) if (!eqitem(x->a[i], y->a[i], d + 1)) return 0;
+    return 1;
+  }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
@@ -1130,6 +1148,13 @@ static int opv(I a, I b, const char *d, I op) {
     for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return opv(x[i], y[i], e, op);
     return cmpop(0, op);
   }
+  case 'V': {
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
+    if (x == y) return cmpop(0, op);
+    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
+    return cmpop((x->len > y->len) - (x->len < y->len), op);
+  }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
@@ -1155,6 +1180,34 @@ void pys_unpack_check(I have, I want) {
   pys_fail(b);
 }
 
+/* Variable-length tuples own copied slots; later list mutation cannot change the
+   tuple. Scanned allocation retains pointer-valued elements and optional boxes.
+   The source remains live through the allocation because memcpy reads it after. */
+VTuple *pys_vtuple_from(I *src, I count) {
+  if (count < 0 || count > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I)) pys_fail("MemoryError");
+  if (count && !src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  VTuple *t = pys_alloc(sizeof(VTuple) + count * sizeof(I));
+  t->len = count;
+  if (count) memcpy(t->a, src, count * sizeof(I));
+  return t;
+}
+VTuple *pys_vtuple_new(List *src) {
+  if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  return pys_vtuple_from(src->a, src->len);
+}
+/* Immutable widening from int/float/bool to the same scalar | None. The
+   compiler restricts this helper to unboxed scalar source elements. */
+VTuple *pys_vtuple_box(VTuple *src) {
+  if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  VTuple *t = pys_vtuple_from(src->a, src->len);
+  for (I i = 0; i < src->len; i++) t->a[i] = (I)pys_box(src->a[i]);
+  return t;
+}
+I pys_vtuple_get(VTuple *t, I index) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
+  return t->a[idx(index, t->len, "IndexError: tuple index out of range")];
+}
+
 /* ---------- lists ---------- */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
@@ -1163,6 +1216,13 @@ static void empty(List *l) {           /* detach an empty list's historical stor
 List *pys_list_new(I cap) {
   List *l = pys_alloc(sizeof(List));
   l->cap = cap > 4 ? cap : 4; l->a = pys_alloc(l->cap * 8); return l;
+}
+List *pys_vtuple_list(VTuple *t) {
+  if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
+  List *l = pys_list_new(t->len);
+  if (t->len) memcpy(l->a, t->a, t->len * sizeof(I));
+  l->len = t->len;
+  return l;
 }
 static void reserve(List *l, I n) {
   if (n <= l->cap) return;
@@ -2085,7 +2145,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : "object";
+  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with

@@ -1,0 +1,5 @@
+empty True False
+fixed True False
+boxed True False
+same True
+[exit 0]

@@ -199,6 +199,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "file":
         return "TextIOWrapper"
+    if is_vtuple(t):
+        return "tuple"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
     if t == "exc":
@@ -305,6 +307,11 @@ def selem(t: str) -> str:
 
 def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
+
+
+def is_vtuple(t: str) -> bool:
+    # Homogeneous tuples whose arity is determined during native execution.
+    return t.startswith("vtuple[")
 
 
 def is_opt(t: str) -> bool:
@@ -440,6 +447,14 @@ def typestr(t: str) -> str:
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
     t = t.replace("[?,?]", "").replace("[?]", "")
+    while "vtuple[" in t:
+        a = t.find("vtuple[")
+        b = a + 7
+        depth = 1
+        while depth > 0:
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            b += 1
+        t = t[:a] + "tuple[" + t[a + 7:b - 1] + ", ...]" + t[b:]
     while "kw[" in t:
         # (**kwargs: the record of a call's extra keyword arguments)
         a = t.find("kw[")

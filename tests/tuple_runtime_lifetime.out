@@ -1,0 +1,9 @@
+strings ('value-0', 'value-1', 'value-2', 'value-3', 'value-4', 'value-5', 'value-6', 'value-7', 'value-8', 'value-9') ('value-0', 'value-1', 'value-2', 'value-3', 'value-4', 'value-5', 'value-6', 'value-7', 'value-8', 'value-9') 10
+optional ('first', None, 'last') ('first', None, 'last') 3
+numeric (0.5, -1.5, 2.5) (0.5, -1.5, 2.5) 0.5 2.5
+booleans (True, False) (True, False) True False
+text first
+none
+text last
+saved value-0 value-9 first last
+[exit 0]

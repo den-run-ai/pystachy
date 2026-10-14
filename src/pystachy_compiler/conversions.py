@@ -16,6 +16,7 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_sopt,
     is_tuple,
+    is_vtuple,
     lt,
     selem,
     targs,
@@ -86,6 +87,17 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     # v as a value of type t; what names v for the error when v may be None and t may not
     if v.t == t:
         return v
+    if is_vtuple(unopt(t)) and is_tuple(v.t):
+        et = targs(unopt(t))[0]
+        vals = [self.coerce(self.tget(v, i), et) for i in range(len(targs(v.t)))]
+        raw = self.tuple_(vals)
+        return Val(self.rt("pys_vtuple_from", "ptr", [f"ptr {raw.v}", f"i64 {len(vals)}"]), t)
+    if is_vtuple(unopt(t)) and is_vtuple(v.t):
+        et = targs(unopt(t))[0]
+        if is_sopt(et) and targs(v.t)[0] == unopt(et):
+            # A fresh immutable tuple of boxes; an existing list or tuple's
+            # numeric storage must never be reinterpreted as pointer slots.
+            return Val(self.rt("pys_vtuple_box", "ptr", [f"ptr {v.v}"]), t)
     if v.t == "None" and t in self.classes:
         return Val("null", t)
     if v.t in self.classes and t in self.classes and self.derives(v.t, t):
@@ -136,6 +148,8 @@ def gen_desc(self, t: str, use: str) -> str:
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
         return "L" + self.desc(elem(t), sub)
+    if is_vtuple(t):
+        return "V" + self.desc(targs(t)[0], sub)
     if is_dict(t):
         a = targs(t)
         return "D" + self.desc(a[0], use) + self.desc(a[1], use if use == "repr" else "==")

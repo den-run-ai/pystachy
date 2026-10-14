@@ -1,0 +1,17 @@
+optional-tuple None False False
+literal-equality False False True
+length-error object of type 'NoneType' has no len()
+item-error 'NoneType' object is not subscriptable
+iteration-error 'NoneType' object is not iterable
+construct-error 'NoneType' object is not iterable
+optional-tuple (1, 2) True True
+literal-equality True True False
+length 2
+item 1
+iteration 1
+iteration 2
+construct (1, 2)
+integers (1, None, -1) [1, None, -1]
+floats (0.5, None, -1.5) [0.5, None, -1.5]
+booleans (True, None, False) [True, None, False]
+[exit 0]

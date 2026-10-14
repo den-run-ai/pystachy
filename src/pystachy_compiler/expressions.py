@@ -44,6 +44,7 @@ from src.pystachy_compiler.utils import (
     is_sopt,
     is_super,
     is_tuple,
+    is_vtuple,
     key_problem,
     kw_names,
     lt,
@@ -214,7 +215,7 @@ def gen_has(self, t: str, a: str) -> int:
         if a in HASATTR["obj"].split():
             return -1
         return -1 if self.is_dc(t) and a in "__dataclass_fields__ __dataclass_params__ __match_args__".split() else 0
-    b = "list" if is_list(t) else "dict" if is_dict(t) else "tuple" if is_tuple(t) else "int" if t == "bool" else t
+    b = "list" if is_list(t) else "dict" if is_dict(t) else "tuple" if is_tuple(t) or is_vtuple(t) else "int" if t == "bool" else t
     b = t[: t.find("[")] if is_set(t) else b
     if b in HASATTR:
         return 1 if a in HASATTR[b].split() else 0
@@ -282,7 +283,7 @@ def gen_isinst(self, t: str, c: Node) -> int:
         # (collections.abc's: str and tuple, also a NamedTuple, are Sequences, list is a mutable one)
         if abc.endswith("Mapping"):
             return 1 if is_dict(t) else 0
-        if is_list(t) or (abc == "Sequence" and (t == "str" or is_tuple(t))):
+        if is_list(t) or (abc == "Sequence" and (t == "str" or is_tuple(t) or is_vtuple(t))):
             return 1
         return -2 if abc == "Sequence" and t in self.nts else 0
     if c.kind != "name":
@@ -303,6 +304,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if t == c.s else 0
     if c.s == "tuple" and t in self.nts:
         return -2  # (a tuple, unless it is None)
+    if c.s == "tuple" and is_vtuple(t):
+        return 1
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
     if c.s in "bytes bytearray memoryview complex range slice type".split():
@@ -398,7 +401,7 @@ def gen_truth(self, v: Val) -> str:
         return self.ins(f"icmp ne i64 {v.v}, 0")
     if t == "float":
         return self.ins(f"fcmp une double {v.v}, 0.0")
-    if t == "str" or is_list(t) or is_dict(t) or is_set(t):
+    if t == "str" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
         return self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {v.v}')}, 0")
     if t == "None":
         return "false"
@@ -1401,6 +1404,10 @@ def gen_subscript(self, n: Node, o: Val) -> Val:
     if is_kw(t):
         o = self.kw_dict(o)  # (another key: looked up in the dict CPython makes)
         t = o.t
+    if is_vtuple(t):
+        i = self.ival(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
+        o = self.unwrap(o, sub)
+        return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), targs(t)[0])
     if is_list(t) or t == "str":
         i = self.ival(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
         o = self.unwrap(o, sub)
@@ -1598,6 +1605,8 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     self.place(l1)
     pre = self.narrow_by(n.kids[0], True)
     a = self.expr(n.kids[1], want)
+    if is_vtuple(unopt(want)):
+        a = self.coerce(a, want)  # (construct the requested representation in its arm)
     if is_fn(a.t) and is_callable(unopt(want)):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
@@ -1610,6 +1619,8 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
     b = self.expr(n.kids[2], wb)
+    if is_vtuple(unopt(want)):
+        b = self.coerce(b, want)
     if is_fn(b.t) and is_callable(unopt(want)):
         b = self.coerce(b, want)
     self.narrowed = pre
@@ -2191,6 +2202,11 @@ def gen_exc_eq(self, t: str, what: str = "") -> None:
                 self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if op in ["==", "!=", "<", "<=", ">", ">="]:
+        if is_vtuple(unopt(a.t)) and is_tuple(b.t):
+            b = self.coerce(b, unopt(a.t))
+        elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
+            a = self.coerce(a, unopt(b.t))
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
     if (op == "in" or op == "not in") and b.t in self.classes and self.classes[b.t].tag != 0:
@@ -2420,7 +2436,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         a = self.boxto(a, ct)
         b = self.boxto(b, ct)
     u = unopt(ct)
-    if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or (eq and is_dict(u)) or is_set(u) or u == "exc"):
+    if ct != "" and (u == "str" or is_list(u) or is_tuple(u) or is_vtuple(u) or (eq and is_dict(u)) or is_set(u) or u == "exc"):
         self.exc_eq(ct)
         d = f"ptr {self.sconst(self.desc(ct, '==' if eq else op))}"
         sa = self.to_slot(a)

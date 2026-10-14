@@ -1,0 +1,87 @@
+identity True
+type True True
+truth False True
+list []
+ordering True False
+ordering-equal True True
+literal True True True True
+format values=()
+empty () () ()
+identity True
+type True True
+truth True False
+list [0]
+ordering True False
+ordering-equal True True
+literal False False False False
+format values=(0,)
+enumerate 0 0
+reversed 0
+zip 0 0
+empty () () ()
+identity True
+type True True
+truth True False
+list [0, 1, 2]
+ordering True False
+ordering-equal True True
+literal False False True True
+format values=(0, 1, 2)
+enumerate 0 0
+enumerate 1 1
+enumerate 2 2
+reversed 2
+reversed 1
+reversed 0
+zip 0 0
+zip 1 1
+zip 2 2
+empty () () ()
+identity True
+type True True
+truth True False
+list [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+ordering True False
+ordering-equal True True
+literal False False True True
+format values=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+enumerate 0 0
+enumerate 1 1
+enumerate 2 2
+enumerate 3 3
+enumerate 4 4
+enumerate 5 5
+enumerate 6 6
+enumerate 7 7
+enumerate 8 8
+enumerate 9 9
+enumerate 10 10
+enumerate 11 11
+reversed 11
+reversed 10
+reversed 9
+reversed 8
+reversed 7
+reversed 6
+reversed 5
+reversed 4
+reversed 3
+reversed 2
+reversed 1
+reversed 0
+zip 0 0
+zip 1 1
+zip 2 2
+zip 3 3
+zip 4 4
+zip 5 5
+zip 6 6
+zip 7 7
+zip 8 8
+zip 9 9
+zip 10 10
+zip 11 11
+empty () () ()
+optional (1, None, 3)
+text ('a', 'b', 'c')
+[exit 0]

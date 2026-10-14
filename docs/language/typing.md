@@ -11,11 +11,29 @@ unsupported forms, see [compatibility](compatibility.md).
 | `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8 with byte-based indexing |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
-| `tuple[A, B, ...]` | Fixed shape, up to nine items; indexing requires an integer constant |
+| `tuple[A, B]` | Fixed shape, up to nine items; indexing requires an integer constant |
+| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`; integer indexing checked at runtime |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
 | `T \| None` | Optional values, including containers and `Callable` |
 | `TextIO` | Text files |
+
+`tuple(xs)` copies a supported homogeneous list or a string into an immutable
+runtime-length tuple; later list mutation does not change it. String conversion follows
+the existing UTF-8 byte iteration rules ([compatibility](compatibility.md)). `tuple(t)` returns an
+existing tuple unchanged unless an annotation requests a representation conversion
+([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
+including `()`. Supported operations are `len`, truth tests, integer indexing,
+iteration (also `enumerate`, `zip`, and `reversed`), `list(t)`, representation and
+same-element-type equality and ordering. Bounds errors raise `IndexError` at runtime.
+Optional scalar elements use boxes when needed; widening an immutable tuple to
+optional elements copies its slots rather than reinterpreting numeric bits as pointers.
+
+Runtime-length tuples currently do not support slicing, concatenation, repetition,
+membership, unpacking, dictionary keys, or set elements. Their annotation is distinct
+from the fixed shape used by `*args`; arbitrary iterators and generators are not yet
+accepted by `tuple()`. This enables the existing `re.Match.groups()` implementation
+without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
 Dict keys are `int`, `str`, or tuples containing `int`, `bool`, `str`, `str | None`, and
 nested tuples of these. Floats, objects and frozensets cannot be keys or set elements.

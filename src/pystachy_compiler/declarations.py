@@ -41,6 +41,7 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_sopt,
     is_tuple,
+    is_vtuple,
     key_problem,
     lt,
     rename,
@@ -149,6 +150,11 @@ def gen_ann(self, n: Node) -> str:
             return self.ctype("callable", cts)
         if base == "union" and len([x for x in a if self.pathlike(x)]) > 0:
             return self.path_union(a)
+        if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
+            t = self.ann(a[0])
+            if unopt(t) not in ["int", "float", "bool", "str"]:
+                return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
+            return self.ctype("vtuple", [t])
         ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
         for t in ts:
             if t.startswith("!"):
@@ -450,7 +456,7 @@ def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none
     if t in self.classes or is_opt(t):
         return t
-    if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_callable(t)) and "?" not in t:
+    if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
 
@@ -560,6 +566,10 @@ def gen_widens(self, a: str, b: str) -> bool:
         return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
     if b in self.classes:
         return a == "None" or (a in self.classes and self.derives(a, b))
+    if is_vtuple(a) and is_vtuple(b):
+        # Tuples are immutable: widening str to str | None changes no slot's
+        # representation. Numeric optional elements require actual boxes instead.
+        return self.widens(targs(a)[0], targs(b)[0])
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     bs = targs(b)

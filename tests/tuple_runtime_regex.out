@@ -1,0 +1,130 @@
+groups a None 0 () ()
+equal True False
+changed-default True False
+bounds 0 tuple index out of range
+bounds -1 tuple index out of range
+groups (a) None 1 ('a',) ('a',)
+equal True False
+changed-default True False
+member 'a'
+index -1 'a'
+index 0 'a'
+bounds 1 tuple index out of range
+bounds -2 tuple index out of range
+groups (a)(b)? None 2 ('a', None) ('a', None)
+equal True False
+changed-default False True
+member 'a'
+member None
+index -2 'a'
+index -1 None
+index 0 'a'
+index 1 None
+bounds 2 tuple index out of range
+bounds -3 tuple index out of range
+groups (a)(b)?(c) None 3 ('a', None, 'c') ('a', None, 'c')
+equal True False
+changed-default False True
+member 'a'
+member None
+member 'c'
+index -3 'a'
+index -2 None
+index -1 'c'
+index 0 'a'
+index 1 None
+index 2 'c'
+bounds 3 tuple index out of range
+bounds -4 tuple index out of range
+groups (a)(b)?(c)?(d) None 4 ('a', None, None, 'd') ('a', None, None, 'd')
+equal True False
+changed-default False True
+member 'a'
+member None
+member None
+member 'd'
+index -4 'a'
+index -3 None
+index -2 None
+index -1 'd'
+index 0 'a'
+index 1 None
+index 2 None
+index 3 'd'
+bounds 4 tuple index out of range
+bounds -5 tuple index out of range
+groups (a)(b)(c)(d)(e)(f)(g)(h)(i)(j) None 10 ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j') ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j')
+equal True False
+changed-default True False
+member 'a'
+member 'b'
+member 'c'
+member 'd'
+member 'e'
+member 'f'
+member 'g'
+member 'h'
+member 'i'
+member 'j'
+index -10 'a'
+index -9 'b'
+index -8 'c'
+index -7 'd'
+index -6 'e'
+index -5 'f'
+index -4 'g'
+index -3 'h'
+index -2 'i'
+index -1 'j'
+index 0 'a'
+index 1 'b'
+index 2 'c'
+index 3 'd'
+index 4 'e'
+index 5 'f'
+index 6 'g'
+index 7 'h'
+index 8 'i'
+index 9 'j'
+bounds 10 tuple index out of range
+bounds -11 tuple index out of range
+groups (a)(b)? missing 2 ('a', 'missing') ('a', 'missing')
+equal True False
+changed-default False True
+member 'a'
+member 'missing'
+index -2 'a'
+index -1 'missing'
+index 0 'a'
+index 1 'missing'
+bounds 2 tuple index out of range
+bounds -3 tuple index out of range
+groups (a)(b)?(c)  3 ('a', '', 'c') ('a', '', 'c')
+equal True False
+changed-default False True
+member 'a'
+member ''
+member 'c'
+index -3 'a'
+index -2 ''
+index -1 'c'
+index 0 'a'
+index 1 ''
+index 2 'c'
+bounds 3 tuple index out of range
+bounds -4 tuple index out of range
+groups (?P<first>a)(?P<optional>b)?(?P<last>c) fallback 3 ('a', 'fallback', 'c') ('a', 'fallback', 'c')
+equal True False
+changed-default False True
+member 'a'
+member 'fallback'
+member 'c'
+index -3 'a'
+index -2 'fallback'
+index -1 'c'
+index 0 'a'
+index 1 'fallback'
+index 2 'c'
+bounds 3 tuple index out of range
+bounds -4 tuple index out of range
+[exit 0]
