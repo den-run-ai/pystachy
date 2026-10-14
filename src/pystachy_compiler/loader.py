@@ -54,6 +54,7 @@ from src.pystachy_compiler.syntax import Node, has_kind, mk, names_in
 class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
+        self.sources: dict[str, str] = {}  # exact parsed bytes for opt-in online image identity
         self.ext = ""  # pystachy ext: the main program is the extension module of this name (its __name__)
         self.rtmode = False  # runtime.py's module imports are declarations; no module code runs
         self.mods: dict[str, Mod] = {}
@@ -146,6 +147,8 @@ class Loader:
 
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
+        if os.getenv("PYSTACHY_ONLINE", "") == "1" or os.getenv("PYSTACHY_ONLINE_CHILD", "") == "1":
+            self.sources[path] = src
         m = Mod("", path, "")
         FILES.append(path)
         m.body = Parser(Lexer(src, 1).file()).module()
@@ -301,6 +304,8 @@ class Loader:
         f = open(path, "r", encoding=RAW)
         src = f.read()
         f.close()
+        if os.getenv("PYSTACHY_ONLINE", "") == "1" or os.getenv("PYSTACHY_ONLINE_CHILD", "") == "1":
+            self.sources[path] = src
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()

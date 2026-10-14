@@ -1,7 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.feedback import gen_feedback_call, load_feedback
+from src.pystachy_compiler.feedback import gen_feedback_call, gen_online_build, load_feedback
 from src.pystachy_compiler.unions import (
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
@@ -581,6 +581,20 @@ class Gen:
         self.feedback: dict[str, str] = load_feedback()
         self.feedback_active: dict[str, bool] = {}
         self.feedback_clones: dict[str, bool] = {}
+        self.online_child: bool = os.getenv("PYSTACHY_ONLINE_CHILD", "") == "1"
+        self.online_host: bool = os.getenv("PYSTACHY_ONLINE", "") == "1" and not self.online_child
+        self.online_site: str = os.getenv("PYSTACHY_ONLINE_SITE", "")
+        self.online_member: str = os.getenv("PYSTACHY_ONLINE_MEMBER", "")
+        self.online_expect: str = os.getenv("PYSTACHY_ONLINE_EXPECT", "")
+        self.online_source = ""
+        self.online_identity = ""
+        self.online_baseline = ""
+        self.online_built = False
+        self.online_signatures: dict[str, str] = {}
+        self.online_candidates: dict[str, FnInfo] = {}
+        self.online_baselines: dict[str, FnInfo] = {}
+        self.online_entry = ""
+        self.online_selected_signature = ""
         self.specdone: dict[str, str] = {}  # and those made, which the same call gets again
         self.selfcls = ""  # the class whose method or fields are being declared: what typing.Self is
         self.funcs: dict[str, FnInfo] = {}
@@ -2027,6 +2041,9 @@ class Gen:
 
     def feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
         return gen_feedback_call(self, f, vals, want)
+
+    def online_build(self) -> bool:
+        return gen_online_build(self)
 
     def skew_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
         return skew_call(self, f, vals, want)

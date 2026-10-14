@@ -74,6 +74,10 @@ STREAM_COMPILER ?= ./pystachy
 stream-feedback-check: $(STREAM_COMPILER)
 	PYSTACHY_STREAM_TEST_COMPILER="$(STREAM_COMPILER)" $(PY) -m unittest discover -s tools -p test_stream_feedback.py
 
+# Live compile/load and shared-heap correctness; the child is the native compiler.
+stream-online-check: $(STREAM_COMPILER)
+	PYSTACHY_ONLINE_TEST_COMPILER="$(STREAM_COMPILER)" PYSTACHY_ONLINE_COMPILER="$(abspath $(STREAM_COMPILER))" $(PY) -m unittest discover -s tools -p test_stream_online.py
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
@@ -231,4 +235,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check flow-analysis-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check flow-analysis-check stream-feedback-check stream-online-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

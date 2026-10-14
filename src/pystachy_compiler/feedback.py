@@ -1,7 +1,8 @@
 """Native call-site feedback for bounded reference-union template arguments.
 
-This is offline type feedback: both the generic body and selected concrete body
-use the ordinary compiler. It is not an interpreter or an online tracing JIT.
+Offline feedback selects ordinary templates during the initial compilation.
+The separate opt-in online path records members in the running native process
+and calls an entry compiled and loaded after its site becomes hot.
 """
 from __future__ import annotations
 import os
@@ -135,6 +136,112 @@ def feedback_note(self, site: str, member: str) -> None:
     self.rt("pys_feedback", "void", ["ptr " + self.sconst(site), "ptr " + self.sconst(member)])
 
 
+def online_note(self, site: str, member: str) -> str:
+    return self.rt("pys_online", "ptr", ["ptr " + self.sconst(site), "ptr " + self.sconst(member)])
+
+
+def online_call(self, site: str, baseline: FnInfo, value: Val) -> Val:
+    # Argument binding has finished. The observer can return code only for the
+    # current member; null/unknown members and failed compilation keep the same
+    # generic native call. The indirect call is typed IR, so ordinary exception
+    # lowering covers an exception from the newly loaded body without replay.
+    end = self.label()
+    nonnull = self.label()
+    null = self.label()
+    pointers: list[str] = []
+    edges: list[str] = []
+    self.cbr(self.ins(f"icmp eq ptr {value.v}, null"), null, nonnull)
+    self.place(null)
+    pointers.append(online_note(self, site, "<none>"))
+    edges.append(self.cur)
+    self.br(end)
+    self.place(nonnull)
+    tag = self.ins(f"load i64, ptr {value.v}")
+    for member in umembers(unopt(value.t)):
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.ins(f"icmp eq i64 {tag}, {self.utag(member)}"), hit, miss)
+        self.place(hit)
+        pointers.append(online_note(self, site, member))
+        edges.append(self.cur)
+        self.br(end)
+        self.place(miss)
+    pointers.append(online_note(self, site, "<other>"))
+    edges.append(self.cur)
+    self.br(end)
+    self.place(end)
+    entry = Ins("phi", "env", "")
+    for i in range(len(pointers)):
+        self.incoming(entry, pointers[i], edges[i])
+    code = self.phi(entry)
+    hot = self.label()
+    cold = self.label()
+    join = self.label()
+    self.cbr(self.ins(f"icmp eq ptr {code}, null"), cold, hot)
+    narrowed = dict(self.narrowed)
+    self.place(hot)
+    call = Ins("icall", "int", "")
+    call.a = [Val(code, "env"), value]
+    self.put(call, 1)
+    result = Val(f"%t{call.r[0]}", "int")
+    hot_edge = self.cur
+    self.br(join)
+    self.place(cold)
+    self.narrowed = dict(narrowed)
+    fallback = self.call_bound(baseline, [value], "int")
+    cold_edge = self.cur
+    self.br(join)
+    self.narrowed = narrowed
+    self.place(join)
+    merged = Ins("phi", "int", "")
+    self.incoming(merged, result.v, hot_edge)
+    self.incoming(merged, fallback.v, cold_edge)
+    return Val(self.phi(merged), "int")
+
+
+def gen_online_build(self) -> bool:
+    # Called after the complete ordinary baseline has compiled. Delaying the
+    # selected template preserves the host's class/template/global numbering;
+    # the program's online manifest validates that baseline before publication.
+    if not self.online_child or self.online_built:
+        return False
+    self.online_built = True
+    site = self.online_site
+    if site not in self.online_candidates or site not in self.online_baselines:
+        self.err("online compilation site is missing or has an unsupported signature")
+    f = self.online_candidates[site]
+    baseline = self.online_baselines[site]
+    member = self.online_member
+    if member not in umembers(unopt(baseline.ptypes[0])):
+        self.err("online compilation member is outside the baseline union")
+    nnp = [f.params[0]] if member in self.classes and self.dispatches(f, f.params[0]) else []
+    self.feedback_active[f.ll] = True
+    clone = self.instance(f, [member], nnp)
+    del self.feedback_active[f.ll]
+    if clone.ret != baseline.ret or clone.noret != baseline.noret:
+        self.err("online compilation changed the baseline return contract")
+    wrapper = FnInfo("<online entry>", "@pystachy_online_entry", f.node, "")
+    wrapper.params = [f.params[0]]
+    wrapper.ptypes = [baseline.ptypes[0]]
+    wrapper.ret = "int"
+    wrapper.npos = 1
+    wrapper.export = True
+    frame = self.save()
+    self.modlevel = False
+    self.lenient = False
+    self.enter(wrapper, [])
+    self.fn.ps.append(0)
+    result = self.call_bound(clone, [self.uget("%a0", member)], "int")
+    self.ret_(result)
+    self.fn.n = self.n
+    self.fns.append(self.fn)
+    self.compiled[wrapper.ll] = True
+    self.restore(frame)
+    self.online_entry = wrapper.ll
+    self.online_selected_signature = self.online_signatures[site]
+    return True
+
+
 def gen_feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None:
     if self.feedback_function == "" or shown(f.name) != self.feedback_function or self.rtmode:
         return None
@@ -160,6 +267,33 @@ def gen_feedback_call(self, f: FnInfo, vals: list[Val], want: str) -> Val | None
     self.feedback_active[f.ll] = True
     nnp = [f.params[k] for k in range(len(vals)) if vals[k].t in self.classes and vals[k].v in self.nn and self.dispatches(f, f.params[k])]
     baseline = self.instance(f, [v.t for v in vals], nnp)
+    if self.online_host or self.online_child:
+        del self.feedback_active[f.ll]
+        # The first online tier has one stable native ABI: int(ref-union).
+        # Unsupported sites retain generic execution and never compile a hot
+        # clone in the host, even if offline profile flags are also present.
+        if len(vals) != 1 or baseline.ret != "int" or baseline.noret:
+            return self.call_bound(baseline, vals, want)
+        signature = f.ll + "|0|int|" + baseline.ptypes[0]
+        if site not in self.online_signatures and len(self.online_signatures) >= 16:
+            return self.call_bound(baseline, vals, want)
+        if site in self.online_signatures and self.online_signatures[site] != signature:
+            self.err("online call-site identity has conflicting signatures")
+        self.online_signatures[site] = signature
+        self.online_candidates[site] = f
+        self.online_baselines[site] = baseline
+        if self.online_child:
+            # Reserve the host observer's literal and tag identities without
+            # emitting an observer. Later semantic literals keep their original
+            # numbers and can import the running host's exact string pointers.
+            self.sconst(site)
+            self.sconst("<none>")
+            for m in ms:
+                self.utag(m)
+                self.sconst(m)
+            self.sconst("<other>")
+            return self.call_bound(baseline, vals, want)
+        return online_call(self, site, baseline, vals[0])
     chosen = self.feedback.get(site, "")
     member = ""
     for m in ms:

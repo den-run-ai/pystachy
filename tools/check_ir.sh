@@ -20,6 +20,8 @@ PYS=${1:-./pystachy}
 for f; do [ -f "$f" ] || { echo "tools/check_ir.sh: no such program: $f" >&2; exit 2; }; done
 if [ $# = 0 ]; then
   for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py; do
+    # Dedicated stream-feedback-check/stream-online-check supply union flags and the shlex oracle.
+    [ "$f" = bench/stream_skew.py ] && continue
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi

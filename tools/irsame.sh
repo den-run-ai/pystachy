@@ -24,6 +24,8 @@ RT=0  # (whether both have runtime mode: their usage names it)
 { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1
 if [ $# = 0 ]; then
   for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py tests/ir/*.py tests/errors/*.py; do
+    # Dedicated stream-feedback-check/stream-online-check supply union flags and the shlex oracle.
+    [ "$f" = bench/stream_skew.py ] && continue
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi

@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
 #ifdef __APPLE__
@@ -28,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
 #ifdef __APPLE__
 #include <sys/random.h>
 #endif
@@ -1021,6 +1024,199 @@ static void feedback_finish(void) {
   if (!feedback_overflow) for (int i = 0; i < feedback_n; i++)
     fprintf(out, "%s\t%s\t%lld\n", feedback[i].site, feedback[i].member, (long long)feedback[i].count);
   if (fclose(out)) fputs("cannot finish Pystachy feedback\n", stderr);
+}
+
+/* Experimental online call-site type tracing. A synchronous compiler subprocess
+   builds one normal concrete call chain after 100 observations (90% share).
+   Its DSO imports this process's runtime/globals: no second heap or module init.
+   Failure only disables optimization. Calls enter either body once, after their
+   argument evaluation. Loaded images live until process exit, like their strings. */
+typedef struct {
+  const Str *key;
+  char site[501], members[5][201], selected[201];
+  I counts[5], calls, hits, misses, trigger;
+  int n, disabled, attempts, installs;
+  pid_t compiler_pid;
+  double compile_wall, compile_cpu, load_wall;
+  const char *failure;
+  void *image, *entry;
+} OnlineSite;
+static OnlineSite online_sites[16];
+static int online_n;
+static char *online_source, *online_function, *online_manifest, *online_compiler;
+static size_t online_manifest_len;
+static const char *online_config_failure;
+
+static char *online_copy(Str *s, I limit) {
+  if (s->len < 0 || s->len > limit || memchr(s->s, 0, (size_t)s->len)) return NULL;
+  char *p = malloc((size_t)s->len + 1);
+  if (p) { memcpy(p, s->s, (size_t)s->len); p[s->len] = 0; }
+  return p;
+}
+void pys_online_init(Str *source, Str *function, Str *manifest) {
+  if (online_source || online_config_failure) return;
+  online_source = online_copy(source, 4095);
+  online_function = online_copy(function, 500);
+  online_manifest = online_copy(manifest, 262144);
+  online_manifest_len = (size_t)manifest->len;
+  const char *compiler = getenv("PYSTACHY_ONLINE_COMPILER");
+  if (compiler && *compiler) online_compiler = strdup(compiler);
+  if (!online_source || !online_function || !online_manifest)
+    online_config_failure = "invalid_configuration";
+  else if (!online_compiler) online_config_failure = "compiler_unavailable";
+}
+static double online_clock(void) {
+  struct timespec t;
+  if (clock_gettime(CLOCK_MONOTONIC, &t)) return 0;
+  return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
+}
+
+#ifdef __linux__
+static void online_compile(OnlineSite *s) {
+  char dir[] = "/tmp/pystachy-online-XXXXXX";
+  char expected[128], library[128], log[128];
+  s->attempts++;
+  s->trigger = s->calls;
+  if (online_config_failure) { s->failure = online_config_failure; return; }
+  if (!mkdtemp(dir)) { s->failure = "temporary_directory"; return; }
+  snprintf(expected, sizeof expected, "%s/expected", dir);
+  snprintf(library, sizeof library, "%s/trace.so", dir);
+  snprintf(log, sizeof log, "%s/compiler.log", dir);
+  FILE *f = fopen(expected, "w");
+  if (!f) { s->failure = "manifest_write"; goto cleanup; }
+  int wrote = fwrite(online_manifest, 1, online_manifest_len, f) == online_manifest_len;
+  if (fclose(f)) wrote = 0;
+  if (!wrote) { s->failure = "manifest_write"; goto cleanup; }
+  int fd = open(log, O_WRONLY | O_CREAT | O_EXCL, 0600);
+  if (fd < 0) { s->failure = "log_open"; goto cleanup; }
+  double began = online_clock();
+  pid_t child = fork();
+  if (child == 0) {
+    setpgid(0, 0);
+    if (dup2(fd, STDOUT_FILENO) < 0 || dup2(fd, STDERR_FILENO) < 0) _exit(126);
+    close(fd);
+    if (setenv("PYSTACHY_ONLINE", "0", 1) || setenv("PYSTACHY_ONLINE_CHILD", "1", 1) ||
+        setenv("PYSTACHY_ONLINE_SITE", s->site, 1) ||
+        setenv("PYSTACHY_ONLINE_MEMBER", s->selected, 1) ||
+        setenv("PYSTACHY_ONLINE_EXPECT", expected, 1) ||
+        setenv("PYSTACHY_FEEDBACK_FUNCTION", online_function, 1) ||
+        setenv("PYSTACHY_CLOSED_UNIONS", "1", 1) ||
+        setenv("PYSTACHY_REFERENCE_UNIONS", "1", 1) ||
+        setenv("PYSTACHY_ONLINE_STATS", "", 1)) _exit(126);
+    unsetenv("PYSTACHY_FEEDBACK_PROFILE");
+    unsetenv("PYSTACHY_FEEDBACK_RECORD");
+    unsetenv("PYSTACHY_FEEDBACK_COUNTERS");
+    unsetenv("PYSTACHY_FEEDBACK_OUT");
+    unsetenv("PYSTACHY_GC_STRESS");
+    char *argv[] = {online_compiler, "trace", online_source, "-o", library, NULL};
+    execv(online_compiler, argv);
+    _exit(127);
+  }
+  close(fd);
+  if (child < 0) { s->failure = "fork_failed"; goto cleanup; }
+  s->compiler_pid = child;
+  setpgid(child, child);
+  struct rusage usage;
+  memset(&usage, 0, sizeof usage);
+  int status = 0, waited = 0, timed_out = 0;
+  for (;;) {
+    pid_t done = wait4(child, &status, WNOHANG, &usage);
+    if (done == child) { waited = 1; break; }
+    if (done < 0 && errno != EINTR) break;
+    if (online_clock() - began > 60.0) {
+      kill(-child, SIGKILL);
+      while (wait4(child, &status, 0, &usage) < 0 && errno == EINTR) { }
+      timed_out = 1;
+      break;
+    }
+    struct timespec pause = {0, 1000000};
+    nanosleep(&pause, NULL);
+  }
+  s->compile_wall = online_clock() - began;
+  s->compile_cpu = (double)usage.ru_utime.tv_sec + (double)usage.ru_stime.tv_sec +
+                  ((double)usage.ru_utime.tv_usec + (double)usage.ru_stime.tv_usec) * 1e-6;
+  if (!waited || timed_out || !WIFEXITED(status) || WEXITSTATUS(status)) {
+    s->failure = timed_out ? "compile_timeout" : "compile_failed";
+    goto cleanup;
+  }
+  began = online_clock();
+  s->image = dlopen(library, RTLD_NOW | RTLD_LOCAL);
+  if (!s->image) { s->failure = "load_failed"; s->load_wall = online_clock() - began; goto cleanup; }
+  /* The compiler checked source/layout/global/descriptor ABI against expected
+     before generating the image. Require its exact manifest again at install. */
+  const char *(*abi)(void) = (const char *(*)(void))dlsym(s->image, "pystachy_online_abi");
+  const char *(*selection)(void) = (const char *(*)(void))dlsym(s->image, "pystachy_online_selection");
+  void *entry = dlsym(s->image, "pystachy_online_entry");
+  const char *identity = abi ? abi() : NULL;
+  const char *selected = selection ? selection() : NULL;
+  char wanted[703];
+  snprintf(wanted, sizeof wanted, "%s\t%s", s->site, s->selected);
+  if (!identity || !selected || !entry || strcmp(identity, online_manifest) || strcmp(selected, wanted)) {
+    s->failure = "abi_or_entry_mismatch";
+    dlclose(s->image); s->image = NULL;
+  } else { s->entry = entry; s->installs = 1; }
+  s->load_wall = online_clock() - began;
+cleanup:
+  if (!getenv("PYSTACHY_ONLINE_KEEP")) {
+    unlink(expected); unlink(library); unlink(log); rmdir(dir);
+  }
+}
+#else
+static void online_compile(OnlineSite *s) {
+  s->attempts++; s->trigger = s->calls; s->failure = "unsupported_host";
+}
+#endif
+
+void *pys_online(Str *site, Str *member) {
+  if (!online_source || site->len < 1 || site->len > 500 || member->len < 1 || member->len > 200 ||
+      memchr(site->s, '\t', (size_t)site->len) || memchr(site->s, '\n', (size_t)site->len) ||
+      memchr(member->s, '\t', (size_t)member->len) || memchr(member->s, '\n', (size_t)member->len)) return NULL;
+  OnlineSite *s = NULL;
+  for (int i = 0; i < online_n; i++)
+    if (online_sites[i].key == site || !strcmp(online_sites[i].site, site->s)) { s = &online_sites[i]; break; }
+  if (!s) {
+    if (online_n == 16) return NULL;
+    s = &online_sites[online_n++]; s->key = site; s->failure = "none";
+    memcpy(s->site, site->s, (size_t)site->len);
+  }
+  s->calls++;
+  if (!s->disabled && !s->attempts && !s->entry) {
+    int j = 0;
+    while (j < s->n && strcmp(s->members[j], member->s)) j++;
+    if (j == s->n) {
+      if (s->n == 5) { s->disabled = 1; s->failure = "member_limit"; }
+      else { memcpy(s->members[j], member->s, (size_t)member->len); s->n++; }
+    }
+    if (!s->disabled) {
+      s->counts[j]++;
+      if (s->calls == 100) {
+        int best = 0;
+        for (int k = 1; k < s->n; k++) if (s->counts[k] > s->counts[best]) best = k;
+        if (s->counts[best] >= 90 && s->members[best][0] != '<') {
+          strcpy(s->selected, s->members[best]);
+          online_compile(s);
+        } else { s->disabled = 1; s->failure = "unskewed_window"; }
+      }
+    }
+  }
+  if (s->entry && !strcmp(s->selected, member->s)) { s->hits++; return s->entry; }
+  s->misses++;
+  return NULL;
+}
+static void online_finish(void) {
+  const char *path = getenv("PYSTACHY_ONLINE_STATS");
+  if (!path || !*path || !online_n) return;
+  FILE *out = fopen(path, "w");
+  if (!out) return;
+  fputs("pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\n", out);
+  for (int i = 0; i < online_n; i++) {
+    OnlineSite *s = &online_sites[i];
+    fprintf(out, "%s\t%lld\t%d\t%d\t%lld\t%lld\t%lld\t%.9f\t%.9f\t%.9f\t%s\t%ld\n",
+            s->site, (long long)s->calls, s->attempts, s->installs, (long long)s->hits,
+            (long long)s->misses, (long long)s->trigger, s->compile_wall, s->compile_cpu,
+            s->load_wall, s->failure, (long)s->compiler_pid);
+  }
+  fclose(out);
 }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
@@ -2367,6 +2563,7 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
   if (done++) return;
   out_flush();
   feedback_finish();
+  online_finish();
   if (gc_stats) gc_report();
   int bad = 0, e;
   if (!std_out.closed && (e = flush1(&std_out))) {

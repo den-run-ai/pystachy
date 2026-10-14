@@ -2,8 +2,9 @@
 
 **Experimental draft.** This implements native reference-union execution, native
 profile collection, and guarded caller specialization through the shared AOT/JIT
-compiler. It is offline type feedback, not online compilation or path tracing.
-A positive end-to-end speedup has not been established.
+compiler. This page records the offline stage. The subsequent
+[online call-site tracing experiment](stream-online.md) compiles during live
+execution. A positive end-to-end speedup has not been established here.
 
 Stacked integration base `c2079c0` (the same tree as local measurement base
 `5be2744`) combines the existing #378 library ports, #382
@@ -141,9 +142,10 @@ The compiler flag `PYSTACHY_FEEDBACK_FUNCTION=tokenize` selects the experiment.
 profile at exit to `PYSTACHY_FEEDBACK_OUT`. Recompile with
 `PYSTACHY_FEEDBACK_PROFILE` to select a concrete caller. Optional
 `PYSTACHY_FEEDBACK_COUNTERS=1` records hot/miss entries independently of timings.
-No CPython profiler participates in this path. JIT here means Pystachy's existing
-pre-execution LLVM JIT; runtime recompilation, adaptive PIC evolution and
-mid-function deoptimization remain unimplemented.
+No CPython profiler participates in this path. JIT in these offline measurements
+means Pystachy's existing pre-execution LLVM JIT. The
+[online follow-up](stream-online.md) adds runtime compilation to an AOT host;
+adaptive PIC evolution and mid-function deoptimization remain unimplemented.
 
 Profiles are tied to the source/compilation context. Nonmatching or missing rows
 lose specialization. Stale matching rows can still select a guarded clone and

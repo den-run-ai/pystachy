@@ -1,0 +1,2683 @@
+{
+  "schema": "pystachy-stream-online-v1",
+  "status": "complete",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "compiler": [
+    "/workspace/scratch/d83aa8e08446/pystachy/pystachy"
+  ],
+  "online_compiler": "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+  "online_compiler_sha256": "455365d74a8d9bbbdcc00e54a953052feed6e19933eaee7c70254c28e0efe10f",
+  "git_head": "2d048e529813c603865a0c8e7e28a2ae085dfeb2",
+  "git_status": "M .github/workflows/ci.yml\n M Makefile\n M bench/stream_skew.py\n M docs/stream-skew.md\n M runtime.c\n M src/pystachy_compiler/driver.py\n M src/pystachy_compiler/feedback.py\n M src/pystachy_compiler/gen.py\n M src/pystachy_compiler/loader.py\n M src/pystachy_compiler/program.py\n M src/pystachy_compiler/specs.py\n?? docs/stream-online.md\n?? src/pystachy_compiler/online.py\n?? tools/bench_stream_online.py\n?? tools/test_stream_online.py",
+  "counts": {
+    "cold": 200,
+    "warm": 4000,
+    "shift": 40,
+    "recovery": 4000
+  },
+  "file_calls": 30,
+  "samples": 7,
+  "jit_samples": 3,
+  "timing_affinity_cpu": 0,
+  "allowed_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "timers": {
+    "wall_seconds": "external perf_counter includes process startup, all phases, and synchronous compilation/loading",
+    "inclusive_cpu_seconds": "RUSAGE_CHILDREN delta for one waited process and its waited descendants",
+    "phase_wall_seconds": "in-program perf_counter includes resets/reopens and synchronous online compilation/loading",
+    "phase_self_cpu_seconds": "in-program process_time excludes spawned compiler CPU",
+    "compile_cpu_s": "runtime wait4 child usage includes the compiler's waited descendants"
+  },
+  "workload": "Controlled stream mix; 9440 ASCII bytes and 544 tokens per parse. File phases include reopen I/O.",
+  "online_policy": "threshold 100, minimum 90% share, one compilation attempt/site, fresh process per sample, no persistent cache",
+  "inputs": {
+    "generic": {
+      "path": "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+      "sha256": "72b61e2a566f9e71336d730549c4fbd90a93731da0408e839a5ce6bbcf7c8f78",
+      "text": "# Derived by tools/bench_stream_online.py: generic call plumbing only.\n\"\"\"Native stream-type feedback through the existing shlex character parser.\n\nThe private constructor hook preserves the stream object for this experiment.\nOnly read_token() is exercised; source stacking and the default shlex API keep\ntheir existing port behavior. See docs/stream-skew.md for the CPython oracle.\n\"\"\"\nimport sys\nimport time\nfrom io import StringIO\nfrom shlex import shlex\nfrom typing import TextIO\nDOCUMENT = '# deployment settings: comments are consumed through readline\\nservice api --host \"localhost:8080\" --tag \\'nightly build\\'\\nexport ROOT=/srv/project NAME=\"two words\" EMPTY=\"\"\\nrun escaped\\\\ value \"quoted \\\\\"word\\\\\"\" https://example.test/a?q=1\\ncontinue first\\\\\\nsecond \"multiline\\nvalue\" # trailing comment\\n' * 32\n\ndef tokenize(stream) -> int:\n    \"\"\"The same parser and loop compile for erased and concrete stream types.\"\"\"\n    result: int = 0\n    lexer = shlex(posix=True, _stream=stream)\n    lexer.whitespace_split = True\n    while True:\n        token = lexer.read_token()\n        if token is None:\n            break\n        result = (result * 31 + len(token) + 1) % 2147483647\n    return result\n\ndef read_tokens(stream: TextIO | StringIO) -> int:\n    return tokenize(stream)\n\ndef token_list(stream: TextIO | StringIO) -> list[str]:\n    \"\"\"Exact-content validation kept outside the timed checksum loop.\"\"\"\n    lexer = shlex(posix=True, _stream=stream)\n    lexer.whitespace_split = True\n    tokens: list[str] = []\n    while True:\n        token = lexer.read_token()\n        if token is None:\n            return tokens\n        tokens.append(token)\n\ndef expected_token_list() -> list[str]:\n    return ['service', 'api', '--host', 'localhost:8080', '--tag', 'nightly build', 'export', 'ROOT=/srv/project', 'NAME=two words', 'EMPTY=', 'run', 'escaped value', 'quoted \"word\"', 'https://example.test/a?q=1', 'continue', 'first\\nsecond', 'multiline\\nvalue'] * 32\n\ndef phase_batch(memory: StringIO, streams: list[TextIO | StringIO], path: str, count: int, phase: str, direct: bool) -> tuple[int, float, float]:\n    \"\"\"A cold prefix, memory hot phase, changed stream mix, then recovery.\n\n    File opens/closes and memory resets are included in each phase's timing.\n    process_time excludes a spawned compiler; the external harness measures\n    child-inclusive CPU and the runtime reports compilation CPU separately.\n    \"\"\"\n    start_wall = time.perf_counter()\n    start_cpu = time.process_time()\n    checksum: int = 0\n    for i in range(count):\n        use_file = False\n        if phase == 'cold':\n            use_file = i == count - 1\n        elif phase == 'shift':\n            half = count // 2\n            use_file = i % 2 == 1 if i < half else i != count - 1\n        if use_file:\n            fresh = open(path)\n            streams[1] = fresh\n            if direct:\n                checksum += read_tokens(fresh)\n            else:\n                checksum += read_tokens(streams[1])\n            fresh.close()\n        else:\n            memory.seek(0)\n            if direct:\n                checksum += read_tokens(memory)\n            else:\n                checksum += read_tokens(streams[0])\n    elapsed_cpu = time.process_time() - start_cpu\n    elapsed_wall = time.perf_counter() - start_wall\n    return (checksum, elapsed_wall, elapsed_cpu)\nmode = sys.argv[1] if len(sys.argv) > 1 else 'check'\nrepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 4000 if mode in ('phases', 'phases-static') else 100\npath = sys.argv[3] if len(sys.argv) > 3 else 'build/stream-skew-input.txt'\nwith open(path, 'w') as output:\n    output.write(DOCUMENT)\nmemory = StringIO(DOCUMENT)\ndisk = open(path)\nstreams: list[TextIO | StringIO] = [memory, disk]\nif mode == 'train':\n    result = 0\n    for i in range(200):\n        index = 1 if i == 199 else 0\n        memory.seek(0)\n        result += read_tokens(streams[index])\n    print('train', result)\nelif mode == 'check':\n    expected_tokens = expected_token_list()\n    assert token_list(streams[0]) == expected_tokens\n    assert token_list(streams[1]) == expected_tokens\n    memory.seek(0)\n    expected = read_tokens(memory)\n    disk.close()\n    disk = open(path)\n    streams[1] = disk\n    assert read_tokens(disk) == expected\n    result = 0\n    for i in range(12):\n        memory.seek(0)\n        disk.close()\n        disk = open(path)\n        streams[1] = disk\n        value = read_tokens(streams[i % 2])\n        assert value == expected\n        result += value\n    for i in range(12):\n        memory.seek(0)\n        disk.close()\n        disk = open(path)\n        streams[1] = disk\n        value = read_tokens(streams[0 if i == 11 else 1])\n        assert value == expected\n        result += value\n    print('check', expected, result)\nelif mode in ('phases', 'phases-static'):\n    expected_tokens = expected_token_list()\n    assert token_list(streams[0]) == expected_tokens\n    assert token_list(streams[1]) == expected_tokens\n    expected = 586964006\n    print('tokens', len(expected_tokens), expected)\n    cold = int(sys.argv[4]) if len(sys.argv) > 4 else 200\n    shift = int(sys.argv[5]) if len(sys.argv) > 5 else 40\n    recovery = int(sys.argv[6]) if len(sys.argv) > 6 else repeats\n    direct = mode == 'phases-static'\n    for phase, count in [('cold', cold), ('warm', repeats), ('shift', shift), ('recovery', recovery)]:\n        checksum, wall, cpu = phase_batch(memory, streams, path, count, phase, direct)\n        assert checksum == expected * count\n        print('phase', phase, count, checksum, wall, cpu)\nelse:\n    start = time.process_time()\n    result = 0\n    if mode == 'static':\n        for _ in range(repeats):\n            memory.seek(0)\n            result += read_tokens(memory)\n    elif mode == 'static-file':\n        for _ in range(repeats):\n            disk.close()\n            disk = open(path)\n            streams[1] = disk\n            result += read_tokens(disk)\n    elif mode == 'file':\n        for _ in range(repeats):\n            disk.close()\n            disk = open(path)\n            streams[1] = disk\n            result += read_tokens(streams[1])\n    else:\n        for _ in range(repeats):\n            memory.seek(0)\n            result += read_tokens(streams[0])\n    elapsed = time.process_time() - start\n    print(result, elapsed)\ndisk.close()\nmemory.close()\n"
+    },
+    "concrete": {
+      "path": "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_concrete.py",
+      "sha256": "26dc6f31a64a96f52c7770f36199ea3845331fe50e5054ff27fdf6b443db0a13",
+      "text": "\"\"\"Native stream-type feedback through the existing shlex character parser.\n\nThe private constructor hook preserves the stream object for this experiment.\nOnly read_token() is exercised; source stacking and the default shlex API keep\ntheir existing port behavior. See docs/stream-skew.md for the CPython oracle.\n\"\"\"\nimport sys\nimport time\nfrom io import StringIO\nfrom shlex import shlex\nfrom typing import TextIO\n\n\nDOCUMENT = (\n    '# deployment settings: comments are consumed through readline\\n'\n    'service api --host \"localhost:8080\" --tag \\'nightly build\\'\\n'\n    'export ROOT=/srv/project NAME=\"two words\" EMPTY=\"\"\\n'\n    'run escaped\\\\ value \"quoted \\\\\"word\\\\\"\" https://example.test/a?q=1\\n'\n    'continue first\\\\\\nsecond \"multiline\\nvalue\" # trailing comment\\n'\n) * 32\n\n\ndef tokenize(stream) -> int:\n    \"\"\"The same parser and loop compile for erased and concrete stream types.\"\"\"\n    result: int = 0\n    lexer = shlex(posix=True, _stream=stream)\n    lexer.whitespace_split = True\n    while True:\n        token = lexer.read_token()\n        if token is None:\n            break\n        result = (result * 31 + len(token) + 1) % 2147483647\n    return result\n\n\ndef read_tokens(stream: TextIO | StringIO) -> int:\n    return tokenize(stream)\n\n\ndef concrete(stream: StringIO) -> int:\n    return tokenize(stream)\n\n\ndef concrete_file(stream: TextIO) -> int:\n    return tokenize(stream)\n\n\ndef token_list(stream: TextIO | StringIO) -> list[str]:\n    \"\"\"Exact-content validation kept outside the timed checksum loop.\"\"\"\n    lexer = shlex(posix=True, _stream=stream)\n    lexer.whitespace_split = True\n    tokens: list[str] = []\n    while True:\n        token = lexer.read_token()\n        if token is None:\n            return tokens\n        tokens.append(token)\n\n\ndef expected_token_list() -> list[str]:\n    return [\n        \"service\", \"api\", \"--host\", \"localhost:8080\", \"--tag\", \"nightly build\",\n        \"export\", \"ROOT=/srv/project\", \"NAME=two words\", \"EMPTY=\", \"run\",\n        \"escaped value\", 'quoted \"word\"', \"https://example.test/a?q=1\",\n        \"continue\", \"first\\nsecond\", \"multiline\\nvalue\",\n    ] * 32\n\n\ndef phase_batch(memory: StringIO, streams: list[TextIO | StringIO], path: str,\n                count: int, phase: str, direct: bool) -> tuple[int, float, float]:\n    \"\"\"A cold prefix, memory hot phase, changed stream mix, then recovery.\n\n    File opens/closes and memory resets are included in each phase's timing.\n    process_time excludes a spawned compiler; the external harness measures\n    child-inclusive CPU and the runtime reports compilation CPU separately.\n    \"\"\"\n    start_wall = time.perf_counter()\n    start_cpu = time.process_time()\n    checksum: int = 0\n    for i in range(count):\n        use_file = False\n        if phase == \"cold\":\n            use_file = i == count - 1\n        elif phase == \"shift\":\n            half = count // 2\n            use_file = i % 2 == 1 if i < half else i != count - 1\n        if use_file:\n            fresh = open(path)\n            streams[1] = fresh\n            if direct:\n                checksum += concrete_file(fresh)\n            else:\n                checksum += read_tokens(streams[1])\n            fresh.close()\n        else:\n            memory.seek(0)\n            if direct:\n                checksum += concrete(memory)\n            else:\n                checksum += read_tokens(streams[0])\n    elapsed_cpu = time.process_time() - start_cpu\n    elapsed_wall = time.perf_counter() - start_wall\n    return checksum, elapsed_wall, elapsed_cpu\n\n\nmode = sys.argv[1] if len(sys.argv) > 1 else \"check\"\nrepeats = int(sys.argv[2]) if len(sys.argv) > 2 else (4000 if mode in (\"phases\", \"phases-static\") else 100)\npath = sys.argv[3] if len(sys.argv) > 3 else \"build/stream-skew-input.txt\"\nwith open(path, \"w\") as output:\n    output.write(DOCUMENT)\nmemory = StringIO(DOCUMENT)\ndisk = open(path)\nstreams: list[TextIO | StringIO] = [memory, disk]\n\nif mode == \"train\":\n    result = 0\n    for i in range(200):\n        index = 1 if i == 199 else 0\n        memory.seek(0)\n        result += read_tokens(streams[index])\n    print(\"train\", result)\nelif mode == \"check\":\n    expected_tokens = expected_token_list()\n    assert token_list(streams[0]) == expected_tokens\n    assert token_list(streams[1]) == expected_tokens\n    memory.seek(0)\n    expected = concrete(memory)\n    disk.close()\n    disk = open(path)\n    streams[1] = disk\n    assert concrete_file(disk) == expected\n    # Balanced, then reversed skew: the held-out stream member must stay valid.\n    result = 0\n    for i in range(12):\n        memory.seek(0)\n        disk.close()\n        disk = open(path)\n        streams[1] = disk\n        value = read_tokens(streams[i % 2])\n        assert value == expected\n        result += value\n    for i in range(12):\n        memory.seek(0)\n        disk.close()\n        disk = open(path)\n        streams[1] = disk\n        value = read_tokens(streams[0 if i == 11 else 1])\n        assert value == expected\n        result += value\n    print(\"check\", expected, result)\nelif mode in (\"phases\", \"phases-static\"):\n    # Exact token validation does not call tokenize or prewarm its online site.\n    expected_tokens = expected_token_list()\n    assert token_list(streams[0]) == expected_tokens\n    assert token_list(streams[1]) == expected_tokens\n    expected = 586964006\n    print(\"tokens\", len(expected_tokens), expected)\n    cold = int(sys.argv[4]) if len(sys.argv) > 4 else 200\n    shift = int(sys.argv[5]) if len(sys.argv) > 5 else 40\n    recovery = int(sys.argv[6]) if len(sys.argv) > 6 else repeats\n    direct = mode == \"phases-static\"\n    for phase, count in [(\"cold\", cold), (\"warm\", repeats), (\"shift\", shift), (\"recovery\", recovery)]:\n        checksum, wall, cpu = phase_batch(memory, streams, path, count, phase, direct)\n        assert checksum == expected * count\n        print(\"phase\", phase, count, checksum, wall, cpu)\nelse:\n    start = time.process_time()\n    result = 0\n    if mode == \"static\":\n        for _ in range(repeats):\n            memory.seek(0)\n            result += concrete(memory)\n    elif mode == \"static-file\":\n        for _ in range(repeats):\n            disk.close()\n            disk = open(path)\n            streams[1] = disk\n            result += concrete_file(disk)\n    elif mode == \"file\":\n        for _ in range(repeats):\n            disk.close()\n            disk = open(path)\n            streams[1] = disk\n            result += read_tokens(streams[1])\n    else:\n        for _ in range(repeats):\n            memory.seek(0)\n            result += read_tokens(streams[0])\n    elapsed = time.process_time() - start\n    print(result, elapsed)\n\ndisk.close()\nmemory.close()\n"
+    }
+  },
+  "input_adaptation": "Generic and online hosts remove concrete wrapper definitions and replace their calls with the union wrapper. The tokenize AST is checked unchanged. Concrete control is a byte-exact copy of bench/stream_skew.py.",
+  "builds": {
+    "generic": {
+      "command": [
+        "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+        "-o",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic"
+      ],
+      "wall_seconds": 3.0375649699999485,
+      "inclusive_user_cpu_seconds": 2.968836,
+      "inclusive_system_cpu_seconds": 0.067859,
+      "inclusive_cpu_seconds": 3.036695,
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0,
+      "executable_bytes": 301416,
+      "executable_sha256": "821e9aaf2789b94d77227365c242ee194c2bb1614c77c4bbf412b3bfe7e9e252",
+      "compile_options": {}
+    },
+    "online": {
+      "command": [
+        "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+        "-o",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online"
+      ],
+      "wall_seconds": 4.327222823005286,
+      "inclusive_user_cpu_seconds": 4.2248850000000004,
+      "inclusive_system_cpu_seconds": 0.10030999999999998,
+      "inclusive_cpu_seconds": 4.325195000000001,
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0,
+      "executable_bytes": 674320,
+      "executable_sha256": "20ee842259ffef51906099c90f96e9ccf6584e3d9130a7368c71176c14cd0e1a",
+      "compile_options": {
+        "PYSTACHY_ONLINE": "1",
+        "PYSTACHY_ONLINE_COMPILER": "/workspace/scratch/d83aa8e08446/pystachy/pystachy"
+      }
+    },
+    "concrete": {
+      "command": [
+        "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_concrete.py",
+        "-o",
+        "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete"
+      ],
+      "wall_seconds": 3.559060979008791,
+      "inclusive_user_cpu_seconds": 3.4932430000000005,
+      "inclusive_system_cpu_seconds": 0.064364,
+      "inclusive_cpu_seconds": 3.5576070000000004,
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0,
+      "executable_bytes": 313832,
+      "executable_sha256": "05d9ea80e067da92848937eef6d5d23894715340da8def42e424234155e541b5",
+      "compile_options": {}
+    }
+  },
+  "checks": {
+    "upstream_cpython": "check 586964006 14087136144",
+    "generic": "check 586964006 14087136144",
+    "online": "check 586964006 14087136144",
+    "concrete": "check 586964006 14087136144"
+  },
+  "samples_raw": {
+    "aot_generic": [
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.291644277996966,
+        "inclusive_user_cpu_seconds": 4.251252000000001,
+        "inclusive_system_cpu_seconds": 0.032055,
+        "inclusive_cpu_seconds": 4.283307000000001,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.11052563700650353 0.110503928\nphase warm 4000 2347856024000 2.0887292269908357 2.083564043\nphase shift 40 23478560240 0.021971679001580924 0.021961681000000066\nphase recovery 4000 2347856024000 2.0642500420071883 2.0626683370000003",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.11052563700650353,
+            "self_cpu_seconds": 0.110503928
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0887292269908357,
+            "self_cpu_seconds": 2.083564043
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.021971679001580924,
+            "self_cpu_seconds": 0.021961681000000066
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0642500420071883,
+            "self_cpu_seconds": 2.0626683370000003
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.410550572996726,
+        "inclusive_user_cpu_seconds": 4.389015999999998,
+        "inclusive_system_cpu_seconds": 0.016606999999999927,
+        "inclusive_cpu_seconds": 4.405622999999998,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.11440484398917761 0.114372896\nphase warm 4000 2347856024000 2.132998642002349 2.131628751\nphase shift 40 23478560240 0.03356355300638825 0.033332872000000346\nphase recovery 4000 2347856024000 2.1231795150088146 2.1217245260000004",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.11440484398917761,
+            "self_cpu_seconds": 0.114372896
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.132998642002349,
+            "self_cpu_seconds": 2.131628751
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03356355300638825,
+            "self_cpu_seconds": 0.033332872000000346
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.1231795150088146,
+            "self_cpu_seconds": 2.1217245260000004
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.586762042992632,
+        "inclusive_user_cpu_seconds": 4.551093999999999,
+        "inclusive_system_cpu_seconds": 0.02883800000000003,
+        "inclusive_cpu_seconds": 4.5799319999999994,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.1231376409996301 0.122713958\nphase warm 4000 2347856024000 1.949253377999412 1.947781975\nphase shift 40 23478560240 0.03002678400662262 0.030022425999999935\nphase recovery 4000 2347856024000 2.476222098994185 2.4729374",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.1231376409996301,
+            "self_cpu_seconds": 0.122713958
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.949253377999412,
+            "self_cpu_seconds": 1.947781975
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03002678400662262,
+            "self_cpu_seconds": 0.030022425999999935
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.476222098994185,
+            "self_cpu_seconds": 2.4729374
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.962207376011065,
+        "inclusive_user_cpu_seconds": 4.929271999999997,
+        "inclusive_system_cpu_seconds": 0.026773999999999964,
+        "inclusive_cpu_seconds": 4.956045999999997,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.1298000700044213 0.12978536000000002\nphase warm 4000 2347856024000 2.360621143991011 2.3584812200000003\nphase shift 40 23478560240 0.03517265799746383 0.03516055099999971\nphase recovery 4000 2347856024000 2.4300913869956275 2.4276323009999996",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.1298000700044213,
+            "self_cpu_seconds": 0.12978536000000002
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.360621143991011,
+            "self_cpu_seconds": 2.3584812200000003
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03517265799746383,
+            "self_cpu_seconds": 0.03516055099999971
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.4300913869956275,
+            "self_cpu_seconds": 2.4276323009999996
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.288030213996535,
+        "inclusive_user_cpu_seconds": 4.228837999999996,
+        "inclusive_system_cpu_seconds": 0.056944000000000106,
+        "inclusive_cpu_seconds": 4.285781999999996,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10673839600349311 0.106703854\nphase warm 4000 2347856024000 2.009511484997347 2.0093410740000004\nphase shift 40 23478560240 0.023340864005149342 0.02333939099999993\nphase recovery 4000 2347856024000 2.1418015679955715 2.1415569910000003",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10673839600349311,
+            "self_cpu_seconds": 0.106703854
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.009511484997347,
+            "self_cpu_seconds": 2.0093410740000004
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.023340864005149342,
+            "self_cpu_seconds": 0.02333939099999993
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.1418015679955715,
+            "self_cpu_seconds": 2.1415569910000003
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.179185567001696,
+        "inclusive_user_cpu_seconds": 4.142656000000002,
+        "inclusive_system_cpu_seconds": 0.035607000000000166,
+        "inclusive_cpu_seconds": 4.178263000000003,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10879220500646625 0.108636191\nphase warm 4000 2347856024000 2.0028365059988573 2.0026853609999997\nphase shift 40 23478560240 0.02083750801102724 0.020836465999999998\nphase recovery 4000 2347856024000 2.041362959993421 2.041231726",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10879220500646625,
+            "self_cpu_seconds": 0.108636191
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0028365059988573,
+            "self_cpu_seconds": 2.0026853609999997
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02083750801102724,
+            "self_cpu_seconds": 0.020836465999999998
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.041362959993421,
+            "self_cpu_seconds": 2.041231726
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/generic",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.133622462002677,
+        "inclusive_user_cpu_seconds": 4.103346000000002,
+        "inclusive_system_cpu_seconds": 0.028410000000000046,
+        "inclusive_cpu_seconds": 4.131756000000002,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10696935700252652 0.106965633\nphase warm 4000 2347856024000 2.0064013969968073 2.006241944\nphase shift 40 23478560240 0.02444838499650359 0.024446949000000107\nphase recovery 4000 2347856024000 1.9898143199970946 1.9896495650000001",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10696935700252652,
+            "self_cpu_seconds": 0.106965633
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0064013969968073,
+            "self_cpu_seconds": 2.006241944
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02444838499650359,
+            "self_cpu_seconds": 0.024446949000000107
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.9898143199970946,
+            "self_cpu_seconds": 1.9896495650000001
+          }
+        }
+      }
+    ],
+    "online": [
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.1183670190075645,
+        "inclusive_user_cpu_seconds": 6.023386999999998,
+        "inclusive_system_cpu_seconds": 0.08652100000000001,
+        "inclusive_cpu_seconds": 6.109907999999998,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.5325085200020112 0.13871825200000001\nphase warm 4000 2347856024000 2.6663067960034823 2.664398419\nphase shift 40 23478560240 0.022913370994501747 0.02291214499999983\nphase recovery 4000 2347856024000 2.8874495229974855 2.884141247",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.5325085200020112,
+            "self_cpu_seconds": 0.13871825200000001,
+            "self_plus_compile_cpu_seconds": 0.531536252
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.6663067960034823,
+            "self_cpu_seconds": 2.664398419
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.022913370994501747,
+            "self_cpu_seconds": 0.02291214499999983
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.8874495229974855,
+            "self_cpu_seconds": 2.884141247
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.400051042\t0.392818000\t0.000115584\tnone\t46\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.400051042,
+            "compile_cpu_s": 0.392818,
+            "load_wall_s": 0.000115584,
+            "failure": "none",
+            "compiler_pid": 46
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.25499706499977,
+        "inclusive_user_cpu_seconds": 6.174759999999999,
+        "inclusive_system_cpu_seconds": 0.07419000000000003,
+        "inclusive_cpu_seconds": 6.248949999999999,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.5273043109918945 0.14056265499999998\nphase warm 4000 2347856024000 2.9250378019933123 2.9227623080000003\nphase shift 40 23478560240 0.03277993100346066 0.032778176999999964\nphase recovery 4000 2347856024000 2.76280288300768 2.760237305",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.5273043109918945,
+            "self_cpu_seconds": 0.14056265499999998,
+            "self_plus_compile_cpu_seconds": 0.526771655
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.9250378019933123,
+            "self_cpu_seconds": 2.9227623080000003
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03277993100346066,
+            "self_cpu_seconds": 0.032778176999999964
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.76280288300768,
+            "self_cpu_seconds": 2.760237305
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.393082717\t0.386209000\t0.000116155\tnone\t56\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.393082717,
+            "compile_cpu_s": 0.386209,
+            "load_wall_s": 0.000116155,
+            "failure": "none",
+            "compiler_pid": 56
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.741342466993956,
+        "inclusive_user_cpu_seconds": 6.600825,
+        "inclusive_system_cpu_seconds": 0.12663599999999997,
+        "inclusive_cpu_seconds": 6.727461,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.6023794390057446 0.155391115\nphase warm 4000 2347856024000 3.113739237000118 3.105618396\nphase shift 40 23478560240 0.024137874992447905 0.024136015999999927\nphase recovery 4000 2347856024000 2.9924821900058305 2.9897797849999996",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.6023794390057446,
+            "self_cpu_seconds": 0.155391115,
+            "self_plus_compile_cpu_seconds": 0.600666115
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 3.113739237000118,
+            "self_cpu_seconds": 3.105618396
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.024137874992447905,
+            "self_cpu_seconds": 0.024136015999999927
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.9924821900058305,
+            "self_cpu_seconds": 2.9897797849999996
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.453759669\t0.445275000\t0.000117077\tnone\t69\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.453759669,
+            "compile_cpu_s": 0.445275,
+            "load_wall_s": 0.000117077,
+            "failure": "none",
+            "compiler_pid": 69
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.564597340999171,
+        "inclusive_user_cpu_seconds": 6.461627,
+        "inclusive_system_cpu_seconds": 0.09599100000000005,
+        "inclusive_cpu_seconds": 6.557618,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.5540038010076387 0.157858171\nphase warm 4000 2347856024000 3.1047263420041418 3.102322015\nphase shift 40 23478560240 0.02769380899553653 0.02768584900000004\nphase recovery 4000 2347856024000 2.870678285995382 2.868173504",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.5540038010076387,
+            "self_cpu_seconds": 0.157858171,
+            "self_plus_compile_cpu_seconds": 0.553038171
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 3.1047263420041418,
+            "self_cpu_seconds": 3.102322015
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02769380899553653,
+            "self_cpu_seconds": 0.02768584900000004
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.870678285995382,
+            "self_cpu_seconds": 2.868173504
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.402029091\t0.395180000\t0.000109636\tnone\t79\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.402029091,
+            "compile_cpu_s": 0.39518,
+            "load_wall_s": 0.000109636,
+            "failure": "none",
+            "compiler_pid": 79
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 7.2881324519985355,
+        "inclusive_user_cpu_seconds": 7.159279999999995,
+        "inclusive_system_cpu_seconds": 0.12218699999999993,
+        "inclusive_cpu_seconds": 7.281466999999996,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.6013996140100062 0.165647973\nphase warm 4000 2347856024000 3.5027385860012146 3.4998770379999997\nphase shift 40 23478560240 0.03718911000760272 0.03718737800000005\nphase recovery 4000 2347856024000 3.137896330008516 3.136599429",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.6013996140100062,
+            "self_cpu_seconds": 0.165647973,
+            "self_plus_compile_cpu_seconds": 0.599668973
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 3.5027385860012146,
+            "self_cpu_seconds": 3.4998770379999997
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03718911000760272,
+            "self_cpu_seconds": 0.03718737800000005
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 3.137896330008516,
+            "self_cpu_seconds": 3.136599429
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.443050235\t0.434021000\t0.000146321\tnone\t89\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.443050235,
+            "compile_cpu_s": 0.434021,
+            "load_wall_s": 0.000146321,
+            "failure": "none",
+            "compiler_pid": 89
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.36127774300985,
+        "inclusive_user_cpu_seconds": 6.235692999999998,
+        "inclusive_system_cpu_seconds": 0.12384299999999993,
+        "inclusive_cpu_seconds": 6.359535999999998,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.5426088730018819 0.146569213\nphase warm 4000 2347856024000 3.104035399010172 3.1036780029999997\nphase shift 40 23478560240 0.025443765000090934 0.02544262999999969\nphase recovery 4000 2347856024000 2.681963565002661 2.681463002",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.5426088730018819,
+            "self_cpu_seconds": 0.146569213,
+            "self_plus_compile_cpu_seconds": 0.542440213
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 3.104035399010172,
+            "self_cpu_seconds": 3.1036780029999997
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.025443765000090934,
+            "self_cpu_seconds": 0.02544262999999969
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.681963565002661,
+            "self_cpu_seconds": 2.681463002
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.402397702\t0.395871000\t0.000105900\tnone\t102\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.402397702,
+            "compile_cpu_s": 0.395871,
+            "load_wall_s": 0.0001059,
+            "failure": "none",
+            "compiler_pid": 102
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.049316238000756,
+        "inclusive_user_cpu_seconds": 5.977335000000011,
+        "inclusive_system_cpu_seconds": 0.0691489999999999,
+        "inclusive_cpu_seconds": 6.04648400000001,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.49922425400291104 0.135462835\nphase warm 4000 2347856024000 2.6846046279970324 2.684332022\nphase shift 40 23478560240 0.02345883200177923 0.023457547000000023\nphase recovery 4000 2347856024000 2.835058091004612 2.834249794",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.49922425400291104,
+            "self_cpu_seconds": 0.135462835,
+            "self_plus_compile_cpu_seconds": 0.498682835
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.6846046279970324,
+            "self_cpu_seconds": 2.684332022
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02345883200177923,
+            "self_cpu_seconds": 0.023457547000000023
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.835058091004612,
+            "self_cpu_seconds": 2.834249794
+          }
+        },
+        "online_stats": {
+          "raw": "pystachy-online-v1\nsite\tcalls\tattempts\tinstalls\thits\tmisses\ttrigger_call\tcompile_wall_s\tcompile_cpu_s\tload_wall_s\tfailure\tcompiler_pid\nread_tokens(union[file,io$StringIO]):28:tokenize:stream\t8240\t1\t1\t8111\t129\t100\t0.369018271\t0.363220000\t0.000114573\tnone\t112\n",
+          "site": {
+            "site": "read_tokens(union[file,io$StringIO]):28:tokenize:stream",
+            "calls": 8240,
+            "attempts": 1,
+            "installs": 1,
+            "hits": 8111,
+            "misses": 129,
+            "trigger_call": 100,
+            "compile_wall_s": 0.369018271,
+            "compile_cpu_s": 0.36322,
+            "load_wall_s": 0.000114573,
+            "failure": "none",
+            "compiler_pid": 112
+          }
+        }
+      }
+    ],
+    "aot_concrete": [
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.1761095830006525,
+        "inclusive_user_cpu_seconds": 4.137926,
+        "inclusive_system_cpu_seconds": 0.02945500000000001,
+        "inclusive_cpu_seconds": 4.167381000000001,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.11510726800770499 0.11493735399999999\nphase warm 4000 2347856024000 2.0816092639870476 2.0763152430000003\nphase shift 40 23478560240 0.030678040988277644 0.0306760989999999\nphase recovery 4000 2347856024000 1.9419155249925097 1.940232086",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.11510726800770499,
+            "self_cpu_seconds": 0.11493735399999999
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0816092639870476,
+            "self_cpu_seconds": 2.0763152430000003
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.030678040988277644,
+            "self_cpu_seconds": 0.0306760989999999
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.9419155249925097,
+            "self_cpu_seconds": 1.940232086
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 3.8814059140131576,
+        "inclusive_user_cpu_seconds": 3.8510460000000037,
+        "inclusive_system_cpu_seconds": 0.02286699999999997,
+        "inclusive_cpu_seconds": 3.8739130000000035,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10578828799771145 0.102279921\nphase warm 4000 2347856024000 1.8734851790068205 1.8721760120000002\nphase shift 40 23478560240 0.020620210998458788 0.020619262999999943\nphase recovery 4000 2347856024000 1.875713289991836 1.874577453",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10578828799771145,
+            "self_cpu_seconds": 0.102279921
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.8734851790068205,
+            "self_cpu_seconds": 1.8721760120000002
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.020620210998458788,
+            "self_cpu_seconds": 0.020619262999999943
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.875713289991836,
+            "self_cpu_seconds": 1.874577453
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.418243027001154,
+        "inclusive_user_cpu_seconds": 4.373476000000004,
+        "inclusive_system_cpu_seconds": 0.030599000000000043,
+        "inclusive_cpu_seconds": 4.404075000000004,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.11654923399328254 0.116338911\nphase warm 4000 2347856024000 2.11841211700812 2.113549705\nphase shift 40 23478560240 0.027218742994591594 0.0272173109999998\nphase recovery 4000 2347856024000 2.150412310002139 2.1418340919999994",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.11654923399328254,
+            "self_cpu_seconds": 0.116338911
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.11841211700812,
+            "self_cpu_seconds": 2.113549705
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.027218742994591594,
+            "self_cpu_seconds": 0.0272173109999998
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.150412310002139,
+            "self_cpu_seconds": 2.1418340919999994
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.398431309993612,
+        "inclusive_user_cpu_seconds": 4.369298999999998,
+        "inclusive_system_cpu_seconds": 0.025353999999999988,
+        "inclusive_cpu_seconds": 4.394652999999998,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10232122500019614 0.10231329\nphase warm 4000 2347856024000 2.0370541459997185 2.035605624\nphase shift 40 23478560240 0.03042362599808257 0.030277644999999964\nphase recovery 4000 2347856024000 2.223144306000904 2.2215841149999997",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10232122500019614,
+            "self_cpu_seconds": 0.10231329
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0370541459997185,
+            "self_cpu_seconds": 2.035605624
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.03042362599808257,
+            "self_cpu_seconds": 0.030277644999999964
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.223144306000904,
+            "self_cpu_seconds": 2.2215841149999997
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.515974018999259,
+        "inclusive_user_cpu_seconds": 4.498616000000013,
+        "inclusive_system_cpu_seconds": 0.015176000000000078,
+        "inclusive_cpu_seconds": 4.513792000000013,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.14407483700779267 0.143696772\nphase warm 4000 2347856024000 2.1296580490015913 2.1294152840000002\nphase shift 40 23478560240 0.022190759002114646 0.02218931000000035\nphase recovery 4000 2347856024000 2.213458971993532 2.212416819",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.14407483700779267,
+            "self_cpu_seconds": 0.143696772
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.1296580490015913,
+            "self_cpu_seconds": 2.1294152840000002
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.022190759002114646,
+            "self_cpu_seconds": 0.02218931000000035
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.213458971993532,
+            "self_cpu_seconds": 2.212416819
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.497576028996264,
+        "inclusive_user_cpu_seconds": 4.472929999999991,
+        "inclusive_system_cpu_seconds": 0.022452999999999834,
+        "inclusive_cpu_seconds": 4.495382999999991,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.11069111899996642 0.110611026\nphase warm 4000 2347856024000 2.351312326005427 2.350963729\nphase shift 40 23478560240 0.02369156200438738 0.023690542999999842\nphase recovery 4000 2347856024000 2.0049152960127685 2.004769466",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.11069111899996642,
+            "self_cpu_seconds": 0.110611026
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.351312326005427,
+            "self_cpu_seconds": 2.350963729
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02369156200438738,
+            "self_cpu_seconds": 0.023690542999999842
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.0049152960127685,
+            "self_cpu_seconds": 2.004769466
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/concrete",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 4.042031044009491,
+        "inclusive_user_cpu_seconds": 4.0240599999999915,
+        "inclusive_system_cpu_seconds": 0.016064000000000078,
+        "inclusive_cpu_seconds": 4.040123999999992,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.10700614198867697 0.106981957\nphase warm 4000 2347856024000 1.9216474349959753 1.921409617\nphase shift 40 23478560240 0.020143682006164454 0.02014252300000008\nphase recovery 4000 2347856024000 1.9870459630037658 1.9869255080000001",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.10700614198867697,
+            "self_cpu_seconds": 0.106981957
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.9216474349959753,
+            "self_cpu_seconds": 1.921409617
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.020143682006164454,
+            "self_cpu_seconds": 0.02014252300000008
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 1.9870459630037658,
+            "self_cpu_seconds": 1.9869255080000001
+          }
+        }
+      }
+    ],
+    "jit_generic": [
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 5.902916379011003,
+        "inclusive_user_cpu_seconds": 5.822530999999998,
+        "inclusive_system_cpu_seconds": 0.07902299999999984,
+        "inclusive_cpu_seconds": 5.901553999999997,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.1346497690101387 0.13460760100000002\nphase warm 4000 2347856024000 2.695355974996346 2.6950165330000004\nphase shift 40 23478560240 0.025939781000488438 0.02593805299999996\nphase recovery 4000 2347856024000 2.5000256260100286 2.499693261",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.1346497690101387,
+            "self_cpu_seconds": 0.13460760100000002
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.695355974996346,
+            "self_cpu_seconds": 2.6950165330000004
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.025939781000488438,
+            "self_cpu_seconds": 0.02593805299999996
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.5000256260100286,
+            "self_cpu_seconds": 2.499693261
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 5.667942617001245,
+        "inclusive_user_cpu_seconds": 5.594561999999996,
+        "inclusive_system_cpu_seconds": 0.07213700000000012,
+        "inclusive_cpu_seconds": 5.666698999999996,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.14223548799054697 0.14219757099999997\nphase warm 4000 2347856024000 2.5069522599951597 2.5066555249999998\nphase shift 40 23478560240 0.022935244007385336 0.022934048000000207\nphase recovery 4000 2347856024000 2.3187354629917536 2.3185810950000003",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.14223548799054697,
+            "self_cpu_seconds": 0.14219757099999997
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.5069522599951597,
+            "self_cpu_seconds": 2.5066555249999998
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.022935244007385336,
+            "self_cpu_seconds": 0.022934048000000207
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.3187354629917536,
+            "self_cpu_seconds": 2.3185810950000003
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+          "phases",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 5.347994105992257,
+        "inclusive_user_cpu_seconds": 5.289224000000019,
+        "inclusive_system_cpu_seconds": 0.05689999999999973,
+        "inclusive_cpu_seconds": 5.346124000000018,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.12327921099495143 0.12321355599999995\nphase warm 4000 2347856024000 2.3404491880064597 2.339312575\nphase shift 40 23478560240 0.02292699000099674 0.022925734999999836\nphase recovery 4000 2347856024000 2.269805051997537 2.2697086619999998",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.12327921099495143,
+            "self_cpu_seconds": 0.12321355599999995
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.3404491880064597,
+            "self_cpu_seconds": 2.339312575
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.02292699000099674,
+            "self_cpu_seconds": 0.022925734999999836
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.269805051997537,
+            "self_cpu_seconds": 2.2697086619999998
+          }
+        }
+      }
+    ],
+    "jit_concrete": [
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_concrete.py",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 5.8702249149937415,
+        "inclusive_user_cpu_seconds": 5.7851539999999915,
+        "inclusive_system_cpu_seconds": 0.0839160000000001,
+        "inclusive_cpu_seconds": 5.869069999999992,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.1651169319957262 0.16505189600000003\nphase warm 4000 2347856024000 2.50339202300529 2.5032190930000002\nphase shift 40 23478560240 0.030528794988640584 0.030526846999999968\nphase recovery 4000 2347856024000 2.446878996997839 2.446620883",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.1651169319957262,
+            "self_cpu_seconds": 0.16505189600000003
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.50339202300529,
+            "self_cpu_seconds": 2.5032190930000002
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.030528794988640584,
+            "self_cpu_seconds": 0.030526846999999968
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.446878996997839,
+            "self_cpu_seconds": 2.446620883
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_concrete.py",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 5.887644296992221,
+        "inclusive_user_cpu_seconds": 5.802771000000007,
+        "inclusive_system_cpu_seconds": 0.08380100000000001,
+        "inclusive_cpu_seconds": 5.886572000000007,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.14718308400188107 0.14711892800000004\nphase warm 4000 2347856024000 2.4900113990006503 2.489796274\nphase shift 40 23478560240 0.023699774988926947 0.023698495000000097\nphase recovery 4000 2347856024000 2.4982146580005065 2.497982774",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.14718308400188107,
+            "self_cpu_seconds": 0.14711892800000004
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.4900113990006503,
+            "self_cpu_seconds": 2.489796274
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.023699774988926947,
+            "self_cpu_seconds": 0.023698495000000097
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.4982146580005065,
+            "self_cpu_seconds": 2.497982774
+          }
+        }
+      },
+      {
+        "command": [
+          "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_concrete.py",
+          "phases-static",
+          "4000",
+          "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt",
+          "200",
+          "40",
+          "4000"
+        ],
+        "wall_seconds": 6.196289097002591,
+        "inclusive_user_cpu_seconds": 6.163366999999994,
+        "inclusive_system_cpu_seconds": 0.031619000000000064,
+        "inclusive_cpu_seconds": 6.194985999999994,
+        "stdout": "tokens 544 586964006\nphase cold 200 117392801200 0.15447553599369712 0.15443944399999998\nphase warm 4000 2347856024000 2.619358063006075 2.619120813\nphase shift 40 23478560240 0.04914604999066796 0.04914374499999985\nphase recovery 4000 2347856024000 2.716039146995172 2.7156018550000005",
+        "stderr": "",
+        "returncode": 0,
+        "phases": {
+          "cold": {
+            "calls": 200,
+            "checksum": 117392801200,
+            "wall_seconds": 0.15447553599369712,
+            "self_cpu_seconds": 0.15443944399999998
+          },
+          "warm": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.619358063006075,
+            "self_cpu_seconds": 2.619120813
+          },
+          "shift": {
+            "calls": 40,
+            "checksum": 23478560240,
+            "wall_seconds": 0.04914604999066796,
+            "self_cpu_seconds": 0.04914374499999985
+          },
+          "recovery": {
+            "calls": 4000,
+            "checksum": 2347856024000,
+            "wall_seconds": 2.716039146995172,
+            "self_cpu_seconds": 2.7156018550000005
+          }
+        }
+      }
+    ]
+  },
+  "summary": {
+    "aot_generic": {
+      "wall_seconds": {
+        "values": [
+          4.291644277996966,
+          4.410550572996726,
+          4.586762042992632,
+          4.962207376011065,
+          4.288030213996535,
+          4.179185567001696,
+          4.133622462002677
+        ],
+        "median": 4.291644277996966,
+        "min": 4.133622462002677,
+        "max": 4.962207376011065
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          4.283307000000001,
+          4.405622999999998,
+          4.5799319999999994,
+          4.956045999999997,
+          4.285781999999996,
+          4.178263000000003,
+          4.131756000000002
+        ],
+        "median": 4.285781999999996,
+        "min": 4.131756000000002,
+        "max": 4.956045999999997
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.11052563700650353,
+              0.11440484398917761,
+              0.1231376409996301,
+              0.1298000700044213,
+              0.10673839600349311,
+              0.10879220500646625,
+              0.10696935700252652
+            ],
+            "median": 0.11052563700650353,
+            "min": 0.10673839600349311,
+            "max": 0.1298000700044213
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.110503928,
+              0.114372896,
+              0.122713958,
+              0.12978536000000002,
+              0.106703854,
+              0.108636191,
+              0.106965633
+            ],
+            "median": 0.110503928,
+            "min": 0.106703854,
+            "max": 0.12978536000000002
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              2.0887292269908357,
+              2.132998642002349,
+              1.949253377999412,
+              2.360621143991011,
+              2.009511484997347,
+              2.0028365059988573,
+              2.0064013969968073
+            ],
+            "median": 2.009511484997347,
+            "min": 1.949253377999412,
+            "max": 2.360621143991011
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.083564043,
+              2.131628751,
+              1.947781975,
+              2.3584812200000003,
+              2.0093410740000004,
+              2.0026853609999997,
+              2.006241944
+            ],
+            "median": 2.0093410740000004,
+            "min": 1.947781975,
+            "max": 2.3584812200000003
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.021971679001580924,
+              0.03356355300638825,
+              0.03002678400662262,
+              0.03517265799746383,
+              0.023340864005149342,
+              0.02083750801102724,
+              0.02444838499650359
+            ],
+            "median": 0.02444838499650359,
+            "min": 0.02083750801102724,
+            "max": 0.03517265799746383
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.021961681000000066,
+              0.033332872000000346,
+              0.030022425999999935,
+              0.03516055099999971,
+              0.02333939099999993,
+              0.020836465999999998,
+              0.024446949000000107
+            ],
+            "median": 0.024446949000000107,
+            "min": 0.020836465999999998,
+            "max": 0.03516055099999971
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              2.0642500420071883,
+              2.1231795150088146,
+              2.476222098994185,
+              2.4300913869956275,
+              2.1418015679955715,
+              2.041362959993421,
+              1.9898143199970946
+            ],
+            "median": 2.1231795150088146,
+            "min": 1.9898143199970946,
+            "max": 2.476222098994185
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.0626683370000003,
+              2.1217245260000004,
+              2.4729374,
+              2.4276323009999996,
+              2.1415569910000003,
+              2.041231726,
+              1.9896495650000001
+            ],
+            "median": 2.1217245260000004,
+            "min": 1.9896495650000001,
+            "max": 2.4729374
+          }
+        }
+      }
+    },
+    "online": {
+      "wall_seconds": {
+        "values": [
+          6.1183670190075645,
+          6.25499706499977,
+          6.741342466993956,
+          6.564597340999171,
+          7.2881324519985355,
+          6.36127774300985,
+          6.049316238000756
+        ],
+        "median": 6.36127774300985,
+        "min": 6.049316238000756,
+        "max": 7.2881324519985355
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          6.109907999999998,
+          6.248949999999999,
+          6.727461,
+          6.557618,
+          7.281466999999996,
+          6.359535999999998,
+          6.04648400000001
+        ],
+        "median": 6.359535999999998,
+        "min": 6.04648400000001,
+        "max": 7.281466999999996
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.5325085200020112,
+              0.5273043109918945,
+              0.6023794390057446,
+              0.5540038010076387,
+              0.6013996140100062,
+              0.5426088730018819,
+              0.49922425400291104
+            ],
+            "median": 0.5426088730018819,
+            "min": 0.49922425400291104,
+            "max": 0.6023794390057446
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.13871825200000001,
+              0.14056265499999998,
+              0.155391115,
+              0.157858171,
+              0.165647973,
+              0.146569213,
+              0.135462835
+            ],
+            "median": 0.146569213,
+            "min": 0.135462835,
+            "max": 0.165647973
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              2.6663067960034823,
+              2.9250378019933123,
+              3.113739237000118,
+              3.1047263420041418,
+              3.5027385860012146,
+              3.104035399010172,
+              2.6846046279970324
+            ],
+            "median": 3.104035399010172,
+            "min": 2.6663067960034823,
+            "max": 3.5027385860012146
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.664398419,
+              2.9227623080000003,
+              3.105618396,
+              3.102322015,
+              3.4998770379999997,
+              3.1036780029999997,
+              2.684332022
+            ],
+            "median": 3.102322015,
+            "min": 2.664398419,
+            "max": 3.4998770379999997
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.022913370994501747,
+              0.03277993100346066,
+              0.024137874992447905,
+              0.02769380899553653,
+              0.03718911000760272,
+              0.025443765000090934,
+              0.02345883200177923
+            ],
+            "median": 0.025443765000090934,
+            "min": 0.022913370994501747,
+            "max": 0.03718911000760272
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.02291214499999983,
+              0.032778176999999964,
+              0.024136015999999927,
+              0.02768584900000004,
+              0.03718737800000005,
+              0.02544262999999969,
+              0.023457547000000023
+            ],
+            "median": 0.02544262999999969,
+            "min": 0.02291214499999983,
+            "max": 0.03718737800000005
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              2.8874495229974855,
+              2.76280288300768,
+              2.9924821900058305,
+              2.870678285995382,
+              3.137896330008516,
+              2.681963565002661,
+              2.835058091004612
+            ],
+            "median": 2.870678285995382,
+            "min": 2.681963565002661,
+            "max": 3.137896330008516
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.884141247,
+              2.760237305,
+              2.9897797849999996,
+              2.868173504,
+              3.136599429,
+              2.681463002,
+              2.834249794
+            ],
+            "median": 2.868173504,
+            "min": 2.681463002,
+            "max": 3.136599429
+          }
+        }
+      }
+    },
+    "aot_concrete": {
+      "wall_seconds": {
+        "values": [
+          4.1761095830006525,
+          3.8814059140131576,
+          4.418243027001154,
+          4.398431309993612,
+          4.515974018999259,
+          4.497576028996264,
+          4.042031044009491
+        ],
+        "median": 4.398431309993612,
+        "min": 3.8814059140131576,
+        "max": 4.515974018999259
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          4.167381000000001,
+          3.8739130000000035,
+          4.404075000000004,
+          4.394652999999998,
+          4.513792000000013,
+          4.495382999999991,
+          4.040123999999992
+        ],
+        "median": 4.394652999999998,
+        "min": 3.8739130000000035,
+        "max": 4.513792000000013
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.11510726800770499,
+              0.10578828799771145,
+              0.11654923399328254,
+              0.10232122500019614,
+              0.14407483700779267,
+              0.11069111899996642,
+              0.10700614198867697
+            ],
+            "median": 0.11069111899996642,
+            "min": 0.10232122500019614,
+            "max": 0.14407483700779267
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.11493735399999999,
+              0.102279921,
+              0.116338911,
+              0.10231329,
+              0.143696772,
+              0.110611026,
+              0.106981957
+            ],
+            "median": 0.110611026,
+            "min": 0.102279921,
+            "max": 0.143696772
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              2.0816092639870476,
+              1.8734851790068205,
+              2.11841211700812,
+              2.0370541459997185,
+              2.1296580490015913,
+              2.351312326005427,
+              1.9216474349959753
+            ],
+            "median": 2.0816092639870476,
+            "min": 1.8734851790068205,
+            "max": 2.351312326005427
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.0763152430000003,
+              1.8721760120000002,
+              2.113549705,
+              2.035605624,
+              2.1294152840000002,
+              2.350963729,
+              1.921409617
+            ],
+            "median": 2.0763152430000003,
+            "min": 1.8721760120000002,
+            "max": 2.350963729
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.030678040988277644,
+              0.020620210998458788,
+              0.027218742994591594,
+              0.03042362599808257,
+              0.022190759002114646,
+              0.02369156200438738,
+              0.020143682006164454
+            ],
+            "median": 0.02369156200438738,
+            "min": 0.020143682006164454,
+            "max": 0.030678040988277644
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.0306760989999999,
+              0.020619262999999943,
+              0.0272173109999998,
+              0.030277644999999964,
+              0.02218931000000035,
+              0.023690542999999842,
+              0.02014252300000008
+            ],
+            "median": 0.023690542999999842,
+            "min": 0.02014252300000008,
+            "max": 0.0306760989999999
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              1.9419155249925097,
+              1.875713289991836,
+              2.150412310002139,
+              2.223144306000904,
+              2.213458971993532,
+              2.0049152960127685,
+              1.9870459630037658
+            ],
+            "median": 2.0049152960127685,
+            "min": 1.875713289991836,
+            "max": 2.223144306000904
+          },
+          "self_cpu_seconds": {
+            "values": [
+              1.940232086,
+              1.874577453,
+              2.1418340919999994,
+              2.2215841149999997,
+              2.212416819,
+              2.004769466,
+              1.9869255080000001
+            ],
+            "median": 2.004769466,
+            "min": 1.874577453,
+            "max": 2.2215841149999997
+          }
+        }
+      }
+    },
+    "jit_generic": {
+      "wall_seconds": {
+        "values": [
+          5.902916379011003,
+          5.667942617001245,
+          5.347994105992257
+        ],
+        "median": 5.667942617001245,
+        "min": 5.347994105992257,
+        "max": 5.902916379011003
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          5.901553999999997,
+          5.666698999999996,
+          5.346124000000018
+        ],
+        "median": 5.666698999999996,
+        "min": 5.346124000000018,
+        "max": 5.901553999999997
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.1346497690101387,
+              0.14223548799054697,
+              0.12327921099495143
+            ],
+            "median": 0.1346497690101387,
+            "min": 0.12327921099495143,
+            "max": 0.14223548799054697
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.13460760100000002,
+              0.14219757099999997,
+              0.12321355599999995
+            ],
+            "median": 0.13460760100000002,
+            "min": 0.12321355599999995,
+            "max": 0.14219757099999997
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              2.695355974996346,
+              2.5069522599951597,
+              2.3404491880064597
+            ],
+            "median": 2.5069522599951597,
+            "min": 2.3404491880064597,
+            "max": 2.695355974996346
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.6950165330000004,
+              2.5066555249999998,
+              2.339312575
+            ],
+            "median": 2.5066555249999998,
+            "min": 2.339312575,
+            "max": 2.6950165330000004
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.025939781000488438,
+              0.022935244007385336,
+              0.02292699000099674
+            ],
+            "median": 0.022935244007385336,
+            "min": 0.02292699000099674,
+            "max": 0.025939781000488438
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.02593805299999996,
+              0.022934048000000207,
+              0.022925734999999836
+            ],
+            "median": 0.022934048000000207,
+            "min": 0.022925734999999836,
+            "max": 0.02593805299999996
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              2.5000256260100286,
+              2.3187354629917536,
+              2.269805051997537
+            ],
+            "median": 2.3187354629917536,
+            "min": 2.269805051997537,
+            "max": 2.5000256260100286
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.499693261,
+              2.3185810950000003,
+              2.2697086619999998
+            ],
+            "median": 2.3185810950000003,
+            "min": 2.2697086619999998,
+            "max": 2.499693261
+          }
+        }
+      }
+    },
+    "jit_concrete": {
+      "wall_seconds": {
+        "values": [
+          5.8702249149937415,
+          5.887644296992221,
+          6.196289097002591
+        ],
+        "median": 5.887644296992221,
+        "min": 5.8702249149937415,
+        "max": 6.196289097002591
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          5.869069999999992,
+          5.886572000000007,
+          6.194985999999994
+        ],
+        "median": 5.886572000000007,
+        "min": 5.869069999999992,
+        "max": 6.194985999999994
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.1651169319957262,
+              0.14718308400188107,
+              0.15447553599369712
+            ],
+            "median": 0.15447553599369712,
+            "min": 0.14718308400188107,
+            "max": 0.1651169319957262
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.16505189600000003,
+              0.14711892800000004,
+              0.15443944399999998
+            ],
+            "median": 0.15443944399999998,
+            "min": 0.14711892800000004,
+            "max": 0.16505189600000003
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              2.50339202300529,
+              2.4900113990006503,
+              2.619358063006075
+            ],
+            "median": 2.50339202300529,
+            "min": 2.4900113990006503,
+            "max": 2.619358063006075
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.5032190930000002,
+              2.489796274,
+              2.619120813
+            ],
+            "median": 2.5032190930000002,
+            "min": 2.489796274,
+            "max": 2.619120813
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.030528794988640584,
+              0.023699774988926947,
+              0.04914604999066796
+            ],
+            "median": 0.030528794988640584,
+            "min": 0.023699774988926947,
+            "max": 0.04914604999066796
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.030526846999999968,
+              0.023698495000000097,
+              0.04914374499999985
+            ],
+            "median": 0.030526846999999968,
+            "min": 0.023698495000000097,
+            "max": 0.04914374499999985
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              2.446878996997839,
+              2.4982146580005065,
+              2.716039146995172
+            ],
+            "median": 2.4982146580005065,
+            "min": 2.446878996997839,
+            "max": 2.716039146995172
+          },
+          "self_cpu_seconds": {
+            "values": [
+              2.446620883,
+              2.497982774,
+              2.7156018550000005
+            ],
+            "median": 2.497982774,
+            "min": 2.446620883,
+            "max": 2.7156018550000005
+          }
+        }
+      }
+    }
+  },
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "host_ir_check": {
+    "path": "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/online.ll",
+    "sha256": "9d981e37509deb66fed75c9baa96c5e4d9fde4a17f4df132526cd99b54205e08",
+    "tokenizer_definitions": [
+      "define internal i64 @f.tokenize.1(ptr %a0) {"
+    ],
+    "read_tokens_ir": "define internal i64 @f.read_tokens(ptr %a0) {\nentry:\n  %stream.1 = alloca ptr\n  store ptr zeroinitializer, ptr %stream.1\n  store ptr %a0, ptr %stream.1\n  %t2 = load ptr, ptr %stream.1\n  %t6 = icmp eq ptr %t2, null\n  br i1 %t6, label %L5, label %L4\nL5:\n  %t7 = call ptr @pys_online(ptr @s.229, ptr @s.230)\n  br label %L3\nL4:\n  %t8 = load i64, ptr %t2\n  %t11 = icmp eq i64 %t8, 2\n  br i1 %t11, label %L9, label %L10\nL9:\n  %t12 = call ptr @pys_online(ptr @s.229, ptr @s.178)\n  br label %L3\nL10:\n  %t15 = icmp eq i64 %t8, 1\n  br i1 %t15, label %L13, label %L14\nL13:\n  %t16 = call ptr @pys_online(ptr @s.229, ptr @s.231)\n  br label %L3\nL14:\n  %t17 = call ptr @pys_online(ptr @s.229, ptr @s.232)\n  br label %L3\nL3:\n  %t18 = phi ptr [%t7, %L5], [%t12, %L9], [%t16, %L13], [%t17, %L14]\n  %t22 = icmp eq ptr %t18, null\n  br i1 %t22, label %L20, label %L19\nL19:\n  %t23 = call i64 %t18(ptr %t2)\n  br label %L21\nL20:\n  %t24 = call i64 @f.tokenize.1(ptr %t2)\n  br label %L21\nL21:\n  %t25 = phi i64 [%t23, %L19], [%t24, %L20]\n  ret i64 %t25\n}"
+  },
+  "jit_cache_preparation": {
+    "command": [
+      "/workspace/scratch/d83aa8e08446/pystachy/pystachy",
+      "run",
+      "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/source/stream_generic.py",
+      "check",
+      "1",
+      "/workspace/scratch/d83aa8e08446/pystachy/build/stream-online/input.txt"
+    ],
+    "wall_seconds": 0.6583344879909419,
+    "inclusive_user_cpu_seconds": 0.5948720000000005,
+    "inclusive_system_cpu_seconds": 0.06194299999999997,
+    "inclusive_cpu_seconds": 0.6568150000000005,
+    "stdout": "check 586964006 14087136144",
+    "stderr": "",
+    "returncode": 0
+  },
+  "paired_ratios": {
+    "aot_generic_over_online": {
+      "wall_seconds": {
+        "values": [
+          0.7014362271279855,
+          0.7051243233472065,
+          0.6803929729797459,
+          0.7559043027695873,
+          0.5883578875985824,
+          0.6569726611283453,
+          0.6833206100279527
+        ],
+        "median": 0.6833206100279527,
+        "min": 0.5883578875985824,
+        "max": 0.7559043027695873
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          0.7010427980257644,
+          0.7050181230446713,
+          0.6807816500162542,
+          0.7557692442591193,
+          0.5885877117893961,
+          0.6570075238193486,
+          0.6833319992246726
+        ],
+        "median": 0.6833319992246726,
+        "min": 0.5885877117893961,
+        "max": 0.7557692442591193
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.20755656079659737,
+              0.21696170807702006,
+              0.20441873182603063,
+              0.23429454774197764,
+              0.17748331311984708,
+              0.20049838920730095,
+              0.2142711539850441
+            ],
+            "median": 0.20755656079659737,
+            "min": 0.17748331311984708,
+            "max": 0.23429454774197764
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.7966069814662888,
+              0.8136791098602969,
+              0.789710261104697,
+              0.8221643465006321,
+              0.6441603363296211,
+              0.7411937935424405,
+              0.7896308459807445
+            ],
+            "median": 0.789710261104697,
+            "min": 0.6441603363296211,
+            "max": 0.8221643465006321
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              0.7833791783157229,
+              0.7292208806835877,
+              0.6260168978945677,
+              0.7603314701376223,
+              0.5736972473562291,
+              0.6452363612340021,
+              0.7473731424257327
+            ],
+            "median": 0.7292208806835877,
+            "min": 0.5736972473562291,
+            "max": 0.7833791783157229
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.7820016811832525,
+              0.7293199125927691,
+              0.6271800738650699,
+              0.7602309523629514,
+              0.5741176196144981,
+              0.645261963085157,
+              0.7473896401627772
+            ],
+            "median": 0.7293199125927691,
+            "min": 0.5741176196144981,
+            "max": 0.7820016811832525
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.9589020754236995,
+              1.0239055415597078,
+              1.2439696541645524,
+              1.2700549066086462,
+              0.6276263131969997,
+              0.8189632316975404,
+              1.0421825346909561
+            ],
+            "median": 1.0239055415597078,
+            "min": 0.6276263131969997,
+            "max": 1.2700549066086462
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.95851702230412,
+              1.0169226921924421,
+              1.243884906274508,
+              1.2699827626741609,
+              0.6276159346324417,
+              0.8189588104688962,
+              1.0421784085096402
+            ],
+            "median": 1.0169226921924421,
+            "min": 0.6276159346324417,
+            "max": 1.2699827626741609
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              0.714904286833826,
+              0.7684875124704699,
+              0.8274809812616999,
+              0.8465216735887265,
+              0.6825596969259207,
+              0.7611449262888833,
+              0.7018601581077295
+            ],
+            "median": 0.7611449262888833,
+            "min": 0.6825596969259207,
+            "max": 0.8465216735887265
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.7151759086506349,
+              0.7686746795852034,
+              0.8271302831087944,
+              0.8464035727317003,
+              0.6827639421214727,
+              0.761238072081369,
+              0.7020021909190972
+            ],
+            "median": 0.761238072081369,
+            "min": 0.6827639421214727,
+            "max": 0.8464035727317003
+          }
+        }
+      }
+    },
+    "aot_generic_over_concrete": {
+      "wall_seconds": {
+        "values": [
+          1.0276656281881613,
+          1.1363280910850322,
+          1.038141635704874,
+          1.1281766216824862,
+          0.9495249963698338,
+          0.9292084313990743,
+          1.0226597512478113
+        ],
+        "median": 1.0276656281881613,
+        "min": 0.9292084313990743,
+        "max": 1.1363280910850322
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          1.0278174709727763,
+          1.1372539858277648,
+          1.0399305188944319,
+          1.127744556851246,
+          0.9494859311195517,
+          0.9294565112694539,
+          1.0226804919849022
+        ],
+        "median": 1.0278174709727763,
+        "min": 0.9294565112694539,
+        "max": 1.1372539858277648
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.9601968574139491,
+              1.0814509446608358,
+              1.0565289601708345,
+              1.2685546914061328,
+              0.740853838326535,
+              0.9828449291085335,
+              0.9996562348154339
+            ],
+            "median": 0.9996562348154339,
+            "min": 0.740853838326535,
+            "max": 1.2685546914061328
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.9614274572564112,
+              1.1182341057928662,
+              1.0547972036630118,
+              1.2685093011865811,
+              0.7425626373847841,
+              0.9821461289040027,
+              0.9998474135222634
+            ],
+            "median": 0.9998474135222634,
+            "min": 0.7425626373847841,
+            "max": 1.2685093011865811
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              1.003420412815684,
+              1.1385190904649176,
+              0.9201483329657241,
+              1.158840646738183,
+              0.9435841054104576,
+              0.8517951800139691,
+              1.044104844862455
+            ],
+            "median": 1.003420412815684,
+            "min": 0.8517951800139691,
+            "max": 1.158840646738183
+          },
+          "self_cpu_seconds": {
+            "values": [
+              1.0034911846957912,
+              1.1385835185030668,
+              0.9215690411217464,
+              1.1586140223790227,
+              0.9436116520332067,
+              0.851857192136204,
+              1.0441510889970738
+            ],
+            "median": 1.0034911846957912,
+            "min": 0.851857192136204,
+            "max": 1.1586140223790227
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.7162021528681215,
+              1.627701724725168,
+              1.1031657124132803,
+              1.156096843935715,
+              1.0518281056959384,
+              0.8795328905358116,
+              1.2136999079424404
+            ],
+            "median": 1.1031657124132803,
+            "min": 0.7162021528681215,
+            "max": 1.627701724725168
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.715921571383641,
+              1.6165889149384456,
+              1.1030636347580463,
+              1.1612709971333552,
+              1.0518304084263803,
+              0.879526737736663,
+              1.213698452770788
+            ],
+            "median": 1.1030636347580463,
+            "min": 0.715921571383641,
+            "max": 1.6165889149384456
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              1.0629968273285988,
+              1.1319317970061702,
+              1.1515103812774037,
+              1.0930875609091655,
+              0.9676265045322151,
+              1.01817915402867,
+              1.0013932022936922
+            ],
+            "median": 1.0629968273285988,
+            "min": 0.9676265045322151,
+            "max": 1.1515103812774037
+          },
+          "self_cpu_seconds": {
+            "values": [
+              1.063103920342033,
+              1.1318414838525215,
+              1.1545886813720587,
+              1.092748316216692,
+              0.9679717549643164,
+              1.0181877570555535,
+              1.0013709910054664
+            ],
+            "median": 1.063103920342033,
+            "min": 0.9679717549643164,
+            "max": 1.1545886813720587
+          }
+        }
+      }
+    },
+    "jit_generic_over_concrete": {
+      "wall_seconds": {
+        "values": [
+          1.0055690309128975,
+          0.9626842810284559,
+          0.8630962859010741
+        ],
+        "median": 0.9626842810284559,
+        "min": 0.8630962859010741,
+        "max": 1.0055690309128975
+      },
+      "inclusive_cpu_seconds": {
+        "values": [
+          1.005534778082389,
+          0.9626483800758725,
+          0.8629759615276005
+        ],
+        "median": 0.9626483800758725,
+        "min": 0.8629759615276005,
+        "max": 1.005534778082389
+      },
+      "phases": {
+        "cold": {
+          "wall_seconds": {
+            "values": [
+              0.8154812918497293,
+              0.9663847510406096,
+              0.7980500614672179
+            ],
+            "median": 0.8154812918497293,
+            "min": 0.7980500614672179,
+            "max": 0.9663847510406096
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.8155471355506271,
+              0.9665484443986699,
+              0.7978114451124284
+            ],
+            "median": 0.8155471355506271,
+            "min": 0.7978114451124284,
+            "max": 0.9665484443986699
+          }
+        },
+        "warm": {
+          "wall_seconds": {
+            "values": [
+              1.0766815385792456,
+              1.0068035274863836,
+              0.8935201418474537
+            ],
+            "median": 1.0068035274863836,
+            "min": 0.8935201418474537,
+            "max": 1.0766815385792456
+          },
+          "self_cpu_seconds": {
+            "values": [
+              1.0766203168297743,
+              1.006771337549202,
+              0.8931671129444766
+            ],
+            "median": 1.006771337549202,
+            "min": 0.8931671129444766,
+            "max": 1.0766203168297743
+          }
+        },
+        "shift": {
+          "wall_seconds": {
+            "values": [
+              0.8496824394850938,
+              0.9677410025243355,
+              0.46650727790636687
+            ],
+            "median": 0.8496824394850938,
+            "min": 0.46650727790636687,
+            "max": 0.9677410025243355
+          },
+          "self_cpu_seconds": {
+            "values": [
+              0.8496800537572711,
+              0.9677428039206757,
+              0.4665036211627727
+            ],
+            "median": 0.8496800537572711,
+            "min": 0.4665036211627727,
+            "max": 0.9677428039206757
+          }
+        },
+        "recovery": {
+          "wall_seconds": {
+            "values": [
+              1.0217201705018504,
+              0.9281570162780157,
+              0.8357041004024864
+            ],
+            "median": 0.9281570162780157,
+            "min": 0.8357041004024864,
+            "max": 1.0217201705018504
+          },
+          "self_cpu_seconds": {
+            "values": [
+              1.0216921135467967,
+              0.9281813786438866,
+              0.8358031785185974
+            ],
+            "median": 0.9281813786438866,
+            "min": 0.8358031785185974,
+            "max": 1.0216921135467967
+          }
+        }
+      }
+    }
+  },
+  "source_sha256_before": {
+    "bench/stream_skew.py": "26dc6f31a64a96f52c7770f36199ea3845331fe50e5054ff27fdf6b443db0a13",
+    "lib/shlex.py": "4a50a920cd4d320072ea6a6b8277c2204b5a17a826a515e7de9a84713400cc22",
+    "lib/io.py": "21bd420f53410efabe83d07e7078e7a653fb06c1b72e7850577af4cc238f37a9",
+    "runtime.c": "5f8556f8d9fa9a47295ae1942e46967d9bd1d69de269f6dc33db590ce1e93ddd",
+    "runtime.py": "297946f0ad822285f610a017ce390ba75e871f7dbe5fb1d549279f0e3eb44de3",
+    "tools/bench_stream_online.py": "ed1b8577cbd0e361a2ec870294035999deb52baca039167f1a3d1caa5db02abb",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "716f5f454fea06ed91f60f6834650464cbe3f3fd1058adca3e53c48669055c1d",
+    "src/pystachy_compiler/builtins.py": "14216c213c652d6970cb956fbef89eeda2ff2cc38c2f4e0b41a115ea7a6df204",
+    "src/pystachy_compiler/calls.py": "ebfd6825d841486125a92e03999351e845220c2668117b7099119271728cd28c",
+    "src/pystachy_compiler/containers.py": "131992fcd136fe0f675e6d66c75c6bf35b5421f19fc4a0778f214fb3253c0153",
+    "src/pystachy_compiler/conversions.py": "6e0e6ffb18f7d02e02bea2fb4ba971c30d8a232deaeaf897522e6134c915634c",
+    "src/pystachy_compiler/declarations.py": "b339727697dc25f77475d2e5d7382d4a582c8ac284c4f6377d785d2933b99e8a",
+    "src/pystachy_compiler/diagnostics.py": "cc6c0e1babc61abce28d19e61c73818665b0afc93896daa9e4cb931973cddacb",
+    "src/pystachy_compiler/driver.py": "23b363e29ef51fa456166fe9e45d7bb1a312bf18475e20d2f2d41d117cf734d7",
+    "src/pystachy_compiler/emission.py": "86f39bb798e25669307f0709c9b9a511199586fd86916e97a3bfc66490ecb222",
+    "src/pystachy_compiler/exceptions.py": "39b27ff00022471ceeefc5bb9788badf04fa6399ab37ce8f3e0f3cf63e99f1bf",
+    "src/pystachy_compiler/expressions.py": "a213e46cbe7c8668ee34c0277bd67fe84aaa52351e612a2bc1722860fc96cc4f",
+    "src/pystachy_compiler/feedback.py": "6b29a435fc228170003c82444ed90d8da276c4210ebd26928fdc80e537728a41",
+    "src/pystachy_compiler/flow.py": "81dbee484c5025c2eb6749657e5ba79310c473f4062426f5494477028be5811b",
+    "src/pystachy_compiler/functions.py": "3b54281f34311223be4de4675a8398a036229927c1a561fb05d9cd627837efb9",
+    "src/pystachy_compiler/gen.py": "967ebf9340db9a0a7478d6fedac6f1c1a80e0c99dbdb4c7618b7d35e7101c3cb",
+    "src/pystachy_compiler/ir.py": "6fd9cb7942d000f77d4c0fea54cac1752b296e744a3fa8bd9bc8efa60173d831",
+    "src/pystachy_compiler/ircheck.py": "be6a60329c4efc6e064a46e677697cab78e9987adafa9374a4f719ccdd3becc5",
+    "src/pystachy_compiler/lexer.py": "7760507b7eedf73f05396b5a481b5b893071327e0ea8cc1ec38954b721cfa1eb",
+    "src/pystachy_compiler/loader.py": "5ff9753d5fd1723a49e22b3b168536f61a31ee5c0ab8b5a9309a1e10f2748836",
+    "src/pystachy_compiler/local_versions.py": "79d374832073027e18106986a3d5e2c85a021654bb5e94b3304ed79723113e7d",
+    "src/pystachy_compiler/lowering.py": "c7e65e0707a32f55cb76a6933fd92d0c93f3ba631849fe914c0cc04e7783b9a1",
+    "src/pystachy_compiler/module.py": "b052e2d38d996840b3e7c190294874163f04a3d8c67b9071193adc1683c2113b",
+    "src/pystachy_compiler/names.py": "1bea4fc8d42d671a7da5e0931d690e27e7f2f0d072d46ff4682d3be4173ea82d",
+    "src/pystachy_compiler/online.py": "4dc0a5a65e15ae8a35affac6bf0802387eb240ebee91c2b1bc19b42d11a7a6f3",
+    "src/pystachy_compiler/optimizations.py": "ee43f47713663f9fb433d15581fd9b14a8ed0c378a569c4f292237d69482fc48",
+    "src/pystachy_compiler/parser.py": "dfb8594159b72db92bac4e1128ac0f03f95f1106d884269c7d5cd834858e0f9b",
+    "src/pystachy_compiler/program.py": "e6dda0f16a34c6b65757c344f148bbf9f22c99f884dafa80126dd66524c04b00",
+    "src/pystachy_compiler/scope.py": "d5a885c17fff663af0fe1101adc5ecb4e4b619849917662e5799fd30fdedc23e",
+    "src/pystachy_compiler/skew.py": "d188c242c7279da88a0af5e97e68af1f728fce232add6594df1bdaf5a91ba534",
+    "src/pystachy_compiler/specs.py": "c46fdb242fa53de71fb3be4e4b2c21173cce7552fbbe5a2a35227954d1a8aad3",
+    "src/pystachy_compiler/statements.py": "09c2bf3b1d7f28c6d4f44ed96f93feef373ad5a639a1ff7ed03786349c3d3dbd",
+    "src/pystachy_compiler/syntax.py": "37191ef377704976eb7bb05080ed00863c5b49501a42b49e2177614237d15986",
+    "src/pystachy_compiler/templates.py": "aa821feccdf59d2722753865711f24d6902f5b658681690b5bb214eee35f68cf",
+    "src/pystachy_compiler/unions.py": "bdccec184e5cb9d313d2fe0e375e72da07d62f0f3b33e139133f7456f0094252",
+    "src/pystachy_compiler/utils.py": "4657950caf84a42e6e4ac30876887e3ce18b8205515aac15f4a4fee042648563",
+    "src/pystachy_compiler/variables.py": "07551237853f8b869d3bc56afa7708fd001560828f1747f85a627f3b2f7c5e36",
+    "build/stream-online/source/stream_generic.py": "72b61e2a566f9e71336d730549c4fbd90a93731da0408e839a5ce6bbcf7c8f78",
+    "build/stream-online/source/stream_concrete.py": "26dc6f31a64a96f52c7770f36199ea3845331fe50e5054ff27fdf6b443db0a13"
+  },
+  "source_sha256_after": {
+    "bench/stream_skew.py": "26dc6f31a64a96f52c7770f36199ea3845331fe50e5054ff27fdf6b443db0a13",
+    "lib/shlex.py": "4a50a920cd4d320072ea6a6b8277c2204b5a17a826a515e7de9a84713400cc22",
+    "lib/io.py": "21bd420f53410efabe83d07e7078e7a653fb06c1b72e7850577af4cc238f37a9",
+    "runtime.c": "5f8556f8d9fa9a47295ae1942e46967d9bd1d69de269f6dc33db590ce1e93ddd",
+    "runtime.py": "297946f0ad822285f610a017ce390ba75e871f7dbe5fb1d549279f0e3eb44de3",
+    "tools/bench_stream_online.py": "ed1b8577cbd0e361a2ec870294035999deb52baca039167f1a3d1caa5db02abb",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "716f5f454fea06ed91f60f6834650464cbe3f3fd1058adca3e53c48669055c1d",
+    "src/pystachy_compiler/builtins.py": "14216c213c652d6970cb956fbef89eeda2ff2cc38c2f4e0b41a115ea7a6df204",
+    "src/pystachy_compiler/calls.py": "ebfd6825d841486125a92e03999351e845220c2668117b7099119271728cd28c",
+    "src/pystachy_compiler/containers.py": "131992fcd136fe0f675e6d66c75c6bf35b5421f19fc4a0778f214fb3253c0153",
+    "src/pystachy_compiler/conversions.py": "6e0e6ffb18f7d02e02bea2fb4ba971c30d8a232deaeaf897522e6134c915634c",
+    "src/pystachy_compiler/declarations.py": "b339727697dc25f77475d2e5d7382d4a582c8ac284c4f6377d785d2933b99e8a",
+    "src/pystachy_compiler/diagnostics.py": "cc6c0e1babc61abce28d19e61c73818665b0afc93896daa9e4cb931973cddacb",
+    "src/pystachy_compiler/driver.py": "23b363e29ef51fa456166fe9e45d7bb1a312bf18475e20d2f2d41d117cf734d7",
+    "src/pystachy_compiler/emission.py": "86f39bb798e25669307f0709c9b9a511199586fd86916e97a3bfc66490ecb222",
+    "src/pystachy_compiler/exceptions.py": "39b27ff00022471ceeefc5bb9788badf04fa6399ab37ce8f3e0f3cf63e99f1bf",
+    "src/pystachy_compiler/expressions.py": "a213e46cbe7c8668ee34c0277bd67fe84aaa52351e612a2bc1722860fc96cc4f",
+    "src/pystachy_compiler/feedback.py": "6b29a435fc228170003c82444ed90d8da276c4210ebd26928fdc80e537728a41",
+    "src/pystachy_compiler/flow.py": "81dbee484c5025c2eb6749657e5ba79310c473f4062426f5494477028be5811b",
+    "src/pystachy_compiler/functions.py": "3b54281f34311223be4de4675a8398a036229927c1a561fb05d9cd627837efb9",
+    "src/pystachy_compiler/gen.py": "967ebf9340db9a0a7478d6fedac6f1c1a80e0c99dbdb4c7618b7d35e7101c3cb",
+    "src/pystachy_compiler/ir.py": "6fd9cb7942d000f77d4c0fea54cac1752b296e744a3fa8bd9bc8efa60173d831",
+    "src/pystachy_compiler/ircheck.py": "be6a60329c4efc6e064a46e677697cab78e9987adafa9374a4f719ccdd3becc5",
+    "src/pystachy_compiler/lexer.py": "7760507b7eedf73f05396b5a481b5b893071327e0ea8cc1ec38954b721cfa1eb",
+    "src/pystachy_compiler/loader.py": "5ff9753d5fd1723a49e22b3b168536f61a31ee5c0ab8b5a9309a1e10f2748836",
+    "src/pystachy_compiler/local_versions.py": "79d374832073027e18106986a3d5e2c85a021654bb5e94b3304ed79723113e7d",
+    "src/pystachy_compiler/lowering.py": "c7e65e0707a32f55cb76a6933fd92d0c93f3ba631849fe914c0cc04e7783b9a1",
+    "src/pystachy_compiler/module.py": "b052e2d38d996840b3e7c190294874163f04a3d8c67b9071193adc1683c2113b",
+    "src/pystachy_compiler/names.py": "1bea4fc8d42d671a7da5e0931d690e27e7f2f0d072d46ff4682d3be4173ea82d",
+    "src/pystachy_compiler/online.py": "4dc0a5a65e15ae8a35affac6bf0802387eb240ebee91c2b1bc19b42d11a7a6f3",
+    "src/pystachy_compiler/optimizations.py": "ee43f47713663f9fb433d15581fd9b14a8ed0c378a569c4f292237d69482fc48",
+    "src/pystachy_compiler/parser.py": "dfb8594159b72db92bac4e1128ac0f03f95f1106d884269c7d5cd834858e0f9b",
+    "src/pystachy_compiler/program.py": "e6dda0f16a34c6b65757c344f148bbf9f22c99f884dafa80126dd66524c04b00",
+    "src/pystachy_compiler/scope.py": "d5a885c17fff663af0fe1101adc5ecb4e4b619849917662e5799fd30fdedc23e",
+    "src/pystachy_compiler/skew.py": "d188c242c7279da88a0af5e97e68af1f728fce232add6594df1bdaf5a91ba534",
+    "src/pystachy_compiler/specs.py": "c46fdb242fa53de71fb3be4e4b2c21173cce7552fbbe5a2a35227954d1a8aad3",
+    "src/pystachy_compiler/statements.py": "09c2bf3b1d7f28c6d4f44ed96f93feef373ad5a639a1ff7ed03786349c3d3dbd",
+    "src/pystachy_compiler/syntax.py": "37191ef377704976eb7bb05080ed00863c5b49501a42b49e2177614237d15986",
+    "src/pystachy_compiler/templates.py": "aa821feccdf59d2722753865711f24d6902f5b658681690b5bb214eee35f68cf",
+    "src/pystachy_compiler/unions.py": "bdccec184e5cb9d313d2fe0e375e72da07d62f0f3b33e139133f7456f0094252",
+    "src/pystachy_compiler/utils.py": "4657950caf84a42e6e4ac30876887e3ce18b8205515aac15f4a4fee042648563",
+    "src/pystachy_compiler/variables.py": "07551237853f8b869d3bc56afa7708fd001560828f1747f85a627f3b2f7c5e36",
+    "build/stream-online/source/stream_generic.py": "72b61e2a566f9e71336d730549c4fbd90a93731da0408e839a5ce6bbcf7c8f78",
+    "build/stream-online/source/stream_concrete.py": "26dc6f31a64a96f52c7770f36199ea3845331fe50e5054ff27fdf6b443db0a13"
+  }
+}

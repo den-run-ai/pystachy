@@ -10,6 +10,7 @@ from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.parser import Parser
+from src.pystachy_compiler.online import online_identity
 from src.pystachy_compiler.specs import JIT_INLINE, LINKDL, MODULES, OPTS
 from src.pystachy_compiler.utils import optimizations
 
@@ -41,6 +42,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',
     'src/pystachy_compiler/optimizations.py',
+    'src/pystachy_compiler/online.py',
     'src/pystachy_compiler/parser.py',
     'src/pystachy_compiler/program.py',
     'src/pystachy_compiler/scope.py',
@@ -61,7 +63,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     g.ext = ext
     ld = Loader(dirs)
     ld.ext = ext
-    return g.program(ld.program(path, src))
+    mods = ld.program(path, src)
+    if g.online_host or g.online_child:
+        g.online_source = os.path.realpath(path)
+        g.online_identity = online_identity(ld.sources, compiler_home(), COMPILER_SOURCES + RTPARTS)
+    return g.program(mods)
 
 
 def runtime_ir(path: str, src: str, cache: bool) -> str:
@@ -205,7 +211,7 @@ def main() -> None:
     if len(argv) == 2 and (argv[1] == "--version" or argv[1] == "-V"):
         print(compiler_version(compiler_home()))
         return
-    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
+    if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt" and argv[1] != "trace"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
         print("       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)", file=sys.stderr)
@@ -215,6 +221,14 @@ def main() -> None:
         print("       pystachy --version               show version and source commit", file=sys.stderr)
         sys.exit(2)
     cmd = argv[1]
+    online = os.getenv("PYSTACHY_ONLINE", "") == "1"
+    child = os.getenv("PYSTACHY_ONLINE_CHILD", "") == "1"
+    if (online or child) and sys.platform != "linux":
+        fail("online compilation currently requires Linux AOT", 0)
+    if online and cmd not in ["build", "ir", "check", "rt"]:
+        fail("PYSTACHY_ONLINE=1 requires build; online execution through lli is not supported", 0)
+    if (cmd == "trace") != child:
+        fail("trace is an internal online compiler command", 0)
     diagnostics.SRC = argv[2]
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
@@ -291,6 +305,30 @@ def main() -> None:
             f.write(ir)
             f.close()
         return
+    if cmd == "trace":
+        if out == "" or len(rest) > 0:
+            fail("trace requires exactly SOURCE.py -o OUTPUT.so", 0)
+        # The image imports every runtime/global address from the running AOT
+        # executable. Linking runtime.bc here would create a second heap and
+        # exception state. No code or module initializer is run by this command.
+        tmp = tempfile.mkdtemp()
+        ll = tmp + "/trace.ll"
+        bc = tmp + "/trace.bc"
+        obj = tmp + "/trace.so"
+        f = open(ll, "w", encoding=RAW)
+        f.write(ir)
+        f.close()
+        llvm = llvm_dir()
+        prefix = q(llvm.rstrip("/") + "/") if llvm != "" else ""
+        traceflags = "".join([" " + q(a) for a in os.getenv("PYSTACHY_CFLAGS", "").split()])
+        code = sh(f"{prefix}opt -passes='globaldce,default<O2>' {q(ll)} -o {q(bc)} && {prefix}clang -O2 -fPIC -shared {q(bc)} -o {q(obj)} -lm{traceflags}")
+        if code == 0:
+            code = sh(f"mv {q(obj)} {q(out)}")
+        for p in [ll, bc, obj]:
+            if os.path.exists(p):
+                os.remove(p)
+        os.rmdir(tmp)
+        sys.exit(code)
     rtc = home + "/runtime.c"
     rtpy = home + "/runtime.py"
     if not os.path.exists(rtc) or not os.path.exists(rtpy):
@@ -545,8 +583,8 @@ def main() -> None:
             if g[2] == g[3] and not os.path.exists(g[3]):
                 g[2] = g[1]
     llvm = q(llvm) if llvm != "" else ""  # shell prefix: preserve spaces and literal metacharacters
-    link = f"{llvm}llvm-link --only-needed {q(ll)} {q(usebc)} -o {q(bc)}"
-    libs = " -ldl" if len(LINKDL) > 0 or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
+    link = f"{llvm}llvm-link {'' if online else '--only-needed '}{q(ll)} {q(usebc)} -o {q(bc)}"
+    libs = " -ldl" if len(LINKDL) > 0 or cmd == "ext" or online else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c, online images)
     if code != 0:
         msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
     elif cmd == "ext":
@@ -562,7 +600,8 @@ def main() -> None:
         # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
-        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+        exported = " -rdynamic" if online else ""
+        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{exported}{libs} -lm{cflags}")
     else:
         # JIT tier: discard unused internal functions before SSA cleanup and ORC's module-wide
         # code generation. The frontend still checks their bodies; external pys_obj_* dispatch

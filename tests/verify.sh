@@ -336,6 +336,8 @@ if want benchmarks; then
 L=$V/benchmarks.log; s=$(now); r=pass; x=""; n=0; ok=0
 : > "$L"
 for b in bench/*.py; do
+  # Dedicated stream-feedback-check/stream-online-check supply union flags and the shlex oracle.
+  [ "$b" = bench/stream_skew.py ] && continue
   k=$(basename "$b" .py); n=$((n + 1)); B=$V/bench-$k
   t0=$(now); ($PY "$b"; echo "[exit $?]") > "$B.ref" 2>> "$L"
   t1=$(now); ("$V/pystachy2" run "$b"; echo "[exit $?]") > "$B.jit" 2>> "$L"

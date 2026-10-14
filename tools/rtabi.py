@@ -56,7 +56,8 @@ code, c_ir, err = run([CLANG, "-O0", "-S", "-emit-llvm", "runtime.c", "-o", "-"]
 if code != 0:
     sys.exit(f"cannot compile runtime.c: {err.strip()}")
 seen = {"runtime.c": sigs(c_ir)}
-progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("tests/ir/*.py"))]
+# Dedicated stream-feedback-check/stream-online-check supply union flags and the shlex oracle.
+progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("tests/ir/*.py")) if f != "bench/stream_skew.py"]
 
 
 def program(f):

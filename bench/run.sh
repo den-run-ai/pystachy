@@ -16,6 +16,8 @@ t() { s=$(now); "$@" > "$T/out" 2>&1; awk -v a="$s" -v b="$(now)" 'BEGIN { print
 echo pass > "$T/warm.py" && $PYS run "$T/warm.py" > /dev/null 2>&1
 printf "%-10s %10s %10s %10s %9s\n" bench cpython jit aot speedup
 for b in bench/*.py; do
+  # Dedicated stream-feedback-check/stream-online-check supply union flags and the shlex oracle.
+  [ "$b" = bench/stream_skew.py ] && continue
   n=$(basename "$b" .py)
   cp=$(t $PY "$b"); mv "$T/out" "$T/ref"
   jit=$(t $PYS run "$b"); cmp -s "$T/out" "$T/ref" || echo "  $n: JIT output differs"
