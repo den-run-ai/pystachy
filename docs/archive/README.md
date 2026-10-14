@@ -10,6 +10,7 @@ Their feature gaps, counts and timings describe the recorded revision. Use the
 | [Runtime prototype](runtime-prototype.md) | Runtime migration experiments and comparative measurements |
 | [Standard-library survey](stdlib-survey.md) | Earlier CPython, PyPy and PyPI import/function surveys |
 | [Verification snapshots](verification-snapshots.md) | Recorded test totals and verification runs |
+| [Type-feedback census](type-feedback-census.md) | Call-site type skew in ordinary Python, and the adaptive prototype of #374 |
 
 Package-specific provenance, adaptation rationale and benchmark snapshots are linked from
 the [third-party port guides](../../ports/README.md).
