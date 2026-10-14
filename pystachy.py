@@ -21359,6 +21359,18 @@ def hashed(p: str, memo: dict[str, str], now: float, need: bool) -> tuple[str, s
     return (s, h)
 
 
+def llvm_dir() -> str:
+    # Keep a versioned apt/Homebrew toolchain together; an explicit override wins.
+    llvm = os.getenv("PYSTACHY_LLVM", "\0")
+    if llvm != "\0":
+        return llvm.rstrip("/") if llvm != "/" else "/"  # an explicit empty override selects PATH
+    for d in ["/usr/lib/llvm-18/bin", "/opt/homebrew/opt/llvm@18/bin", "/usr/local/opt/llvm@18/bin",
+              "/home/linuxbrew/.linuxbrew/opt/llvm@18/bin"]:
+        if all([os.path.exists(d + "/" + t) for t in ["clang", "opt", "lli", "llvm-link", "llvm-as"]]):
+            return d
+    return ""  # otherwise use the unversioned tools on PATH
+
+
 def main() -> None:
     global SRC
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
@@ -21466,12 +21478,12 @@ def main() -> None:
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
     ccflags = "".join([" " + q(a) for a in flags if not a.startswith("-fsanitize") and not a.startswith("-fno-sanitize")])
-    llvm = os.getenv("PYSTACHY_LLVM", "")  # optional directory holding clang, opt, lli, llvm-link, llvm-as
+    llvm = llvm_dir()  # optional override, standard apt/Homebrew installation, or PATH
     if llvm != "" and not llvm.endswith("/"):
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
-    cache = home + "/build"
+    cache = os.getenv("PYSTACHY_CACHE", "") or home + "/build"
     if not os.path.exists(cache):
         sh(f"mkdir -p {q(cache)}")
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
@@ -21697,6 +21709,7 @@ def main() -> None:
         for g in glue:
             if g[2] == g[3] and not os.path.exists(g[3]):
                 g[2] = g[1]
+    llvm = q(llvm) if llvm != "" else ""  # shell prefix: preserve spaces and literal metacharacters
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(usebc)} -o {q(bc)}"
     libs = " -ldl" if len(LINKDL) > 0 or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
     if code != 0:

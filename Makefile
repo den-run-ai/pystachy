@@ -1,6 +1,7 @@
 # Bootstrap: CPython runs pystachy.py on itself (stage 1); that native compiler rebuilds
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
-PY ?= python3
+PY ?= $(shell command -v python3.13 || command -v python3)
+export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
 
 pystachy: pystachy.py runtime.c runtime.py
 	mkdir -p build
@@ -58,7 +59,7 @@ bench-extended-check: $(BENCH_COMPILER)
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
 # checks that the collector scans no key table of ints, and those of strs and tuples
-LLVMBIN = $(if $(PYSTACHY_LLVM),$(PYSTACHY_LLVM)/)
+LLVMBIN = $(if $(PYSTACHY_LLVM),"$(PYSTACHY_LLVM)/")
 dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/dictprobe-rt.ll
@@ -181,4 +182,15 @@ lint:
 clean:
 	rm -rf build pystachy
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings re-fuzz re-probe lint clean
+# Native compiler plus its runtime/library resources; no Python needed after installation.
+prefix ?= $(HOME)/.local
+install: pystachy
+	$(PY) tools/install.py --prefix "$(prefix)" $(if $(DESTDIR),--destdir "$(DESTDIR)")
+
+uninstall:
+	$(PY) tools/install.py --prefix "$(prefix)" $(if $(DESTDIR),--destdir "$(DESTDIR)") --uninstall
+
+test-install:
+	$(PY) -m unittest discover -s tools -p test_install.py
+
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings re-fuzz re-probe lint clean install uninstall test-install
