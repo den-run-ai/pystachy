@@ -71,7 +71,9 @@ def provenance(root: Path, compiler: str, paths: list[Path]) -> dict:
     def git(*args: str) -> str:
         return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True).stdout.strip()
 
-    llvm_dir = os.environ.get("PYSTACHY_LLVM", "")
+    # Follow the compiler's apt/Homebrew discovery, including an explicit empty PATH override.
+    probe = "import sys; sys.path.insert(0, sys.argv[1]); import pystachy; print(pystachy.llvm_dir())"
+    llvm_dir = subprocess.run([sys.executable, "-I", "-c", probe, str(root)], capture_output=True, text=True, check=True).stdout.strip()
     clang = str(Path(llvm_dir) / "clang") if llvm_dir else "clang"
     settings = ["PYSTACHY_LLVM", "PYSTACHY_OPT", "PYSTACHY_CFLAGS", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_JIT_INLINE"]
     cpu_model = platform.processor()

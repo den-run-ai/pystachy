@@ -8,7 +8,7 @@
 @f.find: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.findi: R A I rL rD
 @f.boom: R
-@f.leave: R I
+@f.leave: R I rG
 @f.ping: R A I rF wF
 @f.pong: R A I rF wF
 @f.both: R A rL wL

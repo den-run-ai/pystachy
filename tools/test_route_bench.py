@@ -81,6 +81,23 @@ class PairedMeasurementTests(unittest.TestCase):
             with mock.patch.object(bench.sys, "platform", "darwin"):
                 self.assertEqual(bench.peak_rss(["aot"]), (1024, "expected"))
 
+    def test_provenance_uses_compiler_toolchain_discovery(self):
+        # A Homebrew/apt installation need not expose an unversioned clang on PATH.
+        selected = "/opt/homebrew/opt/llvm@20/bin"
+
+        def run(cmd, **kwargs):
+            if cmd[0] == "git":
+                return subprocess.CompletedProcess(cmd, 0, "revision\n", "")
+            if "-c" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, selected + "\n", "")
+            if cmd == [selected + "/clang", "--version"]:
+                return subprocess.CompletedProcess(cmd, 0, "Homebrew clang version 20.1.8\n", "")
+            raise FileNotFoundError(cmd[0])
+
+        with mock.patch.object(bench.subprocess, "run", side_effect=run):
+            data = bench.provenance(Path.cwd(), "pystachy", [])
+        self.assertEqual(data["clang"], "Homebrew clang version 20.1.8")
+
 
 if __name__ == "__main__":
     unittest.main()
