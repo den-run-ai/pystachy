@@ -554,13 +554,23 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif self.typevar_def(st):
                 self.typevars.append(st.kids[0].s)
                 m.body.kids[i] = mk("pass", "", st.line, [])
+    class_counts: dict[str, int] = {}
+    for m in mods:
+        for st in m.body.kids if m.name != "" else []:
+            if st.kind == "class" or st.kind == "subclass":
+                class_counts[st.s] = class_counts.get(st.s, 0) + 1
     for m in mods:
         for st in m.body.kids:
             self.line = st.line
             why = ""
             if st.kind == "class" or st.kind == "subclass":
                 self.hook(st)
-            if st.kind == "subclass":
+            if (st.kind == "class" or st.kind == "subclass") and class_counts.get(st.s, 0) > 1:
+                # Imported redefinitions cannot share one native class. Leave every body
+                # to class_effect in statement order, retaining each base's hook snapshot;
+                # keeping the earlier ClassInfo would silently construct the stale class.
+                why = f"redefinition of class '{st.s}' is not supported"
+            elif st.kind == "subclass":
                 why = self.subclass_problem(st)
                 if why == "" and m.name != "":
                     why = self.class_problem(m, st.kids[0], True)

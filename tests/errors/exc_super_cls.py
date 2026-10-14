@@ -1,4 +1,4 @@
-# error: exc_super_cls.py:6: error: super() is only supported without arguments, in the methods of exception classes
+# error: exc_super_cls.py:6: error: super() is only supported without arguments in a method of a class with a supported base
 class E(ValueError):
     @classmethod
     def name(cls) -> str:
