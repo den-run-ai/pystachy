@@ -196,11 +196,11 @@ fi
 
 # ---- differential tests with both compilers
 # (the CPython-hosted compiler runs as a module, whose bytecode CPython caches, where it compiles a
-# script's 16k lines again at every start; the cache is checked against pystachy.py's hash, as an
+# compiler's source again at every start; each module is checked by hash, as an
 # edit within the same second may keep its mtime and size)
 if want tests-cpython; then
 L=$V/tests-cpython.log; s=$(now)
-{ $PY -c 'import py_compile as c; c.compile("pystachy.py", doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH)' &&
+{ $PY -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]' &&
   tests/run.sh "$PY -m pystachy"; } > "$L" 2>&1
 x=$(tests $ALL "$L" 2>> "$L") && r=pass || r=fail
 step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "modes": ["jit", "aot"]'"$x"
@@ -224,13 +224,13 @@ step tests-opt-off $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"]
 fi
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 58 with the native compiler and 57 with CPython's, which runs no PATH search)
+# whose checks are 58 with the native compiler and 60 with CPython's, including component edits)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
 PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((58 + 57)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((58 + 60)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 
@@ -476,9 +476,18 @@ ver() { "$@" 2>&1 | head -1; }
     "$(js "$("${LLVM}opt" --version 2>&1 | sed -n 's/^ *Host CPU: //p')")"
   printf '  "toolchain": {"python": %s, "clang": %s, "llvm": %s, "llvm_dir": %s},\n' "$(js "$(ver $PY --version)")" \
     "$(js "$(ver "${LLVM}clang" --version)")" "$(js "$(ver "${LLVM}opt" --version)")" "$(js "${PYSTACHY_LLVM:-PATH}")"
-  printf '  "sources": {"pystachy.py": {"lines": %s, "sha256": "%s"}, "runtime.c": {"lines": %s, "sha256": "%s"}, "runtime.py": {"lines": %s, "sha256": "%s"}, "test_programs": %s, "rejection_tests": %s},\n' \
-    "$(lines pystachy.py)" "$(sha pystachy.py)" "$(lines runtime.c)" "$(sha runtime.c)" "$(lines runtime.py)" "$(sha runtime.py)" \
-    "$(ls tests/*.py | wc -l | tr -d ' ')" "$(ls tests/errors/*.py | wc -l | tr -d ' ')"
+  $PY - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+paths = [Path(p) for p in ("pystachy.py", "runtime.c", "runtime.py")]
+paths += sorted(Path("src").rglob("*.py"))
+sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
+                    "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}
+sources.update(test_programs=len(list(Path("tests").glob("*.py"))),
+               rejection_tests=len(list(Path("tests/errors").glob("*.py"))))
+print('  "sources": ' + json.dumps(sources, sort_keys=True) + ',')
+PY
   printf '  "steps": [\n'; cat "$V/steps.json"; printf '\n  ]\n}\n'
 } > "$OUT"
 echo "verification: $((nsteps - nfail))/$nsteps steps passed -> ${OUT#"$ROOT"/}"

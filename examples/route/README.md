@@ -1,124 +1,108 @@
-# route: a log and trace router, with its caches compiled
+<a id="route-a-log-and-trace-router-with-its-caches-compiled"></a>
 
-`route.py` sends each event of a trace or log to the first destination whose rule matches the
-event's name, and counts the events per destination: the routing step of a log shipper or a
-tracing pipeline, where a few hundred span or event names come back millions of times. It is
-ordinary Python, which CPython runs as it is and Pystachy compiles as it is.
+# route: cache event classifications
 
-- The rules' patterns are fnmatch's, each compiled once as the rules load
-  (`re.compile(fnmatch.translate(pattern))`, [`lib/fnmatch`](../../lib/README.md#fnmatch-a-port-of-cpythons)).
-- `route()` is an `lru_cache(maxsize=4096)`: an event's destination depends only on its name,
-  so a name seen before skips the rules altogether
-  ([`lib/functools`](../../lib/README.md#functools-pystachys-own)). A name it has not seen goes
-  through the compiled patterns.
-- An event's name is its line up to the first tab, found with `line.find("\t")` and sliced off:
-  `line.split("\t", 1)[0]` would also make a list and a str of the rest of the line.
+`route.py` sends each log or trace event to the first matching destination and counts events
+per destination. Its Python source runs under CPython and compiles unchanged with Pystachy.
+Names often repeat in logging and tracing: caching a classification skips matching on those hits.
 
-```
-$ cat rules.txt
-auth.*.failed           alerts
-*.failed                errors
-payments.*              billing
-http.request.[45]??     http-errors
-...
-$ python3 genevents.py 1000000 > events.tsv     # db.search.locked<TAB>1760000000<TAB>4685 ...
-$ python3 route.py rules.txt events.tsv          # CPython
-$ pystachy build route.py -o route && ./route rules.txt events.tsv
-1000000 events, 21 rules
-   363895 unrouted
-   156197 billing
-   121460 errors
-   ...
-      173 slow-queries
-route: CacheInfo(hits=997524, misses=2476, maxsize=4096, currsize=2476)
+## Run
+
+From this directory:
+
+```sh
+python3 genevents.py 1000000 > events.tsv
+python3 route.py rules.txt events.tsv
+../../pystachy build route.py -o route
+./route rules.txt events.tsv
 ```
 
-CPython and the executable print the same report, the cache's statistics included. The other
-modes are the baselines:
-- `--no-cache` routes each event through the compiled patterns again (`route.__wrapped__`);
-- `--fnmatch` calls `fnmatchcase()` for each rule, as a program that matches with fnmatch does,
-  so each pattern is looked up in fnmatch's own cache of compiled patterns.
+Each rules line is `PATTERN DESTINATION`, in priority order; `#` starts a comment. Patterns
+use case-sensitive fnmatch syntax against the whole event name. Events contain a name followed
+by a tab and payload; unmatched names count as `unrouted`. For example:
 
-Two options change what is measured, not the routing:
-- `--names` also counts the distinct names (`1000000 events, 2476 names, 21 rules`). That takes
-  memory for each of them. Without it, what the router keeps is bounded by its cache.
-- `--in-memory` reads the whole trace first, then reports on stderr how long the routing alone
-  took, which separates the cache and the compiled code from reading the input.
+```text
+auth.*.failed          alerts
+*.failed               errors
+payments.*             billing
+http.request.[45]??    http-errors
+```
+
+| Mode or option | Behavior |
+|---|---|
+| Default | `lru_cache(maxsize=4096)` stores each name's classification |
+| `--no-cache` | Matches every name against rules precompiled by `load()` |
+| `--fnmatch` | Calls `fnmatchcase()` per rule; retains fnmatch's pattern cache |
+| `--names` | Also counts distinct names, using memory proportional to their number |
+| `--in-memory` | Reads the trace first, then reports routing time separately on stderr |
+
+`load()` clears classifications when rules change. A miss in default mode uses the same
+precompiled regexes as `--no-cache`. Both implementations use the same caching policy.
 
 ## What the cache buys
 
-`bench.py` ran on a 4-core x86-64 VM, against CPython 3.13.16:
-- the whole program: the median wall time of 5 runs, with process start-up;
-- the routing alone: the median of 5 `--in-memory` runs, per event;
-- the peak RSS of one run.
+Measurements recorded in [#294](https://github.com/den-run-ai/pystachy/pull/294): 4-core x86-64 VM,
+CPython 3.13.16, median of five whole-program wall-time runs including startup. AOT compilation
+is excluded. Repeating traces contain 1M events over 2,476 names; unique traces contain
+100,000 new names. These are published snapshots, without a rerun for this guide.
 
-The traces are 1,000,000 events over 2,476 names, and 100,000 events whose names are all new.
+| Trace | Mode | CPython | Initial AOT | AOT speedup |
+|---|---|---:|---:|---:|
+| Repeated names | Cached classifications | 0.238 s | 0.165 s | 1.4× |
+| Repeated names | `--no-cache` | 1.632 s | 1.596 s | 1.0× |
+| Repeated names | `--fnmatch` | 2.927 s | 1.866 s | 1.6× |
+| Unique names | Cached classifications | 0.197 s | 0.207 s | 1.0× |
+| Unique names | `--no-cache` | 0.185 s | 0.189 s | 1.0× |
+| Unique names | `--fnmatch` | 0.318 s | 0.221 s | 1.4× |
 
-| trace | mode | CPython | Pystachy AOT | | routing: CPython | Pystachy AOT | | RSS: CPython | Pystachy AOT |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| names repeat | cached | 0.238 s | 0.165 s | 1.4× | 99 ns | 60 ns | 1.6× | 11.3 MB | 35.6 MB |
-| names repeat | `--no-cache` | 1.632 s | 1.596 s | 1.0× | 1,430 ns | 1,976 ns | 0.7× | 10.9 MB | 35.8 MB |
-| names repeat | `--fnmatch` | 2.927 s | 1.866 s | 1.6× | 2,650 ns | 2,283 ns | 1.2× | 10.9 MB | 35.6 MB |
-| names all new | cached | 0.197 s | 0.207 s | 1.0× | 1,558 ns | 2,027 ns | 0.8× | 11.7 MB | 37.8 MB |
-| names all new | `--no-cache` | 0.185 s | 0.189 s | 1.0× | 1,456 ns | 1,873 ns | 0.8× | 10.9 MB | 35.7 MB |
-| names all new | `--fnmatch` | 0.318 s | 0.221 s | 1.4× | 2,653 ns | 2,200 ns | 1.2× | 10.9 MB | 35.8 MB |
+A follow-up in #294, tested with main `bbf8959` and the stack-tuple changes in #308/#315,
+measured **0.236 s CPython versus 0.158 s AOT** for cached repeated names: about **1.5×**.
+Routing alone measured **100 ns versus 55 ns per event**. Other rows stayed within about 6%.
+The announcement's rounded fnmatch comparison uses the initial 1.6× row above.
 
-**The cache is the speedup, compiled or not.** Where names repeat, routing an event takes:
-- in CPython, 99 ns from the cache against 1,430 ns through the patterns, 14 times less;
-- compiled, 60 ns against 1,976 ns, 33 times less.
+Caching helps both runtimes; it produces the largest improvement when names repeat.
+With new names it pays lookup/eviction overhead and still runs regexes. In the initial routing-only
+measurements, Pystachy's precompiled-regex misses were slower than CPython's C engine.
 
-Where every name is new, the cache cannot help, and it costs little: a miss, then an eviction
-once it holds 4,096 names.
+<details>
+<summary>Historical routing-only timings and memory</summary>
 
-**Compiled, a cached event routes 1.6 times as fast as in CPython; the whole program is 1.4
-times as fast.**
-- The rest of each event's time is reading its line, about 100 ns compiled and 120 ns in
-  CPython, which reads lines in C.
-- A cached event takes about 500 instructions (callgrind):
-  - a third hashes its name, a new str each time, one multiply per byte (FNV-1a);
-  - a third is the dict probe, with its key comparison;
-  - most of the rest is the least-recently-used bookkeeping.
-- Where events miss, routing is regular-expression matching, where CPython's C engine `_sre`
-  beats `lib/re`. So the rows that match every event run at 0.7 to 0.8 times CPython's speed.
+The same initial #294 benchmark used five `--in-memory` runs for routing time and one run
+for peak RSS. Its exact tested revision was not recorded separately from the PR's later follow-up.
+RSS figures originally labeled MB are MiB (`ru_maxrss` converted from KiB).
 
-**Compiling the patterns once is the other half.** `--fnmatch` pays fnmatch's cache lookup for
-each rule tried, in Python code under CPython:
-- in CPython, 2,650 ns per event against 1,430 ns for the compiled patterns;
-- compiled, 2,283 ns against 1,976 ns.
+| Trace | Mode | CPython routing | AOT routing | CPython RSS | AOT RSS |
+|---|---|---:|---:|---:|---:|
+| Repeated | Cached | 99 ns | 60 ns | 11.3 MiB | 35.6 MiB |
+| Repeated | `--no-cache` | 1,430 ns | 1,976 ns | 10.9 MiB | 35.8 MiB |
+| Repeated | `--fnmatch` | 2,650 ns | 2,283 ns | 10.9 MiB | 35.6 MiB |
+| Unique | Cached | 1,558 ns | 2,027 ns | 11.7 MiB | 37.8 MiB |
+| Unique | `--no-cache` | 1,456 ns | 1,873 ns | 10.9 MiB | 35.7 MiB |
+| Unique | `--fnmatch` | 2,653 ns | 2,200 ns | 10.9 MiB | 35.8 MiB |
 
-Before these two changes (fnmatch on misses, `split()` for the name), the cached router took
-0.282 s in CPython and 0.180 s compiled.
+For repeated names, classifications reduced routing from 1,430 to 99 ns in CPython and
+1,976 to 60 ns AOT. Higher AOT RSS reflects deferred collection rather than a larger live
+classification cache. The cache is bounded at 4,096 names; adding `--names` makes memory
+grow with distinct names (unique trace: 23.0 MiB CPython, 48.8 MiB AOT).
 
-**Memory stays bounded without `--names`.** The trace of new names peaks where the trace of
-repeating names does, since `route()`'s cache stays at its 4,096 names. With `--names`, the dict
-of distinct names grows with the trace: the trace of new names then peaks at 23.0 MB in CPython
-and 48.8 MB compiled. The executable's peak is about 3 times CPython's, because Pystachy's
-collector runs once 32 MiB have been allocated, where CPython frees each line as its last
-reference goes.
+</details>
 
-**Two designs this example does not take:**
-- A report of totals alone could count the names first and route each distinct name once,
-  without a least-recently-used cache at all. A router that delivers each event as it comes
-  needs a decision per event, which is what this example measures.
-- Most of these rules are `prefix.*` or `*.suffix`, which `startswith()` and `endswith()` could
-  test without a regular expression. That would help exactly the rows where events miss.
-
-Building the executable takes about 3 s, most of it `lib/re` (3,500 lines of the subset).
+A totals-only batch job could count names first and classify each distinct name once.
+Streaming delivery still needs a decision for each event. Rules restricted to prefixes or
+suffixes could also use string operations to reduce regex work on misses.
 
 ## Tests
 
-`tests/example_route.py` (`tests/example_route.path` puts this directory on the module path):
-- routes a generated trace in-process with `route()` and with `route_fnmatch()`;
-- routes names that are all new, each a miss;
-- runs `run()` over a trace file in each mode, a last line without a tab included.
+`tests/example_route.py` compares routing, file processing, no-tab final lines and cache
+statistics with CPython. Small traces keep per-allocation GC checks practical. The benchmark
+covers the full repeated-name trace and enough unique names to exceed the cache bound.
 
-It compares the counts and both caches' statistics with CPython's. Its traces are small, since
-`make verify` also runs it with a collection at every allocation; `bench.py` routes the million
-events, and the trace of new names that fills `route()`'s cache past its 4,096 names.
+From this directory, reproduce with:
 
-`bench.py` runs the table above: `python3 -I bench.py ../../pystachy 5`, from anywhere. It
-writes its traces and executable to `build/route/`.
+```sh
+python3 -I bench.py ../../pystachy 5
+```
 
-For reproducible regex, textwrap and warm result-cache benchmarks, see
-[`docs/caching.md`](../../docs/caching.md). It measures cache hits separately from regex work
-on misses and documents the current character-class and replacement-template caches.
+The harness writes traces and an executable to `build/route/`, compares reports across
+implementations, and prints wall time, routing time and RSS. For regex, textwrap and warm
+result-cache probes, see [caching text processing](../../docs/caching.md).

@@ -1,8 +1,9 @@
 # Bootstrap: CPython runs pystachy.py on itself (stage 1); that native compiler rebuilds
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= python3
+COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
 
-pystachy: pystachy.py runtime.c runtime.py
+pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
 	mkdir -p build
 	$(PY) pystachy.py build pystachy.py -o build/pystachy1
 	build/pystachy1 build pystachy.py -o build/pystachy2
@@ -23,9 +24,9 @@ test: pystachy
 	tests/run.sh ./pystachy "jit aot" $(FILES)
 
 # the CPython-hosted compiler runs as a module, whose bytecode CPython caches (it compiles a script's
-# 16k lines again at every start); the cache is checked against pystachy.py's hash, not its mtime
+# source again at every start); every compiler module is checked by hash, not its mtime
 test-py:
-	$(PY) -c 'import py_compile as c; c.compile("pystachy.py", doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH)'
+	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
@@ -114,7 +115,7 @@ verify:
 
 # IR oracle for refactors (tools/irsame.sh): ./pystachy must emit what the compiler of commit REF (default
 # HEAD) emits -- IR, messages, exit status -- for every corpus program, or for FILES; irsame-py compares the
-# CPython-hosted compilers. build/ref holds REF's pystachy.py, runtime.c (with ryu/, which it includes),
+# CPython-hosted compilers. build/ref holds REF's pystachy.py, src/, runtime.c (with ryu/, which it includes),
 # lib/ and stage-2 compiler, built as above and rebuilt only for another commit; each compiler uses the
 # runtime.c and lib/ beside it.
 REF ?= HEAD
@@ -132,6 +133,7 @@ ref:
 	  echo "build/ref: building the compiler of $(REF) ($$c)"; \
 	  rm -rf build/ref && mkdir -p build/ref && \
 	  git show $$c:pystachy.py > build/ref/pystachy.py && git show $$c:runtime.c > build/ref/runtime.c && \
+	  { ! git cat-file -e $$c:src 2> /dev/null || git archive $$c src | tar -xf - -C build/ref; } && \
 	  { ! git cat-file -e $$c:runtime.py 2> /dev/null || git show $$c:runtime.py > build/ref/runtime.py; } && \
 	  { ! git cat-file -e $$c:lib 2> /dev/null || git archive $$c lib | tar -xf - -C build/ref; } && \
 	  { ! git cat-file -e $$c:ryu 2> /dev/null || git archive $$c ryu | tar -xf - -C build/ref; } && \

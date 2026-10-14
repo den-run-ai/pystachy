@@ -45,6 +45,7 @@ def limits():
 
 
 def main():
+    sys.path.insert(0, str(ROOT))
     spec = importlib.util.spec_from_file_location("pystachy", ROOT / "pystachy.py")
     p = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(p)
@@ -55,7 +56,11 @@ def main():
         work[0] += 1
         return clone(node)
 
-    p.clone = counted
+    # Every component that imported clone must use the same counting wrapper.
+    for module in list(sys.modules.values()):
+        if module is not None and vars(module).get("clone") is clone:
+            module.clone = counted
+    p.clone = counted  # importlib did not register this launcher in sys.modules
     previous = 0
     with tempfile.TemporaryDirectory(prefix="pystachy-inherit-") as tmp:
         path = Path(tmp) / "main.py"
