@@ -1,5 +1,22 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
+from src.pystachy_compiler.unions import (
+    gen_uboxes as unions_uboxes,
+    gen_umember_problem as unions_umember_problem,
+    gen_union_type as unions_union_type,
+    gen_utag as unions_utag,
+    gen_ubox as unions_ubox,
+    gen_uget as unions_uget,
+    gen_utest as unions_utest,
+    gen_to_union as unions_to_union,
+    gen_narrow_val as unions_narrow_val,
+    gen_unarrowed as unions_unarrowed,
+    gen_uisinst as unions_uisinst,
+    gen_now_type as unions_now_type,
+    gen_isinst_narrow as unions_isinst_narrow,
+    gen_holds as unions_holds,
+)
 from src.pystachy_compiler.builtins import (
     gen_anyall as builtins_anyall,
     gen_as_list as builtins_as_list,
@@ -363,6 +380,7 @@ from src.pystachy_compiler.ir import (
     Values,
 )
 from src.pystachy_compiler.ircheck import (
+    EffectSummaries,
     gen_bad_ir as ircheck_bad_ir,
     gen_effects as ircheck_effects,
     gen_nums as ircheck_nums,
@@ -543,6 +561,8 @@ class Gen:
         self.tmpl: dict[str, bool] = {}  # the class templates (an __init__ parameter without an annotation)
         self.compiling = False  # every declaration is made: code is being compiled (see guess)
         self.specing: dict[str, str] = {}  # the specializations being made, by template and argument types
+        self.utags: dict[str, int] = {}
+        self.closed_unions = os.getenv("PYSTACHY_CLOSED_UNIONS", "") == "1"
         self.specdone: dict[str, str] = {}  # and those made, which the same call gets again
         self.selfcls = ""  # the class whose method or fields are being declared: what typing.Self is
         self.funcs: dict[str, FnInfo] = {}
@@ -566,6 +586,7 @@ class Gen:
         self.out: list[str] = []
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
+        self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}
@@ -616,11 +637,10 @@ class Gen:
         # may hold a value of another type: its first binding (none_ends), once compiled the line
         # that gives it that value (see assign, static_type)
         self.nonevars: dict[str, int] = {}
-        # optional locals (and parameters) known not to be None here, as mypy narrows them: a read
-        # of one has the type it holds (see narrows)
-        self.narrowed: dict[str, bool] = {}
+        # optional and union locals: the narrower type a read has at this point (see narrows)
+        self.narrowed: dict[str, str] = {}
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
-        self.anyopt = False  # a local of an optional type exists: narrows has something to look for
+        self.anyopt = False  # an optional or union local exists: narrows has something to look for
         self.building: dict[str, bool] = {}  # the functions being compiled
         self.wide: dict[str, bool] = {}  # optional values read from a global or a field (function + register), which no test narrows
         self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
@@ -677,8 +697,8 @@ class Gen:
         self.nlw: dict[str, bool] = {}  # and those of them, or of the variables it takes, that a closure assigns (nonlocal)
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
-        self.brks: list[list[dict[str, bool]]] = []  # for each loop being compiled, what narrowed holds at its breaks
-        self.elsebrks: list[dict[str, bool]] = []  # those of the last loop with an else block
+        self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
+        self.elsebrks: list[dict[str, str]] = []  # those of the last loop with an else block
         # empty [] and {} assigned to a variable without a type: its type has "?" until a use shows
         # what the container holds (see fill). The op that makes one holds a hole, which gets that
         # type (lowering prints a dict's key kind from it)
@@ -1468,7 +1488,7 @@ class Gen:
     def while_(self, n: Node) -> None:
         return statements_while_(self, n)
 
-    def loop(self, body: list[Node], lp: Loop) -> list[dict[str, bool]]:
+    def loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         return statements_loop(self, body, lp)
 
     def leave(self, depth: int) -> bool:
@@ -1480,7 +1500,7 @@ class Gen:
     def assert_fails(self, n: Node) -> None:
         return exceptions_assert_fails(self, n)
 
-    def unnarrowed(self, bodies: list[list[Node]]) -> dict[str, bool]:
+    def unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
         return exceptions_unnarrowed(self, bodies)
 
     def clause_or(self, t: Node) -> Node:
@@ -1645,16 +1665,16 @@ class Gen:
     def seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         return statements_seq_start(self, s, mode, made)
 
-    def narrows(self, n: Node, truth: bool, out: list[str]) -> None:
+    def narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
         return expressions_narrows(self, n, truth, out)
 
     def narrowable(self, name: str) -> bool:
         return expressions_narrowable(self, name)
 
-    def narrow_by(self, test: Node, truth: bool) -> dict[str, bool]:
+    def narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
         return expressions_narrow_by(self, test, truth)
 
-    def forget(self, body: list[Node], tgt: Node) -> dict[str, bool]:
+    def forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
         return expressions_forget(self, body, tgt)
 
     def static(self, n: Node) -> int:
@@ -2160,3 +2180,45 @@ class Gen:
 
     def repr(self, v: Val) -> Val:
         return containers_repr(self, v)
+
+    def uboxes(self, a: str, b: str) -> bool:
+        return unions_uboxes(self, a, b)
+
+    def umember_problem(self, t: str) -> str:
+        return unions_umember_problem(self, t)
+
+    def union_type(self, ts: list[str]) -> str:
+        return unions_union_type(self, ts)
+
+    def utag(self, t: str) -> int:
+        return unions_utag(self, t)
+
+    def ubox(self, v: Val, m: str) -> str:
+        return unions_ubox(self, v, m)
+
+    def uget(self, u: str, m: str) -> Val:
+        return unions_uget(self, u, m)
+
+    def utest(self, u: str, ms: list[str], may_none: bool) -> str:
+        return unions_utest(self, u, ms, may_none)
+
+    def to_union(self, v: Val, t: str, what: str) -> Val:
+        return unions_to_union(self, v, t, what)
+
+    def narrow_val(self, v: Val, nt: str) -> Val:
+        return unions_narrow_val(self, v, nt)
+
+    def unarrowed(self, v: Val) -> str:
+        return unions_unarrowed(self, v)
+
+    def uisinst(self, v: Val, c: Node) -> str:
+        return unions_uisinst(self, v, c)
+
+    def now_type(self, name: str) -> str:
+        return unions_now_type(self, name)
+
+    def isinst_narrow(self, t: str, c: Node, truth: bool) -> str:
+        return unions_isinst_narrow(self, t, c, truth)
+
+    def holds(self, t: str, vt: str) -> str:
+        return unions_holds(self, t, vt)

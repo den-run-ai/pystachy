@@ -302,7 +302,7 @@ class Frame:
         self.cells: dict[str, str] = {}
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
-        self.narrowed: dict[str, bool] = {}
+        self.narrowed: dict[str, str] = {}
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False

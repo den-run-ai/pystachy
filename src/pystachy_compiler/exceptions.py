@@ -68,7 +68,7 @@ def gen_try_(self, n: Node) -> None:
     # at the end of each way that goes on (ends)
     hst = self.unnarrowed([n.kids[0].kids])
     fst = self.unnarrowed([n.kids[0].kids, orelse] + [h.kids[1].kids for h in hs])
-    ends: list[dict[str, bool]] = []
+    ends: list[dict[str, str]] = []
     # the try notes the depth of the unwind actions (pys_exc_begin runs those added since) and
     # the exception being handled, which every way out of its clauses restores
     mark = Val(self.rt("pys_try_mark", "i64", []), "int")
@@ -232,10 +232,10 @@ def gen_assert_fails(self, n: Node) -> None:
     else:
         self.raise_("AssertionError", self.to_str(v).v)
 
-def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, bool]:
+def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
     # a copy of narrowed without the names that the code of bodies binds or deletes: what
     # holds wherever an exception may come from in them
-    out: dict[str, bool] = {}
+    out: dict[str, str] = {}
     if len(self.narrowed) > 0:
         names: dict[str, bool] = {}
         for b in bodies:
@@ -243,7 +243,7 @@ def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, bool]:
             deleted(b, names)
         for nm in self.narrowed:
             if nm not in names:
-                out[nm] = True
+                out[nm] = self.narrowed[nm]
     return out
 
 def gen_clause_or(self, t: Node) -> Node:
