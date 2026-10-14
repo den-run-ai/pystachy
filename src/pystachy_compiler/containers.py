@@ -19,6 +19,7 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_sopt,
     is_tuple,
+    is_vtuple,
     key_problem,
     literal,
     lookable,
@@ -98,6 +99,8 @@ def gen_iter_elem(self, t: str) -> str:
     # the type of the items a loop over a value of type t gets, or ""
     if is_list(t):
         return elem(t)
+    if is_vtuple(t):
+        return targs(t)[0]
     if is_set(t):
         return selem(t)
     if is_dict(t):

@@ -199,6 +199,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "file":
         return "TextIOWrapper"
+    if is_vtuple(t):
+        return "tuple"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
     if t == "exc":
@@ -305,6 +307,11 @@ def selem(t: str) -> str:
 
 def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
+
+
+def is_vtuple(t: str) -> bool:
+    # Homogeneous tuples whose arity is determined during native execution.
+    return t.startswith("vtuple[")
 
 
 def is_opt(t: str) -> bool:

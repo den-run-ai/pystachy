@@ -51,6 +51,7 @@ jobs:
         run: |
           make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
           make skew-check SKEW_COMPILER=build/verify/pystachy2
+          make regex-tuples-check REGEX_TUPLE_COMPILER=build/verify/pystachy2
 
       - name: Upload group report
         if: always()

@@ -33,6 +33,7 @@ from src.pystachy_compiler.utils import (
     is_set,
     is_sopt,
     is_tuple,
+    is_vtuple,
     lt,
     meet,
     same_kind,
@@ -1328,6 +1329,9 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         j = at[k]
         if is_list(s.t):
             vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
+        elif is_vtuple(s.t):
+            off = self.ins(f"add i64 {j}, 1")
+            vals.append(self.from_slot(self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {s.v}, i64 {off}')}"), targs(s.t)[0]))
         elif is_tuple(s.t):
             vals.append(self.from_slot(self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {s.v}, i64 {j}')}"), targs(s.t)[0]))
         elif s.t == "str":
@@ -1363,7 +1367,7 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
     # length, from which reversed() counts down
     if is_set(s.t) and mode == "reversed":
         self.err(f"'{tname(s.t)}' object is not reversible")
-    if not (s.t == "str" or is_list(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]")):
+    if not (s.t == "str" or is_list(s.t) or is_vtuple(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]")):
         self.err(f"cannot iterate over {s.t}" if s.t != "file" else "a file is not reversible")
     if s.t == "file":
         made.st.append("")

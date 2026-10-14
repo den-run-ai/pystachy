@@ -1,5 +1,6 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler.builtins import (
     gen_anyall as builtins_anyall,
     gen_as_list as builtins_as_list,
@@ -591,6 +592,7 @@ class Gen:
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
         self.eh = False  # the program has try or with (closed world): exceptions are on (pys_eh_on)
+        self.variadic_tuples = os.getenv("PYSTACHY_VARIADIC_TUPLES", "") == "1"
         self.opts: dict[str, bool] = {}  # the optimizations on (optimizations()), once program() starts
         self.lcs: list[str] = []
         self.lct: list[str] = []

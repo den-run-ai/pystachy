@@ -1,0 +1,224 @@
+{
+  "baseline": {
+    "checksums": {
+      "concrete": 457800000,
+      "consumer": 457800000,
+      "endtoend": 1890000,
+      "render": 189000000,
+      "render-static": 189000000,
+      "static": 1890000
+    },
+    "consumer_fixed_speedup": 0.9819926355441558,
+    "cpu_seconds": {
+      "concrete": [
+        0.199825065,
+        0.23358553799999998,
+        0.222595288,
+        0.221052161,
+        0.20368266599999998,
+        0.18911676000000002,
+        0.184107512
+      ],
+      "consumer": [
+        0.201315934,
+        0.24532884400000002,
+        0.199984292,
+        0.27105916700000005,
+        0.195055659,
+        0.200014878,
+        0.19174635299999998
+      ],
+      "endtoend": [
+        0.06291059600000001,
+        0.08673386699999999,
+        0.058306002999999995,
+        0.061714305000000004,
+        0.061823588000000006,
+        0.06811871600000001,
+        0.058694412
+      ],
+      "render": [
+        0.5384397599999999,
+        0.556014136,
+        0.6013499,
+        0.5647447630000001,
+        0.565326417,
+        0.546470521,
+        0.57137534
+      ],
+      "render-static": [
+        0.613843829,
+        0.540186226,
+        0.624818187,
+        0.549442722,
+        0.637627724,
+        0.5619768900000001,
+        0.650144049
+      ],
+      "static": [
+        0.06161654,
+        0.056220481,
+        0.058130061999999996,
+        0.06186578100000001,
+        0.063919147,
+        0.060766014,
+        0.05837728
+      ]
+    },
+    "endtoend_fixed_speedup": 1.0174040377241134,
+    "median_cpu_seconds": {
+      "concrete": 0.20368266599999998,
+      "consumer": 0.200014878,
+      "endtoend": 0.061823588000000006,
+      "render": 0.5647447630000001,
+      "render-static": 0.613843829,
+      "static": 0.060766014
+    },
+    "median_paired_fixed_speedup": {
+      "endtoend": 1.0054324559143557,
+      "render": 0.9624398145119933,
+      "signature": 1.041491196730745
+    },
+    "paired_fixed_speedups": {
+      "endtoend": [
+        1.0210017634875315,
+        1.5427450184924598,
+        1.0030266783475992,
+        0.9975515382243375,
+        0.9672154730099889,
+        1.1210002354276523,
+        1.0054324559143557
+      ],
+      "render": [
+        0.8771608258686264,
+        1.0293008396700587,
+        0.9624398145119933,
+        1.0278501113715728,
+        0.8866089031599259,
+        0.9724074614527298,
+        0.8788442205674946
+      ],
+      "signature": [
+        1.0074608708371995,
+        1.050274114144858,
+        0.8984210483377348,
+        1.2262226515849355,
+        0.9576448640946207,
+        1.0576263996908575,
+        1.041491196730745
+      ]
+    },
+    "render_fixed_speedup": 0.9200137499468127
+  },
+  "build_sources_unchanged_during_measurement": true,
+  "consumer_repeats": 100000,
+  "heldout_check": "check 9 166",
+  "metadata": {
+    "build_environment": {
+      "PYSTACHY_CFLAGS": "unset",
+      "PYSTACHY_GC_STRESS": "unset",
+      "PYSTACHY_LLVM": "/workspace/scratch/add0d858f839/toolchain/bin",
+      "PYSTACHY_NOOPT": "unset",
+      "PYSTACHY_OPT": "unset",
+      "PYSTACHY_VARIADIC_TUPLES": "1"
+    },
+    "build_source_changes_from_git_base": [
+      "runtime.c",
+      "src/pystachy_compiler/builtins.py",
+      "src/pystachy_compiler/containers.py",
+      "src/pystachy_compiler/conversions.py",
+      "src/pystachy_compiler/declarations.py",
+      "src/pystachy_compiler/expressions.py",
+      "src/pystachy_compiler/gen.py",
+      "src/pystachy_compiler/specs.py",
+      "src/pystachy_compiler/statements.py",
+      "src/pystachy_compiler/utils.py"
+    ],
+    "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/add0d858f839/toolchain/root/usr/lib/llvm-18/bin",
+    "combined_build_sources_sha256": "e3146c78b6d04fd2aee7b467fc9317cfa5ab3f9ee22ba2a2d9170ee5c5350098",
+    "compiler_command": [
+      "/root/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/bin/python3.13",
+      "-m",
+      "pystachy"
+    ],
+    "compiler_runtime_and_regex_sources_sha256": {
+      "lib/re/__init__.py": "d0238a24c2929290739b27a683449786301985d16f7888ae2bef06f66045c53a",
+      "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+      "lib/re/_sre.py": "bbd32b65f3bd63c64ac9ad1c2c109207589ba75f3a71745aa3c37e1f9e1ff6d9",
+      "lib/re/_unicode.py": "56ef0198326b9a519d6a8cb1946014a8a507b990663024028e07104787103614",
+      "pystachy.py": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917",
+      "runtime.c": "b21ae7462dfbeabe5c4a9c4a4eb576c91b04b7583540fe866f8cf738fc406f20",
+      "runtime.py": "297946f0ad822285f610a017ce390ba75e871f7dbe5fb1d549279f0e3eb44de3",
+      "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+      "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+      "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+      "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+      "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+      "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "716f5f454fea06ed91f60f6834650464cbe3f3fd1058adca3e53c48669055c1d",
+      "src/pystachy_compiler/builtins.py": "c87a7435bbd80a9fd7de2b66b95d5bc74148661db40e8dbc34b618bce7dbebac",
+      "src/pystachy_compiler/calls.py": "f657cc9d3fa55f12e863b2edeaaa919d1ab10abacf0427550d3f64cc7f02c1fb",
+      "src/pystachy_compiler/containers.py": "4f184d5be35b2fd99ffd487575b6383e59409f2fd1c8c6991fcf80d31becc315",
+      "src/pystachy_compiler/conversions.py": "9f81191b928f6f6ce2542d9488cf664b1660271f165ada6784a709ddbab84fa1",
+      "src/pystachy_compiler/declarations.py": "0e328f9d3b9c7868abfd841215b104d220c904c90987d8048f298b44ed2940f2",
+      "src/pystachy_compiler/diagnostics.py": "cc6c0e1babc61abce28d19e61c73818665b0afc93896daa9e4cb931973cddacb",
+      "src/pystachy_compiler/driver.py": "b6e189138ca73927a5ee027cc9304d141df96a0190793cd3e9fbd63a6c5d7d10",
+      "src/pystachy_compiler/emission.py": "8e2bc47bdf4402364b7e814daf9d4f1684c4917a0609a06642c233307c89b240",
+      "src/pystachy_compiler/exceptions.py": "51da66013fcd403778a559005f299866780abf7c25c2dd344dfda7dd5cf3bd63",
+      "src/pystachy_compiler/expressions.py": "c8181a2963a75ae489b3c4be165fbee06505576ece87887fd37d1edfaa63b799",
+      "src/pystachy_compiler/flow.py": "81dbee484c5025c2eb6749657e5ba79310c473f4062426f5494477028be5811b",
+      "src/pystachy_compiler/functions.py": "029ba652b3f1ec80df7bf928eaae0a161a1bbbb64d52c8a3a6a9335d0d294a80",
+      "src/pystachy_compiler/gen.py": "98c1083e409e75a85db776c3b2d102180f06045e19a76b491d036f39d2644669",
+      "src/pystachy_compiler/ir.py": "7092c7181302ff1e5af3a11101eff53e710b33182421cb8ff3351151be644599",
+      "src/pystachy_compiler/ircheck.py": "288ed182e78404810ad53c266c9da12351776e7c021bbfbf15cbb296f44ef096",
+      "src/pystachy_compiler/lexer.py": "7760507b7eedf73f05396b5a481b5b893071327e0ea8cc1ec38954b721cfa1eb",
+      "src/pystachy_compiler/loader.py": "996e4319a95dfca018ed2875e4bb42ebe830ab7953daef0442a7e6db4756c515",
+      "src/pystachy_compiler/lowering.py": "c7e65e0707a32f55cb76a6933fd92d0c93f3ba631849fe914c0cc04e7783b9a1",
+      "src/pystachy_compiler/module.py": "b052e2d38d996840b3e7c190294874163f04a3d8c67b9071193adc1683c2113b",
+      "src/pystachy_compiler/names.py": "1bea4fc8d42d671a7da5e0931d690e27e7f2f0d072d46ff4682d3be4173ea82d",
+      "src/pystachy_compiler/optimizations.py": "ee43f47713663f9fb433d15581fd9b14a8ed0c378a569c4f292237d69482fc48",
+      "src/pystachy_compiler/parser.py": "dfb8594159b72db92bac4e1128ac0f03f95f1106d884269c7d5cd834858e0f9b",
+      "src/pystachy_compiler/program.py": "32a2e7fc8adfeb8969dd63837b2e74757e65d1f86e63d389d3c8dc48a2b6b934",
+      "src/pystachy_compiler/scope.py": "d5a885c17fff663af0fe1101adc5ecb4e4b619849917662e5799fd30fdedc23e",
+      "src/pystachy_compiler/skew.py": "d188c242c7279da88a0af5e97e68af1f728fce232add6594df1bdaf5a91ba534",
+      "src/pystachy_compiler/specs.py": "64307f04fa245277de6fd9a65d1bf3c624192379ea5604e31de8096932d4e7e3",
+      "src/pystachy_compiler/statements.py": "ed3fc042b1817b47b9e525f9e09e01c30ba34bbddbc91f692409d85233947eef",
+      "src/pystachy_compiler/syntax.py": "37191ef377704976eb7bb05080ed00863c5b49501a42b49e2177614237d15986",
+      "src/pystachy_compiler/templates.py": "aa821feccdf59d2722753865711f24d6902f5b658681690b5bb214eee35f68cf",
+      "src/pystachy_compiler/utils.py": "96042b88af617c921835093bcf2a1ede2fc0efda4d673364086aa684798ef2fd",
+      "src/pystachy_compiler/variables.py": "7c2bacffd859545def8db93a9a1cb022750394a99e229a20b0667153dde69a30"
+    },
+    "git_base_commit": "397327e40583536726068c44a9219ac4c665198d",
+    "host": {
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cpu_frequency": "not recorded",
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "machine": "x86_64",
+      "other_host_workload": "not recorded",
+      "release": "6.18.44",
+      "system": "Linux",
+      "version": "#1 SMP Sat Sep 26 20:02:31 UTC 2026"
+    },
+    "python_version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "source_provenance": "Working-tree sources; exact build-source hashes recorded, including changes from the committed base.",
+    "started_utc": "2026-10-14T19:15:51.185050+00:00",
+    "timing": "Native time.process_time; mode order reversed on alternate samples; no CPU pinning requested."
+  },
+  "records": 64,
+  "repeats": 1000,
+  "samples": 7,
+  "scope": "Original regex matching and Match.groups(); consumer-only times exclude producer costs.",
+  "source_path": "bench/regex_capture_tuples.py",
+  "source_sha256": "bae74daa69e58b83229027477ef3ebb61bb0e9447db450649c839b63fce11dbe"
+}

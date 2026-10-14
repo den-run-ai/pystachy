@@ -61,6 +61,11 @@ SKEW_COMPILER ?= ./pystachy
 skew-check: $(SKEW_COMPILER)
 	PYSTACHY_SKEW_TEST_COMPILER="$(SKEW_COMPILER)" $(PY) -m unittest discover -s tools -p test_skew_specialization.py
 
+# Experimental runtime-sized tuples: unchanged regex capture API and native storage.
+REGEX_TUPLE_COMPILER ?= ./pystachy
+regex-tuples-check: $(REGEX_TUPLE_COMPILER)
+	REGEX_TUPLE_COMPILER="$(REGEX_TUPLE_COMPILER)" $(PY) -m unittest discover -s tools -p test_regex_tuples.py
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
@@ -218,4 +223,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check skew-check regex-tuples-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
