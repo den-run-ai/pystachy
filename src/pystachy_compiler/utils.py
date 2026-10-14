@@ -201,6 +201,8 @@ def tname(t: str) -> str:
         return "TextIOWrapper"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
+    if is_union(t):
+        return typestr(t)
     if t == "exc":
         return "BaseException"
     if is_kw(t):
@@ -392,15 +394,15 @@ def fn_shown(t: str) -> str:
     return f"<built-in function {k[2:]}>" if k.startswith("b:") else f"<function {short(k[2:])}>"
 
 
-def meet(states: list[dict[str, bool]]) -> dict[str, bool]:
-    # the names in every one of states (narrowed where paths join)
-    r: dict[str, bool] = {}
+def meet(states: list[dict[str, str]]) -> dict[str, str]:
+    # the names narrowed alike in every one of states (narrowed where paths join)
+    r: dict[str, str] = {}
     for nm in states[0]:
         ok = True
         for st in states[1:]:
-            ok = ok and nm in st
+            ok = ok and nm in st and st[nm] == states[0][nm]
         if ok:
-            r[nm] = True
+            r[nm] = states[0][nm]
     return r
 
 
@@ -475,7 +477,7 @@ def typestr(t: str) -> str:
             w = ""
         else:
             w += c
-    return optnames("".join(out)[:-1])
+    return optnames(unionnames("".join(out)[:-1]))
 
 
 def optnames(t: str) -> str:
@@ -718,3 +720,31 @@ def rename(n: Node, name: str, to: str) -> None:
 # text of each IFn (lower).
 # The lists an op starts with: shared, and never changed (Gen.program checks it). An op that has
 # numbers, operands or labels gets lists of its own (most ops are raw and have none of them).
+
+
+def is_union(t: str) -> bool:
+    # union[A,B,...]: a value of one of two or more types (A | B), none of them None, a union or an
+    # optional; a pointer to a box of the value's tag (its type's, see Gen.utag) and its slot
+    # (runtime.c's pys_ubox). None is null: in opt[union[...]], or where a member is a class
+    return t.startswith("union[")
+
+def umembers(t: str) -> list[str]:
+    # the member types of union t, in their (sorted) order
+    return targs(t)
+
+def unionnames(t: str) -> str:
+    # t (a type, or a message that names types) with each union[A,B] written A | B
+    while "union[" in t:
+        a = t.find("union[")
+        b = a + 6
+        depth = 1
+        ms: list[str] = []
+        m = a + 6
+        while depth > 0 and b < len(t):
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            if (depth == 1 and t[b] == ",") or depth == 0:
+                ms.append(t[m:b])
+                m = b + 1
+            b += 1
+        t = t[:a] + " | ".join(ms) + t[b:]
+    return t

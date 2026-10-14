@@ -60,6 +60,14 @@ bench-extended-check: $(BENCH_COMPILER)
 SKEW_COMPILER ?= ./pystachy
 skew-check: $(SKEW_COMPILER)
 	PYSTACHY_SKEW_TEST_COMPILER="$(SKEW_COMPILER)" $(PY) -m unittest discover -s tools -p test_skew_specialization.py
+# Experimental flow-local/closed-union paths remain opt-in; compare both compiler
+# hosts, JIT/AOT and GC stress, and exercise bounded/reused analysis summaries.
+FLOW_ANALYSIS_COMPILER ?= ./pystachy
+flow-analysis-check: $(FLOW_ANALYSIS_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_function_summaries.py
+	$(PY) tools/check_flow_locals.py
+	$(PY) tools/check_flow_locals.py --compiler "$(FLOW_ANALYSIS_COMPILER)"
+	$(PY) tools/flow_analysis_check.py --compiler "$(FLOW_ANALYSIS_COMPILER)" --json build/flow-analysis.json
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
@@ -218,4 +226,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check flow-analysis-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

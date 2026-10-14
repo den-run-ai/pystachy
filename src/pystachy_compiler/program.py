@@ -828,11 +828,12 @@ def gen_program(self, mods: list[Mod]) -> str:
         fail("internal error: an op changed the lists all ops start with", 0)
     chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
     dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
+    summaries = os.getenv("PYSTACHY_SUMMARY_STATS", "") == "1" and not self.rtcache
     on = self.opts
     if chk:
         for fn in self.fns:
             self.verify(fn, False)
-    if self.eh or len(on) > 0 or chk or dump:
+    if self.eh or len(on) > 0 or chk or dump or summaries:
         # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise); the IR
         # check computes them too, so that the tests run effects even with every pass off
         self.effects()
@@ -845,7 +846,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 changed = True
                 if chk:
                     self.verify(fn, False)
-        if changed and dump:
+        if changed and (dump or summaries):
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
     for fn in self.fns if self.eh else self.fns[:0]:
         if len(fn.tries) > 0:

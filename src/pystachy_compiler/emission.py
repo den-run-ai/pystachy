@@ -1,5 +1,6 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, Frame, Ins, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
@@ -17,12 +18,20 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_err(self, msg: str) -> None:
+    if ".flow." in msg:
+        # Local-version slots are implementation details. Diagnostics and their
+        # annotation suggestions retain the spelling from the user's source.
+        for name in self.assigned:
+            if ".flow." in name:
+                source = name[: name.rfind(".flow.")]
+                msg = msg.replace("'" + name + "'", "'" + source + "'")
+                msg = msg.replace("(" + name + ":", "(" + source + ":")
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):
             msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
         msg += ")"
-    fail(optnames(msg) if "opt[" in msg else msg, self.line)
+    fail(optnames(unionnames(msg)) if "opt[" in msg or "union[" in msg else msg, self.line)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
@@ -387,7 +396,7 @@ def gen_reboxes(self, a: str, b: str) -> bool:
     for i in range(len(targs(a))):
         x = targs(a)[i]
         y = targs(b)[i]
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.reboxes(x, y):
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y):
             return False
     return True
 
@@ -407,8 +416,9 @@ def gen_converts(self, a: str, b: str) -> bool:
     return self.boxes(a, b) or (is_sopt(a) and b == unopt(a))
 
 def gen_boxes(self, a: str, b: str) -> bool:
-    # is a value of type a one of type b once boxed: an int as an int | None, also as tuple items
-    return (is_sopt(b) and a == unopt(b)) or self.reboxes(a, b)
+    # is a value of type a one of type b once boxed: an int as an int | None, a member as a
+    # union, also as tuple items
+    return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
     # v as a t, at the end of block blk, which has ended (see convert_at)
@@ -446,7 +456,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         # a variable a closure takes: its cell, which the function allocated as it began
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
-        self.anyopt = self.anyopt or is_opt(t)
+        self.anyopt = self.anyopt or is_opt(t) or is_union(t)
         if name in self.uflags:
             self.n += 1
             self.lflag[name] = f"%{name}.def.{self.n}"
@@ -457,7 +467,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         return self.cells[name]
     self.n += 1
     r = f"%{name or 'h'}.{self.n}"
-    self.anyopt = self.anyopt or is_opt(t)
+    self.anyopt = self.anyopt or is_opt(t) or is_union(t)
     i = Ins("slot", t, name)
     i.r = [self.n]
     self.fn.slots.append(i)

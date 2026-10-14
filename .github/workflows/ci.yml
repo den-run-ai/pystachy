@@ -52,6 +52,12 @@ jobs:
           make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
           make skew-check SKEW_COMPILER=build/verify/pystachy2
 
+      - name: Experimental flow analysis correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make flow-analysis-check FLOW_ANALYSIS_COMPILER=build/verify/pystachy2
+
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -60,6 +66,7 @@ jobs:
           path: |
             build/verification.json
             build/extended-smoke.json
+            build/flow-analysis.json
             build/verify/*.log
           if-no-files-found: error
           retention-days: 7

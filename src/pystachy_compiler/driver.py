@@ -36,6 +36,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/ircheck.py',
     'src/pystachy_compiler/lexer.py',
     'src/pystachy_compiler/loader.py',
+    'src/pystachy_compiler/local_versions.py',
     'src/pystachy_compiler/lowering.py',
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',
@@ -48,6 +49,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/syntax.py',
     'src/pystachy_compiler/templates.py',
+    'src/pystachy_compiler/unions.py',
     'src/pystachy_compiler/utils.py',
     'src/pystachy_compiler/variables.py',
 ]

@@ -1,7 +1,9 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CTYPES, LINKDL, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
@@ -76,6 +78,12 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     if f.pending:
         self.materialize(f)
         body = f.node.kids[2].kids
+    if not self.modlevel and not self.rtmode and len(f.node.kids) >= 3 and os.getenv("PYSTACHY_FLOW_LOCALS", "") == "1":
+        body = local_versions(f, body)
+        # Template instances share their declaration. Keep look-ahead inference
+        # consistent with these bindings without changing another instance's AST.
+        f.node = clone(f.node)
+        f.node.kids[2].kids = body
     if f.cls != "" and self.classes[f.cls].bad != "":
         self.err(self.classes[f.cls].bad)
     if f.bad != "" and not f.generic:

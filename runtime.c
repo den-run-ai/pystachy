@@ -981,6 +981,11 @@ void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 /* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
    box of its value's 8 bytes (a bool's 0 or 1), and None is null */
 void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+/* Closed scalar union: a program-wide tag and the value's 8-byte slot. The collector
+   scans the box because a str member carries a pointer. None remains null. */
+void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
+void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
+
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
 static const char *skip(const char *d) {
   char c = *d++;

@@ -1,5 +1,6 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import calls_init, local_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Val
@@ -131,6 +132,12 @@ def gen_ann(self, n: Node) -> str:
         return self.opt(self.ann(n.kids[0]), n.kids[0])
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
+    elif k == "binop" and n.s == "|" and self.closed_unions:
+        ts = [self.ann(x) for x in self.union_members(n, [])]
+        for t in ts:
+            if t.startswith("!"):
+                return t
+        return self.union_type(ts)  # A | B
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
@@ -172,6 +179,8 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
+            if self.closed_unions:
+                return self.union_type(us)
     if self.typing_ref(n) == "Final":
         return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
     if self.pathlike(n):
@@ -450,6 +459,9 @@ def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none
     if t in self.classes or is_opt(t):
         return t
+    if is_union(t):
+        # (a union that holds a class's objects may be None, as the class's objects may)
+        return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
     if (t == "str" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_callable(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
@@ -560,6 +572,11 @@ def gen_widens(self, a: str, b: str) -> bool:
         return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
     if b in self.classes:
         return a == "None" or (a in self.classes and self.derives(a, b))
+    if is_union(b):
+        # (its box: the tags are the program's, the same in every union)
+        if a == "None":
+            return self.optional(b) == b
+        return is_union(a) and len([m for m in umembers(a) if m not in umembers(b)]) == 0
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     bs = targs(b)
@@ -1321,7 +1338,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         else:
             self.class_default(ci, name)
             r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
-            if is_opt(p.t):
+            if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             return Val(r, p.t)
     if name in ci.fflag:
@@ -1354,7 +1371,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
     if r == "":
         r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
-    if is_opt(p.t):
+    if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
     return Val(r, p.t)
 

@@ -1,5 +1,6 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.utils import is_union
 import os
 from src.pystachy_compiler.analysis import (
     aliases,
@@ -108,14 +109,14 @@ def gen_load_name(self, name: str) -> Val:
         r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
         if name == self.selfname and name not in self.compvars:
             self.nn[r] = True
-        if name in self.narrowed and is_opt(t) and t != NONEVAR:
-            return self.deref(Val(r, t))  # known not to be None here
+        if name in self.narrowed and (is_opt(t) or is_union(t)) and t != NONEVAR:
+            return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         return Val(r, t)
     self.read_ahead(name)
     if name in self.gtypes:
         t = self.gtypes[name]
         r = self.ins(f"load {lt(t)}, ptr @g.{name}")
-        if is_opt(t):
+        if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         return Val(r, t)
     if name == "__name__":
@@ -409,7 +410,7 @@ def gen_none_type(self, name: str) -> str:
             pre = self.narrowed
             self.narrowed = dict(pre)
             for nm in self.ltype:
-                self.narrowed[nm] = True
+                self.narrowed[nm] = pre[nm] if nm in pre else unopt(self.ltype[nm])
             t = self.dry(e)
             self.narrowed = pre
             if t != "None" and t != "" and "?" not in t and t != NONEVAR:
@@ -1284,10 +1285,11 @@ def gen_store_name(self, name: str, v: Val) -> None:
         self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr {self.lreg[name]}")
         if name in self.lflag and name not in self.compvars:
             self.emit(f"store i1 true, ptr {self.lflag[name]}")
-        if is_opt(t) and (is_opt(v.t) or v.t == "None"):
-            self.narrowed.pop(name, False)
-        elif is_opt(t):
-            self.narrowed[name] = True  # (it holds a value)
+        held = "" if is_union(unopt(t)) and name in self.nlw else self.holds(t, v.t)
+        if held == "":
+            self.narrowed.pop(name, "")
+        else:
+            self.narrowed[name] = held  # (it holds a value, of type held)
 
 def gen_assigned_to(self, v: Val, t: str, name: str) -> str:
     # what names value v assigned to variable name of type t, for coerce's error

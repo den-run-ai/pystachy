@@ -1,5 +1,6 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import collect, deleted, only_none, stack_aliases, stack_kept
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, IterArg, Val
@@ -59,9 +60,11 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_narrows(self, n: Node, truth: bool, out: list[str]) -> None:
-    # the optional locals that test n shows are not None when its value is truth, as mypy
-    # narrows them: x, x is not None, x != None, isinstance(x, T), and not/and/or of those
+def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+    # the locals that test n narrows when its value is truth, as mypy narrows them, and the type
+    # each then holds: an optional one is not None (x, x is not None, x != None, isinstance(x,
+    # T)), a union holds a value of the types isinstance(x, T) names, or of the others; and
+    # not/and/or of those
     if not self.anyopt:
         return
     k = n.kind
@@ -71,30 +74,40 @@ def gen_narrows(self, n: Node, truth: bool, out: list[str]) -> None:
         self.narrows(n.kids[0], truth, out)
         self.narrows(n.kids[1], truth, out)
     elif k == "name" and truth and self.narrowable(n.s):
-        out.append(n.s)
+        out[n.s] = unopt(out[n.s] if n.s in out else self.now_type(n.s))
     elif k == "cmp" and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (n.s == "is not" or n.s == "!=" or n.s == "is" or n.s == "==") and self.narrowable(n.kids[0].s):
         if (n.s == "is not" or n.s == "!=") == truth:
-            out.append(n.kids[0].s)
+            nm = n.kids[0].s
+            out[nm] = unopt(out[nm] if nm in out else self.now_type(nm))
     elif k == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and n.kids[1].kind == "name" and self.narrowable(n.kids[1].s):
-        if not self.bound("isinstance") and self.isinst(self.ltype[n.kids[1].s], n.kids[2]) == (-2 if truth else -3):
-            out.append(n.kids[1].s)
+        nm = n.kids[1].s
+        t = out[nm] if nm in out else self.now_type(nm)
+        if self.bound("isinstance"):
+            return
+        if is_union(unopt(t)):
+            nt = self.isinst_narrow(t, n.kids[2], truth)
+            if nt != "":
+                out[nm] = nt
+        elif self.isinst(self.ltype[nm], n.kids[2]) == (-2 if truth else -3):
+            out[nm] = unopt(self.ltype[nm])
 
 def gen_narrowable(self, name: str) -> bool:
-    # a local (or parameter) of an optional type: a global or a field may change in a call, and so
-    # may a variable that a closure assigns (nonlocal)
-    return is_opt(self.ltype.get(name, "")) and not self.is_global(name) and name not in self.nlw
+    # a local (or parameter) of an optional type, or a union: a global or a field may change in a
+    # call, and so may a variable that a closure assigns (nonlocal)
+    t = self.ltype.get(name, "")
+    return (is_opt(t) or is_union(t)) and not self.is_global(name) and name not in self.nlw
 
-def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, bool]:
+def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
     # narrowed becomes a copy narrowed by test being truth; the state before is returned
     pre = self.narrowed
     self.narrowed = dict(pre)
-    found: list[str] = []
+    found: dict[str, str] = {}
     self.narrows(test, truth, found)
     for nm in found:
-        self.narrowed[nm] = True
+        self.narrowed[nm] = found[nm]
     return pre
 
-def gen_forget(self, body: list[Node], tgt: Node) -> dict[str, bool]:
+def gen_forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
     # a loop: what it binds (in body, and its target tgt) may be None on its later passes, and
     # after it; a copy of the state after it is returned
     if len(self.narrowed) > 0:
@@ -150,7 +163,7 @@ def gen_static(self, n: Node) -> int:
         return self.static(n.kids[1])
     if x >= 0:
         t = self.static_type(n.kids[x])
-        r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) else 1 if t == "None" else 0
+        r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) or (is_union(t) and self.optional(t) == t) else 1 if t == "None" else 0
         if (n.s == "==" or n.s == "!=") and (t == "exc" or (t in self.classes and ("__eq__" in self.classes[t].methods or "__ne__" in self.classes[t].methods))):
             r = -1  # (CPython calls x.__eq__ or __ne__; an exception's class may define one)
         return r if r < 0 or n.s == "is" or n.s == "==" else 1 - r
@@ -243,7 +256,7 @@ def gen_static_type(self, n: Node, typed: bool = False) -> str:
             # loop's later passes, unless None is all that its function assigns it)
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
             return "None" if only_none(body, n.s) else ""
-        return unopt(t) if n.s in self.narrowed and is_opt(t) and t != NONEVAR else t
+        return self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t)) and t != NONEVAR else t
     if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
         return self.gtypes[n.s]
     return ""
@@ -257,6 +270,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         if not self.puretype(c, False):
             return -1
         return self.isinst(t, mk("tuple", "|", c.line, c.kids))
+    if is_union(t):
+        # (decided where every member decides it alike, and None, where a class's object may be it)
+        rs = [self.isinst(m, c) for m in umembers(t)] + ([self.isinst("None", c)] if self.optional(t) == t else [])
+        return rs[0] if len([r for r in rs if r != rs[0]]) == 0 and (rs[0] == 1 or rs[0] == 0) else -1
     if is_opt(t):
         # by whether it is None
         r = self.isinst(unopt(t), c)
@@ -387,6 +404,8 @@ def gen_cond(self, n: Node) -> str:
     return self.truth(self.expr(n, ""))
 
 def gen_truth(self, v: Val) -> str:
+    if is_union(unopt(v.t)):
+        self.err("truth testing a closed union requires narrowing with isinstance() first")
     t = v.t
     if t == "bool":
         return v.v
@@ -1598,7 +1617,7 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     self.place(l1)
     pre = self.narrow_by(n.kids[0], True)
     a = self.expr(n.kids[1], want)
-    if is_fn(a.t) and is_callable(unopt(want)):
+    if (is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
     e1 = "" if self.term else self.cur
@@ -1610,7 +1629,7 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
     b = self.expr(n.kids[2], wb)
-    if is_fn(b.t) and is_callable(unopt(want)):
+    if (is_fn(b.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         b = self.coerce(b, want)
     self.narrowed = pre
     e2 = "" if self.term else self.cur
@@ -1947,7 +1966,7 @@ def gen_isnull(self, v: Val) -> str:
     # i1: is v None at run time
     if v.t == "None":
         return "true"
-    if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t):
+    if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t) or (is_union(v.t) and self.optional(v.t) == v.t and v.v not in self.nn):
         return self.ins(f"icmp eq ptr {v.v}, null")
     return "false"
 
@@ -2042,6 +2061,8 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     return Val(self.phi(ph), "bool")
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if is_union(unopt(a.t)) or is_union(unopt(b.t)):
+        self.err("closed union arithmetic requires narrowing with isinstance() first" + self.unarrowed(a if is_union(unopt(a.t)) else b))
     du = self.dunder(op, a, b, shown)
     if du.t != "":
         return du
@@ -2191,6 +2212,8 @@ def gen_exc_eq(self, t: str, what: str = "") -> None:
                 self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
+        self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
     if (op == "in" or op == "not in") and b.t in self.classes and self.classes[b.t].tag != 0:

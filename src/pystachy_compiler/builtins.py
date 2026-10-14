@@ -1,5 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.utils import is_union
 from src.pystachy_compiler.ir import Ins, IterArg, Loop, Reduce, Val
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
@@ -195,6 +196,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str) -> Val:
         self.isinst_reads(args[1])
         if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
             return self.exc_isinst(v, args[1])
+        if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1:
+            return Val(self.uisinst(v, args[1]), "bool")
         known = self.isinst(v.t, args[1])
         if known < -1:
             return Val(self.ins(f"icmp {'ne' if known == -2 else 'eq'} ptr {v.v}, null"), "bool")

@@ -25,6 +25,7 @@ are linked from the relevant guide.
 |---|---|
 | [Internals](internals.md) | Compiler stages, runtime, commands and settings |
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
+| [Flow analysis prototype](flow-analysis-prototype.md) | Opt-in local retyping, bounded summaries and explicit scalar unions |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |
 | [Testing](testing.md) | Bootstrap, differential tests, CI and targeted checks |
 | [Releases](releasing.md) | Binary packaging, Docker publishing and release gates |
