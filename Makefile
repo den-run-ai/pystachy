@@ -56,6 +56,13 @@ bench-extended-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_extended.py
 	$(PY) tools/bench_extended.py --compiler "$(BENCH_COMPILER)" --smoke --json build/extended-smoke.json
 
+# Experimental scalar interpreter + native specialization, with Python absent
+# from application/compilation subprocesses' PATH. No performance thresholds.
+NATIVE_DYNAMIC_COMPILER ?= ./pystachy
+native-dynamic-check: $(NATIVE_DYNAMIC_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_native_dynamic_vm.py
+	$(PY) tools/native_dynamic_check.py --compiler "$(NATIVE_DYNAMIC_COMPILER)" --json build/native-dynamic-check.json
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
@@ -198,6 +205,8 @@ lint:
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror tools/native_dynamic_loader.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYSTACHY_DYNAMIC_IMAGE tools/native_dynamic_loader.c
 
 clean:
 	rm -rf build pystachy
@@ -213,4 +222,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check native-dynamic-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

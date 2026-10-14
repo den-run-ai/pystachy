@@ -115,6 +115,10 @@ descriptor. The runtime interprets nested container descriptors and calls genera
 for supported object methods. Specialized code still has static types; these descriptors
 do not introduce a dynamic `Any` type.
 
+An isolated [dynamic scalar prototype](native-dynamic-prototype.md) tests a
+Python-free AST baseline and runtime-generated native specializations. It does
+not change the production value model or `run` command.
+
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
 registered program globals; buffers that cannot contain pointers are not scanned. Unreachable
 files close during collection or at program exit. Supported Python operations are checked

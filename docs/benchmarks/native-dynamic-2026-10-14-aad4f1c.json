@@ -1,0 +1,1360 @@
+{
+  "result": "pass",
+  "executor": "native Pystachy; no Python executable on runtime PATH",
+  "compiler": "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+  "llvm": "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+  "runtime_path": "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/tool-bin",
+  "setup": [
+    {
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "rt",
+        "/workspace/scratch/9a2678bb1b98/pystachy/runtime.py",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/rt.ll"
+      ],
+      "wall_s": 0.027181469995412044
+    },
+    {
+      "command": [
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-fexceptions",
+        "-S",
+        "-emit-llvm",
+        "/workspace/scratch/9a2678bb1b98/pystachy/runtime.c",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/rtc.ll"
+      ],
+      "wall_s": 0.9880394700012403
+    },
+    {
+      "command": [
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin/llvm-link",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/rtc.ll",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/rt.ll",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/runtime.bc"
+      ],
+      "wall_s": 0.08203016299376031
+    },
+    {
+      "command": [
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-fexceptions",
+        "-DPYSTACHY_DYNAMIC_IMAGE",
+        "-c",
+        "-emit-llvm",
+        "/workspace/scratch/9a2678bb1b98/pystachy/tools/native_dynamic_loader.c",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/image.bc"
+      ],
+      "wall_s": 0.026036791001388337
+    },
+    {
+      "command": [
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-shared",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "/workspace/scratch/9a2678bb1b98/pystachy/tools/native_dynamic_loader.c",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/libpsdyn.so",
+        "-ldl"
+      ],
+      "wall_s": 0.07584274700639071
+    },
+    {
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "build",
+        "/workspace/scratch/9a2678bb1b98/pystachy/tools/native_dynamic.py",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host"
+      ],
+      "wall_s": 6.2896470760024386
+    },
+    {
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "build",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic_workload.py",
+        "-o",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/static"
+      ],
+      "wall_s": 0.3810430899975472
+    }
+  ],
+  "native_dependencies": {
+    "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler": [
+      "libm.so.6",
+      "libgcc_s.so.1",
+      "libc.so.6"
+    ],
+    "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host": [
+      "libm.so.6",
+      "libgcc_s.so.1",
+      "libc.so.6"
+    ],
+    "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/static": [
+      "libm.so.6",
+      "libc.so.6"
+    ],
+    "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/libpsdyn.so": [
+      "libc.so.6"
+    ]
+  },
+  "checks": {
+    "baseline": {
+      "results": [
+        {
+          "function": "sumsq",
+          "tag": "int",
+          "value": "4900",
+          "kernel_s": 0.00022555000032298267
+        },
+        {
+          "function": "weighted_sum",
+          "tag": "int",
+          "value": "228",
+          "kernel_s": 0.0002028660019277595
+        },
+        {
+          "function": "weighted_sum",
+          "tag": "float",
+          "value": "57.75",
+          "kernel_s": 0.00018972600082634017
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "16",
+          "kernel_s": 4.647001333069056e-06
+        },
+        {
+          "function": "add",
+          "tag": "float",
+          "value": "4.0",
+          "kernel_s": 3.645996912382543e-06
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "30",
+          "kernel_s": 1.9330036593601108e-06
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "1",
+          "kernel_s": 8.809947757981718e-07
+        },
+        {
+          "function": "add",
+          "tag": "str",
+          "value": "'helloworld'",
+          "kernel_s": 9.209979907609522e-07
+        },
+        {
+          "function": "echo",
+          "tag": "None",
+          "value": "None",
+          "kernel_s": 8.110000635497272e-07
+        },
+        {
+          "function": "mixed_local",
+          "tag": "str",
+          "value": "'warm'",
+          "kernel_s": 6.098998710513115e-06
+        },
+        {
+          "function": "mixed_local",
+          "tag": "int",
+          "value": "-4",
+          "kernel_s": 2.2140011424198747e-06
+        }
+      ],
+      "errors": [],
+      "stats": {
+        "baseline": 46,
+        "native": 0,
+        "misses": 0,
+        "failures": 0,
+        "rejections": 0,
+        "attempts": 0,
+        "compile_seconds": 0.0,
+        "profiles": 0,
+        "variants": 0
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/smoke-baseline.plan",
+        "baseline",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.002464625002176035
+    },
+    "adaptive": {
+      "results": [
+        {
+          "function": "sumsq",
+          "tag": "int",
+          "value": "4900",
+          "kernel_s": 0.2735098770062905
+        },
+        {
+          "function": "weighted_sum",
+          "tag": "int",
+          "value": "228",
+          "kernel_s": 0.2477774250000948
+        },
+        {
+          "function": "weighted_sum",
+          "tag": "float",
+          "value": "57.75",
+          "kernel_s": 0.2442389030038612
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "16",
+          "kernel_s": 0.25349697500496404
+        },
+        {
+          "function": "add",
+          "tag": "float",
+          "value": "4.0",
+          "kernel_s": 0.24295218800398288
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "30",
+          "kernel_s": 1.9130020518787205e-06
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "1",
+          "kernel_s": 5.128000339027494e-06
+        },
+        {
+          "function": "add",
+          "tag": "str",
+          "value": "'helloworld'",
+          "kernel_s": 3.344997821841389e-06
+        },
+        {
+          "function": "echo",
+          "tag": "None",
+          "value": "None",
+          "kernel_s": 1.6120029613375664e-06
+        },
+        {
+          "function": "mixed_local",
+          "tag": "str",
+          "value": "'warm'",
+          "kernel_s": 5.251899710856378e-05
+        },
+        {
+          "function": "mixed_local",
+          "tag": "int",
+          "value": "-4",
+          "kernel_s": 3.6959972931072116e-06
+        }
+      ],
+      "errors": [],
+      "stats": {
+        "baseline": 29,
+        "native": 17,
+        "misses": 29,
+        "failures": 0,
+        "rejections": 1,
+        "attempts": 6,
+        "compile_seconds": 1.2614149339933647,
+        "profiles": 6,
+        "variants": 5
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/smoke-adaptive.plan",
+        "adaptive",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "8",
+        "10"
+      ],
+      "wall_s": 1.2646015110003646
+    },
+    "compiler_failure": {
+      "results": [
+        {
+          "function": "sumsq",
+          "tag": "int",
+          "value": "4900",
+          "kernel_s": 0.0027278709967504255
+        }
+      ],
+      "errors": [],
+      "stats": {
+        "baseline": 6,
+        "native": 0,
+        "misses": 6,
+        "failures": 1,
+        "rejections": 0,
+        "attempts": 1,
+        "compile_seconds": 0.002548932003264781,
+        "profiles": 1,
+        "variants": 0
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/compile-failure.plan",
+        "adaptive",
+        "/usr/bin/false",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.005427520001830999
+    },
+    "checked_errors": {
+      "results": [
+        {
+          "function": "divide",
+          "tag": "int",
+          "value": "4",
+          "kernel_s": 0.30811139400611864
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "9",
+          "kernel_s": 0.26097759900585515
+        }
+      ],
+      "errors": [
+        {
+          "function": "divide",
+          "message": "'dynamic integer division by zero'"
+        },
+        {
+          "function": "add",
+          "message": "'dynamic signed 64-bit addition overflow'"
+        }
+      ],
+      "stats": {
+        "baseline": 8,
+        "native": 6,
+        "misses": 8,
+        "failures": 0,
+        "rejections": 0,
+        "attempts": 2,
+        "compile_seconds": 0.5689484329996048,
+        "profiles": 2,
+        "variants": 2
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/checked-errors.plan",
+        "adaptive",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.57152429499547
+    },
+    "rare_first_capped": {
+      "results": [
+        {
+          "function": "echo",
+          "tag": "str",
+          "value": "'rare'",
+          "kernel_s": 4.747002094518393e-06
+        },
+        {
+          "function": "echo",
+          "tag": "bool",
+          "value": "True",
+          "kernel_s": 2.373002644162625e-06
+        },
+        {
+          "function": "echo",
+          "tag": "None",
+          "value": "None",
+          "kernel_s": 9.409995982423425e-07
+        },
+        {
+          "function": "add",
+          "tag": "int",
+          "value": "5",
+          "kernel_s": 0.25849862399627455
+        },
+        {
+          "function": "add",
+          "tag": "float",
+          "value": "5.0",
+          "kernel_s": 0.23202710300392937
+        },
+        {
+          "function": "add",
+          "tag": "float",
+          "value": "5.0",
+          "kernel_s": 1.375000283587724e-05
+        }
+      ],
+      "errors": [],
+      "stats": {
+        "baseline": 30,
+        "native": 6,
+        "misses": 30,
+        "failures": 0,
+        "rejections": 0,
+        "attempts": 2,
+        "compile_seconds": 0.4904028910023044,
+        "profiles": 3,
+        "variants": 2
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/rare-first-capped.plan",
+        "adaptive",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.49347065899928566
+    },
+    "conservative_rejections": {
+      "results": [
+        {
+          "function": "float_floor",
+          "tag": "float",
+          "value": "1.0",
+          "kernel_s": 7.308999920496717e-05
+        },
+        {
+          "function": "float_remainder",
+          "tag": "float",
+          "value": "1.0",
+          "kernel_s": 1.2498996511567384e-05
+        },
+        {
+          "function": "annotated",
+          "tag": "float",
+          "value": "2.5",
+          "kernel_s": 2.6740017347037792e-06
+        }
+      ],
+      "errors": [
+        {
+          "function": "float_floor",
+          "message": "'dynamic // requires integer operands'"
+        },
+        {
+          "function": "float_remainder",
+          "message": "'dynamic % requires integer operands'"
+        }
+      ],
+      "stats": {
+        "baseline": 20,
+        "native": 0,
+        "misses": 20,
+        "failures": 0,
+        "rejections": 3,
+        "attempts": 3,
+        "compile_seconds": 3.934899723390117e-05,
+        "profiles": 3,
+        "variants": 0
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/conservative-regions.plan",
+        "adaptive",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.002681090001715347
+    },
+    "implicit_none_replay": {
+      "results": [
+        {
+          "function": "optional",
+          "tag": "int",
+          "value": "1",
+          "kernel_s": 0.24013101200398523
+        },
+        {
+          "function": "optional",
+          "tag": "None",
+          "value": "None",
+          "kernel_s": 3.163799556205049e-05
+        }
+      ],
+      "errors": [],
+      "stats": {
+        "baseline": 4,
+        "native": 3,
+        "misses": 4,
+        "failures": 0,
+        "rejections": 0,
+        "attempts": 1,
+        "compile_seconds": 0.24008113699528622,
+        "profiles": 1,
+        "variants": 1
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/implicit-none.plan",
+        "adaptive",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.24232261400175048
+    },
+    "baseline_edges": {
+      "results": [
+        {
+          "function": "minimum",
+          "tag": "int",
+          "value": "-9223372036854775808",
+          "kernel_s": 5.628004146274179e-06
+        },
+        {
+          "function": "compare_large",
+          "tag": "bool",
+          "value": "False",
+          "kernel_s": 1.6820049495436251e-06
+        },
+        {
+          "function": "short_circuit",
+          "tag": "int",
+          "value": "3",
+          "kernel_s": 7.209964678622782e-07
+        },
+        {
+          "function": "range_edge",
+          "tag": "int",
+          "value": "1",
+          "kernel_s": 2.2329986677505076e-06
+        },
+        {
+          "function": "loop_control",
+          "tag": "int",
+          "value": "102",
+          "kernel_s": 4.446999810170382e-06
+        },
+        {
+          "function": "loop_control",
+          "tag": "int",
+          "value": "5",
+          "kernel_s": 5.6680000852793455e-06
+        }
+      ],
+      "errors": [
+        {
+          "function": "multiply",
+          "message": "'dynamic signed 64-bit multiplication overflow'"
+        }
+      ],
+      "stats": {
+        "baseline": 7,
+        "native": 0,
+        "misses": 0,
+        "failures": 0,
+        "rejections": 0,
+        "attempts": 0,
+        "compile_seconds": 0.0,
+        "profiles": 0,
+        "variants": 0
+      },
+      "command": [
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/baseline-edges.py",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/baseline-edges.plan",
+        "baseline",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+        "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+        "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+        "3",
+        "2",
+        "4"
+      ],
+      "wall_s": 0.002810245998261962
+    },
+    "rejected_sources": {
+      "imports": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 1: only undecorated pure function definitions are accepted (import)"
+      },
+      "side_effect": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 2: unknown function or unsupported builtin call (call)"
+      },
+      "default_parameter": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 1: defaults and variadic parameters are unsupported (param)"
+      },
+      "runtime_symbol": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 1: duplicate or reserved function name (def)"
+      },
+      "generated_symbol": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 1: duplicate or reserved function name (def)"
+      },
+      "loader_symbol": {
+        "returncode": 1,
+        "diagnostic": "ValueError: native dynamic subset, line 1: duplicate or reserved function name (def)"
+      }
+    }
+  },
+  "provenance": {
+    "timestamp_utc": "2026-10-14T05:38:45Z",
+    "git_revision": "aad4f1c21cb1324c15403f2ac4e8f78946c82ad2",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "orchestration_python": "3.12.14",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "compiler_sha256": "f1166f17b581d4a39132970ade56b56291a16a06a6d31d227949951313e1e635",
+    "source_sha256": {
+      "examples/native_dynamic.py": "51e917f03e92e98649aee5c20f12ca8d5b99845544d0f975e22acc316128df11",
+      "examples/native_dynamic_workload.py": "15eb7f8b64b96c79484c8123025642a631636407528b23c92cf70b05a5e932cf",
+      "tools/native_dynamic.py": "795bd30218df25eede4ad0036db4971a17da8444a1ff651e9bbdf85d68325c81",
+      "tools/native_dynamic_vm.py": "57962fc3e2855288686c88711e4bad82c2bfb43539e8fdd05f7c749f075b2b29",
+      "tools/native_dynamic_types.py": "b0a6128eca407d351edb810c6f0d47bca1098408c0ad6b29e299d70dff617e06",
+      "tools/native_dynamic_loader.c": "8d0cb3cdbf6369741d5eb091a735c226a33f37358d9a3316a78933697cd9d817",
+      "tools/native_dynamic_check.py": "d6a334d11253b24deab1ae4d72d0aadfa68704b03a6d1d7d31302074c7110e8b"
+    }
+  },
+  "benchmark": {
+    "runs": 7,
+    "input_n": 20000,
+    "calls": 20,
+    "records": {
+      "baseline": [
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.562883389997296
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.38502105200313963
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-0-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.951857514999574
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.5653508830000646
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.39323391699872445
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-1-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.9628592129956814
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.6162567550054519
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.4048298440029612
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-2-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 2.025587844000256
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.5841464979966986
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.5504001529989182
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-3-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 2.1397230020011193
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.6186777020047884
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.37511413900210755
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-4-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.9981362329999683
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.5834072979996563
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.3892760899980203
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-5-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.9786231350008165
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.5644103329977952
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.3684073760014144
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 5,
+            "native": 0,
+            "misses": 0,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 0,
+            "compile_seconds": 0.0,
+            "profiles": 0,
+            "variants": 0
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-6-baseline.plan",
+            "baseline",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.9381333900018944
+        }
+      ],
+      "adaptive": [
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4980089660020894
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00044622199493460357
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.2650306189971161,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-0-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.5029114439967088
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4942034670020803
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00021878899860894307
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.2732738009945024,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-1-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.4983739460003562
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4798787899999297
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00021841000125277787
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.28992999899492133,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-2-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.4840440319967456
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4499817050018464
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.000315605997457169
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.2678849829972023,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-3-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.4543448010008433
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4833844960012357
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00022434799757320434
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.2747622169990791,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-4-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.49058261999744
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.4744555619981838
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.0003207039990229532
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.2813885729992762,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-5-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.478630418998364
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 1.461124148001545
+            },
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00023413199960486963
+            }
+          ],
+          "errors": [],
+          "stats": {
+            "baseline": 3,
+            "native": 2,
+            "misses": 3,
+            "failures": 0,
+            "rejections": 0,
+            "attempts": 1,
+            "compile_seconds": 0.28444393599784235,
+            "profiles": 1,
+            "variants": 1
+          },
+          "command": [
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/host",
+            "/workspace/scratch/9a2678bb1b98/pystachy/examples/native_dynamic.py",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic/bench-6-adaptive.plan",
+            "adaptive",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-compiler",
+            "/workspace/scratch/0f1a45a62217/llvm18/usr/lib/llvm-18/bin",
+            "/workspace/scratch/9a2678bb1b98/pystachy/build/native-dynamic",
+            "3",
+            "2",
+            "4"
+          ],
+          "wall_s": 1.4676800450033625
+        }
+      ],
+      "static": [
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00016284500452456996
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.002295719998073764
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00019187900034012273
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.0021129949964233674
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00016282499564113095
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.0024736830018809997
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00016374700499000028
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.0025792669985094108
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00016279499686788768
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.003238215002056677
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.0001663209986872971
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.00203141199745005
+        },
+        {
+          "results": [
+            {
+              "function": "batch",
+              "tag": "int",
+              "value": "53352137000260",
+              "kernel_s": 0.00016281499847536907
+            }
+          ],
+          "errors": [],
+          "stats": null,
+          "wall_s": 0.00233350700000301
+        }
+      ]
+    },
+    "warm_kernel_median_s": {
+      "baseline": 0.3892760899980203,
+      "adaptive": 0.00023413199960486963,
+      "static": 0.00016284500452456996
+    },
+    "adaptive_cold_compile_median_s": 0.2747622169990791
+  }
+}

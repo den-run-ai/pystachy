@@ -50,6 +50,12 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
+      - name: Python-free dynamic scalar prototype
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make native-dynamic-check NATIVE_DYNAMIC_COMPILER=build/verify/pystachy2
+
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -58,6 +64,7 @@ jobs:
           path: |
             build/verification.json
             build/extended-smoke.json
+            build/native-dynamic-check.json
             build/verify/*.log
           if-no-files-found: error
           retention-days: 7
