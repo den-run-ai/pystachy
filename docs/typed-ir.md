@@ -134,6 +134,15 @@ direct calls and module initializers use their callees' summaries. Summaries are
 to a fixed point over the compiled call graph. Indirect `Callable` calls conservatively have
 all summary effects, as do runtime operations that may invoke user methods for their type.
 
+The solver deduplicates direct call edges and propagates effects through a reverse-edge
+worklist. Each summary bit is added at most once per affected function, bounding propagation
+by the number of effect bits times the affected reverse edges. On a later analysis, changed
+local effects or dependencies invalidate their caller closure; resetting that closure also
+removes obsolete effects from cycles. Unaffected summaries are reused. These are compiler
+analysis facts for already compiled functions, not runtime type profiles or new language
+support. `tools/test_function_summaries.py` compares incremental updates against a full
+fixed-point oracle; `tests/summary_worklist.py` also executes the solver natively.
+
 | Letter | Meaning |
 |---|---|
 | `R` | May raise; includes exception allocation on that path |

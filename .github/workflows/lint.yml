@@ -46,4 +46,7 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
+      - name: Compiler effect summary tests
+        run: python3 -m unittest discover -s tools -p test_function_summaries.py
+
       - run: make check-recordings

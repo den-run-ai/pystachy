@@ -369,6 +369,7 @@ from src.pystachy_compiler.ir import (
     Values,
 )
 from src.pystachy_compiler.ircheck import (
+    EffectSummaries,
     gen_bad_ir as ircheck_bad_ir,
     gen_effects as ircheck_effects,
     gen_nums as ircheck_nums,
@@ -572,6 +573,7 @@ class Gen:
         self.out: list[str] = []
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
+        self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
         self.gdecl: dict[str, bool] = {}

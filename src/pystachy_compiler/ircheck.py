@@ -2,8 +2,87 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
-from src.pystachy_compiler.specs import FXALL, FXBIT, IROPS, LLNOTRAW, RUNTIME
+from src.pystachy_compiler.specs import FX, FXALL, FXBIT, IROPS, LLNOTRAW, RUNTIME
 from src.pystachy_compiler.utils import rawfx
+
+
+class EffectSummaries:
+    # One compilation's completed function contexts. FnInfo retains each context's parameter
+    # and return types; these summaries retain its effects and direct call dependencies. A
+    # missing/indirect callee contributes FXALL, never the empty mask used by a proven pure
+    # function. Indices are stable while the program's optimization passes run.
+    def __init__(self):
+        self.direct: list[int] = []
+        self.calls: list[list[int]] = []
+        self.fx: list[int] = []
+        self.reused = 0
+        self.invalidated = 0
+        self.edge_visits = 0
+        self.edge_bound = 0
+
+    def update(self, direct: list[int], calls: list[list[int]]) -> None:
+        # Rebuild the reverse graph, then invalidate changed contexts and their callers.
+        # Resetting that closure to local effects also handles REMOVED effects and cycles:
+        # simply OR-ing new effects into an old summary would retain obsolete facts forever.
+        n = len(direct)
+        callers: list[list[int]] = []
+        for j in range(n):
+            callers.append([])
+        for j in range(n):
+            for c in calls[j]:
+                callers[c].append(j)
+        fresh = len(self.fx) != n
+        if fresh:
+            self.fx = [0] * n
+        dirty: list[bool] = [False] * n
+        affected: list[int] = []
+        for j in range(n):
+            if fresh or direct[j] != self.direct[j] or calls[j] != self.calls[j]:
+                dirty[j] = True
+                affected.append(j)
+        head = 0
+        while head < len(affected):
+            c = affected[head]
+            head += 1
+            for j in callers[c]:
+                if not dirty[j]:
+                    dirty[j] = True
+                    affected.append(j)
+        self.invalidated = len(affected)
+        self.reused = n - self.invalidated
+        self.edge_visits = 0
+        self.edge_bound = 0
+        for j in affected:
+            self.fx[j] = direct[j] & FXALL
+            self.edge_bound += (len(FX) - 1) * len(callers[j])
+        # Unchanged callees already have complete summaries. Dirty callees propagate below.
+        pending: list[int] = []
+        queued: list[bool] = [False] * n
+        for j in affected:
+            for c in calls[j]:
+                if not dirty[c]:
+                    self.fx[j] |= self.fx[c]
+            if self.fx[j] != 0:
+                pending.append(j)
+                queued[j] = True
+        head = 0
+        while head < len(pending):
+            c = pending[head]
+            head += 1
+            queued[c] = False
+            for j in callers[c]:
+                self.edge_visits += 1
+                m = self.fx[j] | self.fx[c]
+                if m != self.fx[j]:
+                    self.fx[j] = m
+                    if not queued[j]:
+                        pending.append(j)
+                        queued[j] = True
+        # There are only len(FX)-1 summary bits, each added at most once to a dirty
+        # function: at most that many visits per reverse edge. Propagation uses neither
+        # recursion nor an iteration cutoff.
+        self.direct = [m for m in direct]
+        self.calls = [[c for c in cs] for cs in calls]
 
 
 def gen_verify(self, fn: IFn, eh: bool) -> None:
@@ -109,34 +188,32 @@ def gen_bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
     fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)
 
 def gen_effects(self) -> None:
-    # each function's effect summary (IFn.fx): the letters of its ops, where a call or an init
-    # counts with its callee's summary; a fixpoint over the call graph, from no letters
+    # A context is analyzed once regardless of how many call sites use it. Scan local ops
+    # and deduplicate dependencies, then reuse/propagate summaries through reverse edges.
+    direct: list[int] = []
     calls: list[list[int]] = []
     for fn in self.fns:
         m = 0
         cs: list[int] = []
+        seen: dict[int, bool] = {}
         for b in fn.blocks:
             for i in b.code:
                 if i.op == "raw":
                     m |= rawfx(i.s, fn.fa)
-                elif i.op == "call" and i.s in self.fll:
-                    cs.append(self.fll[i.s])
-                elif i.op == "init" and "@init." + i.s in self.fll:
-                    cs.append(self.fll["@init." + i.s])
                 else:
-                    m |= self.opfx(i, fn.fa)
-        fn.fx = m & ~FXBIT["N"]
+                    c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                    if c in self.fll:
+                        ix = self.fll[c]
+                        if ix not in seen:
+                            seen[ix] = True
+                            cs.append(ix)
+                    else:
+                        m |= self.opfx(i, fn.fa)
+        direct.append(m & ~FXBIT["N"])
         calls.append(cs)
-    more = True
-    while more:
-        more = False
-        for j in range(len(self.fns)):
-            m = self.fns[j].fx
-            for x in calls[j]:
-                m |= self.fns[x].fx
-            if m != self.fns[j].fx:
-                self.fns[j].fx = m
-                more = True
+    self.summaries.update(direct, calls)
+    for j in range(len(self.fns)):
+        self.fns[j].fx = self.summaries.fx[j]
 
 def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
     # the effects of op i (FX bits) of a function whose field addresses are fa (IFn.fa): a
