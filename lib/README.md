@@ -17,6 +17,8 @@ Imports search builtin modules first, then the program's directory,
 |---|---|---|---|
 | `bisect`, `colorsys`, `curses.ascii`, `this` | Unchanged CPython | See the pinned-copy table below | Subset string and type rules apply |
 | `operator`, `stat`, `posixpath`, `genericpath` | Unchanged CPython | Operator functions, mode tests and string path operations | Partial API coverage |
+| `html`, `html.entities` | Adapted CPython | Escaping, unescaping and HTML entity mappings | UTF-8 byte indexing |
+| `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | Byte columns; ASCII name case conversion; see [probe](../docs/html-parser-probe.md) |
 | `difflib` | Adapted CPython | `SequenceMatcher`, `get_close_matches`, junk predicates and `Match` | String items; generator APIs unavailable |
 | `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
 | `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
@@ -94,3 +96,4 @@ Example tables record particular runs; they are not universal performance claims
 CPython-derived files and code are used under the PSF License Version 2.
 See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES). The
 [stdlib coverage guide](../docs/stdlib.md) describes the wider import sweep.
+

@@ -18,7 +18,7 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Approach | Modules and useful APIs |
 |---|---|
 | Unchanged CPython sources | `bisect`, `colorsys`, selected `operator` functions, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `fnmatch`, `textwrap`, `string.Template`, selected `statistics` operations, `urllib.parse` |
+| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `fnmatch`, `textwrap`, `string.Template`, selected `statistics` operations, `urllib.parse`, `html` and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
 | Subset implementations | `functools.cache` / `lru_cache`, `io.StringIO`, `csv` |
 
@@ -65,7 +65,7 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-General inheritance, arbitrary unions and `Any`, generator functions and first-class
+Multiple/generic inheritance, arbitrary unions and `Any`, generator functions and first-class
 generator objects, `bytes`, dynamic reflection and unrestricted argument expansion still
 limit library coverage. CPython extensions and import
 graphs through unavailable modules can block otherwise suitable pure-Python functions.
@@ -116,3 +116,4 @@ The [October 2026 survey](archive/stdlib-survey.md) retains the original CPython
 measurements and feature projections. It predates many shipped features and ports, including
 class templates, exceptions, optional types, sets, closures and caching. Its package verdicts
 and projected percentages describe those recorded revisions, not current support.
+

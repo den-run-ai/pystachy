@@ -15,6 +15,10 @@ observable contract.
 
 | Module | Upstream file | Original SHA-256 |
 |---|---|---|
+| `html` | `Lib/html/__init__.py` | `923d82d821e75e8d235392c10c145ab8587927b3faf9c952bbd48081eebd8522` |
+| `html.entities` | `Lib/html/entities.py` | `d9c65fb2828dbc1f3e399058a341d51e9375ec5bca95a8e92599c41bd5b78bde` |
+| `html.parser` | `Lib/html/parser.py` | `4274e9112adf3fa57c7f9afa7c9b5c631456b18b7403cc627cc5027d02cdd2ae` |
+| `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
 | `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
@@ -79,3 +83,11 @@ see [caching measurements](../docs/caching.md).
 
 CPython-derived code and docstrings are used under the PSF License Version 2.
 See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
+
+
+The HTML parser probe pins CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`.
+`tests/upstream_html_parser.py` retains complete assertion sets from 45 upstream
+methods, with helper/type adaptations and excluded methods disclosed in its header.
+`tests/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
+checks. Native results must be reported separately from CPython-hosted checks;
+see [the probe record](../docs/html-parser-probe.md).
