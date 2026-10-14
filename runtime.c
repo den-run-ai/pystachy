@@ -9,6 +9,9 @@
 #include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
 #include <stdarg.h>
 #include <math.h>
 #include <signal.h>
