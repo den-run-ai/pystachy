@@ -109,6 +109,48 @@ compiler hosts, through JIT/AOT; HTML AOT also runs collection at every allocati
 `make skew-check` runs in the benchmark CI group. Full CI status belongs to the
 draft PR; local passing checks do not imply CI has finished.
 
+## Why HTML did not improve
+
+A follow-up audit confirms that the hot branch is taken. Instrumenting native
+caller entries gives `specialized=1, baseline=0` for the link batch, and
+`specialized=0, baseline=1` for the text batch. These instrumented runs establish
+control flow; their perturbed timings are not performance measurements.
+
+The ordinary compiler already supplies concrete `feed`, `goahead`,
+`parse_starttag` and callback implementations for LinkParser. After normalizing
+string-constant IDs, those method bodies are identical in baseline and profile
+IR. The new batch clone equals the existing concrete control: it removes five
+outer receiver dispatches per document, without changing the inner parser.
+
+A separate native instruction-pointer sampling run used `ITIMER_PROF` and
+`SIGPROF`, resolving executable addresses against ELF symbols. Each run parsed
+300,000 documents; these are approximate **exclusive** sample shares, including
+startup, not call-tree attribution or a precise allocation-cost decomposition.
+
+| Sampled code | Baseline, 1,390 samples | Profile, 1,494 samples |
+|---|---:|---:|
+| Regex functions | 40.7% | 37.9% |
+| Identified allocation / collector functions | 18.9% | 20.3% |
+| Outer batch caller | 0.5% | 0.2% |
+| libc, mostly unresolved internal symbols | 26.1% | 26.3% |
+
+The broad result is consistent with the static-control experiment: moving outer
+class checks cannot substantially accelerate this workload. A scratch extraction
+of CPython 3.13.16's `logging.Filter` prefix algorithm with a health-check filter
+also found little demonstrated headroom: 16 million records/sample, five rotated
+native samples, base/concrete medians 0.508/0.493 s with overlapping ranges. The
+constant-true filter control permits loop elimination and is not an application
+speed claim. This was a component probe, not a logging port.
+
+The immediate alternative is to reduce regex execution and match-state allocation
+costs; [#345](https://github.com/den-run-ai/pystachy/issues/345) already tracks
+regex matcher performance. Bounded specialization of recurring regex bytecode or
+literal patterns would target values/program structure that receiver-class
+specialization leaves unchanged. It needs its own guards and correctness checks.
+For further type-feedback work, first require a repeatable base-versus-concrete
+advantage in a real hot region, then verify that profile compilation closes that
+gap. Class-frequency skew alone is not a profitability measurement.
+
 ## Research and package choice
 
 [PICs (Hölzle, Chambers and Ungar, 1991)](https://bibliography.selflanguage.org/pics.html)
