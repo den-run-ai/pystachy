@@ -75,7 +75,8 @@ pystachy build demo.py -o demo
 ```
 
 You can also use `./pystachy` from the checkout without installing. Before bootstrapping,
-`python3 -m pystachy run demo.py` runs the compiler under CPython.
+use `python3 -m pystachy run demo.py` with Python 3.11+ on Ubuntu, or
+`python3.13 -m pystachy run demo.py` with Homebrew.
 See [installation and setup](docs/install.md) for uv, custom prefixes and dependency checks,
 or [compiler commands and settings](docs/internals.md). Full verification uses Python 3.13
 on Linux x86-64.

@@ -1,4 +1,4 @@
-"""Check the compiler's RUNTIME table (pystachy.py) against runtime.c.
+"""Check the compiler's RUNTIME table against runtime.c.
 
 usage: python3 tools/check_runtime.py [-v]
 RUNTIME gives every runtime function the compiler declares its signature and its effect letters
@@ -7,7 +7,7 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - signatures: each entry's declare line has the result and parameter types of the function
     clang compiles runtime.c to (LLVM IR at -O0); a C library function (fabs) is taken from a
     file that includes <math.h>, and llvm-as checks the LLVM intrinsics (llvm.*);
-  - coverage: every runtime function pystachy.py names (METHODS, CALLS, IRT, FRT, the "pys_..."
+  - coverage: every runtime function compiler source names (METHODS, CALLS, IRT, FRT, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
   - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
@@ -64,6 +64,7 @@ import builtins
 import importlib.util
 import io
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -127,6 +128,7 @@ OWNER = {"list.": "L", "dict.": "D", "set.": "D", "file.": "F"}  # (a set's memo
 
 
 def load_compiler():
+    sys.path.insert(0, ROOT)
     spec = importlib.util.spec_from_file_location("pystachy", os.path.join(ROOT, "pystachy.py"))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -445,7 +447,7 @@ def runtime_py(pys):
             pys.Gen.lower(self, fn)
 
     sys.setrecursionlimit(pys.MAXNEST * 40)  # (as the compiler's main does)
-    pys.SRC = path
+    pys.diagnostics.SRC = path
     with open(path, encoding="latin-1") as f:
         src = f.read()
     g = Capture()
@@ -565,6 +567,17 @@ def main():
     rt = pys.RUNTIME
     bad = []
     note = []
+    component_sources = sorted((Path(ROOT) / "src").rglob("*.py"))
+    actual_sources = {str(p.relative_to(ROOT)) for p in component_sources}
+    cached_sources = pys.runtime_ir.__globals__["COMPILER_SOURCES"]
+    missing = actual_sources - set(cached_sources)
+    obsolete = set(cached_sources) - actual_sources
+    if missing:
+        bad.append("runtime cache omits compiler source: " + ", ".join(sorted(missing)))
+    if obsolete:
+        bad.append("runtime cache names missing compiler source: " + ", ".join(sorted(obsolete)))
+    if len(cached_sources) != len(set(cached_sources)):
+        bad.append("runtime cache repeats a compiler source path")
     ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c")
     fns = functions(ll)
     for f, g in STORES.items():
@@ -679,7 +692,8 @@ def main():
         if want != got:
             bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.c defines {got[8:]}")
     # coverage
-    src = open(os.path.join(ROOT, "pystachy.py")).read()
+    sources = [Path(ROOT) / "pystachy.py"] + component_sources
+    src = "\n".join(p.read_text() for p in sources)
     named = set()
     for key in pys.METHODS:
         named.add("pys_" + key.replace(".", "_"))
@@ -698,10 +712,10 @@ def main():
     named.update(re.findall(r"""self\.rt\(\s*["']([\w.]+)["']""", src))
     for s in sorted(named):
         if s not in pys.RTSYM:
-            bad.append(f"{s}: pystachy.py names it, but RUNTIME has no entry for it")
+            bad.append(f"{s}: compiler source names it, but RUNTIME has no entry for it")
     for s in sorted(pys.RTSYM):
         if s not in named:
-            bad.append(f"{pys.RTSYM[s]}: RUNTIME's entry is for {s}, which pystachy.py never names")
+            bad.append(f"{pys.RTSYM[s]}: RUNTIME's entry is for {s}, which compiler source never names")
     # exceptions
     for k, v in pys.EXCBASES.items():
         c = io.UnsupportedOperation if k == "io.UnsupportedOperation" else getattr(builtins, k, None)

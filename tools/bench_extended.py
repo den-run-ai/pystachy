@@ -129,8 +129,9 @@ def metadata(command, env, timeout):
         "environment": {k: v for k, v in env.items()
                         if k.startswith("PYSTACHY_") or k in ("PYTHONHASHSEED", "LANG", "LC_ALL")},
         "source_sha256": {p: digest(ROOT / p) for p in
-                          ("pystachy.py", "runtime.c", "runtime.py", "bench/extended/kernels.py",
-                           "tools/bench_extended.py")},
+                          ["pystachy.py", "runtime.c", "runtime.py", "bench/extended/kernels.py",
+                           "tools/bench_extended.py"] +
+                          [str(p.relative_to(ROOT)) for p in sorted((ROOT / "src").rglob("*.py"))]},
         "compiler_binary_sha256": digest(Path(command[0])) if Path(command[0]).is_file() else None,
     }
 

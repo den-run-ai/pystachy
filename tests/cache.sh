@@ -21,7 +21,7 @@
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
-#        compiler, from a copy of pystachy.py). $PY (default python3) loads the extension modules,
+#        compiler, from a copy of pystachy.py and src/). $PY (default python3) loads the extension modules,
 #        or the CPython that runs the hosted compiler does
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
@@ -38,6 +38,7 @@ trap 'rm -rf "$T"' EXIT
 H=$T/home
 B=$H/build
 cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
+if [ -n "$PY" ] && [ -d src ]; then cp -R src "$T/bin/" || exit 1; fi
 # the runs start in $T: a runtime.c that took its includes from there would not compile
 printf '#error "ryu/d2s.c of the current directory"\n' > "$T/ryu/d2s.c" || exit 1
 # the edits: the same size, other messages
@@ -180,6 +181,18 @@ npairs 3 "the new entry replaces the old compiler's"
 E=$(entries)
 
 if [ -n "$PY" ]; then
+  # Components must participate in the compiler's content fingerprint too.
+  component=$(find "$T/bin/src/pystachy_compiler" -name '*.py' -type f | sort | head -1)
+  [ -n "$component" ] || exit 1
+  cp "$component" "$T/component-base" && { cat "$T/component-base"; printf '#x'; } > "$T/edited" && cat "$T/edited" > "$component" || exit 1
+  sleep 3
+  check "a compiler component changed: built again" "$out" 1
+  cp -p "$component" "$T/ref" && { cat "$T/component-base"; printf '#y'; } > "$T/edited" && cat "$T/edited" > "$component" && touch -r "$T/ref" "$component" || exit 1
+  if cmp -s "$T/ref" "$component" || [ "$(wc -c < "$T/ref")" != "$(wc -c < "$component")" ]; then bad "the component edit did not keep its size"; fi
+  sleep 3
+  check "a component edited, the same size, its mtime set back: built again" "$out" 1
+  npairs 3 "the new entry replaces the old component's"
+  E=$(entries)
   check "python3 pystachy.py opens ./pystachy.py, not the one on PATH: the cache is used" "$out" 0 BYNAME="$T/bin" PATH="$T/d4:$PATH"
 else
   check "run by name through PATH, past a directory and a file that is not executable: the cache is used" "$out" 0 \

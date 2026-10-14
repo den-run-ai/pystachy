@@ -12,7 +12,8 @@ explains differential checks and bootstrap validation.
 
 | Path | Purpose |
 |---|---|
-| `pystachy.py` | Lexer, parser, scope checks, module loader, type checker, typed IR, LLVM lowering and driver |
+| `pystachy.py` | Compatibility entry point for the hosted and self-hosted compiler |
+| [`src/pystachy_compiler/`](../src/README.md) | Lexer, parser, scope checks, module loader, type checker, typed IR, LLVM lowering and driver |
 | `runtime.c` | Allocation and collection, container storage, files, numeric support and exception unwinding |
 | `runtime.py` | Runtime functions written in the subset; see [runtime in the subset](runtime-in-subset.md) |
 | `lib/`, `ports/` | Standard-library modules and adapted third-party packages; see [library support](stdlib.md) |

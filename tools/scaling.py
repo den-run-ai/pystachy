@@ -41,6 +41,8 @@ A compiler that fails shows "failed", and its last line of stderr follows the ta
 times as fast as N (a superlinear pass): tests/verify.sh runs it on N = 500 and 1000.
 --keep DIR writes the generated programs to DIR/SHAPE-N/ instead of a temporary directory.
 """
+import glob
+import importlib.util
 import json
 import os
 import shlex
@@ -253,15 +255,16 @@ def ops(cmd, prog):
 def count(out, script, args):
     # run the compiler script with args, counting its executed lines (all, and inside flow_program)
     # and the items its calls of copying or scanning builtins go through
-    with open(script) as f:
-        code = compile(f.read(), script, "exec")
-    flow = []
-    todo = [code]
-    while todo:
-        c = todo.pop()
-        if c.co_qualname == "Gen.flow_program":
-            flow.append(c)
-        todo += [k for k in c.co_consts if hasattr(k, "co_code")]
+    # The launcher's code no longer contains Gen. Load it without running main,
+    # then monitor the facade method and every compiler component it calls.
+    root = os.path.dirname(os.path.abspath(script))
+    sys.path.insert(0, root)
+    spec = importlib.util.spec_from_file_location("pystachy_scaling", script)
+    compiler = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(compiler)
+    flow = [compiler.Gen.flow_program.__code__]
+    compiler_files = {os.path.abspath(script)} | {
+        os.path.abspath(p) for p in glob.glob(os.path.join(root, "src", "**", "*.py"), recursive=True)}
     mon = sys.monitoring
     tool = mon.PROFILER_ID
     mon.use_tool_id(tool, "scaling")
@@ -270,7 +273,7 @@ def count(out, script, args):
     work = {id(f) for f in [dict, list, tuple, sorted, dict.copy, list.copy, list.index, list.count, list.insert, list.remove]}
 
     def line(c, _):
-        if c.co_filename != script:
+        if os.path.abspath(c.co_filename) not in compiler_files:
             return mon.DISABLE
         n["lines"] += 1
         if depth[0] > 0:
@@ -278,7 +281,7 @@ def count(out, script, args):
 
     def call(c, _, f, arg0):
         # (a method's arg0 is the object it is called on)
-        if c.co_filename != script:
+        if os.path.abspath(c.co_filename) not in compiler_files:
             return mon.DISABLE
         if id(f) in work and hasattr(arg0, "__len__"):
             n["items"] += len(arg0)
@@ -298,7 +301,7 @@ def count(out, script, args):
     mon.set_events(tool, mon.events.LINE | mon.events.CALL)
     sys.argv = [script] + args
     try:
-        exec(code, {"__name__": "__main__", "__file__": script})
+        compiler.main()
     finally:
         mon.set_events(tool, 0)
         with open(out, "w") as f:

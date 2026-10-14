@@ -4,7 +4,11 @@
 
 Pystachy's typed IR sits between the type checker and LLVM lowering. It gives control flow,
 runtime calls, effects and exception handling explicit representations shared by JIT and AOT.
-This page describes the implementation in [`pystachy.py`](../pystachy.py).
+The implementation lives in the [compiler components](../src/README.md):
+[IR records](../src/pystachy_compiler/ir.py),
+[verification and effects](../src/pystachy_compiler/ircheck.py),
+[optimizations](../src/pystachy_compiler/optimizations.py) and
+[LLVM lowering](../src/pystachy_compiler/lowering.py).
 The original proposal and measurements are retained in the [historical design](archive/typed-ir-design.md).
 
 <a id="summary"></a>

@@ -71,8 +71,9 @@ pystachy build demo.py -o demo
 ```
 
 Each prints `332833500`. You can also skip installation and use `./pystachy` from the
-checkout. Before bootstrapping, `python3 -m pystachy run demo.py` runs the compiler under
-CPython. [Compiler commands and settings](internals.md) covers other modes.
+checkout. Before bootstrapping, use `python3 -m pystachy run demo.py` with Python 3.11+
+on Ubuntu, or `python3.13 -m pystachy run demo.py` with Homebrew, to run the compiler
+under CPython. [Compiler commands and settings](internals.md) covers other modes.
 
 ## Check or prepare dependencies
 
