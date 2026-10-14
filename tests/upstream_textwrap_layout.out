@@ -1,0 +1,62 @@
+['Hello [...]']
+['Hello [...]']
+['Hello there,', 'how [...]']
+['Hello there,', 'how are [...]']
+["Hello there, how are you this fine day?  I'm glad to hear it!"]
+['Hello there,', 'how are you', 'this fine', "day?  I'm", 'glad to hear', 'it!']
+PASS test_textwrap.MaxLinesTestCase.test_simple
+['Hello there,', 'how are you', 'this fine', 'day? [...]']
+['Hello', '[...]']
+['Hello there,', 'how are you', 'this fine', "day?  I'm", 'glad to hear', 'it!']
+PASS test_textwrap.MaxLinesTestCase.test_spaces
+['Hello...']
+['Hello there,', 'how are...']
+ValueError placeholder too large for max width
+ValueError placeholder too large for max width
+['    Hello there,', '  [truncated]...']
+['  [truncated]...']
+["Hello there, how are you this fine day?  I'm glad to hear it!"]
+PASS test_textwrap.MaxLinesTestCase.test_placeholder
+['Good grief', 'Python*****']
+PASS test_textwrap.MaxLinesTestCase.test_placeholder_backtrack
+['Did you say "supercalifragilis', 'ticexpialidocious?" How *do*', 'you spell that odd word,', 'anyways?']
+['Did you say "supercalifragilisticexpialidocious?"', 'How *do* you spell that odd word, anyways?']
+['----------', '               h', '               e', '               l', '               l', '               o']
+['Did you say', '"supercalifr', 'agilisticexp', 'ialidocious?', '" How *do*', 'you spell', 'that odd', 'word,', 'anyways?']
+PASS test_textwrap.LongWordTestCase.test_break_long
+['Did you say', '"supercalifragilisticexpialidocious?"', 'How *do* you spell that odd', 'word, anyways?']
+['Did you say', '"supercalifragilisticexpialidocious?"', 'How *do* you spell that odd', 'word, anyways?']
+PASS adapted test_textwrap.LongWordTestCase.test_nobreak_long
+['Did you say', '"supercalifr', 'agilisticexp', '[...]']
+PASS test_textwrap.LongWordTestCase.test_max_lines_long
+['We used enyzme 2-succinyl-6-hydroxy-2,4-', 'cyclohexadiene-1-carboxylate synthase.']
+['We used', 'enyzme 2-', 'succinyl-', '6-hydroxy-', '2,4-', 'cyclohexad', 'iene-1-', 'carboxylat', 'e', 'synthase.']
+['1234567890', '-123456789', '0--this_is', '_a_very_lo', 'ng_option_', 'indeed-', 'good-bye"']
+PASS test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_on_hyphen
+['We used enyzme 2-succinyl-6-hydroxy-2,4-cyclohexad', 'iene-1-carboxylate synthase.']
+['We used', 'enyzme 2-s', 'uccinyl-6-', 'hydroxy-2,', '4-cyclohex', 'adiene-1-c', 'arboxylate', 'synthase.']
+['1234567890', '-123456789', '0--this_is', '_a_very_lo', 'ng_option_', 'indeed-', 'good-bye"']
+PASS test_textwrap.LongWordWithHyphensTestCase.test_break_long_words_not_on_hyphen
+['We used enyzme', '2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate', 'synthase.']
+['We used', 'enyzme', '2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate', 'synthase.']
+['1234567890', '-123456789', '0--this_is', '_a_very_lo', 'ng_option_', 'indeed-', 'good-bye"']
+PASS test_textwrap.LongWordWithHyphensTestCase.test_break_on_hyphen_but_not_long_words
+['We used enyzme', '2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate', 'synthase.']
+['We used', 'enyzme', '2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate', 'synthase.']
+['1234567890', '-123456789', '0--this_is', '_a_very_lo', 'ng_option_', 'indeed-', 'good-bye"']
+PASS test_textwrap.LongWordWithHyphensTestCase.test_do_not_break_long_words_or_on_hyphens
+This paragraph will be filled, first
+without any indentation, and then with
+some (including a hanging indent).
+PASS test_textwrap.IndentTestCases.test_fill
+['     This paragraph will be filled,', 'first without any indentation, and then', 'with some (including a hanging indent).']
+     This paragraph will be filled,
+first without any indentation, and then
+with some (including a hanging indent).
+PASS test_textwrap.IndentTestCases.test_initial_indent
+  * This paragraph will be filled, first
+    without any indentation, and then
+    with some (including a hanging
+    indent).
+PASS test_textwrap.IndentTestCases.test_subsequent_indent
+[exit 0]

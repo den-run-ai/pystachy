@@ -450,6 +450,8 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
     # __set_name__), 2 its items' too (a set item, a dict key), 3 may call it too (an argument
     # of a builtin function). local: the class body's names
     k = e.kind
+    if k == "name" or k == "attr" or k == "str":
+        self.modchk(e)
     p = self.path_of(e) if k == "name" or k == "attr" else ""
     q = self.imported(p)
     if use == 3 and (k == "lambda" or (q != "" and not self.pure(p))):

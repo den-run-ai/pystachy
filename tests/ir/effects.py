@@ -59,7 +59,7 @@ def boom() -> None:
 
 
 def leave() -> None:
-    sys.exit(2)  # exit: R I
+    sys.exit(2)  # exit and sys's import-binding guard: R I rG
 
 
 def ping(n: int) -> None:

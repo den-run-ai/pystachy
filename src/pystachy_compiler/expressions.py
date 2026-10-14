@@ -467,6 +467,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
     if k == "attr":
         path = self.dotted(n)
         if path != "" and path[: path.rfind(".")] not in MODATTRS:
+            self.modchk(n)
             return self.modattr(path)
         tc = n.kids[0]
         if n.s == "__name__" and tc.kind == "call" and len(tc.kids) == 2 and tc.kids[0].kind == "name" and tc.kids[0].s == "type" and not self.bound("type"):

@@ -85,7 +85,10 @@ def run(rules: str, trace: str, opts: list[str]) -> None:
                     counts[route_fnmatch(name)] += 1
             t = time.perf_counter() - t
             events = len(batch)
-            print(f"routing: {t:.4f} s, {t * 1e9 / events:.1f} ns per event", file=sys.stderr)
+            if not events:
+                t = 0.0  # An empty batch did no routing; keep its report deterministic.
+            per_event = t * 1e9 / events if events else 0.0
+            print(f"routing: {t:.4f} s, {per_event:.1f} ns per event", file=sys.stderr)
             if keep:
                 for name in batch:
                     names[name] = True

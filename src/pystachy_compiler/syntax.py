@@ -10,9 +10,9 @@ class Node:
         self.line = line
         self.kids: list[Node] = []
         self.chk = False  # a variable read that may find the variable unassigned
-        # a read of a name that an import in a try statement binds (or of a module's attribute
-        # through it), which may be unbound there: "<its flag> <name> <L (a local) or G>" (see
-        # Loader.import_binds); then, ";"-separated, "<submodule> <name> A" for each submodule that
+        # An import binding that may be unbound: "<its flag> <name> <L (a local) or G>" (see
+        # Loader.import_binds); M checks a source module attribute and I a from-import of it.
+        # Then, ";"-separated, "<submodule> <name> A" for each submodule that
         # an import in a try statement runs which the read takes as its package's attribute
         # (Loader.trysubs); else ""
         self.mchk = ""

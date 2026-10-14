@@ -43,4 +43,7 @@ jobs:
       - name: CI report gate tests
         run: python3 -m unittest discover -s tools -p test_merge_verification.py
 
+      - name: Router benchmark validation tests
+        run: python3 -m unittest discover -s tools -p test_route_bench.py
+
       - run: make check-recordings

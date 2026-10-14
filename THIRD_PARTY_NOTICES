@@ -3,6 +3,28 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+CPython's port acceptance fixtures (tests/upstream/ports/)
+---------------------------------------------------------
+
+The fnmatch and textwrap sources and their unedited test modules in
+tests/upstream/ports/cpython/ are copied from CPython 3.13.16, commit
+cbc944f4bc59639a444dd971c737788ba2283a91. The manifest pins their SHA-256 values.
+They use the Python Software Foundation License Version 2; the exact upstream
+license is included at tests/upstream/ports/cpython/LICENSE. The recorded adaptation
+diffs are derived from the same sources and use the same license.
+
+tests/upstream_fnmatch.py and tests/upstream/regex_large.py adapt selected test
+methods from that commit's Lib/test/test_fnmatch.py and Lib/test/test_re.py.
+They replace unittest scaffolding with standalone assertions; their headers name
+the methods and any exclusions. They use the same license and copyright notices.
+
+tests/upstream_textwrap_wrap.py, tests/upstream_textwrap_layout.py,
+tests/upstream_textwrap_indent.py and tests/deviations/upstream_textwrap_unicode.py
+adapt that commit's Lib/test/test_textwrap.py. tests/upstream_functools_cache.py
+adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
+recorded in its header. They preserve the upstream assertions for the supported
+cases and disclose adaptations and exclusions; the same PSF license applies.
+
 CPython's sequence regression (tests/upstream_slice_none.py)
 ------------------------------------------------------------
 

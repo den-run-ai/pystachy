@@ -1,0 +1,147 @@
+--- a/Lib/fnmatch.py
++++ b/lib/fnmatch.py
+@@ -9,12 +9,33 @@
+ The function translate(PATTERN) returns a regular expression
+ corresponding to PATTERN.  (It does not compile it.)
+ """
++# Pystachy port: CPython 3.13.16's Lib/fnmatch.py, edited where marked (lib/README.md)
+ import os
+ import posixpath
+ import re
+ import functools
++from typing import Callable  # Pystachy port: for _compile_pattern's annotation
+ 
+ __all__ = ["filter", "fnmatch", "fnmatchcase", "translate"]
++
++# Pystachy port: range endpoints are characters, while a str's indices count UTF-8 bytes.
++_UTF8 = len("é") == 2
++
++
++def _next_char(s: str, i: int) -> int:
++    if not _UTF8 or i >= len(s):
++        return i + 1
++    b = ord(s[i])
++    return i + (1 if b < 0xC0 else 2 if b < 0xE0 else 3 if b < 0xF0 else 4)
++
++
++def _last_char(s: str) -> int:
++    i = len(s) - 1
++    if _UTF8:
++        while i > 0 and ord(s[i]) & 0xC0 == 0x80:
++            i -= 1
++    return i
++
+ 
+ def fnmatch(name, pat):
+     """Test whether FILENAME matches PATTERN.
+@@ -36,7 +57,7 @@
+     return fnmatchcase(name, pat)
+ 
+ @functools.lru_cache(maxsize=32768, typed=True)
+-def _compile_pattern(pat):
++def _compile_pattern(pat: str) -> Callable[[str], re.Match | None]:  # Pystachy port: annotated (str patterns only)
+     if isinstance(pat, bytes):
+         pat_str = str(pat, 'ISO-8859-1')
+         res_str = translate(pat_str)
+@@ -50,7 +71,7 @@
+     result = []
+     pat = os.path.normcase(pat)
+     match = _compile_pattern(pat)
+-    if os.path is posixpath:
++    if os.name == 'posix':  # Pystachy port: for os.path is posixpath (a module is no value here)
+         # normcase on posix is NOP. Optimize it away from the loop.
+         for name in names:
+             if match(name):
+@@ -77,13 +98,13 @@
+     There is no way to quote meta-characters.
+     """
+ 
+-    STAR = object()
++    STAR = None  # Pystachy port: for object(), which has no type (#251): None is no str item either
+     parts = _translate(pat, STAR, '.')
+     return _join_translated_parts(parts, STAR)
+ 
+ 
+ def _translate(pat, STAR, QUESTION_MARK):
+-    res = []
++    res: list[str | None] = []  # Pystachy port: annotated, for the str items and STAR
+     add = res.append
+     i, n = 0, len(pat)
+     while i < n:
+@@ -111,14 +132,15 @@
+                     stuff = stuff.replace('\\', r'\\')
+                 else:
+                     chunks = []
+-                    k = i+2 if pat[i] == '!' else i+1
++                    # Pystachy port: skip whole characters when finding each range.
++                    k = _next_char(pat, i+1 if pat[i] == '!' else i)
+                     while True:
+                         k = pat.find('-', k, j)
+                         if k < 0:
+                             break
+                         chunks.append(pat[i:k])
+                         i = k+1
+-                        k = k+3
++                        k = _next_char(pat, _next_char(pat, i))
+                     chunk = pat[i:j]
+                     if chunk:
+                         chunks.append(chunk)
+@@ -126,15 +148,24 @@
+                         chunks[-1] += '-'
+                     # Remove empty ranges -- invalid in RE.
+                     for k in range(len(chunks)-1, 0, -1):
+-                        if chunks[k-1][-1] > chunks[k][0]:
+-                            chunks[k-1] = chunks[k-1][:-1] + chunks[k][1:]
++                        # Pystachy port: compare and remove complete range endpoints.
++                        left, right = chunks[k-1], chunks[k]
++                        last, first = _last_char(left), _next_char(right, 0)
++                        if left[last:] > right[:first]:
++                            chunks[k-1] = left[:last] + right[first:]
+                             del chunks[k]
+                     # Escape backslashes and hyphens for set difference (--).
+                     # Hyphens that create ranges shouldn't be escaped.
+                     stuff = '-'.join(s.replace('\\', r'\\').replace('-', r'\-')
+                                      for s in chunks)
+                 # Escape set operations (&&, ~~ and ||).
+-                stuff = re.sub(r'([&~|])', r'\\\1', stuff)
++                # Pystachy port: three literal escapes avoid invoking the regex matcher.
++                if '&' in stuff:
++                    stuff = stuff.replace('&', r'\&')
++                if '~' in stuff:
++                    stuff = stuff.replace('~', r'\~')
++                if '|' in stuff:
++                    stuff = stuff.replace('|', r'\|')
+                 i = j+1
+                 if not stuff:
+                     # Empty range: never match.
+@@ -156,7 +187,7 @@
+ 
+ def _join_translated_parts(inp, STAR):
+     # Deal with STARs.
+-    res = []
++    res: list[str | None] = []  # Pystachy port: annotated, as add() reads it before its first item
+     add = res.append
+     i, n = 0, len(inp)
+     # Fixed pieces at the start?
+@@ -177,16 +208,16 @@
+             add(".*")
+             break
+         assert inp[i] is not STAR
+-        fixed = []
++        pieces: list[str | None] = []  # Pystachy port: for fixed = [], which the join below rebinds to a str (#248)
+         while i < n and inp[i] is not STAR:
+-            fixed.append(inp[i])
++            pieces.append(inp[i])  # Pystachy port: pieces
+             i += 1
+-        fixed = "".join(fixed)
++        fixed = "".join(pieces)  # Pystachy port: pieces
+         if i == n:
+             add(".*")
+             add(fixed)
+         else:
+             add(f"(?>.*?{fixed})")
+     assert i == n
+-    res = "".join(res)
+-    return fr'(?s:{res})\Z'
++    joined = "".join(res)  # Pystachy port: for res = "".join(res), rebinding the list to a str (#248)
++    return fr'(?s:{joined})\Z'  # Pystachy port: joined

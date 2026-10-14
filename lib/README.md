@@ -33,6 +33,8 @@ Imports search builtin modules first, then the program's directory,
 The [compatibility reference](compatibility.md) defines each module's accepted
 inputs, unsupported APIs and observable differences from CPython. The
 [provenance reference](provenance.md) records upstream files and checks.
+The [porting checklist](../docs/porting.md) describes compiled upstream test
+coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
 

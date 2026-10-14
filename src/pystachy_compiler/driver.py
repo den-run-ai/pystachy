@@ -69,7 +69,9 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
     g.rtmode = True
     g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
     MODULES["_rt"] = True
-    ir = g.program(Loader([]).program(path, src))
+    ld = Loader([])
+    ld.rtmode = True
+    ir = g.program(ld.program(path, src))
     del MODULES["_rt"]
     return ir
 

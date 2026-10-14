@@ -159,6 +159,24 @@ check-runtime:
 check-recordings:
 	PYTHON="$(PY)" tests/record.sh --check
 
+# Prototype port acceptance: pinned upstream inputs, reviewed adaptations, case inventory,
+# and the unedited upstream suites on CPython against the edited fnmatch/textwrap modules.
+port-check:
+	$(PY) -m unittest discover -s tools -p test_port_check.py
+	$(PY) tools/port_check.py --json build/port-check.json
+
+# Supported methods from CPython's actual test_fnmatch, test_textwrap and test_functools.
+# These files also belong to the normal corpus, so every existing CI configuration runs them.
+CPYTHON_SUBSET_COMPILER ?= ./pystachy
+test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/deviations/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
+
+# Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
+# Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
+PORT_COMPILER ?= ./pystachy
+port-check-large: $(PORT_COMPILER)
+	$(PY) tools/re_upstream_large.py $(if $(PYSTACHY_LLVM),--llvm "$(PYSTACHY_LLVM)") "$(PORT_COMPILER)"
+
 # lib/re, run by CPython, must compile random patterns to CPython's code and errors and match, split
 # and substitute as CPython's re, also on Pystachy's UTF-8 strs, and so must test_re's largest cases
 # (tools/re_fuzz.py; deterministic: N=2000 patterns, SEED=1, e.g. make re-fuzz RE_FUZZ="20000 7")
@@ -195,4 +213,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

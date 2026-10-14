@@ -1,0 +1,415 @@
+{
+  "provenance": {
+    "timestamp_utc": "2026-10-14T01:49:40Z",
+    "revision": "a12cdd600f2fca7046a15d16d43c9678253b2b54",
+    "working_tree_diff": "",
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpus": 9,
+    "cpu_affinity": [
+      8
+    ],
+    "compiler": "/workspace/scratch/439fdc468a0c/router-compiler.sh",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "settings": {
+      "PYSTACHY_LLVM": "/workspace/scratch/439fdc468a0c/toolchain/usr/lib/llvm-18/bin"
+    },
+    "sha256": {
+      "examples/route/route.py": "352f80197e02e796f889a8b6a7789db6487b6e28f35d435b2c04d4eea6314c0d",
+      "examples/route/rules.txt": "b06b3ee307b896daaeb9e73ad6f9a5fb069403c55e705b44e1a0537c5d963854",
+      "examples/route/genevents.py": "80ed5a5defa93c336e857c4dee75c63a0b5f7c0293ff620aed573ade174e53a9",
+      "examples/route/bench.py": "47cf2652c460ac38276ceb51979450a219abc79e0ab2e2d9f687d6839bd9d1aa",
+      "build/route/route_aot": "388b92d876a4217032c65b483e4f1b6a19605475f420c00475ca7c14b6c0078f",
+      "build/route/ev_repeat.tsv": "0e24be20e80860f057417c89bd085f63452fda12224c9ea01fd13235b39dd975",
+      "build/route/ev_unique.tsv": "63e1b1fe4e9dddc716eb9194591665a7121e5d2a9cdb4b812a0b380004ffe3d2"
+    }
+  },
+  "runs": 5,
+  "build_s": 6.805241400998057,
+  "records": [
+    {
+      "trace": "repeat",
+      "events": 1000000,
+      "mode": "cached",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            0.2993188230029773,
+            0.3323519160003343,
+            0.38131716799762216,
+            0.32712048100074753,
+            0.37525827900026343
+          ],
+          "routing_s": [
+            0.1301,
+            0.1398,
+            0.173,
+            0.1351,
+            0.14
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\nroute: CacheInfo(hits=997524, misses=2476, maxsize=4096, currsize=2476)\n"
+        },
+        {
+          "wall_s": [
+            0.1651994480016583,
+            0.16573152099954314,
+            0.2283985530011705,
+            0.18548410699804663,
+            0.20038550499884877
+          ],
+          "routing_s": [
+            0.09,
+            0.086,
+            0.1022,
+            0.1009,
+            0.0747
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\nroute: CacheInfo(hits=997524, misses=2476, maxsize=4096, currsize=2476)\n"
+        }
+      ],
+      "rss_kib": [
+        12580,
+        35228
+      ]
+    },
+    {
+      "trace": "repeat",
+      "events": 1000000,
+      "mode": "--no-cache",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--no-cache"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--no-cache"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            1.950913397999102,
+            1.8792017939995276,
+            2.273937833000673,
+            2.0230070170000545,
+            2.0713842639997893
+          ],
+          "routing_s": [
+            1.7592,
+            2.0332,
+            1.8015,
+            1.688,
+            1.7116
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\n"
+        },
+        {
+          "wall_s": [
+            2.903441714002838,
+            2.6801675940005225,
+            3.0372693989993422,
+            3.08215596899754,
+            2.8048767270011012
+          ],
+          "routing_s": [
+            3.2795,
+            3.4309,
+            4.092,
+            3.8999,
+            3.7965
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\n"
+        }
+      ],
+      "rss_kib": [
+        12472,
+        35292
+      ]
+    },
+    {
+      "trace": "repeat",
+      "events": 1000000,
+      "mode": "--fnmatch",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--fnmatch"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_repeat.tsv",
+          "--fnmatch"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            3.162098283002706,
+            4.15554213899668,
+            3.110581035998621,
+            3.0906938330008416,
+            2.959161275997758
+          ],
+          "routing_s": [
+            2.9113,
+            2.9187,
+            2.8953,
+            2.8383,
+            2.6422
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\npatterns: CacheInfo(hits=13142230, misses=21, maxsize=32768, currsize=21)\n"
+        },
+        {
+          "wall_s": [
+            3.030203950998839,
+            3.327981254999031,
+            3.0692971010030305,
+            2.9359210429975064,
+            3.343994571998337
+          ],
+          "routing_s": [
+            3.8027,
+            4.4123,
+            3.7563,
+            3.7667,
+            3.6312
+          ],
+          "report": "1000000 events, 21 rules\n   363895 unrouted\n   156197 billing\n   121460 errors\n    89158 tools\n    76919 retries\n    55985 database\n    50497 alerts\n    36047 metrics\n    26734 jobs\n     9925 drop\n     6479 search\n     4012 cache-misses\n     1993 access\n      526 http-errors\n      173 slow-queries\npatterns: CacheInfo(hits=13142230, misses=21, maxsize=32768, currsize=21)\n"
+        }
+      ],
+      "rss_kib": [
+        12472,
+        35272
+      ]
+    },
+    {
+      "trace": "unique",
+      "events": 100000,
+      "mode": "cached",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            0.2668324070000381,
+            0.2071401560024242,
+            0.2053159940005571,
+            0.2137525830003142,
+            0.21249491499838769
+          ],
+          "routing_s": [
+            0.1923,
+            0.1725,
+            0.1683,
+            0.1755,
+            0.1756
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\nroute: CacheInfo(hits=0, misses=100000, maxsize=4096, currsize=4096)\n"
+        },
+        {
+          "wall_s": [
+            0.32768882700111135,
+            0.331467113999679,
+            0.3165617779995955,
+            0.33581793300254503,
+            0.32122881000032066
+          ],
+          "routing_s": [
+            0.3361,
+            0.3249,
+            0.3177,
+            0.3263,
+            0.3275
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\nroute: CacheInfo(hits=0, misses=100000, maxsize=4096, currsize=4096)\n"
+        }
+      ],
+      "rss_kib": [
+        13148,
+        37208
+      ]
+    },
+    {
+      "trace": "unique",
+      "events": 100000,
+      "mode": "--no-cache",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv",
+          "--no-cache"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv",
+          "--no-cache"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            0.19491762399775325,
+            0.19733858600011445,
+            0.22677091900186497,
+            0.218331906999083,
+            0.22185478300161776
+          ],
+          "routing_s": [
+            0.1568,
+            0.1588,
+            0.1555,
+            0.1917,
+            0.2182
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\n"
+        },
+        {
+          "wall_s": [
+            0.2846016539988341,
+            0.33821097899999586,
+            0.30201960200065514,
+            0.287682569000026,
+            0.3778538309998112
+          ],
+          "routing_s": [
+            0.2944,
+            0.3004,
+            0.2841,
+            0.2794,
+            0.3465
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\n"
+        }
+      ],
+      "rss_kib": [
+        12472,
+        35216
+      ]
+    },
+    {
+      "trace": "unique",
+      "events": 100000,
+      "mode": "--fnmatch",
+      "commands": [
+        [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "-I",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/route.py",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv",
+          "--fnmatch"
+        ],
+        [
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/route_aot",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/examples/route/rules.txt",
+          "/workspace/scratch/439fdc468a0c/pystachy-router/build/route/ev_unique.tsv",
+          "--fnmatch"
+        ]
+      ],
+      "samples": [
+        {
+          "wall_s": [
+            0.37817678499777685,
+            0.3384805880014028,
+            0.3329177509986039,
+            0.36254605800058926,
+            0.3785608729995147
+          ],
+          "routing_s": [
+            0.2775,
+            0.2835,
+            0.2699,
+            0.2946,
+            0.3968
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\npatterns: CacheInfo(hits=1327592, misses=21, maxsize=32768, currsize=21)\n"
+        },
+        {
+          "wall_s": [
+            0.32251378500222927,
+            0.30645210899820086,
+            0.31396712100104196,
+            0.3111886999977287,
+            0.4426253950005048
+          ],
+          "routing_s": [
+            0.3092,
+            0.3422,
+            0.3122,
+            0.3752,
+            0.3771
+          ],
+          "report": "100000 events, 21 rules\n    37550 unrouted\n    14704 billing\n    12296 errors\n     9491 tools\n     7724 retries\n     5674 database\n     5001 alerts\n     3632 metrics\n     2682 jobs\n      844 drop\n      402 cache-misses\n        0 access\n        0 http-errors\n        0 search\n        0 slow-queries\npatterns: CacheInfo(hits=1327592, misses=21, maxsize=32768, currsize=21)\n"
+        }
+      ],
+      "rss_kib": [
+        12472,
+        35196
+      ]
+    }
+  ],
+  "names_rss": [
+    {
+      "trace": "repeat",
+      "rss_kib": [
+        12704,
+        35360
+      ]
+    },
+    {
+      "trace": "unique",
+      "rss_kib": [
+        24628,
+        48996
+      ]
+    }
+  ],
+  "publication_context": {
+    "harness_revision_kind": "local measured commit; see the publishing PR for its public counterpart"
+  }
+}

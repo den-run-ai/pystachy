@@ -1,0 +1,124 @@
+--- a/Lib/textwrap.py
++++ b/lib/textwrap.py
+@@ -13,6 +13,13 @@
+ # whitespace characters.  The main reason for doing this is that
+ # some Unicode spaces (like \u00a0) are non-breaking whitespaces.
+ _whitespace = '\t\n\x0b\x0c\r '
++
++# Pystachy port: TextWrapper's class body makes these four patterns for its regexes, then dels
++# them; a class body can neither read its own attributes (#126) nor del, so the module has them.
++_word_punct = r'[\w!"\'&.,?]'
++_letter = r'[^\d\W]'
++_whitespace_class = r'[%s]' % re.escape(_whitespace)
++_nowhitespace = '[^' + _whitespace_class[1:]
+ 
+ class TextWrapper:
+     """
+@@ -63,7 +70,9 @@
+         Append to the last line of truncated text.
+     """
+ 
+-    unicode_whitespace_trans = dict.fromkeys(map(ord, _whitespace), ord(' '))
++    # Pystachy port: the four class attributes are annotated, map() is a list comprehension, and
++    # the regexes are made of the module's patterns (above)
++    unicode_whitespace_trans: dict[int, int] = dict.fromkeys([ord(c) for c in _whitespace], ord(' '))
+ 
+     # This funky little regex is just the trick for splitting
+     # text up into word-wrappable chunks.  E.g.
+@@ -71,11 +80,7 @@
+     # splits into
+     #   Hello/ /there/ /--/ /you/ /goof-/ball,/ /use/ /the/ /-b/ /option!
+     # (after stripping out empty strings).
+-    word_punct = r'[\w!"\'&.,?]'
+-    letter = r'[^\d\W]'
+-    whitespace = r'[%s]' % re.escape(_whitespace)
+-    nowhitespace = '[^' + whitespace[1:]
+-    wordsep_re = re.compile(r'''
++    wordsep_re: re.Pattern = re.compile(r'''
+         ( # any whitespace
+           %(ws)s+
+         | # em-dash between words
+@@ -90,24 +95,22 @@
+             | # em-dash
+               (?<=%(wp)s) (?=-{2,}\w)
+             )
+-        )''' % {'wp': word_punct, 'lt': letter,
+-                'ws': whitespace, 'nws': nowhitespace},
+-        re.VERBOSE)
+-    del word_punct, letter, nowhitespace
++        )'''.replace('%(wp)s', _word_punct).replace('%(lt)s', _letter)
++            .replace('%(ws)s', _whitespace_class).replace('%(nws)s', _nowhitespace),
++        re.VERBOSE)  # Pystachy port: replace() for % of a mapping, which is not supported
+ 
+     # This less funky little regex just split on recognized spaces. E.g.
+     #   "Hello there -- you goof-ball, use the -b option!"
+     # splits into
+     #   Hello/ /there/ /--/ /you/ /goof-ball,/ /use/ /the/ /-b/ /option!/
+-    wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
+-    del whitespace
++    wordsep_simple_re: re.Pattern = re.compile(r'(%s+)' % _whitespace_class)  # Pystachy port: the module's pattern
+ 
+     # XXX this is not locale- or charset-aware -- string.lowercase
+     # is US-ASCII only (and therefore English-only)
+-    sentence_end_re = re.compile(r'[a-z]'             # lowercase letter
+-                                 r'[\.\!\?]'          # sentence-ending punct.
+-                                 r'[\"\']?'           # optional end-of-quote
+-                                 r'\Z')               # end of chunk
++    sentence_end_re: re.Pattern = re.compile(r'[a-z]'             # lowercase letter
++                                             r'[\.\!\?]'          # sentence-ending punct.
++                                             r'[\"\']?'           # optional end-of-quote
++                                             r'\Z')               # end of chunk
+ 
+     def __init__(self,
+                  width=70,
+@@ -121,7 +124,7 @@
+                  break_on_hyphens=True,
+                  tabsize=8,
+                  *,
+-                 max_lines=None,
++                 max_lines: int | None = None,  # Pystachy port: annotated (a field given None)
+                  placeholder=' [...]'):
+         self.width = width
+         self.initial_indent = initial_indent
+@@ -147,10 +150,29 @@
+         whitespace characters to spaces.  Eg. " foo\\tbar\\n\\nbaz"
+         becomes " foo    bar  baz".
+         """
+-        if self.expand_tabs:
++        # Pystachy port: without a tab, skip the copy but retain expandtabs' C-int range check.
++        if self.expand_tabs and ('\t' in text or self.tabsize > 2147483647
++                                 or self.tabsize < -2147483648):
+             text = text.expandtabs(self.tabsize)
+         if self.replace_whitespace:
+-            text = text.translate(self.unicode_whitespace_trans)
++            # Pystachy port: no str.translate(); recognize the default mapping by contents,
++            # so overridden tables and mutations through an alias still use their own entries.
++            trans = self.unicode_whitespace_trans
++            if (len(trans) == 6 and trans.get(9, -1) == 32 and trans.get(10, -1) == 32
++                    and trans.get(11, -1) == 32 and trans.get(12, -1) == 32
++                    and trans.get(13, -1) == 32 and trans.get(32, -1) == 32):
++                if '\t' in text:
++                    text = text.replace('\t', ' ')
++                if '\n' in text:
++                    text = text.replace('\n', ' ')
++                if '\x0b' in text:
++                    text = text.replace('\x0b', ' ')
++                if '\x0c' in text:
++                    text = text.replace('\x0c', ' ')
++                if '\r' in text:
++                    text = text.replace('\r', ' ')
++            else:
++                text = ''.join([chr(trans.get(ord(c), ord(c))) for c in text])
+         return text
+ 
+ 
+@@ -451,7 +473,8 @@
+         # Find the largest common whitespace between current line and previous
+         # winner.
+         else:
+-            for i, (x, y) in enumerate(zip(margin, indent)):
++            # Pystachy port: list(zip()) (zip() nested in enumerate() is not supported; both are strs)
++            for i, (x, y) in enumerate(list(zip(margin, indent))):
+                 if x != y:
+                     margin = margin[:i]
+                     break

@@ -464,21 +464,29 @@ def gen_read(self, n: Node) -> Val:
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:
-    # n reads a name that an import in a try statement binds, or a module's attribute through it
+    # n reads an import binding, or a module's attribute through it
     # (Node.mchk): where no import has bound the name yet (that one raised, or did not run),
     # CPython finds it unbound, as its flag says (imp_flag). Then each submodule read as its
     # package's attribute, which an import sets once the submodule's code has run to its end: its
     # done flag, which is set from the start of the code and cleared if the code raises
+    if n.kind == "attr":
+        self.modchk(n.kids[0])  # builtin attributes and calls bypass expr() of their module
     for c in n.mchk.split(";") if n.mchk != "" else []:
         p = c.split(" ")
         un = f"NameError: name '{p[1]}' is not defined"
         if p[2] == "A":
             un = f"AttributeError: module '{p[0][: p[0].rfind('.')]}' has no attribute '{p[1]}'"
+        elif p[2] == "M":
+            un = f"AttributeError: module '{owner(p[0])}' has no attribute '{p[1]}'"
+        elif p[2] == "I":
+            f = self.mfile[owner(p[0])]
+            where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
+            un = f"ImportError: cannot import name '{p[1]}' from '{owner(p[0])}' ({where})"
         elif p[2] == "L" and self.curfn.clo >= 0 and self.closures[self.curfn.clo].name == "<lambda>":
             un = f"NameError: cannot access free variable '{p[1]}' where it is not associated with a value in enclosing scope"
         elif p[2] == "L":
             un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value"
-        flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G")
+        flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I")
         self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {flag}')}, true"), un)
 
 def gen_imp_flag(self, x: str, glob: bool) -> str:

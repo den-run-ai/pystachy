@@ -453,7 +453,9 @@ def runtime_py(pys):
     g = Capture()
     g.rtmode = True
     pys.MODULES["_rt"] = True
-    ir = g.program(pys.Loader([]).program(path, src))
+    loader = pys.Loader([])
+    loader.rtmode = True
+    ir = g.program(loader.program(path, src))
     del pys.MODULES["_rt"]
     return ir, ops
 

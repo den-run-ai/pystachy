@@ -55,6 +55,7 @@ class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
         self.ext = ""  # pystachy ext: the main program is the extension module of this name (its __name__)
+        self.rtmode = False  # runtime.py's module imports are declarations; no module code runs
         self.mods: dict[str, Mod] = {}
         self.order: list[Mod] = []  # every module after those its top-level code imports
         # imports in the functions of imported modules, resolved once all module-level imports
@@ -69,11 +70,12 @@ class Loader:
         self.fkline: dict[str, int] = {}  # and the line of the first import that binds each name, by "<def's line> <name>"
         self.fgl: dict[str, dict[str, bool]] = {}  # and the names its global statements declare
         self.curdef = ""  # the def whose body imports() is in
-        self.fk: dict[str, str] = {}  # the bindings of the function being qualified
+        self.fk: dict[str, str] = {}  # visible function import bindings, including enclosing functions'
         self.fkey = ""  # and its def's line
-        # the try statements imports() is in; the names that imports in try statements bind ("<module>
-        # <def line, or empty> <name>"), which the import may leave unbound (Node.mchk), each with its
-        # flag (import_binds()); and the names imports outside try statements bind
+        self.fkowner: dict[str, str] = {}  # the def whose import binds each visible name (closures inherit them)
+        # The try statements imports() is in; module import bindings and function imports in try
+        # statements ("<module> <def line, or empty> <name>"), each with its flag (import_binds(),
+        # checked by Node.mchk); and the names function imports outside try statements bind
         self.intry = 0
         self.optry = False  # (in the body of one whose clauses may catch ImportError: not an optional import)
         self.fragile: dict[str, str] = {}
@@ -1399,6 +1401,7 @@ class Loader:
         at: list[int] = []
         cat: list[int] = []
         flags: list[str] = []
+        checks: list[str] = []  # each from-imported alias must exist in its source module too
         for a in st.kids if infn else st.kids[:0]:
             if a.s in self.fgl.get(self.curdef, {}) and (st.s.startswith("from.") or not builtin_module(a.kids[1].s) or m.kinds.get(a.s, "") != "b:" + a.kids[0].s):
                 # (CPython binds the module's global, which then names one module or another; but
@@ -1424,6 +1427,13 @@ class Loader:
                     fail(f"'from {path} import *' is not supported", line)
                 self.bind(m, a.s, "b:" + a.kids[0].s, infn, line)
                 keep.kids.append(a)
+                if not infn and a.kids[0].s == "builtins." + a.s:
+                    continue  # the same builtin is available before the import too
+                if st.s == "":
+                    flags[-1] = self.import_binds(m, a.s, infn)
+                else:
+                    took.append(a.s)
+                    checks.append("")
                 continue
             if infn and not builtin_module(path) and self.modpath(path) == "":
                 # a module that cannot be found, imported by a function: an error only where the
@@ -1470,6 +1480,8 @@ class Loader:
                 for x in self.public(src):
                     k = self.take(m, src, x, x, infn, keep, inits, copies, line)
                     took.append(x if k != "v" else "")
+                    key = f"{src.name}  {x}"
+                    checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                     names.append(x)
                 if src.pdir != "" and not has_all(src.body.kids):
                     self.stars.append(mk("star", "", line, [mk("str", src.name, line, [])]))
@@ -1478,26 +1490,32 @@ class Loader:
                 tgt = a.kids[0].s
                 k = self.take(m, src, tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
                 took.append(a.s if k != "v" else "")
+                x = tgt[tgt.rfind(".") + 1 :]
+                key = f"{src.name}  {x}"
+                checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 names.append(a.s)
         at.append(len(inits.kids))
         cat.append(len(copies))
         binds: list[Node] = []  # (a from-import's copies, and the bound nodes of its names that have flags, in order)
         c = 0
-        for nm in took:
+        for i in range(len(took)):
+            nm = took[i]
             if nm == "":
                 binds.append(copies[c])
                 c += 1
                 continue
             flags.append(self.import_binds(m, nm, infn))
-            if flags[-1] != "":
-                binds.append(mk("bound", flags[-1], line, []))
+            if flags[-1] != "" or checks[i] != "":
+                b = mk("bound", flags[-1], line, [])
+                b.mchk = checks[i]
+                binds.append(b)
         inits.s = " ".join(names)  # (the names the statement binds, for deftime())
         for sub in inits.kids if self.intry > 0 else inits.kids[:0]:
             if "." in sub.s:
                 self.trysubs[sub.s] = True
         if len(keep.kids) > 0:
             out.append(keep)
-        if "".join(flags) == "":
+        if "".join(flags) == "" and "".join(checks) == "":
             if len(inits.kids) > 0:
                 out.append(inits)
             out.extend(copies)
@@ -1514,13 +1532,16 @@ class Loader:
                     out.append(mk("bound", flags[i], line, []))
 
     def import_binds(self, m: Mod, name: str, infn: bool) -> str:
-        # name, which an import in module m (in the function being loaded, if infn) binds: for sure
-        # outside try statements (solid); in one, unless the import raises or is not reached (fragile:
-        # the name gets a flag, which every import that binds it sets where it does, and reads of the
-        # name check, Node.mchk). The flag, if the name has one: its qualified name (m's, as Gen's
-        # @g.<name>.imp), or in a function the name (the function's)
+        # Module imports bind only where they run: an earlier read, a skipped branch or a call
+        # during another module's initialization may find the name unbound. Every module binding
+        # gets a flag. A function's imports need one where a try may skip or fail the import;
+        # other early local reads are rejected by import_reads().
+        if self.rtmode and not infn:
+            return ""  # runtime mode accepts only unconditional module imports
         key = f"{m.name} {self.curdef if infn else ''} {name}"
-        if self.intry == 0:
+        if not infn:
+            self.fragile[key] = m.q + name
+        elif self.intry == 0:
             self.solid[key] = True
         elif key not in self.solid:
             self.fragile[key] = name if infn else m.q + name
@@ -1677,6 +1698,10 @@ class Loader:
             return ""
         t = self.mods[base]
         k = t.kinds.get(n.s, "")
+        key = f"{base}  {n.s}"
+        if key in self.fragile:
+            # The importing name and the source module's attribute are distinct bindings.
+            self.subchk.append(f"{self.fragile[key]} {n.s} M")
         if n.s in t.amb:
             k = "x:" + self.ambiguous(base, n.s)
         if k.startswith("m:"):
@@ -1712,6 +1737,16 @@ class Loader:
             root = n
             while root.kind == "attr":
                 root = root.kids[0]
+            if root.kind == "name" and root.s not in loc and root.s in self.fkowner and self.fkowner[root.s] != self.fkey:
+                # A named closure can resolve an enclosing import, but cannot yet take its
+                # possibly-unbound binding flag as a lambda does. Reject instead of reading
+                # the imported value even when that import raised or was skipped.
+                key = f"{m.name} {self.fkowner[root.s]} {root.s}"
+                if key in self.fragile:
+                    n.kind = "badattr"
+                    n.s = f"a def inside a function reads enclosing import '{root.s}', which may be unbound (not supported)"
+                    n.kids = []
+                    return
             chks: list[str] = []
             if root.kind == "name" and self.fragile_chk(m, root.s, loc) != "":
                 chks.append(self.fragile_chk(m, root.s, loc))
@@ -1863,28 +1898,47 @@ class Loader:
                 self.qann(m, st.kids[1], loc)
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
-                inner: dict[str, bool] = dict(loc) if self.qdef and not cls else {}
+                own: dict[str, bool] = {}
                 for p in st.kids[0].kids:
-                    inner[p.s] = True
-                local_names(st.kids[2].kids, inner)
+                    own[p.s] = True
+                local_names(st.kids[2].kids, own)
+                inner: dict[str, bool] = dict(loc) if self.qdef and not cls else {}
+                for nm in own:
+                    inner[nm] = True
                 decl: dict[str, bool] = {}
                 globals_in(st.kids[2].kids, decl)
                 for nm in decl:
                     if nm in inner:
                         del inner[nm]
+                    if nm in own:
+                        del own[nm]
                 saved = self.fk
+                owners = self.fkowner
                 key = self.fkey
                 indef = self.qdef
-                self.fk = self.fks.get(str(st.line), {})
+                imports = self.fks.get(str(st.line), {})
+                self.fk = {}
+                self.fkowner = {}
+                # The closest function's import wins. Its parameters, variables and global
+                # declarations hide enclosing imports just as they hide enclosing variables.
+                for nm in saved:
+                    if indef and not cls and nm not in own and nm not in decl:
+                        self.fk[nm] = saved[nm]
+                        self.fkowner[nm] = owners[nm]
+                for nm in imports:
+                    self.fk[nm] = imports[nm]
+                    self.fkowner[nm] = str(st.line)
+                    if nm in inner and nm not in own:
+                        del inner[nm]  # (this import hides an enclosing function's variable)
                 for nm in self.unsure.get(str(st.line), {}):
-                    k = self.fk.get(nm, "")
+                    k = imports.get(nm, "")
                     if k.startswith("m:") or k.startswith("a:") or k.startswith("b:"):
                         # (a function's import of a Python module binds a local, which CPython reads
                         # unbound before it runs)
                         st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where Pystachy cannot tell that the import in it that binds '{nm}' has run (where it has not, CPython raises UnboundLocalError): not supported", st.line, []))
                         break
-                for nm in self.fk:
-                    if nm in inner:
+                for nm in imports:
+                    if nm in own:
                         # (one binding per name, as in module code: CPython's import rebinds the
                         # function's variable, which every read of the name here would read)
                         at = self.fkline.get(f"{st.line} {nm}", st.line)
@@ -1895,6 +1949,7 @@ class Loader:
                 self.qstmts(m, st.kids[2].kids, inner, False)
                 self.qdef = indef
                 self.fk = saved
+                self.fkowner = owners
                 if cls:
                     loc[st.s] = True
                 self.fkey = key

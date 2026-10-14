@@ -861,6 +861,15 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
     # bind (user)
     if n.kind == "name" and n.s not in sure:
         out[n.s] = True
+    if n.kind == "def":
+        # Named closures do not capture import binding flags. An enclosing import they read
+        # must have surely run before their definition; otherwise reject that enclosing
+        # function rather than compile an unbound read as an imported value.
+        free: dict[str, bool] = {}
+        closure_free(n, free)
+        for nm in free:
+            if nm not in sure:
+                out[nm] = True
     for a in n.kids if n.kind == "import" else n.kids[:0]:
         sure[a.s] = True
         if n.s.startswith("from.") or not (builtin_module(a.kids[1].s) or a.kids[1].s == "typing_extensions"):

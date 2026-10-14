@@ -1,0 +1,139 @@
+[]
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+route: CacheInfo(hits=0, misses=0, maxsize=4096, currsize=0)
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+route: CacheInfo(hits=0, misses=0, maxsize=4096, currsize=0)
+['--names']
+0 events, 0 names, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+route: CacheInfo(hits=0, misses=0, maxsize=4096, currsize=0)
+0 events, 0 names, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+route: CacheInfo(hits=0, misses=0, maxsize=4096, currsize=0)
+['--no-cache']
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+['--fnmatch']
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+patterns: CacheInfo(hits=0, misses=0, maxsize=32768, currsize=0)
+0 events, 21 rules
+        0 access
+        0 alerts
+        0 billing
+        0 cache-misses
+        0 database
+        0 drop
+        0 errors
+        0 http-errors
+        0 jobs
+        0 metrics
+        0 retries
+        0 search
+        0 slow-queries
+        0 tools
+        0 unrouted
+patterns: CacheInfo(hits=0, misses=0, maxsize=32768, currsize=0)
+[exit 0]

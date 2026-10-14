@@ -89,6 +89,7 @@ def gen_call(self, n: Node, want: str) -> Val:
             return self.super_call(mk("call", "", f.line, [mk("name", "super", f.line, [])]), f.s, args[1:], True)
         path = self.dotted(f)
         if path != "" and path[: path.rfind(".")] not in MODATTRS:
+            self.modchk(f)
             return self.builtin(path, args, want)
         if f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
             return self.super_call(f.kids[0], f.s, args)

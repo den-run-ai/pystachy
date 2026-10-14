@@ -147,6 +147,19 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         self.ret_(Val("null", "None"))
         self.place(l2)
         self.emit(f"store i1 true, ptr {done}")
+        # A retry after a failed initialization creates a fresh module in CPython. Its import
+        # aliases start unbound too, even if the failed attempt had reached their imports.
+        flags: dict[str, bool] = {}
+        pending = [n for n in body]
+        while len(pending) > 0:
+            n = pending.pop()
+            if n.kind == "bound":
+                for imported_name in n.s.split():
+                    flags[imported_name] = True
+            elif n.kind != "def" and n.kind != "lambda":
+                pending.extend(n.kids)
+        for imported_name in flags:
+            self.emit(f"store i1 false, ptr {self.imp_flag(imported_name, True)}")
     hm = ""
     mark = Val("", "")
     slot = ""

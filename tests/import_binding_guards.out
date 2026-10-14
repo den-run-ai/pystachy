@@ -1,0 +1,31 @@
+side: init
+good: init
+early: name 'early' is not defined
+bound: 1
+conditional: name 'conditional' is not defined
+function: name 'conditional_fn' is not defined
+loop: name 'loop_alias' is not defined
+builtin: name 'skipped_math' is not defined
+builtin call: name 'skipped_math' is not defined
+builtin constant: name 'skipped_tau' is not defined
+builtin bound: 2.0 True
+bad: init
+first import failed
+later: name 'later_math' is not defined
+bad: init
+last import failed
+earlier bound: True
+local: cannot access local variable 'lm' where it is not associated with a value
+local: True 2.0
+module function: module 'guarded_bindings' has no attribute 'ua2'
+module alias: module 'guarded_bindings' has no attribute 'g'
+module builtin: module 'guarded_bindings' has no attribute 'm'
+module constant: module 'guarded_bindings' has no attribute 'tau'
+from module: ImportError
+present: 2
+duplicate alias: 2
+retry alias absent
+retry failed
+retry alias absent
+retry failed
+[exit 0]

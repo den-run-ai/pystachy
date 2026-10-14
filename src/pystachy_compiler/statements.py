@@ -763,6 +763,7 @@ def gen_stmt(self, n: Node) -> None:
                 self.add(Ins("init", "", x.s))
     elif k == "bound":
         # an import has bound these names, which an import in a try statement may leave unbound
+        self.modchk(n)  # a from-import must read an existing source-module attribute first
         for bn in n.s.split():
             self.emit(f"store i1 true, ptr {self.imp_flag(bn, self.modlevel)}")
     elif k == "def" and (n.s in self.decorated if self.modlevel else self.applies(n, False, self.scope_names())):

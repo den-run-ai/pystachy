@@ -1,0 +1,2 @@
+# Unified diff context for an empty source line is one space; preserve pinned patches exactly.
+tests/upstream/ports/*.patch whitespace=-blank-at-eol

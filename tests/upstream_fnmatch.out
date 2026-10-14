@@ -1,0 +1,15 @@
+FnmatchTestCase.test_fnmatch 18
+FnmatchTestCase.test_slow_fnmatch 2
+FnmatchTestCase.test_fnmatchcase 8
+TranslateTestCase.test_translate 18
+FnmatchTestCase.test_case
+FnmatchTestCase.test_sep
+FnmatchTestCase.test_char_set
+FnmatchTestCase.test_range
+FnmatchTestCase.test_sep_in_char_set
+FnmatchTestCase.test_sep_in_range
+FilterTestCase.test_case
+FilterTestCase.test_sep
+PARTIAL FnmatchTestCase.test_warnings (matches only)
+PARTIAL FilterTestCase.test_filter (str only)
+[exit 0]
