@@ -50,6 +50,12 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
+      - name: Adaptive prototype guards and native dispatch
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_ADAPTIVE_REQUIRE_NATIVE: '1'
+        run: make test-adaptive
+
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

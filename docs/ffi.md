@@ -67,6 +67,9 @@ of those or `None`. Integers are checked signed 64-bit values. Exported function
 have no defaults or `*args`; classes and containers do not cross the boundary.
 Keep module helpers private with a leading underscore.
 
+The [adaptive specialization prototype](adaptive.md) uses this extension interface
+to accelerate selected unannotated numeric functions inside a CPython application.
+
 The runtime accepts calls only from the importing thread and requires the GIL,
 including with `abi3t`. Re-import after a successful load and I/O re-entry are
 restricted. Review the [extension contract](reference/ffi.md#extension-modules)

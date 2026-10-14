@@ -14,6 +14,7 @@ are linked from the relevant guide.
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
 | [C and CPython interoperability](ffi.md) | Native C calls and CPython extension modules |
+| [Adaptive prototype](adaptive.md) | Observed scalar types, guarded native dispatch and CPython fallback |
 | [Caching](caching.md) | Memoization, regex and text-processing workloads |
 | [Performance](performance.md) | Published speed, memory and startup measurements |
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
