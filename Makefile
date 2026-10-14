@@ -61,6 +61,11 @@ SKEW_COMPILER ?= ./pystachy
 skew-check: $(SKEW_COMPILER)
 	PYSTACHY_SKEW_TEST_COMPILER="$(SKEW_COMPILER)" $(PY) -m unittest discover -s tools -p test_skew_specialization.py
 
+# Pattern-value headroom and fixed capture arity; timing remains advisory.
+REGEX_SPECIALIZATION_COMPILER ?= ./pystachy
+regex-specialization-check: $(REGEX_SPECIALIZATION_COMPILER)
+	REGEX_SPECIALIZATION_COMPILER="$(REGEX_SPECIALIZATION_COMPILER)" $(PY) -m unittest discover -s tools -p test_regex_specialize.py
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
