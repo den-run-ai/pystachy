@@ -25,6 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef __APPLE__
+#include <sys/random.h>
+#endif
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
@@ -3020,7 +3023,11 @@ static const uint8_t *dw_ptr(const uint8_t *p, int enc, struct _Unwind_Context *
 }
 _Unwind_Reason_Code pys_personality(int version, _Unwind_Action actions, _Unwind_Exception_Class cls,
                                     struct _Unwind_Exception *ue, struct _Unwind_Context *ctx) {
+#ifdef __APPLE__
+  const uint8_t *p = (const uint8_t *)_Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#else
   const uint8_t *p = _Unwind_GetLanguageSpecificData(ctx), *tt = 0, *at;
+#endif
   uint64_t start = _Unwind_GetRegionStart(ctx), lpbase = start, n, cs, len, lp, act;
   int search = actions & _UA_SEARCH_PHASE, before = 0, ttenc, csenc;
   _Unwind_Reason_Code bad = search ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
