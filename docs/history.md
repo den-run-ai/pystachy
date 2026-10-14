@@ -1,104 +1,102 @@
 # History and design decisions
 
-Pystachy started on 7 October 2026 as a renamed copy of the Ouro v1 compiler and grew
-through a short series of pull requests. This page keeps the decisions that shaped it: what
-was decided, why, and where it happened. Individual bug fixes are left out; the pull
-requests list them.
+Pystachy began on 7 October 2026 from the Ouro v1 compiler. This page records the early
+milestones and decisions that shaped it. It is a historical record; the [language guide](language.md),
+[library reference](../lib/README.md) and [internals](internals.md) describe the current implementation.
 
 ## Timeline
 
-| when | milestone | PR |
+| Date | Early milestone | Record |
 |---|---|---|
-| 7–8 Oct 2026 | Ouro v1 imported as Pystachy, then v0.0.1: the collector, checked ints, definite assignment, timsort, CPython's dict layout, `make verify` and CI | [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| 8–9 Oct | Python modules and packages; unannotated functions compiled as templates | [#2](https://github.com/den-run-ai/pystachy/pull/2) |
-| 8–9 Oct | Standard-library modules that compile unmodified (`lib/`), and the evaluation report [stdlib.md](stdlib.md) | [#3](https://github.com/den-run-ai/pystachy/pull/3) |
-| 8 Oct | Review of #1–#3 (correctness, scalability, interoperability) and the roadmap M0–M7 | issues [#4](https://github.com/den-run-ai/pystachy/issues/4), [#5](https://github.com/den-run-ai/pystachy/issues/5) |
-| 9 Oct | M0 correctness: CPython's syntax errors, the loader's import-time semantics, inference gaps, nesting limits | [#18](https://github.com/den-run-ai/pystachy/pull/18) |
-| 9 Oct | Linear-time compilation, and a dict hash without clustering | [#20](https://github.com/den-run-ai/pystachy/pull/20) |
-| 9 Oct | Typed-IR design, the IR-identity oracle (`make irsame`) and `make check-ir` | [#21](https://github.com/den-run-ai/pystachy/pull/21) |
-| 9 Oct | The typed IR itself (steps 4–8, byte-identical), optional types, `NamedTuple` and tuple dict keys, the first IR optimizations, exceptions by table-driven unwinding, and a port of iniconfig, pytest's INI parser | [#22](https://github.com/den-run-ai/pystachy/pull/22) |
-| 9 Oct | Part of the runtime written in the subset (`runtime.py`), and the evaluation report [runtime-in-subset.md](runtime-in-subset.md) | [#19](https://github.com/den-run-ai/pystachy/pull/19) |
+| 7–8 Oct 2026 | Ouro v1 imported; checked integers, garbage collection, definite assignment, timsort, compact dictionaries and verification established. | [#1](https://github.com/den-run-ai/pystachy/pull/1) |
+| 8–9 Oct | Python modules/packages and unannotated function templates. | [#2](https://github.com/den-run-ai/pystachy/pull/2) |
+| 8–9 Oct | Initial unchanged standard-library sources and coverage survey. | [#3](https://github.com/den-run-ai/pystachy/pull/3), [archived survey](archive/stdlib-survey.md) |
+| 8 Oct | Correctness, scalability and interoperability review; initial roadmap. | [#4](https://github.com/den-run-ai/pystachy/issues/4), [#5](https://github.com/den-run-ai/pystachy/issues/5) |
+| 9 Oct | Syntax checks, import-time semantics, inference gaps and nesting limits addressed. | [#18](https://github.com/den-run-ai/pystachy/pull/18) |
+| 9 Oct | Compiler scaling checks and improved dictionary hashing. | [#20](https://github.com/den-run-ai/pystachy/pull/20) |
+| 9 Oct | Typed-IR design and the IR-identity oracle. | [#21](https://github.com/den-run-ai/pystachy/pull/21) |
+| 9 Oct | Initial typed IR, optional values, NamedTuples, tuple dictionary keys, IR optimizations, exception unwinding and the iniconfig port. | [#22](https://github.com/den-run-ai/pystachy/pull/22) |
+| 9 Oct | First runtime functions moved into the typed subset. | [#19](https://github.com/den-run-ai/pystachy/pull/19) |
 
-#2, #3, #18, #20 and #21 were a stack, each based on the one before, and were merged in that
-order on 9 October. #19 was stacked on #22, and merged after it.
+The module/IR work was a stack: #2, #3, #18, #20 and #21 merged in that order; #19 followed
+#22. Later work expanded class templates, callables, closures, sets, generic cache wrappers and
+library ports. Their current behavior is documented in the guides above; individual fixes
+and measurements remain in the repository's pull requests.
 
 ## Decisions
 
-Each row says what was decided, why, and where to read more.
+<a id="ground-rules"></a>
 
-### Ground rules
+### Language and verification
 
-| decision | why | where |
-|---|---|---|
-| Start from Ouro v1 | Of the four self-hosting subset compilers compared, it had the broadest subset, matched CPython most closely, compiled in linear time, ran fastest and was the cheapest to extend. | [below](#where-it-comes-from), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| The compiler compiles itself, to a byte-identical fixed point | CPython runs the same source, so any divergence between Pystachy and CPython inside the compiler shows up as a diff. | [internals.md](internals.md#bootstrap), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| CPython's output is the contract | Programs are ordinary Python files, so CPython rather than a written spec decides what is correct: every test must print what CPython prints, JIT and AOT. | [testing.md](testing.md#differential-tests), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| Reject rather than miscompile | A clear `file:line: error:` is better than a program that silently behaves differently, so where matching CPython would take a large feature, the program is rejected. | [language.md](language.md#rejected-rather-than-miscompiled), [#1](https://github.com/den-run-ai/pystachy/pull/1), [#18](https://github.com/den-run-ai/pystachy/pull/18) |
-| Leave dynamic features out on purpose, and add them back by measured payoff | Exceptions, generators, closures, inheritance, sets, `bytes` and big ints each need a dynamic runtime or a large compiler feature, and the roadmap measures what each would let compile before adding it back (milestones M1–M7). | [language.md](language.md#removed-on-purpose), [stdlib.md](stdlib.md#6-what-it-would-take-to-compile-more), [#5](https://github.com/den-run-ai/pystachy/issues/5) |
+| Decision | Reason and current reference |
+|---|---|
+| Keep programs valid Python. | CPython provides an executable reference for supported behavior. [Differential testing](testing.md#differential-tests) compares JIT and AOT results, with explicit deviations kept separately. |
+| Compile the compiler to a fixed point. | Successive self-compiled stages must reproduce the compiler and subset runtime's IR byte for byte. See [bootstrap](internals.md#bootstrap). |
+| Reject unsupported behavior with a source diagnostic. | Silent miscompilation violates the compatibility contract. The [compatibility reference](language/compatibility.md) separates rejected programs from intentional deviations. |
+| Add features through useful applications and measured payoff. | The initial roadmap used library surveys to rank work. Many of its proposed features have since shipped; its percentages are historical projections, not current coverage. See [library porting](stdlib.md). |
 
-### Values and the runtime
+<a id="values-and-the-runtime"></a>
 
-| decision | why | where |
-|---|---|---|
-| 64-bit ints, overflow-checked | Ouro v1 wrapped silently and big ints are left out on purpose, so overflow raises `OverflowError` (the choice of MiniPy, [below](#where-it-comes-from)), which costs most on call-heavy code (`fib` took 0.05 s instead of 0.024 s when the two were compared). | [language.md](language.md#deviations-from-cpython), [performance.md](performance.md), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| `str` holds UTF-8 bytes | Kept from Ouro v1: ASCII behaves exactly as in CPython and other text passes through unchanged, while format widths, `repr()` and `ord()` count characters. | [language.md](language.md#deviations-from-cpython), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| A conservative mark-and-sweep collector with no dependencies | Ouro v1 never freed memory; the collector keeps peak memory near the live set (50 MiB instead of 1.5 GiB for fifty discarded 2M-element lists) and needs only the C library. | [internals.md](internals.md#memory), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| A port of CPython 3.13's timsort | It makes the same comparisons in the same order, which decides where NaNs end up and what an `__lt__` with side effects sees, and it beat the earlier merge sort (0.32 s instead of 0.53 s for 2M ints). | [internals.md](internals.md#python-semantics-in-the-runtime), [#1](https://github.com/den-run-ai/pystachy/pull/1) |
-| CPython 3.13's compact dict layout and probe order, over a one-multiply hash | The layout makes deletion O(1) and a loop that changes its dict fail exactly as in CPython, and the probe order with SplitMix64 mixing stopped keys like `i << 46` from clustering, for about 2 ns more per lookup in tables larger than the cache. | [internals.md](internals.md#python-semantics-in-the-runtime), [#1](https://github.com/den-run-ai/pystachy/pull/1), [#20](https://github.com/den-run-ai/pystachy/pull/20) |
-| Part of the runtime in the subset | Runtime code can then be Python, tested on CPython itself, and a WebAssembly GC backend needs such a runtime; functions move one at a time into `runtime.py` under their C names, so programs call them as before, while the collector, memory layouts, files and signals stay in C. | [internals.md](internals.md#a-runtime-partly-written-in-the-subset), [runtime-in-subset.md](runtime-in-subset.md), [#19](https://github.com/den-run-ai/pystachy/pull/19) |
+### Values and runtime
 
-### Modules and the standard library
+| Decision | Reason and current reference |
+|---|---|
+| Checked 64-bit integers. | Preserve a compact native representation and raise `OverflowError` rather than wrapping. Arbitrary precision remains outside the subset. See [types](language.md#types). |
+| UTF-8 byte strings. | Retain the original runtime representation. Length/indexing and some Unicode operations differ from CPython; see [string compatibility](language/compatibility.md). |
+| Conservative mark-and-sweep collection. | Replace Ouro v1's unreclaimed allocations while keeping the standalone runtime independent of CPython. See [memory](internals.md#memory). |
+| CPython-derived sorting and dictionary algorithms. | Comparison order and mutation checks are observable behavior. Runtime probes also check dictionary hashing and storage bounds. See [runtime internals](internals.md) and [verification](testing.md#make-verify). |
+| Move suitable runtime functions into the subset. | The same Python source can run under CPython for differential checks and compile to native runtime functions. Memory layouts, collection and platform facilities remain in C. See [runtime in the subset](runtime-in-subset.md). |
 
-| decision | why | where |
-|---|---|---|
-| Unannotated functions are templates | 82% of the standard library's functions have unannotated parameters, so such a function is compiled once per list of argument types, only when a call needs it. | [language.md](language.md#typing-rules), [internals.md](internals.md#templates), [#2](https://github.com/den-run-ai/pystachy/pull/2) |
-| Decide at compile time what CPython decides at import time | To compile standard-library modules, the loader decides their `__main__` guards, `TYPE_CHECKING` blocks, platform tests (for POSIX) and optional C-accelerator imports, keeping side effects and respecting names that shadow them (#18). | [language.md](language.md#decided-at-compile-time-as-cpython-decides-it-at-import-time), [#2](https://github.com/den-run-ai/pystachy/pull/2), [#18](https://github.com/den-run-ai/pystachy/pull/18) |
-| The definition-time rule for imported modules | Unused functions stay uncompiled, but each `def` and `class` statement still runs where CPython runs it, with its annotations and the defaults Pystachy can compile evaluated there, and what stays uncompiled (decorators, bases, class bodies) must run no program code, so laziness cannot change what an import does. | [language.md](language.md#code-pystachy-cannot-compile-in-an-imported-module), [#4](https://github.com/den-run-ai/pystachy/issues/4) §1, [#2](https://github.com/den-run-ai/pystachy/pull/2), [#18](https://github.com/den-run-ai/pystachy/pull/18) |
-| Vendor only modules that compile unmodified | Byte-for-byte copies with SHA-256s, each with a differential test, show what compiles as it is; the 17 modules that need small edits are listed in the report instead. | [language.md](language.md#the-vendored-standard-library), [stdlib.md](stdlib.md), [#3](https://github.com/den-run-ai/pystachy/pull/3) |
-| Report CPython's syntax errors | Lazy compilation let syntax errors in never-compiled code through ([#15](https://github.com/den-run-ai/pystachy/issues/15)), so every `SyntaxError` CPython reports before running a file is now a compile-time error at its line, almost always with its message, compared with `compile()` on 5,701 files. | [language.md](language.md#syntax-errors), [testing.md](testing.md#syntax-errors-against-cpython), [#18](https://github.com/den-run-ai/pystachy/pull/18) |
+<a id="modules-and-the-standard-library"></a>
 
-### The compiler
+### Library reuse
 
-| decision | why | where |
-|---|---|---|
-| Linear-time compilation, checked in CI | The review found a pass whose cost grew with functions × globals ([#4](https://github.com/den-run-ai/pystachy/issues/4) §2), so `make verify` now counts what the hosted compiler executes on generated programs and fails if that grows faster than the program, with no timing threshold. | [testing.md](testing.md#make-verify), [performance.md](performance.md), [#4](https://github.com/den-run-ai/pystachy/issues/4) §2, [#20](https://github.com/den-run-ai/pystachy/pull/20) |
-| One pass from AST to IR, now becoming a typed IR | Ouro v1's single walk types and emits at once, so a type cannot be computed without emitting code and optimizations or a second backend have nowhere to live; the typed IR keeps the walk but makes it build typed instructions that a separate pass lowers to LLVM. | [internals.md](internals.md#one-pass-from-ast-to-ir), [typed-ir.md](typed-ir.md), [#21](https://github.com/den-run-ai/pystachy/pull/21) |
-| Lowering first, proven byte for byte | Of three designs written independently, the two reviewers who scored them chose lowering first because only it had working evidence (a prototype at the fixed point, 358 of 358 programs identical), and `make irsame` requires every migration step to leave the whole corpus's IR byte-identical. | [typed-ir.md](typed-ir.md#appendix-a-how-this-design-was-chosen), [testing.md](testing.md#ir-identity-for-refactors), [#21](https://github.com/den-run-ai/pystachy/pull/21) |
-| Exceptions through table-driven unwinding | v0.0.1 planned LLVM landing pads and typed-ir.md §7.2 then proposed an error flag; #22 answers that open question with measurements, using `invoke`/`landingpad` with Pystachy's own personality routine: code that does not raise pays nothing for a `try` in an AOT build, and programs without `try` or `with` keep their IR byte for byte. | [internals.md](internals.md#exceptions-by-table-driven-unwinding), [performance.md](performance.md#the-cost-of-exceptions), [typed-ir.md](typed-ir.md) §7.2 and §9, [#22](https://github.com/den-run-ai/pystachy/pull/22) |
+The first library milestone vendored only unchanged CPython files. Subsequent ports established
+three approaches: unchanged upstream code, adapted upstream code with marked edits, and
+implementations written in the subset. The [library reference](../lib/README.md) records which
+approach each module uses; the old “unchanged only” rule is no longer the coverage policy.
 
-### Open
+Unannotated functions specialize for call types, and unused unsupported APIs need not compile.
+This makes library reuse practical, but import-time behavior still matters: definitions,
+defaults, decorators and module effects must obey the supported
+[module rules](language/modules.md). Syntax checks also apply to unused source.
 
-| decision | why | where |
-|---|---|---|
-| Standalone mode, or also a CPython-extension mode (open, nothing decided) | Broad package support needs an interoperability strategy as well as features: #5 estimates that even with every feature, standalone mode makes only 288 of 821 pure-Python top packages at least half usable, and #4 §4 recommends evaluating an AOT extension mode in which CPython keeps imports, dynamic objects and dependencies. | [#4](https://github.com/den-run-ai/pystachy/issues/4) §4, [#5](https://github.com/den-run-ai/pystachy/issues/5), [typed-ir.md](typed-ir.md) §7.4; proposal and prototype: [ffi.md](ffi.md) |
+<a id="the-compiler"></a>
+
+### Compiler architecture
+
+The original compiler combined typing and LLVM text emission in one walk. The typed-IR work
+introduced instructions and blocks before LLVM lowering, giving JIT and AOT a shared place
+for checks and optimization. The [IR reference](typed-ir.md) describes the implemented structure
+and the remaining migration work.
+
+Early refactors used [IR identity](testing.md#ir-identity-for-refactors) to prove they changed no
+code generation. Compiler scaling is guarded by deterministic execution/operation counts.
+Exceptions settled an earlier design question by using LLVM `invoke` / `landingpad` and a
+runtime personality routine; the [internals guide](internals.md) explains that implementation.
+
+<a id="open"></a>
+
+### Interoperability
+
+The initial review left standalone-only versus CPython integration open. C calls and AOT
+CPython extension builds now have an experimental implementation. Calling arbitrary CPython
+objects from compiled code is further work; use the [FFI guide](ffi.md) for implemented
+directions, restrictions and proposed next steps.
 
 ## Where it comes from
 
-Pystachy is built on the design of **Ouro v1** (*ouroboros*), one of four self-hosting
-Python-subset compilers that were compared before this repository was started: Ouro v1
-(LLVM), Ouro v2 (WebAssembly GC) and two MiniPy compilers (C). None of them is published,
-so the comparison and the Ouro v1 numbers quoted in [performance.md](performance.md) cannot
-be reproduced from this repository. Ouro v1 had the broadest subset, matched CPython's
-output most closely, compiled in linear time, ran fastest and was the cheapest to extend (a
-builtin is one table line plus one C function). The reviews also named its weaknesses, and
-Pystachy addresses them:
+Ouro v1 was selected after internal comparisons with Ouro v2 (WebAssembly GC) and two MiniPy
+compilers (C). Those prototypes are unpublished; their comparative performance claims cannot
+be reproduced from this repository.
 
-| review finding about Ouro v1 | Pystachy |
-|---|---|
-| memory is never freed | a conservative mark-and-sweep collector in `runtime.c`, no dependencies |
-| ints wrap silently on overflow | checked arithmetic: `OverflowError` (MiniPy's choice) |
-| a variable set on one branch reads as 0 | a definite-assignment pass; reads that may fail raise `UnboundLocalError`/`NameError` |
-| mutable default arguments are recreated per call | defaults are evaluated once, when `def` runs |
-| a zero `range` step loops silently | `ValueError` |
-| attribute access through `None` is undefined behaviour | `AttributeError`, CPython's `None` rules for `==`, `str()` |
-| unknown imports are silently ignored | imports are checked; aliases and `from` imports work |
-| driver writes fixed `/tmp` files via `os.system` | a private `mkdtemp` directory, removed on every exit path but a `SIGTERM` to the driver |
-| type checking and emission are one class with no IR | in progress: `Gen` builds an IR of blocks and ops per function, lowered to LLVM text once the program is built; part of it is still LLVM text ([typed-ir.md](typed-ir.md), [internals.md](internals.md#the-typed-ir)) |
+Pystachy retained Ouro v1's LLVM design and added checked arithmetic, definite-assignment checks,
+correct default-argument lifetime, runtime error handling, import validation and garbage
+collection. Ouro v2 contributed the `tests/ouro2_*.py` programs and the idea of a second backend.
+MiniPy influenced checked arithmetic and the verification approach, including sanitizer builds,
+a Python-free stage and machine-readable reports.
 
-Ouro v2 contributed 16 test programs (ported as `tests/ouro2_*.py`) and the idea of a second
-backend; MiniPy contributed checked arithmetic, strict definite assignment and its
-verification discipline: sanitizer builds, a Python-free native stage and a
-machine-readable report. Four rounds of adversarial differential testing against CPython
-followed (the language core; numbers and strings; containers, files and errors; then a
-review of the result as a whole); every divergence they found is now fixed, rejected at
-compile time, or listed under [*Deviations from CPython*](language.md#deviations-from-cpython).
+The archived [library survey](archive/stdlib-survey.md) and
+[verification snapshots](archive/verification-snapshots.md) preserve early measurements.
+Current claims should use fresh results and the current documented compatibility boundaries.

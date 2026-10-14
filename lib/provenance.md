@@ -1,0 +1,81 @@
+# Library provenance and validation
+
+Upstream-derived modules use CPython 3.13.16. Unchanged copies and their SHA-256
+hashes remain in [README.md](README.md#unchanged-cpython-files), where
+`tests/record.sh --check` verifies them. The hashes below identify original
+upstream files, rather than the adapted file's current contents.
+
+## Adapted Python modules
+
+Each localized adaptation is marked `# Pystachy port:` in source. Common changes
+add container/optional annotations, replace iterator-only paths with supported
+consumers, and make C-only or dynamic imports optional. Detailed edit history
+belongs in the source diff; [compatibility.md](compatibility.md) records the
+observable contract.
+
+| Module | Upstream file | Original SHA-256 |
+|---|---|---|
+| `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
+| `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
+| `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
+| `fnmatch` | `Lib/fnmatch.py` | `95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963` |
+| `textwrap` | `Lib/textwrap.py` | `30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46` |
+| `string` | `Lib/string.py` | `c000d9c4340c910b869399f0f0acc1b70e39391ad9344c4e08d8d0f80210a916` |
+| `statistics` | `Lib/statistics.py` | `80b677e786418c299ced99993f4a89804d4532e0b5e26971286713a6de538c18` |
+| `urllib.parse` | `Lib/urllib/parse.py` | `491b233e8d87a2ab73964afff029717177d53ad8def328ed9b00575db983da27` |
+
+`heapq` adapts its top-k routines while retaining the other upstream code.
+`statistics` also ports `math_sumprod_impl` from `Modules/mathmodule.c` for
+weighted means. `urllib.parse` includes codec logic corresponding to CPython's
+`unicodeobject.c`, `stringlib/codecs.h` and `codecs.c`, plus bracketed-host and
+NFKC-delimiter validation. These modules keep CPython-only paths available when
+CPython runs the source.
+
+## Subset implementations
+
+| Module | Upstream reference | Implementation |
+|---|---|---|
+| `io` | `Modules/_io/stringio.c` | Typed `StringIO`, with append chunks joined when read |
+| `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
+| `functools` | `Modules/_functoolsmodule.c` | Generic cache wrapper with compiler-assisted call binding |
+| `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
+
+`re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
+generates `re/_unicode.py` from CPython's Unicode functions, including group-name
+identifiers, character classes, case mappings and `_casefix.py` exceptions.
+These are substantial subset ports, rather than unchanged Python files.
+
+## What the checks establish
+
+`tests/lib_*.py` compares supported compiled paths with CPython through JIT and
+AOT. `tests/errors/` checks unsupported inputs; `tests/deviations/` checks
+intentional differences. Running an adapted module under CPython separately
+checks that it remains compatible Python, including paths Pystachy does not use.
+
+Historical upstream-suite checks recorded with the ports:
+
+| Adapted module | Upstream suite run under CPython | Recorded result |
+|---|---|---|
+| `difflib` | `test_difflib` | 57 tests passed |
+| `getopt` | `test_getopt` | 8 tests and doctest passed; translation-catalog tooling excluded |
+| `heapq` | `test_heapq` | 51 tests passed |
+| `io.StringIO` | `test_memoryio` StringIO cases | 29 of 39 passed, with `IntLike` replaced by int |
+| `textwrap` | `test_textwrap` | 66 tests passed |
+| `string` | `test_string` | 39 tests passed, including 25 Template tests |
+| `statistics` | `test_statistics` | All 401 tests passed, including a run with the ported `sumprod` |
+| `urllib.parse` | `test_urlparse` | All 77 passed, with five upstream subtest skips |
+| `urllib.parse` | `test_urllib` quoting/query classes | 28 of 29 passed; strict codec exception subclass differs |
+
+These counts describe specific recorded checks of the adapted source under
+CPython, not the number of APIs or upstream tests executed by the compiled
+subset. Current test commands and CI coverage are in
+[the testing guide](../docs/testing.md).
+
+Regex validation also includes `tests/upstream_re_*.py`, deterministic
+`tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of
+matcher-entry/context counts. Cache, Unicode-range, whitespace and character-class
+regressions have dedicated `tests/lib_*` cases. Time measurements are advisory;
+see [caching measurements](../docs/caching.md).
+
+CPython-derived code and docstrings are used under the PSF License Version 2.
+See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).

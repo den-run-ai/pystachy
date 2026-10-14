@@ -129,6 +129,8 @@ The [library survey](docs/stdlib.md) and
 
 ## Documentation
 
+Start with the [documentation index](docs/README.md) for task-based navigation.
+
 | Guide | Covers |
 |---|---|
 | [Language](docs/language.md) | Supported Python, typing rules and semantic differences |
@@ -156,3 +158,4 @@ checking code-generator refactors.
 MIT ([LICENSE](LICENSE)). CPython-derived code is covered by the PSF License Version 2;
 see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES). Ryu float-formatting code uses the Boost
 Software License 1.0 ([ryu/README.md](ryu/README.md)).
+
