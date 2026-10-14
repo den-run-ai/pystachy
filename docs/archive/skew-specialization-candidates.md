@@ -1,8 +1,17 @@
 # Candidates for skewed-type specialization
 
-**Historical report.** Measured on 14 October 2026 against `main` at `c9d1e59`, with the tools of
-`fdbfe26`, on a 4-core x86-64 VM with CPython 3.13.16 and LLVM 18.1.3. Its counts and timings
-describe that revision, not later compilers.
+**Historical report.** Measured on 14 October 2026 against `main` at `c9d1e59`, on a 4-core x86-64
+VM with CPython 3.13.16 and LLVM 18.1.3: the receiver probe with the tools of `fdbfe26`, the
+compile census with those of `6beb7c5`. Its counts and timings describe that revision, not later
+compilers. The decision this informed, and the work order it adopted, are in
+[#392](https://github.com/den-run-ai/pystachy/issues/392).
+
+**Corrected after review.** The first version called 1.22× an upper bound for receiver-class
+specialization, said Richards was one compiler feature from compiling, presented DeltaBlue's
+field snapshots without saying what they are, and reported a mixed `Task.input` field in Richards.
+That last finding was an annotator artifact: `IdleTask.__init__` ignores its argument and passes
+`None` to `Task.__init__`, and the annotator joined all task constructors into one signature.
+Constructors now keep their own observations, and Richards needs no edit for its types.
 
 [The census](https://github.com/den-run-ai/pystachy/pull/377) ran the first step of a suggestion to
 make Pystachy useful for Python without annotations: record the dynamic types at call sites, see
@@ -15,24 +24,25 @@ report asks which candidate would test the idea better, and measures three thing
 
 ## Summary
 
-- **Polymorphism that Pystachy can express is already cheap.** A call through a base annotation
+- **Dispatch that Pystachy can express is already cheap.** A call through a base annotation
   compiles to class-tag compares and direct calls, with no indirect call. On a loop that does
-  nothing but dispatch, removing dispatch entirely gains 1.22× (1.43 against 1.18 ns per call):
-  an upper bound for a receiver-class specialization. #388's union showed no consistent gain.
+  nothing but dispatch, removing dispatch entirely gains 1.22× (1.43 against 1.18 ns per call).
+  That measures one fixture's dispatch, not a ceiling: knowing the class can also enable inlining
+  and other optimizations downstream, which its one-line methods do not exercise. #388's union
+  showed no consistent gain.
 - **No classic unannotated benchmark compiles.** Of six pyperformance 1.14.0 benchmarks, two stop on
   types (richards, float), one on a language feature (deltablue), three on modules (raytrace, chaos,
   go).
-- **Recorded types fix the type errors, and find the skew.** One CPython run supplies 107 of
-  Richards' annotations and clears its type errors, except where the observations do not join:
-  `Task.input` holds a `Packet` 6 times, `None` 5 times and the int `10000` once (a value the idle
-  task stores and never reads). DeltaBlue's `Variable.value` is an `int` in 3,754 samples and a
-  `float` in 4. A static subset must reject or box these; skew says which representation to pick.
-- **Richards is two edits and one compiler feature from compiling.** With the int and a stored
-  `range` edited, recorded types carry it to `isinstance()` narrowing of a base-typed value to a
-  subclass, which `main` does not do.
-- **Recommendation:** Richards, then DeltaBlue: unannotated programs whose missing types a profile
-  supplies, applied at build time as selective specialization was, with the mixed fields as the
-  place where skew decides the representation. Not another dynamic site inside a typed program.
+- **Recorded types fix Richards' type errors.** One CPython run supplies 112 annotations to the
+  unmodified program, and every observed position joins. DeltaBlue's `Variable.value` does not: it
+  was an `int` in 3,754 sampled snapshots and a `float` in 4 (a true division). Snapshots are not
+  counts of operations; they establish a mixed type, not an expected speedup.
+- **Richards' next observed blockers are language features.** First a `range` kept in a global;
+  with that one edit, `isinstance()` narrowing of a base-typed value to a subclass, which `main`
+  does not do. The compiler reports one error at a time, so more may follow.
+- **Candidates:** Richards for end-to-end compatibility, then DeltaBlue for caller-sensitive object
+  specialization, with recorded types applied at build time as selective specialization applied
+  profiles. #392 puts automatic guarded AOT specialization of #389's callback case first.
 
 ## 1. Why the drafts' candidates show little
 
@@ -59,7 +69,8 @@ Paired ratios: one class over concrete **1.22×** (1.04–1.36); mix over concre
 1.14× is the mix itself, which a guarded specialization does not remove. The generic `execute`
 has 6 class-tag compares, direct calls to 8 methods and no indirect call
 ([raw results](../benchmarks/receiver-dispatch.json)). The method bodies are one load and store,
-so real ones dilute the dispatch share further.
+so this isolates the dispatch. A known receiver class can also unlock inlining and other
+optimizations in larger bodies, which this fixture does not measure.
 
 ## 2. Unannotated pyperformance on `main`
 
@@ -69,9 +80,9 @@ wheel, replaces each pyperf harness with one direct call, and builds the unchang
 
 | Benchmark | First error, unannotated | With recorded types |
 |---|---|---|
-| richards | types: `inheritance with generic class templates is not supported: annotate __init__ parameters` | 107 annotations; stops where `Task.__init__`'s `w` does not join (§3) |
+| richards | types: `inheritance with generic class templates is not supported: annotate __init__ parameters` | 112 annotations, every position joined; next, a stored `range` (§3) |
 | float | types: `__repr__ must return str` | 13 annotations; next, a local list built as `[None] * n` and filled later |
-| deltablue | language: `class OrderedCollection(list)` is an unsupported base class | 131 annotations; same error; `Variable.value` int 3,754, float 4 |
+| deltablue | language: `class OrderedCollection(list)` is an unsupported base class | 131 annotations; same error; `Variable.value` mixed (int 3,754, float 4 snapshots) |
 | raytrace | module: `array` | not traced: no type fixes a module |
 | chaos | module: `random` | not traced |
 | go | module: `random` | not traced |
@@ -86,62 +97,67 @@ and of slots), reading no program code. Observations join as the typing referenc
 a type optional, subclasses join to their nearest common base, and a call through a base annotation
 must accept every override, so same-named methods of one hierarchy share one joined signature
 (`fn(self, pkt: Packet | None, r: TaskRec) -> Task | None` for all five `fn`, including the base's,
-which never runs). Positions that do not join are reported with their sample counts.
+which never runs). Constructors are not dispatched: each keeps its own observations, and a
+parameter that saw only `None` borrows the nearest base constructor's. Positions that do not join
+are reported with their counts: calls for parameters and returns, sampled snapshots for fields.
 
 | Stage | Annotations | First error |
 |---|---:|---|
 | unannotated | 0 | `annotate __init__ parameters` (the task hierarchy) |
-| recorded types | 107 | the same, at the one position left unannotated: `w` saw `Packet` 6, `None` 5, `int` 1 |
-| two edits, recorded types | 112 | `'TaskRec' object has no attribute 'pending'` in `DeviceTask.fn` |
+| recorded types | 112 | `range() is only supported in a for loop, ...`: a `range` kept in a global |
+| one edit, recorded types | 112 | `'TaskRec' object has no attribute 'pending'` in `DeviceTask.fn` |
 
-The two edits leave CPython's output unchanged, which the census tool checks:
+The edit, `BUFSIZE_RANGE = range(BUFSIZE)` → `list(range(BUFSIZE))`, leaves CPython's output
+unchanged, which the census tool checks: the global is only iterated.
 
-| Edit | Why |
-|---|---|
-| `IdleTask(I_IDLE, 1, 10000, ...)` → `IdleTask(I_IDLE, 1, None, ...)` | `Task.input` is `Packet \| None` in every other task; the idle task never reads it |
-| `BUFSIZE_RANGE = range(BUFSIZE)` → `list(range(BUFSIZE))` | a `range` kept in a global; it is only iterated |
+The next observed error needs a compiler feature. Each task function receives its record through
+the joined base type and reads subclass fields after `assert isinstance(d, DeviceTaskRec)`. On
+`main`, `isinstance()` narrows optional values but not a base-typed value to a subclass, even in an
+`if`: `tools/fixtures/isinstance_narrowing.py` fails with `'Base' object has no attribute 'extra'`.
+The compiler reports its first error only, so narrowing is the next blocker, not necessarily the
+last.
 
-The last error needs a compiler feature. Each task function receives its record through the joined
-base type and reads subclass fields after `assert isinstance(d, DeviceTaskRec)`. On `main`,
-`isinstance()` narrows optional values but not a base-typed value to a subclass, even in an `if`:
-`tools/fixtures/isinstance_narrowing.py` fails with `'Base' object has no attribute 'extra'`.
+## 4. Candidates
 
-## 4. Recommendation
+**Richards, for end-to-end compatibility.** It is unannotated and a classic object-oriented
+benchmark. So far its blockers are types that a profile supplies, a stored `range` and subclass
+narrowing. Its hot dispatch is the polymorphic inline cache case: the census puts 78% of its calls
+at sites with two to four receiver classes, which Pystachy compiles as a type case.
 
-**Richards first.** It is unannotated, unchanged apart from two labeled edits, and a classic
-object-oriented benchmark. What blocks it is mostly types that a profile supplies, plus one
-skewed mixed field. Its hot dispatch is the polymorphic inline cache case: the census puts 78% of
-its calls at sites with two to four receiver classes, which Pystachy compiles as a type case.
+**DeltaBlue, for caller-sensitive object specialization.** Counted per caller's argument types,
+the share of its calls that need one specialization rises from 36% to 95%, one of the census's
+largest gains (+59 points, in a range of 48 to 69 across eight workloads), and its busiest site is
+82% one class. It needs subclassing of a built-in (`list`) and a representation for the mixed
+`Variable.value`.
 
-**DeltaBlue next.** It tests "specialize higher up the call stack" directly: counted per caller's
-argument types, the share of its calls that need one specialization rises from 36% to 95%, one of
-the census's largest gains (+59 points, in a range of 48 to 69 across eight workloads), and its
-busiest site is 82% one class. It needs subclassing of a
-built-in (`list`), and a representation for `Variable.value`.
-
-**Then raytrace,** whose census fields keep one type in only 12% of samples (integer and float
+**Raytrace later,** whose census fields keep one type in only 12% of samples (integer and float
 vector components), once `array` is available.
 
-In order of the work they need:
+The work these need, in order:
 
 1. `isinstance()` narrowing of a base-typed value to a subclass, in `if` and `assert`.
 2. Recorded types applied where a compile error asks for an annotation, the piece
    [#264](https://github.com/den-run-ai/pystachy/issues/264) left open; `tools/trace_annotate.py`
    is a prototype, adding them all.
-3. A representation for skewed mixed values: `Task.input`, `Variable.value`.
+3. Representations for values that stay mixed, such as `Variable.value`, with guards and a valid
+   fallback.
 4. Subclassing of built-in classes, for DeltaBlue; local-variable types, for float's
    `[None] * n` list.
 
-Apply profiles at build time first: no compiler runs while the program does (#389's online
-compilation cost 0.327 s per process). Online specialization pays only when the skew changes with
-the input.
+[#392](https://github.com/den-run-ai/pystachy/issues/392) adopts this order after automatic guarded
+AOT specialization of #389's callback case, and adds a mixed JSON/TOML workload. Recorded types can
+be applied at build time, with no compiler running in the program (#389's online compilation cost
+0.327 s per process). Online compilation becomes worthwhile when run-time information selects
+useful variants that static analysis cannot economically anticipate, even if that information stays
+stable for the whole process.
 
 ## 5. Limitations
 
 Each benchmark runs once, and recorded types describe the paths that run. The compiler reports its
-first error only, so a stage's error says what blocks it next, not everything that does. The
-annotator writes `ast.unparse` output, which drops comments. The receiver fixture's method bodies are
-trivial, so its dispatch share is an upper bound.
+first error only, so a stage's error says what blocks it next, not everything that does. Field
+counts are sampled snapshots, not counts of operations. The annotator writes `ast.unparse` output,
+which drops comments. The receiver fixture's method bodies are trivial: it measures dispatch alone,
+not what a known class can unlock in larger bodies.
 
 ## 6. Reproducing
 

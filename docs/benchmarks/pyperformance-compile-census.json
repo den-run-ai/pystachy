@@ -5,7 +5,7 @@
   "compiler": [
     "/home/user/pystachy/pystachy"
   ],
-  "git_head": "fdbfe264ade9545486738680bf2abc23812f82af",
+  "git_head": "6beb7c55afcff25292db52f85b53fc900e9ebdbe",
   "git_status": "",
   "wheel_sha256": "94068ac2935b6952ccb5e8a302eb9cebc26e82454494bef6e53822738adf0049",
   "benchmarks": {
@@ -18,71 +18,15 @@
         "kind": "types"
       },
       "traced": {
-        "annotations_added": 107,
-        "unannotated": [
-          {
-            "where": "Task.__init__:w",
-            "line": 178,
-            "reason": "mixed",
-            "samples": {
-              "None": 5,
-              "Packet": 6,
-              "int": 1
-            }
-          },
-          {
-            "where": "DeviceTask.__init__:w",
-            "line": 255,
-            "reason": "mixed",
-            "samples": {
-              "None": 5,
-              "Packet": 6,
-              "int": 1
-            }
-          },
-          {
-            "where": "HandlerTask.__init__:w",
-            "line": 277,
-            "reason": "mixed",
-            "samples": {
-              "None": 5,
-              "Packet": 6,
-              "int": 1
-            }
-          },
-          {
-            "where": "IdleTask.__init__:w",
-            "line": 310,
-            "reason": "mixed",
-            "samples": {
-              "None": 5,
-              "Packet": 6,
-              "int": 1
-            }
-          },
-          {
-            "where": "WorkTask.__init__:w",
-            "line": 335,
-            "reason": "mixed",
-            "samples": {
-              "None": 5,
-              "Packet": 6,
-              "int": 1
-            }
-          }
-        ],
+        "annotations_added": 112,
+        "unannotated": [],
         "annotated_runs_on_cpython": true,
         "compiles": false,
-        "first_error": "richards_traced.py:146: error: inheritance with generic class templates is not supported: annotate __init__ parameters",
-        "kind": "types"
+        "first_error": "richards_traced.py:22: error: range() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()",
+        "kind": "language"
       },
       "edited": {
         "edits": [
-          {
-            "from": "IdleTask(I_IDLE, 1, 10000, TaskState().running(), IdleTaskRec())",
-            "to": "IdleTask(I_IDLE, 1, None, TaskState().running(), IdleTaskRec())",
-            "why": "Task.input holds Packet | None in five tasks; the idle task stores the int 10000 there and never reads it"
-          },
           {
             "from": "BUFSIZE_RANGE = range(BUFSIZE)",
             "to": "BUFSIZE_RANGE = list(range(BUFSIZE))",

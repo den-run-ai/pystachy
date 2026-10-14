@@ -10,9 +10,10 @@ body is the same. Outputs must match CPython's. The host IR of the generic `exec
 evidence of how the call compiles. Samples rotate the variant order and pin one CPU; each reports
 the in-process loop time per constraint (stderr), excluding startup and plan construction.
 
-The concrete control is an upper bound for a specialization guarded on the dominant class: the
-monomorphic plan still pays dispatch with perfectly predictable branches, and the mixed plan
-also executes the other classes' bodies.
+On this fixture, the concrete control bounds what a specialization guarded on the dominant class
+could gain: the monomorphic plan still pays dispatch with perfectly predictable branches, and the
+mixed plan also executes the other classes' bodies. Its one-line methods isolate dispatch; they do
+not measure the inlining and other optimizations a known class can unlock in larger bodies.
 """
 import argparse
 import ast
