@@ -36,6 +36,17 @@ The adaptation removes the unittest and type2test wrappers. The remaining assert
 extend that scenario to strings, computed None bounds,
 evaluation order, optional bounds, bool bounds, and the signed-64-bit minimum.
 
+CPython's HTML parser probe
+--------------------------
+
+lib/html/__init__.py, lib/html/entities.py, lib/html/parser.py and
+lib/_markupbase.py derive from CPython 3.13.16 at commit
+cbc944f4bc59639a444dd971c737788ba2283a91. Their upstream hashes are recorded in
+lib/provenance.md. tests/upstream_html_parser.py adapts 45 complete assertion sets
+from Lib/test/test_htmlparser.py at that commit; its header records the source
+hash, adaptations and exclusions. These sources and test assertions use the
+Python Software Foundation License Version 2 and copyright notice below.
+
 CPython's standard library modules (lib/)
 -----------------------------------------
 
