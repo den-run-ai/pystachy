@@ -89,6 +89,19 @@ on Linux x86-64.
 
 ## Performance
 
+| Cost / snapshot | CPython | JIT (`run`) | AOT (built executable) |
+|---|---|---|---|
+| Startup | Interpreter + imports | Frontend + LLVM | Direct native launch |
+| Compilation | Bytecode; cached where possible | Program each run; runtime cached | Once per build |
+| Execution | Bytecode interpreter | Native; separate runtime | Native; program + runtime optimized together |
+| `nbody.py`, wall time | 1.82 s | 0.10 s | 0.03 s |
+| `words.py`, wall time | 0.17 s | 0.10 s | 0.05 s |
+| [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 169 MiB | Not recorded | 34.2 MiB |
+
+These are [published snapshots](docs/performance.md#benchmarks), not a current rerun.
+JIT timings include compilation with a primed runtime cache; AOT timings exclude compilation.
+Memory depends on the workload; streaming programs can use more memory under AOT.
+
 Early AOT benchmark results against CPython, rounded for readability:
 
 | Workload | Result |
@@ -96,7 +109,6 @@ Early AOT benchmark results against CPython, rounded for readability:
 | Selected compute workloads | Up to about **70× faster** |
 | `fnmatch` event router, with only compiled-pattern caching | **About the same speed** in the paired launch check |
 | [Event router, with each event name's classification cached](examples/route/README.md#current-paired-snapshot) | About **1.9× faster** in the paired launch check |
-| [Large integer list](https://github.com/den-run-ai/pystachy/pull/201) | About **one-fifth the peak memory** |
 
 Both router comparisons use the same caching policy for CPython and Pystachy.
 The `fnmatch` variant still caches compiled patterns; caching classifications lets repeated
