@@ -24,6 +24,7 @@ from src.pystachy_compiler.utils import (
     bool_for_int,
     elem,
     elem_problem,
+    empty_result_type,
     folds,
     is_const,
     is_dict,
@@ -35,7 +36,6 @@ from src.pystachy_compiler.utils import (
     is_sopt,
     is_tuple,
     is_vtuple,
-    lt,
     meet,
     same_kind,
     selem,
@@ -78,28 +78,6 @@ def gen_obj_helpers(self, c: str) -> None:
         f.ret = "str" if i == 2 else "bool"
         self.function(f, bodies[i])
     self.lenient = False
-
-def gen_dispatch(self, op: str) -> None:
-    # pys_obj_<op>(class id, [op code,] a, b), called by the runtime for "O<id>" descriptors
-    r = "ptr" if op == "repr" else "i64"
-    self.out.append(f"define {r} @pys_obj_{op}(i64 %c, {'i64 %op, ' if op == 'cmp' else ''}i64 %a, i64 %b) {{")
-    self.out.append("entry:")
-    self.out.append("  %pa = inttoptr i64 %a to ptr")
-    self.out.append("  %pb = inttoptr i64 %b to ptr")
-    self.out.append(f"  switch i64 %c, label %none [{' '.join([f'i64 {self.ocls[c]}, label %k{self.ocls[c]}' for c in self.ocls])}]")
-    for c in self.ocls:
-        i = self.ocls[c]
-        self.out.append(f"k{i}:")
-        if op == "repr":
-            self.out.append(f"  %r{i} = call ptr @o.repr.{c}(ptr %pa, ptr %pb)")
-            self.out.append(f"  ret ptr %r{i}")
-        else:
-            self.out.append(f"  %r{i} = call i1 @o.{op}.{c}({'i64 %op, ' if op == 'cmp' else ''}ptr %pa, ptr %pb)")
-            self.out.append(f"  %z{i} = zext i1 %r{i} to i64")
-            self.out.append(f"  ret i64 %z{i}")
-    self.out.append("none:")
-    self.out.append("  unreachable")
-    self.out.append("}")
 
 def gen_check_special(self, f: FnInfo) -> None:
     # the special methods Pystachy calls implicitly must have the shape it relies on; in an
@@ -169,8 +147,8 @@ def gen_check_import(self, a: Node) -> None:
 
 def gen_hidden(self, name: str, v: Val) -> str:
     # a compiler-made global, assigned here
-    self.global_var(name, lt(v.t))
-    self.emit(f"store {lt(v.t)} {v.v}, ptr {name}")
+    self.global_var(name, v.t)
+    self.mstore(v.t, v.v, name)
     return name
 
 def gen_dflt_fn(self, f: FnInfo) -> FnInfo:
@@ -206,7 +184,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         return
     f.dtypes[j] = t
     f.dglob[j] = f"@d.{f.ll[1:]}.{f.params[j]}"
-    self.global_var(f.dglob[j], lt(t))
+    self.global_var(f.dglob[j], t)
 
 def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
     # a class-body default read before the class statement runs (see early_default), or a
@@ -215,7 +193,7 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
     h = self.default_home(ci, fl)
     if fl not in h.fglob:
         h.fglob[fl] = f"@d.c.{h.name}.{fl}"
-        self.global_var(h.fglob[fl], lt(h.ftypes[fl]))
+        self.global_var(h.fglob[fl], h.ftypes[fl])
         self.pending[h.fglob[fl]] = True
     ci.fglob[fl] = h.fglob[fl]
 
@@ -239,7 +217,7 @@ def gen_hoist(self, f: FnInfo) -> None:
                 # a call compiled before this statement declared its global (early_default)
                 del self.pending[f"{f.ll}.{j}"]
                 if f.dglob[j] != "=None":
-                    self.emit(f"store {lt(f.dtypes[j])} {self.coerce(v, f.dtypes[j]).v}, ptr {f.dglob[j]}")
+                    self.mstore(f.dtypes[j], self.coerce(v, f.dtypes[j]).v, f.dglob[j])
                 continue
             if v.t == "None" and t == "":
                 f.dglob[j] = "=None"  # a None value is no global: calls pass None
@@ -302,11 +280,11 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
                 if m in self.classes[t].methods and (now or ci.mod == ""):
                     self.err(why)
                 later = later if later != "" or m not in self.classes[t].methods else f"class {shown(ci.name)} is not supported: {why}"
-            cv = ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
+            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
             if (cv or not is_const(st.kids[2])) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                 # code compiled before this statement declared its global (class_default)
                 del self.pending[ci.fglob[fl]]
-                self.emit(f"store {lt(t)} {self.coerce(self.expr(st.kids[2], t), t).v}, ptr {ci.fglob[fl]}")
+                self.mstore(t, self.coerce(self.expr(st.kids[2], t), t).v, ci.fglob[fl])
             elif (cv or not is_const(st.kids[2])) and fl not in ci.fglob:
                 ci.fglob[fl] = self.hidden(f"@d.c.{ci.name}.{fl}", self.coerce(self.expr(st.kids[2], t), t))
         elif st.kind == "def":
@@ -408,14 +386,14 @@ def gen_leave(self, depth: int) -> bool:
             sl = ""
             if cv.v.startswith("%"):
                 sl = self.alloca(cv.t, "")
-                self.emit(f"store {lt(cv.t)} {cv.v}, ptr {sl}")
-            self.emit(f"store i64 {len(x.conts)}, ptr {x.sel}")
+                self.mstore(cv.t, cv.v, sl)
+            self.mstore('int', f'{len(x.conts)}', x.sel)
             x.conts.append(self.label())
             self.br(x.entry)
             self.place(x.conts[-1])
             self.narrowed = self.unnarrowed([x.body])  # (what the block may bind on the way)
             if sl != "":
-                cv = Val(self.ins(f"load {lt(cv.t)}, ptr {sl}"), cv.t)
+                cv = Val(self.mload(cv.t, sl), cv.t)
         else:
             exits = self.exits
             loops = self.loops
@@ -453,7 +431,10 @@ def gen_stmt(self, n: Node) -> None:
         ekind = self.empty_of(val)
         if len(n.kids) == 2 and t0.kind == "name" and ekind != "" and self.ltype.get(t0.s, "") == NONEVAR and not self.is_global(t0.s):
             self.err(f"cannot infer the type of '{t0.s}' from None and an empty {ekind}; annotate it ({t0.s}: {ekind}[{'K, V' if ekind == 'dict' else 'T'}] | None = None)")
-        if len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
+        if len(n.kids) == 2 and t0.kind == "name" and t0.s in self.curfn.rlocals and val.kind != "name":
+            v = self.expr(val, self.curfn.rctx) if val.kind == "call" and ekind == "" else self.retval(val, self.target_type(t0))
+            self.assign(t0, v)
+        elif len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty(ekind, t0.s))
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "call" and len(val.kids) == 2 and val.kids[0].kind == "name" and val.kids[0].s == "dict" and not self.bound("dict") and val.kids[1].kind == "name" and self.static_type(val.kids[1]) == "kw[]" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty("dict", t0.s))  # (d = dict(kwargs) of a call without extra keywords: d = {})
@@ -565,10 +546,21 @@ def gen_stmt(self, n: Node) -> None:
     elif k == "return":
         if self.modlevel:
             self.err("'return' outside function")
+        if "?" in self.ret and self.qforward.get(self.curfn.ll, False) and len(n.kids) == 0:
+            # Forwarding used to choose a concrete empty-result default at the
+            # call. Preserve it when None needs a complete optional layout.
+            self.adopt(empty_result_type(self.ret, self.curfn.rctx))
         if self.ret == "":
             # the first return of a template's function with a value decides what the function
             # returns; a return of None before it is lowered from what that decided
             v = self.retval(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
+            if self.curfn.ret == "None" and v.t != "None":
+                # Compiling the expression may have recursively called this
+                # instance and fixed its old void ABI, including via another function.
+                self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used None; annotate its return type")
+            if "?" in v.t and self.qforward.get(self.curfn.ll, False) and self.returned_none():
+                self.adopt(empty_result_type(v.t, self.curfn.rctx))
+                v = Val(v.v, self.ret)
             if v.t != "None":
                 t = v.t
                 if self.optional(t) != t and self.optional(t) != "" and self.returned_none():
@@ -604,6 +596,8 @@ def gen_stmt(self, n: Node) -> None:
                 self.ret_(Val("null", "None"))
         else:
             v = self.iter_ret(n.kids[0]) if self.curfn.iters else self.retval(n.kids[0], self.ret)
+            if v.t == "None" and "?" in self.ret and self.qforward.get(self.curfn.ll, False):
+                self.adopt(empty_result_type(self.ret, self.curfn.rctx))
             if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
                 self.adopt(v.t)  # (it returned an empty container without a type before)
             j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
@@ -697,7 +691,7 @@ def gen_stmt(self, n: Node) -> None:
             if not self.open_call(it.kids[0]):
                 # (a file's __enter__ raises if it is closed)
                 c = self.rt("pys_file_closed", "i64", [f"ptr {v.v}"])
-                self.guard(self.ins(f"icmp ne i64 {c}, 0"), "ValueError: I/O operation on closed file.")
+                self.guard(self.num_cmp('!=', Val(c, "int"), Val('0', "int")).v, "ValueError: I/O operation on closed file.")
             if self.eh:
                 self.rt("pys_unwind_file", "void", [f"ptr {v.v}"])
             if len(it.kids) == 2:
@@ -718,12 +712,12 @@ def gen_stmt(self, n: Node) -> None:
         else:
             self.cbr(c, go, hit)
         self.place(hit)
-        self.emit(f"store i1 {'true' if n.s == 'any' else 'false'}, ptr {self.lcs[-1]}")
+        self.mstore('bool', 'true' if n.s == 'any' else 'false', self.lcs[-1])
         self.br(self.loops[-1].exit)
         self.place(go)
     elif k == "lcappend":
         et = self.lct[-1]
-        v = self.expr(n.kids[0], et)
+        v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
         if et == "":
             self.lct[-1] = self.none_items(v.t) if n.s == "set" and is_tuple(v.t) else v.t
             et = self.lct[-1]
@@ -747,7 +741,7 @@ def gen_stmt(self, n: Node) -> None:
         else:
             self.hoist_class(self.classes[n.s])
         if n.s in self.gflag:
-            self.emit(f"store i1 true, ptr @g.{n.s}.def")
+            self.mstore('bool', 'true', f'@g.{n.s}.def')
     elif k == "lclass":
         self.left_out(self.cnodes[n.line], self.unsupported[n.s])
     elif k == "import":
@@ -757,16 +751,16 @@ def gen_stmt(self, n: Node) -> None:
         for x in n.kids:
             if x.kind == "guard":
                 # an optional import of a module whose code raises ImportError: it returns there
-                self.emit(f"store i1 true, ptr @init.{x.s}.guard")
+                self.mstore('bool', 'true', f'@init.{x.s}.guard')
                 self.add(Ins("init", "", x.s))
-                self.emit(f"store i1 false, ptr @init.{x.s}.guard")
+                self.mstore('bool', 'false', f'@init.{x.s}.guard')
             else:
                 self.add(Ins("init", "", x.s))
     elif k == "bound":
         # an import has bound these names, which an import in a try statement may leave unbound
         self.modchk(n)  # a from-import must read an existing source-module attribute first
         for bn in n.s.split():
-            self.emit(f"store i1 true, ptr {self.imp_flag(bn, self.modlevel)}")
+            self.mstore('bool', 'true', self.imp_flag(bn, self.modlevel))
     elif k == "def" and (n.s in self.decorated if self.modlevel else self.applies(n, False, self.scope_names())):
         self.store_name(n.s, self.decorate(n))  # (its name binds what its decorators give)
     elif k == "def" and not self.modlevel:
@@ -827,9 +821,9 @@ def gen_del_name(self, n: Node) -> None:
     self.nonecmp = False
     self.narrowed.pop(name, "")
     if name in self.ltype and name in self.lflag:
-        self.emit(f"store i1 false, ptr {self.lflag[name]}")
+        self.mstore('bool', 'false', self.lflag[name])
     elif name not in self.ltype and name in self.gflag:
-        self.emit(f"store i1 false, ptr @g.{name}.def")
+        self.mstore('bool', 'false', f'@g.{name}.def')
 
 def gen_augassign(self, n: Node) -> None:
     t = n.kids[0]
@@ -870,6 +864,11 @@ def gen_augassign(self, n: Node) -> None:
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
         cur = self.getfield(o, p, t.s)
+        ci = self.classes[o.t]
+        if ci.slotlimit and t.s not in ci.slots:
+            self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
+        if t.s == "__slots__" and t.s not in ci.fpos:
+            self.err("rebinding __slots__ through an instance is not supported")
         self.setfield(o, p, t.s, self.inplace(op, cur, n.kids[1]))
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
@@ -904,7 +903,7 @@ def gen_augassign(self, n: Node) -> None:
                 self.rt("pys_dict_entry_set", "void", [f"ptr {o.v}", f"i64 {e}", "i64 " + self.to_slot(r)])
                 return
             if is_opt(kx.t):
-                self.guard(self.ins(f"icmp eq ptr {kx.v}, null"), "KeyError: None")
+                self.guard(self.ptr_cmp('==', kx, Val('null', 'None')).v, "KeyError: None")
                 if is_sopt(kx.t):
                     key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
             cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"]), kv[1])
@@ -984,7 +983,7 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
 
 def gen_objlen(self, v: Val) -> Val:
     r = self.as_int(self.call_fn(self.classes[v.t].methods["__len__"], [v], []))
-    self.guard(self.ins(f"icmp slt i64 {r.v}, 0"), "ValueError: __len__() should return >= 0")
+    self.guard(self.num_cmp('<', Val(r.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
     return r
 
 def gen_none_operand(self, op: str, a: Val, b: Val) -> None:
@@ -993,7 +992,7 @@ def gen_none_operand(self, op: str, a: Val, b: Val) -> None:
         return
     lerr = self.label()
     lok = self.label()
-    self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
+    self.cbr(self.ptr_cmp('==', a, Val('null', 'None')).v, lerr, lok)
     self.place(lerr)
     m1 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and 'NoneType'")
     m2 = self.sconst(f"unsupported operand type(s) for {op}: 'NoneType' and '{tname(unopt(b.t))}'")
@@ -1013,9 +1012,9 @@ def gen_none_operands(self, op: str, a: Val, b: Val, shown: str) -> None:
             m2 = self.sconst("can't multiply sequence by non-int of type 'NoneType'")
         lerr = self.label()
         lok = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lerr, lok)
+        self.cbr(self.ptr_cmp('==', a, Val('null', 'None')).v, lerr, lok)
         self.place(lerr)
-        self.raise_("TypeError", self.select(self.ins(f"icmp eq ptr {b.v}, null"), Val(m1, "str"), Val(m2, "str")) if is_opt(b.t) else m2)
+        self.raise_("TypeError", self.select(self.ptr_cmp('==', b, Val('null', 'None')).v, Val(m1, "str"), Val(m2, "str")) if is_opt(b.t) else m2)
         self.place(lok)
     if is_opt(b.t):
         msg = f"unsupported operand type(s) for {sh}: '{tname(x)}' and 'NoneType'"
@@ -1023,7 +1022,7 @@ def gen_none_operands(self, op: str, a: Val, b: Val, shown: str) -> None:
             msg = "'NoneType' object is not iterable" if sh == "+=" and is_list(x) else f'can only concatenate {tname(x)} (not "NoneType") to {tname(x)}'
         elif op == "*" and (x == "str" or is_list(x)):
             msg = "can't multiply sequence by non-int of type 'NoneType'"
-        self.guard(self.ins(f"icmp eq ptr {b.v}, null"), "TypeError: " + msg)
+        self.guard(self.ptr_cmp('==', b, Val('null', 'None')).v, "TypeError: " + msg)
 
 def gen_hide(self, names: list[str]) -> None:
     # comprehension variables shadow outer names once the iterable has been evaluated
@@ -1182,12 +1181,12 @@ def gen_range_args(self, args: list[Node]) -> list[str]:
 
 def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str], arg: IterArg | None = None) -> None:
     if step.startswith("%") or int(step) == 0:
-        self.guard(self.ins(f"icmp eq i64 {step}, 0"), "ValueError: range() arg 3 must not be zero")
+        self.guard(self.num_cmp('==', Val(step, "int"), Val('0', "int")).v, "ValueError: range() arg 3 must not be zero")
     self.iterarg(arg)
     self.hide(hide)
     after = self.forget(body, tgt)
     ctr = self.alloca("int", "")
-    self.emit(f"store i64 {start}, ptr {ctr}")
+    self.mstore('int', start, ctr)
     lc = self.label()
     lb = self.label()
     ls = self.label()
@@ -1197,13 +1196,13 @@ def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[
     lp.stop = Val(stop, "int")
     self.fn.loops.append(lp)
     self.place(lc)
-    i = self.ins(f"load i64, ptr {ctr}")
+    i = self.mload('int', ctr)
     if not step.startswith("%"):
-        c = self.ins(f"icmp {'slt' if int(step) > 0 else 'sgt'} i64 {i}, {stop}")
+        c = self.num_cmp('<' if int(step) > 0 else '>', Val(i, "int"), Val(stop, "int")).v
     else:
-        up = self.ins(f"icmp slt i64 {i}, {stop}")
-        dn = self.ins(f"icmp sgt i64 {i}, {stop}")
-        pos = self.ins(f"icmp sgt i64 {step}, 0")
+        up = self.num_cmp('<', Val(i, "int"), Val(stop, "int")).v
+        dn = self.num_cmp('>', Val(i, "int"), Val(stop, "int")).v
+        pos = self.num_cmp('>', Val(step, "int"), Val('0', "int")).v
         c = self.select(pos, Val(up, "bool"), Val(dn, "bool"))
     self.cbr(c, lb, le)
     self.place(lb)
@@ -1214,13 +1213,13 @@ def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[
         # i < stop (or i > stop), so i + 1 (i - 1) fits: an nsw add, which lets LLVM bound i
         # and drop the index checks that compare it with a length. (This would hold for every
         # program, but it changes their IR: see docs/runtime-in-subset.md.)
-        self.emit(f"store i64 {self.ins(f'add nsw i64 {i}, {step}')}, ptr {ctr}")
+        self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val(step, 'int')], 'nsw')}", ctr)
         self.br(lc)
         self.place(le)
         return
     # a step that overflows 64 bits has passed any stop value: the loop is over
     r = self.checked("+", i, step)
-    self.emit(f"store i64 {r[0]}, ptr {ctr}")
+    self.mstore('int', r[0], ctr)
     self.cbr(r[1], le, lc)
     self.place(le)
     self.narrowed = after
@@ -1233,7 +1232,7 @@ def gen_for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[
     self.hide(hide)
     after = self.forget(body, tgt)
     ctr = self.alloca("int", "")
-    self.emit(f"store i64 {n}, ptr {ctr}")
+    self.mstore('int', n, ctr)
     lc = self.label()
     lb = self.label()
     ls = self.label()
@@ -1242,12 +1241,12 @@ def gen_for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[
     lp.ctr = ctr
     self.fn.loops.append(lp)
     self.place(lc)
-    c = self.ins(f"load i64, ptr {ctr}")
-    self.cbr(self.ins(f"icmp ne i64 {c}, 0"), lb, le)
+    c = self.mload('int', ctr)
+    self.cbr(self.num_cmp('!=', Val(c, "int"), Val('0', "int")).v, lb, le)
     self.place(lb)
-    k = self.ins(f"sub i64 {c}, 1")
-    self.emit(f"store i64 {k}, ptr {ctr}")
-    self.assign(tgt, Val(self.ins(f"add i64 {vs[0]}, {self.ins(f'mul i64 {k}, {vs[2]}')}"), "int"))
+    k = self.scalar('sub', [Val(c, 'int'), Val('1', 'int')])
+    self.mstore('int', k, ctr)
+    self.assign(tgt, Val(self.scalar('add', [Val(vs[0], 'int'), Val(self.scalar('mul', [Val(k, 'int'), Val(vs[2], 'int')]), 'int')]), "int"))
     self.loop(body, lp)
     self.place(ls)
     self.br(lc)
@@ -1264,7 +1263,7 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     # exhausted sequence. made: the state of each iterator, taken as it was made (seq_start),
     # else taken now
     ctr = self.alloca("int", "")
-    self.emit(f"store i64 0, ptr {ctr}")
+    self.mstore('int', '0', ctr)
     if made is None:
         made = SeqStart()
         for s in seqs:
@@ -1283,35 +1282,35 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     lp.ctr = ctr
     self.fn.loops.append(lp)
     self.place(lc)
-    i = self.ins(f"load i64, ptr {ctr}")
+    i = self.mload('int', ctr)
     at: list[str] = []
     for k in range(len(seqs)):
         s = seqs[k]
         if s.t == "file":
             j = self.rt("pys_file_readline", "ptr", [f"ptr {s.v}"])
-            ok = self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {j}')}, 0")
+            ok = self.num_cmp('!=', Val(self.mload('int', j), "int"), Val('0', "int")).v
             nx = ""
         elif is_set(s.t):
             # the slot of the next element, as CPython's set iterator finds it
-            j = self.rt("pys_set_next", "i64", [f"ptr {s.v}", f"i64 {self.ins(f'load i64, ptr {st[k]}')}", f"i64 {used[k]}"])
-            nx = self.ins(f"add i64 {j}, 1")
-            ok = self.ins(f"icmp sge i64 {j}, 0")
+            j = self.rt("pys_set_next", "i64", [f"ptr {s.v}", f"i64 {self.mload('int', st[k])}", f"i64 {used[k]}"])
+            nx = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
+            ok = self.num_cmp('>=', Val(j, "int"), Val('0', "int")).v
         elif is_dict(s.t):
-            p = self.ins(f"load i64, ptr {st[k]}")
+            p = self.mload('int', st[k])
             if mode == "reversed":
                 j = self.rt("pys_dict_prev", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}", f"i64 {i}"])
-                nx = self.ins(f"sub i64 {j}, 1")
+                nx = self.scalar('sub', [Val(j, 'int'), Val('1', 'int')])
             else:
                 j = self.rt("pys_dict_next", "i64", [f"ptr {s.v}", f"i64 {p}", f"i64 {used[k]}", f"i64 {i}"])
-                nx = self.ins(f"add i64 {j}, 1")
-            ok = self.ins(f"icmp sge i64 {j}, 0")
+                nx = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
+            ok = self.num_cmp('>=', Val(j, "int"), Val('0', "int")).v
         elif mode == "reversed":
-            j = self.ins(f"sub i64 {self.ins(f'sub i64 {st[k]}, 1')}, {i}")
+            j = self.scalar('sub', [Val(self.scalar('sub', [Val(st[k], 'int'), Val('1', 'int')]), 'int'), Val(i, 'int')])
             # 0 <= j < the current length, as CPython's reversed iterator checks
-            ok = self.ins(f"icmp ult i64 {j}, {self.ins(f'load i64, ptr {s.v}') if is_list(s.t) else st[k]}")
+            ok = self.int_ucmp('<', Val(j, "int"), Val(self.mload('int', s.v) if is_list(s.t) else st[k], "int")).v
         else:
             j = i
-            ok = self.ins(f"icmp slt i64 {i}, {self.ins(f'load i64, ptr {s.v}') if not is_tuple(s.t) else st[k]}")
+            ok = self.num_cmp('<', Val(i, "int"), Val(self.mload('int', s.v) if not is_tuple(s.t) else st[k], "int")).v
         go = self.label()
         self.cbr(ok, go, le)
         self.place(go)
@@ -1319,7 +1318,7 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         lp.tests.append(go)
         lp.idx.append(j)
         if is_dict(s.t) or is_set(s.t):
-            self.emit(f"store i64 {nx}, ptr {st[k]}")
+            self.mstore('int', nx, st[k])
         at.append(j)
     vals: list[Val] = []
     if mode == "enumerate":
@@ -1330,10 +1329,10 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         if is_list(s.t):
             vals.append(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t)))
         elif is_vtuple(s.t):
-            off = self.ins(f"add i64 {j}, 1")
-            vals.append(self.from_slot(self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {s.v}, i64 {off}')}"), targs(s.t)[0]))
+            off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
+            vals.append(self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0]))
         elif is_tuple(s.t):
-            vals.append(self.from_slot(self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {s.v}, i64 {j}')}"), targs(s.t)[0]))
+            vals.append(self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0]))
         elif s.t == "str":
             vals.append(Val(self.rt("pys_str_get", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str"))
         elif s.t == "file":
@@ -1355,8 +1354,8 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         self.assign(tgt, self.tuple_(vals))
     self.loop(body, lp)
     self.place(ls)
-    nx2 = self.ins(f"add i64 {i}, 1")
-    self.emit(f"store i64 {nx2}, ptr {ctr}")
+    nx2 = self.scalar('add', [Val(i, 'int'), Val('1', 'int')])
+    self.mstore('int', nx2, ctr)
     self.br(lc)
     self.place(le)
     self.narrowed = after
@@ -1373,14 +1372,14 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         made.st.append("")
         made.used.append("")
         return
-    n0 = self.ins(f"load i64, ptr {s.v}") if not is_tuple(s.t) else str(len(targs(s.t)))
+    n0 = self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
     made.used.append(n0)
     if is_dict(s.t) or is_set(s.t):
         pos = self.alloca("int", "")
         p0 = "0"
         if mode == "reversed":
-            p0 = self.ins(f"sub i64 {self.rt('pys_dict_end', 'i64', [f'ptr {s.v}'])}, 1")
-        self.emit(f"store i64 {p0}, ptr {pos}")
+            p0 = self.scalar('sub', [Val(self.rt('pys_dict_end', 'i64', [f'ptr {s.v}']), 'int'), Val('1', 'int')])
+        self.mstore('int', p0, pos)
         made.st.append(pos)
     else:
         made.st.append(n0)

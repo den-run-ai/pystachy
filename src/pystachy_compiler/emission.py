@@ -2,15 +2,15 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import Blk, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
+from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     is_opt,
     is_sopt,
     is_tuple,
-    llstr,
     optnames,
+    runtime_decl,
     targs,
     typestr,
     unopt,
@@ -40,6 +40,7 @@ def gen_save(self) -> Frame:
     fr.shadows = self.shadows
     fr.lcs = self.lcs
     fr.lct = self.lct
+    fr.lcsoft = self.lcsoft
     fr.ret = self.ret
     fr.retann = self.retann
     fr.nn = self.nn
@@ -78,6 +79,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.shadows = fr.shadows
     self.lcs = fr.lcs
     self.lct = fr.lct
+    self.lcsoft = fr.lcsoft
     self.ret = fr.ret
     self.retann = fr.retann
     self.nn = fr.nn
@@ -106,8 +108,6 @@ def gen_label(self) -> str:
     self.n += 1
     return f"L{self.n}"
 
-def gen_emit(self, s: str) -> None:
-    self.add(Ins("raw", "", s))
 
 def gen_add(self, i: Ins) -> None:
     # code after a terminator (dead code) goes to a block of its own
@@ -124,12 +124,18 @@ def gen_put(self, i: Ins, k: int) -> None:
         self.n += 1
         i.r.append(self.n)
 
-def gen_ins(self, s: str) -> str:
-    r = self.tmp()
-    i = Ins("raw", "", f"{r} = {s}")
-    i.k = self.n
+
+def gen_mem_load(self, a: Val) -> Val:
+    # Read a native value through its typed address. LLVM alone selects its spelling.
+    i = Ins("mem.load", a.t[1:], "")
+    i.a = [a]
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", i.t)
+
+def gen_mem_store(self, a: Val, v: Val) -> None:
+    i = Ins("mem.store", "", "")
+    i.a = [a, v]
     self.add(i)
-    return r
 
 def gen_place(self, l: str) -> None:
     if not self.term:
@@ -202,6 +208,8 @@ def gen_rt(self, name: str, ret: str, args: list[str]) -> str:
     # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says. (In
     # runtime mode, a function that runtime.py defines is called the same way: it is defined,
     # not declared, with RUNTIME's types, which Gen.function checks.)
+    if self.unicode_audit and not self.rtmode and name.startswith("pys_str_") and name[8:] in UNICODE_AUDIT:
+        self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
         self.err(f"{name}() implements an operation that it uses: write it without that operation")
     k = self.runtime(name)
@@ -221,12 +229,21 @@ def gen_rt(self, name: str, ret: str, args: list[str]) -> str:
                 fail(f"internal error: {name} called with the descriptor {v}, which is no string constant", 0)
             i.x = self.strvals[int(v[3:])]
     if not ok:
-        fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {self.rtfns[k].decl}", 0)
+        fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {runtime_decl(k)}", 0)
     if ret == "void":
         self.add(i)
         return ""
     self.put(i, 1)
     return f"%t{i.r[0]}"
+
+def gen_alloc_fixed(self, t: str) -> Val:
+    # A zeroed, GC-scanned class or fixed tuple: only lowering chooses its byte size.
+    if self.rtmode and self.curfn.ll == "@pys_alloc":
+        self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    self.runtime("pys_alloc")
+    i = Ins("alloc.fixed", t, "")
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", t)
 
 def gen_runtime(self, name: str) -> str:
     # declare runtime function name (its LLVM symbol) from its RUNTIME entry; its key
@@ -284,75 +301,77 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
     a = [v.v for v in vals]
     if name == "wrap_add" or name == "wrap_sub" or name == "wrap_mul":
-        return Val(self.ins(f"{name[5:]} i64 {a[0]}, {a[1]}"), "int")
+        return Val(self.scalar(name[5:], [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
     if name == "udiv" or name == "urem":
-        self.guard(self.ins(f"icmp eq i64 {a[1]}, 0"), "ZeroDivisionError: integer division or modulo by zero")
-        return Val(self.ins(f"{name} i64 {a[0]}, {a[1]}"), "int")
+        self.guard(self.num_cmp('==', Val(a[1], "int"), Val('0', "int")).v, "ZeroDivisionError: integer division or modulo by zero")
+        return Val(self.scalar(name, [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
     if name == "mul_ovf":
         return Val(self.checked("*", a[0], a[1])[1], "bool")
     if name == "shl" or name == "lshr":
         # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
-        return Val(self.ins(f"{name} i64 {a[0]}, {self.ins(f'and i64 {a[1]}, 63')}"), "int")
+        return Val(self.scalar(name, [Val(a[0], 'int'), Val(self.scalar('and', [Val(a[1], 'int'), Val('63', 'int')]), 'int')]), "int")
     if name == "str_done":
         return vals[0]
     if name == "null":
-        return Val(self.ins(f"icmp eq ptr {a[0]}, null"), "bool")
+        return Val(self.scalar_cmp('eq', Val(a[0], '%ptr'), Val('null', '%ptr')), "bool")
     if name == "same":
         # same(a, i, b, j, n): within both, and n >= 0
-        n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        n1 = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n0}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n0}, {a[1]}')}",
-                  f"icmp ugt i64 {a[3]}, {n1}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n1}, {a[3]}')}"]:
-            self.guard(self.ins(x), "IndexError: compare out of range")
-        p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 16')}")
-        p1 = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 16')}")
-        return Val(self.ins(f"icmp eq i32 {self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}'])}, 0"), "bool")
+        n0 = self.mload('int', a[0], 'length.range')
+        n1 = self.mload('int', a[2], 'length.range')
+        for p, lhs, rhs in [("<", a[4], "0"), (">", a[1], n0), (">", a[4], self.scalar('sub', [Val(n0, 'int'), Val(a[1], 'int')])),
+                            (">", a[3], n1), (">", a[4], self.scalar('sub', [Val(n1, 'int'), Val(a[3], 'int')]))]:
+            x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
+            self.guard(x.v, "IndexError: compare out of range")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
+        p1 = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
+        return Val(self.scalar_cmp('eq', Val(self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}']), '%i32'), Val('0', '%i32')), "bool")
     if name == "find_byte":
         # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
-        n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
-            self.guard(self.ins(x), "IndexError: search out of range")
-        self.guard(self.ins(f"icmp ugt i64 {a[1]}, 255"), "ValueError: byte must be in range(0, 256)")
-        p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 16')}")
-        f = self.rt("memchr", "ptr", [f"ptr {p0}", f"i32 {self.ins(f'trunc i64 {a[1]} to i32')}", f"i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}"])
-        d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
-        return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 16')}"), "int")
+        n0 = self.mload('int', a[0], 'length.range')
+        for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
+            self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
+        self.guard(self.int_ucmp('>', Val(a[1], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
+        f = self.rt("memchr", "ptr", [f"ptr {p0}", f"i32 {self.scalar_cast('trunc', Val(a[1], 'int'), '%i32')}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}"])
+        d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
     if name == "find_sub":
         # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
-        n0 = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        for x in [f"icmp ugt i64 {a[3]}, {n0}", f"icmp ugt i64 {a[2]}, {a[3]}"]:
-            self.guard(self.ins(x), "IndexError: search out of range")
-        p0 = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[2]}, 16')}")
-        p1 = self.ins(f"getelementptr i8, ptr {a[1]}, i64 16")
-        m = self.ins(f"load i64, ptr {a[1]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.ins(f'sub i64 {a[3]}, {a[2]}')}", f"ptr {p1}", f"i64 {m}"])
-        d = self.ins(f"sub i64 {self.ins(f'ptrtoint ptr {f} to i64')}, {self.ins(f'ptrtoint ptr {a[0]} to i64')}")
-        return Val(self.ins(f"select i1 {self.ins(f'icmp eq ptr {f}, null')}, i64 -1, i64 {self.ins(f'sub i64 {d}, 16')}"), "int")
+        n0 = self.mload('int', a[0], 'length.range')
+        for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
+            self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
+        p1 = self.maddr('%byte', a[1], '16')
+        m = self.mload('int', a[1], 'length.range')
+        f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}", f"ptr {p1}", f"i64 {m}"])
+        d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
     if name == "str_new":
         # a size the allocator cannot serve (negative, or past 2**63 with the header and NUL)
         # is CPython's MemoryError, as in runtime.c
-        self.guard(self.ins(f"icmp ugt i64 {a[0]}, 9223372036854775790"), "MemoryError: ")
-        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.ins(f'add nuw nsw i64 {a[0]}, 17')}"])  # zeroed: dict_hash and NUL
-        self.emit(f"store i64 {a[0]}, ptr {r}, !tbaa !{TBAA_LEN}")
+        self.guard(self.int_ucmp('>', Val(a[0], "int"), Val('9223372036854775790', "int")).v, "MemoryError: ")
+        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val('17', 'int')], 'nuw nsw')}"])  # zeroed: dict_hash and NUL
+        self.mstore('int', a[0], r, 'length')
         return Val(r, "str")
     # the others index a str: an unsigned compare with its length also rejects a negative index
-    n = self.ins(f"load i64, ptr {a[0]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
+    n = self.mload('int', a[0], 'length.range')
     if name == "copy":
         # copy(dst, at, src, lo, n): dst[at:at + n] = src[lo:lo + n], within both
-        m = self.ins(f"load i64, ptr {a[2]}, !tbaa !{TBAA_LEN}, !range !{STRLEN_RANGE}")
-        for x in [f"icmp slt i64 {a[4]}, 0", f"icmp ugt i64 {a[1]}, {n}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {n}, {a[1]}')}",
-                  f"icmp ugt i64 {a[3]}, {m}", f"icmp ugt i64 {a[4]}, {self.ins(f'sub i64 {m}, {a[3]}')}"]:
-            self.guard(self.ins(x), "IndexError: copy out of range")
-        dst = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 16')}")
-        src = self.ins(f"getelementptr i8, ptr {a[2]}, i64 {self.ins(f'add i64 {a[3]}, 16')}")
+        m = self.mload('int', a[2], 'length.range')
+        for p, lhs, rhs in [("<", a[4], "0"), (">", a[1], n), (">", a[4], self.scalar('sub', [Val(n, 'int'), Val(a[1], 'int')])),
+                            (">", a[3], m), (">", a[4], self.scalar('sub', [Val(m, 'int'), Val(a[3], 'int')]))]:
+            x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
+            self.guard(x.v, "IndexError: copy out of range")
+        dst = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
+        src = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
         self.rt("llvm.memmove.p0.p0.i64", "void", [f"ptr {dst}", f"ptr {src}", f"i64 {a[4]}", "i1 false"])
         return Val("null", "None")
-    self.guard(self.ins(f"icmp uge i64 {a[1]}, {n}"), "IndexError: string index out of range")
-    p = self.ins(f"getelementptr i8, ptr {a[0]}, i64 {self.ins(f'add i64 {a[1]}, 16')}")
+    self.guard(self.int_ucmp('>=', Val(a[1], "int"), Val(n, "int")).v, "IndexError: string index out of range")
+    p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
     if name == "byte":
-        return Val(self.ins(f"zext i8 {self.ins(f'load i8, ptr {p}, !tbaa !{TBAA_BYTES}')} to i64"), "int")
-    self.guard(self.ins(f"icmp ugt i64 {a[2]}, 255"), "ValueError: byte must be in range(0, 256)")
-    self.emit(f"store i8 {self.ins(f'trunc i64 {a[2]} to i8')}, ptr {p}, !tbaa !{TBAA_BYTES}")
+        return Val(self.scalar_cast('zext', Val(self.mload('%byte', p, 'bytes'), '%byte'), 'int'), "int")
+    self.guard(self.int_ucmp('>', Val(a[2], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
+    self.mstore('%byte', f"{self.scalar_cast('trunc', Val(a[2], 'int'), '%byte')}", p, 'bytes')
     return Val("null", "None")
 
 def gen_iop(self, op: str, a: str, b: str) -> str:
@@ -364,13 +383,13 @@ def gen_iop(self, op: str, a: str, b: str) -> str:
 def gen_notnone(self, v: Val, msg: str) -> None:
     # objects may be None (null); using one that is raises like CPython
     if v.t in self.classes and v.v not in self.nn:
-        self.guard(self.ins(f"icmp eq ptr {v.v}, null"), msg)
+        self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, msg)
 
 def gen_unwrap(self, v: Val, msg: str) -> Val:
     # an optional value used where only the type it holds works: None raises msg ("Kind: text")
     if not is_opt(v.t):
         return v
-    self.guard(self.ins(f"icmp eq ptr {v.v}, null"), msg)
+    self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, msg)
     return self.deref(v)
 
 def gen_deref(self, v: Val) -> Val:
@@ -378,7 +397,7 @@ def gen_deref(self, v: Val) -> Val:
     # int's, float's or bool's box read
     if not is_sopt(v.t):
         return Val(v.v, unopt(v.t))
-    return self.from_slot(self.ins(f"load i64, ptr {v.v}"), unopt(v.t))
+    return self.from_slot(self.mload('int', v.v), unopt(v.t))
 
 def gen_reboxes(self, a: str, b: str) -> bool:
     # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
@@ -434,9 +453,9 @@ def gen_sconst(self, s: str) -> str:
     name = f"@s.{len(self.strs)}"
     self.strs[s] = name
     self.strvals.append(s)
-    n = len(s) + 1
-    # Bytes stay immutable; the dictionary hash cache must be writable (runtime.c Str).
-    self.consts.append(f'{name} = private unnamed_addr global {{i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, [{n} x i8] c"{llstr(s)}\\00"}}, align 8')
+    d = Data("string", name)
+    d.text = s
+    self.consts.append(d)
     return name
 
 def gen_alloca(self, t: str, name: str) -> str:

@@ -1,6 +1,6 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union
+from src.pystachy_compiler.utils import is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
     aliases,
@@ -52,8 +52,8 @@ from src.pystachy_compiler.utils import (
 def gen_global_var(self, g: str, ty: str) -> None:
     # every module-level variable, visible or hidden, is defined here: the garbage
     # collector scans the pointer-typed ones, whose addresses @main hands to pys_init
-    self.globs.append(f"{g} = internal global {ty} zeroinitializer")
-    if ty == "ptr":
+    self.globs.append(Val(g, ty))
+    if lt(ty) == "ptr":
         self.gcroots.append(g)
 
 def gen_is_global(self, name: str) -> bool:
@@ -106,7 +106,7 @@ def gen_load_name(self, name: str) -> Val:
             t = self.none_read(name)
             if t == "None":
                 return Val("null", "None")
-        r = self.ins(f"load {lt(t)}, ptr {self.lreg[name]}")
+        r = self.mem_load(Val(self.lreg[name], "*" + t)).v
         if name == self.selfname and name not in self.compvars:
             self.nn[r] = True
         if name in self.narrowed and (is_opt(t) or is_union(t) or t in self.classes) and t != NONEVAR:
@@ -115,7 +115,7 @@ def gen_load_name(self, name: str) -> Val:
     self.read_ahead(name)
     if name in self.gtypes:
         t = self.gtypes[name]
-        r = self.ins(f"load {lt(t)}, ptr @g.{name}")
+        r = self.mem_load(Val(f"@g.{name}", "*" + t)).v
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         return Val(r, t)
@@ -269,14 +269,14 @@ def gen_closure(self, n: Node) -> Val:
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
-            a = self.ins(f"getelementptr inbounds ptr, ptr {env}, i64 {i}")
-            self.emit(f"store ptr {self.cells[x] if x in self.cells else self.lreg[x]}, ptr {a}")
+            a = self.maddr('%ptr', env, f'{i}', True)
+            self.mstore('%ptr', self.cells[x] if x in self.cells else self.lreg[x], a)
     for j in range(len(dvals)):
-        a = self.ins(f"getelementptr inbounds i64, ptr {env}, i64 {len(c.caps) + j}")
-        self.emit(f"store {lt(dvals[j].t)} {dvals[j].v}, ptr {a}")
+        a = self.maddr('int', env, f'{len(c.caps) + j}', True)
+        self.mstore(dvals[j].t, dvals[j].v, a)
     for j in range(len(c.iflags)):
-        a = self.ins(f"getelementptr inbounds ptr, ptr {env}, i64 {len(c.caps) + len(c.defs) + j}")
-        self.emit(f"store ptr {self.iflag[c.iflags[j]]}, ptr {a}")
+        a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
+        self.mstore('%ptr', self.iflag[c.iflags[j]], a)
     self.nn[env] = True
     return Val(env, c.t)
 
@@ -307,7 +307,9 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     if f.kwarg >= 0:
         f.kwarg += 1
     c = Closure(f, name, qual)
-    c.t = f"fn[c:{idx}:{qual}@{where(n.line)}]"  # (where it is defined, which messages show)
+    # Keep the location's numeric ID in the type: paths can contain type delimiters
+    # (including brackets and commas). fn_shown resolves it only for diagnostics.
+    c.t = f"fn[c:{idx}:{qual}@{n.line}]"
     self.closures.append(c)
     self.clokeys[key] = idx
     # the variables it takes: those of the function around it (its cells), and those that function
@@ -452,16 +454,16 @@ def gen_read(self, n: Node) -> Val:
     initialized = constant and not self.modlevel and owner(name) == self.curfn.mod and self.curfn.node.kind == "def" and self.intat[name] < self.curfn.node.line
     if n.chk and name in self.ltype:
         if name in self.lflag and name not in self.compvars:
-            bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {self.lflag[name]}')}, true")
+            bad = self.scalar('xor', [Val(self.mem_load(Val(self.lflag[name], '*bool')).v, 'bool'), Val('true', 'bool')])
             self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
     elif not initialized and (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
         # (a global, or a function whose def statement may not have run yet)
-        bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{name}.def')}, true")
+        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '*bool')).v, 'bool'), Val('true', 'bool')])
         self.guard(bad, self.unbound(name, self.copying))
     if constant:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
-        return Val(self.ins(f"add i64 {self.intglobals[name]}, 0"), "int")
+        return Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:
@@ -488,7 +490,7 @@ def gen_modchk(self, n: Node) -> None:
         elif p[2] == "L":
             un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value"
         flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I")
-        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr {flag}')}, true"), un)
+        self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '*bool')).v, 'bool'), Val('true', 'bool')]), un)
 
 def gen_imp_flag(self, x: str, glob: bool) -> str:
     # the flag of name x, which an import in a try statement binds (Loader.import_binds()), set
@@ -497,7 +499,7 @@ def gen_imp_flag(self, x: str, glob: bool) -> str:
     if glob:
         if x not in self.impg:
             self.impg[x] = True
-            self.global_var(f"@g.{x}.imp", "i1")
+            self.global_var(f"@g.{x}.imp", "bool")
         return f"@g.{x}.imp"
     if x not in self.iflag:
         self.n += 1
@@ -957,7 +959,32 @@ def gen_retval(self, e: Node, want: str) -> Val:
     # infers it). A template's function returns an empty container that nothing fills (see
     # unfilled) as it is, and each call gives it the type its context expects (typed_empty),
     # unless a use further on (in a loop, a call or another return) gives it a type (adopt)
+    contextual = False
+    if self.curfn.rctx != "" and (want == "" or "?" in want):
+        # Fresh displays can choose the caller's layout before allocating.
+        # Their items still infer normally when that layout does not fit.
+        kind = self.empty_of(e)
+        t = unopt(self.curfn.rctx)
+        if is_union(t):
+            matches = [m for m in umembers(t) if m.startswith((kind if kind != "" else e.kind) + "[")]
+            t = matches[0] if len(matches) == 1 else ""
+        if e.kind in ["list", "dict", "set", "tuple"] or kind != "":
+            if t.startswith((kind if kind != "" else e.kind) + "["):
+                hint = self.generic_hint(e, t) if self.curfn.rsoft and kind == "" else t
+                if hint != "":
+                    want = hint
+                    contextual = not self.curfn.rsoft
     q = self.qret.get(self.curfn.ll, "")
+    kind = self.empty_of(e) if want == "" or "?" in want else ""
+    if kind != "":
+        # A fresh empty result has the same open type as an unfilled local.
+        # Keep its allocation hole so a later concrete return can type its keys.
+        i = self.hole(kind)
+        self.qret[self.curfn.ll] = q
+        if self.curfn.ll not in self.qholes:
+            self.qholes[self.curfn.ll] = []
+        self.qholes[self.curfn.ll].append(i.k)
+        return Val(f"%t{i.r[0]}", i.t)
     known = e.kind == "name" and e.s in q.split() and "?" in self.ltype.get(e.s, "")  # (and still so)
     if e.kind == "name" and (want == "" or "?" in want) and (known or self.unfilled(e.s)):
         self.qret[self.curfn.ll] = q if known else q + " " + e.s
@@ -965,29 +992,57 @@ def gen_retval(self, e: Node, want: str) -> Val:
         v = self.read(e)
         self.allowq = False
         return v
-    return self.expr(e, want)
+    # A direct forwarding call keeps its fresh empty result open until this
+    # template's caller supplies a type. Argument evaluation keeps normal contexts.
+    return self.expr(e, "?" if e.kind == "call" and (want == "" or "?" in want) else want, contextual, self.curfn.rsoft)
 
 def gen_adopt(self, t: str) -> None:
     # the template's function being compiled, which returned an empty container without a
     # type (see retval), returns t: the containers it returned have that type too
-    if self.curfn.ll in self.qused:
+    if self.curfn.ll in self.qused and self.qused[self.curfn.ll] != t:
         self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a use shows what the {tname(t)} it returns holds; annotate its return type")
     self.ret = t
     self.curfn.ret = t
     for nm in self.qret[self.curfn.ll].split():
         if "?" in self.ltype[nm]:
             self.refine(nm, t)
+    for h in self.qholes.get(self.curfn.ll, []):
+        self.holes[h] = t
+        if is_dict(t) or is_set(t):
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
 
 def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
     # the empty list or dict a template's function f returns (see retval): the type the call's
     # context expects, else list[int] or dict[int, int] (as sum() of an empty list is the int 0),
     # which a type error further on in this function then explains (guessed). A new dict is made
     # by each call, so it gets the key kind of its type here (a dict's second word)
+    if want == "?":
+        # retval's direct forwarding call: keep the result open, and let a later
+        # concrete return fix this call's key layout without changing its callee.
+        self.qret[self.curfn.ll] = self.qret.get(self.curfn.ll, "")
+        self.qforward[self.curfn.ll] = True
+        if is_dict(v.t) or is_set(v.t):
+            i = Ins("empty.kind", "", "")
+            i.a = [v]
+            i.k = len(self.holes)
+            self.holes.append("")
+            if self.curfn.ll not in self.qholes:
+                self.qholes[self.curfn.ll] = []
+            self.qholes[self.curfn.ll].append(i.k)
+            self.put(i, 1)
+        return v
+    if is_union(unopt(want)):
+        candidates = [m for m in umembers(unopt(want)) if same_kind(m, v.t)]
+        if len(candidates) == 1:
+            want = candidates[0]  # a fresh empty result has one compatible container layout
     t = want if same_kind(want, v.t) and "?" not in want else "list[int]" if is_list(v.t) else "set[int]" if is_set(v.t) else "dict[int,int]"
     if t != want:
         self.guessed[self.curfn.ll] = f"{short(f.name)}() at line {self.line} returns an empty {tname(t)} taken as {typestr(t)}: give it a type first, as in v: {'list[T]' if is_list(t) else 'set[T]' if is_set(t) else 'dict[K, V]'} = {short(f.name)}()"
     if is_dict(t) or is_set(t):
-        self.emit(f"store i64 {self.key_kind(targs(t)[0] if is_dict(t) else selem(t))}, ptr {self.ins(f'getelementptr i64, ptr {v.v}, i64 1')}")
+        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+        i = Ins("empty.kind", "", "")
+        i.a = [Val(v.v, t)]
+        self.put(i, 1)
     return Val(v.v, t)
 
 def gen_fills(self, body: list[Node], name: str, found: list[Node]) -> bool:
@@ -1216,9 +1271,9 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
 
 def gen_new_global(self, name: str, t: str) -> None:
     self.gtypes[name] = t
-    self.global_var(f"@g.{name}", lt(t))
+    self.global_var(f"@g.{name}", t)
     if name in self.gflag:
-        self.global_var(f"@g.{name}.def", "i1")
+        self.global_var(f"@g.{name}.def", "bool")
 
 def gen_declare(self, name: str, t: str) -> None:
     if self.is_global(name):
@@ -1255,9 +1310,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr @g.{name}")
+        self.mem_store(Val(f"@g.{name}", "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
         if name in self.gflag:
-            self.emit(f"store i1 true, ptr @g.{name}.def")
+            self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
     else:
         if name in self.nonevars and name not in self.ltype and name not in self.compvars:
             # a parameter whose argument is None: assigning None keeps it so; any other value
@@ -1292,9 +1347,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.emit(f"store {lt(t)} {self.coerce(v, t, self.assigned_to(v, t, name)).v}, ptr {self.lreg[name]}")
+        self.mem_store(Val(self.lreg[name], "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
         if name in self.lflag and name not in self.compvars:
-            self.emit(f"store i1 true, ptr {self.lflag[name]}")
+            self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
         held = "" if is_union(unopt(t)) and name in self.nlw else self.holds(t, v.t)
         if held == "":
             self.narrowed.pop(name, "")
@@ -1389,7 +1444,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         # a, b = xs: the length is checked when it runs, as CPython does. CPython takes every
         # item before it stores the first, so where a store may change the list (xs[1], xs[0] =
         # xs, or a __setitem__ that empties it), the items are all read first
-        self.rt("pys_unpack_check", "void", [f"i64 {self.ins(f'load i64, ptr {v.v}')}", f"i64 {len(t.kids)}"])
+        self.rt("pys_unpack_check", "void", [f"i64 {self.mload('int', v.v)}", f"i64 {len(t.kids)}"])
         first = v.t != "str" and not name_targets(t)
         items: list[Val] = []
         for i in range(len(t.kids)):

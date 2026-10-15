@@ -2,8 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, ICMP
-from src.pystachy_compiler.utils import is_dict, lt, selem, takes_self, targs
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, ICMP, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.utils import is_dict, is_tuple, lt, selem, takes_self, targs
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -33,8 +33,35 @@ def gen_lower(self, fn: IFn) -> None:
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
     o = self.out
-    if op == "raw":
-        o.append("  " + i.s)
+    if op == "scalar.bin" or op == "scalar.cast" or op == "scalar.cmp":
+        self.lower_scalar(i)
+
+    elif op == "mach.load" or op == "mach.store":
+        metadata = f", !tbaa !{TBAA_LEN}" if i.s == "length" or i.s == "length.range" else f", !tbaa !{TBAA_BYTES}" if i.s == "bytes" else ""
+        if i.s == "length.range":
+            metadata += f", !range !{STRLEN_RANGE}"
+        if op == "mach.load":
+            o.append(f"  %t{i.r[0]} = load {lt(i.t)}, ptr {i.a[0].v}{metadata}")
+        else:
+            o.append(f"  store {lt(i.a[1].t)} {i.a[1].v}, ptr {i.a[0].v}{metadata}")
+    elif op == "mach.addr":
+        o.append(f"  %t{i.r[0]} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
+    elif op == "mem.load":
+        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}")
+    elif op == "mem.store":
+        v = i.a[1]
+        o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}")
+    elif op == "field.addr":
+        o.append(f"  %t{i.r[0]} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
+    elif op == "alloc.fixed":
+        size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
+        o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+    elif op == "tuple.load" or op == "tuple.store":
+        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 {i.k}")
+        if op == "tuple.load":
+            o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
+        else:
+            o.append(f"  store i64 {i.a[1].v}, ptr %t{i.r[0]}")
     elif op == "slot.pack":
         v = i.a[0]
         c = f"bitcast double {v.v} to i64" if v.t == "float" else f"zext i1 {v.v} to i64" if v.t == "bool" else f"bitcast i64 {v.v} to i64" if v.t == "int" else f"ptrtoint ptr {v.v} to i64"
@@ -53,6 +80,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         v = i.a[0]
         c = f"icmp {ICMP[i.s]} i64" if v.t == "int" else f"fcmp {FCMP[i.s]} double"
         o.append(f"  %t{i.r[0]} = {c} {v.v}, {i.a[1].v}")
+    elif op == "int.ucmp":
+        o.append(f"  %t{i.r[0]} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
+    elif op == "ptr.cmp":
+        o.append(f"  %t{i.r[0]} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
     elif op == "union.payload":
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
@@ -102,6 +133,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "init":
         o.append("  " + self.invoke(f"call void @init.{i.s}()", i))
+    elif op == "empty.kind":
+        # Only fresh empty results may change their dict/set key layout. A later
+        # return can resolve the hole; an outer caller types an unresolved result.
+        t = self.holes[i.k] if i.k > 0 else i.a[0].t
+        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t)) if t != "" else "0"
+        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
+        o.append(f"  store i64 {kind}, ptr %t{i.r[0]}")
     elif op == "list.len":
         o.append(f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}")
     elif op == "list.load":
@@ -169,7 +207,9 @@ def gen_eh_ir(self, fn: IFn) -> None:
                 self.runtime("pys_exc_new")
                 code.append(i)
                 ex = f"%t{fn.n}"
-            code.append(Ins("raw", "", f"store ptr {ex}, ptr {lp.a[0].v}"))
+            st = Ins("mach.store", "", "")
+            st.a = [Val(lp.a[0].v, "%ptr"), Val(ex, "%ptr")]
+            code.append(st)
             br = Ins("br", "", "")
             br.b = [lp.b[0]]
             code.append(br)
@@ -202,3 +242,17 @@ def gen_eh_ir(self, fn: IFn) -> None:
     fn.pads = len(used) > 0
     if fn.pads:
         self.runtime("pys_personality")
+
+
+def gen_lower_scalar(self, i: Ins) -> None:
+    a = i.a[0]
+    if i.op == "scalar.bin":
+        s = i.s + (" " + i.x if i.x != "" else "") + " " + lt(a.t) + " " + a.v
+        if len(i.a) == 2:
+            s += ", " + i.a[1].v
+    elif i.op == "scalar.cast":
+        s = i.s + " " + lt(a.t) + " " + a.v + " to " + lt(i.t)
+    else:
+        s = ("fcmp" if a.t == "float" else "icmp") + " " + i.s + " " + lt(a.t) + " " + a.v + ", " + i.a[1].v
+    self.out.append(f"  %t{i.r[0]} = {s}")
+

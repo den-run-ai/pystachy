@@ -2,8 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
-from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, LLNOTRAW, RUNTIME
-from src.pystachy_compiler.utils import is_opt, is_union, rawfx, umembers
+from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.utils import is_dict, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
 
 class EffectSummaries:
@@ -87,8 +87,7 @@ class EffectSummaries:
 
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
-    # a raw op is one LLVM instruction that is no call (calls are rt, call and init ops, whose
-    # effects are known), no phi and no terminator, and call and init ops call compiled
+    # call and init ops call compiled
     # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block ends with its one terminator; branches go to blocks of fn; a phi
     # starts its block, and its predecessors branch there; each op holds exactly the numbers
     # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
@@ -135,6 +134,79 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 self.bad_ir(fn, b, "a phi after other ops")
             if i.op == "rt" and i.s not in self.rtfns:
                 self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
+            if i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp":
+                self.verify_scalar(fn, b, i)
+            if i.op == "select":
+                if len(i.a) != 3 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, "select needs three operands and no extra metadata")
+                t = i.t
+                if i.a[0].t != "bool" or i.a[1].t != t or i.a[2].t != t:
+                    self.bad_ir(fn, b, "select needs a bool condition and matching value and result types")
+                if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                    self.bad_ir(fn, b, "select needs a native or machine scalar value type")
+
+            if i.op == "mach.load" or i.op == "mach.store":
+                load = i.op == "mach.load"
+                if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
+                if i.a[0].t != "%ptr":
+                    self.bad_ir(fn, b, f"{i.op} needs a machine pointer address")
+                t = i.t if load else i.a[1].t
+                if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"]) or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                    self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
+                if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
+                    self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")
+            if i.op == "mach.addr":
+                if len(i.a) != 2 or i.t != "%ptr" or i.s not in ["int", "%ptr", "%byte"] or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
+                    self.bad_ir(fn, b, "mach.addr needs a machine element type and inbounds flag")
+                if i.a[0].t != "%ptr" or i.a[1].t != "int":
+                    self.bad_ir(fn, b, "mach.addr needs a machine pointer and int index")
+            if i.op == "mem.load" or i.op == "mem.store":
+                if len(i.a) != (1 if i.op == "mem.load" else 2) or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
+                t = i.a[0].t[1:] if i.a[0].t.startswith("*") else ""
+                if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                    self.bad_ir(fn, b, f"{i.op} needs a typed address of a native value")
+                if (i.op == "mem.load" and i.t != t) or (i.op == "mem.store" and (i.t != "" or i.a[1].t != t)):
+                    self.bad_ir(fn, b, f"{i.op} needs matching address and native value types")
+            if i.op == "alloc.fixed":
+                if len(i.a) != 0 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, "alloc.fixed needs no operands or extra metadata")
+                if i.t not in self.classes and not (is_tuple(i.t) and i.t.endswith("]") and i.t.count("[") == i.t.count("]") and "" not in targs(i.t) and "..." not in targs(i.t)):
+                    self.bad_ir(fn, b, "alloc.fixed needs a declared class or fixed tuple type")
+                if "alloc" not in self.rtfns:
+                    self.bad_ir(fn, b, "alloc.fixed needs the alloc runtime declaration")
+            if i.op == "field.addr":
+                if len(i.a) != 1 or i.s != "" or i.x != "" or len(i.b) != 0:
+                    self.bad_ir(fn, b, "field.addr needs one object and no extra metadata")
+                if i.a[0].t not in self.classes:
+                    self.bad_ir(fn, b, "field.addr needs a declared class layout")
+                ci = self.classes[i.a[0].t]
+                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values()):
+                    self.bad_ir(fn, b, "field.addr needs a declared field or assignment flag index")
+                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "bool"
+                if i.t != "*" + t:
+                    self.bad_ir(fn, b, "field.addr result must address the declared member type")
+            if i.op == "tuple.load" or i.op == "tuple.store":
+                if len(i.a) != (1 if i.op == "tuple.load" else 2) or i.x != "" or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
+                t = i.a[0].t
+                ts = targs(t) if is_tuple(t) and t.endswith("]") and t.count("[") == t.count("]") else []
+                if "" in ts or "..." in ts or i.k < 0 or i.k >= len(ts):
+                    self.bad_ir(fn, b, f"{i.op} needs a fixed tuple and an in-range item index")
+                if i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or (i.s in ["T", "K", "V", "S"] and i.s not in self.classes):
+                    self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
+                if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
+                    self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
+            if i.op == "empty.kind":
+                if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
+                    self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
+                t = i.a[0].t
+                if not (is_dict(t) or is_set(t)) or (i.k == 0 and "?" in t):
+                    self.bad_ir(fn, b, "empty.kind needs a dict/set key type or a deferred hole")
+                h = self.holes[i.k] if i.k > 0 else t
+                if h != "" and (not same_kind(t, h) or "?" in h):
+                    self.bad_ir(fn, b, "empty.kind needs a concrete hole of the same dict/set kind")
             if i.op == "num.cast" or i.op == "num.cmp":
                 if len(i.a) != (1 if i.op == "num.cast" else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
@@ -144,6 +216,20 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, "num.cast needs bool to int/float or int to float")
                 elif i.t != "bool" or i.s not in ICMP or (t != "int" and t != "float") or i.a[1].t != t:
                     self.bad_ir(fn, b, "num.cmp needs a comparison of two ints or two floats, returning bool")
+            if i.op == "int.ucmp":
+                if len(i.a) != 2 or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, "int.ucmp needs two operands and no extra metadata")
+                if i.t != "bool" or i.s not in ["<", "<=", ">", ">="] or i.a[0].t != "int" or i.a[1].t != "int":
+                    self.bad_ir(fn, b, "int.ucmp needs an unsigned order comparison of two ints, returning bool")
+            if i.op == "ptr.cmp":
+                if len(i.a) != 2 or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, "ptr.cmp needs two operands and no extra metadata")
+                if i.t != "bool" or (i.s != "==" and i.s != "!="):
+                    self.bad_ir(fn, b, "ptr.cmp needs == or !=, returning bool")
+                for a in i.a:
+                    t = a.t
+                    if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes) or (t != "None" and lt(t) != "ptr"):
+                        self.bad_ir(fn, b, "ptr.cmp needs native references or None")
             if i.op == "slot.pack" or i.op == "slot.unpack":
                 if len(i.a) != 1 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one operand and no immediates or labels")
@@ -170,13 +256,6 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             for x in i.r:
                 if x > fn.n:
                     self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
-            if i.op == "raw":
-                # one LLVM instruction that loads, stores or computes: not a call, a phi, a
-                # terminator or a label (its first word, after the "%x = " of a value it defines)
-                w = i.s[i.s.find(" = ") + 3 :] if i.s.startswith("%") and " = " in i.s else i.s
-                w = w[: w.find(" ")] if " " in w else w
-                if w in LLNOTRAW or w.endswith(":") or "\n" in i.s:
-                    self.bad_ir(fn, b, f"LLVM text that must be an op: {i.s}")
             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
             if i.op != "phi":
@@ -198,14 +277,18 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
 
 def gen_nums(self, i: Ins) -> int:
+    if i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp":
+        return 1
     # how many numbers op i defines (%tN): what its lowering prints
+    if i.op == "field.addr" or i.op == "mach.load" or i.op == "mach.addr":
+        return 1
     if i.op == "ovf":
         return 3
     if i.op == "list.load":
         return 4
-    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload":
+    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load":
         return 2
-    if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp":
+    if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp" or i.op == "empty.kind":
         return 1
     if i.op == "rt":
         return 0 if self.rtfns[i.s].sig[0] == "None" else 1
@@ -227,17 +310,14 @@ def gen_effects(self) -> None:
         seen: dict[int, bool] = {}
         for b in fn.blocks:
             for i in b.code:
-                if i.op == "raw":
-                    m |= rawfx(i.s, fn.fa)
+                c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                if c in self.fll:
+                    ix = self.fll[c]
+                    if ix not in seen:
+                        seen[ix] = True
+                        cs.append(ix)
                 else:
-                    c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
-                    if c in self.fll:
-                        ix = self.fll[c]
-                        if ix not in seen:
-                            seen[ix] = True
-                            cs.append(ix)
-                    else:
-                        m |= self.opfx(i, fn.fa)
+                    m |= self.opfx(i, fn.fa)
         direct.append(m & ~FXBIT["N"])
         calls.append(cs)
     self.summaries.update(direct, calls)
@@ -247,7 +327,7 @@ def gen_effects(self) -> None:
 def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
     # the effects of op i (FX bits) of a function whose field addresses are fa (IFn.fa): a
     # call's and an init's are its callee's summary (IFn.fx: every letter until effects has
-    # computed it, and if the callee is not compiled), a raw op's what its text does (rawfx)
+    # computed it, and if the callee is not compiled). Memory effects use typed addresses.
     if i.op == "call" or i.op == "init":
         c = i.s if i.op == "call" else "@init." + i.s
         return self.fns[self.fll[c]].fx if c in self.fll else FXALL
@@ -257,8 +337,16 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run)
         f = self.rtfns[i.s]
         return FXALL if f.q and ("O" in i.x or ("E" in i.x and len(self.xcls) > 0)) else f.fx
-    if i.op == "raw":
-        return rawfx(i.s, fa)
+    if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
+        st = i.op == "mem.store" or i.op == "mach.store"
+        a = i.a[0].v
+        if a.startswith("@"):
+            return FXBIT["wG"] if st else FXBIT["rG"]
+        if a.startswith("%") and "." in a:
+            return 0  # a local slot: no address escapes
+        if a in fa:
+            return FXBIT["wO"] if st else FXBIT["rO"]
+        return RAWW if st else RAWR
     return self.opfxs[i.op]
 
 # ---- optimizations (OPTS): passes over an IFn, once the program is built and its effect

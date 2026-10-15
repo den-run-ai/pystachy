@@ -1,0 +1,8 @@
+[3] ['word'] []
+{'name': 4} {('key', 2): 'value'} value {}
+{'branches': 5} {}
+True True 0
+{'empty': 9} {'filled': 7} {('empty', 2): 10} {('filled', 1): 8}
+True True
+['return'] {}
+[exit 0]

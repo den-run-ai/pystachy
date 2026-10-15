@@ -59,10 +59,12 @@ The main rules are:
   fields and globals still require consistent types. See [local bindings](language/typing.md#variables-and-empty-containers).
 - Mutable containers are invariant: a `list[int]` cannot become a `list[int | None]`.
 - Empty lists and dictionaries need an annotation or a use that determines their type.
-- A function whose parameters are all annotated uses those types; if its return annotation is omitted,
-  it returns `None`. Give value-returning functions an explicit return type.
-- An unannotated module-level function or method is specialized for the argument types of each
-  call. Its supported branches and return values must have consistent types.
+- Ordinary functions and methods infer an omitted return annotation from their supported returns,
+  including no-argument and fully annotated parameter signatures. Parameters keep their declared
+  types, explicit `-> None` stays a contract, and functions without value returns return `None`.
+  Constructors and implicit special methods keep their own result contracts.
+- A module-level function or ordinary method with an unannotated parameter is specialized for
+  each call's argument types. Its supported branches and returns must have consistent types.
 - An unannotated constructor can specialize its class from the fields it initializes.
   Objects of different specializations cannot share one variable or container.
 
@@ -95,10 +97,22 @@ Lambdas, closures and decorators of functions are supported. Functions with `*ar
 `**kwargs` specialize for the call's argument shape; forwarding is more restricted than in
 fully dynamic Python.
 
-Classes support fields, methods, class attributes, `@staticmethod`, `@classmethod` and
+Classes support fields, methods, class attributes, read-only `@property`, `@staticmethod`, `@classmethod` and
 supported operator and container methods. Dataclasses support `kw_only=True` and
 `__post_init__`; options such as `frozen=True`, `order=True` and `dataclasses.field()` are
 not supported.
+
+Literal `__slots__` strings, tuples and lists restrict instance field writes when every
+base also declares slots. A subclass without slots, or with an unslotted base, may add
+fields. Dynamic slots, private slot names, `__dict__` and `__weakref__` slots are
+unsupported. The `__slots__` class attribute remains readable through the class or an
+instance; changing its value does not change the declared slots. Instance rebinding
+of `__slots__` is unsupported, as are base-typed reads when subclasses use different
+metadata types, or when an exception subclass overrides the metadata (read through
+the concrete class instead). Slot violations are compile
+errors rather than catchable exceptions. Repeated slot declarations and
+class variables or methods shadowing inherited slots are also unsupported, as are
+new slots shadowing inherited methods or properties.
 
 Ordinary classes support single inheritance, inherited fields and constructors, instance-method
 overrides, `super()` and runtime `isinstance()` checks. A base-typed receiver calls its concrete

@@ -10,6 +10,16 @@ class Val:
         self.t = t
 
 
+class Data:
+    # Immutable module data: string bytes, a callable's code/env, or an exception descriptor.
+    # LLVM's concrete layout and declaration syntax belong to lower_module.
+    def __init__(self, kind: str, name: str):
+        self.kind = kind
+        self.name = name
+        self.text = ""
+        self.refs: list[str] = []
+
+
 class IterArg:
     # A consumer's next argument: evaluate it after its iterator is constructed, before traversal.
     # With split, a label, there is none: the code after the iterator is constructed goes on at
@@ -73,10 +83,14 @@ class FnInfo:
         # templates: a module-level function with an unannotated parameter, compiled per call for
         # the argument types (ptypes "" where unannotated) into the functions in insts
         self.generic = False
+        self.void_default = False  # newly inferred concrete signature: recursion may retain its old None contract
         self.insts: dict[str, FnInfo] = {}
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
+        self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
+        self.rsoft = False  # a comparison hint retains the original result-inference policy
+        self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
@@ -94,6 +108,7 @@ class FnInfo:
         self.iters = False  # an __iter__ that returns an Iterator[T]: ret is the list[T] it steps through (see iter_ret)
         self.synthetic = False  # a dataclass's method that the compiler writes (Gen.synth), not the program
         self.deco = ""  # a method's @staticmethod or @classmethod (whose cls names the class), or "": it takes self
+        self.prop = False  # a read-only @property: an attribute read calls this instance method
         self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
         self.orig = node  # and then its immutable def before cls was renamed (shared by inherited methods)
         self.pending = False  # inherited class method: node shares orig's body until materialize()
@@ -143,12 +158,25 @@ class Ins:
         # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
         # num.cast promotes one numeric operand; num.cmp records the source comparison
         # in s and compares two operands of the same native numeric type.
-        # text immediate: for "raw", one line of LLVM text; a slot's name; an rt op's RUNTIME key; the
+        # mem.load/store transfer native values through an address of type *<native>.
+        # Their effects retain local/global/field/unknown address classification.
+        # mach.load/store additionally access runtime headers, closure slots and byte
+        # buffers through %ptr. s is finite metadata: length, length.range, bytes or empty.
+        # mach.addr computes an indexed address: s is its machine element type, a holds
+        # the pointer and int index, and k is the inbounds flag. No LLVM text is retained.
+        # int.ucmp retains unsigned order semantics for native int bounds checks.
+        # ptr.cmp tests native reference identity (==/!=), including None's null.
+        # alloc.fixed keeps the class or fixed tuple type; lowering computes its byte size.
+        # tuple.load/store use a fixed tuple operand, k: item index, s: native item type.
+        # They transfer an opaque slot; r holds its address, then the loaded slot if any.
+        # empty.kind fixes a fresh dict/set result's key layout, using its typed
+        # operand or the deferred type hole k; it never retypes a filled container.
+        # text immediate: a slot's name; an rt op's RUNTIME key; the
         # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
         # exception a raise raises; ovf's operator + - *
         self.s = s
         # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1), the
-        # number of the value a raw op defines (%tN; 0: none)
+        # layout index or a finite machine-address flag
         self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
         # is U when it holds a class (O<id>), or an exception (E) in a program that makes objects of
@@ -240,7 +268,7 @@ class Values:
     def __init__(self, fn: IFn, pl: dict[str, list[int]]):
         self.fn = fn
         self.pl = pl  # the blocks that branch to each block (Gen.preds)
-        # by the number of the value a raw op or an rt op defines: its block * stride + its position
+        # by the number of a value an operation defines: its block * stride + its position
         # there (-1 for the other numbers), stride being more than the ops of any block (a block of
         # 50 xors a line for 24,000 lines holds more than 2^20)
         self.at: list[int] = [-1] * (fn.n + 1)
@@ -251,17 +279,20 @@ class Values:
         self.cn: dict[str, str] = {}  # value -> its canonical value, once asked
         self.same: dict[str, str] = {}  # a computation's text, with canonical operands -> the first value of it
         self.text: dict[str, str] = {}  # and that value -> the text
+        self.fieldtype: dict[str, str] = {}  # canonical field address -> declared class
+        self.fieldindex: dict[str, int] = {}  # canonical field address -> member index
         self.depth = 0  # how many calls of Gen.canon are under way (at most CANON_DEPTH)
         for j in range(len(fn.blocks)):
             code = fn.blocks[j].code
             for x in range(len(code)):
                 i = code[x]
-                if i.op == "raw" and i.k > 0:
-                    self.at[i.k] = j * self.stride + x
-                elif (i.op == "rt" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "num.cast" or i.op == "num.cmp") and len(i.r) == 1:
+                if (i.op == "select" or i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "rt" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "mach.load" or i.op == "mach.addr" or i.op == "mem.load" or i.op == "field.addr" or i.op == "int.ucmp" or i.op == "ptr.cmp") and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x
                 elif i.op == "union.payload" and len(i.r) == 2:
                     self.at[i.r[1]] = j * self.stride + x
+                elif i.op == "tuple.load" or i.op == "tuple.store":
+                    for r in i.r:
+                        self.at[r] = j * self.stride + x
 
 
 class Exit:
@@ -300,6 +331,7 @@ class Frame:
         self.shadows: list[list[str]] = []
         self.lcs: list[str] = []
         self.lct: list[str] = []
+        self.lcsoft: list[bool] = []
         self.ret = ""
         self.retann = False
         self.nn: dict[str, bool] = {}
@@ -330,6 +362,8 @@ class ClassInfo:
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
+        self.slots: list[str] = []  # literal __slots__, including inherited slots
+        self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.methods: dict[str, FnInfo] = {}

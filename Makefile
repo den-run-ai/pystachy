@@ -70,7 +70,7 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	build/dictprobe
 	PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
 
-# A reachable empty list must release its historical backing, without allocating in clear.
+# Empty lists release historical backing; range-list backing is pointer-free and safely mutable.
 listprobe: tools/listprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/listprobe-rt.ll
@@ -108,6 +108,10 @@ streamprobe: pystachy
 # Inspect the bitcode passed to lli, then run it: dead functions must not reach code generation.
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
+
+# Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
+unicode-audit: pystachy
+	$(PY) tools/unicode_audit.py
 
 # Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
 # benchmarks, dict probes, scaling) -> build/verification.json
@@ -214,4 +218,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

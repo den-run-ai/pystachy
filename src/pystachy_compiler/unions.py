@@ -45,15 +45,15 @@ def gen_uop(self, v: Val, op: str) -> Val:
     if is_opt(v.t):
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
-        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), end, arm)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
         self.place(arm)
-    tag = self.ins(f"load i64, ptr {v.v}")
+    tag = self.mload('int', v.v)
     members = umembers(unopt(v.t))
     for i in range(len(members)):
         nxt = self.label() if i + 1 < len(members) else ""
         if nxt != "":
             arm = self.label()
-            self.cbr(self.ins(f"icmp eq i64 {tag}, {self.utag(members[i])}"), arm, nxt)
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
         result = Val(self.truth(item), "bool") if op == "truth" else self.to_str(item)
@@ -73,7 +73,7 @@ def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     a = self.coerce(a, t)
     b = self.coerce(b, t)
     r = self.rt("pys_eq", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(t, '=='))}"])
-    return Val(self.ins(f"icmp {'ne' if op == '==' else 'eq'} i64 {r}, 0"), "bool")
+    return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
 
 def gen_umember_problem(self, t: str) -> str:
     # why a value of type t cannot be one of a union's (A | B), or ""
@@ -134,7 +134,7 @@ def gen_ubox(self, v: Val, m: str) -> str:
     b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m))])
     if m not in self.classes or v.v in self.nn:
         return b
-    return self.ins(f"select i1 {self.ins(f'icmp eq ptr {v.v}, null')}, ptr null, ptr {b}")
+    return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', '%ptr'), Val(b, '%ptr'))
 
 def gen_uget(self, u: Val, m: str) -> Val:
     # the value a union's box u holds, known to be of member type m
@@ -151,7 +151,7 @@ def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     lload = self.label() if may_none else ""
     lend = self.label() if may_none else ""
     if may_none:
-        self.cbr(self.ins(f"icmp eq ptr {u.v}, null"), lend, lload)
+        self.cbr(self.ptr_cmp('==', u, Val('null', 'None')).v, lend, lload)
         self.place(lload)
     i = Ins("union.tag", "int", "")
     i.a = [Val(u.v, unopt(u.t))]  # (the existing guard, or narrowing, excludes None)
@@ -159,8 +159,8 @@ def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     tag = f"%t{i.r[0]}"
     r = ""
     for m in ms:
-        x = self.ins(f"icmp eq i64 {tag}, {self.utag(m)}")
-        r = x if r == "" else self.ins(f"or i1 {r}, {x}")
+        x = self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v
+        r = x if r == "" else self.scalar('or', [Val(r, 'bool'), Val(x, 'bool')])
     if not may_none:
         return r
     l1 = self.cur
@@ -186,7 +186,8 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
-            self.err(f"expected {typestr(t)}, got {typestr(v.t)}")
+            hint = f" (perhaps because {self.guessed[self.curfn.ll]})" if self.curfn.ll in self.guessed else ""
+            self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
@@ -218,7 +219,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     l0 = self.cur
     lget = self.label()
     lend = self.label()
-    self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lget)
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, lend, lget)
     self.place(lget)
     x = self.coerce(self.uget(Val(v.v, unopt(v.t)), m), nt)
     l1 = self.cur
@@ -266,7 +267,7 @@ def gen_uisinst(self, v: Val, c: Node) -> str:
     may_none = (is_opt(v.t) or self.optional(unopt(v.t)) == unopt(v.t)) and v.v not in self.nn
     r = self.utest(v, ms, may_none)
     if may_none and self.isinst("None", c) == 1:
-        r = self.ins(f"or i1 {r}, {self.ins(f'icmp eq ptr {v.v}, null')}")
+        r = self.scalar('or', [Val(r, 'bool'), Val(self.ptr_cmp('==', v, Val('null', 'None')).v, 'bool')])
     for m in dynamic:
         hit = self.label()
         end = self.label()
@@ -275,7 +276,7 @@ def gen_uisinst(self, v: Val, c: Node) -> str:
         self.cbr(test, hit, end)
         self.place(hit)
         match = self.obj_isinst(self.uget(Val(v.v, unopt(v.t)), m), c)
-        result = self.ins(f"or i1 {r}, {match.v}")
+        result = self.scalar('or', [Val(r, 'bool'), Val(match.v, 'bool')])
         after = self.cur
         self.br(end)
         self.place(end)
@@ -294,7 +295,7 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
     for member in members:
         if member in self.classes and m not in self.classes[member].methods:
             self.err(f"reference union member {typestr(member)} must declare method {m}() (callable fields are not supported)")
-    self.guard(self.ins(f"icmp eq ptr {o.v}, null"), f"AttributeError: 'NoneType' object has no attribute '{m}'")
+    self.guard(self.ptr_cmp('==', o, Val('null', 'None')).v, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     bound: list[Node] = []
     for a in args:
         if a.kind == "starred" or a.kind == "dstar":
@@ -303,7 +304,7 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
             bound.append(mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
         else:
             bound.append(self.vnode(self.expr(a, "")))
-    tag = self.ins(f"load i64, ptr {o.v}")
+    tag = self.mload('int', o.v)
     end = self.label()
     results: list[Val] = []
     edges: list[str] = []
@@ -312,7 +313,7 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
         hit = self.label()
         miss = self.label() if i + 1 < len(members) else ""
         if miss != "":
-            self.cbr(self.ins(f"icmp eq i64 {tag}, {self.utag(members[i])}"), hit, miss)
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, hit, miss)
         else:
             self.br(hit)
         self.place(hit)

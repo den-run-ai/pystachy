@@ -62,6 +62,8 @@
 #   jit-dead-code  tools/jitprobe.py: unused functions never reach lli, and a small helper reaches it
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
+#   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
+#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers
 #   scaling        tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -77,13 +79,13 @@ ROOT=$(pwd)
 # --list exposes the same plan to the final CI report gate, which rejects missing groups/steps.
 plan() {
   case $1 in
-    all) echo 'bootstrap tests-cpython tests-native tests-opt-off runtime-cache python-free ubsan check-ir runtime-table gc-stress benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code scaling' ;;
+    all) echo 'bootstrap tests-cpython tests-native tests-opt-off runtime-cache python-free ubsan check-ir runtime-table gc-stress benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit scaling' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native) echo 'bootstrap tests-native tests-opt-off' ;;
     python-free) echo 'bootstrap python-free' ;;
     ubsan) echo 'bootstrap ubsan' ;;
     gc-stress) echo 'bootstrap gc-stress' ;;
-    contracts) echo 'bootstrap runtime-cache check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code' ;;
+    contracts) echo 'bootstrap runtime-cache check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling' ;;
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
@@ -114,7 +116,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|ARGV0))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -184,13 +186,34 @@ x=""
   "$(lines "$V/stage1.ll")" "$(sha "$V/stage1.ll")" "$(wc -c < "$V/pystachy2" | tr -d ' ')" "$(secs "$t0" "$t1")" "$(secs "$t2" "$t3")")
 step bootstrap $r "$s" "$L" "$x"
 
-# gc-stress's self-compile keeps one core busy for a minute or more: it runs now, beside the test
-# runs below, and that step waits for it. Ctrl-C or TERM kills it ($! is the compiler itself: a
-# simple command run in the background is exec'd, with no shell around it to kill instead)
+# gc-stress's self-compile runs beside the test suite. Bound it separately from the CI job,
+# leaving time to write/upload a failed report. timeout forwards TERM to its process group,
+# including the compiler, so cancellation cannot leave the background self-compile running.
 gcpid=
-trap '[ -z "$gcpid" ] || kill $gcpid 2> /dev/null; exit 130' INT TERM
+cancel_gc() {
+  if [ -n "$gcpid" ]; then
+    kill "$gcpid" 2> /dev/null
+    wait "$gcpid" 2> /dev/null
+  fi
+  exit 130
+}
+trap cancel_gc INT TERM
 if want gc-stress && [ -x "$V/pystachy2" ]; then
-  PYSTACHY_GC_STRESS=1000 "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
+  echo 'gc-self: starting (30-minute limit; build/verify/gc-self.log)'
+  timeout --verbose --kill-after=10s 30m sh -c '
+    started=$(date +%s)
+    echo "gc-self: started $(date -u +%Y-%m-%dT%H:%M:%SZ), limit 30m"
+    "$@" & child=$!
+    trap '\''kill "$child" 2>/dev/null'\'' INT TERM
+    wait "$child"
+    status=$?
+    # A signal interrupts wait; stay alive until the compiler exits so timeout can
+    # escalate to KILL if it ignores TERM, and cancellation reaps it before returning.
+    if [ "$status" -gt 128 ]; then wait "$child"; status=$?; fi
+    echo "gc-self: finished after $(($(date +%s) - started))s, exit $status"
+    exit "$status"
+  ' gc-self env PYSTACHY_GC=stats PYSTACHY_GC_STRESS=1000 \
+    "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
   gcpid=$!
 fi
 
@@ -319,12 +342,17 @@ L=$V/gc-stress.log; s=$(now); r=fail
   echo "-- tests, collecting at every allocation"; cat "$V/gc-stress-tests.log"
   # (every 1000, not 100: the compiler keeps each function's IR until the program is built, and at
   # every 100 its collections, which mark all of it, take minutes; started after the bootstrap)
-  self_ok=0
+  self_ok=0; self_status=127
   if [ -n "$gcpid" ]; then
-    wait "$gcpid" && self_ok=1
+    echo '-- waiting for bounded GC self-compile (exit 124 means timeout)'
+    wait "$gcpid"; self_status=$?
+    [ "$self_status" = 0 ] && self_ok=1
     gcpid=  # reaped even on failure: the signal trap must never keep a stale PID
   fi
-  [ "$self_ok" = 1 ] && cat "$V/gc-self.log" &&
+  # Include the log on failure too: timeout/signal diagnostics must reach the step summary.
+  cat "$V/gc-self.log"
+  echo "gc-self: exit $self_status"
+  [ "$self_ok" = 1 ] &&
     cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 1000 allocations emits the stage1 IR" &&
     [ "$suite_ok" = 1 ] && r=pass
 } > "$L" 2>&1
@@ -451,6 +479,13 @@ if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
 $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+fi
+
+# ---- Unicode audit: opt-in checks persist in AOT and do not affect runtime-cache semantics
+if want unicode-audit; then
+L=$V/unicode-audit.log; s=$(now); r=fail
+$PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"]'
 fi
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)

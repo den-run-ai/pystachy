@@ -14,7 +14,6 @@ from src.pystachy_compiler.specs import (
     ICMP,
     IOPS,
     IRT,
-    MIXCMP,
     MODATTRS,
     NONEVAR,
     ORDOP,
@@ -222,6 +221,8 @@ def gen_has(self, t: str, a: str) -> int:
         return -1 if r == 1 else 0  # (unless it is None)
     if t in self.classes:
         ci = self.classes[t]
+        if a in ci.methods and ci.methods[a].prop:
+            self.err(f"hasattr() of property '{a}' is not supported: read it in a try/except AttributeError block")
         if a in ci.fflag and t + "." + a not in self.cvars:
             return -2
         if a in ci.methods or a in ci.ftypes:
@@ -350,14 +351,14 @@ def gen_obj_isinst(self, v: Val, t: Node) -> Val:
     end = self.label()
     nonnull = self.label()
     start = self.cur
-    self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), end, nonnull)
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, nonnull)
     self.place(nonnull)
-    tag = self.ins(f"load i64, ptr {v.v}")
+    tag = self.mload('int', v.v)
     r = "false"
     for c in self.classes.values():
         if c.tag > 0 and self.derives(c.name, v.t) and self.class_matches(c.name, t):
-            hit = self.ins(f"icmp eq i64 {tag}, {c.tag}")
-            r = hit if r == "false" else self.ins(f"or i1 {r}, {hit}")
+            hit = self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v
+            r = hit if r == "false" else self.scalar('or', [Val(r, 'bool'), Val(hit, 'bool')])
     done = self.cur
     self.br(end)
     self.place(end)
@@ -377,7 +378,7 @@ def gen_isinst_reads(self, c: Node) -> None:
         self.class_ahead(c.s)
         self.modchk(c)
         if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
-            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c.s}.def')}, true"), self.unbound(c.s))
+            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{c.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(c.s))
 
 def gen_puretype(self, c: Node, u: bool) -> bool:
     # can c, isinstance's second argument, be built without running code or raising, as
@@ -406,7 +407,7 @@ def gen_cond(self, n: Node) -> str:
     if n.kind == "boolop":
         return self.boolop(n, True, "").v
     if n.kind == "unary" and n.s == "not":
-        return self.ins(f"xor i1 {self.cond(n.kids[0])}, true")
+        return self.scalar('xor', [Val(self.cond(n.kids[0]), 'bool'), Val('true', 'bool')])
     return self.truth(self.expr(n, ""))
 
 def gen_truth(self, v: Val) -> str:
@@ -424,14 +425,14 @@ def gen_truth(self, v: Val) -> str:
     if t == "float":
         return self.num_cmp("!=", v, Val("0.0", "float")).v
     if t == "str" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
-        return self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {v.v}')}, 0")
+        return self.num_cmp('!=', Val(self.mload('int', v.v), "int"), Val('0', "int")).v
     if t == "None":
         return "false"
     if is_tuple(t):
         return "false" if t == "tuple[]" else "true"
     if is_opt(t):
         # not None, and then the value's own truth
-        nn = self.ins(f"icmp ne ptr {v.v}, null")
+        nn = self.ptr_cmp('!=', v, Val('null', 'None')).v
         e0 = self.cur
         l1 = self.label()
         l2 = self.label()
@@ -445,7 +446,7 @@ def gen_truth(self, v: Val) -> str:
         self.incoming(ph, "false", e0)
         self.incoming(ph, r, e1)
         return self.phi(ph)
-    nz = self.ins(f"icmp ne ptr {v.v}, null")
+    nz = self.ptr_cmp('!=', v, Val('null', 'None')).v
     if t in self.classes and self.classes[t].tag > 0:
         cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, t)]
         if any(["__bool__" in c.methods or "__len__" in c.methods for c in cs]):
@@ -459,14 +460,14 @@ def gen_truth(self, v: Val) -> str:
             self.incoming(ph, "false", start)
             self.cbr(nz, nonnull, end)
             self.place(nonnull)
-            tag = self.ins(f"load i64, ptr {v.v}")
+            tag = self.mload('int', v.v)
             narrow = dict(self.narrowed)
             for i in range(len(cs)):
                 c = cs[i]
                 nxt = self.label() if i + 1 < len(cs) else ""
                 if nxt != "":
                     arm = self.label()
-                    self.cbr(self.ins(f"icmp eq i64 {tag}, {c.tag}"), arm, nxt)
+                    self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
                     self.place(arm)
                 self.narrowed = dict(narrow)
                 r = "true"
@@ -474,8 +475,8 @@ def gen_truth(self, v: Val) -> str:
                     r = self.coerce(self.call_fn(c.methods["__bool__"], [Val(v.v, c.name)], [], direct=True), "bool").v
                 elif "__len__" in c.methods:
                     size = self.coerce(self.call_fn(c.methods["__len__"], [Val(v.v, c.name)], [], direct=True), "int")
-                    self.guard(self.ins(f"icmp slt i64 {size.v}, 0"), "ValueError: __len__() should return >= 0")
-                    r = self.ins(f"icmp ne i64 {size.v}, 0")
+                    self.guard(self.num_cmp('<', Val(size.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
+                    r = self.num_cmp('!=', Val(size.v, "int"), Val('0', "int")).v
                 if not self.term:
                     self.incoming(ph, r, self.cur)
                     self.br(end)
@@ -495,7 +496,7 @@ def gen_truth(self, v: Val) -> str:
         if "__bool__" in ms:
             r = self.coerce(self.call_fn(ms["__bool__"], [Val(v.v, t)], []), "bool").v
         else:
-            r = self.ins(f"icmp ne i64 {self.objlen(Val(v.v, t)).v}, 0")
+            r = self.num_cmp('!=', Val(self.objlen(Val(v.v, t)).v, "int"), Val('0', "int")).v
         e2 = self.cur
         self.br(l2)
         self.place(l2)
@@ -505,9 +506,26 @@ def gen_truth(self, v: Val) -> str:
         return self.phi(ph)
     return nz
 
-def gen_expr(self, n: Node, want: str) -> Val:
+def gen_list_hint_type(self, a: str, b: str) -> str:
+    # A supported annotation for mixed scalar rows. This is diagnostic advice only;
+    # successful programs keep their existing inference and representation.
+    if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+        ts = [self.list_hint_type(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]
+        return self.ctype("tuple", ts) if "" not in ts else ""
+    ms = (umembers(unopt(a)) if is_union(unopt(a)) else [unopt(a)]) + (umembers(unopt(b)) if is_union(unopt(b)) else [unopt(b)])
+    if any(t not in ["None", "int", "float", "bool", "str"] for t in ms):
+        return ""
+    t = self.union_type([a, b])
+    return "" if t.startswith("!") else t
+
+def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
     k = n.kind
+    resultsoft = resultsoft or n is self.soft
+    if returnctx and k in ["binop", "boolop", "ifexp"]:
+        # Contextual return inference follows fresh literal trees and calls.
+        # Other operations keep the hints their operands already needed.
+        want = self.generic_hint(n, want)
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "int":
@@ -545,34 +563,36 @@ def gen_expr(self, n: Node, want: str) -> Val:
     if k == "lambda":
         return self.closure(n)
     if k == "set":
-        return self.set_display(n, want, False)
+        return self.set_display(n, want, False, returnctx, resultsoft)
     if k == "setcomp":
         if n.kids[0].kind != "listcomp":
             self.err(UNSUPPORTED[n.kids[0].kind])
-        return self.listcomp(n.kids[0], want, "", "", None, "set")
+        return self.listcomp(n.kids[0], want, "", "", None, "set", resultsoft)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     if k == "binop" and n.s == "%" and n.kids[0].kind == "str":
         return self.percent(n.kids[0].s, n.kids[1])
     if k == "binop":
-        a = self.expr(n.kids[0], want)
-        return self.arith(n.s, a, self.expr(n.kids[1], a.t))
+        a = self.expr(n.kids[0], want, resultsoft=resultsoft)
+        return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
     if k == "unary":
         return self.unary(n)
     if k == "boolop":
-        return self.boolop(n, False, want)
+        return self.boolop(n, False, want, resultsoft)
     if k == "cmp":
         return self.compare(n)
     if k == "ifexp":
-        return self.ifexp(n, want)
+        return self.ifexp(n, want, resultsoft)
     if k == "call":
-        return self.call(n, want)
+        return self.call(n, want, resultsoft)
     if k == "attr":
         path = self.dotted(n)
         if path != "" and path[: path.rfind(".")] not in MODATTRS:
             self.modchk(n)
             return self.modattr(path)
         tc = n.kids[0]
+        if is_super(tc) and not self.bound("super"):
+            return self.super_call(tc, n.s, [], read=True)
         if n.s == "__name__" and tc.kind == "call" and len(tc.kids) == 2 and tc.kids[0].kind == "name" and tc.kids[0].s == "type" and not self.bound("type"):
             # type(e).__name__ of an exception: its class's name
             v = self.expr(tc.kids[1], "")
@@ -604,12 +624,12 @@ def gen_expr(self, n: Node, want: str) -> Val:
                 ci = self.classes[cn]
                 qn = self.sconst(short(ci.methods[mn].cls) + "." + mn)
                 if ci.tag > 0:
-                    tag = self.ins(f"load i64, ptr {o.v}")
+                    tag = self.mload('int', o.v)
                     for cc in self.classes.values():
                         if cc.tag > 0 and cc.name != cn and self.derives(cc.name, cn):
-                            matches = self.ins(f"icmp eq i64 {tag}, {cc.tag}")
+                            matches = self.num_cmp('==', Val(tag, "int"), Val(str(cc.tag), "int")).v
                             subname = self.sconst(short(cc.methods[mn].cls) + "." + mn)
-                            qn = self.ins(f"select i1 {matches}, ptr {subname}, ptr {qn}")
+                            qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
                 return Val(qn, "str")
             if o.t.startswith("fn[d:"):
                 mn = fk[: fk.find(":")]
@@ -623,7 +643,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
             return self.tuple_([Val(self.sconst(x), "str") for x in self.classes[o.t].fields])
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
-            return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool") if n.s == "closed" else Val(r, "str")
+            return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
         bm = self.method_value(o, n.s)
         if bm.t != "":
             return bm
@@ -649,7 +669,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
                 # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
                 bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
                 if bd.startswith("%"):
-                    bd = self.select(self.ins(f"icmp eq i64 {bd}, -9223372036854775808"), Val("-9223372036854775807", "int"), Val(bd, "int"))
+                    bd = self.select(self.num_cmp('==', Val(bd, "int"), Val('-9223372036854775808', "int")).v, Val("-9223372036854775807", "int"), Val(bd, "int"))
                 elif bd == "-9223372036854775808":
                     bd = "-9223372036854775807"
                 bnd.append(bd)
@@ -669,24 +689,42 @@ def gen_expr(self, n: Node, want: str) -> Val:
         given = et != ""
         jt = ""
         for e in n.kids:
-            v = self.expr(e, et)
+            v = self.expr(e, et, returnctx, resultsoft)
             if et == "" and v.t != "None":
                 et = v.t
             jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
             items.append(v)
+        if (returnctx or resultsoft) and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et) and not (is_fn(v.t) and is_callable(unopt(et)))]) > 0:
+            # A comparison's expected type is only a hint. Keep the display's
+            # own inference if an item cannot enter that representation.
+            given = False
+            et = ""
+            for v in items:
+                if et == "" and v.t != "None":
+                    et = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
         if et == "" or et == "None":
-            self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
+            self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
             e0 = et
             while et in self.classes and self.classes[et].exc != "" and v.t in self.classes and not self.derives(v.t, et):
                 et = self.classes[et].base  # (exception objects of several classes: a base of them all)
             if e0 in self.classes and et not in self.classes:
                 self.err(f"objects of the exception classes {short(e0)} and {short(v.t)} in one list are not supported: no class of the program is a base of both (give them one: class Base(Exception), class {short(e0)}(Base), ...)")
+        if not given and jt == "-":
+            hint = items[0].t
+            for v in items[1:]:
+                hint = self.list_hint_type(hint, v.t) if hint != "" else ""
+            for v in items if hint != "" else items[:0]:
+                if not (self.term and v.v == "undef") and not self.widens(v.t, et) and not self.converts(v.t, et):
+                    self.line = n.line
+                    advice = typestr(hint).replace("float | int", "int | float")
+                    numeric = "; for numeric promotion instead, write float literals or use float() on the integer items" if all(x.t in ["int", "float"] for x in items) else ""
+                    self.err(f"expected {typestr(et)}, got {typestr(v.t)}; this list literal needs list[{advice}] to preserve its mixed item types (include enclosing containers in the annotation){numeric}")
         items = [self.coerce(v, et) for v in items]
         r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
@@ -702,16 +740,25 @@ def gen_expr(self, n: Node, want: str) -> Val:
         jt = ""
         kj = ""
         for i in range(0, len(n.kids), 2):
-            a = self.expr(n.kids[i], kv[0])
+            a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
             if kv[0] == "":
                 kv[0] = a.t
-            b = self.expr(n.kids[i + 1], kv[1])
+            b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
             jt = b.t if jt == "" else self.join(jt, b.t) or "-"
             kj = a.t if kj == "" else self.join(kj, a.t) or "-"
             ks.append(a)
             vs.append(b)
+        if (returnctx or resultsoft) and kgiven and len([v for v in ks if not self.widens(v.t, kv[0]) and not self.boxes(v.t, kv[0])]) > 0:
+            kgiven = False
+            kv[0] = ks[0].t
+        if (returnctx or resultsoft) and given and len([v for v in vs if not self.widens(v.t, kv[1]) and not self.boxes(v.t, kv[1]) and not (is_fn(v.t) and is_callable(unopt(kv[1])))]) > 0:
+            given = False
+            kv[1] = ""
+            for v in vs:
+                if kv[1] == "" and v.t != "None":
+                    kv[1] = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
         if not kgiven and is_tuple(kj):
@@ -721,7 +768,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
             for b in vs:
                 kv[1] = self.wider(kv[1], b.t) or kv[1]
         if kv[0] == "" or kv[1] == "":
-            self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
+            self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation (d: dict[K, V] = {{}}, or -> dict[K, V] on a function returning the dict)")
         vs = [self.coerce(x, kv[1]) for x in vs]
         if key_problem(kv[0]) != "":
             self.err(key_problem(kv[0]))
@@ -733,7 +780,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
         ws = targs(want) if is_tuple(want) else []
         vals: list[Val] = []
         for i in range(len(n.kids)):
-            v = self.expr(n.kids[i], ws[i] if i < len(ws) else "")
+            v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
             if i < len(ws) and v.t != ws[i] and self.widens(v.t, ws[i]):
                 v = Val(v.v, ws[i])  # (None as an object, T as T | None)
             elif i < len(ws) and self.converts(v.t, ws[i]) and not is_sopt(v.t):
@@ -745,7 +792,7 @@ def gen_expr(self, n: Node, want: str) -> Val:
     if k == "listcomp":
         if n.s == "gen":
             self.err("a generator expression is only supported as the argument of sum(), min(), max(), sorted(), list(), any(), all(), math.fsum(), math.prod(), str.join() or list.extend()")
-        return self.listcomp(n, want)
+        return self.listcomp(n, want, resultsoft=resultsoft)
     if k == "fstr":
         parts: list[Val] = []
         for part in n.kids:
@@ -769,7 +816,7 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:
         return self.coerce(self.expr(ci.fdefault[a], t), t)
     self.class_default(ci, a)
-    return Val(self.ins(f"load {lt(t)}, ptr {ci.fglob[a]}"), t)
+    return Val(self.mload(t, ci.fglob[a]), t)
 
 def gen_cvar_stores(self, ns: list[Node]) -> None:
     # the class attributes the program assigns through their class (C.x = v, C.x += v; a class
@@ -815,7 +862,7 @@ def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
 def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
-    self.emit(f"store {lt(ci.ftypes[a])} {self.coerce(v, ci.ftypes[a]).v}, ptr {ci.fglob[a]}")
+    self.mstore(ci.ftypes[a], self.coerce(v, ci.ftypes[a]).v, ci.fglob[a])
 
 def gen_no_class_attr(self, c: str, a: str) -> None:
     # C.a where class C binds no class attribute a: CPython's AttributeError, or why it is not supported
@@ -825,6 +872,8 @@ def gen_no_class_attr(self, c: str, a: str) -> None:
     if c in self.nts and a in ci.fields:
         self.err(f"reading a NamedTuple's field through its class ({short(c)}.{a}, a descriptor in CPython) is not supported")
     if a in ci.methods:
+        if ci.methods[a].prop:
+            self.err(f"{short(c)}.{a} is a property: read it on an instance")
         self.err(f"method '{short(c)}.{a}' cannot be used as a value (call it)")
     if a in ci.fields:
         self.err(f"type object '{short(c)}' has no attribute '{a}' (its objects have the field '{a}')")
@@ -840,17 +889,19 @@ def gen_class_ready(self, cn: Node) -> ClassInfo:
         self.err(ci.bad)
     self.modchk(cn)
     if (cn.chk or self.foreign(c)) and c in self.gflag:
-        self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{c}.def')}, true"), self.unbound(c))
+        self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{c}.def'), 'bool'), Val('true', 'bool')]), self.unbound(c))
     return ci
 
-def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str) -> Val:
+def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # C.m(...): a static or class method called through its class (cls.m(...) in a class method)
     ci = self.class_ready(cn)
     if m not in ci.methods and m in ci.fdefault and cn.s not in self.nts:
-        return self.obj_call(self.class_attr(cn, m), args, want)  # (C.k(args) of a class attribute k)
+        return self.obj_call(self.class_attr(cn, m), args, want, resultsoft)  # (C.k(args) of a class attribute k)
     if m not in ci.methods:
         self.err(f"type object '{short(cn.s)}' has no attribute '{m}'")
     f = ci.methods[m]
+    if f.prop:
+        self.err(f"{short(cn.s)}.{m} is a property: read it on an instance")
     if f.bad == STUB.replace("NAME", m):
         self.err(f.bad)  # (an imported module's: CPython's stub raises NotImplementedError, however it is called)
     if f.deco == "":
@@ -861,10 +912,10 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str) -> Val:
             if o.t not in self.classes or not self.derives(o.t, cn.s):
                 self.err(f"{short(cn.s)}.{m}() needs an instance of {short(cn.s)}")
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
-            return self.call_fn(f, [o], args[1:], want, direct=True)
+            return self.call_fn(f, [o], args[1:], want, direct=True, resultsoft=resultsoft)
         self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
     self.cls_bound(f, cn.s, False)
-    return self.call_fn(f, [], args, want)
+    return self.call_fn(f, [], args, want, resultsoft=resultsoft)
 
 def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
     # a class method that uses cls, called through class c (obj: through an object of c, which
@@ -903,7 +954,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
-    self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), l1, l2)
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
     a = self.pformat(fmt, [Val("null", "None")], True)
     ph = Ins("phi", "str", "")
@@ -1083,24 +1134,24 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
             # A subclass's __format__ takes precedence over the object's str fallback,
             # even with an empty spec. Evaluate a computed spec once before dispatch.
             sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
-            nonempty = self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0")
+            nonempty = self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v
             absent = self.label()
             present = self.label()
             done = self.label()
             ph = Ins("phi", "str", "")
-            self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), absent, present)
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, absent, present)
             self.place(absent)
             self.guard(nonempty, "TypeError: unsupported format string passed to NoneType.__format__")
             self.incoming(ph, self.sconst("None"), self.cur)
             self.br(done)
             self.place(present)
-            tag = self.ins(f"load i64, ptr {v.v}")
+            tag = self.mload('int', v.v)
             for i in range(len(cs)):
                 ci = cs[i]
                 nxt = self.label() if i + 1 < len(cs) else ""
                 if nxt != "":
                     arm = self.label()
-                    self.cbr(self.ins(f"icmp eq i64 {tag}, {ci.tag}"), arm, nxt)
+                    self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(ci.tag), "int")).v, arm, nxt)
                     self.place(arm)
                 obj = Val(v.v, ci.name)
                 if "__format__" in ci.methods:
@@ -1119,7 +1170,7 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         if v.v not in self.nn:
             # None's own __format__ accepts only an empty spec
-            self.guard(self.ins(f"icmp eq ptr {v.v}, null"), "TypeError: unsupported format string passed to NoneType.__format__")
+            self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, "TypeError: unsupported format string passed to NoneType.__format__")
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
     if empty:
         return self.to_str(v)
@@ -1133,7 +1184,7 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
             self.err("unsupported format string passed to NoneType.__format__")
         # a computed spec runs, as for any value: str(None) when it turns out empty, else TypeError
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
-        self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), "TypeError: unsupported format string passed to NoneType.__format__")
+        self.guard(self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
         return self.to_str(v)
     if is_opt(v.t):
         # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
@@ -1146,7 +1197,7 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
             self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
         # a computed spec: str(v) when it turns out empty, TypeError otherwise
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
-        self.guard(self.ins(f"icmp ne i64 {self.ins(f'load i64, ptr {sv.v}')}, 0"), f"TypeError: unsupported format string passed to {tname(v.t)}.__format__")
+        self.guard(self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v, f"TypeError: unsupported format string passed to {tname(v.t)}.__format__")
         return self.to_str(v)
     if spec.kind == "str" and not self.isnum(v.t) and v.t != "str":
         self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
@@ -1160,10 +1211,10 @@ def gen_optbound(self, v: Val) -> str:
     e0 = self.cur
     l1 = self.label()
     l2 = self.label()
-    self.cbr(self.ins(f"icmp ne ptr {v.v}, null"), l1, l2)
+    self.cbr(self.ptr_cmp('!=', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
     bd = self.as_int(self.deref(v)).v
-    bd = self.select(self.ins(f"icmp eq i64 {bd}, -9223372036854775808"), Val("-9223372036854775807", "int"), Val(bd, "int"))
+    bd = self.select(self.num_cmp('==', Val(bd, "int"), Val('-9223372036854775808', "int")).v, Val("-9223372036854775807", "int"), Val(bd, "int"))
     e1 = self.cur
     self.br(l2)
     self.place(l2)
@@ -1177,7 +1228,7 @@ def gen_optint(self, v: Val, none: str) -> str:
     e0 = self.cur
     l1 = self.label()
     l2 = self.label()
-    self.cbr(self.ins(f"icmp ne ptr {v.v}, null"), l1, l2)
+    self.cbr(self.ptr_cmp('!=', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
     n = self.as_int(self.deref(v)).v
     e1 = self.cur
@@ -1198,30 +1249,30 @@ def gen_numkey(self, v: Val, t: str) -> list[str]:
         fv = self.as_float(v).v
         if not v.v.startswith("%") and -9007199254740992 <= int(v.v) <= 9007199254740992:
             return [fv, "true"]
-        inr = self.ins(f"fcmp olt double {fv}, 0x43E0000000000000")  # (2**63, where an int's float may round to)
-        back = self.select(inr, Val(self.ins(f"fptosi double {fv} to i64"), "int"), Val("0", "int"))
-        return [fv, self.ins(f"and i1 {inr}, {self.ins(f'icmp eq i64 {back}, {v.v}')}")]
+        inr = self.scalar_cmp('olt', Val(fv, 'float'), Val('0x43E0000000000000', 'float'))  # (2**63, where an int's float may round to)
+        back = self.select(inr, Val(self.scalar_cast('fptosi', Val(fv, 'float'), 'int'), "int"), Val("0", "int"))
+        exact = self.num_cmp("==", Val(back, "int"), Val(v.v, "int")).v
+        return [fv, self.scalar('and', [Val(inr, 'bool'), Val(exact, 'bool')])]
     iv = v.v
     ok = "true"
     if v.t == "float":
-        lo = self.ins(f"fcmp oge double {v.v}, 0xC3E0000000000000")
-        inr = self.ins(f"and i1 {lo}, {self.ins(f'fcmp olt double {v.v}, 0x43E0000000000000')}")
-        iv = self.select(inr, Val(self.ins(f"fptosi double {v.v} to i64"), "int"), Val("0", "int"))
-        back = self.ins(f"sitofp i64 {iv} to double")
-        ok = self.ins(f"and i1 {inr}, {self.ins(f'fcmp oeq double {back}, {v.v}')}")
+        lo = self.scalar_cmp('oge', Val(v.v, 'float'), Val('0xC3E0000000000000', 'float'))
+        inr = self.scalar('and', [Val(lo, 'bool'), Val(self.scalar_cmp('olt', Val(v.v, 'float'), Val('0x43E0000000000000', 'float')), 'bool')])
+        iv = self.select(inr, Val(self.scalar_cast('fptosi', Val(v.v, 'float'), 'int'), "int"), Val("0", "int"))
+        back = self.scalar_cast('sitofp', Val(iv, 'int'), 'float')
+        ok = self.scalar('and', [Val(inr, 'bool'), Val(self.scalar_cmp('oeq', Val(back, 'float'), Val(v.v, 'float')), 'bool')])
     if t == "bool":
-        b01 = self.ins(f"icmp ult i64 {iv}, 2")
-        ok = b01 if ok == "true" else self.ins(f"and i1 {ok}, {b01}")
-        iv = self.ins(f"trunc i64 {iv} to i1")
+        b01 = self.int_ucmp('<', Val(iv, "int"), Val('2', "int")).v
+        ok = b01 if ok == "true" else self.scalar('and', [Val(ok, 'bool'), Val(b01, 'bool')])
+        iv = self.scalar_cast('trunc', Val(iv, 'int'), 'bool')
     return [iv, ok]
 
 def gen_tuple_(self, vals: list[Val]) -> Val:
     t = self.ctype("tuple", [v.t for v in vals])
-    p = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(vals)}"])
+    p = self.alloc_fixed(t).v
     for i in range(len(vals)):
         s = self.to_slot(vals[i])
-        q = self.ins(f"getelementptr i64, ptr {p}, i64 {i}")
-        self.emit(f"store i64 {s}, ptr {q}")
+        self.tstore(Val(p, t), i, s)
     return Val(p, t)
 
 def gen_stack_tuple(self, vals: list[Val]) -> Val:
@@ -1236,8 +1287,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
         s = self.to_slot(vals[j])
-        q = self.ins(f"getelementptr i64, ptr {p}, i64 {j}")
-        self.emit(f"store i64 {s}, ptr {q}")
+        self.tstore(Val(p, t), j, s)
     return Val(p, t)
 
 def gen_stack_ok(self, f: FnInfo) -> bool:
@@ -1308,28 +1358,28 @@ def gen_keep_stack(self, n: Node) -> None:
         if ".stk" not in self.lreg:
             self.alloca(t, ".stk")  # (the heap copy, once made)
         hs = self.lreg[".stk"]
-        v = self.ins(f"load ptr, ptr {self.lreg[nm]}")
-        h = self.ins(f"load ptr, ptr {hs}")
+        v = self.mload('%ptr', self.lreg[nm])
+        h = self.mload('%ptr', hs)
         lchk = self.label()
         lcopy = self.label()
         lnew = self.label()
         lold = self.label()
         ldone = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {v}, {h}"), ldone, lchk)  # (it holds the copy: a statement before kept it)
+        self.cbr(self.scalar_cmp('eq', Val(v, '%ptr'), Val(h, '%ptr')), ldone, lchk)  # (it holds the copy: a statement before kept it)
         self.place(lchk)
-        self.cbr(self.ins(f"icmp ne i64 {self.rt('pys_on_stack', 'i64', [f'ptr {v}'])}, 0"), lcopy, ldone)
+        self.cbr(self.num_cmp('!=', Val(self.rt('pys_on_stack', 'i64', [f'ptr {v}']), "int"), Val('0', "int")).v, lcopy, ldone)
         self.place(lcopy)
-        self.cbr(self.ins(f"icmp eq ptr {h}, null"), lnew, lold)
+        self.cbr(self.scalar_cmp('eq', Val(h, '%ptr'), Val('null', '%ptr')), lnew, lold)
         self.place(lold)
-        self.emit(f"store ptr {h}, ptr {self.lreg[nm]}")  # (the copy another local's statement made)
+        self.mstore('%ptr', h, self.lreg[nm])  # (the copy another local's statement made)
         self.br(ldone)
         self.place(lnew)
-        cp = self.rt("pys_alloc", "ptr", [f"i64 {8 * len(targs(t))}"])
+        cp = self.alloc_fixed(t).v
         for j in range(len(targs(t))):
-            wd = self.ins(f"load i64, ptr {self.ins(f'getelementptr i64, ptr {v}, i64 {j}')}")
-            self.emit(f"store i64 {wd}, ptr {self.ins(f'getelementptr i64, ptr {cp}, i64 {j}')}")
-        self.emit(f"store ptr {cp}, ptr {hs}")
-        self.emit(f"store ptr {cp}, ptr {self.lreg[nm]}")
+            wd = self.mload('int', self.maddr('int', f'{v}', f'{j}'))
+            self.mstore('int', wd, self.maddr('int', f'{cp}', f'{j}'))
+        self.mstore('%ptr', cp, hs)
+        self.mstore('%ptr', cp, self.lreg[nm])
         self.br(ldone)
         self.place(ldone)
 
@@ -1403,8 +1453,17 @@ def gen_probe_type(self, n: Node) -> str:
     return t
 
 def gen_tget(self, v: Val, i: int) -> Val:
-    p = self.ins(f"getelementptr i64, ptr {v.v}, i64 {i}")
-    return self.from_slot(self.ins(f"load i64, ptr {p}"), targs(v.t)[i])
+    item = Ins("tuple.load", "%slot", targs(v.t)[i])
+    item.k = i
+    item.a = [v]
+    self.put(item, 2)
+    return self.from_slot(f"%t{item.r[1]}", item.s)
+
+def gen_tstore(self, v: Val, index: int, slot: str) -> None:
+    item = Ins("tuple.store", "", targs(v.t)[index])
+    item.k = index
+    item.a = [v, Val(slot, "%slot")]
+    self.put(item, 1)
 
 def gen_index(self, n: Node) -> Val:
     c = n.kids[0]
@@ -1426,6 +1485,8 @@ def gen_subscript(self, n: Node, o: Val) -> Val:
     # o[i], where o is the value of n.kids[0] and n.kids[1] the index
     t = unopt(o.t)
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
+    if t in ["fn[b:list]", "fn[b:dict]", "fn[b:tuple]", "fn[b:set]", "fn[b:frozenset]"]:
+        self.err(f"{t[5:-1]}[...] as a value is not supported (type aliases are not supported; write the type directly in an annotation)")
     if is_kw(t) and n.kids[1].kind == "str":
         # kwargs["name"]: the keyword argument name, or CPython's KeyError where the call passed none
         names = kw_names(t)
@@ -1496,7 +1557,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     length = Ins("list.len", "int", "")
     length.a = [o]
     self.put(length, 1)
-    self.cbr(self.ins(f"icmp ult i64 {i.v}, %t{length.r[0]}"), fast, slow)
+    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(f'%t{length.r[0]}', "int")).v, fast, slow)
     ph = Ins("phi", "int", "")
     self.place(fast)
     read = Ins("list.load", "int", "")
@@ -1568,7 +1629,7 @@ def gen_iter_ret(self, e: Node) -> Val:
         self.err(f"iter() of {typestr(v.t)} in __iter__ is not supported: return iter(xs) of a list xs of the items")
     return v
 
-def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None, kind: str = "list") -> Val:
+def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None, kind: str = "list", resultsoft: bool = False) -> Val:
     # [e for t in it if c] runs as a loop appending to a fresh list (or to list into, of type
     # want, as xs.extend(e for ...) does item by item); t is scoped to it. mode any/all:
     # any(e for ...) / all(...) instead, stopping at the deciding element. kind "set": {e for
@@ -1577,7 +1638,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
     h = Ins("", "", "")
     if mode == "any" or mode == "all":
         res = self.alloca("bool", "")
-        self.emit(f"store i1 {'false' if mode == 'any' else 'true'}, ptr {res}")
+        self.mstore('bool', 'false' if mode == 'any' else 'true', res)
     elif mode != "":
         res = ""  # (a reduction: mode is # and the key of its Reduce, which holds what it keeps)
     elif into != "":
@@ -1595,12 +1656,14 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
     if len(n.kids) == 4:
         body = [mk("if", "", n.line, [n.kids[3], mk("block", "", n.line, [app]), mk("block", "", n.line, [])])]
     self.lcs.append(res)
-    self.lct.append(elem(want) if is_list(want) and kind == "list" else selem(want) if is_set(want) and kind != "list" and "?" not in want else "")
+    self.lct.append(elem(want) if is_list(want) and kind == "list" and "?" not in want else selem(want) if is_set(want) and kind != "list" and "?" not in want else "")
+    self.lcsoft.append(resultsoft)
     pre = self.narrowed  # (its variables are its own: the loop binds no outer local)
     self.for_(mk("for", "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), names, arg)
     self.narrowed = pre
     et = self.lct.pop()
     self.lcs.pop()
+    self.lcsoft.pop()
     for i in range(len(names)):
         nm = names[i]
         sp = saved[i].find(" ")
@@ -1614,7 +1677,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         if self.compvars[nm] == 0:
             del self.compvars[nm]
     if mode == "any" or mode == "all":
-        return Val(self.ins(f"load i1, ptr {res}"), "bool")
+        return Val(self.mload('bool', res), "bool")
     if mode != "":
         return Val("", "")
     if et == "":
@@ -1625,11 +1688,11 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
             self.key_kind(et)  # (a tuple element's descriptor, a string constant, which lowering prints)
     return Val(res, self.ctype("list" if kind == "list" else "set", [et]))
 
-def gen_ifexp(self, n: Node, want: str) -> Val:
+def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     st = self.static(n.kids[0])
     if st >= 0:
         self.static_reads(n.kids[0])
-        return self.expr(n.kids[1] if st == 1 else n.kids[2], want)
+        return self.expr(n.kids[1] if st == 1 else n.kids[2], want, resultsoft=resultsoft)
     c = self.cond(n.kids[0])
     l1 = self.label()
     l2 = self.label()
@@ -1637,7 +1700,7 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     self.cbr(c, l1, l2)
     self.place(l1)
     pre = self.narrow_by(n.kids[0], True)
-    a = self.expr(n.kids[1], want)
+    a = self.expr(n.kids[1], want, resultsoft=resultsoft)
     if is_vtuple(unopt(want)):
         a = self.coerce(a, want)  # (construct the requested representation in its arm)
     if (is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want)):
@@ -1651,7 +1714,7 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
     wb = want if want != "" else a.t
     if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
-    b = self.expr(n.kids[2], wb)
+    b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     if is_vtuple(unopt(want)):
         b = self.coerce(b, want)
     if (is_fn(b.t) and is_callable(unopt(want))) or is_union(unopt(want)):
@@ -1672,29 +1735,29 @@ def gen_ifexp(self, n: Node, want: str) -> Val:
         return Val("null", "None")  # (None either way)
     return Val(self.phi(ph), t)
 
-def gen_boolop(self, n: Node, ascond: bool, want: str) -> Val:
+def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
     # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
     c0 = n.kids[0]
     c1 = n.kids[1]
     if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
         # x is y or x == y, the identity-or-equality test, on numbers: x == y (numbers have no
         # identity here; see the deviation about NaN)
-        return Val(self.cond(c1), "bool") if ascond else self.expr(c1, want)
+        return Val(self.cond(c1), "bool") if ascond else self.expr(c1, want, resultsoft=resultsoft)
     st = self.static(n.kids[0])
     if st >= 0:
         # a static test on the left: it is the value if it decides, else the right operand
         # (where the test is not compiled, static_reads() reads its classes)
         if (st == 1) == (n.s == "or") and not ascond:
-            return self.expr(n.kids[0], want)
+            return self.expr(n.kids[0], want, resultsoft=resultsoft)
         self.static_reads(n.kids[0])
         if (st == 1) == (n.s == "or"):
             return Val("true" if st == 1 else "false", "bool")
-        return Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], want)
-    a = Val(self.cond(n.kids[0]), "bool") if ascond else self.expr(n.kids[0], want)
+        return Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], want, resultsoft=resultsoft)
+    a = Val(self.cond(n.kids[0]), "bool") if ascond else self.expr(n.kids[0], want, resultsoft=resultsoft)
     if a.t == "None":
         # None is false: `None and b` is None without evaluating b, `None or b` is b
         if n.s == "or":
-            return self.expr(n.kids[1], want)
+            return self.expr(n.kids[1], want, resultsoft=resultsoft)
         return Val("null", "None")
     c = self.truth(a)
     if self.term:
@@ -1714,7 +1777,7 @@ def gen_boolop(self, n: Node, ascond: bool, want: str) -> Val:
         self.cbr(c, l3, l2)
     self.place(l2)
     pre = self.narrow_by(n.kids[0], n.s == "and")
-    b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t)
+    b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t, resultsoft=resultsoft)
     self.narrowed = pre
     # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
     rt = a.t
@@ -1735,7 +1798,7 @@ def gen_unary(self, n: Node) -> Val:
     op = n.s
     e = n.kids[0]
     if op == "not":
-        return Val(self.ins(f"xor i1 {self.cond(e)}, true"), "bool")
+        return Val(self.scalar('xor', [Val(self.cond(e), 'bool'), Val('true', 'bool')]), "bool")
     if op == "-" and (e.kind == "int" or e.kind == "float"):
         return self.expr(mk(e.kind, "-" + e.s, e.line, []), "")
     v = self.expr(e, "")
@@ -1747,9 +1810,9 @@ def gen_unary(self, n: Node) -> Val:
     if v.t == "int" and op == "-":
         return Val(self.iop("-", "0", v.v), "int")
     if v.t == "int" and op == "~":
-        return Val(self.ins(f"xor i64 {v.v}, -1"), "int")
+        return Val(self.scalar('xor', [Val(v.v, 'int'), Val('-1', 'int')]), "int")
     if v.t == "float" and op == "-":
-        return Val(self.ins(f"fneg double {v.v}"), "float")
+        return Val(self.scalar('fneg', [Val(v.v, 'float')]), "float")
     if (v.t == "int" or v.t == "float") and op == "+":
         return v
     m = UNARY[op]
@@ -1774,7 +1837,7 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if m in bm and self.cmp_method(b.t, m, "None") != "":
             return self.eqcall(bm[m], op == "==", b, a)
         if op == "!=" and self.cmp_method(b.t, "__eq__", "None") != "":
-            return Val(self.ins(f"xor i1 {self.eqcall(bm['__eq__'], True, b, a).v}, true"), "bool")
+            return Val(self.scalar('xor', [Val(self.eqcall(bm['__eq__'], True, b, a).v, 'bool'), Val('true', 'bool')]), "bool")
         return Val("", "")
     # (two specializations of one class template are one class to CPython)
     same = a.t == b.t or (self.tmpl_of(a.t) != "" and self.tmpl_of(a.t) == self.tmpl_of(b.t))
@@ -1820,7 +1883,7 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         self.none_operand(shown if shown != "" else op, a, b)
         return self.call_fn(ms[m], [a, b], [])
     if op == "!=" and "__eq__" in ms:
-        return Val(self.ins(f"xor i1 {self.dunder('==', a, b).v}, true"), "bool")
+        return Val(self.scalar('xor', [Val(self.dunder('==', a, b).v, 'bool'), Val('true', 'bool')]), "bool")
     return Val("", "")
 
 def gen_ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
@@ -1858,7 +1921,7 @@ def gen_ntup(self, v: Val, known: bool = False) -> Val:
     lread = self.label() if maybe else ""
     lend = self.label() if maybe else ""
     if maybe:
-        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), lend, lread)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, lend, lread)
         self.place(lread)
     t = self.tuple_([self.getfield(v, Val(self.fgep(v, ci.fpos[x]), ci.ftypes[x]), x) for x in ci.fields])
     if not maybe:
@@ -1898,19 +1961,19 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, phase: int = 0) -> Val:
     if v.v not in self.nn:
         null = self.label()
         some = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), null, some)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, null, some)
         self.place(null)
         r = self.inherit_cmp(op, Val("null", "None") if phase == 0 else a, b if phase == 0 else Val("null", "None"), phase + 1)
         if not self.term:
             self.incoming(ph, r.v, self.cur)
             self.br(end)
         self.place(some)
-    tag = self.ins(f"load i64, ptr {v.v}") if len(cs) > 1 else ""
+    tag = self.mload('int', v.v) if len(cs) > 1 else ""
     for i in range(len(cs)):
         nxt = self.label() if i + 1 < len(cs) else ""
         if nxt != "":
             arm = self.label()
-            self.cbr(self.ins(f"icmp eq i64 {tag}, {self.classes[cs[i]].tag}"), arm, nxt)
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[cs[i]].tag), "int")).v, arm, nxt)
             self.place(arm)
         r = self.inherit_cmp(op, Val(v.v, cs[i]) if phase == 0 else a, b if phase == 0 else Val(v.v, cs[i]), phase + 1)
         if not self.term:
@@ -1944,11 +2007,11 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
                 if self.cmp_method(lhs.t, m, rhs.t) == "":
                     self.err(f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}")
                 r = self.coerce(self.call_fn(ms[m], [lhs, rhs], [], direct=True), "bool")
-                return Val(self.ins(f"xor i1 {r.v}, true"), "bool") if invert else r
+                return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if invert else r
     if op == "==" or op == "!=":
         # object.__eq__ declines, then Python falls back to object identity.
         if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None"):
-            return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+            return self.ptr_cmp('==' if op == '==' else '!=', a, b)
         return Val("false" if op == "==" else "true", "bool")
     self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'"))
     return Val("false", "bool")
@@ -1958,7 +2021,7 @@ def gen_inherit_contains(self, op: str, a: Val, b: Val) -> Val:
     # A subclass can add __contains__ even when its base already supplies __iter__.
     self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
     cs = [c for c in self.classes.values() if c.tag != 0 and self.derives(c.name, b.t)]
-    tag = self.ins(f"load i64, ptr {b.v}") if len(cs) > 1 else ""
+    tag = self.mload('int', b.v) if len(cs) > 1 else ""
     end = self.label()
     ph = Ins("phi", "bool", "")
     for i in range(len(cs)):
@@ -1966,13 +2029,13 @@ def gen_inherit_contains(self, op: str, a: Val, b: Val) -> Val:
         nxt = self.label() if i + 1 < len(cs) else ""
         if nxt != "":
             arm = self.label()
-            self.cbr(self.ins(f"icmp eq i64 {tag}, {ci.tag}"), arm, nxt)
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(ci.tag), "int")).v, arm, nxt)
             self.place(arm)
         obj = Val(b.v, ci.name)
         result = Val("false", "bool")
         if "__contains__" in ci.methods:
             hit = self.truth(self.call_fn(ci.methods["__contains__"], [obj, a], [], direct=True))
-            result = Val(hit if op == "in" else self.ins(f"xor i1 {hit}, true"), "bool")
+            result = Val(hit if op == "in" else self.scalar('xor', [Val(hit, 'bool'), Val('true', 'bool')]), "bool")
         elif "__iter__" in ci.methods or "__getitem__" in ci.methods:
             items = self.obj_iter(obj, "TypeError: argument of type 'NoneType' is not iterable", f"argument of type '{short(ci.name)}' is not iterable")
             result = self.cmp2(op, a, items)
@@ -1994,7 +2057,7 @@ def gen_isnull(self, v: Val) -> str:
     if v.t == "None":
         return "true"
     if (v.t in self.classes and v.v not in self.nn) or is_opt(v.t) or (is_union(v.t) and self.optional(v.t) == v.t and v.v not in self.nn):
-        return self.ins(f"icmp eq ptr {v.v}, null")
+        return self.ptr_cmp('==', v, Val('null', 'None')).v
     return "false"
 
 def gen_richcmp(self, op: str, a: Val, b: Val) -> Val:
@@ -2016,7 +2079,7 @@ def gen_richcmp(self, op: str, a: Val, b: Val) -> Val:
     if nt:
         lcall = self.label()
         lnone = self.label()
-        self.cbr(self.ins(f"or i1 {self.isnull(a)}, {self.isnull(b)}"), lnone, lcall)
+        self.cbr(self.scalar('or', [Val(self.isnull(a), 'bool'), Val(self.isnull(b), 'bool')]), lnone, lcall)
         self.place(lcall)
         r = self.cmp2(op, self.ntup(a, True), self.ntup(b, True))
         self.incoming(ph, r.v, self.cur)
@@ -2064,12 +2127,12 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     lcall = self.label()
     lend = self.label()
     ph = Ins("phi", "bool", "")
-    self.cbr(self.ins(f"icmp eq ptr {a.v}, null"), lnull, lcall)
+    self.cbr(self.ptr_cmp('==', a, Val('null', 'None')).v, lnull, lcall)
     self.place(lnull)
     if b.t == a.t:
         lboth = self.label()
         lrefl = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {b.v}, null"), lboth, lrefl)
+        self.cbr(self.ptr_cmp('==', b, Val('null', 'None')).v, lboth, lrefl)
         self.place(lboth)
         self.incoming(ph, same, lboth)
         self.br(lend)
@@ -2097,7 +2160,7 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         self.none_operands(op, a, b, shown)
         return self.arith(op, self.deref(a) if is_opt(a.t) else a, self.deref(b) if is_opt(b.t) else b, shown)
     if a.t == "bool" and b.t == "bool" and (op == "&" or op == "|" or op == "^"):
-        return Val(self.ins(f"{IOPS[op]} i1 {a.v}, {b.v}"), "bool")
+        return Val(self.scalar(IOPS[op], [Val(a.v, 'bool'), Val(b.v, 'bool')]), "bool")
     if is_set(a.t) and is_set(b.t) and (op == "|" or op == "&" or op == "-" or op == "^"):
         return self.setop(op, a, b)
     a = self.as_int(a)
@@ -2108,14 +2171,14 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if op in CHECKED:
             return Val(self.iop(op, a.v, b.v), "int")
         if op in IOPS:
-            return Val(self.ins(f"{IOPS[op]} i64 {a.v}, {b.v}"), "int")
+            return Val(self.scalar(IOPS[op], [Val(a.v, 'int'), Val(b.v, 'int')]), "int")
         if op in IRT:
             return Val(self.rt(IRT[op], "i64", [f"i64 {a.v}", f"i64 {b.v}"]), "int")
     if (a.t == "int" or a.t == "float") and (b.t == "int" or b.t == "float"):
         x = self.as_float(a)
         y = self.as_float(b)
         if op in FOPS:
-            return Val(self.ins(f"{FOPS[op]} double {x.v}, {y.v}"), "float")
+            return Val(self.scalar(FOPS[op], [Val(x.v, 'float'), Val(y.v, 'float')]), "float")
         if op in FRT:
             return Val(self.rt(FRT[op], "double", [f"double {x.v}", f"double {y.v}"]), "float")
     seq = a.t == "str" or is_list(a.t)
@@ -2141,6 +2204,8 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         return self.arith(op, b, a)
     if op == "+" and is_list(a.t) and is_list(b.t):
         self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a list holds items of one type)")
+    if op == "|" and is_dict(a.t) and is_dict(b.t):
+        self.err("dict | dict is not supported; copy the first dict and use update()")
     if op == "%" and a.t == "str":
         # CPython formats with any str on the left; only a literal format is compiled (percent)
         self.err('% formatting with a format string computed at run time is not supported (only a string literal: "%d" % x)')
@@ -2172,7 +2237,7 @@ def gen_compare(self, n: Node) -> Val:
                 w = elem(ms["__iter__"].ret)
         if len(n.kids[0].kids) > 0:
             self.soft = n.kids[0]
-        return self.cmp2(ops[0], self.expr(n.kids[0], w), b)
+        return self.cmp2(ops[0], self.expr(n.kids[0], w, resultsoft=True), b)
     # (x is None reads a local that only None was assigned to so far, see none_type)
     self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.lookup_key(n.kids[0]):
@@ -2187,7 +2252,7 @@ def gen_compare(self, n: Node) -> Val:
         # None that is None equals no item
         nn = ""
         if is_sopt(a.t) and unopt(a.t) != "float":
-            nn = self.ins(f"icmp ne ptr {a.v}, null")
+            nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
             a = Val(self.optint(a, "0"), "int")
         if a.t != "int" and a.t != "bool":
             self.err(f"'in range(...)' needs an int, not {typestr(a.t)}")
@@ -2195,7 +2260,7 @@ def gen_compare(self, n: Node) -> Val:
         hit = self.rt("pys_range_has", "i64", [f"i64 {self.as_int(a).v}", f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"])
         if nn != "":
             hit = self.select(nn, Val(hit, "int"), Val("0", "int"))
-        return Val(self.ins(f"icmp {'ne' if ops[0] == 'in' else 'eq'} i64 {hit}, 0"), "bool")
+        return self.num_cmp('!=' if ops[0] == 'in' else '==', Val(hit, "int"), Val('0', "int"))
     if len(ops) == 1:
         w = a.t
         if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "list" and (is_list(a.t) or is_dict(a.t)):
@@ -2205,12 +2270,12 @@ def gen_compare(self, n: Node) -> Val:
             # frozenset constant (see set_display)
             return self.cmp2(ops[0], a, self.set_display(n.kids[1], "", True))
         self.soft = n.kids[1]  # (a display there may hold what may be None where a holds none)
-        return self.cmp2(ops[0], a, self.expr(n.kids[1], w))
+        return self.cmp2(ops[0], a, self.expr(n.kids[1], w, resultsoft=True))
     l3 = self.label()
     ph = Ins("phi", "bool", "")
     r = a
     for i in range(len(ops)):
-        b = self.expr(n.kids[i + 1], a.t)
+        b = self.expr(n.kids[i + 1], a.t, resultsoft=True)
         r = self.cmp2(ops[i], a, b)
         if i < len(ops) - 1:
             nx = self.label()
@@ -2261,28 +2326,28 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         a = self.coerce(a, unopt(b.t))
     if (op == "==" or op == "!=" or op == "is" or op == "is not") and is_callable(unopt(a.t)) and unopt(a.t) == unopt(b.t) and (is_opt(a.t) or is_opt(b.t)):
         # Callables that may be None: both are, or both hold one function (below)
-        nula = self.ins(f"icmp eq ptr {a.v}, null")
-        nulb = self.ins(f"icmp eq ptr {b.v}, null")
+        nula = self.ptr_cmp('==', a, Val('null', 'None')).v
+        nulb = self.ptr_cmp('==', b, Val('null', 'None')).v
         lsome = self.label()
         ldone = self.label()
         cph = Ins("phi", "bool", "")
-        self.incoming(cph, self.ins(f"and i1 {nula}, {nulb}"), self.cur)
-        self.cbr(self.ins(f"or i1 {nula}, {nulb}"), ldone, lsome)
+        self.incoming(cph, self.scalar('and', [Val(nula, 'bool'), Val(nulb, 'bool')]), self.cur)
+        self.cbr(self.scalar('or', [Val(nula, 'bool'), Val(nulb, 'bool')]), ldone, lsome)
         self.place(lsome)
         rv = self.cmp2("==", Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)))
         self.incoming(cph, rv.v, self.cur)
         self.br(ldone)
         self.place(ldone)
         eqv = self.phi(cph)
-        return Val(eqv if op == "==" or op == "is" else self.ins(f"xor i1 {eqv}, true"), "bool")
+        return Val(eqv if op == "==" or op == "is" else self.scalar('xor', [Val(eqv, 'bool'), Val('true', 'bool')]), "bool")
     if is_callable(a.t) and a.t == b.t and (op == "==" or op == "!=" or op == "is" or op == "is not"):
         # one function, as Callables of one type: the same code and the same env (a closure's)
-        ca = self.ins(f"load ptr, ptr {a.v}")
-        cb = self.ins(f"load ptr, ptr {b.v}")
-        ea = self.ins(f"load ptr, ptr {self.ins(f'getelementptr inbounds ptr, ptr {a.v}, i64 1')}")
-        eb = self.ins(f"load ptr, ptr {self.ins(f'getelementptr inbounds ptr, ptr {b.v}, i64 1')}")
-        both = self.ins(f"and i1 {self.ins(f'icmp eq ptr {ca}, {cb}')}, {self.ins(f'icmp eq ptr {ea}, {eb}')}")
-        return Val(both if op == "==" or op == "is" else self.ins(f"xor i1 {both}, true"), "bool")
+        ca = self.mload('%ptr', a.v)
+        cb = self.mload('%ptr', b.v)
+        ea = self.mload('%ptr', self.maddr('%ptr', f'{a.v}', '1', True))
+        eb = self.mload('%ptr', self.maddr('%ptr', f'{b.v}', '1', True))
+        both = self.scalar('and', [Val(self.scalar_cmp('eq', Val(ca, '%ptr'), Val(cb, '%ptr')), 'bool'), Val(self.scalar_cmp('eq', Val(ea, '%ptr'), Val(eb, '%ptr')), 'bool')])
+        return Val(both if op == "==" or op == "is" else self.scalar('xor', [Val(both, 'bool'), Val('true', 'bool')]), "bool")
     if (is_fn(a.t) or is_fn(b.t)) and (op == "==" or op == "!=" or op == "is" or op == "is not"):
         # a function value is the function its type names: never None, and the same function as
         # another value of its type only (a closure, as the same def or lambda run once: its env)
@@ -2295,17 +2360,17 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 if op == "is" or op == "is not":
                     self.err(f"'{op}' between bound methods is not supported: CPython makes a new method object each time one is read (compare them with ==)")
                 if am == bm:
-                    return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+                    return self.ptr_cmp('==' if op == '==' else '!=', a, b)
         if a.t == b.t and (a.t.startswith("fn[m:") or a.t.startswith("fn[d:")) and (op == "is" or op == "is not"):
             self.err(f"'{op}' between bound methods is not supported: CPython makes a new method object each time one is read (compare them with ==)")
         if a.t == b.t and (a.t.startswith("fn[c:") or a.t.startswith("fn[m:") or a.t.startswith("fn[d:")):
             # (bound methods of one method are equal where they are bound to one object)
-            return Val(self.ins(f"icmp {'eq' if op == '==' or op == 'is' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+            return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', a, b)
         same = a.t == b.t
         return Val("true" if same == (op == "==" or op == "is") else "false", "bool")
     if (op == "==" or op == "!=") and a.t == b.t and a.t == "file":
         # files compare by identity, as CPython's do
-        return Val(self.ins(f"icmp {'eq' if op == '==' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+        return self.ptr_cmp('==' if op == '==' else '!=', a, b)
     xa = a.t == "exc" or (a.t in self.classes and self.classes[a.t].exc != "")
     xb = b.t == "exc" or (b.t in self.classes and self.classes[b.t].exc != "")
     if xa and xb and a.t != b.t and a.t in self.classes and b.t in self.classes and (op == "==" or op == "!="):
@@ -2324,17 +2389,17 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             x = "an exception" if a.t == "exc" else f"an object of {short(a.t)}"
             y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
             self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
-        return Val(self.ins(f"icmp {'eq' if op == '==' or op == 'is' else 'ne'} ptr {self.exc_id(a).v}, {self.exc_id(b).v}"), "bool")
+        return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
     if op == "is" or op == "is not":
         if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
             # a number or bool is never None
             return Val("false" if op == "is" else "true", "bool")
         if a.t == "bool" and b.t == "bool":
             # (x is True: a bool is one of CPython's two objects True and False)
-            return Val(self.ins(f"icmp {'eq' if op == 'is' else 'ne'} i1 {a.v}, {b.v}"), "bool")
+            return Val(self.scalar_cmp('eq' if op == 'is' else 'ne', Val(a.v, 'bool'), Val(b.v, 'bool')), "bool")
         if not self.isref(a.t) or not self.isref(b.t) or (is_sopt(a.t) and b.t != "None") or (is_sopt(b.t) and a.t != "None"):
             self.err("'is' is only supported for objects and None")
-        return Val(self.ins(f"icmp {'eq' if op == 'is' else 'ne'} ptr {a.v}, {b.v}"), "bool")
+        return self.ptr_cmp('==' if op == 'is' else '!=', a, b)
     du = self.dunder(op, a, b)
     if du.t != "":
         return du
@@ -2351,7 +2416,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         else:
             self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
             r = self.truth(self.protocol(b, "__contains__", [a]))
-            return Val(r if op == "in" else self.ins(f"xor i1 {r}, true"), "bool")
+            return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
     if (op == "in" or op == "not in") and a.t == "None" and (is_dict(b.t) or is_set(b.t) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
@@ -2359,7 +2424,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
     if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
         # None is no key of the dict (and no int of a list[int])
-        nn = self.ins(f"icmp ne ptr {a.v}, null")
+        nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
         e0 = self.cur
         l1 = self.label()
         l2 = self.label()
@@ -2373,7 +2438,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         self.incoming(ph, "false", e0)
         self.incoming(ph, hv.v, e1)
         hv = Val(self.phi(ph), "bool")
-        return hv if op == "in" else Val(self.ins(f"xor i1 {hv.v}, true"), "bool")
+        return hv if op == "in" else Val(self.scalar('xor', [Val(hv.v, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and is_tuple(b.t):
         # CPython: for each item in order, item is x or item == x; stop at the first match
         lend = self.label()
@@ -2399,7 +2464,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 # and a str's is its value)
                 nx = self.label()
                 self.incoming(ph, "true", self.cur)
-                self.cbr(self.ins(f"icmp eq ptr {item.v}, {a.v}"), lend, nx)
+                self.cbr(self.ptr_cmp('==', item, a).v, lend, nx)
                 self.place(nx)
             c = self.cmp2("==", item, a)
             nx = self.label()
@@ -2410,12 +2475,17 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         self.br(lend)
         self.place(lend)
         r = self.phi(ph)
-        return Val(r if op == "in" else self.ins(f"xor i1 {r}, true"), "bool")
+        return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if op == "in" or op == "not in":
         r = ""
         if b.t == "str":
             r = self.rt("pys_str_contains", "i64", [f"ptr {b.v}", f"ptr {self.coerce(a, 'str').v}"])
         elif is_list(b.t):
+            if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
+                # A read-only search can compare the two item layouts directly;
+                # coercing the needle would wrongly widen mutable containers.
+                r = self.rt("pys_list_find_pair", "i64", [f"ptr {b.v}", "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(elem(b.t), '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
+                return self.num_cmp(">=" if op == "in" else "<", Val(r, "int"), Val("0", "int"))
             ok = "true"
             if self.isnum(a.t) and self.isnum(unopt(elem(b.t))) and a.t != unopt(elem(b.t)):
                 nk = self.numkey(a, unopt(elem(b.t)))  # (1 in [1.0]: the item that equals it)
@@ -2429,7 +2499,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             s = self.to_slot(self.coerce(a, et))
             self.exc_eq(et)
             r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et, '=='))}"])
-            r = self.ins(f"add i64 {r}, 1")
+            r = self.scalar('add', [Val(r, 'int'), Val('1', 'int')])
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))
         elif is_dict(b.t):
@@ -2440,7 +2510,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             r = self.rt("pys_set_has", "i64", [f"ptr {b.v}", f"i64 {s}"])
         else:
             self.err(f"'in' is not supported for {b.t}")
-        return Val(self.ins(f"icmp {'ne' if op == 'in' else 'eq'} i64 {r}, 0"), "bool")
+        return self.num_cmp('!=' if op == 'in' else '==', Val(r, "int"), Val('0', "int"))
     if (is_sopt(a.t) or is_sopt(b.t)) and self.isnum(unopt(a.t)) and self.isnum(unopt(b.t)):
         return self.optcmp(op, a, b)
     if self.isnum(a.t) and self.isnum(b.t):
@@ -2455,25 +2525,36 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         fv = a if a.t == "float" else b
         r = self.rt("pys_cmp_if", "i64", [f"i64 {iv.v}", f"double {fv.v}"])
         if a.t == "float":
-            r = self.select(self.ins(f"icmp eq i64 {r}, 2"), Val("2", "int"), Val(self.ins(f"sub i64 0, {r}"), "int"))
-        return Val(self.ins(MIXCMP[op].replace("R", r)), "bool")
+            r = self.select(self.num_cmp('==', Val(r, "int"), Val('2', "int")).v, Val("2", "int"), Val(self.scalar('sub', [Val('0', 'int'), Val(r, 'int')]), "int"))
+        # cmp_if returns -1, 0, 1, or 2 for unordered (NaN). Unsigned <= 1
+        # excludes both -1 and 2 for >=; signed <= 0 keeps -1 and 0 for <=.
+        if op == ">=":
+            return self.int_ucmp("<=", Val(r, "int"), Val("1", "int"))
+        if op == "<" or op == ">":
+            return self.num_cmp("==", Val(r, "int"), Val("-1" if op == "<" else "1", "int"))
+        return self.num_cmp(op, Val(r, "int"), Val("0", "int"))
     if is_set(a.t) and is_set(b.t) and op in ICMP:
         # subsets and equality (a set equals a frozenset of its elements)
         if self.wider(selem(a.t), selem(b.t)) == "":
             self.err(f"cannot compare {typestr(a.t)} {op} {typestr(b.t)}")
         r = self.rt("pys_set_cmp", "i64", [f"ptr {a.v}", f"ptr {b.v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"])
-        return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
+        return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     eq = op == "==" or op == "!="
     if eq and (a.t == "None") != (b.t == "None") and self.isnum(a.t if b.t == "None" else b.t):
         return Val("false" if op == "==" else "true", "bool")  # a number or bool never equals None
     if eq and (a.t == "None" or b.t == "None" or (a.t == b.t and a.t in self.classes)) and self.isref(a.t) and self.isref(b.t):
         if a.t == "exc" or b.t == "exc":
             self.exc_eq("exc", "between an exception and None")
-        return Val(self.ins(f"icmp {ICMP[op]} ptr {a.v}, {b.v}"), "bool")
+        return self.ptr_cmp(op, a, b)
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
     # T and T | None (also as items): None == None, None == x is False, and None < x raises
     ct = self.wider(a.t, b.t)
+    if eq and ct == "" and self.numeric_comparable(a.t, b.t):
+        # Equality reads each operand using its own descriptor, preserving exact
+        # numeric comparison without changing either container's stored type.
+        r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
+        return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
     if ct == "" and self.boxwider(a.t, b.t) != "":
         # a tuple with an int where the other's item may be None: compared as a new tuple of boxes
         ct = self.boxwider(a.t, b.t)
@@ -2487,9 +2568,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         sb = self.to_slot(b)
         if eq:
             r = self.rt("pys_eq", "i64", [f"i64 {sa}", f"i64 {sb}", d])
-            return Val(self.ins(f"icmp {'ne' if op == '==' else 'eq'} i64 {r}, 0"), "bool")
+            return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
-        return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
+        return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     x = "an exception" if a.t == "exc" else a.t
     y = "an exception" if b.t == "exc" else b.t
     self.err(f"cannot compare {x} {op} {y}")
@@ -2514,7 +2595,7 @@ def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:
         else:
             if (x.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u)) and self.isref(y.t):
                 lcmp = self.label()
-                self.cbr(self.ins(f"icmp eq ptr {x.v}, {y.v}"), lnext, lcmp)
+                self.cbr(self.ptr_cmp('==', x, y).v, lnext, lcmp)
                 self.place(lcmp)
             self.cbr(self.cmp2("==", x, y).v, lnext, ldiff)
         self.place(ldiff)
@@ -2542,7 +2623,7 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
     # does (None equals only None), and an ordering raises its TypeError for None
     an = self.isnull(a)
     bn = self.isnull(b)
-    anyn = an if bn == "false" else bn if an == "false" else self.ins(f"or i1 {an}, {bn}")
+    anyn = an if bn == "false" else bn if an == "false" else self.scalar('or', [Val(an, 'bool'), Val(bn, 'bool')])
     lnone = self.label()
     lval = self.label()
     lend = self.label()
@@ -2550,8 +2631,8 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
     self.place(lnone)
     ph = Ins("phi", "bool", "")
     if op == "==" or op == "!=":
-        both = "false" if an == "false" or bn == "false" else self.ins(f"and i1 {an}, {bn}")
-        self.incoming(ph, both if op == "==" else self.ins(f"xor i1 {both}, true"), self.cur)
+        both = "false" if an == "false" or bn == "false" else self.scalar('and', [Val(an, 'bool'), Val(bn, 'bool')])
+        self.incoming(ph, both if op == "==" else self.scalar('xor', [Val(both, 'bool'), Val('true', 'bool')]), self.cur)
         self.br(lend)
     else:
         ms: list[str] = []
@@ -2568,11 +2649,24 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
     self.place(lend)
     return Val(self.phi(ph), "bool")
 
+def gen_numeric_comparable(self, t: str, u: str) -> bool:
+    # Matching builtin container trees may differ at numeric leaves. Keep
+    # optional/union widening and user comparison callbacks out of this path.
+    if t == u:
+        return self.ueq_type(t)
+    if self.isnum(t) and self.isnum(u):
+        return True
+    if (is_list(t) and is_list(u)) or (is_dict(t) and is_dict(u)) or (is_tuple(t) and is_tuple(u)):
+        a = targs(t)
+        b = targs(u)
+        return len(a) == len(b) and all([self.numeric_comparable(a[i], b[i]) for i in range(len(a))])
+    return False
+
 def gen_comparable(self, t: str, u: str) -> bool:
     # can t == u be true at all? (otherwise CPython just answers False)
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
-    if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "":
+    if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 

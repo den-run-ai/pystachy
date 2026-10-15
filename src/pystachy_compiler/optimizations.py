@@ -191,20 +191,18 @@ def gen_dictfuse(self, fn: IFn) -> int:
                     if i.s == "dict.has":
                         has[f"%t{i.r[0]}"] = len(looks)
                     looks.append(Lookup(i, j, x, d, k))
-            elif i.op == "raw" and i.k > 0:
-                # %c = icmp ne i64 %r, 0 of a has's result (k in d; eq: k not in d), %c = xor i1 %t, true of one (not)
-                s = i.s
-                o = s.find(" = ") + 3 if len(cond) + len(has) > 0 else 0
-                if len(has) > 0 and s.endswith(", 0") and (s.startswith("icmp ne i64 ", o) or s.startswith("icmp eq i64 ", o)):
-                    r = s[o + 12 : len(s) - 3]
-                    if r in has:
-                        cond[f"%t{i.k}"] = has[r]
-                        pos[f"%t{i.k}"] = s.startswith("icmp ne ", o)
-                elif len(cond) > 0 and s.endswith(", true") and s.startswith("xor i1 ", o):
-                    r = s[o + 7 : len(s) - 6]
-                    if r in cond:
-                        cond[f"%t{i.k}"] = cond[r]
-                        pos[f"%t{i.k}"] = not pos[r]
+            elif i.op == "num.cmp" and i.a[0].t == "int" and i.a[1].v == "0" and (i.s == "==" or i.s == "!="):
+                # A typed membership truth test carries the same has-result fact as
+                # a membership result; not/branch handling below stays shared.
+                r = i.a[0].v
+                if r in has:
+                    cond[f"%t{i.r[0]}"] = has[r]
+                    pos[f"%t{i.r[0]}"] = i.s == "!="
+            elif i.op == "scalar.bin" and i.s == "xor" and i.t == "bool" and i.a[1].v == "true":
+                r = i.a[0].v
+                if r in cond:
+                    cond[f"%t{i.r[0]}"] = cond[r]
+                    pos[f"%t{i.r[0]}"] = not pos[r]
             elif len(st) > 0 and self.opfx(i, vs.fn.fa) & bad != 0:
                 st = none
                 own = False
@@ -235,8 +233,9 @@ def gen_dictfuse(self, fn: IFn) -> int:
             fi.a = [i.a[0], i.a[1]]
             fi.r = [f.e]
             code[x] = fi
-            ad = Ins("raw", "", f"%t{i.r[0]} = add i64 %t{f.e}, 1")
-            ad.k = i.r[0]
+            ad = Ins("scalar.bin", "int", "add")
+            ad.a = [Val(f"%t{f.e}", "int"), Val("1", "int")]
+            ad.r = [i.r[0]]
             code.insert(x + 1, ad)
         else:
             self.runtime("pys_dict_entry")
@@ -252,11 +251,9 @@ def gen_dictfuse(self, fn: IFn) -> int:
 
 def gen_canon(self, vs: Values, v: str) -> str:
     # the canonical value of value v (Values): ops with the same canonical value compute
-    # equal values (as long as no back edge comes between them). A raw op's load reads what
-    # the store or load of the same address that comes last before it, on the one path back,
-    # stored or read; another raw op, or an rt op that only computes (it may raise, but reads
-    # no memory but strings', allocates nothing and does no I/O), computes what the first op
-    # of its text, with canonical operands, computed; any other value is its own. It recurses
+    # equal values (as long as no back edge comes between them). Loads follow reaching
+    # typed stores/loads; pure operations use their operator, types, flags and canonical
+    # operands. Every other value is its own. It recurses
     # once for each link of the chain of values it follows, so a value it reaches below
     # CANON_DEPTH calls is its own (a long chain, of k = k ^ 1 in straight-line code, would
     # overflow the native compiler's stack)
@@ -275,33 +272,30 @@ def gen_canon(self, vs: Values, v: str) -> str:
                 r = self.same(vs, v, f"rt {i.s} {', '.join([self.canon(vs, a.v) for a in i.a])}")
         elif i.op == "slot.pack" or i.op == "slot.unpack":
             r = self.same(vs, v, f"{i.op} {i.t} {i.a[0].t} {self.canon(vs, i.a[0].v)}")
-        elif i.op == "num.cast" or i.op == "num.cmp":
-            r = self.same(vs, v, f"{i.op} {i.t} {i.s} {', '.join([a.t + ' ' + self.canon(vs, a.v) for a in i.a])}")
+        elif i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "select" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "int.ucmp" or i.op == "ptr.cmp":
+            r = self.same(vs, v, f"{i.op} {i.t} {i.s} {i.x} {', '.join([a.t + ' ' + self.canon(vs, a.v) for a in i.a])}")
+        elif i.op == "mem.load" or (i.op == "mach.load" and i.s == ""):
+            x = self.reaching(vs, self.addr(vs, i.a[0].v), w // vs.stride, w % vs.stride)
+            if x != "":
+                r = self.canon(vs, x)
+        elif i.op == "mach.addr":
+            r = self.same(vs, v, f"address {i.s} {i.k} {self.canon(vs, i.a[0].v)} {self.canon(vs, i.a[1].v)}")
+        elif i.op == "field.addr":
+            r = self.same(vs, v, f"field {i.a[0].t} {i.k} {self.canon(vs, i.a[0].v)}")
+            vs.fieldtype[r] = i.a[0].t
+            vs.fieldindex[r] = i.k
         elif i.op == "union.payload":
             # A union box's tag and payload are immutable. Retain the equivalence of
-            # repeated narrowed reads that the former raw GEP/load exposed to dictfuse.
+            # repeated narrowed reads expose to dictionary lookup fusion.
             r = self.same(vs, v, f"union.payload {i.s} {self.canon(vs, i.a[0].v)}")
-        else:
-            s = i.s[i.s.find(" = ") + 3 :]
-            if s.startswith("load "):
-                x = self.reaching(vs, self.addr(vs, s[s.rfind(" ") + 1 :]), w // vs.stride, w % vs.stride)
+        elif i.op == "tuple.load" or i.op == "tuple.store":
+            if v == f"%t{i.r[0]}":
+                # Fixed and traversed tuple slots share one semantic address key.
+                r = self.same(vs, v, f"address int 0 {self.canon(vs, i.a[0].v)} {i.k}")
+            else:
+                x = self.reaching(vs, self.addr(vs, f"%t{i.r[0]}"), w // vs.stride, w % vs.stride)
                 if x != "":
                     r = self.canon(vs, x)
-            else:
-                # the text with each operand %tN canonical
-                t: list[str] = []
-                a = 0
-                b = s.find("%t")
-                while b >= 0:
-                    e = b + 2
-                    while e < len(s) and s[e].isdigit():
-                        e += 1
-                    t.append(s[a:b])
-                    t.append(self.canon(vs, s[b:e]) if e > b + 2 and (e == len(s) or s[e] == "," or s[e] == " ") else s[b:e])
-                    a = e
-                    b = s.find("%t", a)
-                t.append(s[a:])
-                r = self.same(vs, v, "".join(t))
     vs.depth -= 1
     vs.cn[v] = r
     return r
@@ -331,7 +325,6 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
     slot = a.startswith("%") and "." in a
     glob = a.startswith("@")
     heap = not slot and not glob
-    end = " " + a  # (how a slot's or a global's load or store ends)
     stop = FXBIT["wG"] if glob else RAWW
     steps = 0
     while True:
@@ -341,23 +334,25 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
             if steps > REACH:
                 return ""
             i = code[y]
-            if i.op != "raw":
-                if not slot and self.opfx(i, vs.fn.fa) & stop != 0:
+            if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
+                if i.op == "mach.load" and i.s != "":
+                    continue
+                p = i.a[0].v
+                q = self.addr(vs, p)
+                if q == a:
+                    return i.a[1].v if i.op == "mem.store" or i.op == "mach.store" else f"%t{i.r[0]}"
+                if (i.op == "mem.store" or i.op == "mach.store") and heap and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
                     return ""
                 continue
-            s = i.s
-            st = s.startswith("store ")
-            if not st and (i.k == 0 or not s.startswith("load ", s.find(" = ") + 3)):
+            if i.op == "tuple.load" or i.op == "tuple.store":
+                p = f"%t{i.r[0]}"
+                q = self.addr(vs, p)
+                if q == a:
+                    return i.a[1].v if i.op == "tuple.store" else f"%t{i.r[1]}"
+                if i.op == "tuple.store" and heap and not self.disjoint(vs, a, q):
+                    return ""
                 continue
-            if not heap:
-                if s.endswith(end):
-                    return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"  # (store T V, ptr A)
-                continue
-            p = s[s.rfind(" ") + 1 :]
-            q = self.addr(vs, p)
-            if q == a:
-                return s[s.find(" ", 6) + 1 : s.rfind(", ptr ")] if st else f"%t{i.k}"
-            if st and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
+            if not slot and self.opfx(i, vs.fn.fa) & stop != 0:
                 return ""
         ps = vs.pl[vs.fn.blocks[j].label]
         if len(ps) != 1 or ps[0] >= j or (len(code) > 0 and code[0].op == "landing"):
@@ -369,12 +364,10 @@ def gen_disjoint(self, vs: Values, a: str, b: str) -> bool:
     # whether canonical addresses a and b are fields at different indices of the same class
     # or of unrelated classes: never the same memory. A base and a derived exception class
     # may view one object through different struct types, so their fields may alias.
-    ta = vs.text.get(a, "")
-    tb = vs.text.get(b, "")
-    if not ta.startswith("getelementptr %C.") or not tb.startswith("getelementptr %C."):
+    if a not in vs.fieldtype or b not in vs.fieldtype:
         return False
-    ca = ta[len("getelementptr %C.") : ta.find(",")]
-    cb = tb[len("getelementptr %C.") : tb.find(",")]
+    ca = vs.fieldtype[a]
+    cb = vs.fieldtype[b]
     if ca == cb:
-        return ta[ta.rfind(",") :] != tb[tb.rfind(",") :]
+        return vs.fieldindex[a] != vs.fieldindex[b]
     return not self.derives(ca, cb) and not self.derives(cb, ca)

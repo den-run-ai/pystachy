@@ -40,8 +40,8 @@ jobs:
 
       - run: make lint
 
-      - name: CI report gate tests
-        run: python3 -m unittest discover -s tools -p test_merge_verification.py
+      - name: CI verification harness and report gate tests
+        run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
 
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
@@ -49,7 +49,7 @@ jobs:
       - name: Compiler effect summary tests
         run: python3 -m unittest discover -s tools -p test_function_summaries.py
 
-      - name: Typed IR slot tests
-        run: python3 -m unittest discover -s tools -p test_typed_ir.py
+      - name: Typed IR tests
+        run: python3 -m unittest discover -s tools -p 'test_typed*.py'
 
       - run: make check-recordings

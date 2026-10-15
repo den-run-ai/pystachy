@@ -75,10 +75,11 @@ typedef struct Exc Exc;                                /* a raised exception (se
    page map (48-bit addresses, 4 KiB pages) sends each of its pages to that header, so "is
    this word a pointer into the heap, and into which object" is a range check, two loads and
    a multiply by the reciprocal of the slot size: O(1), interior pointers included.
-   Kinds. pys_alloc returns scanned memory (objects, tuples, list headers and arrays, dict
-   value arrays, the key arrays of dicts and sets of strs and tuples); pys_alloc_atomic returns
+   Kinds. pys_alloc returns scanned memory (objects, tuples, list headers and general backing
+   arrays, dict value arrays, the key arrays of dicts and sets of strs and tuples); pys_alloc_atomic returns
    memory that is never scanned (strings, Buf data, dict hash and index arrays, set hash arrays,
-   the key arrays of dicts and sets of ints, the merge buffers of sorts of ints and floats),
+   range-list arrays, the key arrays of dicts and sets of ints, the merge buffers of sorts of
+   ints and floats),
    since none of it can hold a pointer. Each (class, kind) has a free list. Memory is
    handed out zeroed: the sweep zeroes dead slots, so allocation pops a slot and clears its
    link word (inlined into callers for the classes up to 136 bytes). A chunk's never-used
@@ -621,6 +622,13 @@ I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
 static _Noreturn void failf(const char *f, ...);
+/* Compile-time opt-in audit instrumentation calls this at byte-oriented str boundaries.
+   No header/cache change or default-path work: scan only audit builds; runtime.py's own
+   intentional byte operations are not instrumented. This is conservative, not UTF-8 validation. */
+void pys_str_audit(Str *s, Str *op) {
+  for (I i = 0; i < s->len; i++) if ((unsigned char)s->s[i] >= 128)
+    failf("NotImplementedError: Unicode audit: %s on non-ASCII str uses byte/ASCII semantics", op->s);
+}
 I pys_f2i(double d);
 static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
   Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
@@ -1224,6 +1232,7 @@ static int eqpair(I a, I b, const char *x, const char *y) {
   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
 }
 I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
+I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
@@ -1309,10 +1318,12 @@ static I empty_list[1];                /* valid even for zero-byte copies; disti
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
   if (l->cap) { l->cap = 0; l->a = empty_list; }   /* cap 0 during sort: preserve its mutation marker */
 }
-List *pys_list_new(I cap) {
+static List *list_new(I cap, int atomic) {
   List *l = pys_alloc(sizeof(List));
-  l->cap = cap > 4 ? cap : 4; l->a = pys_alloc(l->cap * 8); return l;
+  l->cap = cap > 4 ? cap : 4;
+  l->a = atomic ? pys_alloc_atomic(l->cap * 8) : pys_alloc(l->cap * 8); return l;
 }
+List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_vtuple_list(VTuple *t) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
   List *l = pys_list_new(t->len);
@@ -1374,6 +1385,10 @@ List *pys_list_mul(List *a, I n) {
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }
+I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
+  for (I i = 0; i < l->len; i++) if (eqpair(l->a[i], v, d->s, vd->s)) return i;
+  return -1;
+}
 static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
@@ -1741,7 +1756,9 @@ List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once 
   uint64_t n = (uint64_t)pys_range_len(a, b, s);
   if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
   if (n > INT64_MAX >> 4) pys_fail("MemoryError");
-  List *l = pys_list_new((I)n);
+  /* Compiler contract: this result stays list[int]. Reboxing to optional/union
+     items requires a fresh scanned array; it must never retype this backing in place. */
+  List *l = list_new((I)n, 1);   /* range items are always unboxed ints; the header still holds a pointer */
   for (uint64_t i = 0; i < n; i++) l->a[i] = (I)((uint64_t)a + i * (uint64_t)s);   /* wraps to the item */
   l->len = (I)n; return l;
 }

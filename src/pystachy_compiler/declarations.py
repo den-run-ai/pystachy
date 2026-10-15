@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import calls_init, local_names
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, Val
+from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -18,6 +18,7 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
+    SPECIAL,
     STUB,
     TYPEVAR,
     TYPE_SIZE,
@@ -28,7 +29,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
     is_excname,
 )
-from src.pystachy_compiler.syntax import Node, has_kind, mentions, mk
+from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk
 from src.pystachy_compiler.utils import (
     clone,
     elem,
@@ -44,7 +45,6 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_vtuple,
     key_problem,
-    lt,
     rename,
     selem,
     takes_self,
@@ -64,7 +64,12 @@ def gen_ctype(self, base: str, ts: list[str]) -> str:
         size += len(t)
         if size > TYPE_SIZE:
             self.err(f"type representation exceeds {TYPE_SIZE} bytes; simplify the type or annotate template parameters")
-    return base + "[" + ",".join(ts) + "]"
+    t = base + "[" + ",".join(ts) + "]"
+    # Allocation and slot accesses derive a tuple's layout from its type string.
+    # Reject a broken serialization before either can use a different item count.
+    if base == "tuple" and targs(t) != ts:
+        self.err("internal error: tuple item types do not round-trip")
+    return t
 
 def gen_none_items(self, t: str) -> str:
     # A tuple key with str | None in place of each None item.
@@ -652,8 +657,15 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         stub = stub or self.imported(x.s) == "typing.overload"
     if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
         f.deco = deco  # (a method that takes no self, or its class as cls)
+    f.prop = cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and deco == "property"
+    if f.prop:
+        for st in self.classes[cls].node.kids[0].kids:
+            if st is d:
+                break
+            if st.s == "property" or ((st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "name" and st.kids[0].s == "property"):
+                self.err("unsupported decorator @property: the name is shadowed in the class body")
     deco = short(deco)
-    if deco != "" and f.deco == "" and not self.lib and not f.extern and not f.pyexport:
+    if deco != "" and f.deco == "" and not f.prop and not self.lib and not f.extern and not f.pyexport:
         # (CPython applies a decorator when the def runs, called or not: see decorators())
         if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
             self.err(f"name '{deco}' is not defined (import it from typing)")
@@ -688,6 +700,12 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
     if cls in self.classes and self.classes[cls].origin != "" and (template_ok(d.s) or init):
         f.generic = True  # (a specialization's methods: compiled where they are called, see specialize)
+    if d.kids[1].kind == "noann" and (cls == "" or template_ok(d.s)) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
+        # The declared parameter types still coerce every call. Reuse return
+        # inference even when all parameter types are already concrete.
+        # Initializers and other implicit special methods keep their contracts.
+        f.void_default = not f.generic
+        f.generic = True
     marks = d.kids[0].s.split(",")
     bad = ""
     f.npos = -1
@@ -738,6 +756,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif p.kids[0].kind == "noann":
             if not f.generic and p not in held:
                 # A generic class's TypeVar annotation is restored on its specializations.
+                if cls != "" and d.s == "__exit__":
+                    self.err("unannotated __exit__() is not supported; user-defined context managers cannot be used in 'with' (files only)")
                 self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
             f.ptypes.append("")
         elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not template_ok(d.s)):
@@ -762,11 +782,18 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.npos = len(f.params) if f.kwarg < 0 else f.kwarg
     if f.vararg >= 0:
         f.npos = f.vararg
-    if len(d.kids) > 3 and f.deco == "" and not f.extern and not f.pyexport:
+    if len(d.kids) > 3 and f.deco == "" and not f.prop and not f.extern and not f.pyexport:
         bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
         bad = STUB.replace("NAME", short(d.s)) if stub else bad
     if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):
         bad = f"@{f.deco} on the special method {d.s} is not supported"
+    if f.prop:
+        if len(ps) != 1 or ps[0].kind != "param":
+            bad = f"property {d.s} must take only self"
+        elif d.s.startswith("__") and d.s.endswith("__"):
+            bad = f"@property on the special method {d.s} is not supported"
+        elif d.kids[1].kind == "noann" and d not in held:
+            bad = f"property {d.s} needs a return annotation"
     if not inherited and f.deco == "classmethod" and bad == "" and ps[0].kind == "param":
         # its cls parameter names the class in its body: cls(...) makes one, cls.x reads a
         # class attribute, cls.m(...) calls a static or class method
@@ -802,6 +829,15 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
+    elif cls != "" and d.s == "__len__" and has_value_return(d.kids[2]):
+        # bool is also a legal length; infer it so an explicit obj.__len__()
+        # keeps returning bool while len(obj) converts it to int.
+        f.generic = True
+        f.ret = ""
+    elif cls != "" and d.s in ["__str__", "__repr__", "__bool__"] and has_value_return(d.kids[2]):
+        # These implicit operations have a fixed result contract even without an
+        # annotation; checking the body still rejects a wrong value.
+        f.ret = SPECIAL[d.s][SPECIAL[d.s].find(":") + 1 :]
     elif f.generic and init:
         f.ret = "None"  # (a class template's __init__: what CPython lets it return)
     elif f.generic:
@@ -887,6 +923,8 @@ def gen_init_after(self, ci: ClassInfo, name: str) -> bool:
     return False
 
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
+    if name in ci.methods and ci.methods[name].prop:
+        self.err(f"field '{name}' of '{short(ci.name)}' conflicts with read-only property '{name}'")
     if name not in ci.ftypes:
         self.exc_attr(ci, name)
     if name in ci.ftypes:
@@ -900,6 +938,68 @@ def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
 def gen_declare_fields(self, ci: ClassInfo) -> None:
     noann = mk("noann", "", ci.node.line, [])
     last = ""
+    # Slot names constrain layout; the declaration remains a class attribute. A
+    # subclass without its own __slots__, or with an unslotted base, has a dict.
+    if ci.base in self.classes:
+        ci.slots = list(self.classes[ci.base].slots)
+        if "__slots__" in self.classes[ci.base].fdefault:
+            ci.ftypes["__slots__"] = self.classes[ci.base].ftypes["__slots__"]
+            ci.fdefault["__slots__"] = self.classes[ci.base].fdefault["__slots__"]
+    slots_declared = False
+    for st in ci.node.kids[0].kids:
+        if st.kind not in ["assign", "annassign"] or st.kids[0].kind != "name" or st.kids[0].s != "__slots__":
+            continue
+        self.line = st.line
+        if slots_declared:
+            why = "multiple __slots__ declarations are not supported; use one literal declaration"
+            if ci.mod == "":
+                self.err(why)
+            ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+        slots_declared = True
+        slot_node = st.kids[-1]
+        names = [slot_node] if slot_node.kind == "str" else slot_node.kids if slot_node.kind in ["tuple", "list"] else []
+        own_slots: list[str] = []
+        why = ""
+        if slot_node.kind not in ["str", "tuple", "list"] or (st.kind == "annassign" and len(st.kids) != 3):
+            why = "__slots__ needs a literal string, tuple or list of strings"
+        for n in names:
+            if n.kind != "str" or n.s == "" or not (n.s[0].isalpha() or n.s[0] == "_") or not n.s.replace("_", "a").isalnum():
+                why = "__slots__ needs literal attribute names"
+            elif n.s in ["__dict__", "__weakref__"] or (n.s.startswith("__") and not n.s.endswith("__")):
+                why = f"__slots__ entry '{n.s}' is not supported"
+            elif ci.base in self.classes and n.s in self.classes[ci.base].methods:
+                why = f"slot '{n.s}' shadows an inherited method or property: not supported"
+            else:
+                ci.slots.append(n.s)
+                own_slots.append(n.s)
+        if why != "":
+            if ci.mod == "":
+                self.err(why)
+            ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+        # Reuse class-default globals without reserving an instance field: a
+        # subclass may declare a different tuple length, or use a list/string.
+        t = "str" if slot_node.kind == "str" else "list[str]" if slot_node.kind == "list" else self.ctype("tuple", ["str" for n in names])
+        if st.kind == "annassign" and len(st.kids) == 3:
+            why = self.ann_problem(st.kids[1], False) if ci.mod != "" else ""
+            if why != "":
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+            else:
+                t = self.vtype(st.kids[1])
+        ci.ftypes["__slots__"] = t
+        ci.fdefault["__slots__"] = slot_node
+        if st.kind == "assign":
+            st.kind = "annassign"
+            st.kids = [st.kids[0], noann, slot_node]
+        ci.slotlimit = ci.exc == "" and (ci.base not in self.classes or self.classes[ci.base].slotlimit)
+        # A slot's descriptor cannot coexist with a class variable or method of
+        # that name. Reject shadowing inherited descriptors too.
+        for d in ci.node.kids[0].kids:
+            name = d.s if d.kind == "def" else d.kids[0].s if d.kind in ["assign", "annassign"] and d.kids[0].kind == "name" and (d.kind == "assign" or len(d.kids) == 3) else ""
+            if name in ci.slots:
+                why = f"'{name}' in __slots__ conflicts with class variable or method" if name in own_slots else f"shadowing inherited slot '{name}' with a class variable or method is not supported"
+                if ci.mod == "":
+                    self.err(why)
+                ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
     if ci.base in self.classes:
         # an exception class's objects begin with its base's fields (and their flags, see fl_fields)
         b = self.classes[ci.base]
@@ -917,6 +1017,8 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
             self.add_field(ci, " " + x[: x.find(":")], x[x.find(":") + 1 :])
     for st in ci.node.kids[0].kids:
         self.line = st.line
+        if st.kind in ["assign", "annassign"] and st.kids[0].kind == "name" and st.kids[0].s == "__slots__":
+            continue
         if st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
             # (a class attribute of the base bound again, with the same type: as x = v is)
             b = self.classes[ci.base]
@@ -1204,12 +1306,16 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     me = f.params[0] if takes_self(f) else ""
     if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ci = self.classes[f.cls]
+        if e.s in ci.methods and ci.methods[e.s].prop:
+            return ci.methods[e.s].ret
         if e.s not in ci.ftypes and e.s in ci.methods and ci.methods[e.s].deco == "":
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
         return ci.ftypes.get(e.s, "")
     if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
         ms = self.classes[f.cls].methods
         m = e.kids[0].s
+        if m in ms and ms[m].prop:
+            return targs(ms[m].ret)[0] if is_callable(ms[m].ret) else ""
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)
@@ -1329,6 +1435,10 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"{tname(t)}.{name} is a method: call it, {name}(...) (methods are not values)")
         self.err(f"type {typestr(o.t)} has no attribute '{name}'")
     ci = self.classes[o.t]
+    if store and ci.slotlimit and name not in ci.slots:
+        self.err(f"field '{name}' is outside __slots__ of '{short(ci.name)}'")
+    if name in ci.methods and ci.methods[name].prop:
+        self.err(f"property '{name}' of '{short(o.t)}' is read-only")
     if name not in ci.ftypes:
         if name in ci.methods:
             self.err(f"{o.t}.{name} is a method: call it, {name}(...) (methods are not values)")
@@ -1346,11 +1456,23 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.err(f"'{o.t}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
+    if name == "__slots__" and name not in ci.fpos:
+        if store:
+            self.err("rebinding __slots__ through an instance is not supported")
+        self.class_default(ci, name)
+        return Val(ci.fglob[name], ci.ftypes[name])
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
 
 def gen_fgep(self, o: Val, i: int) -> str:
-    # the address of field or flag i of object o (IFn.fa holds it, for rawfx)
-    r = self.ins(f"getelementptr %C.{o.t}, ptr {o.v}, i32 0, i32 {i}")
+    # Keep the declared object layout and member type until lowering. The address
+    # remains in IFn.fa so native and machine memory operations have identical effects.
+    ci = self.classes[o.t]
+    t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "bool"
+    op = Ins("field.addr", "*" + t, "")
+    op.k = i
+    op.a = [o]
+    self.put(op, 1)
+    r = f"%t{op.r[0]}"
     self.fn.fa[r] = True
     return r
 
@@ -1359,39 +1481,57 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     ci = self.classes[o.t]
     r = ""
     bad = ""
+    if name == "__slots__" and name not in ci.fpos:
+        if ci.exc != "":
+            # Exceptions use their runtime class identity rather than ordinary
+            # object tags. Do not silently read the static base's metadata.
+            for sub in self.classes.values():
+                if sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault and self.default_home(sub, name) is not self.default_home(ci, name):
+                    self.err(f"reading __slots__ through exception base {short(ci.name)} is not supported when a subclass overrides it; read it through the concrete class")
+        r = self.mem_load(Val(p.v, "*" + p.t)).v
+        if ci.tag != 0:
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[' class']), "*int")).v
+            for sub in self.classes.values():
+                if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault:
+                    if sub.ftypes[name] != p.t:
+                        self.err(f"reading __slots__ through {short(ci.name)} is not supported when subclasses use different declaration types; read it through the concrete class")
+                    self.class_default(sub, name)
+                    dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
+                    r = self.select(self.num_cmp("==", Val(tag, "int"), Val(str(sub.tag), "int")).v, dv, Val(r, p.t))
+        return Val(r, p.t)
     if o.t + "." + name in self.cvars:
         # a class variable: the object's own value once it has assigned one, else the class's
-        own = self.ins(f"load i1, ptr {self.fgep(o, ci.fflag[name])}")
-        fv = Val(self.ins(f"load {lt(p.t)}, ptr {p.v}"), p.t)
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
+        fv = self.mem_load(Val(p.v, "*" + p.t))
         if ci.tag != 0:
             # Each concrete class may shadow its base's class attribute. All related
             # mutable defaults share the inherited instance-assignment flag, but their
             # fallback globals still belong to the classes that define those defaults.
-            tag = self.ins(f"load i64, ptr {self.fgep(o, ci.fpos[' class'])}")
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
             cv = fv
             assigned = own
             for sub in self.classes.values():
                 if sub.tag != 0 and self.derives(sub.name, ci.name) and name in sub.fdefault:
-                    match = self.ins(f"icmp eq i64 {tag}, {sub.tag}")
+                    match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                     if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]):
                         self.class_default(sub, name)
-                        dv = Val(self.ins(f"load {lt(p.t)}, ptr {sub.fglob[name]}"), p.t)
+                        dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
-                    assigned = self.ins(f"or i1 {assigned}, {match}")
-            bad = self.ins(f"xor i1 {assigned}, true")
+                    assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
+            bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
         else:
             self.class_default(ci, name)
-            r = self.select(own, fv, Val(self.ins(f"load {lt(p.t)}, ptr {ci.fglob[name]}"), p.t))
+            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "*" + p.t)))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             return Val(r, p.t)
     if name in ci.fflag:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
-            bad = self.ins(f"xor i1 {self.ins(f'load i1, ptr {f}')}, true")
+            bad = self.scalar('xor', [Val(self.mem_load(Val(f, '*bool')).v, 'bool'), Val('true', 'bool')])
         subs = [x for x in self.classes.values() if x.base == o.t]
         if len(subs) > 0 and (ci.exc != "" or ci.tag != 0):
             # CPython's missing-attribute error names the concrete object's class.
@@ -1402,11 +1542,11 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             if ci.exc != "":
                 c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
             else:
-                tag = self.ins(f"load i64, ptr {self.fgep(o, ci.fpos[' class'])}")
+                tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
                 c = self.sconst(short(ci.name))
                 for sub in self.classes.values():
                     if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name):
-                        match = self.ins(f"icmp eq i64 {tag}, {sub.tag}")
+                        match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                         c = self.select(match, Val(self.sconst(short(sub.name)), "str"), Val(c, "str"))
             q = self.sconst("'")
             t = self.sconst("' object has no attribute '" + name + "'")
@@ -1417,16 +1557,16 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         else:
             self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
     if r == "":
-        r = self.ins(f"load {lt(p.t)}, ptr {p.v}")
+        r = self.mem_load(Val(p.v, "*" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
     return Val(r, p.t)
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
-    what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-    self.emit(f"store {lt(p.t)} {self.coerce(v, p.t, what).v}, ptr {p.v}")
     ci = self.classes[o.t]
+    what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
+    self.mem_store(Val(p.v, "*" + p.t), self.coerce(v, p.t, what))
     if name in ci.fflag:
-        self.emit(f"store i1 true, ptr {self.fgep(o, ci.fflag[name])}")
+        self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
 
 # ---- variables

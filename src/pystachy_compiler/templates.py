@@ -10,7 +10,7 @@ from src.pystachy_compiler.specs import (
     TEMPLATE_INSTANCES,
     TEMPLATE_RETAINED,
 )
-from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.syntax import Node, mentions, mk
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -57,10 +57,14 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     s = ClassInfo(name, t.node)
     s.mod = t.mod
     s.origin = c
+    s.slots = t.slots
+    s.slotlimit = t.slotlimit
     s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
     for x in t.fields:
         s.fpos[x] = t.fpos[x]
         s.ftypes[x] = t.ftypes[x]
+    if "__slots__" in t.ftypes:
+        s.ftypes["__slots__"] = t.ftypes["__slots__"]
     s.fdefault = t.fdefault
     s.fglob = t.fglob
     self.classes[name] = s
@@ -173,6 +177,43 @@ def gen_want_tvars(self, c: str, want: str) -> dict[str, str]:
     if c in self.tparams and w in self.classes and self.classes[w].origin == c:
         return dict(self.classes[w].tvars)
     return {}
+
+def gen_constructor_unions(self, c: str, ts: list[str]) -> list[str]:
+    # Ordinary matching wins. On conflicting direct scalar TypeVars only, use
+    # their closed union and box arguments before specializing the constructor.
+    ps = self.classes[c].methods["__init__"].node.kids[0].kids[1:]
+    tvs = self.tparams[c]
+    inferred: dict[str, str] = {}
+    conflict = False
+    for i in range(len(ts)):
+        if self.match(ps[i].kids[0], ts[i], inferred, tvs) != "":
+            conflict = True
+            break
+    if not conflict:
+        return []
+    names: list[str] = []
+    bound: dict[str, str] = {}
+    for i in range(len(ts)):
+        a = ps[i].kids[0]
+        if a.kind == "str":
+            a = self.parse_expr(a.s)
+        name = ""
+        if self.names_tv(a, tvs):
+            if ps[i].kind != "param" or a.kind != "name" or a.s not in tvs or a.s in self.tvtuples:
+                return []
+            name = a.s
+            if name not in bound:
+                bound[name] = ts[i]
+            elif bound[name] != ts[i]:
+                scalars = all([unopt(t) in ["int", "float", "bool", "str", "None"] or self.scalar_union(t) for t in [bound[name], ts[i]]])
+                joined = self.join(bound[name], ts[i]) if bound[name] != "None" and ts[i] != "None" else ""
+                if not scalars and joined == "":
+                    return []
+                bound[name] = self.union_type([bound[name], ts[i]]) if scalars else joined
+        names.append(name)
+    if any([t == "None" for t in bound.values()]):
+        return []  # (a TypeVar still needs at least one non-None binding)
+    return [bound[names[i]] if names[i] != "" else ts[i] for i in range(len(ts))]
 
 def gen_want_params(self, c: str, want: str) -> list[str]:
     # the types for which the arguments of c(...), a call of generic class c whose context
@@ -381,22 +422,94 @@ def gen_fn_sig(self, t: str) -> list[str]:
         return [f"!{name} has no return annotation, which the type variable it matches takes its type from"]
     return out
 
-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
+def local_result(body: list[Node], params: list[str]) -> list[str]:
+    # A short straight-line chain may forward a fresh result through locals.
+    # Each name is assigned once and read only by the next alias or return;
+    # no mutation, escape, capture, control flow or parameter is widened.
+    if len(body) < 2 or body[-1].kind != "return" or len(body[-1].kids) != 1 or body[-1].kids[0].kind != "name":
+        return []
+    values: dict[str, Node] = {}
+    order: dict[str, int] = {}
+    for st in body[:-1]:
+        if st.kind == "expr" and st.kids[0].kind == "str":
+            continue
+        if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name":
+            return []
+        name = st.kids[0].s
+        if name in values:
+            return []
+        order[name] = len(values)
+        values[name] = st.kids[1]
+    name = body[-1].kids[0].s
+    aliases: list[str] = []
+    while name in values and name not in params and name not in aliases and len(aliases) < 32:
+        aliases.append(name)
+        e = values[name]
+        if e.kind == "name":
+            if e.s not in order or order[e.s] >= order[name]:
+                return []
+            name = e.s
+        elif e.kind in ["call", "list", "dict", "set", "tuple"]:
+            for key in values:
+                v = values[key]
+                if v.kind == "name" and key in aliases:
+                    continue
+                if mentions(v, aliases):
+                    return []
+            return aliases
+        else:
+            return []
+    return []
+
+
+def contextual_result(n: Node) -> bool:
+    # Only fresh return displays and direct forwarding calls can use a result
+    # hint. Nested functions have their own callers; ordinary stored returns
+    # keep one argument-specialized function. A top-level empty list/dict keeps
+    # its existing open-result specialization shared between caller layouts.
+    if n.kind == "return" and len(n.kids) > 0:
+        e = n.kids[0]
+        return e.kind in ["tuple", "call"] or (e.kind in ["list", "dict", "set"] and len(e.kids) > 0)
+    for k in n.kids:
+        if k.kind not in ["def", "class", "subclass", "lambda"] and contextual_result(k):
+            return True
+    return False
+
+def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False) -> FnInfo:
     # the function template f compiles to for arguments of types ts, compiled when first
     # needed, in the middle of the function that calls it: its first return statement
     # decides what it returns; nnp: the parameters whose objects are known not to be None
-    size = len(ts) + len(nnp)
+    # Only container contexts can type fresh displays. Include the full context
+    # in the key and budgets: two callers may require different native storage.
+    body = f.orig.kids[2] if f.pending else f.node.kids[2]
+    context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)
+    locals = local_result(body.kids, f.params) if context and not resultsoft else []
+    want = want if context and (contextual_result(body) or len(locals) > 0) else ""
+    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
+    if key in f.insts and f.insts[key].ll in self.building:
+        # Recursion into the active argument specialization must retain its
+        # inference cycle, including the diagnostic for an open empty result.
+        want = ""
+    mode = " ~ " if resultsoft else " -> "
+    size = len(ts) + len(nnp) + len(want) + (len(mode) if want != "" else 0)
     for t in ts:
         size += len(t)
     for p in nnp:
         size += len(p)
     if size > TEMPLATE_BYTES:
         self.err(f"{short(f.name)}() template signature exceeds {TEMPLATE_BYTES} bytes; annotate its parameters")
-    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
+    if want != "":
+        key += mode + want
     if key in f.insts:
         g = f.insts[key]
         if g.ret == "":
-            self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
+            if f.void_default:
+                # These signatures previously returned None. Keep recursive void
+                # programs valid, but fix their consumed ABI before emitting a call.
+                # The first-return path refuses any later non-None inference.
+                g.ret = "None"
+            else:
+                self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
         return g
@@ -418,6 +531,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
     self.materialize(f)  # (an inherited class method's own body)
     g = FnInfo(f.name, f"{f.ll}.{len(f.insts) + 1}", f.node, f.cls)
     g.deco = f.deco
+    g.prop = f.prop
     g.clsuse = f.clsuse
     g.orig = f.orig
     g.iters = f.iters
@@ -430,6 +544,9 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
     g.mod = f.mod
     g.ret = f.ret
     g.infer = f.ret == ""
+    g.rctx = want
+    g.rsoft = resultsoft and want != ""
+    g.rlocals = locals if want != "" else []
     g.inst = True
     g.npos = f.npos
     g.posonly = f.posonly
@@ -454,7 +571,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str]) -> FnInfo:
     self.function(g, f.node.kids[2].kids)
     self.restore(fr)
     ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL else ""
-    if ret != "" and g.ret != ret:
+    if ret != "" and g.ret != ret and not (f.name == "__len__" and g.ret == "bool"):
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size

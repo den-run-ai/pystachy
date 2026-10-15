@@ -44,7 +44,7 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
         if miss == "":
             self.br(hit)
         elif member == "None":
-            self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), hit, miss)
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, hit, miss)
         else:
             self.cbr(self.utest(v, [member], False), hit, miss)
         self.place(hit)

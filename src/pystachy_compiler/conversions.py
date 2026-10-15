@@ -52,7 +52,7 @@ def gen_rres(self, r: str, t: str) -> Val:
     if t == "None":
         return Val("null", "None")
     if t == "bool":
-        return Val(self.ins(f"icmp ne i64 {r}, 0"), "bool")
+        return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     return Val(r, t)
 
 def gen_as_int(self, v: Val) -> Val:
@@ -75,6 +75,21 @@ def gen_num_cast(self, v: Val, t: str) -> Val:
 def gen_num_cmp(self, op: str, a: Val, b: Val) -> Val:
     # The frontend normalizes bools and handles exact mixed int/float comparisons first.
     i = Ins("num.cmp", "bool", op)
+    i.a = [a, b]
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", "bool")
+
+def gen_int_ucmp(self, op: str, a: Val, b: Val) -> Val:
+    # Bounds checks interpret native int bits as unsigned, also rejecting negatives.
+    # Keep that distinction explicit rather than changing num.cmp's signed semantics.
+    i = Ins("int.ucmp", "bool", op)
+    i.a = [a, b]
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", "bool")
+
+def gen_ptr_cmp(self, op: str, a: Val, b: Val) -> Val:
+    # Native reference identity/null tests, including boxed optional scalars.
+    i = Ins("ptr.cmp", "bool", op)
     i.a = [a, b]
     self.put(i, 1)
     return Val(f"%t{i.r[0]}", "bool")

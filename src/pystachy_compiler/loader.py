@@ -1661,6 +1661,8 @@ class Loader:
         if k == "" and src.pdir != "":
             # a submodule of the package
             sub = src.name + "." + x
+            if self.modpath(sub) == "":
+                fail(f"'{x}' from '{src.name}' is not supported: no definition or submodule was found on the module path", line)
             self.find(sub, line)
             inits.kids.append(mk("str", sub, line, []))
             self.bind(m, name, "m:" + sub, infn, line)

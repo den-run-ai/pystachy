@@ -1,0 +1,49 @@
+empty 1
+False
+empty 1
+False
+empty 1
+values 1
+False
+values 1
+empty 1
+False
+empty 9007199254740993
+False
+empty 1
+False
+empty 1
+False
+empty 1
+values 1
+False
+values 1
+empty 1
+False
+empty mapping 1
+False
+empty mapping 1
+False
+empty mapping 1
+table 1
+False
+table 1
+empty mapping 1
+False
+empty 1
+False
+empty 1
+False
+empty 1
+False
+empty 1
+empty 1
+False 0
+empty 1
+missing
+empty 1
+remove missing
+[[[], ['x']]]
+empty 1
+False
+[exit 0]

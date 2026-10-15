@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.analysis import all_imports, collect, module_ints, needs_eh, none_assigns
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
+from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -17,9 +17,6 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     RAISERS,
     RTSYM,
-    STRLEN_RANGE,
-    TBAA_BYTES,
-    TBAA_LEN,
     TYPING,
     UNSUPPORTED,
     exc_derives,
@@ -43,7 +40,6 @@ from src.pystachy_compiler.utils import (
     raising,
     raising_op,
     rt_subset,
-    runtime_decl,
     short_ascii,
     targs,
     template_ok,
@@ -131,6 +127,9 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             self.lazy[ci.methods[m].ll] = ci.methods[m]  # (compiled only if called: cls(...) may not fit this class)
         elif m not in ci.methods:
             ci.methods[m] = f
+        elif f.prop != ci.methods[m].prop:
+            self.line = ci.methods[m].node.line
+            self.err(f"overriding '{m}' as a different kind of attribute (property or method) is not supported")
         elif ci.exc == "" and (f.deco != "" or ci.methods[m].deco != ""):
             self.line = ci.methods[m].node.line
             self.err(f"overriding static or class method '{m}' in '{short(ci.name)}' is not supported")
@@ -216,7 +215,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
             ps = b.kids[0].kids
             deco = b.kids[3].s if len(b.kids) == 4 and len(b.kids[3].kids) == 0 else ""
             static = deco == "staticmethod"
-            if len(b.kids) > 3 and ((not static and deco != "classmethod") or (b.s.startswith("__") and b.s.endswith("__"))) and not self.stub(m, b):
+            if len(b.kids) > 3 and ((not static and deco != "classmethod" and deco != "property") or (b.s.startswith("__") and b.s.endswith("__"))) and not self.stub(m, b):
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
@@ -358,7 +357,7 @@ def gen_raisers(self, e: Node, local: dict[str, str], run: bool) -> bool:
     n = len(e.kids)
     if k == "ifexp" or k == "boolop" or k == "cmp":
         n = 2 if k == "cmp" else 1  # (the operands that surely run)
-    elif k not in ["binop", "unary", "index", "slice", "call", "attr", "tuple", "list", "set", "dict", "starred", "dstar"]:
+    elif k not in ["binop", "unary", "index", "slice", "call", "attr", "tuple", "list", "set", "dict", "starred", "dstar", "dictstar"]:
         return False
     for x in e.kids[:n]:
         if not self.raisers(x.kids[0] if x.kind == "kw" else x, local, True):
@@ -473,7 +472,7 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
     if k == "name":
         if (e.chk or self.foreign(e.s)) and e.s in self.gflag:
             self.flagged[e.s] = True
-            self.guard(self.ins(f"xor i1 {self.ins(f'load i1, ptr @g.{e.s}.def')}, true"), self.unbound(e.s))
+            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
         t = self.gtypes.get(e.s, "")
         if use == 3 and (e.s in self.funcs or e.s in self.hooks or ("$" not in e.s and (e.s in local or (e.s in PYBUILTINS and e.s not in PURE)))):
             return f"it passes {short(e.s)} to a function that may call it"
@@ -505,7 +504,7 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
         return f"it calls {self.hooks[e.kids[0].s]}()"
     if k == "lambda" or k == "badattr":
         return e.s if k == "badattr" else "Pystachy does not check the default values of its lambda"
-    if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict", "starred", "dstar"]:
+    if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict", "starred", "dstar", "dictstar"]:
         return f"Pystachy does not check what {'a comprehension' if k.endswith('comp') else 'an assignment expression' if k == 'walrus' else 'a ' + k + ' expression'} there runs"
     for i in range(len(e.kids)):
         # (an operand or set item: 2; a truth test or an attribute's object: 1; the container
@@ -518,7 +517,7 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
             u = 3 if use == 3 else 1 if use == 0 else 2
         elif k == "tuple" or k == "list" or (k == "dict" and i % 2 == 1):
             u = use if use > 1 else 0
-        elif k == "starred" or k == "dstar":
+        elif k == "starred" or k == "dstar" or k == "dictstar":
             u = use if use > 2 else 2
         r = self.effect(e.kids[i], local, u)
         if r != "":
@@ -712,7 +711,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name], i == 0)
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes:
-            self.global_var(f"@g.{nm}.def", "i1")
+            self.global_var(f"@g.{nm}.def", "bool")
     for m in mods:
         # a module global that module code only sets to None (an optional accelerator's
         # fallback, _json = None, or a cache a function fills, _varsub = None) and that is
@@ -774,7 +773,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.externs[f.ll] = ""
             else:
                 self.untold(f, [f.ret] + f.ptypes, "declared")
-                self.externs[f.ll] = f"declare {have[0]} {f.ll}({', '.join(have[1:])})"
+                self.extern_decl(f)
         elif not f.generic and f.ll not in self.compiled:
             self.function(f, f.node.kids[2].kids)
     for ci in [x for x in self.classes.values()]:
@@ -824,7 +823,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             break
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
-            self.global_var(f"@g.{nm}.def", "i1")  # (a variable no compiled code assigns)
+            self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j
@@ -869,56 +868,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.fa = {}
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
-    hdr: list[str] = ["; generated by pystachy"]
-    for ci in self.classes.values():
-        if ci.name in self.tmpl:
-            continue  # (a class template's objects are its specializations')
-        ts = [lt(ci.ftypes[x]) for x in ci.fields]
-        for _ in range(ci.nflag):
-            ts.append("i1")
-        hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
-    hdr.extend(self.globs)
-    roots = ", ".join([f"ptr {g}" for g in self.gcroots])
-    if not self.rtmode:
-        hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
-    hdr.extend(self.consts)
-    hdr.extend(self.out)
-    for k in self.rtfns:
-        if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
-            hdr.append(self.rtfns[k].decl)  # (runtime mode: what runtime.py defines is not declared)
-    for x in self.externs.values():
-        if x != "":
-            hdr.append(x)
-    if self.rtmode:
-        for ci in self.classes.values():
-            self.err(f"runtime.py may not define classes ({ci.name})")
-        # TBAA: a str's length and its bytes never alias (see RTL); other accesses carry no tag
-        hdr.append(f'!{TBAA_LEN - 3} = !{{!"pystachy runtime.py"}}')
-        hdr.append(f'!{TBAA_LEN - 2} = !{{!"str length", !{TBAA_LEN - 3}, i64 0}}')
-        hdr.append(f'!{TBAA_LEN - 1} = !{{!"str bytes", !{TBAA_LEN - 3}, i64 0}}')
-        hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
-        hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
-        hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
-        return "\n".join(hdr) + "\n"
-    if self.ext != "":
-        return "\n".join(hdr + self.pyext()) + "\n"
-    # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
-    # covers @main.init if inlined here) and the table of pointer-typed globals
-    hdr.append(runtime_decl("init"))
-    hdr.append(runtime_decl("finish"))
-    hdr.append(runtime_decl("frameaddress"))
-    if self.eh:
-        hdr.append(runtime_decl("eh_on"))
-    hdr.append("define i32 @main(i32 %argc, ptr %argv) {")
-    hdr.append("  %sb = call ptr @llvm.frameaddress.p0(i32 0)")
-    hdr.append(f"  call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr @pys.roots, i64 {len(self.gcroots)})")
-    if self.eh:
-        hdr.append("  call void @pys_eh_on()")  # (from now on, the runtime raises exceptions)
-    hdr.append("  call void @main.init()")
-    hdr.append("  call void @pys_finish()")
-    hdr.append("  ret i32 0")
-    hdr.append("}")
-    return "\n".join(hdr) + "\n"
+    return self.lower_module()
 
 # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
 # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;

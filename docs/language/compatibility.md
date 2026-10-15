@@ -57,6 +57,24 @@ In these cases a program can compile but behave differently from CPython.
   accepts it up to 2**63 - 1 (2**31 - 1 for a float's precision, above which it raises
   `precision too big`), and its `%` formats report `width too big` or `precision too big`.
 
+To find byte-oriented operations while porting, compile with
+`PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py` or
+`PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app`. The generated code raises
+`NotImplementedError: Unicode audit: ...` when a non-ASCII string reaches `len`,
+indexing/iteration (including `list`, `tuple`, `zip`, `enumerate` and `reversed`), slicing,
+search/count/bounded prefix methods, replacement, case mapping, ASCII character tests,
+or `expandtabs`. Checks apply to imported Python library code too. A built executable
+keeps its checks; setting the variable only when running an existing executable does
+not add or remove checks. The shared runtime cache is independent of this setting.
+
+This is a conservative porting aid, not Unicode semantics: even a byte-correct delimiter
+search or copy may be flagged. Printing, equality, concatenation and character-aware
+runtime operations such as whitespace splitting remain usable. `chr(128..255)`, file
+write counts, invalid UTF-8 input and other unlisted boundaries are not audited.
+Each check scans the string until the first non-ASCII byte; repeated ASCII indexing can
+be quadratic in audit builds. Default builds retain their existing behavior and cost.
+A cached ASCII flag and code-point operations remain follow-ups to #120.
+
 - In `"+"` modes, a write after reads goes where CPython's text layer stopped reading ahead,
   which Pystachy models in 8 KiB chunks. After `read(n)` for an `n` above that, CPython has
   read ahead by about `n` characters instead; and when a `for` loop over the file stops
@@ -94,6 +112,10 @@ In these cases a program can compile but behave differently from CPython.
   comes first.
 
 ### Functions and object identity
+
+- Private class names are not mangled: `__field` and `__method` retain their literal names.
+  A subclass can therefore collide with a base's private fields or replace its private
+  methods. Use distinct names across the hierarchy until name mangling is supported.
 
 - Runtime-length tuples use a different layout from fixed-shape tuples. Converting a
   fixed-shape tuple to `tuple[T, ...]`, or boxing its scalar elements for an optional-element

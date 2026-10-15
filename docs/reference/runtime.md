@@ -62,6 +62,14 @@ lengths and optimize construction loops. Runtime-mode unit-step range increments
 use LLVM's signed no-overflow form; runtime authors must keep the loop valid for
 that assumption.
 
+## List storage
+
+List headers remain scanned so their backing arrays stay reachable. `list(range(...))`
+initially uses pointer-free backing because every element is an unboxed integer, including
+for an empty range's minimum-capacity buffer. The list layout and mutation interface are
+unchanged. Generic growth, copies and slices still allocate scanned backing; preserving
+element kinds through those operations is a separate follow-up.
+
 ## Build and cache
 
 The driver reads and compiles a source snapshot of `runtime.c`, its `ryu/` includes

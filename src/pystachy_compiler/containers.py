@@ -32,7 +32,7 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_set_display(self, n: Node, want: str, folded: bool) -> Val:
+def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
     # {a, b, ...}: the items, evaluated in order, inserted into a new set (BUILD_SET). One of
     # more than two constants is CPython's frozenset constant of them merged into a new set
     # (SET_UPDATE), which can leave it a smaller table; folded: the iterable of a for loop or
@@ -43,17 +43,18 @@ def gen_set_display(self, n: Node, want: str, folded: bool) -> Val:
     # run after that copies it into a new set, or (folded) is it, as CPython's code object keeps
     # it (an operator's result is made on each run, as CPython leaves one beyond its limits)
     const = (folded or (len(n.kids) > 2 and folds(mk("tuple", "", n.line, n.kids)))) and literal(mk("tuple", "", n.line, n.kids)) and not self.rtmode
-    g = f"@fs.{len(self.globs)}"
+    gi = len(self.globs)
+    g = f"@fs.{gi}"
     old = ""
     l0 = ""
     ldone = ""
     if const:
-        self.global_var(g, "ptr")
-        old = self.ins(f"load ptr, ptr {g}")
+        self.global_var(g, "frozenset[?]")
+        old = self.mload('%ptr', g)
         l0 = self.cur
         lmake = self.label()
         ldone = self.label()
-        self.cbr(self.ins(f"icmp eq ptr {old}, null"), lmake, ldone)
+        self.cbr(self.scalar_cmp('eq', Val(old, '%ptr'), Val('null', '%ptr')), lmake, ldone)
         self.place(lmake)
     et = selem(want) if is_set(want) and "?" not in want else ""
     given = et != ""
@@ -62,17 +63,25 @@ def gen_set_display(self, n: Node, want: str, folded: bool) -> Val:
     for e in n.kids:
         if e.kind == "starred":
             self.err("unpacking in a set display ({*xs}) is not supported: use set(xs) or s.update(xs)")
-        v = self.expr(e, et)
+        v = self.expr(e, et, returnctx, resultsoft)
         if et == "" and v.t != "None":
             et = v.t
         jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
         items.append(v)
+    if returnctx and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et)]) > 0:
+        given = False
+        et = ""
+        for v in items:
+            if et == "" and v.t != "None":
+                et = v.t
     if not given and is_tuple(jt):
         et = self.none_items(jt)  # (None among the strs of a tuple's item: str | None)
     if et == "":
         self.err("cannot infer the type of a set of None")
     if elem_problem(et) != "":
         self.err(elem_problem(et))
+    if const:
+        self.globs[gi].t = self.ctype("frozenset", [et])
     items = [self.store_elem(v, et) for v in items]
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
     for v in items:
@@ -82,7 +91,7 @@ def gen_set_display(self, n: Node, want: str, folded: bool) -> Val:
         self.rt("pys_set_update_list", "void", [f"ptr {c}", f"ptr {self.rt('pys_set_list', 'ptr', [f'ptr {r}'])}"])
         r = c
         if const:
-            self.emit(f"store ptr {r}, ptr {g}")
+            self.mstore('%ptr', r, g)
             l1 = self.cur
             self.br(ldone)
             self.place(ldone)
@@ -112,12 +121,12 @@ def gen_iter_elem(self, t: str) -> str:
         return targs(t)[0]
     return ""
 
-def gen_siter(self, n: Node, et: str, what: str) -> Val:
+def gen_siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
     # an iterable that a set takes the elements of (set(it), s.update(it), s.union(it), ...),
     # for elements of type et ("": any): a set or frozenset, a dict (CPython takes its keys
     # with their hashes), or else the list of its items, in the order CPython's iterator
     # gives them (a list's, a tuple's, a str's characters, what a generator yields, ...)
-    return self.sitems(self.consume(n, self.ctype("list", [et]) if et != "" else ""), et, what)
+    return self.sitems(self.consume(n, self.ctype("list", [et]) if et != "" else "", resultsoft=resultsoft), et, what)
 
 def gen_sitems(self, v: Val, et: str, what: str) -> Val:
     # siter's iterable, from its value v: where the set method takes its items (the iterator
@@ -220,7 +229,7 @@ def gen_keys_list(self, v: Val) -> Val:
     # a dict's keys (or v as it is), where CPython iterates over a dict as over any iterable
     return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])) if is_dict(v.t) else v
 
-def gen_set_new(self, name: str, args: list[Node], want: str) -> Val:
+def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # set(), set(it), frozenset(), frozenset(it): a new set (frozenset) of the elements of it,
     # made as CPython's make_new_set makes it (set_update_internal: a set's table is merged, a
     # dict's keys are added after one resize for them all, any other iterable's items are added
@@ -236,7 +245,7 @@ def gen_set_new(self, name: str, args: list[Node], want: str) -> Val:
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
         return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"]), w)
-    v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()")
+    v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()", resultsoft)
     t = self.ctype(name, [selem(w) if w != "" else self.none_items(self.iter_elem(v.t))])
     if fz and is_fset(v.t):
         return Val(v.v, t)
@@ -296,7 +305,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             # name the int
             l1 = self.label()
             l2 = self.label()
-            self.cbr(self.ins(f"icmp eq i64 {self.rt('pys_set_has', 'i64', [ov, 'i64 ' + self.to_slot(k)])}, 0"), l1, l2)
+            self.cbr(self.num_cmp('==', Val(self.rt('pys_set_has', 'i64', [ov, 'i64 ' + self.to_slot(k)]), "int"), Val('0', "int")).v, l1, l2)
             self.place(l1)
             self.raise_("KeyError", self.repr(v).v)
             self.place(l2)
@@ -377,9 +386,9 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         hit = self.rt("pys_set_cmp", "i64", [ov, f"ptr {v.v}", "i64 1" if m == "issubset" else "i64 3"])
     else:
         hit = self.rt("pys_set_le_list" if m == "issubset" else "pys_set_ge_list", "i64", [ov, f"ptr {self.keys_list(v).v}"])
-    return Val(self.ins(f"icmp ne i64 {hit}, 0"), "bool")
+    return self.num_cmp('!=', Val(hit, "int"), Val('0', "int"))
 
-def gen_fromkeys(self, args: list[Node], want: str) -> Val:
+def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # dict.fromkeys(xs, v=None): a dict of xs's items, each mapped to v. Both are evaluated
     # first; a dict's keys go into a table sized for them, any other iterable's one by one
     for a in args:
@@ -391,9 +400,9 @@ def gen_fromkeys(self, args: list[Node], want: str) -> Val:
     w = self.ctype("list", [kv[0]]) if kv[0] != "" and (args[0].kind == "list" or args[0].kind == "listcomp") else ""
     if kv[0] != "" and args[0].kind == "dict" and len(args[0].kids) == 0:
         w = want  # ({} has no key to type: the keys wanted)
-    xs = self.consume(args[0], w) if self.iterator_call(args[0]) and args[0].kids[0].s == "range" else self.expr(args[0], w)
+    xs = self.consume(args[0], w, resultsoft=resultsoft) if self.iterator_call(args[0]) and args[0].kids[0].s == "range" else self.expr(args[0], w, resultsoft=resultsoft)
     V = kv[1]
-    v = self.expr(args[1], V) if len(args) == 2 else Val("null", "None")
+    v = self.expr(args[1], V, resultsoft=resultsoft) if len(args) == 2 else Val("null", "None")
     if is_opt(xs.t):
         xs = self.unwrap(xs, "TypeError: 'NoneType' object is not iterable")
     if xs.t == "str":
@@ -427,7 +436,7 @@ def gen_affix_any(self, tup: Val, m: str, av: list[str]) -> Val:
     for i in range(len(targs(tup.t))):
         item = self.tget(tup, i)
         if is_opt(item.t):
-            self.guard(self.ins(f"icmp eq ptr {item.v}, null"), f"TypeError: tuple for {m} must only contain str, not NoneType")
+            self.guard(self.ptr_cmp('==', item, Val('null', 'None')).v, f"TypeError: tuple for {m} must only contain str, not NoneType")
         c = self.rres(self.rt(f"pys_str_{m}", "i64", [av[0], f"ptr {item.v}"] + av[2:]), "bool")
         nx = self.label()
         self.incoming(ph, "true", self.cur)
@@ -473,7 +482,7 @@ def gen_bool_find(self, d: str, k: Val, key: str) -> str:
     e = self.rt("pys_dict_find", "i64", [f"ptr {d}", f"i64 {key}"])
     l1 = self.label()
     l2 = self.label()
-    self.cbr(self.ins(f"icmp slt i64 {e}, 0"), l1, l2)
+    self.cbr(self.num_cmp('<', Val(e, "int"), Val('0', "int")).v, l1, l2)
     self.place(l1)
     self.raise_("KeyError", self.repr(k).v)
     self.place(l2)
@@ -501,12 +510,12 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str]) -> str:
     if not is_opt(k.t):
         return self.rt(fn, "i64", av)
     if none == "":
-        self.guard(self.ins(f"icmp eq ptr {k.v}, null"), "KeyError: None")
+        self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
         return self.rt(fn, "i64", self.keyed(k, av))
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
-    self.cbr(self.ins(f"icmp eq ptr {k.v}, null"), l1, l2)
+    self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
     r = self.rt(fn, "i64", self.keyed(k, av))
     e2 = self.cur
@@ -555,7 +564,7 @@ def gen_to_str(self, v: Val) -> Val:
     if t in self.classes:
         return self.obj_str(v, "__str__")
     if t == "opt[str]":
-        return Val(self.select(self.ins(f"icmp eq ptr {v.v}, null"), Val(self.sconst("None"), "str"), Val(v.v, "str")), "str")
+        return Val(self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val(self.sconst("None"), "str"), Val(v.v, "str")), "str")
     if t == "exc":
         return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
     return self.repr(v)
@@ -572,16 +581,16 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
         start = self.cur
         ph = Ins("phi", "str", "")
         self.incoming(ph, self.sconst("None"), start)
-        self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), end, nonnull)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, nonnull)
         self.place(nonnull)
-        tag = self.ins(f"load i64, ptr {v.v}")
+        tag = self.mload('int', v.v)
         narrow = dict(self.narrowed)
         for i in range(len(cs)):
             c = cs[i]
             nxt = self.label() if i + 1 < len(cs) else ""
             if nxt != "":
                 arm = self.label()
-                self.cbr(self.ins(f"icmp eq i64 {tag}, {c.tag}"), arm, nxt)
+                self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
                 self.place(arm)
             self.narrowed = dict(narrow)
             method = m if m in c.methods else "__repr__"
@@ -613,7 +622,7 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
-    self.cbr(self.ins(f"icmp eq ptr {v.v}, null"), l1, l2)
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
     self.br(l3)
     self.place(l2)

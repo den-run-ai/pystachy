@@ -1,0 +1,14 @@
+receiver True
+argument 1
+method 1
+['method']
+receiver True
+argument 2
+call 2
+['call']
+receiver False
+'NoneType' object has no attribute 'empty'
+receiver False
+argument 2
+'NoneType' object is not callable
+[exit 0]

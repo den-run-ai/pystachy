@@ -1,0 +1,33 @@
+get 3
+callback
+call 2
+fields 6 3
+[8]
+get 3
+get 3
+6 6 3
+get 3
+get 3
+12 5
+receiver
+get 4
+callback
+call 2
+get 4
+8
+receiver
+get 5
+callback
+call 2
+callback
+argument
+call 9
+10
+callback
+call 10
+11
+caught unavailable
+before argument no callback
+none 'NoneType' object has no attribute 'value'
+none before argument 'NoneType' object has no attribute 'callback'
+[exit 0]
