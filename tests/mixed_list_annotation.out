@@ -1,0 +1,4 @@
+[1, 2.5] [1, 'x', 2.5, None] [('a', 1), ('b', 2.5)] [('a', (1, 'x')), ('b', (2.5, 2))]
+True True
+caught TypeError
+[exit 0]

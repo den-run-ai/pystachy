@@ -275,6 +275,7 @@ from src.pystachy_compiler.exceptions import (
     gen_unshadow as exceptions_unshadow,
 )
 from src.pystachy_compiler.expressions import (
+    gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
     gen_boolop as expressions_boolop,
@@ -494,6 +495,7 @@ from src.pystachy_compiler.statements import (
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.templates import (
     gen_bind as templates_bind,
+    gen_constructor_unions as templates_constructor_unions,
     gen_fn_sig as templates_fn_sig,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
@@ -1752,6 +1754,9 @@ class Gen:
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
+    def list_hint_type(self, a: str, b: str) -> str:
+        return expressions_list_hint_type(self, a, b)
+
     def class_attr(self, cn: Node, a: str) -> Val:
         return expressions_class_attr(self, cn, a)
 
@@ -1929,11 +1934,11 @@ class Gen:
     def foreign_eq(self, a: Val, b: Val) -> Val:
         return expressions_foreign_eq(self, a, b)
 
-    def call(self, n: Node, want: str, resultsoft: bool = False) -> Val:
-        return calls_call(self, n, want, resultsoft)
+    def call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+        return calls_call(self, n, want, resultsoft, typeargs)
 
-    def star_call(self, n: Node, want: str, resultsoft: bool = False) -> Val:
-        return calls_star_call(self, n, want, resultsoft)
+    def star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+        return calls_star_call(self, n, want, resultsoft, typeargs)
 
     def static_callee(self, f: Node) -> bool:
         return calls_static_callee(self, f)
@@ -2028,8 +2033,8 @@ class Gen:
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False) -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
@@ -2060,6 +2065,9 @@ class Gen:
 
     def want_tvars(self, c: str, want: str) -> dict[str, str]:
         return templates_want_tvars(self, c, want)
+
+    def constructor_unions(self, c: str, ts: list[str]) -> list[str]:
+        return templates_constructor_unions(self, c, ts)
 
     def want_params(self, c: str, want: str) -> list[str]:
         return templates_want_params(self, c, want)

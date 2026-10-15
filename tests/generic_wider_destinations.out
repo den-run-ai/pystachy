@@ -1,0 +1,37 @@
+[9007199254740993, 2] True True
+2.5
+[5, 6] True True
+2.5
+[7, 0] True True
+2.5
+[8, 9] True True
+2.5
+[10, 11] True True
+2.5
+[12, 13] True True
+2.5
+[3, 4] True True
+2.5
+[16, 17] True True
+2.5
+[True, False] True
+1
+[14, 15] True True
+2.5
+[1, 2] None
+True
+default
+['text', 'text'] True
+[1, 2]
+right
+left
+[1, 2]
+left
+right
+[1, 2]
+abc
+def
+DEFAULT
+a
+d
+[exit 0]

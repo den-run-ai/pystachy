@@ -24,7 +24,9 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 Integers are checked 64-bit values. Strings hold UTF-8 bytes. Dictionary keys and set elements
 have a restricted set of types: integers, strings and supported tuples (whose items may
 include booleans).
-Tuples have a fixed shape, with at most nine items and constant indices.
+Fixed-shape tuples have at most nine items and require constant indices. Runtime-length
+`tuple[T, ...]` values support integer indexing checked at runtime; their elements must be
+`int`, `float`, `bool`, `str`, or one of these with `None`.
 
 Explicit closed scalar unions such as `int | str`, bounded native reference unions,
 and optional unions are supported. Dynamic `Any` values are not.

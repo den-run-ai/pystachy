@@ -174,6 +174,43 @@ def gen_want_tvars(self, c: str, want: str) -> dict[str, str]:
         return dict(self.classes[w].tvars)
     return {}
 
+def gen_constructor_unions(self, c: str, ts: list[str]) -> list[str]:
+    # Ordinary matching wins. On conflicting direct scalar TypeVars only, use
+    # their closed union and box arguments before specializing the constructor.
+    ps = self.classes[c].methods["__init__"].node.kids[0].kids[1:]
+    tvs = self.tparams[c]
+    inferred: dict[str, str] = {}
+    conflict = False
+    for i in range(len(ts)):
+        if self.match(ps[i].kids[0], ts[i], inferred, tvs) != "":
+            conflict = True
+            break
+    if not conflict:
+        return []
+    names: list[str] = []
+    bound: dict[str, str] = {}
+    for i in range(len(ts)):
+        a = ps[i].kids[0]
+        if a.kind == "str":
+            a = self.parse_expr(a.s)
+        name = ""
+        if self.names_tv(a, tvs):
+            if ps[i].kind != "param" or a.kind != "name" or a.s not in tvs or a.s in self.tvtuples:
+                return []
+            name = a.s
+            if name not in bound:
+                bound[name] = ts[i]
+            elif bound[name] != ts[i]:
+                scalars = all([unopt(t) in ["int", "float", "bool", "str", "None"] or self.scalar_union(t) for t in [bound[name], ts[i]]])
+                joined = self.join(bound[name], ts[i]) if bound[name] != "None" and ts[i] != "None" else ""
+                if not scalars and joined == "":
+                    return []
+                bound[name] = self.union_type([bound[name], ts[i]]) if scalars else joined
+        names.append(name)
+    if any([t == "None" for t in bound.values()]):
+        return []  # (a TypeVar still needs at least one non-None binding)
+    return [bound[names[i]] if names[i] != "" else ts[i] for i in range(len(ts))]
+
 def gen_want_params(self, c: str, want: str) -> list[str]:
     # the types for which the arguments of c(...), a call of generic class c whose context
     # expects its specialization want, are compiled: __init__'s annotations that name c's type

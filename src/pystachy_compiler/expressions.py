@@ -505,6 +505,18 @@ def gen_truth(self, v: Val) -> str:
         return self.phi(ph)
     return nz
 
+def gen_list_hint_type(self, a: str, b: str) -> str:
+    # A supported annotation for mixed scalar rows. This is diagnostic advice only;
+    # successful programs keep their existing inference and representation.
+    if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+        ts = [self.list_hint_type(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]
+        return self.ctype("tuple", ts) if "" not in ts else ""
+    ms = (umembers(unopt(a)) if is_union(unopt(a)) else [unopt(a)]) + (umembers(unopt(b)) if is_union(unopt(b)) else [unopt(b)])
+    if any(t not in ["None", "int", "float", "bool", "str"] for t in ms):
+        return ""
+    t = self.union_type([a, b])
+    return "" if t.startswith("!") else t
+
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
     k = n.kind
@@ -693,13 +705,20 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 et = self.wider(et, v.t) or et
         if et == "" or et == "None":
-            self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation")
+            self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
             e0 = et
             while et in self.classes and self.classes[et].exc != "" and v.t in self.classes and not self.derives(v.t, et):
                 et = self.classes[et].base  # (exception objects of several classes: a base of them all)
             if e0 in self.classes and et not in self.classes:
                 self.err(f"objects of the exception classes {short(e0)} and {short(v.t)} in one list are not supported: no class of the program is a base of both (give them one: class Base(Exception), class {short(e0)}(Base), ...)")
+        if not given and jt == "-":
+            hint = items[0].t
+            for v in items[1:]:
+                hint = self.list_hint_type(hint, v.t) if hint != "" else ""
+            for v in items if hint != "" else items[:0]:
+                if not (self.term and v.v == "undef") and not self.widens(v.t, et) and not self.converts(v.t, et):
+                    self.err(f"expected {typestr(et)}, got {typestr(v.t)}; annotate the list as list[{typestr(hint)}] to preserve its mixed item types")
         items = [self.coerce(v, et) for v in items]
         r = self.rt("pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
@@ -743,7 +762,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for b in vs:
                 kv[1] = self.wider(kv[1], b.t) or kv[1]
         if kv[0] == "" or kv[1] == "":
-            self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation")
+            self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation (d: dict[K, V] = {{}}, or -> dict[K, V] on a function returning the dict)")
         vs = [self.coerce(x, kv[1]) for x in vs]
         if key_problem(kv[0]) != "":
             self.err(key_problem(kv[0]))

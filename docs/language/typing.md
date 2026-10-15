@@ -446,6 +446,11 @@ User method calls, bound method values and callable fields retain the same expec
 A union context supplies a list or dict result's type when exactly one member has the same
 container kind; ambiguous contexts retain the fallback above.
 
+For mixed scalar list literals, an error names a supported union annotation, such as
+`xs: list[int | float] = [1, 2.5]`. Rows can use unions within tuple fields:
+`rows: list[tuple[str, int | float]] = [("a", 1), ("b", 2.5)]`.
+The annotation preserves the individual values' types; it does not convert integers to floats.
+
 ## Class templates and generic classes
 
 A class specializes when its `__init__` has an unannotated parameter, variadic parameters,
@@ -487,9 +492,9 @@ print(Box(7).value)
 Supported matching forms are `T`, `list[T]`, `dict[K, V]`, `set[T]`, `frozenset[T]`,
 `tuple[A, *Ts]`, `T | None`, `Iterable[T]` (or `Iterator[T]`), and
 `Callable[[A, *Ts], R]`. Iterable matching uses the item type of a supported list, set,
-dict, string or homogeneous tuple; an empty tuple binds nothing. A direct `None` argument binds
-no type variable. Repeated bindings must join to a supported common type; integer and bool
-bindings can join to `int`. Callable matching uses annotated positional parameters and
+dict, string or homogeneous tuple; an empty tuple binds nothing. `None` alone cannot determine
+a type variable. Repeated bindings must join to a supported common type, or use the
+direct-scalar fallback below. Callable matching uses annotated positional parameters and
 returns, or an existing `Callable` signature.
 
 The resulting fields and methods use those bindings, including `tuple[*Ts]`,
@@ -510,6 +515,30 @@ empty displays use contextual types where their contents do not already determin
 Heterogeneous displays with known item types can use an explicit union context. Opaque
 calls and operations infer normally; their syntax alone does not request a union layout.
 A variable that neither arguments nor context bind is an error.
+
+When ordinary argument matching cannot bind the type variables consistently,
+fitting named union or optional parameter types resolve the conflict:
+`Pair[int | float](1, 2.5)`, `Pair[int | None](1, None)` and
+`p: Pair[int | float] = Pair(1, 2.5)` bind both parameters annotated `T` to
+their named type. Existing conversions preserve each value's representation,
+including integer precision, and handle defaults and unpacked arguments too.
+An enclosing generic annotation requires its named storage even for homogeneous
+arguments: `p: Pair[int | float] = Pair(1, 2)` stores union-valued fields that can
+later accept a float. This also works for annotated parameters, returns and fields,
+including calls with explicit type arguments. A constructor subscription alone remains
+a hint: `Box[int | str]("x")` still stores a concrete `str`. Existing objects stay
+invariant, and container members must fit exactly: neither `Box[int]` nor `list[int]`
+can be reinterpreted with wider mutable contents.
+
+Without a named specialization or surrounding generic annotation, conflicting direct
+scalar `T` arguments can infer a closed union: `Pair(1, 2.5)` and `Pair(1, "x")`
+retain both Python value types. This fallback supports `int`, `float`, `bool`, `str`
+and `None`, including existing scalar unions. Ordinary consistent inference still wins.
+Every constructor annotation that mentions a type variable must be a direct type
+variable; nested forms such as `list[T]`, variadic bindings, and non-scalar conflicts
+still need annotations. This does not add container covariance, mixed-display or
+function-return union inference. Nested generic parameter forms still require their
+arguments' container types to match; this does not infer wider mutable contents.
 
 `Generic[...]` must be the class's only base. Use the bare class name or `Self` inside its
 methods and fields, or an explicit specialization such as `"Pair[V, K]"`. PEP 695 class
