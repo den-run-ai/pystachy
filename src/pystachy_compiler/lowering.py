@@ -133,6 +133,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "init":
         o.append("  " + self.invoke(f"call void @init.{i.s}()", i))
+    elif op == "empty.kind":
+        # Only fresh empty results may change their dict/set key layout. A later
+        # return can resolve the hole; an outer caller types an unresolved result.
+        t = self.holes[i.k] if i.k > 0 else i.a[0].t
+        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t)) if t != "" else "0"
+        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
+        o.append(f"  store i64 {kind}, ptr %t{i.r[0]}")
     elif op == "list.len":
         o.append(f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}")
     elif op == "list.load":

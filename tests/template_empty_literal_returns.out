@@ -1,0 +1,10 @@
+[3] ['word'] [2.5] []
+{3: 4} {'name': 'value'} {('key', 2): 5} {}
+value 5 True
+True 1 0
+['argument']
+{'return': 6}
+{'empty': 9} {'filled': 7} {('new', 2): 10} {('key', 1): 8}
+True True
+['many'] []
+[exit 0]

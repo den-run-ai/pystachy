@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
 from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_opt, is_tuple, is_union, lt, targs, umembers
+from src.pystachy_compiler.utils import is_dict, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
 
 class EffectSummaries:
@@ -198,6 +198,15 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
                 if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
                     self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
+            if i.op == "empty.kind":
+                if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
+                    self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
+                t = i.a[0].t
+                if not (is_dict(t) or is_set(t)) or (i.k == 0 and "?" in t):
+                    self.bad_ir(fn, b, "empty.kind needs a dict/set key type or a deferred hole")
+                h = self.holes[i.k] if i.k > 0 else t
+                if h != "" and (not same_kind(t, h) or "?" in h):
+                    self.bad_ir(fn, b, "empty.kind needs a concrete hole of the same dict/set kind")
             if i.op == "num.cast" or i.op == "num.cmp":
                 if len(i.a) != (1 if i.op == "num.cast" else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
@@ -279,7 +288,7 @@ def gen_nums(self, i: Ins) -> int:
         return 4
     if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load":
         return 2
-    if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp":
+    if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp" or i.op == "empty.kind":
         return 1
     if i.op == "rt":
         return 0 if self.rtfns[i.s].sig[0] == "None" else 1

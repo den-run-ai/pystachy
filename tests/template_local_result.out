@@ -1,0 +1,13 @@
+['word'] [3] []
+['fresh'] {'name': 4} {('key', 2): 'value'} value {('tuple', 3): 5}
+True 1
+[9007199254740993, 2.5] [9007199254740993, 2.5, 'wide'] True True
+([1, 2.5], {'values': [1, 2.5]}) True
+{('bound', 5): 6}
+[1, 2.5]
+[]
+{}
+(9007199254740993,) True
+False
+[['first'], [1, 'second']] True
+[exit 0]

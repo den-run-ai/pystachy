@@ -1,0 +1,17 @@
+False False False
+False False
+False
+body 9007199254740993
+False
+body 9007199254740993
+False
+soft-first False
+[['strict-a'], [1, 'strict-b']]
+[['strict-c'], [2, 'strict-d']]
+strict-first False
+False False False
+False
+True
+True
+True
+[exit 0]

@@ -1,7 +1,7 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, where
 from src.pystachy_compiler.ir import FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
@@ -383,7 +383,7 @@ def fn_shown(t: str) -> str:
         return f"<built-in method {k[2 : k.find(':', 2)]} of {tname(k[k.find(':', 2) + 1 :])} object>"
     if k.startswith("c:"):
         q = k[k.find(":", 2) + 1 :]
-        return f"<function {q[: q.find('@')]} ({q[q.find('@') + 1 :]})>"
+        return f"<function {q[: q.find('@')]} ({where(int(q[q.find('@') + 1 :]))})>"
     return f"<built-in function {k[2:]}>" if k.startswith("b:") else f"<function {short(k[2:])}>"
 
 
@@ -423,6 +423,18 @@ def nonetest(n: Node) -> int:
     if n.kind != "cmp" or (n.s != "is" and n.s != "is not" and n.s != "==" and n.s != "!="):
         return -1
     return 0 if n.kids[1].kind == "None" else 1 if n.kids[0].kind == "None" else -1
+
+
+def empty_result_type(t: str, want: str) -> str:
+    # A fresh empty result has one compatible layout, or the ordinary int default.
+    want = unopt(want)
+    if is_union(want):
+        candidates = [m for m in umembers(want) if same_kind(m, t)]
+        if len(candidates) == 1:
+            want = candidates[0]
+    if same_kind(want, t) and "?" not in want:
+        return want
+    return "list[int]" if is_list(t) else "set[int]" if is_set(t) else "dict[int,int]"
 
 
 def same_kind(a: str, b: str) -> bool:

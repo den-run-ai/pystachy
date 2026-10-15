@@ -1,0 +1,22 @@
+[['word']] [[7]] [['again']] False
+{'items': [2.5]}
+(['first'], {(): {('key', 2): 'value'}}) value
+[['direct'], ['bound']]
+receiver 1
+argument 3
+receiver 2
+argument 4
+[['left'], ['right']]
+nullable True
+argument 4
+[[]]
+nullable False
+'NoneType' object has no attribute 'items'
+(['callback'],)
+[[9007199254740993, 2.5]] True
+row 9007199254740993
+False
+row x
+row 1
+False True
+[exit 0]

@@ -70,7 +70,7 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	build/dictprobe
 	PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
 
-# A reachable empty list must release its historical backing, without allocating in clear.
+# Empty lists release historical backing; range-list backing is pointer-free and safely mutable.
 listprobe: tools/listprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/listprobe-rt.ll

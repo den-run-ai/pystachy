@@ -24,6 +24,7 @@ from src.pystachy_compiler.utils import (
     bool_for_int,
     elem,
     elem_problem,
+    empty_result_type,
     folds,
     is_const,
     is_dict,
@@ -279,7 +280,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
                 if m in self.classes[t].methods and (now or ci.mod == ""):
                     self.err(why)
                 later = later if later != "" or m not in self.classes[t].methods else f"class {shown(ci.name)} is not supported: {why}"
-            cv = ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
+            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
             if (cv or not is_const(st.kids[2])) and fl in ci.fglob and ci.fglob[fl] in self.pending:
                 # code compiled before this statement declared its global (class_default)
                 del self.pending[ci.fglob[fl]]
@@ -430,7 +431,10 @@ def gen_stmt(self, n: Node) -> None:
         ekind = self.empty_of(val)
         if len(n.kids) == 2 and t0.kind == "name" and ekind != "" and self.ltype.get(t0.s, "") == NONEVAR and not self.is_global(t0.s):
             self.err(f"cannot infer the type of '{t0.s}' from None and an empty {ekind}; annotate it ({t0.s}: {ekind}[{'K, V' if ekind == 'dict' else 'T'}] | None = None)")
-        if len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
+        if len(n.kids) == 2 and t0.kind == "name" and t0.s in self.curfn.rlocals and val.kind != "name":
+            v = self.expr(val, self.curfn.rctx) if val.kind == "call" and ekind == "" else self.retval(val, self.target_type(t0))
+            self.assign(t0, v)
+        elif len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty(ekind, t0.s))
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "call" and len(val.kids) == 2 and val.kids[0].kind == "name" and val.kids[0].s == "dict" and not self.bound("dict") and val.kids[1].kind == "name" and self.static_type(val.kids[1]) == "kw[]" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty("dict", t0.s))  # (d = dict(kwargs) of a call without extra keywords: d = {})
@@ -542,10 +546,21 @@ def gen_stmt(self, n: Node) -> None:
     elif k == "return":
         if self.modlevel:
             self.err("'return' outside function")
+        if "?" in self.ret and self.qforward.get(self.curfn.ll, False) and len(n.kids) == 0:
+            # Forwarding used to choose a concrete empty-result default at the
+            # call. Preserve it when None needs a complete optional layout.
+            self.adopt(empty_result_type(self.ret, self.curfn.rctx))
         if self.ret == "":
             # the first return of a template's function with a value decides what the function
             # returns; a return of None before it is lowered from what that decided
             v = self.retval(n.kids[0], "") if len(n.kids) > 0 else Val("null", "None")
+            if self.curfn.ret == "None" and v.t != "None":
+                # Compiling the expression may have recursively called this
+                # instance and fixed its old void ABI, including via another function.
+                self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used None; annotate its return type")
+            if "?" in v.t and self.qforward.get(self.curfn.ll, False) and self.returned_none():
+                self.adopt(empty_result_type(v.t, self.curfn.rctx))
+                v = Val(v.v, self.ret)
             if v.t != "None":
                 t = v.t
                 if self.optional(t) != t and self.optional(t) != "" and self.returned_none():
@@ -581,6 +596,8 @@ def gen_stmt(self, n: Node) -> None:
                 self.ret_(Val("null", "None"))
         else:
             v = self.iter_ret(n.kids[0]) if self.curfn.iters else self.retval(n.kids[0], self.ret)
+            if v.t == "None" and "?" in self.ret and self.qforward.get(self.curfn.ll, False):
+                self.adopt(empty_result_type(self.ret, self.curfn.rctx))
             if "?" in self.ret and "?" not in v.t and same_kind(v.t, self.ret):
                 self.adopt(v.t)  # (it returned an empty container without a type before)
             j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
@@ -700,7 +717,7 @@ def gen_stmt(self, n: Node) -> None:
         self.place(go)
     elif k == "lcappend":
         et = self.lct[-1]
-        v = self.expr(n.kids[0], et)
+        v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
         if et == "":
             self.lct[-1] = self.none_items(v.t) if n.s == "set" and is_tuple(v.t) else v.t
             et = self.lct[-1]
@@ -847,6 +864,11 @@ def gen_augassign(self, n: Node) -> None:
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
         cur = self.getfield(o, p, t.s)
+        ci = self.classes[o.t]
+        if ci.slotlimit and t.s not in ci.slots:
+            self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
+        if t.s == "__slots__" and t.s not in ci.fpos:
+            self.err("rebinding __slots__ through an instance is not supported")
         self.setfield(o, p, t.s, self.inplace(op, cur, n.kids[1]))
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")

@@ -186,7 +186,8 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
-            self.err(f"expected {typestr(t)}, got {typestr(v.t)}")
+            hint = f" (perhaps because {self.guessed[self.curfn.ll]})" if self.curfn.ll in self.guessed else ""
+            self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):

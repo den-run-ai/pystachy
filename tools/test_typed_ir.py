@@ -11,12 +11,13 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, IFn, Ins, Val, Values
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.specs import FXBIT
 from src.pystachy_compiler.syntax import Node
-from src.pystachy_compiler.utils import targs, umembers
+from src.pystachy_compiler.utils import targs, typestr, umembers
 
 
 def slot_op(op, native_type="float"):
@@ -71,6 +72,46 @@ def tuple_op(op, t="tuple[int,str]", index=1, member="str"):
     return i
 
 
+class ClosurePathTests(unittest.TestCase):
+    def test_paths_do_not_change_tuple_layouts_or_closure_types(self):
+        fixture = Path(__file__).resolve().parent.parent / "tests/paths]/closure_path_fixture.py"
+        source = fixture.read_text() + "\nprint(checks(1))\n"
+        expected_ir = None
+        for directory in ("ordinary", "x]y", "c[d", "a],b[c", "[id]", "a,b",
+                          "a%5Bb", "a?b", "a|b", "é[%,]"):
+            path = directory + "/closures.py"
+            with self.subTest(path=path), patch.object(diagnostics, "SRC", path), \
+                    patch.object(diagnostics, "FILES", []):
+                g = Gen()
+                ir = g.program(Loader([]).program(path, source))
+                if expected_ir is None:
+                    expected_ir = ir
+                self.assertEqual(ir, expected_ir)
+                for closure in g.closures:
+                    self.assertNotIn(directory, closure.t)
+                    self.assertTrue(closure.t.rsplit("@", 1)[1][:-1].isdigit())
+                    self.assertIn(path + ":", typestr(closure.t))
+                    self.assertEqual(targs(g.ctype("tuple", [closure.t, "int"])),
+                                     [closure.t, "int"])
+
+    def test_imported_closure_diagnostic_resolves_original_path(self):
+        path = "a],b[c/é%module.py"
+        with patch.object(diagnostics, "FILES", ["main.py", path]):
+            self.assertEqual(typestr("fn[c:0:outer.<locals>.g@10000002]"),
+                             "<function outer.<locals>.g (" + path + ":2)>")
+
+    def test_tuple_round_trip_check_is_always_on(self):
+        error = StringIO()
+        g = Gen()
+        g.line = 12
+        with patch.object(diagnostics, "SRC", "guard.py"), redirect_stderr(error), \
+                self.assertRaises(SystemExit) as raised:
+            g.ctype("tuple", ["fn[c:0:g@bad]path:2]", "int"])
+        self.assertEqual(raised.exception.code, 1)
+        self.assertEqual(error.getvalue(),
+                         "guard.py:12: error: internal error: tuple item types do not round-trip\n")
+
+
 class TypedIRTests(unittest.TestCase):
     def assert_bad(self, i, declared=True):
         error = StringIO()
@@ -94,6 +135,48 @@ class TypedIRTests(unittest.TestCase):
                     g.verify(function_with(i), False)
                     self.assertEqual(g.nums(i), 1)
                     self.assertEqual(g.opfx(i, {}), 0)
+
+    def test_empty_result_layout_keeps_heap_write_effect(self):
+        for t in ("dict[str,int]", "set[tuple[str,int]]"):
+            i = Ins("empty.kind", "", "")
+            i.a = [Val("%a0", t)]
+            i.r = [1]
+            g = Gen()
+            g.verify(function_with(i), False)
+            self.assertEqual(g.opfx(i, {}), FXBIT["wD"])
+            g.holes.append(t)
+            i.k = 1
+            i.a[0].t = "dict[?,?]" if t.startswith("dict[") else "set[?]"
+            g.verify(function_with(i), False)
+
+    def test_empty_result_layout_rejects_bad_operands_and_holes(self):
+        for t in ("list[int]", "int", "opt[dict[str,int]]", "dict[?,?]"):
+            i = Ins("empty.kind", "", "")
+            i.a = [Val("%a0", t)]
+            i.r = [1]
+            self.assert_bad(i)
+        for field, value in (("a", []), ("a", [Val("%a0", "dict[str,int]")] * 2),
+                             ("r", []), ("r", [1, 2]), ("k", -1), ("k", 1),
+                             ("t", "dict[str,int]"), ("s", "raw"), ("x", "str"),
+                             ("b", ["entry"])):
+            i = Ins("empty.kind", "", "")
+            i.a = [Val("%a0", "dict[str,int]")]
+            i.r = [1]
+            setattr(i, field, value)
+            self.assert_bad(i)
+
+    def test_empty_result_layout_rejects_invalid_resolved_holes(self):
+        for t in ("int", "list[int]", "set[str]", "dict[?,int]"):
+            i = Ins("empty.kind", "", "")
+            i.a = [Val("%a0", "dict[?,?]")]
+            i.r = [1]
+            i.k = 1
+            g = Gen()
+            g.holes.append(t)
+            error = StringIO()
+            with redirect_stderr(error), self.assertRaises(SystemExit):
+                g.verify(function_with(i), False)
+            self.assertIn("concrete hole", error.getvalue())
 
     def test_requires_one_operand_and_one_result(self):
         for op in ("slot.pack", "slot.unpack"):

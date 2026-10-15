@@ -83,10 +83,14 @@ class FnInfo:
         # templates: a module-level function with an unannotated parameter, compiled per call for
         # the argument types (ptypes "" where unannotated) into the functions in insts
         self.generic = False
+        self.void_default = False  # newly inferred zero-argument signature: recursion may retain its old None contract
         self.insts: dict[str, FnInfo] = {}
         self.dtypes: list[str] = []  # the type of each default value evaluated at def time
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
+        self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
+        self.rsoft = False  # a comparison hint retains the original result-inference policy
+        self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
@@ -164,6 +168,8 @@ class Ins:
         # alloc.fixed keeps the class or fixed tuple type; lowering computes its byte size.
         # tuple.load/store use a fixed tuple operand, k: item index, s: native item type.
         # They transfer an opaque slot; r holds its address, then the loaded slot if any.
+        # empty.kind fixes a fresh dict/set result's key layout, using its typed
+        # operand or the deferred type hole k; it never retypes a filled container.
         # text immediate: a slot's name; an rt op's RUNTIME key; the
         # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
         # exception a raise raises; ovf's operator + - *
@@ -324,6 +330,7 @@ class Frame:
         self.shadows: list[list[str]] = []
         self.lcs: list[str] = []
         self.lct: list[str] = []
+        self.lcsoft: list[bool] = []
         self.ret = ""
         self.retann = False
         self.nn: dict[str, bool] = {}
@@ -354,6 +361,8 @@ class ClassInfo:
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
+        self.slots: list[str] = []  # literal __slots__, including inherited slots
+        self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.methods: dict[str, FnInfo] = {}

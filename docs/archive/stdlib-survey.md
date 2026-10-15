@@ -182,6 +182,8 @@ Pystachy subset compile with Pystachy as it was before these changes:
 
 Neither is a drop-in `hashlib` or `random` (they take `list[int]` bytes and return hex
 strings); a drop-in needs `bytes` and classes as templates.
+The source and tests for these experimental hash and random ports were not retained;
+their original correctness and performance results cannot be reproduced from this repository.
 
 ## 5. Popular packages
 

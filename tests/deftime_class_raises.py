@@ -22,6 +22,10 @@ try:
 except IndexError as e:
     print("IndexError:", e)
 try:
+    from defmods import raise_dictstar
+except IndexError as e:
+    print("dict unpacking IndexError:", e)
+try:
     from defmods import raise_default
 except ZeroDivisionError as e:
     print("ZeroDivisionError:", e)

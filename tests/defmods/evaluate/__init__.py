@@ -51,6 +51,7 @@ class Consts:
     cwd = os.getcwd()
     both = [*NAMES]
     merged = {**TABLE}
+    mixed = {"first": 0, **TABLE, "last": 2}
     a, (b, c) = 1, (2, 3)
     d, *e = 1, 2, 3
     order = sorted(NAMES, key=len)

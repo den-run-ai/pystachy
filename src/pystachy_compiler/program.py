@@ -354,7 +354,7 @@ def gen_raisers(self, e: Node, local: dict[str, str], run: bool) -> bool:
     n = len(e.kids)
     if k == "ifexp" or k == "boolop" or k == "cmp":
         n = 2 if k == "cmp" else 1  # (the operands that surely run)
-    elif k not in ["binop", "unary", "index", "slice", "call", "attr", "tuple", "list", "set", "dict", "starred", "dstar"]:
+    elif k not in ["binop", "unary", "index", "slice", "call", "attr", "tuple", "list", "set", "dict", "starred", "dstar", "dictstar"]:
         return False
     for x in e.kids[:n]:
         if not self.raisers(x.kids[0] if x.kind == "kw" else x, local, True):
@@ -501,7 +501,7 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
         return f"it calls {self.hooks[e.kids[0].s]}()"
     if k == "lambda" or k == "badattr":
         return e.s if k == "badattr" else "Pystachy does not check the default values of its lambda"
-    if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict", "starred", "dstar"]:
+    if k not in ["attr", "index", "slice", "binop", "unary", "cmp", "boolop", "ifexp", "fstr", "fmt", "tuple", "list", "set", "dict", "starred", "dstar", "dictstar"]:
         return f"Pystachy does not check what {'a comprehension' if k.endswith('comp') else 'an assignment expression' if k == 'walrus' else 'a ' + k + ' expression'} there runs"
     for i in range(len(e.kids)):
         # (an operand or set item: 2; a truth test or an attribute's object: 1; the container
@@ -514,7 +514,7 @@ def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
             u = 3 if use == 3 else 1 if use == 0 else 2
         elif k == "tuple" or k == "list" or (k == "dict" and i % 2 == 1):
             u = use if use > 1 else 0
-        elif k == "starred" or k == "dstar":
+        elif k == "starred" or k == "dstar" or k == "dictstar":
             u = use if use > 2 else 2
         r = self.effect(e.kids[i], local, u)
         if r != "":

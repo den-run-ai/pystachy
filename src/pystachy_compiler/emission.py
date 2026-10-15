@@ -40,6 +40,7 @@ def gen_save(self) -> Frame:
     fr.shadows = self.shadows
     fr.lcs = self.lcs
     fr.lct = self.lct
+    fr.lcsoft = self.lcsoft
     fr.ret = self.ret
     fr.retann = self.retann
     fr.nn = self.nn
@@ -78,6 +79,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.shadows = fr.shadows
     self.lcs = fr.lcs
     self.lct = fr.lct
+    self.lcsoft = fr.lcsoft
     self.ret = fr.ret
     self.retann = fr.retann
     self.nn = fr.nn

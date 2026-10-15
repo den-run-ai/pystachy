@@ -1353,7 +1353,7 @@ class Parser:
                 if self.eat("**"):
                     if d.kind == "set":
                         self.invalid(at)
-                    d.kind = "dstar"
+                    d.kind = "dictstar"
                     d.kids.append(self.binary(0))
                     if self.peek() == ":":
                         self.invalid(self.line())
@@ -1379,9 +1379,9 @@ class Parser:
                         d.kids.append(self.test())
                 seen += 1
                 if self.compnext():
-                    if d.kind == "dstar" and seen > 1:
+                    if d.kind == "dictstar" and seen > 1:
                         self.invalid(at)
-                    if d.kind == "dstar":
+                    if d.kind == "dictstar":
                         self.fail("dict unpacking cannot be used in dict comprehension", at)
                     if d.kind == "set" and len(d.kids) > 1:
                         self.fail("did you forget parentheses around the comprehension target?", start(d.kids[0]))

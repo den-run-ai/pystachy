@@ -67,9 +67,15 @@ tests of these annotations are decided using the compiled type.
 ## Annotations
 
 A function whose parameters are annotated uses those types. A missing return annotation
-means `-> None`, unless the function is a template. There is no implicit `int` to `float`
+means `-> None`, unless the function is a template. Ordinary functions taking no arguments
+(methods taking only `self` or `cls`) also infer their return type when they return a value;
+constructors and implicit special methods still require return annotations for values.
+There is no implicit `int` to `float`
 conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
-Arithmetic and numeric list searches may mix integers and floats.
+Arithmetic and numeric list searches may mix integers and floats. Equality and
+membership also compare matching list, dict and tuple shapes with different numeric
+item types exactly, including nested containers. This does not widen their stored types;
+ordering between containers with different numeric item types remains unsupported.
 
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
@@ -77,8 +83,10 @@ annotation is evaluated; use `"Node"` for a forward reference or
 `from __future__ import annotations` to defer evaluation.
 
 Evaluated annotations may name classes, supported typing forms, builtin generics, unions,
-and type variables. A variable may be used as the whole annotation; unsupported aliases
-are rejected where used. Generic class subscriptions such as `Box[int]` are supported
+and type variables. Aliases of supported classes can name those classes; other aliases are
+not supported. Parameterized aliases such as `Row = list[str]` are rejected at their
+definition, even when unused; value aliases such as `Pos = int` fail when used as annotations.
+Generic class subscriptions such as `Box[int]` are supported
 when they use the standard `typing.Generic` hook. Calls, other operators, custom class
 subscripting, and expressions that could execute user code are rejected. `os.PathLike` and the supported
 `collections.abc` names are exceptions to the restriction on builtin module attributes.
@@ -355,6 +363,10 @@ boxing and dispatch have costs, so no performance improvement is claimed.
 A module-level function with an unannotated parameter is a template, compiled once for
 each argument type combination that calls it. Annotated parameters keep their declared
 types; the first value-returning statement determines an inferred return type.
+An ordinary function without arguments, or method with only its receiver, uses the same
+inference when it has no return annotation and returns a value. Existing recursive
+functions returning only `None` retain that contract. A recursive call before a value
+return type is known requires an explicit return annotation.
 Unsupported code becomes an error when that specialization needs it; syntax errors are
 checked regardless of use.
 
@@ -410,12 +422,49 @@ parameter, rather than an alias.
 Arguments are evaluated in CPython's order: the callable first, then positional and starred
 arguments, then keyword arguments. Each unpacking operation happens at its position.
 
-### Empty template results
+### Contextual template results
 
-An empty list or dict returned by a template can get its type from a later fill or return,
+An empty list, dict or set returned by a template can get its type from a later fill or return,
 or from its caller's annotation, argument type or other expected context. If none supplies a
-type, the fallback is `list[int]` or `dict[int, int]`. A resulting type error identifies the
+type, the fallback is `list[int]`, `dict[int, int]` or `set[int]`. A resulting type error identifies the
 guess; annotate the receiving value to provide the intended type.
+This also applies to direct `return []`, `return {}` and `return set()` results. Direct list
+and dict empties can share an open-result specialization across caller container types.
+Direct forwarding wrappers (`return empty(n)`) retain that result context, including through
+multiple wrappers. When a forwarded empty result joins `None`, its caller context or the
+same fallback supplies the optional container's layout. A recursive call may consume an
+empty result before later inference only when that inference preserves the consumed layout.
+A caller can also type fresh returned list, dict, set and tuple displays,
+including homogeneous or nested displays and calls inside their items:
+
+```python
+def pair(a, b):
+    return [a, b]
+
+values: list[int | float] = pair(1, 2.5)
+integers: list[int | float] = pair(1, 2)
+```
+
+Such contextual results specialize for both argument types and result context; scalar values
+retain their original types. Fresh return branches can use the same explicitly named element
+union; unrelated return types still do not infer a union. Stored mutable containers, fields
+and declared function results are never widened. Context follows direct displays and calls;
+other operations retain their existing inference. A comparison's context is a hint: an
+incompatible fresh display keeps its own element types, preserving exact integer comparisons.
+
+A template consisting of simple local assignments and a final return may assign a fresh
+display or call to a local and return it, with up to 32 single-assignment aliases. Each alias
+may only be read by the next alias or the final return. Mutations, escapes, captures,
+reassignments, annotated locals and control flow retain their existing inference rules;
+stored parameters, fields and globals are never widened.
+User method calls, bound method values and callable fields retain the same expected result context.
+A union context supplies a list or dict result's type when exactly one member has the same
+container kind; ambiguous contexts retain the fallback above.
+
+For mixed scalar list literals, an error names a supported union annotation, such as
+`xs: list[int | float] = [1, 2.5]`. Rows can use unions within tuple fields:
+`rows: list[tuple[str, int | float]] = [("a", 1), ("b", 2.5)]`.
+The annotation preserves the individual values' types; it does not convert integers to floats.
 
 ## Class templates and generic classes
 
@@ -458,9 +507,9 @@ print(Box(7).value)
 Supported matching forms are `T`, `list[T]`, `dict[K, V]`, `set[T]`, `frozenset[T]`,
 `tuple[A, *Ts]`, `T | None`, `Iterable[T]` (or `Iterator[T]`), and
 `Callable[[A, *Ts], R]`. Iterable matching uses the item type of a supported list, set,
-dict, string or homogeneous tuple; an empty tuple binds nothing. A direct `None` argument binds
-no type variable. Repeated bindings must join to a supported common type; integer and bool
-bindings can join to `int`. Callable matching uses annotated positional parameters and
+dict, string or homogeneous tuple; an empty tuple binds nothing. `None` alone cannot determine
+a type variable. Repeated bindings must preserve the values’ types and join to a supported common type,
+or use the direct-scalar fallback below (mixed int/bool values never become plain int). Callable matching uses annotated positional parameters and
 returns, or an existing `Callable` signature.
 
 The resulting fields and methods use those bindings, including `tuple[*Ts]`,
@@ -481,6 +530,42 @@ empty displays use contextual types where their contents do not already determin
 Heterogeneous displays with known item types can use an explicit union context. Opaque
 calls and operations infer normally; their syntax alone does not request a union layout.
 A variable that neither arguments nor context bind is an error.
+
+When ordinary argument matching cannot bind the type variables consistently,
+fitting named union or optional parameter types resolve the conflict:
+`Pair[int | float](1, 2.5)`, `Pair[int | None](1, None)` and
+`p: Pair[int | float] = Pair(1, 2.5)` bind both parameters annotated `T` to
+their named type. Existing conversions preserve each value's representation,
+including integer precision, and handle defaults and unpacked arguments too.
+An enclosing generic annotation requires its named storage even for homogeneous
+arguments: `p: Pair[int | float] = Pair(1, 2)` stores union-valued fields that can
+later accept a float. This also works for annotated parameters, returns and fields,
+including calls with explicit type arguments. A constructor subscription alone remains
+a hint: `Box[int | str]("x")` still stores a concrete `str`, and
+`Pair[int | float](1, 2)` still makes `Pair[int]`. Use
+`p: Pair[int | float] = Pair(1, 2)` when later field writes need to accept floats.
+Existing objects stay invariant, and container members must fit exactly: neither `Box[int]` nor `list[int]`
+can be reinterpreted with wider mutable contents.
+
+Without a named specialization or surrounding generic annotation, conflicting direct
+scalar `T` arguments can infer a closed union: `Pair(1, 2.5)` and `Pair(1, "x")`
+retain both Python value types. This fallback supports `int`, `float`, `bool`, `str`
+and `None`, including existing scalar unions. Ordinary consistent inference still wins.
+Every constructor annotation that mentions a type variable must be a direct type
+variable; nested forms such as `list[T]`, variadic bindings, and non-scalar conflicts
+still need annotations. This does not add container covariance, mixed-display or
+function-return union inference. Nested generic parameter forms still require their
+arguments' container types to match; this does not infer wider mutable contents.
+
+A method's `-> T` promises the same bound type as its fields. With
+`Pair(True, 2.5)`, that type is `bool | float`; a method adding its two `T` fields
+can also produce `int` (from `bool + bool`), so `-> T` is rejected. Annotate this
+numeric result as `-> int | float`, or use an enclosing
+`Pair[bool | int | float]` annotation when the fields and result need all three
+members. The compiler does not track correlations between individual union fields.
+The inferred union uses the existing tagged boxes; per-argument unboxed generic
+fields are separate work, and operations outside the supported union surface
+still require narrowing.
 
 `Generic[...]` must be the class's only base. Use the bare class name or `Self` inside its
 methods and fields, or an explicit specialization such as `"Pair[V, K]"`. PEP 695 class

@@ -3,6 +3,7 @@ ZeroDivisionError: integer division or modulo by zero
 KeyError: 'b'
 ValueError: invalid literal for int() with base 10: 'x'
 IndexError: list index out of range
+dict unpacking IndexError: list index out of range
 ZeroDivisionError: float division by zero
 ValueError: max() iterable argument is empty
 calm: imported

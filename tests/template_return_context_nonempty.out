@@ -1,0 +1,13 @@
+integer
+decimal
+[9007199254740993, 2.5, 7] [9007199254740993, 2.5, 'wide'] [9007199254740993, 2.5]
+True True True
+True True
+{'first': 9007199254740993, 'second': 2.5} {'first': 9007199254740993, 'second': 2.5, 'third': 'wide'}
+True True
+[1, 2.5]
+[1, 2]
+[1, 2.5]
+[1, 2.5]
+None [1, 2.5]
+[exit 0]

@@ -86,12 +86,18 @@ In these cases a program can compile but behave differently from CPython.
   before they test them against the set, where CPython tests each as it is made, which differs
   only where the generator's expressions change the set.
 
-- `min()`, `max()` and `math.fsum()` make all the items of a generator expression before they
-  compare or add them (or call `key=` on them), so where CPython stops at an item (a `__lt__`
-  that raises, or fsum's `OverflowError: intermediate overflow in fsum`), the expressions of the
-  later items have run, and an exception that one of them raises comes first.
+- `min()` and `max()` stream generator-expression items of type `int`, `float`, `bool` or
+  `str` when called without keyword arguments. Other element types and `key=` calls first
+  materialize the items, as do `math.fsum()` and `math.prod()`. Where CPython stops at an item
+  (a `__lt__` that raises, or fsum's `OverflowError: intermediate overflow in fsum`), those
+  materialized paths have already evaluated later items, and an exception from one of them
+  comes first.
 
 ### Functions and object identity
+
+- Private class names are not mangled: `__field` and `__method` retain their literal names.
+  A subclass can therefore collide with a base's private fields or replace its private
+  methods. Use distinct names across the hierarchy until name mangling is supported.
 
 - Runtime-length tuples use a different layout from fixed-shape tuples. Converting a
   fixed-shape tuple to `tuple[T, ...]`, or boxing its scalar elements for an optional-element
@@ -369,7 +375,8 @@ supported alternatives.
   common supported type. See [single inheritance](typing.md#single-inheritance).
 - assigning an inherited class attribute through a subclass that does not declare its own
   default; changing an inherited field's type; reading derived-only fields through a base
-  annotation, even after an `isinstance()` test
+  annotation without [supported narrowing](typing.md#single-inheritance) of a stable local or
+  parameter
 - an inherited class method using `cls` called through a base-typed object, or inherited across
   modules or with nonconstant defaults; `super()` outside a supported instance-method context,
   or explicit `super(C, self)` with an unrelated class or a different receiver expression

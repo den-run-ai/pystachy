@@ -140,6 +140,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Fixed tuple slots | `tuple.load`, `tuple.store` |
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
+| Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
 | Closed union reads | `union.tag`, `union.payload` |
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |

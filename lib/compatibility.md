@@ -48,8 +48,8 @@ from CPython's accelerated modules:
 ## Html and HTMLParser
 
 `html.escape`, `html.unescape` and the HTML4/HTML5 entity mappings reuse the
-adaptations from draft #378. Numeric references are bounded before checked-int
-conversion and named references use the upstream HTML5 table.
+adaptations merged in [#378](https://github.com/den-run-ai/pystachy/pull/378). Numeric references
+are bounded before checked-int conversion and named references use the upstream HTML5 table.
 
 `html.parser.HTMLParser` retains CPython 3.13.16's incremental parser and uses
 ordinary single inheritance. Typed subclasses can override the start/end tag,

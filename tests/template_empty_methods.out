@@ -1,0 +1,9 @@
+['word'] [2] []
+{'name': 3} {('key', 4): 'value'} value {}
+True 0
+['call'] ['explicit'] ['field']
+['static'] {'class': 6}
+{} {('forward', 7): 8}
+{('empty', 2): 10} {('filled', 1): 9} {}
+['filled'] [9]
+[exit 0]
