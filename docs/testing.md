@@ -143,7 +143,8 @@ to `main` and manual dispatch. Pull requests test the branch merged with the the
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 Eleven groups run in parallel, each with its own fixed-point bootstrap. The target is under
-ten minutes of work per group; the 15-minute job limit leaves room for runner variation:
+ten minutes of work per group; the 25-minute job limit leaves room for runner variation and
+for `hosted` and `ubsan`, which take about 15 minutes until they are split into shards:
 
 | Group | Work after bootstrap |
 |---|---|
@@ -165,7 +166,7 @@ toolchains, and different bootstrap IR. Reports and logs are uploaded as workflo
 
 The combined report's duration is the longest group's verification work;
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
-workflow time. The 15-minute limit applies to each verification job.
+workflow time. The 25-minute limit applies to each verification job.
 
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;

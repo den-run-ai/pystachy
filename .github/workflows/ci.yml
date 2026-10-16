@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-24.04
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
-    timeout-minutes: 15
+    # hosted and ubsan take about 15 minutes until they are split into shards.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
