@@ -941,9 +941,9 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
     # (instances read it until they assign the field; C.a = v is not supported)
     ci = self.class_ready(cn)
-    if a == "_fields":
+    if ci.name in self.nts and a == "_fields":
         return self.tuple_([Val(self.sconst(x), "str") for x in self.nt_fields(ci.name)])
-    if a == "_field_defaults":
+    if ci.name in self.nts and a == "_field_defaults":
         return self.nt_defaults(ci.name)
     t = ci.ftypes[a]
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:

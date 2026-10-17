@@ -50,6 +50,7 @@ Imports search builtin modules first, then the program's directory,
 | `types` | Subset implementation (`_pystachy_types`, and the compiler's `_pystachy_typenames`) | `TracebackType`, for `__exit__`'s annotation; `GenericAlias`, for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` in a class body | Its other names import, but any use of one is a compile-time error; a generic-alias class's subscripts at run time are too |
 | `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 | `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
+| `_ast` | Experimental typed subset (`_pystachy_ast`) | `Expression`, `Constant`, `Name`, `BinOp`, `UnaryOp`, operator/context tags and their metadata | Constructor/field-access prototype only; no source parsing, AST compilation, statements or locations; see [scope and tests](../docs/prototypes/ast.md) |
 
 The [compatibility reference](compatibility.md) defines each module's accepted
 inputs, unsupported APIs and observable differences from CPython. The
