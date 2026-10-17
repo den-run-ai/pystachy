@@ -509,6 +509,13 @@ returns, properties and other special methods. Non-generator `__iter__` and `__n
 methods also infer returns annotated with `Any`, including `Iterator[Any]`; the iterator
 and its items still have concrete types.
 
+For a generator function, `Any` in `Generator[Y, S, R]`'s yield type `Y` or return type `R`
+infers only that channel; the other concrete types still apply. `Iterator[Any]` and
+`Iterable[Any]` infer yielded items and still require no return value. The send type `S`
+cannot contain `Any`: annotate it with a concrete type that accepts `None`, such as
+`str | None`. Its native layout must be known when the generator is compiled, before
+future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`.
+
 ### Variadic arguments
 
 `*args` is a fixed tuple for each call. Iterating a nonempty tuple requires one item type.

@@ -2011,8 +2011,8 @@ class Gen:
     def builtin_catch(self, b: str) -> str:
         return generators_builtin_catch(self, b)
 
-    def gen_ann_ret(self, n: Node) -> list[str]:
-        return generators_gen_ann_ret(self, n)
+    def gen_ann_ret(self, n: Node, infer: bool = False) -> list[str]:
+        return generators_gen_ann_ret(self, n, infer)
 
     def gen_begin(self, f: FnInfo) -> None:
         return generators_gen_begin(self, f)
