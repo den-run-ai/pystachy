@@ -9,6 +9,14 @@ Pystachy uses 64-bit integers, homogeneous containers and UTF-8 byte strings.
 Unless a module explicitly decodes characters, lengths and positions count bytes.
 See [language compatibility](../docs/language/compatibility.md).
 
+## `_imp` prototype
+
+The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
+lock bookkeeping and capability queries reporting no Python extensions or
+frozen modules. Runtime builtin queries and module loading raise explicitly;
+compiler builtin namespaces are not a runtime importer registry. The prototype
+does not make upstream `importlib` or Python bytecode execution available.
+
 ## Operator
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
