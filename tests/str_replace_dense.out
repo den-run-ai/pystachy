@@ -1,0 +1,83 @@
+stars -1 200000 0 0 True
+  3 'end' 'end'
+stars 65535 200000 0 134465 True
+  134468 '*********' '******end'
+stars 65536 200000 0 134464 True
+  134467 '*********' '******end'
+stars 65537 200000 0 134463 True
+  134466 '*********' '******end'
+stars 150000 200000 0 50000 True
+  50003 '*********' '******end'
+stars-1 -1 200000 200000 0 True
+  200003 '_________' '______end'
+stars-1 65537 200000 65537 134463 True
+  200003 '_________' '******end'
+exactly -1 65536 65536 0 True
+  65536 '_________' '_________'
+exactly 65536 65536 65536 0 True
+  65536 '_________' '_________'
+comma -1 200000 200000 0 True
+  400000 ';a;a;a;a;' 'a;a;a;a;a'
+comma 65535 200000 65535 134465 True
+  400000 ';a;a;a;a;' 'a,a,a,a,a'
+comma 65536 200000 65536 134464 True
+  400000 ';a;a;a;a;' 'a,a,a,a,a'
+comma 65537 200000 65537 134463 True
+  400000 ';a;a;a;a;' 'a,a,a,a,a'
+comma 150000 200000 150000 50000 True
+  400000 ';a;a;a;a;' 'a,a,a,a,a'
+every16 -1 70000 0 0 True
+  1050001 'yyyyyyyyy' 'yyyyyyyy!'
+every16 65538 70000 0 4462 True
+  1054463 'yyyyyyyyy' 'yyyyyyyy!'
+every17 -1 70000 0 0 True
+  1120001 'yyyyyyyyy' 'yyyyyyyy!'
+every17 65538 70000 0 4462 True
+  1124463 'yyyyyyyyy' 'yyyyyyyy!'
+multi -1 130000 130000 0 True
+  420001 'XYZXYZXYZ' 'XYZqXYZqa'
+multi 65536 130000 65536 64464 True
+  355537 'XYZXYZXYZ' 'bqabqabqa'
+multi 100003 130000 100003 29997 True
+  390004 'XYZXYZXYZ' 'bqabqabqa'
+shrink -1 90000 90000 0 True
+  180002 '\n-\n-\n-\n-\n' '-\n-\n-\n-<b'
+shrink 70000 90000 70000 20000 True
+  240002 '\n-\n-\n-\n-\n' '>-<br>-<b'
+sparse-dense -1 270000 0 0 True
+  2800000 'yyyyyyyyy' 'yyyyyyyyy'
+sparse-dense 131072 270000 0 138928 True
+  2938928 'yyyyyyyyy' '*********'
+sparse-dense 262144 270000 0 7856 True
+  2807856 'yyyyyyyyy' '*********'
+sparse-dense 262145 270000 0 7855 True
+  2807855 'yyyyyyyyy' '*********'
+dense-sparse -1 170000 170000 0 True
+  3340000 '---------' 'yyyyyyyyy'
+dense-sparse 65537 170000 65537 104463 True
+  3235537 '---------' 'yyyyyyyyy'
+dense-sparse 100000 170000 100000 70000 True
+  3270000 '---------' 'yyyyyyyyy'
+lines -1 100000 100000 0 True
+  4000000 '\nthe quic' ' the lazy'
+lines 65536 100000 100000 34464 True
+  4034464 '\nthe quic' ' the lazy'
+e-acute -1 160000 160000 0 True
+e-acute 65536 160000 65536 94464 True
+e-acute 100000 160000 100000 60000 True
+clef -1 120000 120000 0 True
+  120000 'eeeeeeeee' 'eeeeeeeee'
+clef 65539 120000 65539 54461 True
+wide-gap -1 70000 0 0 True
+to-wide -1 100000 100000 0 True
+to-wide 65536 100000 65536 34464 True
+same -1 100000 100000 100000 True
+  200000 'ababababa' 'babababab'
+100001 True True
+True True
+True
+100000 True
+True True
+True
+True
+[exit 0]

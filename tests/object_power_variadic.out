@@ -1,0 +1,15 @@
+exponent
+power (2,) 7
+power (True,) 7
+1 1
+typed (0.5,)
+typed (2.0,)
+0.5 2.0
+exponent
+inplace (2,)
+1
+exponent
+typed inplace (2,)
+1
+0.5 0.5
+[exit 0]

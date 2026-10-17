@@ -1,0 +1,31 @@
+short 0 ['ab', 'cd', 'ef'] cached 14 0 True 0
+short 1 [(2, 3), (6, 8), (11, 14)] cached 14 0 True 0
+short 2 ['ab', '1', ' cd', '2'] cached 14 0 True 0
+short 3 ['ab#', 'cd#', 'ef#'] cached 14 0 True 0
+short 4 3 cached 14 0 True 0
+edge 0 ['ab', 'cd', 'ef'] cached 64 0 True 0
+edge 1 [(2, 3), (6, 8), (11, 14)] cached 64 0 True 0
+edge 2 ['ab', '1', ' cd', '2'] cached 64 0 True 0
+edge 3 ['ab#', 'cd#', 'ef#'] cached 64 0 True 0
+edge 4 12 cached 64 0 True 0
+long 0 ['ab', 'cd', 'ef'] released True 0 0 True 150
+long 1 [(2, 3), (6, 8), (11, 14)] released True 0 0 True 150
+long 2 ['ab', '1', ' cd', '2'] released True 0 0 True 150
+long 3 ['ab#', 'cd#', 'ef#'] released True 0 0 True 150
+long 4 30 released True 0 0 True 150
+wide 0 ['é', 'Ω', '𝔄'] released True 0 0 True 120
+wide 1 [(2, 3), (6, 8), (13, 16)] released True 0 0 True 120
+wide 2 ['é', '1', ' Ω', '2'] released True 0 0 True 120
+wide 3 ['é#', 'Ω#', '𝔄#'] released True 0 0 True 120
+wide 4 30 released True 0 0 True 120
+scanner 30 30 ab cd ef a cached 150 0 True
+windows 0 60 True True
+windows 1 60 True True
+windows 0 60 True True
+windows 1 60 True True
+nested ['[ab', '30', '30', '2]1', '[cd', '30'] released True 0 0
+purged ['ab311', 'cd3122', 'ef31333'] released True 0 0
+nested ['[é', '30', '30', '2]1', '[Ω', '30'] released False 150 0
+purged ['é311', 'Ω3122', '𝔄31333'] released True 0 0
+matches released True 0 0 30 (2, 3) 2 166 333
+[exit 0]

@@ -3,7 +3,10 @@
 function, with the checks Pystachy's stubs make. A str goes in as its UTF-8 bytes (const char *,
 NUL-terminated; a NUL in it is a ValueError) and a returned char * comes back as a str (NULL:
 None, or a ValueError for -> str); C integers are range-checked (OverflowError), as Pystachy
-checks them."""
+checks them. A list[float] or list[c_int64] goes in as a C array of its items (double *,
+int64_t *), copied back into the list when the call returns, since Pystachy passes the list's own
+items, which C may write: one array for each distinct list, so that a list passed for two
+parameters is one array to C, as it is one in Pystachy."""
 import ast as _ast
 import ctypes
 import functools as _functools
@@ -45,9 +48,18 @@ class c_void_p(int):
     """a pointer, as an int (NULL is 0)"""
 
 
+class c_float(float):
+    """C's float (32 bits) in an @extern function's signature; a float everywhere else"""
+
+
 _C = {c_int: ctypes.c_int, c_uint: ctypes.c_uint, c_int64: ctypes.c_int64, c_ssize_t: ctypes.c_ssize_t,
       c_uint64: ctypes.c_uint64, c_size_t: ctypes.c_size_t, c_void_p: ctypes.c_void_p,
-      c_buf: ctypes.c_char_p, float: ctypes.c_double, str: ctypes.c_char_p, type(None): None, typing.Optional[str]: ctypes.c_char_p}
+      c_buf: ctypes.c_char_p, float: ctypes.c_double, c_float: ctypes.c_float, str: ctypes.c_char_p, type(None): None, typing.Optional[str]: ctypes.c_char_p}
+
+
+# the lists an @extern function takes: their item type in a C array
+_LISTS = {list[float]: ctypes.c_double, list[c_int64]: ctypes.c_int64, list[c_ssize_t]: ctypes.c_int64,
+          typing.List[float]: ctypes.c_double, typing.List[c_int64]: ctypes.c_int64, typing.List[c_ssize_t]: ctypes.c_int64}
 
 
 def _check(t, v):
@@ -57,8 +69,8 @@ def _check(t, v):
         return v.encode("utf-8", "surrogatepass")
     if t is c_buf:
         return v.encode("utf-8", "surrogatepass")
-    if t is float:
-        return float(v)
+    if t is float or t is c_float:
+        return float(v)  # (ctypes rounds a c_float argument to the nearest float, as C does)
     if t is c_int and not -2**31 <= v < 2**31:
         raise OverflowError("Python int too large to convert to C int")
     if t in (c_uint, c_uint64, c_size_t) and v < 0:
@@ -85,14 +97,29 @@ def extern(lib, symbol=""):
         for t in ts + [ret]:
             if t is int:
                 raise TypeError(f"C function {f.__name__}() takes or returns int: say which C integer type")
+        for t in [x for x in ts if typing.get_origin(x) is list and x not in _LISTS] + ([ret] if typing.get_origin(ret) is list else []):
+            raise TypeError(f"C function {f.__name__}() takes or returns {t}: a list goes only as an argument, list[float] or list[c_int64]")
         cf = getattr(ctypes.CDLL(lib or None), symbol or f.__name__)
-        cf.argtypes = [_C[t] for t in ts]
+        cf.argtypes = [ctypes.POINTER(_LISTS[t]) if t in _LISTS else _C[t] for t in ts]
         cf.restype = _C[ret]
 
         def call(*args, **kwargs):
             b = sig.bind(*args, **kwargs)
             b.apply_defaults()
-            r = cf(*[_check(t, b.arguments[p]) for t, p in zip(ts, sig.parameters)])
+            arrays = {}  # (id of a list: the list and its C array)
+            cargs = []
+            for t, p in zip(ts, sig.parameters):
+                v = b.arguments[p]
+                if t in _LISTS:
+                    if id(v) not in arrays:
+                        items = [float(x) for x in v] if _LISTS[t] is ctypes.c_double else [_check(c_int64, x) for x in v]
+                        arrays[id(v)] = (v, (_LISTS[t] * len(v))(*items))
+                    cargs.append(arrays[id(v)][1])
+                else:
+                    cargs.append(_check(t, v))
+            r = cf(*cargs)
+            for v, a in arrays.values():
+                v[:] = list(a)  # (what C wrote, once for each list)
             if ret is str and r is None:
                 raise ValueError("a C function declared -> str returned NULL")
             if ret is c_void_p:

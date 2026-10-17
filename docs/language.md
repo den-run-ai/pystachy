@@ -225,11 +225,12 @@ An imported module name does not imply every CPython API is available.
 The shipped libraries include unchanged upstream modules, localized ports such as
 `fnmatch`, `textwrap`, `difflib`, `random` and `datetime`, and implementations such as
 `functools.cache` / `lru_cache`, `collections` (`deque`, `defaultdict`, `OrderedDict`,
-`Counter`), `io.StringIO`, `io.BytesIO` and `csv`. Each has its own supported operations and deviations.
+`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `csv`. Each has its own supported operations and deviations.
 
 Use the [builtin API reference](language/modules.md#builtins) and
-[library port notes](../lib/README.md) for current coverage. C calls and experimental
-CPython extension builds are documented separately in [FFI](ffi.md).
+[library port notes](../lib/README.md) for current coverage. C calls, calls into an
+embedded CPython (`pyobj`) and experimental CPython extension builds are documented
+separately in [FFI](ffi.md).
 
 <a id="removed-on-purpose"></a>
 

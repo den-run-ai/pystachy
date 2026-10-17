@@ -1,0 +1,411 @@
+-- the constructor's calls, attributes, repr()
+  readable()
+  writable()
+  seekable()
+<_io.TextIOWrapper encoding='utf-8'> utf-8 strict False False True False None
+  readable()
+  writable()
+  seekable()
+True True False False 7
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+<_io.TextIOWrapper encoding='utf-8'> utf-8 strict False False True False None
+  readable()
+  writable()
+  seekable()
+True False True False 7
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  tell()
+<_io.TextIOWrapper encoding='utf-8'> utf-8 strict False False True False None
+  readable()
+  writable()
+  seekable()
+False True True False 7
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  tell()
+<_io.TextIOWrapper encoding='utf-8'> utf-8 strict False False True False None
+  readable()
+  writable()
+  seekable()
+True True True False 7
+  flush()
+  close()
+<_io.TextIOWrapper encoding='latin-1'> latin-1 replace True True <_io.TextIOWrapper encoding='latin-1'>
+<_io.TextIOWrapper name='plain.txt' encoding='ascii'> plain.txt [<_io.TextIOWrapper name='plain.txt' encoding='ascii'>]
+True strict 'café'
+UTF-8 'café'
+'utf-8' 'café\n' utf-8
+'UTF8' 'café\n' UTF8
+'u8' 'café\n' u8
+'utf_8' 'café\n' utf_8
+'latin-1' 'cafÃ©\n' latin-1
+'ISO-8859-1' 'cafÃ©\n' ISO-8859-1
+'L1' 'cafÃ©\n' L1
+'iso8859_1' 'cafÃ©\n' iso8859_1
+'ascii' 'caf��\n' ascii
+'US-ASCII' 'caf��\n' US-ASCII
+'646' 'caf��\n' 646
+ValueError: illegal newline value: x
+ValueError: illegal newline value: 
+
+ValueError: embedded null character
+ValueError: illegal newline value:  
+ValueError: embedded null character
+ValueError: embedded null character
+ValueError: illegal newline value: bad
+-- reading lines in each newline mode, in chunks of 1 to 9 bytes
+utf-8 None ["['unix\\n', 'windows\\n', 'os9\\n', 'last\\n', 'nonl'] ['unix\\n', 'windows\\n', 'os9\\n', 'last\\n', 'nonl']"]
+utf-8 '' ["['unix\\n', 'windows\\r\\n', 'os9\\r', 'last\\n', 'nonl'] ['unix\\n', 'windows\\r\\n', 'os9\\r', 'last\\n', 'nonl']"]
+utf-8 '\n' ["['unix\\n', 'windows\\r\\n', 'os9\\rlast\\n', 'nonl'] ['unix\\n', 'windows\\r\\n', 'os9\\rlast\\n', 'nonl']"]
+utf-8 '\r\n' ["['unix\\nwindows\\r\\n', 'os9\\rlast\\nnonl'] ['unix\\nwindows\\r\\n', 'os9\\rlast\\nnonl']"]
+utf-8 '\r' ["['unix\\nwindows\\r', '\\nos9\\r', 'last\\nnonl'] ['unix\\nwindows\\r', '\\nos9\\r', 'last\\nnonl']"]
+latin-1 None ["['unix\\n', 'windows\\n', 'os9\\n', 'last\\n', 'nonl'] ['unix\\n', 'windows\\n', 'os9\\n', 'last\\n', 'nonl']"]
+latin-1 '' ["['unix\\n', 'windows\\r\\n', 'os9\\r', 'last\\n', 'nonl'] ['unix\\n', 'windows\\r\\n', 'os9\\r', 'last\\n', 'nonl']"]
+latin-1 '\n' ["['unix\\n', 'windows\\r\\n', 'os9\\rlast\\n', 'nonl'] ['unix\\n', 'windows\\r\\n', 'os9\\rlast\\n', 'nonl']"]
+latin-1 '\r\n' ["['unix\\nwindows\\r\\n', 'os9\\rlast\\nnonl'] ['unix\\nwindows\\r\\n', 'os9\\rlast\\nnonl']"]
+latin-1 '\r' ["['unix\\nwindows\\r', '\\nos9\\r', 'last\\nnonl'] ['unix\\nwindows\\r', '\\nos9\\r', 'last\\nnonl']"]
+None ['AAA\n', 'BB\x00B\n', 'CCC\n', 'DDD\n', 'EEE\n', 'FFF\n', 'GGG']
+None 'AAA\nBB\x00B\nCCC\nDDD\nEEE\nFFF\nGGG'
+'' ['AAA\n', 'BB\x00B\n', 'CCC\r', 'DDD\r', 'EEE\r\n', 'FFF\r\n', 'GGG']
+'' 'AAA\nBB\x00B\nCCC\rDDD\rEEE\r\nFFF\r\nGGG'
+'\n' ['AAA\n', 'BB\x00B\n', 'CCC\rDDD\rEEE\r\n', 'FFF\r\n', 'GGG']
+'\n' 'AAA\nBB\x00B\nCCC\rDDD\rEEE\r\nFFF\r\nGGG'
+'\r\n' ['AAA\nBB\x00B\nCCC\rDDD\rEEE\r\n', 'FFF\r\n', 'GGG']
+'\r\n' 'AAA\nBB\x00B\nCCC\rDDD\rEEE\r\nFFF\r\nGGG'
+'\r' ['AAA\nBB\x00B\nCCC\r', 'DDD\r', 'EEE\r', '\nFFF\r', '\nGGG']
+'\r' 'AAA\nBB\x00B\nCCC\rDDD\rEEE\r\nFFF\r\nGGG'
+-- read(n) and readline(n) count characters; the chunks they ask for
+  readable()
+  writable()
+  seekable()
+  read1(8192) -> b'a\xc3\xa9\xe2\x82\xac\xf0\x9f\x98\x80b\ncd\xe2\x82\xac\n'
+'aé' '€😀' 'b' '' '\n' 'cd€\n'
+  read1(8192) -> b''
+  read(-1) -> b''
+  read(-1) -> b''
+  read1(8192) -> b''
+'' '' '' '' ''
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  read1(10000) -> 8192 bytes
+  read1(8192) -> 8192 bytes
+  read1(8192) -> 3616 bytes
+  read(-1) -> b''
+10000 9000 1 999
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  read1(8192) -> 8192 bytes
+  read1(8192) -> 3808 bytes
+  read1(8192) -> b''
+  read1(10000) -> b''
+True True True
+  flush()
+  close()
+1 'é' '€😀\n' '€' ''
+2 'é' '€😀\n' '€' ''
+3 'é' '€😀\n' '€' ''
+4 'é' '€😀\n' '€' ''
+5 'é' '€😀\n' '€' ''
+  readable()
+  writable()
+  seekable()
+  read1(8192) -> b'ab\ncd\nef\ngh\n'
+  read1(8192) -> b''
+  read1(8192) -> b''
+True ['ab\n'] ['cd\n', 'ef\n'] ['gh\n'] []
+  flush()
+  close()
+['€\n', '€\n']
+'one\r' '\n' 'two\r\n' 'three' ''
+-- newlines: the kind of newline read
+b'a\nb\n' None None 'a\n' '\n' 'b\n' '\n'
+b'a\r\nb\r\n' None None 'a\n' '\r\n' 'b\n' '\r\n'
+b'a\rb\r' None None 'a\n' '\r' 'b\n' '\r'
+b'a\r\nb' '' None 'a\r\n' '\r\n' 'b' '\r\n'
+b'a\nb' '\n' None 'a\n' None 'b' None
+b'x' None None 'x' None '' None
+-- decoding errors
+strict b'ab\xffcd' 1 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 1: invalid start byte
+strict b'ab\xffcd' 2 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+strict b'ab\xffcd' 8192 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 2: invalid start byte
+strict b'ab\xe2\x82' 1 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 1-2: unexpected end of data
+strict b'ab\xe2\x82' 2 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 0-1: unexpected end of data
+strict b'ab\xe2\x82' 8192 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 0-1: unexpected end of data
+strict b'\xe2\x82(xy' 1 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 0-1: invalid continuation byte
+strict b'\xe2\x82(xy' 2 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 0-1: invalid continuation byte
+strict b'\xe2\x82(xy' 8192 UnicodeDecodeError: 'utf-8' codec can't decode bytes in position 0-1: invalid continuation byte
+strict b'ok\xed\xa0\x80' 1 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xed in position 1: invalid continuation byte
+strict b'ok\xed\xa0\x80' 2 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xed in position 0: invalid continuation byte
+strict b'ok\xed\xa0\x80' 8192 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte
+replace b'ab\xffcd' 1 'a' 'b\ufffdcd'
+replace b'ab\xffcd' 2 'a' 'b\ufffdcd'
+replace b'ab\xffcd' 8192 'a' 'b\ufffdcd'
+replace b'ab\xe2\x82' 1 'a' 'b\ufffd'
+replace b'ab\xe2\x82' 2 'a' 'b\ufffd'
+replace b'ab\xe2\x82' 8192 'a' 'b\ufffd'
+replace b'\xe2\x82(xy' 1 '�' '(xy'
+replace b'\xe2\x82(xy' 2 '�' '(xy'
+replace b'\xe2\x82(xy' 8192 '�' '(xy'
+replace b'ok\xed\xa0\x80' 1 'o' 'k\ufffd\ufffd\ufffd'
+replace b'ok\xed\xa0\x80' 2 'o' 'k\ufffd\ufffd\ufffd'
+replace b'ok\xed\xa0\x80' 8192 'o' 'k\ufffd\ufffd\ufffd'
+ignore b'ab\xffcd' 1 'a' 'bcd'
+ignore b'ab\xffcd' 2 'a' 'bcd'
+ignore b'ab\xffcd' 8192 'a' 'bcd'
+ignore b'ab\xe2\x82' 1 'a' 'b'
+ignore b'ab\xe2\x82' 2 'a' 'b'
+ignore b'ab\xe2\x82' 8192 'a' 'b'
+ignore b'\xe2\x82(xy' 1 '(' 'xy'
+ignore b'\xe2\x82(xy' 2 '(' 'xy'
+ignore b'\xe2\x82(xy' 8192 '(' 'xy'
+ignore b'ok\xed\xa0\x80' 1 'o' 'k'
+ignore b'ok\xed\xa0\x80' 2 'o' 'k'
+ignore b'ok\xed\xa0\x80' 8192 'o' 'k'
+surrogateescape b'ab\xffcd' 1 'a' 'b\udcffcd'
+surrogateescape b'ab\xffcd' 2 'a' 'b\udcffcd'
+surrogateescape b'ab\xffcd' 8192 'a' 'b\udcffcd'
+surrogateescape b'ab\xe2\x82' 1 'a' 'b\udce2\udc82'
+surrogateescape b'ab\xe2\x82' 2 'a' 'b\udce2\udc82'
+surrogateescape b'ab\xe2\x82' 8192 'a' 'b\udce2\udc82'
+surrogateescape b'\xe2\x82(xy' 1 '\udce2' '\udc82(xy'
+surrogateescape b'\xe2\x82(xy' 2 '\udce2' '\udc82(xy'
+surrogateescape b'\xe2\x82(xy' 8192 '\udce2' '\udc82(xy'
+surrogateescape b'ok\xed\xa0\x80' 1 'o' 'k\udced\udca0\udc80'
+surrogateescape b'ok\xed\xa0\x80' 2 'o' 'k\udced\udca0\udc80'
+surrogateescape b'ok\xed\xa0\x80' 8192 'o' 'k\udced\udca0\udc80'
+backslashreplace b'ab\xffcd' 1 'a' 'b\\xffcd'
+backslashreplace b'ab\xffcd' 2 'a' 'b\\xffcd'
+backslashreplace b'ab\xffcd' 8192 'a' 'b\\xffcd'
+backslashreplace b'ab\xe2\x82' 1 'a' 'b\\xe2\\x82'
+backslashreplace b'ab\xe2\x82' 2 'a' 'b\\xe2\\x82'
+backslashreplace b'ab\xe2\x82' 8192 'a' 'b\\xe2\\x82'
+backslashreplace b'\xe2\x82(xy' 1 '\\' 'xe2\\x82(xy'
+backslashreplace b'\xe2\x82(xy' 2 '\\' 'xe2\\x82(xy'
+backslashreplace b'\xe2\x82(xy' 8192 '\\' 'xe2\\x82(xy'
+backslashreplace b'ok\xed\xa0\x80' 1 'o' 'k\\xed\\xa0\\x80'
+backslashreplace b'ok\xed\xa0\x80' 2 'o' 'k\\xed\\xa0\\x80'
+backslashreplace b'ok\xed\xa0\x80' 8192 'o' 'k\\xed\\xa0\\x80'
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xff in position 4: ordinal not in range(128)
+'abc\n�\n'
+-- writing: counts, newline translation, buffering
+None 5 7 6 b''
+b'AAA\nBBB\nCCC\nX\rY\r\nZ' False
+'' 5 7 6 b''
+b'AAA\nBBB\nCCC\nX\rY\r\nZ' False
+'\n' 5 7 6 b''
+b'AAA\nBBB\nCCC\nX\rY\r\nZ' False
+'\r\n' 5 7 6 b''
+b'AAA\r\nBBB\r\nCCC\r\nX\rY\r\r\nZ' False
+'\r' 5 7 6 b''
+b'AAA\rBBB\rCCC\rX\rY\r\rZ' False
+  readable()
+  writable()
+  seekable()
+4 0 8000
+  write(8201 bytes)
+191 1 8201
+  write(b'z')
+  write(10000 bytes)
+10000 18202
+  write(b'1\n2\n34')
+  flush()
+18208 b'ww1\n2\n34'
+  flush()
+  close()
+line_buffering
+  readable()
+  writable()
+  seekable()
+  write(b'XY\nZ')
+  flush()
+  write(b'A\rB')
+  flush()
+b'XY\nZA\rB'
+  write(b'C')
+  flush()
+  close()
+write_through
+  readable()
+  writable()
+  seekable()
+  write(b'a\r\nb')
+  write(b'c')
+b'a\r\nbc'
+  flush()
+  close()
+print()
+  readable()
+  writable()
+  seekable()
+  write(b'\xe9-1-2.5!\r')
+  flush()
+  write(b'no newline')
+  flush()
+  flush()
+  close()
+b'\xe9-1-2.5!\rno newline'
+-- encoding errors
+UnicodeEncodeError: 'latin-1' codec can't encode character '\u20ac' in position 3: ordinal not in range(256)
+latin-1 replace 4 b'\r\na?b'
+UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 2: ordinal not in range(128)
+ascii backslashreplace 3 b'\r\n\\xe9\\u20ac'
+ascii xmlcharrefreplace 3 b'\r\n&#233;&#8364;'
+UnicodeEncodeError: 'utf-8' codec can't encode character '\udc80' in position 3: surrogates not allowed
+utf-8 surrogateescape 3 b'\r\nx\x80'
+utf-8 surrogatepass 3 b'\r\nx\xed\xb2\x80'
+-- reads and writes on one wrapper
+  readable()
+  writable()
+  seekable()
+  read1(8192) -> b'abc\r'
+  write(b'X')
+  read(-1) -> b''
+'a' 1 'b' 'c' b'X'
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  read1(8192) -> b'a\r'
+  write(b'Y')
+  read(-1) -> b'\nb'
+'a' 1 '\nb' b'Y'
+  flush()
+  close()
+'a\n' 
+ 1 None 'b\n' 
+
+  readable()
+  writable()
+  seekable()
+  tell()
+  read1(8192) -> b'line1\nli'
+  write(b'W')
+  read1(8192) -> b'ne2\nline'
+  read(-1) -> b'3\n'
+'line1\n' 1 'ne2\n' 'line3\n' b'W'
+  flush()
+  close()
+  readable()
+  writable()
+  seekable()
+  tell()
+  read1(8192) -> b'l1\n'
+  write(b'V')
+  read1(8192) -> b'l2\n'
+'l1\n' 1 'l2\n'
+  flush()
+  read1(8192) -> b'l3\n'
+  write(b'U')
+  read(-1) -> b''
+'l3\n' 1 '' b'VU'
+  flush()
+  close()
+-- closing
+  readable()
+  writable()
+  seekable()
+  write(b'pending')
+  flush()
+  close()
+True True b'pending'
+read ValueError: I/O operation on closed file.
+readline ValueError: I/O operation on closed file.
+write ValueError: I/O operation on closed file.
+flush ValueError: I/O operation on closed file.
+iter ValueError: I/O operation on closed file.
+next ValueError: I/O operation on closed file.
+writelines ValueError: I/O operation on closed file.
+readlines ValueError: I/O operation on closed file.
+with ValueError: I/O operation on closed file.
+True
+  readable()
+  writable()
+  seekable()
+  write(b'lost')
+  close()
+OSError: [Errno 28] No space left on device
+True True
+  readable()
+  writable()
+  seekable()
+  read(-1) -> b'in'
+'in' 3
+  write(b'out')
+  flush()
+  close()
+True b'out'
+-- unsupported operations
+read UnsupportedOperation not readable True
+read(1) UnsupportedOperation not readable True
+readline UnsupportedOperation not readable True
+next UnsupportedOperation not readable True
+readlines UnsupportedOperation not readable True
+None
+write UnsupportedOperation not writable True
+encoding AttributeError: readonly attribute
+errors AttributeError: attribute 'errors' of '_io.TextIOWrapper' objects is not writable
+line_buffering AttributeError: readonly attribute
+write_through AttributeError: readonly attribute
+closed AttributeError: attribute 'closed' of '_io.TextIOWrapper' objects is not writable
+newlines AttributeError: attribute 'newlines' of '_io.TextIOWrapper' objects is not writable
+buffer AttributeError: readonly attribute
+name AttributeError: attribute 'name' of '_io.TextIOWrapper' objects is not writable
+-- a buffer without read1(), and one without write() or tell()
+  Plain.read(8192) -> 8192 bytes
+  Plain.read(8192) -> 908 bytes
+  Plain.read(-1) -> 0 bytes
+'first\n' 9000 94
+['r1\n', 'r2\n'] True False
+UnsupportedOperation not writable
+True
+-- the reads of the buffer's closed attribute
+  closed?
+readline 'a\n'
+  closed?
+write 1
+  closed?
+  write b'x'
+next 'b\n'
+writelines
+  closed?
+  closed?
+  closed?
+flush
+  closed?
+  write b'yz'
+  flush
+  closed?
+  closed?
+  closed?
+readlines ['c\n']
+  closed?
+  closed?
+read '' ''
+  closed?
+closed False
+close
+  closed?
+  closed?
+  flush
+  close
+close again
+  closed?
+[exit 0]

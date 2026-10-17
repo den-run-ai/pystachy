@@ -712,7 +712,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if x is not None:
                 return self.refl_type_attr(x, n.s)
         c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
-        if c in self.classes and ((c in self.nts and n.s == "_fields") or (c not in self.nts and n.s in self.classes[c].fdefault)):
+        if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault)):
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
@@ -752,8 +752,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     return Val(self.sconst(clo.wname if n.s == "__name__" else clo.wqual), "str")  # (functools.wraps())
                 return Val(self.sconst(clo.name if n.s == "__name__" else clo.qual), "str")
             return Val(self.sconst(short(fk) if o.t.startswith("fn[f:") else fk[fk.rfind(".") + 1 :]), "str")
-        if o.t in self.nts and n.s == "_fields":
-            self.notnone(o, "AttributeError: 'NoneType' object has no attribute '_fields'")
+        if o.t in self.nts and (n.s == "_fields" or n.s == "_field_defaults"):
+            self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
+            if n.s == "_field_defaults":
+                return self.nt_defaults(self.classes[o.t].origin if self.classes[o.t].origin != "" else o.t)
             return self.tuple_([Val(self.sconst(x), "str") for x in self.classes[o.t].fields])
         if o.t == "exc" and n.s == "__cause__" and self.causeread:
             # (raise ... from c's c, or the StopIteration of PEP 479's RuntimeError; else None)
@@ -770,6 +772,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return bm
         if o.t in self.classes:
             self.fn_attr_read(o, n.s)
+        self.glue_field(o, n.s)
         return self.getfield(o, self.field(o, n.s), n.s)
     if k == "index":
         return self.index(n, want)
@@ -939,7 +942,9 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     # (instances read it until they assign the field; C.a = v is not supported)
     ci = self.class_ready(cn)
     if a == "_fields":
-        return self.tuple_([Val(self.sconst(x), "str") for x in ci.fields])
+        return self.tuple_([Val(self.sconst(x), "str") for x in self.nt_fields(ci.name)])
+    if a == "_field_defaults":
+        return self.nt_defaults(ci.name)
     t = ci.ftypes[a]
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:
         return self.coerce(self.expr(ci.fdefault[a], t), t)
@@ -997,8 +1002,10 @@ def gen_no_class_attr(self, c: str, a: str) -> None:
     ci = self.classes[c]
     if ci.bad != "":
         self.err(ci.bad)
-    if c in self.nts and a in ci.fields:
+    if c in self.nts and a in self.nt_fields(c):
         self.err(f"reading a NamedTuple's field through its class ({short(c)}.{a}, a descriptor in CPython) is not supported")
+    if c in self.nts and a == "__doc__":
+        self.err(f"reading the __doc__ of NamedTuple {short(c)} is not supported (Pystachy keeps no docstrings of classes)")
     if a in ci.methods:
         if ci.methods[a].prop:
             self.err(f"{short(c)}.{a} is a property: read it on an instance")
@@ -2648,6 +2655,11 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     same = a.t == b.t or (self.tmpl_of(a.t) != "" and self.tmpl_of(a.t) == self.tmpl_of(b.t))
     sh = shown if shown != "" else op
     if op == "**":
+        # A builtin numeric exponent cannot supply a user reflected method or subclass
+        # priority. Keep object/object and reflected power outside this bounded dispatch.
+        if a.t in self.classes and self.isnum(b.t) and "__pow__" in self.classes[a.t].methods:
+            self.none_operand(shown if shown != "" else "** or pow()", a, b)
+            return self.call_fn(self.classes[a.t].methods["__pow__"], [a], [self.vnode(b)])
         # CPython calls a.__ipow__(b) (**=), a.__pow__(b), else b.__rpow__(a) (b of another class)
         pw = ""
         for x, n in [(a, "__ipow__" if shown == "**=" else ""), (a, "__pow__"), (b, "__rpow__" if not same else "")]:

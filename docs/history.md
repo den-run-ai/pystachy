@@ -80,10 +80,10 @@ runtime personality routine; the [internals guide](internals.md) explains that i
 
 ### Interoperability
 
-The initial review left standalone-only versus CPython integration open. C calls and AOT
-CPython extension builds now have an experimental implementation. Calling arbitrary CPython
-objects from compiled code is further work; use the [FFI guide](ffi.md) for implemented
-directions, restrictions and proposed next steps.
+The initial review left standalone-only versus CPython integration open. C calls, AOT
+CPython extension builds and calls from compiled code into an embedded CPython (`pyobj`) now
+have an experimental implementation; use the [FFI guide](ffi.md) for implemented directions
+and restrictions.
 
 ## Where it comes from
 

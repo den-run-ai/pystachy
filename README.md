@@ -139,8 +139,8 @@ using both the CPython-hosted and self-compiled compiler. CI also checks rejecte
 bootstrap consistency and garbage-collection stress. Details are in
 [testing and verification](docs/testing.md).
 
-Native C calls and experimental CPython extension builds are described in the
-[interoperability guide](docs/ffi.md).
+Native C calls, calls into an embedded CPython and experimental CPython extension
+builds are described in the [interoperability guide](docs/ffi.md).
 
 Reuse and ship libraries as ordinary Python wheels; uv/pip handles dependencies,
 and Pystachy compiles the installed `.py` sources. The [short package tutorial](examples/package/README.md)
@@ -188,7 +188,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 | [Testing](docs/testing.md) | Differential tests, bootstrap checks and CI |
 | [Internals](docs/internals.md) | Compiler, runtime, commands and settings |
 | [Typed IR](docs/typed-ir.md) | Shared intermediate representation and optimizations |
-| [Interoperability](docs/ffi.md) | C calls and CPython extension modules |
+| [Interoperability](docs/ffi.md) | C calls, embedded CPython and CPython extension modules |
 | [Runtime in Python](docs/runtime-in-subset.md) | Runtime functions compiled from the typed subset |
 | [History](docs/history.md) | Design decisions and the Ouro v1 lineage |
 

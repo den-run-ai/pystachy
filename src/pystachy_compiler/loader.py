@@ -15,9 +15,12 @@ from src.pystachy_compiler.analysis import (
     clean_doc,
     collect,
     del_line,
+    declares,
+    deferred_use,
     deleted,
     false_flag,
     sole_binding,
+    first_use,
     fn_globals,
     global_assigns,
     globals_in,
@@ -46,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     walrus_names,
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, RAW, fail
-from src.pystachy_compiler.lexer import Lexer
+from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.parser import Parser
@@ -55,7 +58,9 @@ from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     ANNKINDS,
     CBUILTIN,
+    CTYPES,
     GENERICS,
+    GLUE,
     ITERS,
     MODNAMES,
     MODULES,
@@ -67,12 +72,13 @@ from src.pystachy_compiler.specs import (
     RANGES,
     STANDINS,
     TYPESMOD,
+    IOMOD,
     TYPING,
     VERSIONINFO,
     is_excname,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mk, names_in
-from src.pystachy_compiler.utils import clone, int_fits
+from src.pystachy_compiler.utils import clone, int_fits, is_const
 
 
 
@@ -164,6 +170,15 @@ def tb_import(n: Node) -> None:
                 a.kids[1].s = "_pystachy_types"
         elif st.kind != "def" and st.kind != "class" and st.kind != "subclass":
             tb_import(st)
+
+def ascii_ident(s: str) -> bool:
+    # is ASCII string s an identifier, as str.isidentifier() tells
+    for i in range(len(s)):
+        c = s[i]
+        if not (c == "_" or ("a" <= c and c <= "z") or ("A" <= c and c <= "Z") or (i > 0 and "0" <= c and c <= "9")):
+            return False
+    return s != ""
+
 
 class Loader:
     def __init__(self, dirs: list[str]):
@@ -281,6 +296,7 @@ class Loader:
         self.sure = m.sure
         self.maybe = m.maybe
         self.imports(m, m.body, False)
+        self.namedtuples(m)
         self.order.append(m)
         for i in range(len(self.later)):
             st = self.later[i]
@@ -499,6 +515,11 @@ class Loader:
 
     def find(self, name: str, line: int) -> Mod:
         # the user module called name, loaded with its parent packages unless it is already
+        if name == "ffi" and line >= LINES and self.in_lib(FILES[line // LINES]):
+            # (a module of Pystachy's lib/, such as pyobj, that declares C functions, and a program with an
+            # ffi module of its own, which the driver lets replace the builtin one, as CPython would)
+            lib = FILES[line // LINES]
+            fail(f"module '{lib[lib.rfind('/') + 1 : -3]}' needs Pystachy's builtin ffi module, which the program's own {self.modpath(name)} replaces: rename that module", line)
         if name in self.mods:
             return self.mods[name]
         dot = name.rfind(".")
@@ -514,7 +535,7 @@ class Loader:
             hint = "; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)" if self.optry else ""
             if name in CBUILTIN and self.filepath(name) != "":
                 fail(f"module '{name}' is not supported: it is built into CPython, which imports it rather than the {name} module on the module path, and Pystachy does not have it{hint}", line)
-            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join([k for k in MODULES.keys() if k != 'ffi' and k != TYPESMOD])}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
+            fail(f"module '{name}' is not supported: it is not a builtin module ({', '.join([k for k in MODULES.keys() if k != 'ffi' and k != TYPESMOD and k != IOMOD])}) and there is no {name[dot + 1 :]}.py on the module path{hint}", line)
         if p.endswith("/__init__.py"):
             return self.load(name, p, p[:-12])
         if p.endswith(".py"):
@@ -543,11 +564,23 @@ class Loader:
         self.sure = m.sure
         self.maybe = m.maybe
         self.imports(m, m.body, False)
+        self.namedtuples(m)
         self.sure = sure
         self.maybe = maybe
         m.done = True
+        if self.in_lib(path):
+            for k in m.kinds.values():
+                if k == "b:ffi" or k.startswith("b:ffi."):
+                    GLUE[name] = self.public(m)
         self.order.append(m)
         return m
+
+    def in_lib(self, path: str) -> bool:
+        # a file of Pystachy's own lib/ (the last directory of the module path)
+        lib = self.dirs[-1] if len(self.dirs) > 0 else ""
+        lib = lib[2:] if lib.startswith("./") else lib
+        path = path[2:] if path.startswith("./") else path
+        return lib != "" and path.startswith(lib + "/")
 
     def parse(self, path: str) -> Node:
         # a module's file, parsed once for the looks before it is loaded (optional()) and the load
@@ -618,6 +651,136 @@ class Loader:
             else:
                 al.kind = "pass"
                 self.used_before(m, al)
+
+    def nt_func(self, m: Mod, e: Node) -> bool:
+        # does e, in the top-level code of module m, name lib's collections.namedtuple
+        if e.kind == "name":
+            return m.kinds.get(e.s, "") == "a:collections$namedtuple"
+        return e.kind == "attr" and e.s == "namedtuple" and e.kids[0].kind == "name" and m.kinds.get(e.kids[0].s, "") == "m:collections"
+
+    def namedtuples(self, m: Mod) -> None:
+        # NAME = namedtuple(...) in the top-level code of module m, a call of lib's
+        # collections.namedtuple once m's imports are bound: the class statement of the class it
+        # makes (nt_class). NAME.f.__doc__ = "..." of a field f of it is dropped, as simplify()
+        # drops NAME.__doc__ = ...: Pystachy keeps no docstrings of classes. NAME = C of such a
+        # class C is an alias, as bindings() makes one of a class statement's
+        lib = self.mods.get("collections", None)
+        if len(self.dirs) == 0 or lib is None or lib.path != self.dirs[-1] + "/collections/__init__.py":
+            return
+        if len([st for st in m.body.kids if st.kind == "assign" and st.kids[-1].kind == "call" and self.nt_func(m, st.kids[-1].kids[0])]) == 0:
+            return
+        count = top_bindings(m.body.kids)
+        dels: dict[str, bool] = {}
+        deleted(m.body.kids, dels)
+        fields: dict[str, list[str]] = {}
+        out: list[Node] = []
+        for st in m.body.kids:
+            v = st.kids[-1] if st.kind == "assign" else st
+            t = st.kids[0] if st.kind == "assign" and len(st.kids) == 2 else st
+            if st.kind == "assign" and v.kind == "call" and self.nt_func(m, v.kids[0]):
+                if t.kind != "name" or count.get(t.s, 0) != 1 or t.s in m.fnglobal or t.s in dels:
+                    fail("namedtuple() is only supported as NAME = namedtuple(...), where nothing else binds NAME", st.line)
+                c = self.nt_class(t.s, v)
+                fields[t.s] = [x.s for x in c.kids[1].kids[0].kids]
+                m.kinds[t.s] = "c"
+                if t.s in m.tvars:
+                    del m.tvars[t.s]  # (no TypeVar)
+                out.append(c)
+                continue
+            if t.kind == "attr" and t.s == "__doc__" and t.kids[0].kind == "attr" and t.kids[0].kids[0].kind == "name" and t.kids[0].kids[0].s in fields and t.kids[0].s in fields[t.kids[0].kids[0].s]:
+                if v.kind != "str":
+                    fail(f"assigning the __doc__ of namedtuple field {t.kids[0].kids[0].s}.{t.kids[0].s} is only supported with a string literal (Pystachy keeps no docstrings of classes)", st.line)
+                continue
+            if t is not st and t.kind == "name" and v.kind == "name" and v.s in fields and count.get(t.s, 0) == 1 and t.s not in m.fnglobal:
+                m.kinds[t.s] = "a:" + m.q + v.s
+                st.kind = "pass"
+                self.used_before(m, st)
+            out.append(st)
+        m.body.kids = out
+
+    def nt_class(self, name: str, v: Node) -> Node:
+        # (namedtuples) the class that NAME = namedtuple(typename, field_names, *, rename=False,
+        # defaults=None, module=None), call v, makes: given literal arguments (field_names a string
+        # or a list or tuple of strings; defaults None or a list or tuple of constants), the
+        # statement of a class whose __init__ takes the fields, unannotated, and assigns them (a
+        # class template: each call types its fields), and whose base, a "namedtuple" node, holds
+        # its name, fields, defaults and module for Gen.program; CPython's errors of the call,
+        # raised as the module is imported, are reported here
+        line = v.line
+        args: dict[str, Node] = {}
+        pos = [a for a in v.kids[1:] if a.kind != "kw"]
+        for a in v.kids[1:]:
+            if a.kind == "starred" or a.kind == "dstar":
+                fail("namedtuple() with * or ** arguments is not supported: the compiler makes the class from literal arguments", line)
+        if len(pos) > 2:
+            fail(f"namedtuple() takes 2 positional arguments but {len(pos)} were given", line)
+        for i in range(len(pos)):
+            args[["typename", "field_names"][i]] = pos[i]
+        for a in v.kids[1:]:
+            if a.kind == "kw" and a.s not in ["typename", "field_names", "rename", "defaults", "module"]:
+                fail(f"namedtuple() got an unexpected keyword argument '{a.s}'", line)
+            if a.kind == "kw" and a.s in args:
+                fail(f"namedtuple() got multiple values for argument '{a.s}'", line)
+            if a.kind == "kw":
+                args[a.s] = a.kids[0]
+        missing = [w for w in ["typename", "field_names"] if w not in args]
+        if len(missing) > 0:
+            fail(f"namedtuple() missing {len(missing)} required positional argument{'s' if len(missing) > 1 else ''}: '" + "' and '".join(missing) + "'", line)
+        tn = args["typename"]
+        fn = args["field_names"]
+        if tn.kind != "str":
+            fail("namedtuple() is only supported with a string literal as its typename (the compiler makes the class)", line)
+        for nm in [tn.s] + [x.s for x in [fn] + fn.kids if x.kind == "str"]:
+            if len([c for c in nm if ord(c) >= 128]) > 0:
+                fail("namedtuple() of a typename or field name with non-ASCII characters is not supported", line)
+        if (fn.kind != "str" and fn.kind != "list" and fn.kind != "tuple") or any(x.kind != "str" for x in fn.kids):
+            fail("namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)", line)
+        names: list[str] = fn.s.replace(",", " ").split() if fn.kind == "str" else [x.s for x in fn.kids]
+        rn = args.get("rename", mk("False", "", line, []))
+        dn = args.get("defaults", mk("None", "", line, []))
+        rep = 1
+        if dn.kind == "binop" and dn.s == "*" and dn.kids[1].kind == "int" and (dn.kids[0].kind == "list" or dn.kids[0].kind == "tuple"):
+            rep = int(dn.kids[1].s)  # ([None] * 4: dis.py's)
+            dn = dn.kids[0]
+        mn = args.get("module", mk("None", "", line, []))
+        if rn.kind != "True" and rn.kind != "False":
+            fail("namedtuple() is only supported with rename=True or rename=False", line)
+        if (dn.kind != "None" and dn.kind != "list" and dn.kind != "tuple") or len([x for x in dn.kids if not is_const(x)]) > 0:
+            fail("namedtuple() is only supported with defaults=None or a list or tuple of constants (numbers, strings, True, False, None)", line)
+        if mn.kind != "None" and mn.kind != "str":
+            fail("namedtuple() is only supported with module=None or a string literal", line)
+        seen: dict[str, bool] = {}
+        for i in range(len(names) if rn.kind == "True" else 0):
+            nm = names[i]
+            if not ascii_ident(nm) or nm in KEYWORDS or nm.startswith("_") or nm in seen:
+                names[i] = f"_{i}"
+            seen[nm] = True
+        for nm in [tn.s] + names:
+            if not ascii_ident(nm):
+                fail(f"Type names and field names must be valid identifiers: {nm!r}", line)
+            if nm in KEYWORDS:
+                fail(f"Type names and field names cannot be a keyword: {nm!r}", line)
+        seen = {}
+        for nm in names:
+            if nm.startswith("_") and rn.kind != "True":
+                fail(f"Field names cannot start with an underscore: {nm!r}", line)
+            if nm in seen:
+                fail(f"Encountered duplicate field name: {nm!r}", line)
+            seen[nm] = True
+        if len(dn.kids) * rep > len(names):
+            fail("Got more default values than field names", line)
+        dn = mk("list", "", line, dn.kids * rep if rep > 0 else [])
+        if len(names) == 0:
+            fail("a namedtuple without fields is not supported", line)
+        params = mk("params", "0,-1", line, [mk("param", "_cls", line, [mk("noann", "", line, []), mk("noann", "", line, [])])])
+        body: list[Node] = []
+        k = len(names) - len(dn.kids)
+        for i in range(len(names)):
+            params.kids.append(mk("param", names[i], line, [mk("noann", "", line, []), clone(dn.kids[i - k]) if i >= k else mk("noann", "", line, [])]))
+            body.append(mk("assign", "", line, [mk("attr", names[i], line, [mk("name", "_cls", line, [])]), mk("name", names[i], line, [])]))
+        init = mk("def", "__init__", line, [params, mk("noann", "", line, []), mk("block", "", line, body)])
+        info = mk("namedtuple", tn.s, line, [mk("tuple", "", line, [mk("str", nm, line, []) for nm in names]), mk("tuple", "", line, [clone(x) for x in dn.kids]), mn])
+        return mk("subclass", name, line, [mk("class", name, line, [mk("block", "", line, [init])]), info])
 
     def late_aliases(self, m: Mod) -> None:
         # name = f where an import binds f (from m import f): an alias too, if nothing else binds
@@ -988,6 +1151,8 @@ class Loader:
         if k == "index" and (b.kind not in ANNKINDS[:2] or self.kind_of(b) == "f" or self.kind_of(b) == "c" or self.kind_of(b).startswith("a:")):
             return True
         p = self.bpath(e) if k == "attr" else ""
+        if p.startswith("ffi.") and (p[4:] in CTYPES or p[4:] in ("c_buf", "c_float")):
+            return False  # (the same C type as a from-ffi import, including module aliases)
         if p != "" and not p.startswith("typing.") and p != "os.PathLike" and p != "collections.abc" and not (p.startswith("collections.abc.") and p[16:] in ABCS) and p != "dataclasses.KW_ONLY":
             return True  # (a builtin module may lack the attribute)
         return k not in ANNKINDS or (self.kind_of(b) == "v" and not (top and k == "name") and not (k == "name" and self.typevar(e))) or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)
@@ -2070,10 +2235,14 @@ class Loader:
             elif builtin_module(path):
                 if path == TYPESMOD and (len(self.dirs) == 0 or m.path != self.dirs[-1] + "/types.py"):
                     fail(f"module '{TYPESMOD}' is not supported: it is Pystachy's own, which its types module imports (import types)", line)
+                if path == IOMOD and (len(self.dirs) == 0 or m.path != self.dirs[-1] + "/io.py"):
+                    fail(f"module '{IOMOD}' is not supported: it is Pystachy's own, which its io module imports (import io)", line)
                 if not infn and m.kinds.get(a.s, "") == "v":
                     fail(f"'{a.s}' is bound both as a variable and as a function, class or import (not supported)", line)
                 if a.s == "*":
                     fail(f"'from {path} import *' is not supported", line)
+                if a.kids[0].s in ("ffi.track", "ffi.untrack", "ffi.collected") and not self.in_lib(m.path):
+                    fail(f"cannot import name '{a.kids[0].s[4:]}' from 'ffi': it is internal to Pystachy's lib/pyobj.py", line)
                 self.bind(m, a.s, "b:" + a.kids[0].s, infn, line)
                 if not infn and a.kids[0].s.startswith("builtins.") and is_excname(a.kids[0].s[9:]):
                     continue  # (a builtin exception class, which qname() names itself)
@@ -2129,22 +2298,26 @@ class Loader:
                 flags[-1] = self.import_binds(m, a.s, infn)
             elif a.s == "*":
                 for x in self.public(src):
-                    k = self.take(m, src, x, x, infn, keep, inits, copies, line)
-                    took.append(x if k != "v" else "")
+                    mine = self.rebinds(m, src, x, x, infn)  # (a def or class statement of m binds x)
+                    k = src.kinds[x] if mine else self.take(m, src, x, x, infn, keep, inits, copies, line)
+                    took.append(" " if mine else x if k != "v" else "")
                     key = f"{src.name}  {x}"
                     checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
-                    names.append(x)
+                    if not mine:
+                        names.append(x)
                 if src.pdir != "" and not has_all(src.body.kids):
                     self.stars.append(mk("star", "", line, [mk("str", src.name, line, [])]))
                     self.starm.append(m)
             else:
                 tgt = a.kids[0].s
-                k = self.take(m, src, tgt[tgt.rfind(".") + 1 :], a.s, infn, keep, inits, copies, line)
-                took.append(a.s if k != "v" else "")
                 x = tgt[tgt.rfind(".") + 1 :]
+                mine = self.rebinds(m, src, x, a.s, infn)
+                k = src.kinds[x] if mine else self.take(m, src, x, a.s, infn, keep, inits, copies, line)
+                took.append(" " if mine else a.s if k != "v" else "")
                 key = f"{src.name}  {x}"
                 checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
-                names.append(a.s)
+                if not mine:
+                    names.append(a.s)
         at.append(len(inits.kids))
         cat.append(len(copies))
         binds: list[Node] = []  # (a from-import's copies, and the bound nodes of its names that have flags, in order)
@@ -2154,6 +2327,12 @@ class Loader:
             if nm == "":
                 binds.append(copies[c])
                 c += 1
+                continue
+            if nm == " ":
+                if checks[i] != "":
+                    b = mk("bound", "", line, [])  # (only the check: a def or class binds the name, rebinds())
+                    b.mchk = checks[i]
+                    binds.append(b)
                 continue
             flags.append(self.import_binds(m, nm, infn))
             if flags[-1] != "" or checks[i] != "":
@@ -2262,9 +2441,67 @@ class Loader:
         else:
             fail(f"from {src.name} import *: __all__ must be a list or tuple of strings", v.line)
 
+    def rebinds(self, m: Mod, src: Mod, x: str, name: str, infn: bool) -> bool:
+        # from src import x as name (or *) in module code, of a function or class of src's (whose
+        # code has run), where only a def or class statement after it binds name besides: CPython's
+        # import binds src's x until that statement rebinds name. The statement's binding
+        # (m.kinds) stands for all of m's code, and the import binds nothing (it checks that src has
+        # bound x, as for a name it binds), where nothing may read the import's: neither code from
+        # the import on that runs before the statement binds name (its decorators, defaults,
+        # annotations, bases and class body too), nor a function or class defined before it that
+        # uses name, or one that does, where code before it names one (which may run it, or keep
+        # it) or decorates one, nor a lambda or generator expression before it that reads name
+        # (else an error). Another module's code that reads it during an import cycle finds it
+        # unbound (NameError, AttributeError: docs). False where the import binds name (take())
+        k = m.kinds.get(name, "")
+        sk = src.kinds.get(x, "")
+        if infn or (k != "f" and k != "c") or src.name == m.name or not src.done or not (sk == "f" or sk == "c" or sk.startswith("a:")):
+            return False
+        body = m.body.kids
+        s = 0
+        while s < len(body) and body[s].line != m.at:
+            s += 1
+        d = s + 1
+        while d < len(body) and not ((body[d].kind == "def" or body[d].kind == "class" or body[d].kind == "subclass") and body[d].s == name):
+            d += 1
+        if d >= len(body):
+            return False
+        others: dict[str, bool] = {}
+        binds([st for st in body[:s] + body[s + 1 : d] + body[d + 1 :] if st.kind != "import"], others, True)  # (another import is checked so too)
+        if name in others or declares(body, name):
+            return False
+        uses: dict[str, bool] = {name: True}  # (and the functions and classes before the statement that use it)
+        grew = True
+        while grew:
+            grew = False
+            for st in body[:d]:
+                if (st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s not in uses and first_use(st, uses, False) is not None:
+                    uses[st.s] = True
+                    grew = True
+        fns = dict(uses)
+        del fns[name]
+        own: dict[str, bool] = {name: True}
+        what = f"'{name}' is bound both by an import and by a def or class, and "
+        for i in range(d + 1):
+            st = body[i]
+            r = deferred_use(st, own)  # (also one made before the import, which may be kept)
+            if r is not None:
+                fail(what + "a lambda or generator expression here that reads it may run in between (not supported)", r.line)
+            r = first_use(st, uses, True) if i >= s else first_use(st, fns, True) if len(fns) > 0 else None
+            if r is not None:
+                nm = r.s.split(".")[0]
+                fail(what + ("is read here in between" if nm == name else f"'{nm}', which uses it, may run in between") + " (not supported)", r.line)
+            c = st.kids[0] if st.kind == "subclass" else st
+            for dx in c.kids[3:] if st.kind == "def" else c.kids[1:] if st.kind == "class" or st.kind == "subclass" else st.kids[:0]:
+                if dx.kind == "deco" and dx.s != "async" and (st.s in fns or (i == d and first_use(st, uses, False) is not None)):
+                    fail(what + "a decorator here may run a function or class that uses it in between (not supported)", dx.line)
+        return True
+
     def take(self, m: Mod, src: Mod, x: str, name: str, infn: bool, keep: Node, inits: Node, copies: list[Node], line: int) -> str:
         # from src import x as name; what x is in src ("" for a submodule, "v" for a variable, which
         # an assignment copies)
+        if src.name in GLUE and m.name not in GLUE and x not in GLUE[src.name]:
+            fail(f"cannot import name '{x}' from '{src.name}': Pystachy's {src.name} module offers {', '.join(GLUE[src.name])} (as its twin, tools/rt_cpython/{src.name}.py, does)", line)
         k = src.kinds.get(x, "")
         if src.name == m.name and not infn and x not in self.sure:
             # (from . import x in a package's own code takes the package's x if its code has bound x
@@ -2378,6 +2615,8 @@ class Loader:
             self.subchk.append(f"{self.fragile[key]} {n.s} M")
         if n.s in t.amb:
             k = "x:" + self.ambiguous(base, n.s)
+        if base in GLUE and m.name not in GLUE and n.s not in GLUE[base]:
+            k = f"x:{base}.{n.s} is not offered by Pystachy's {base} module, whose names are {', '.join(GLUE[base])}"
         if k.startswith("m:"):
             return k[2:]
         if k == "" and base + "." + n.s in self.mods:

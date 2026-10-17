@@ -1,0 +1,1128 @@
+{
+  "workload": "microgpt scalar autograd training and autoregressive inference; original and adapted source",
+  "upstream_commit": "14fb038816c7aae0bb9342c2dbf1a51dd134a5ff",
+  "original_source_sha256": "d47d88c2fd432c8ebdc1048beab7f7eb64ea7e0e664e11b812d72a6d95ebccee",
+  "adapted_source_sha256": "bc4de9ceec8348e8b14b4f80dfe5d64b092ece18286029db2640bb92162ee69e",
+  "original_instrumented_sha256": "41376cdaea1aadfb38f7e305c3f04bb746c235faf743f99e3f06d61946f47973",
+  "adapted_instrumented_sha256": "4f9b17df915794436aca3987c7c774e13a5655a5179de8a66c3ad7e3ae5a7a6b",
+  "dataset_sha256": "0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d",
+  "controller_sha256": "aa3f555d92fc1d6bebdcee4bab2f4c7b19b1c921209a7a8dfaafddac66cb5097",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "controller_python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "compiler": [
+    "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+    "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py"
+  ],
+  "python": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+  "steps": 100,
+  "lr_schedule_steps": 1000,
+  "samples": 5,
+  "repeats": 3,
+  "seed": 42,
+  "all_gradients": false,
+  "timing_scope": "timed initialization/forward/backward/Adam/inference; snapshots and progress output excluded; separate process wall and AOT build",
+  "environment": {
+    "PYSTACHY_OPT": null,
+    "PYSTACHY_JIT_CODEGEN": null,
+    "PYSTACHY_JIT_INLINE": null,
+    "PYSTACHY_CFLAGS": null,
+    "PYSTACHY_GC": null,
+    "PYSTACHY_GC_STRESS": null,
+    "PYSTACHY_GC_STRESS_PROGRAM": null,
+    "PYSTACHY_LLVM": "/workspace/scratch/d940e91b6fea/llvm18/usr/lib/llvm-18/bin",
+    "PYTHONHASHSEED": null
+  },
+  "runs": {
+    "original_cpython": [
+      {
+        "repetition": 0,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/original.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 15.94138345400279,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.019940268000937067,
+          "forward_seconds": 10.052794442999584,
+          "backward_seconds": 5.045487811992643,
+          "optimizer_seconds": 0.34358168998733163,
+          "train_seconds": 15.44186394497956,
+          "inference_seconds": 0.2605807110085152,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.02562699100235477,
+            0.021331142997951247,
+            0.09294827000121586,
+            0.027140791004057974,
+            0.09353351600293536
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 1,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/original.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 14.512762504004058,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.018536504001531284,
+          "forward_seconds": 8.971298488017055,
+          "backward_seconds": 4.805144055004348,
+          "optimizer_seconds": 0.32089646795066074,
+          "train_seconds": 14.097339010972064,
+          "inference_seconds": 0.22381482700438937,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.021842925001692493,
+            0.019983836005849298,
+            0.08523845500167226,
+            0.024973469000542536,
+            0.07177614199463278
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 2,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/original.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 15.639920303001418,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.01784631600457942,
+          "forward_seconds": 9.768779428988637,
+          "backward_seconds": 5.036256963954656,
+          "optimizer_seconds": 0.3467135819082614,
+          "train_seconds": 15.151749974851555,
+          "inference_seconds": 0.2656515900089289,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.026302982005290687,
+            0.02163050499802921,
+            0.09877373299968895,
+            0.027493084002344403,
+            0.09145128600357566
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      }
+    ],
+    "adapted_cpython": [
+      {
+        "repetition": 0,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 15.928096201998414,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.015463396004633978,
+          "forward_seconds": 9.904833481014066,
+          "backward_seconds": 5.0338749260190525,
+          "optimizer_seconds": 0.2816264720240724,
+          "train_seconds": 15.22033487905719,
+          "inference_seconds": 0.30304712400538847,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.023907221002446022,
+            0.12157365600432968,
+            0.03257423299510265,
+            0.031075635997694917,
+            0.0939163780058152
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 1,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 16.381744459999027,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.01699474299675785,
+          "forward_seconds": 10.40870192188595,
+          "backward_seconds": 5.172215180005878,
+          "optimizer_seconds": 0.2900609070129576,
+          "train_seconds": 15.870978008904785,
+          "inference_seconds": 0.2801996170092025,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.022872364999784622,
+            0.1066205449969857,
+            0.030643167003290728,
+            0.0290999830031069,
+            0.09096355700603453
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 2,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 14.905410970997764,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.014378924999618903,
+          "forward_seconds": 9.333170485035225,
+          "backward_seconds": 4.76030311100476,
+          "optimizer_seconds": 0.2777713930408936,
+          "train_seconds": 14.371244989080878,
+          "inference_seconds": 0.2529047619973426,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.022046231002605055,
+            0.08217744899593526,
+            0.029115938996255863,
+            0.026510994997806847,
+            0.09305414800473955
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      }
+    ],
+    "pystachy_jit": [
+      {
+        "repetition": 0,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py",
+          "run",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 1.403536798999994,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.006513357999210712,
+          "forward_seconds": 0.38728302301024087,
+          "backward_seconds": 0.4770963320042938,
+          "optimizer_seconds": 0.03786559998843586,
+          "train_seconds": 0.9022449550029705,
+          "inference_seconds": 0.014722069005074445,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0012074879996362142,
+            0.002140883996617049,
+            0.007567205000668764,
+            0.0013465280062519014,
+            0.0024599640019005165
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 1,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py",
+          "run",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 1.4242694409986143,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.006067577000067104,
+          "forward_seconds": 0.4215915139793651,
+          "backward_seconds": 0.514346682044561,
+          "optimizer_seconds": 0.038039733000914566,
+          "train_seconds": 0.9739779290248407,
+          "inference_seconds": 0.014264452001953032,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0011964119985350408,
+            0.0017627249981160276,
+            0.007085509998432826,
+            0.0016836460054037161,
+            0.002536159001465421
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 2,
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py",
+          "run",
+          "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 1.3861184990018955,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.006185304002428893,
+          "forward_seconds": 0.38234943102725083,
+          "backward_seconds": 0.4886227890092414,
+          "optimizer_seconds": 0.03683008999360027,
+          "train_seconds": 0.9078023100300925,
+          "inference_seconds": 0.013421532006759662,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0011760210036300123,
+            0.0016334399988409132,
+            0.00699735800299095,
+            0.001325545999861788,
+            0.002289167001435999
+          ]
+        },
+        "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.366930921178914,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 0.0,
+          "max_relative_error_floor_atol": 0.0,
+          "max_scaled_error": 0.0,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      }
+    ],
+    "pystachy_aot": [
+      {
+        "repetition": 0,
+        "command": [
+          "/tmp/pystachy-microgpt-cmvxisqa/microgpt",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 0.9755969010002445,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.006879218999529257,
+          "forward_seconds": 0.39778438697976526,
+          "backward_seconds": 0.5206703730145819,
+          "optimizer_seconds": 0.02684571702411631,
+          "train_seconds": 0.9453004770184634,
+          "inference_seconds": 0.013447910991089884,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0010158389995922334,
+            0.0019112279987893999,
+            0.006835594002041034,
+            0.001129720993048977,
+            0.0025555289976182394
+          ]
+        },
+        "checks_sha256": "841db24d46ed2f8f929d3183f07279df6389306508d2be4105992fcd9b5561dd",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.3669309211789136,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 8.881784197001252e-16,
+          "max_relative_error_floor_atol": 5.3003678201595825e-12,
+          "max_scaled_error": 2.7803196509424358e-06,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 1,
+        "command": [
+          "/tmp/pystachy-microgpt-cmvxisqa/microgpt",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 0.9240644909950788,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.005823760999192018,
+          "forward_seconds": 0.37409696602844633,
+          "backward_seconds": 0.49623038596473634,
+          "optimizer_seconds": 0.02551060396945104,
+          "train_seconds": 0.8958379559626337,
+          "inference_seconds": 0.01289457799430238,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0011352989968145266,
+            0.0015495640036533587,
+            0.0067836259986506775,
+            0.0011814789977506734,
+            0.0022446099974331446
+          ]
+        },
+        "checks_sha256": "841db24d46ed2f8f929d3183f07279df6389306508d2be4105992fcd9b5561dd",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.3669309211789136,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 8.881784197001252e-16,
+          "max_relative_error_floor_atol": 5.3003678201595825e-12,
+          "max_scaled_error": 2.7803196509424358e-06,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      },
+      {
+        "repetition": 2,
+        "command": [
+          "/tmp/pystachy-microgpt-cmvxisqa/microgpt",
+          "100",
+          "5",
+          "0"
+        ],
+        "wall_seconds": 0.9147551230053068,
+        "returncode": 0,
+        "timed_out": false,
+        "stderr": "",
+        "peak_rss_kib": null,
+        "timing": {
+          "initialization_seconds": 0.005207090995099861,
+          "forward_seconds": 0.3615684600008535,
+          "backward_seconds": 0.4979223840055056,
+          "optimizer_seconds": 0.02489389698166633,
+          "train_seconds": 0.8843847409880254,
+          "inference_seconds": 0.013558348015067168,
+          "training_tokens": 744,
+          "inference_tokens": 29,
+          "per_sample_seconds": [
+            0.0010470070046721958,
+            0.0015522680041613057,
+            0.007396248001896311,
+            0.0013795070044579916,
+            0.002183317999879364
+          ]
+        },
+        "checks_sha256": "841db24d46ed2f8f929d3183f07279df6389306508d2be4105992fcd9b5561dd",
+        "loss_first": 3.3659669475848504,
+        "loss_last": 3.3669309211789136,
+        "generated": [
+          "eri",
+          "eren",
+          "slrian",
+          "deiyl",
+          "treiee"
+        ],
+        "comparison": {
+          "numeric_values": 25252,
+          "max_abs_error": 8.881784197001252e-16,
+          "max_relative_error_floor_atol": 5.3003678201595825e-12,
+          "max_scaled_error": 2.7803196509424358e-06,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        }
+      }
+    ]
+  },
+  "errors": [],
+  "python_version": {
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "--version"
+    ],
+    "wall_seconds": 0.0016640559988445602,
+    "returncode": 0,
+    "timed_out": false,
+    "stderr": "",
+    "peak_rss_kib": null,
+    "stdout_tail": "Python 3.13.16\n"
+  },
+  "compiler_version": {
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py",
+      "--version"
+    ],
+    "wall_seconds": 0.32558281600358896,
+    "returncode": 0,
+    "timed_out": false,
+    "stderr": "",
+    "peak_rss_kib": null,
+    "stdout_tail": "pystachy v0.1.0-alpha.1 (commit unknown)\n"
+  },
+  "compiler_file_sha256": {
+    "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13": "44db706d51fb08f679c5aeb5ba81f50646eec5bea7bb4b0f7d3e20ffaf48b9ca",
+    "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+  },
+  "compiler_git_revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+  "compiler_git_status": "",
+  "compiler_source_hashes": {
+    "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+    "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+    "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+    "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+    "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+    "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+    "lib/_pystachy_iterators.py": "9a38cb05fa9a8e86694af5a257648d268bd66141e7950b0081ce85ff553c0903",
+    "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+    "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+    "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+    "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+    "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+    "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+    "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+    "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+    "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+    "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+    "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+    "lib/collections/__init__.py": "1593ef5cb6f3fb3c71e92ff464970b91633b02c02be342bdf2eee88da31a59dd",
+    "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+    "lib/contextlib.py": "e599b589484f49ec6774b0528b5c3d19425bca87c2a27b58003738920ff73f51",
+    "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+    "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+    "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+    "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+    "lib/difflib.py": "7095a0d22ef0210d230f80c288541a461c7c9bd39780ab93f33041a21f61bf84",
+    "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+    "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+    "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+    "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+    "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+    "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+    "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+    "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+    "lib/io.py": "bf6990551a1174559f1ace01798997d0d8b8e18fe66804235ee76f3d6db80ef2",
+    "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+    "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+    "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+    "lib/random.py": "8b9a5510c1c459803ff93ceeaa8613ca57a4edc89fe500efe2adde82dd4bd685",
+    "lib/re/__init__.py": "5640141351b7958d2eb73ce1d459d46b57471eba3c5fe91ff7f7766ccb1f3408",
+    "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+    "lib/re/_sre.py": "5d7e9c2eee26a8b68d4fdb12b63536a7eadee1fa8b1b5e55ed54c7fb591100dd",
+    "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+    "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+    "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+    "lib/statistics.py": "62c93783027fc2eb93af5ecbf51639fd9ce6ae19c384bef1053b7c926d6bf99f",
+    "lib/string.py": "bb7c5905da24171d7fecda953500a10078a70aac5d0048ef89cd62bab6970cae",
+    "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+    "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+    "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+    "lib/types.py": "9168a28e7770815f266a8719ad4c6d2895734e5cbfa3cbf034e76890bab0f967",
+    "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+    "pyembed.c": "ceda2952b0c6bd79943244fd38267d24651d7cd3eec631f5409d7141ec7973f0",
+    "pyext.c": "948bbfa7a72abb0c4c7b07308d1c982dc4e8317d12bc671e528f149b522add91",
+    "pystachy.py": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917",
+    "runtime.c": "014240f1e9f1cec67e936450c86dd964a2c3a84c5026e98fbdef2cda88485cb0",
+    "runtime.py": "ff96fce2860fba9fe4857265d3cb89c1332b35757ce0f783effae88f9774b035",
+    "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "ecbe4fd722305294b46bca9b4255f1896d986cbdd01f24a7d346c7213493c672",
+    "src/pystachy_compiler/builtins.py": "62147c4c1abdd7eb395637aaa2eab96169f50f20653d7ef8608830cf3b380312",
+    "src/pystachy_compiler/calls.py": "3039cb674e0f3ea5556de38c3290a498d95627521dbeb7d11198269c235f854a",
+    "src/pystachy_compiler/containers.py": "4ff934890e54ca09e6a8be0d08ae9d4b611d95e5790cdc9c7df24f57e5bdc218",
+    "src/pystachy_compiler/conversions.py": "0111f1ea4426f521b18e6d20ec684657a02bf509e7efa503e18b3edd601f388d",
+    "src/pystachy_compiler/declarations.py": "a3f0d0216beb2269fe82f1ab1fb72650e977210d2804c079918157ad69531864",
+    "src/pystachy_compiler/diagnostics.py": "cc6c0e1babc61abce28d19e61c73818665b0afc93896daa9e4cb931973cddacb",
+    "src/pystachy_compiler/driver.py": "ef7ebf9bda6af72dbd0fa52d209519b5767b362ab9c8189e0bf6695cc1992790",
+    "src/pystachy_compiler/emission.py": "6a05ce2b8f281e812922719052a03669813eb3dcf46367d1751dfa385cd73956",
+    "src/pystachy_compiler/exceptions.py": "a7d42ba5c7b1004726b2fada0bfa65dc135df8ff9abd3b230abfabec543988ff",
+    "src/pystachy_compiler/expressions.py": "ff7c3a5a18be10660ef89d46b817f8e29b8cf7bceef2487c5113aa33127b9747",
+    "src/pystachy_compiler/flow.py": "70c917a69a6842c472514c471a1d7a48a29df95f59818651e4ae791a7bcea3b0",
+    "src/pystachy_compiler/functions.py": "a79f60cac5920824d5215b200084c9516ec365bdf25091e06584e3dad12d14b0",
+    "src/pystachy_compiler/gen.py": "0405c8234e9cd6ef7fd34ab2ac3e90ce9c20c6db954e12491aaee37dc84d38f2",
+    "src/pystachy_compiler/generators.py": "80a89afd5c101d7629f4008a21fc3b16c87a6f8656577a6ae3f443179b4dbcb1",
+    "src/pystachy_compiler/ir.py": "446fd63a022d7528f513da65bcc821e4ebf8cb97cd5b84c1bf7cb068df6297a0",
+    "src/pystachy_compiler/ircheck.py": "46edb9c5d35936649b3766b8127b89668f61278a7df4cfadc9c8cf0b692df2b8",
+    "src/pystachy_compiler/lexer.py": "5692eb6602849a6e0128288db30b026f2be4464e69cbe83553f0a30bf917b155",
+    "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+    "src/pystachy_compiler/loader.py": "eeb1fa6b3cd8d56161794eb6be499a75db6b520773db4b9ed631922bf1ac1a59",
+    "src/pystachy_compiler/local_versions.py": "8dfe1dd0c5caf7a0da8cd74024ac8adb7d8892099827f8abf42dc0b63e37c80f",
+    "src/pystachy_compiler/lower_module.py": "da010a1794bdbe6c0a7ad083a7310b7cef6f93945d0d7ca3735cbe2404dfa751",
+    "src/pystachy_compiler/lowering.py": "2aa2ceb49a41b304dff735dfe5c227e1cb30a96e6380023588f347400baf0a5c",
+    "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+    "src/pystachy_compiler/module.py": "666eb8f2d91572468ba6fae06096c1fa39849c9063918142aa67589a2c722a8a",
+    "src/pystachy_compiler/names.py": "af44f0fa1131312fdf1e521673a6a5ff378236b4965141f7aa3bde5c8b751942",
+    "src/pystachy_compiler/optimizations.py": "c441b55dc0a2691c18307604c8ab6e7ce07f56b8005159edebe60d34028de1b4",
+    "src/pystachy_compiler/parser.py": "b38c958c2bdba930490588760faedfb838ad2114117b952e4a2b7fc95ad75508",
+    "src/pystachy_compiler/program.py": "1583afe131963e945fe2838d19798e24f1bff001a41cf2be8884b7e958151a3a",
+    "src/pystachy_compiler/reflection.py": "6d66608bc6fccbd4b520312cae5f9fdc28a26cf0a5b358d72e15f94b55abdb08",
+    "src/pystachy_compiler/scalar_ir.py": "8e44332fd31080e4cf89a312c61dc2c573cbdd880551ba1f7069560594abeabe",
+    "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+    "src/pystachy_compiler/specs.py": "b9bfa0ba6b751dded1192fa5193f343a2c51d4c6f620852e4bbe0fd8a139fa3d",
+    "src/pystachy_compiler/statements.py": "a4befe6f5e81a90aaba68e1da2a0fe27150f37961fc76196a7f7c31626e61635",
+    "src/pystachy_compiler/structs.py": "28059d45e787161fb565cb03e2b855c8d358d4c0a19ad7db64c599b29f576280",
+    "src/pystachy_compiler/syntax.py": "e663514041c2e6e85453d6d5ff67058dac51fc3e2a9e39eea51d0e85c5a895a6",
+    "src/pystachy_compiler/templates.py": "37d2df0efe198b06d65b624d8c391068a02fadbdf7fd2bf2cc3f6d2eedfc3e3d",
+    "src/pystachy_compiler/union_arithmetic.py": "6854f37211a0dad72821d662edbb05561d8febb233f74134fb4d1ea6c2ffd980",
+    "src/pystachy_compiler/unions.py": "f0cf433fe8ef2b6045544ac0983d2b621ef55ecfa85a3958f14ea9ca45f4edab",
+    "src/pystachy_compiler/utils.py": "e6cfc55319369dec9242b9c5f290e28b4d1cc8b5af2bfce64ea9e33dcae876f2",
+    "src/pystachy_compiler/variables.py": "d8bd5b51c8212b9cc39352da8b2aecc4eb34005557d1761b9f81119737b31d64"
+  },
+  "aot_build": {
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "/workspace/scratch/e53c6df0a0ab/pystachy/pystachy.py",
+      "build",
+      "/tmp/pystachy-microgpt-cmvxisqa/adapted.py",
+      "-o",
+      "/tmp/pystachy-microgpt-cmvxisqa/microgpt"
+    ],
+    "wall_seconds": 1.8023631339965505,
+    "returncode": 0,
+    "timed_out": false,
+    "stderr": "",
+    "peak_rss_kib": null,
+    "stdout_tail": ""
+  },
+  "aot_sha256": "ec58b0b9d51c0f629f45c66906e5d9d95db29d70478b64b0ebc7ea039c732762",
+  "medians": {
+    "original_cpython": {
+      "verified_processes": 3,
+      "wall_seconds": 15.639920303001418,
+      "initialization_seconds": 0.018536504001531284,
+      "forward_seconds": 9.768779428988637,
+      "backward_seconds": 5.036256963954656,
+      "optimizer_seconds": 0.34358168998733163,
+      "train_seconds": 15.151749974851555,
+      "inference_seconds": 0.2605807110085152
+    },
+    "adapted_cpython": {
+      "verified_processes": 3,
+      "wall_seconds": 15.928096201998414,
+      "initialization_seconds": 0.015463396004633978,
+      "forward_seconds": 9.904833481014066,
+      "backward_seconds": 5.0338749260190525,
+      "optimizer_seconds": 0.2816264720240724,
+      "train_seconds": 15.22033487905719,
+      "inference_seconds": 0.2801996170092025
+    },
+    "pystachy_jit": {
+      "verified_processes": 3,
+      "wall_seconds": 1.403536798999994,
+      "initialization_seconds": 0.006185304002428893,
+      "forward_seconds": 0.38728302301024087,
+      "backward_seconds": 0.4886227890092414,
+      "optimizer_seconds": 0.03786559998843586,
+      "train_seconds": 0.9078023100300925,
+      "inference_seconds": 0.014264452001953032
+    },
+    "pystachy_aot": {
+      "verified_processes": 3,
+      "wall_seconds": 0.9240644909950788,
+      "initialization_seconds": 0.005823760999192018,
+      "forward_seconds": 0.37409696602844633,
+      "backward_seconds": 0.4979223840055056,
+      "optimizer_seconds": 0.02551060396945104,
+      "train_seconds": 0.8958379559626337,
+      "inference_seconds": 0.013447910991089884
+    }
+  },
+  "all_verified": true,
+  "reference_summary": {
+    "sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+    "metadata": [
+      1,
+      16,
+      16,
+      4,
+      27,
+      4192,
+      32033,
+      1000
+    ],
+    "losses": [
+      3.3659669475848504,
+      3.4242727838717717,
+      3.177802125458052,
+      3.066355684224198,
+      3.220883089750623,
+      2.945159723009943,
+      3.2894250644306684,
+      3.324529585380703,
+      2.8990336423579377,
+      3.2228882401182624,
+      2.7963507594287016,
+      2.934480617624684,
+      3.0543970639808657,
+      3.0905059200723985,
+      3.0651377432523272,
+      2.7336950107057856,
+      2.8838578386104303,
+      2.897710832489143,
+      2.7073423432667667,
+      2.74528539365564,
+      3.7211753830104524,
+      2.8025875329199588,
+      2.824089144064119,
+      2.0374498974320474,
+      3.3698406506388308,
+      2.9153634309376217,
+      3.2795224273249914,
+      2.9194647550341526,
+      2.3026975152844886,
+      2.26912287647159,
+      2.895735554885457,
+      2.953922514391218,
+      2.681874210734325,
+      2.1898675725095917,
+      3.1120613634539236,
+      2.7269053972318797,
+      2.492788623277529,
+      2.974595114442996,
+      2.299177955422228,
+      2.8603982762719635,
+      2.3052498558930883,
+      2.5615009195957947,
+      2.9017982374823066,
+      2.4472049594193668,
+      2.151334843153874,
+      3.0613376304253936,
+      2.5581064914228975,
+      3.017076936460257,
+      2.6901719756416624,
+      2.4049823340767382,
+      3.681299601981575,
+      2.899007604954205,
+      3.035752858604301,
+      2.2216760100186383,
+      2.7365650077338626,
+      2.211340218267934,
+      2.673579079984691,
+      2.4946645242479746,
+      2.633030074395314,
+      2.9023948760652414,
+      2.659436407987716,
+      2.45274012326703,
+      2.717808317600804,
+      2.8619357046148193,
+      2.8473958695255197,
+      2.8673282928871417,
+      2.747250443787086,
+      2.5459435567774045,
+      2.559683172318242,
+      2.836454345997891,
+      3.416254293508198,
+      2.520490354559832,
+      2.585307922776744,
+      2.4235661272155897,
+      2.405274385237385,
+      2.7836229458085966,
+      2.8437637286832156,
+      3.0302374699436037,
+      2.3868852022752507,
+      2.3910457019755436,
+      2.3688365535444245,
+      3.1079024662523853,
+      2.59418859646195,
+      2.1856651689114375,
+      2.1898075944297255,
+      2.4624123541190786,
+      2.983200558731088,
+      2.730405417604091,
+      2.6505627658503097,
+      2.574372358795792,
+      2.592188784444685,
+      3.1645503576542637,
+      2.9174551151107515,
+      2.9944817025532835,
+      2.301621664520721,
+      2.4319298023110583,
+      2.033334543595992,
+      3.3961579377466804,
+      2.2612851538147067,
+      3.366930921178914
+    ],
+    "training_tokens": 744,
+    "gradient_steps": [
+      "0",
+      "99"
+    ],
+    "generated": [
+      "eri",
+      "eren",
+      "slrian",
+      "deiyl",
+      "treiee"
+    ],
+    "note": "Full vectors and per-step timings are emitted by tools/bench_microgpt.py; this checked-in snapshot retains reference digests, all losses, run totals and comparisons."
+  },
+  "hardware": {
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "container_cpu_quota": "800000 100000",
+    "container_memory_limit_bytes": 8589934592,
+    "shared_host": true,
+    "llvm": "18.1.3"
+  },
+  "recorded_date": "2026-10-17",
+  "additional_validation": [
+    {
+      "steps": 10,
+      "samples": 3,
+      "repeats": 1,
+      "all_gradients": true,
+      "controller_python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "controller_sha256": "1aae0f91491b988bd5220353606f311679fa8840214d45c5f3e6b079e0a2b4de",
+      "compiler_git_revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+      "environment": {
+        "PYSTACHY_OPT": null,
+        "PYSTACHY_JIT_CODEGEN": null,
+        "PYSTACHY_JIT_INLINE": null,
+        "PYSTACHY_CFLAGS": null,
+        "PYSTACHY_GC": null,
+        "PYSTACHY_GC_STRESS": null,
+        "PYSTACHY_GC_STRESS_PROGRAM": null,
+        "PYSTACHY_LLVM": "/workspace/scratch/d940e91b6fea/llvm18/usr/lib/llvm-18/bin",
+        "PYTHONHASHSEED": null
+      },
+      "all_verified": true,
+      "comparisons": {
+        "original_cpython": [
+          {
+            "numeric_values": 58698,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "adapted_cpython": [
+          {
+            "numeric_values": 58698,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "pystachy_jit": [
+          {
+            "numeric_values": 58698,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "pystachy_aot": [
+          {
+            "numeric_values": 58698,
+            "max_abs_error": 8.470329472543003e-22,
+            "max_relative_error_floor_atol": 2.780834404009088e-16,
+            "max_scaled_error": 8.470071476971738e-12,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ]
+      }
+    },
+    {
+      "steps": 2,
+      "samples": 1,
+      "repeats": 1,
+      "all_gradients": true,
+      "controller_python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "controller_sha256": "aa3f555d92fc1d6bebdcee4bab2f4c7b19b1c921209a7a8dfaafddac66cb5097",
+      "compiler_git_revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+      "environment": {
+        "PYSTACHY_OPT": null,
+        "PYSTACHY_JIT_CODEGEN": null,
+        "PYSTACHY_JIT_INLINE": null,
+        "PYSTACHY_CFLAGS": null,
+        "PYSTACHY_GC": null,
+        "PYSTACHY_GC_STRESS": null,
+        "PYSTACHY_GC_STRESS_PROGRAM": "10000",
+        "PYSTACHY_LLVM": "/workspace/scratch/d940e91b6fea/llvm18/usr/lib/llvm-18/bin",
+        "PYTHONHASHSEED": null
+      },
+      "all_verified": true,
+      "comparisons": {
+        "original_cpython": [
+          {
+            "numeric_values": 25154,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "adapted_cpython": [
+          {
+            "numeric_values": 25154,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "pystachy_jit": [
+          {
+            "numeric_values": 25154,
+            "max_abs_error": 0.0,
+            "max_relative_error_floor_atol": 0.0,
+            "max_scaled_error": 0.0,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ],
+        "pystachy_aot": [
+          {
+            "numeric_values": 25154,
+            "max_abs_error": 2.117582368135751e-22,
+            "max_relative_error_floor_atol": 3.43283246477655e-16,
+            "max_scaled_error": 2.117560542695557e-12,
+            "rtol": 1e-09,
+            "atol": 1e-10
+          }
+        ]
+      }
+    }
+  ],
+  "gc_diagnostic": {
+    "kind": "AOT allocation/GC diagnostic; timing not used for performance conclusions",
+    "steps": 100,
+    "samples": 5,
+    "compiler_git_revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+    "source_sha256": "4f9b17df915794436aca3987c7c774e13a5655a5179de8a66c3ad7e3ae5a7a6b",
+    "dataset_sha256": "0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d",
+    "aot_sha256": "ec58b0b9d51c0f629f45c66906e5d9d95db29d70478b64b0ebc7ea039c732762",
+    "PYSTACHY_GC": "stats",
+    "comparison": {
+      "numeric_values": 25252,
+      "max_abs_error": 8.881784197001252e-16,
+      "max_relative_error_floor_atol": 5.3003678201595825e-12,
+      "max_scaled_error": 2.7803196509424358e-06,
+      "rtol": 1e-09,
+      "atol": 1e-10
+    },
+    "checks_sha256": "841db24d46ed2f8f929d3183f07279df6389306508d2be4105992fcd9b5561dd",
+    "stderr": "gc: 50 collections, 221.6 ms; heap peak 58.0 MiB; live 13.8 MiB at the last\n",
+    "returncode": 0
+  }
+}

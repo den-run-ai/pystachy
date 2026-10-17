@@ -71,7 +71,7 @@ lookup, and for each key of the same hash). A class that defines `__eq__` withou
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
 An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
 keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
-`__hash__` and tuples of these; a str's and an object's identity hash differ from CPython's,
+`__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
@@ -818,9 +818,22 @@ class defines `__eq__` without `__hash__`, as a dataclass with `eq=True` does un
 frozen or has `unsafe_hash=True`) is rejected with CPython's message.
 
 An annotated `NamedTuple` class supports defaults, methods, unpacking, constant indexing,
-iteration, length, comparisons with tuples, `_replace()`, `_fields` and `_asdict()` when all
-fields share a type. Only construction can assign its fields. There is no functional
-`NamedTuple("Name", ...)` form, `_make()`, slicing, or a NamedTuple without fields.
+iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
+iterable with as many items as it has fields, else CPython's `TypeError`), `_replace()`, `_fields`
+and `_asdict()` when all fields share a type. Only construction can assign its fields. There is
+no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields.
+
+`collections.namedtuple()` makes such a class at compile time: a module's top-level
+`NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
+literal arguments (the field names in a string, separated by commas and/or spaces, or a list or
+tuple of strings; the defaults a list or tuple of constants) is a NamedTuple named `typename`
+whose fields have no annotations. It is a [class template](#class-templates-and-generic-classes):
+each call that makes an object types its fields, and `_replace()` with a value of another type
+makes an object of another specialization. Its objects behave as above, with
+`_field_defaults`, the class's own dict, through the class and its objects; CPython's errors
+for invalid names (`rename=True` renames them) and for too many defaults are compile errors.
+`NAME.__doc__ = "..."` and `NAME.field.__doc__ = "..."` are accepted, but Pystachy keeps no
+docstrings of classes, so reading one is rejected.
 
 Static and class methods can be called through their class or an instance, subject to the
 inheritance restrictions below. See [compatibility](compatibility.md#classes-dataclasses-and-namedtuples)

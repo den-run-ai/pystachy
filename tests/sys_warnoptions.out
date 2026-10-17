@@ -1,0 +1,9 @@
+[] 0 False True
+['error::DeprecationWarning', 'ignore::Warning:m2999'] 2 True False
+option ['error', '', 'DeprecationWarning']
+option ['ignore', '', 'Warning', 'm2999']
+True True 2
+False 0 ERROR::DEPRECATIONWARNING
+['default', 'once', 'error::DeprecationWarning'] ['default', 'once', 'error::DeprecationWarning'] ['default', 'once', 'error::DeprecationWarning'] ['default', 'error::DeprecationWarning', 'once']
+[] True 0
+[exit 0]

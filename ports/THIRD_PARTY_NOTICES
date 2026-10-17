@@ -3,6 +3,19 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+Karpathy microGPT benchmark (bench/microgpt/)
+--------------------------------------------
+
+The pinned upstream microgpt.py and its annotated adaptation derive from Andrej
+Karpathy's gist 8627fe009c40f57531cb18360106ce95, revision
+14fb038816c7aae0bb9342c2dbf1a51dd134a5ff. The author explicitly licensed it under
+MIT on 2026-02-24:
+https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95?permalink_comment_id=5999841
+The MIT license and attribution are retained in bench/microgpt/LICENSE; this
+license text records the author's grant (the gist has no separate license file).
+The benchmark README documents the source hash and adaptations. The names dataset
+is supplied separately by the benchmark user and is not included here.
+
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
 
@@ -748,6 +761,24 @@ decimal) as the floats CPython 3.13.16 computes, turn into expected compile-time
 errors that Pystachy reports at compile time with CPython's message (among them the syntax
 errors that upstream checks with compile()), and leave out the cases that use what the subset
 does not support. Differential output is recorded with CPython 3.13.16.
+
+NumPy's array tests (tests/example_ndarray_upstream.py)
+-------------------------------------------------------
+
+tests/example_ndarray_upstream.py adapts test functions and methods of NumPy 2.5.3, from the
+files of the numpy 2.5.3 wheel: numpy/lib/tests/test_stride_tricks.py and
+numpy/_core/tests/test_multiarray.py, test_ufunc.py, test_umath.py, test_indexerrors.py,
+test_indexing.py and test_regression.py. Its header records each file's SHA-256 and names the
+tests it adapts and what it leaves out. They are used under NumPy's BSD 3-Clause license,
+Copyright (c) 2005-2025, NumPy Developers, reproduced in full in tests/upstream/NUMPY-LICENSE.txt.
+
+Summary of changes: pytest and numpy.testing become standalone assertions
+(assert_almost_equal keeps its rule); the arrays are examples/ndarray's float64 NDArrays,
+so the other dtypes reduce to float64; shapes are lists; broadcast_arrays and
+broadcast_shapes become sums with zero arrays; views that NumPy makes by slicing, and order='F'
+arrays, are built from strides and an offset; the random inputs are written out as the values
+NumPy 2.5.3 draws for them. examples/ndarray/check_upstream.py runs the adapted file against
+NumPy itself. Differential output is recorded with CPython 3.13.16.
 
 APACHE LICENSE VERSION 2.0
 --------------------------
