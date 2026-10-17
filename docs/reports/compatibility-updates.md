@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `90dcffa17d7221e7ab34b32d1ca0752ecd7fcd16`.
+**Latest evaluated main:** `6397781363e6edea98c61d294a2425eb4df05cc3`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1015,6 +1015,83 @@ PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
 /root/.local/bin/python3.13 build/audit-generators/build_evidence.py
 ```
 
+## 2026-10-17 — #634: recursive operand diagnostics, not new inference
+
+Evaluated [main `63977813`](https://github.com/den-run-ai/pystachy/commit/6397781363e6edea98c61d294a2425eb4df05cc3),
+which merges [#634](https://github.com/den-run-ai/pystachy/pull/634) at
+2026-10-17 16:21:57 UTC. This is the only first-parent merge since evaluated
+`90dcffa1`; its ancestry in main was verified. The 14-file diff changes four
+compiler files, language documentation and recursion tests; runtime, library
+and port implementations are unchanged. Read #491/#616 coordination, #621/#595
+and #634 comments before testing. The review bot's failure banner accompanies
+a usage-limit error; the fresh review-thread response is empty. The four
+exact-head implementation workflows succeeded; this is separate from the
+audit PR's fresh checks.
+
+Rebuilt with **CPython 3.13.16 / LLVM 18.1.3**. Compiler and runtime bootstrap
+fixed points pass at **620,602 / 18,388 IR lines**. Compiler SHA-256:
+`e208cae457917e7c4ea6ce2a56fb6b5af44469b58a9c4fad00786bbbad4db725`.
+The previous compiler is the independently hashed `90dcffa1` build.
+[Normalized evidence](compatibility-2026-10-17-recursion.json) preserves exact
+programs, commands, input/tool/compiler hashes, import metadata, diagnostics
+and reproduction scripts. All evaluation commands completed successfully.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native checks | **77 pass** across 58 files: 38 positive JIT/AOT executions under per-allocation program GC, plus 39 expected compile rejections. Includes direct/mutual recursion, valid void results, explicit return contracts, Any diagnostics, mutation and isolated iterator/generator regressions. |
+| CPython references | **19/19** positive programs match their checked-in recordings under CPython 3.13.16. |
+| Adapted ports | **28/28** JIT/AOT checks across 14 workloads in iniconfig, ordered-set, pyfiglet, sortedcontainers, tomli-w and pylev. The pylev controls include recursive distance, typed sequence and memo behavior. |
+| Retained differential programs | All **26** CPython controls pass; the same **17** programs match in JIT/AOT (34 execution checks). All nine remaining programs still reject; no acceptance status changes. |
+| Recursion boundary comparisons | **12 programs** compared with CPython and both compiler revisions. Four direct-operand errors improve; two real None errors stay accurate; three alias/forwarding cases remain rejected; three annotated controls match CPython in JIT/AOT on both revisions. |
+| Import sweeps | **142/475 native**, **146/475 with throwing diagnostic stubs** (142 need no stubs), same 522-file inventory and 47 overlay exclusions. Every normalized result is unchanged; no timeout. |
+
+### What changed, and what still needs adaptation
+
+Four rejected programs now name the unresolved recursive return and ask for a
+return annotation: unannotated direct multiplication, Any direct multiplication,
+Any mutual recursion and Any unary negation. Each runs successfully in CPython;
+each still requires adaptation for native execution. **This is diagnostic
+progress, not four newly compatible programs or a new inference algorithm.**
+
+Local aliases and completed forwarding helpers still produce the old
+`int * NoneType` diagnostic. The boundary controls independently reproduce
+both shapes; adding `-> int` makes both match CPython on both revisions.
+The valid base-case-first, concrete-return, void-recursion and operator-accepting-None
+cases in `tests/any_recursion.py` also match CPython. Explicit-None and unrelated
+None negative controls correctly retain ordinary operand errors; CPython itself
+raises TypeError for those two programs.
+
+[#595](https://github.com/den-run-ai/pystachy/issues/595)'s list forwarding
+regression remains rejected, and the separate dictionary variant is also still
+rejected. Concrete `list[int]` / `dict[int, int]` return annotations restore the
+selected calls in JIT/AOT. These are minor localized workarounds for the measured
+programs, not a general solution for recursive or heterogeneous values.
+[#621](https://github.com/den-run-ai/pystachy/issues/621) retains the alias/forwarded
+diagnostic scope; neither existing issue is closed by this audit.
+
+The #633 loader and generator-channel gains, #632 mutation cases and earlier
+Any constructor/variable/signature cases remain passing. Cache inference,
+annotation-only variables, dataclass Any and Any send retain their separate
+limits. The four unmodified upstream package first errors are unchanged:
+tomli-w 1.2.0 `MappingProxyType`, pyfiglet 1.0.4 missing `importlib` on its
+configured package-only path, ordered-set 4.1.0 `slice(None)`, and iniconfig 2.3.1
+named Unicode escapes. These first errors can hide additional failures.
+
+No retained positive execution or import regressed, and no new uncovered bug was
+confirmed. The adapted pyperformance generator tree walk is included among the
+positive checks; this is not a new full benchmark census. Native
+unittest/pytest/pyperf, general native NumPy/PyPI acceptance and full CPython
+regrtest remain unestablished. Broad FFI/upstream suites and timing/memory
+measurements were not repeated for this diagnostic-only behavior change.
+Both audit-tool suites pass (**10 + 16**). Historical reports and JSON are unchanged.
+
+```sh
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-recursion/evaluate.py
+/root/.local/bin/python3.13 build/audit-recursion/boundaries.py
+/root/.local/bin/python3.13 build/audit-recursion/build_evidence.py
+```
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -1024,7 +1101,7 @@ when practical, preserving attribution and the previous result.
 | Pending work | Focused remeasurement |
 |---|---|
 | #619 remaining property inference | Retained property rejection; keep the now-passing #633 isolated iterator and generator-channel programs as regression controls. |
-| #634 recursive diagnostics | Forwarding recursion (#595) versus improved direct-operand diagnostics. Keep evaluated #632 mutation and #633 generator probes as regression controls. Do not treat an improved diagnostic as acceptance. |
+| #621 / #595 remaining recursion gaps | Keep the now-verified #634 direct-operand diagnostics distinct from alias/forwarded-result diagnostics and recursive inference. Retain annotated controls, #632 mutation and #633 generator regressions. |
 | Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 
