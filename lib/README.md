@@ -143,3 +143,6 @@ CPython-derived files and code are used under the PSF License Version 2.
 See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES). The
 [stdlib coverage guide](../docs/stdlib.md) describes the wider import sweep.
 
+The experimental [`_weakref` prototype](../docs/prototypes/weakref.md) provides
+typed, collector-backed references to ordinary class instances, with explicit API limits.
+

@@ -159,6 +159,23 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.walk(name, args)
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name == "__pys_weakref_new" or name == "__pys_weakref_get":
+        # Private library primitives; a handle's opaque type preserves its referent type
+        # without storing a strong reference or permitting ordinary field access to it.
+        if self.curfn.mod != "_weakref" or len(args) != 1 or args[0].kind in ["kw", "starred", "dstar"]:
+            self.err(f"name '{name}' is not defined")
+        o = self.expr(args[0], "")
+        if name == "__pys_weakref_new":
+            if o.t not in self.classes or o.t in self.nts:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            if self.classes[o.t].exc != "" or self.classes[o.t].slotlimit:
+                self.err("_weakref.ref() prototype does not support exception or slotted instances")
+            if self.classes[o.t].mod == "_weakref":
+                self.err("cannot create weak reference to a weakref.ReferenceType object")
+            return Val(self.rt("pys_weakref_new", "ptr", [f"ptr {o.v}"]), "weakhandle[" + o.t + "]")
+        if not o.t.startswith("weakhandle["):
+            self.err("_weakref.ref() prototype requires an internal weak handle")
+        return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":
