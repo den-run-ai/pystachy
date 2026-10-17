@@ -175,8 +175,8 @@ def gen_ann(self, n: Node) -> str:
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
             return base
-        if base == "literal":
-            return "!unsupported type annotation"  # (its arguments are values, not annotations: Literal["Any"])
+        if base == "literal" or base == "annotated":
+            return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
         a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
@@ -376,6 +376,11 @@ def gen_any_in(self, anns: list[Node]) -> bool:
             return True
         if a.kind == "index" and self.typing_ref(a.kids[0]) == "Literal":
             continue  # (its strings are values: Literal["Any"])
+        if a.kind == "index" and self.typing_ref(a.kids[0]) == "Annotated":
+            xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+            if self.any_in(xs[:1]):
+                return True
+            continue  # (only its first argument is a type; later arguments are metadata)
         if a.kind != "attr" and self.any_in(a.kids):
             return True
     return False
