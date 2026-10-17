@@ -20,6 +20,7 @@ are linked from the relevant guide.
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
 | [pyperformance results](pyperformance.md) | Ported pyperformance benchmarks under CPython, JIT and AOT |
 | [Application examples](../examples/) | Small compiled command-line applications |
+| [Native nanoGPT](../examples/nanogpt/README.md) | CPU transformer inference with ndarray and optional native BLAS |
 
 ## Work on the compiler
 
