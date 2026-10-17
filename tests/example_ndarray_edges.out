@@ -1,0 +1,4 @@
+reversed slow axes preserve summation order
+strided singleton axes preserve pairwise summation
+empty reshape checks byte extents after inference
+[exit 0]

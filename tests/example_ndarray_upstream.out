@@ -1,0 +1,10 @@
+zeros((3037000500, 3037000500)): array is too big; `arr.size * arr.dtype.itemsize` is larger than the maximum possible size.
+broadcasting (test_stride_tricks.py): 325 assertions hold
+reshape, transpose, ravel (test_multiarray.py TestMethods): 11 assertions hold
+0-d arrays and creation (TestZeroRank, TestCreation): 4 assertions hold
+mean (TestStats): 2 assertions hold
+dot and matmul of 2-D arrays (TestDot, MatmulCommon, TestMatmul): 45 assertions hold
+sum (test_ufunc.py TestUfunc): 36 assertions hold
+division and indexing (TestDivision, TestIndexErrors, TestIndexing): 9 assertions hold
+in all 432
+[exit 0]

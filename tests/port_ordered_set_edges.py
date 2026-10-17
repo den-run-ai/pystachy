@@ -99,6 +99,8 @@ x = OrderedSet(["x", "y"])
 y = OrderedSet(["y", "x"])
 n: OrderedSet | None = None
 print(x == y, x != y, x == x.copy(), x != x.copy(), x == n, x != n)
+# a list is compared in order, as upstream compares a Sequence (__eq__ takes Any)
+print(x == ["x", "y"], x == ["y", "x"], x != ["x"], y == list(y))
 group = [x, y, OrderedSet(["x", "y"])]
 print(OrderedSet(["y", "x"]) in group, group.index(OrderedSet(["x", "y"])), group.count(x), OrderedSet() in group)
 

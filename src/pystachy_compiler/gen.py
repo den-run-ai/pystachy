@@ -200,6 +200,8 @@ from src.pystachy_compiler.calls import (
     gen_pcoerce as calls_pcoerce,
     gen_print_star as calls_print_star,
     gen_replace as calls_replace,
+    gen_nt_make as calls_nt_make,
+    gen_nt_new as calls_nt_new,
     gen_star_call as calls_star_call,
     gen_star_who as calls_star_who,
     gen_static_callee as calls_static_callee,
@@ -286,6 +288,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann_items as declarations_ann_items,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
+    gen_any_in as declarations_any_in,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
     gen_class_params as declarations_class_params,
@@ -320,6 +323,10 @@ from src.pystachy_compiler.declarations import (
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
     gen_nt_class as declarations_nt_class,
+    gen_nt_defaults as declarations_nt_defaults,
+    gen_nt_dflt_display as declarations_nt_dflt_display,
+    gen_nt_dflt_type as declarations_nt_dflt_type,
+    gen_nt_fields as declarations_nt_fields,
     gen_opt as declarations_opt,
     gen_optional as declarations_optional,
     gen_path_union as declarations_path_union,
@@ -1096,6 +1103,8 @@ class Gen:
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
         self.galias: dict[str, bool] = {}  # the classes whose body binds __class_getitem__ = classmethod(GenericAlias) (generic_aliases)
         self.nts: dict[str, bool] = {}  # the typing.NamedTuple classes: a dataclass whose fields cannot be assigned (see nt_class)
+        self.cnts: dict[str, Node] = {}  # those namedtuple() makes, class templates: their "namedtuple" nodes (Loader.nt_class)
+        self.ntdflts: dict[str, str] = {}  # the type of each one's _field_defaults, once its global is declared (nt_defaults)
         self.hasfrozen = False  # a @dataclass(frozen=True) class: except clauses list dataclasses.FrozenInstanceError
         self.scanning: dict[str, bool] = {}  # the properties whose setters scan_fields is scanning (C.x)
         # "C.x": class attribute x of plain class C, which the program assigns through the class
@@ -1576,6 +1585,9 @@ class Gen:
     def typevar_in(self, anns: list[Node], skip: list[str]) -> str:
         return declarations_typevar_in(self, anns, skip)
 
+    def any_in(self, anns: list[Node]) -> bool:
+        return declarations_any_in(self, anns)
+
     def class_tvars(self, cls: str) -> list[str]:
         return declarations_class_tvars(self, cls)
 
@@ -1701,6 +1713,18 @@ class Gen:
 
     def nt_base(self, n: Node) -> bool:
         return declarations_nt_base(self, n)
+
+    def nt_fields(self, c: str) -> list[str]:
+        return declarations_nt_fields(self, c)
+
+    def nt_defaults(self, c: str) -> Val:
+        return declarations_nt_defaults(self, c)
+
+    def nt_dflt_display(self, c: str) -> Node:
+        return declarations_nt_dflt_display(self, c)
+
+    def nt_dflt_type(self, c: str) -> str:
+        return declarations_nt_dflt_type(self, c)
 
     def frozen(self, t: str, name: str) -> None:
         return declarations_frozen(self, t, name)
@@ -3035,6 +3059,12 @@ class Gen:
 
     def replace(self, o: Val, args: list[Node]) -> Val:
         return calls_replace(self, o, args)
+
+    def nt_new(self, c: str, vals: list[Val], want: str) -> Val:
+        return calls_nt_new(self, c, vals, want)
+
+    def nt_make(self, c: str, args: list[Node], want: str) -> Val:
+        return calls_nt_make(self, c, args, want)
 
     def asdict(self, o: Val, args: list[Node]) -> Val:
         return calls_asdict(self, o, args)

@@ -55,6 +55,7 @@ Builtin-module imports have a [documented scope deviation](../language.md#deviat
 |---|---|
 | `from m import x`, where `x` is a variable | Copies its value, as CPython binds it. |
 | A from-import of a function or class | Names the same function or class. |
+| A module-level `def` or `class` after a from-import or `import *` that bound its name to a function or class, as `socket` defines `getaddrinfo` after `from _socket import *` | Rebinds the name, as CPython does: the `def` or `class` binds it for all of the module's code, so nothing may read the import's binding in between. Code that runs from the import until the name is rebound and reads it (also the statement's decorators, defaults, annotations, bases and class body) is rejected, as is code before the `def` or `class` that names, or decorates, a function or class that uses the name, or that makes a lambda or generator expression that reads it (it may run it then). Reads during an import cycle through another module's code or a module alias (including a self-import) are not caught ([compatibility](compatibility.md#names-and-scopes)). |
 | `from m import *` | Uses `__all__` when present; otherwise takes public names bound when the module's code ends. `__all__` may be extended with `+=`, `append()` and `extend()`. |
 | A package's own binding, such as `from .parse import parse` | Takes precedence over a submodule with the same name. |
 | A module-level alias, `name = function` | Names that function, including a from-imported function or class, for later from-imports and star imports. |
@@ -209,7 +210,7 @@ determine whether a particular call compiles.
 supported for the program's classes, builtin values and exceptions (`type(e).__name__`).
 `getattr`, `setattr`, `hasattr`, `vars` and `dir` follow the [reflection rules](semantics.md#reflection);
 `delattr` is unsupported. `hash()` takes the
-values that can be [dict keys](typing.md#supported-types), floats too, and raises CPython's
+values that can be [dict keys](typing.md#supported-types), floats and NamedTuples too, and raises CPython's
 `TypeError` for a list, dict, set or unhashable object.
 
 `print()` accepts `sep`, `end`, `file` and `flush`. Its `file` may be a file or an object with
@@ -259,7 +260,7 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `setrecursionlimit`, `getrecursionlimit`; the streams are files. |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `setrecursionlimit`, `getrecursionlimit`; the streams are files. `warnoptions` is `[]`, CPython's for a program run without `-W` options (an extension module's is its host's). |
 | `sys.version_info` | CPython 3.13.16's, a tuple of its items, and `major`, `minor`, `micro`, `releaselevel`, `serial` read as `sys.version_info.major` and the like; `str()` shows the tuple. |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
 | `os` | `system`, `execv`, `getpid`, `getenv`, `remove`, `rmdir`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |

@@ -246,7 +246,7 @@ def builtin_has(mod: str, x: str) -> bool:
     if mod == "dataclasses":
         return x == "dataclass"
     if mod == "ffi":
-        return x in ("extern", "export", "string_at", "c_buf") or x in CTYPES
+        return x in ("extern", "export", "string_at", "c_buf", "c_float") or x in CTYPES
     return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
 
 
@@ -930,6 +930,35 @@ def refers(n: Node, name: str) -> bool:
         if refers(k, name):
             return True
     return False
+
+
+def first_use(n: Node, names: dict[str, bool], now: bool) -> Node | None:
+    # the first name node of n that is one of names, or decorator that starts with one; with now,
+    # only in the code that runs when n does: not in the bodies of the functions it defines (but
+    # in their decorators, defaults and annotations, a class body, and a lambda's body, which what
+    # it is given to may call)
+    if (n.kind == "name" and n.s in names) or (n.kind == "deco" and n.s.split(".")[0] in names):
+        return n
+    for i in range(len(n.kids)):
+        if not (now and n.kind == "def" and i == 2):
+            r = first_use(n.kids[i], names, now)
+            if r is not None:
+                return r
+    return None
+
+
+def deferred_use(n: Node, names: dict[str, bool]) -> Node | None:
+    # first_use() in the lambdas and generator expressions of the code that runs when n does (not
+    # in the bodies of the functions it defines), which run when what holds them calls or
+    # iterates them: then, or later
+    if n.kind == "lambda" or (n.kind == "listcomp" and n.s == "gen"):
+        return first_use(n, names, False)
+    for i in range(len(n.kids)):
+        if not (n.kind == "def" and i == 2):
+            r = deferred_use(n.kids[i], names)
+            if r is not None:
+                return r
+    return None
 
 
 def all_imports(body: list[Node], out: list[str]) -> None:

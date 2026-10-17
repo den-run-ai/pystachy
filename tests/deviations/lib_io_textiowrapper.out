@@ -1,0 +1,7 @@
+utf-16 NotImplementedError TextIOWrapper supports only the UTF-8, Latin-1 and ASCII encodings, not 'utf-16'
+cp1252 NotImplementedError TextIOWrapper supports only the UTF-8, Latin-1 and ASCII encodings, not 'cp1252'
+bogus NotImplementedError TextIOWrapper supports only the UTF-8, Latin-1 and ASCII encodings, not 'bogus'
+b'' False
+'a\nb\nc'
+NotImplementedError: TextIOWrapper.newlines is a tuple once more than one kind of newline has been read, which is not supported
+[exit 1]

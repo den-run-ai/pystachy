@@ -20,6 +20,7 @@ from src.pystachy_compiler.specs import (
     RANGEC,
     SPECIAL,
     TYPESMOD,
+    IOMOD,
     TYPING,
     UNSUPPORTED,
 )
@@ -169,7 +170,7 @@ def gen_check_import(self, a: Node) -> None:
     mod = a.kids[1].s
     tgt = a.kids[0].s
     if mod not in MODULES and mod != "collections.abc":
-        self.err(f"module '{mod}' is not supported (available: {', '.join([k for k in MODULES.keys() if k != TYPESMOD])})")
+        self.err(f"module '{mod}' is not supported (available: {', '.join([k for k in MODULES.keys() if k != TYPESMOD and k != IOMOD])})")
     if tgt == mod or tgt == mod[: mod.find(".")] or (tgt + ".") == mod[: len(tgt) + 1]:
         return
     x = tgt[len(mod) + 1 :]
@@ -302,6 +303,10 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
         # an imported module's class Pystachy cannot compile: an error only where used
         self.left_out(self.cnodes[ci.node.line], ci.bad)
         return
+    if ci.name in self.cnts and self.nt_dflt_type(ci.name) != "":
+        # namedtuple()'s class: the dict of its defaults, its _field_defaults (nt_defaults)
+        t = self.nt_dflt_type(ci.name)
+        self.mstore(t, self.expr(self.nt_dflt_display(ci.name), t).v, f"@d.c.{ci.name}._field_defaults")
     bound: dict[str, bool] = {}
     syn = "__init__" in ci.methods and ci.methods["__init__"].node.kids[0].kind == "noann" and ci.methods["__init__"].cls == ci.name  # (a dataclass's)
     later = ""

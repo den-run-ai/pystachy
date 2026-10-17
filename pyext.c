@@ -70,6 +70,7 @@ Str *pys_exc_str(Exc *e);
 Str *pys_exc_repr(Exc *e);
 typedef struct List List;
 List *pys_argv(void);
+List *pys_warnoptions(void);
 void pys_list_append(List *l, I v);
 void pys_enter(char *sb);
 I pys_leave(void);
@@ -160,15 +161,19 @@ out:
   pys_leave();
   return res;
 }
-void pyx_argv(void) {                  /* sys.argv: the host's, as the module's source sees it (at import) */
-  PyObject *av = PySys_GetObject("argv");   /* (borrowed) */
+static void host_list(const char *name, List *(*to)(void)) {   /* the host's sys.<name>, appended to the list to() returns */
+  PyObject *av = PySys_GetObject(name);   /* (borrowed) */
   for (Py_ssize_t i = 0, n = av ? PyList_Size(av) : 0; i < n; i++) {
     PyObject *o = PyList_GetItem(av, i), *so = o ? PyObject_Str(o) : 0;   /* (o borrowed) */
     Str *s = so ? to_str(so) : 0;
     Py_DecRef(so);
-    if (s) pys_list_append(pys_argv(), (I)s);
+    if (s) pys_list_append(to(), (I)s);
   }
   PyErr_Clear();
+}
+void pyx_argv(void) {                  /* sys.argv and sys.warnoptions: the host's, as the module's source sees them (at import) */
+  host_list("argv", pys_argv);
+  host_list("warnoptions", pys_warnoptions);   /* (if the host's is empty, the module's first read makes it) */
 }
 static PyObject *pyx_exit(PyObject *self, PyObject *unused) {   /* atexit, before the host's modules are torn down */
   (void)self; (void)unused;

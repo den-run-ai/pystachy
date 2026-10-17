@@ -53,11 +53,8 @@ def dump(
         fp.write(chunk.encode())
 
 
-# Pystachy port: the parameters annotated Mapping[str, Any], Mapping, object, Any or
-# `tuple | list`, here and below, are not annotated (M1): these functions are templates,
-# compiled for each type of document, where a value of any type would need M4
 def dumps(
-    obj, /, *, multiline_strings: bool = False, indent: int = 4
+    obj: Mapping[str, Any], /, *, multiline_strings: bool = False, indent: int = 4
 ) -> str:
     ctx = Context(multiline_strings, indent)
     return "".join(gen_table_chunks(obj, ctx, name=""))
@@ -66,7 +63,7 @@ def dumps(
 # Pystachy port: returns the list of the chunks instead of being a generator (M7): each
 # `yield` is chunks.append(), and `yield from` chunks.extend()
 def gen_table_chunks(
-    table,  # Pystachy port: table: Mapping[str, Any]
+    table: Mapping[str, Any],
     ctx: Context,
     *,
     name: str,
@@ -128,6 +125,9 @@ def gen_table_chunks(
     return chunks
 
 
+# Pystachy port: the parameters annotated object, Mapping or `tuple | list`, here and below, are
+# not annotated (M1): these functions are templates, compiled for each type of document, where a
+# value of any type would need M4
 def format_literal(obj, ctx: Context, *, nest_level: int = 0) -> str:  # Pystachy port: obj: object
     if isinstance(obj, bool):
         return "true" if obj else "false"
@@ -232,7 +232,7 @@ def format_string(s: str, *, allow_multiline: bool) -> str:
         pos += 1
 
 
-def is_aot(obj) -> bool:  # Pystachy port: obj: Any
+def is_aot(obj: Any) -> bool:
     """Decides if an object behaves as an array of tables (i.e. a nonempty list
     of dicts)."""
     return bool(

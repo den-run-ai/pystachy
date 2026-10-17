@@ -395,7 +395,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     # the function that def or lambda n compiles to where this function defines it (closure)
     d = n if n.kind == "def" else lambda_def(n)
     outer = self.curfn
-    name = n.s if n.kind == "def" else "<lambda>"
+    name = short(n.s) if n.kind == "def" else "<lambda>"
     qual = name if self.modlevel else self.qualname(outer) + ".<locals>." + name
     idx = len(self.closures)
     f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3]), "")  # (its decorators apply to the closure: decorate)

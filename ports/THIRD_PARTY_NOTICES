@@ -749,6 +749,24 @@ errors that Pystachy reports at compile time with CPython's message (among them 
 errors that upstream checks with compile()), and leave out the cases that use what the subset
 does not support. Differential output is recorded with CPython 3.13.16.
 
+NumPy's array tests (tests/example_ndarray_upstream.py)
+-------------------------------------------------------
+
+tests/example_ndarray_upstream.py adapts test functions and methods of NumPy 2.5.3, from the
+files of the numpy 2.5.3 wheel: numpy/lib/tests/test_stride_tricks.py and
+numpy/_core/tests/test_multiarray.py, test_ufunc.py, test_umath.py, test_indexerrors.py,
+test_indexing.py and test_regression.py. Its header records each file's SHA-256 and names the
+tests it adapts and what it leaves out. They are used under NumPy's BSD 3-Clause license,
+Copyright (c) 2005-2025, NumPy Developers, reproduced in full in tests/upstream/NUMPY-LICENSE.txt.
+
+Summary of changes: pytest and numpy.testing become standalone assertions
+(assert_almost_equal keeps its rule); the arrays are examples/ndarray's float64 NDArrays,
+so the other dtypes reduce to float64; shapes are lists; broadcast_arrays and
+broadcast_shapes become sums with zero arrays; views that NumPy makes by slicing, and order='F'
+arrays, are built from strides and an offset; the random inputs are written out as the values
+NumPy 2.5.3 draws for them. examples/ndarray/check_upstream.py runs the adapted file against
+NumPy itself. Differential output is recorded with CPython 3.13.16.
+
 APACHE LICENSE VERSION 2.0
 --------------------------
 

@@ -36,10 +36,26 @@ handle. Use a library name or path for reproducibility; `@extern("")` searches
 the process's own libraries, which differ between CPython, JIT and AOT.
 
 Use `ffi.c_int`, `c_uint`, `c_int64`, `c_uint64`, `c_size_t` or `c_ssize_t` for C
-integers, `float` for `double`, and `c_void_p` for pointers. A `str` argument is a
-temporary UTF-8 C string. Structs, varargs and callbacks require a C shim with
-scalar arguments. The [ABI reference](reference/ffi.md#c-types-and-conversions)
-defines ranges, null handling, buffers and ownership.
+integers, `float` for `double`, `ffi.c_float` for C's 32-bit `float`, and `c_void_p` for pointers. A `str` argument is a
+temporary UTF-8 C string. A `list[float]` argument lends C the list's own items as a
+`double *` for the call, and a `list[ffi.c_int64]` as an `int64_t *`; C reads and writes
+them in place, and the length goes as another argument:
+
+```python
+from ffi import extern, c_int
+
+# void cblas_daxpy(int n, double alpha, const double *x, int incx, double *y, int incy)
+@extern("libopenblas.so.0")
+def cblas_daxpy(n: c_int, alpha: float, x: list[float], incx: c_int, y: list[float], incy: c_int) -> None: ...
+
+xs = [1.0, 2.0]
+ys = [10.0, 20.0]
+cblas_daxpy(len(xs), 2.0, xs, 1, ys, 1)   # ys is now [12.0, 24.0]
+```
+
+Structs, varargs and callbacks require a C shim with scalar arguments. The
+[ABI reference](reference/ffi.md#c-types-and-conversions) defines ranges, null
+handling, buffers and ownership.
 
 <a id="cpython-calls-pystachy-pystachy-ext"></a>
 ## Building a CPython extension

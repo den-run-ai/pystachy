@@ -31,7 +31,8 @@ type, and a constant index the item's own type. Runtime-length
 `int`, `float`, `bool`, `str`, or one of these with `None`.
 
 Explicit closed scalar unions such as `int | str`, bounded native reference unions,
-and optional unions are supported. Dynamic `Any` values are not.
+and optional unions are supported. `Any` in function parameter and return annotations is
+inferred for each call; dynamic `Any` values are not supported.
 Generic classes can infer type arguments from construction or name them explicitly with
 `Box[int]` annotations and constructor subscriptions; variadic generic classes remain inferred.
 Module-level type aliases (`Row = list[str]`, `type Pair[T] = tuple[T, T]`) name types in
@@ -224,7 +225,7 @@ An imported module name does not imply every CPython API is available.
 The shipped libraries include unchanged upstream modules, localized ports such as
 `fnmatch`, `textwrap`, `difflib`, `random` and `datetime`, and implementations such as
 `functools.cache` / `lru_cache`, `collections` (`deque`, `defaultdict`, `OrderedDict`,
-`Counter`), `io.StringIO`, `io.BytesIO` and `csv`. Each has its own supported operations and deviations.
+`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `csv`. Each has its own supported operations and deviations.
 
 Use the [builtin API reference](language/modules.md#builtins) and
 [library port notes](../lib/README.md) for current coverage. C calls and experimental
@@ -234,7 +235,7 @@ CPython extension builds are documented separately in [FFI](ffi.md).
 
 ## Unsupported features
 
-The main gaps are multiple inheritance, general object unions and `Any`, `async`,
+The main gaps are multiple inheritance, general object unions and dynamic `Any` values, `async`,
 `bytearray`, `memoryview` and binary files, complex and arbitrary-precision numbers, `match`,
 attribute values looked up by names only the run time knows (their text and `hasattr()` are
 supported), slice objects and unrestricted argument expansion.

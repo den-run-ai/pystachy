@@ -163,6 +163,9 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         if c.startswith("_pystachy_iterators$") or c == RANGEC:
             return "builtins" if what == "__module__" else short(c)
         mod = q[: q.rfind(".")] if "." in q else "__main__"
+        o = ci.origin if ci.origin != "" else c
+        if o in self.cnts and self.cnts[o].kids[2].kind == "str":
+            mod = self.cnts[o].kids[2].s  # (namedtuple(..., module=...)'s)
         return mod if what == "__module__" else short(c)
     return ""
 

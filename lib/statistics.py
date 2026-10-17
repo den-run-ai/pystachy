@@ -1485,7 +1485,7 @@ def correlation(x, y, /, *, method='linear'):
         raise StatisticsError('at least one of the inputs is constant')
 
 
-# Pystachy port: made where collections has namedtuple (Pystachy's has not)
+# Pystachy port: in a try statement, made where collections has namedtuple (Pystachy's has)
 try:
     from collections import namedtuple
     LinearRegression = namedtuple('LinearRegression', ('slope', 'intercept'))

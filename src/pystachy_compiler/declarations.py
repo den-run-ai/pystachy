@@ -7,6 +7,7 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
+    ANYUSE,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -115,11 +116,18 @@ def gen_ann(self, n: Node) -> str:
     if k == "str":
         return self.ann(self.parse_expr(n.s))
     s = n.s
+    if k == "attr":
+        c = self.imported_ref(n)
+        if c.startswith("ffi.") and c[4:] in CTYPES:
+            return "int"
+        if c == "ffi.c_buf" or c == "ffi.c_float":
+            return "str" if c == "ffi.c_buf" else "float"
     if k == "name":
         if s in self.tmpl and self.selfcls in self.classes and self.classes[self.selfcls].origin == s:
             return self.selfcls  # (in its specialization's methods and fields: that specialization, as Self)
         if s in self.tmpl:
-            return f"!class {shown(s)} is a class template (its __init__ takes a parameter without an annotation): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out"
+            why = "namedtuple() made it, whose fields each call types" if s in self.cnts else "its __init__ takes a parameter without an annotation"
+            return f"!class {shown(s)} is a class template ({why}): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out"
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
         if s == "range" and RANGEC in self.classes:
@@ -128,6 +136,8 @@ def gen_ann(self, n: Node) -> str:
             return "int"  # (a C integer type, in an @extern function's signature: see CTYPES)
         if self.imported(s) == "ffi.c_buf":
             return "str"  # (a str's UTF-8 bytes, NULs and all, for a C function that takes their length too)
+        if self.imported(s) == "ffi.c_float":
+            return "float"  # (a C float, 32 bits, in an @extern function's signature)
         if is_excname(s):
             return "exc"  # (a builtin exception class: any exception, not only those of the class)
         if s in self.taliases:
@@ -135,6 +145,8 @@ def gen_ann(self, n: Node) -> str:
         t = self.typing_name(s)
         if t == "TextIO" or t == "Self" or t.startswith("!"):
             return "file" if t == "TextIO" else self.self_type() if t == "Self" else t
+        if t == "Any":
+            return "!" + ANYUSE  # (where no call types what it annotates: see declare_fn)
         if s in self.unsupported:
             return "!" + self.unsupported[s]
         if s in self.typevars:
@@ -146,6 +158,8 @@ def gen_ann(self, n: Node) -> str:
         return "file"
     elif k == "attr" and self.typing_attr(n) == "Self":
         return self.self_type()
+    elif k == "attr" and self.typing_attr(n) == "Any":
+        return "!" + ANYUSE
     elif k == "binop" and n.s == "|" and self.has_path(n):
         return self.path_union(self.union_members(n, []))
     elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
@@ -170,6 +184,8 @@ def gen_ann(self, n: Node) -> str:
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
             return base
+        if base == "literal" or base == "annotated":
+            return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
         a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
@@ -358,6 +374,25 @@ def gen_typevar_in(self, anns: list[Node], skip: list[str]) -> str:
         if r != "":
             return r
     return ""
+
+def gen_any_in(self, anns: list[Node]) -> bool:
+    # do annotations anns mention typing.Any (also in a string: Any, list[Any], Mapping[str, Any],
+    # Callable[..., Any]); a type alias they name is its value already (see unalias_all)
+    for a in anns:
+        if a.kind == "str":
+            a = self.parse_expr(a.s)
+        if (a.kind == "attr" or (a.kind == "name" and a.s not in self.classes)) and self.typing_ref(a) == "Any":
+            return True
+        if a.kind == "index" and self.typing_ref(a.kids[0]) == "Literal":
+            continue  # (its strings are values: Literal["Any"])
+        if a.kind == "index" and self.typing_ref(a.kids[0]) == "Annotated":
+            xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+            if self.any_in(xs[:1]):
+                return True
+            continue  # (only its first argument is a type; later arguments are metadata)
+        if a.kind != "attr" and self.any_in(a.kids):
+            return True
+    return False
 
 def gen_class_params(self, st: Node) -> str:
     # class C[T, *Ts] (subclass node st, its type parameters its first base): why it cannot be a
@@ -982,6 +1017,18 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s)):
             ps[i].kids[0] = mk("noann", "", d.line, [])
+    if (cls == "" or template_ok(d.s)) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+        # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
+        # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
+        # those of each call's), the return what the function returns; no value is boxed, so
+        # storage that a value of any type reaches (x: Any = v, a field) is still an error
+        for i in range(len(ps)):
+            if not (cls != "" and i == 0 and f.deco != "staticmethod") and self.any_in([ps[i].kids[0]]):
+                ps[i].kids[0] = mk("noann", "", d.line, [])
+                f.anys.append(ps[i].s)
+        if self.any_in([d.kids[1]]):
+            d.kids[1] = mk("noann", "", d.line, [])
+            f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
     if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
         self.err(tvbad)
@@ -1452,10 +1499,10 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
         for m in b.methods:
             if m not in ci.methods and (m != "__init__" or "no-init" in ci.dcopts):
                 ci.methods[m] = b.methods[m]
-    if ci.name in self.nts:
+    if ci.name in self.nts and ci.name not in self.cnts:
         self.nt_class(ci)
-    if self.is_dc(ci.name):
-        self.dc_methods(ci)
+    if self.is_dc(ci.name) and ci.name not in self.cnts:
+        self.dc_methods(ci)  # (namedtuple()'s: its specializations', see specialize)
     for m in UNCALLED:
         # a def or a class attribute (CPython calls what it binds), also a base's, then named; an
         # imported module's class: an error only where the program uses it (see hoist_class)
@@ -1581,6 +1628,49 @@ def gen_generic_base(self, n: Node) -> list[str]:
 def gen_nt_base(self, n: Node) -> bool:
     # does a class's base n name typing.NamedTuple
     return (n.kind == "name" and self.imported(n.s) == "typing.NamedTuple") or (n.kind == "attr" and self.typing_attr(n) == "NamedTuple")
+
+def gen_nt_fields(self, c: str) -> list[str]:
+    # the fields of NamedTuple class c: those its "namedtuple" node names where namedtuple() made
+    # it, a class template, whose specializations declare them (see specialize)
+    if c in self.cnts:
+        return [x.s for x in self.cnts[c].kids[0].kids]
+    return self.classes[c].fields
+
+def gen_nt_defaults(self, c: str) -> Val:
+    # C._field_defaults of namedtuple()'s class C (also through an object of C): the dict of its
+    # fields' defaults that its class statement makes (hoist_class) and that C keeps, as CPython's
+    # class attribute is kept
+    if c not in self.cnts:
+        self.err(f"{short(c)}._field_defaults is not supported (of a typing.NamedTuple class)")
+    t = self.nt_dflt_type(c)
+    if t == "":
+        self.err(f"{short(c)}._field_defaults is not supported where its defaults are all None (a dict of None values)")
+    return Val(self.mload(t, f"@d.c.{c}._field_defaults"), t)
+
+def gen_nt_dflt_type(self, c: str) -> str:
+    # (nt_defaults) the type of the _field_defaults of namedtuple()'s class c, whose global it
+    # declares: a dict whose values have the types of its constants (a union of them, with None an
+    # optional; of no defaults, a dict[str, int]); "" where there is no such type (all None)
+    if c not in self.ntdflts:
+        ks: list[str] = []
+        for x in self.cnts[c].kids[1].kids:
+            ks.append(x.kids[0].kind if x.kind == "unary" else "bool" if x.kind == "True" or x.kind == "False" else x.kind)
+        t = self.union_type(ks) if len(ks) > 0 else "int"
+        self.ntdflts[c] = "" if t.startswith("!") or t == "None" else self.ctype("dict", ["str", t])
+        if self.ntdflts[c] != "":
+            self.global_var(f"@d.c.{c}._field_defaults", self.ntdflts[c])
+    return self.ntdflts[c]
+
+def gen_nt_dflt_display(self, c: str) -> Node:
+    # (nt_defaults) a dict display of the fields of namedtuple()'s class c that have defaults,
+    # and their constants
+    line = self.cnts[c].line
+    d = mk("dict", "", line, [])
+    fs = self.nt_fields(c)
+    ds = self.cnts[c].kids[1].kids
+    for i in range(len(ds)):
+        d.kids.extend([mk("str", fs[len(fs) - len(ds) + i], line, []), clone(ds[i])])
+    return d
 
 def gen_dc_fields(self, ci: ClassInfo) -> list[str]:
     # the fields of dataclass (or NamedTuple) ci that @dataclass knows: those with options (not
@@ -1789,7 +1879,10 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                 if t.startswith("!"):
                     why = t[1:]  # (a call of a function Pystachy cannot compile: its error)
+                given = t
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
+                if t == "" and why == "" and ci.origin in self.cnts:
+                    why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
                 if t == "" and why == "":
                     why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                 if t == "" and ci.mod == "":
@@ -2173,6 +2266,8 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
                 if name in EXCINIT[b].split() and exc_derives(ci.exc, b):
                     self.err(f"'{short(o.t)}' object has no attribute '{name}': {b}'s attribute {name} is not supported (a field of the class assigned in __init__, after super().__init__(...), is)")
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
+        if o.t in self.nts and name == "__doc__":
+            self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
         self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")

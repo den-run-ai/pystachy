@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `c2705aee72d865583627202340de67f5eca163cd`.
+**Latest evaluated main:** `765564a34fdbf7abfb807df236a43f93f1bfe06f`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -336,6 +336,98 @@ the string/GC list), `python3.13 tools/check_runtime.py`, and the same
 metadata-enabled import sweep. The JSON's `perf.py` compares the retained
 `e939cf89` compiler with `c2705aee` on the four embedded exact programs.
 
+## 2026-10-17 — #607: inferred Any signatures and affected ports
+
+Evaluated [main `765564a3`](https://github.com/den-run-ai/pystachy/commit/765564a34fdbf7abfb807df236a43f93f1bfe06f),
+merging [#607](https://github.com/den-run-ai/pystachy/pull/607) at
+2026-10-17 07:29:02 UTC. It is the only main merge since the completed `c2705aee`
+checkpoint. The 48-file diff changes compiler annotation/template handling,
+tests, documentation and three ports; runtime and shipped stdlib implementations
+are unchanged. Rebuilt with CPython 3.13.16 and LLVM 18.1.3: bootstrap fixed points
+are **617,068 compiler / 18,388 runtime IR lines**. Native compiler SHA-256:
+`849d62bf19635fd9e180c4f81329f9b6886a62a3ec406c96ee4db390c2da5009`.
+
+[Normalized evidence](compatibility-2026-10-17-any-signatures.json) retains
+source/binary/input hashes, exact programs and commands, both compiler diagnostics,
+CPython/JIT/AOT outputs, import metadata and explicit unsuccessful setup attempts.
+The previous compiler is rebuilt `c2705aee`, hash
+`8aa03dd4a0240bb339c4b276985cccf4ea4dbe622d6e8fcea8e6ac694bd3a9d9`.
+
+| Evidence category | Fresh result |
+|---|---|
+| Isolated import IR | **142/476**, 46 exclusions; every module result identical to `c2705aee`. |
+| CPython-hosted compiler with throwing C-module stubs | **146/476**, including 142 without stubs; every result identical to the retained `e939cf89` stub sweep. No timeout. |
+| Changed signature/diagnostic tests | **25 checks pass**: 10 positive JIT/AOT checks with per-allocation program GC and 15 expected compile rejections, over 20 source files. |
+| Affected adapted ports | **14/14 JIT/AOT** checks across seven ordered-set, tomli-w and pyfiglet programs. Six upstream Any annotations are restored in these ports. |
+| Fresh CPython recordings | All six selected positive recordings match. Two initially lacked `typing_extensions`; both pass with existing pip-vendored **4.12.2**, whose source hash is retained. |
+| Retained/custom differential programs | 23 programs: 10 compile and execute in JIT/AOT; 8 match CPython and 2 retain known Unicode/integer-width deviations. 13 stop at explicit compile blockers. All 23 CPython references execute successfully. |
+| Adapted benchmark smoke | Richards and Richards-super match CPython/JIT/AOT checksums at argument `1`. One shared-host sample each is a correctness smoke, not evidence of a speed change. |
+
+Four differential programs change from rejection to successful execution: the
+retained Any identity/signature case; `Mapping[str, Any]` plus variadic Any
+parameters; a namedtuple `_replace` helper taking/returning Any; and the adapted
+ordered-set's comparison with a list. Both native execution modes match CPython,
+including per-allocation GC. The ordered-set comparison includes its shipped
+port edit as well as the compiler change; it is not a compiler-only attribution.
+The one-edit iniconfig section-iteration probe succeeds with both old and new
+compilers, so this particular probe establishes **no new gain**.
+
+Any in an eligible function/method signature now requests concrete per-call
+inference. It does not provide dynamically boxed storage or runtime validation
+of the erased annotation. This removes some annotation edits from maintained
+ports; it does not remove their other adaptations. Four pinned **unmodified**
+upstream package probes still fail at the same earlier first errors:
+
+| Package | First native blocker, unchanged |
+|---|---|
+| tomli-w 1.2.0 | `types.MappingProxyType` |
+| ordered-set 4.1.0 | `slice(None)` |
+| pyfiglet 1.0.4 | unavailable `importlib` |
+| iniconfig 2.3.1 | `\N{...}` escape; the retained one-edit BOM replacement remains a minor adaptation for the selected successful operations |
+
+These first-error checks cannot establish that later Any uses or whole upstream
+suites work. Existing minor/major adaptation assessments remain in the baseline.
+No general PyPI/NumPy compatibility, native pyperf/pytest support or full CPython
+regrtest result is inferred from these measurements. The unchanged 52-source
+upstream benchmark census and broader hosted suites were not rerun.
+
+Known gaps were retested: Any variable storage (#617), constructors (#618),
+non-generator `__iter__` returns (#619), cached Any/unannotated signatures (#620),
+and forwarding recursion (#595/#621) still reject. In
+`Generator[int, Any, None]`, sending a string still rejects and asks for an
+annotation already present: retain #616/#633 as the owner of that diagnostic/
+inference limitation. Mixed numeric `sum` (#596), bare list annotations (#597),
+Unicode length/offset behavior (#120), and integer-width differences also persist;
+concretely annotated cache, recursion and float-sum controls pass. The current
+coordination discussions in #491/#616 and #607 were read; pending #629–#634 are
+not counted as shipped. No uncovered crash or new correctness regression was
+observed, and no duplicate issue was filed. Runtime/performance sources are
+unchanged, so the prior memory measurements remain historical, not fresh results.
+
+Reproduce using the evidence's exact selected file lists and embedded scripts:
+
+```sh
+make PY=python3.13
+PYSTACHY_JOBS=4 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' <gc_tests files from JSON>
+PYSTACHY_JOBS=4 tests/run.sh ./pystachy 'jit aot' <normal_ports files from JSON>
+python3.13 /path/to/audit/tools/import_sweep.py -j 4 --metadata imports-metadata.json ./pystachy "$CPYTHON_STDLIB" imports.json
+# Run retained stub_sweep.py and probes.py from the JSON, adjusting checkout paths.
+# Benchmark tool/source is audit 50fc4a11; select the freshly built 765564a3 compiler:
+python3.13 /path/to/audit/tools/bench_pyperformance.py --compiler "$NATIVE_COMPILER" --benchmarks richards richards_super --smoke --json bench.json
+```
+
+Set `PYSTACHY_LLVM` or put LLVM 18 on `PATH` before these commands. An initial
+benchmark warmup omitted that setting and failed before measuring anything;
+the successful rerun and invalid attempt are retained separately. The benchmark
+metadata's `git_revision` describes its audit tool/source checkout, while its
+compiler hash identifies the evaluated main build. Both Richards sources are
+unchanged between these revisions.
+
+The audit branch also incorporates this evaluated main and resolves its
+`docs/stdlib.md` conflict, preserving the merged Any wording and the audit's
+corrections about supported generators and bounded unions. No implementation
+branch was modified and no implementation PR was merged by this audit.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -345,7 +437,7 @@ when practical, preserving attribution and the previous result.
 | Pending work | Focused remeasurement |
 |---|---|
 | #608 token, following evaluated #606 | Tokenize/inspect/doctest import and selected API probes; distinguish remaining module-level `del` (#612) from completed io/token support. |
-| #607 Any signatures and #629–#631 variable/constructor/iterator inference | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) remains a separate question. |
+| #629–#631 variable/constructor/iterator inference, following evaluated #607 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) remains a separate question. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
 | #623 shared short strings, #624 regex subject retention | Regex tests, split/subject-retention probes and selected regex timings; distinguish allocation/cache lifetime changes from matcher speed. |
 | #170 CPython embedding; follow-ups to merged #583/#609 | Example/FFI checks and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |

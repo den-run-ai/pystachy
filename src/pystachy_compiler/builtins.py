@@ -82,6 +82,8 @@ def gen_dotted(self, n: Node) -> str:
 def gen_modattr(self, path: str) -> Val:
     if path == "sys.argv":
         return Val(self.rt("pys_argv", "ptr", []), "list[str]")
+    if path == "sys.warnoptions":
+        return Val(self.rt("pys_warnoptions", "ptr", []), "list[str]")
     if path == "sys.maxsize":
         return Val("9223372036854775807", "int")
     if path == "sys.stdin" or path == "sys.stdout" or path == "sys.stderr":

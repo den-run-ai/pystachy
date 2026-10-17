@@ -1,0 +1,23 @@
+Point(x=3, y=4) Point(x=1, y=9) Point(x=3, y=4) Point(x=1, y=9) Point(x=3, y=4)|   Point(x=1, y=9)| 3,4
+3 4 3 4 4 3 (3,) (4, 3) 2 [3, 4]
+3 4 True False 1 1
+item 1
+item 9
+True True False True False True True Point(x=3, y=4) [Point(x=1, y=9), Point(x=3, y=4)]
+(3, 4, 5) (0, 3, 4) (3, 4, 3, 4)
+True True Point Point __main__ Point
+True 1079245023883434373 -9002791676578425913 5097555410246538937
+Point(x='a', y='b') ab Point(x=[1], y={'k': 2}) Point(x=1.5, y=True)
+Event(time=1.0, priority=2, sequence=0, action='act', argument=(), kwargs={'k': 1}) 2 ('time', 'priority', 'sequence', 'action', 'argument', 'kwargs') ('time', 'priority', 'sequence', 'action', 'argument', 'kwargs') 6
+[5, 4, 3] c
+Mismatch(actual=0, expected=2, value='elem') Mismatch Mismatch elem
+SelectorKey(fileobj='file', fd=3, events=1, data='data') 3 ('fileobj', 'fd', 'events', 'data')
+Pair(left=1, right=2) Pair(left='l', right='r')
+Opt(name='n', value=0, flag=False) Opt(name='n', value=5, flag=False) Opt(name='n', value=0, flag=True) Opt(name='m', value=1, flag=False) {'value': 0, 'flag': False} {'value': 0, 'flag': False}
+Tail(a=1, b=2, c=3, d='z') Tail(a=1, b=2, c=3, d=4) {'d': 'z'} Positions(lineno=-1, end_lineno=-1) Positions(lineno=5, end_lineno=-1) {'lineno': -1, 'end_lineno': -1}
+{} 0 False
+{'value': 0, 'flag': False, 'name': 7} True True
+('abc', '_1', 'ghi', '_3', '_4', '_5') Renamed(abc=1, _1=2, ghi=3, _3=4, _4=5, _5=6)
+('a', 'b', 'c', 'd') Spaced(a=1, b=2, c=3, d=4)
+Elsewhere(v=1) somewhere.else Elsewhere
+[exit 0]

@@ -155,8 +155,8 @@ does not change the predicates.
 
 ## Collections
 
-The shipped module provides `deque`, `defaultdict`, `OrderedDict` and `Counter`.
-Each is a generic class whose item types (`deque[T]`, `Counter[T]`,
+The shipped module provides `deque`, `defaultdict`, `OrderedDict` and `Counter`, and
+`namedtuple()` (below). Each of the four is a generic class whose item types (`deque[T]`, `Counter[T]`,
 `defaultdict[K, V]`, `OrderedDict[K, V]`) come from supported constructor
 arguments, an annotation (`q: deque[int] = deque()`,
 `d: defaultdict[str, list[int]] = defaultdict(list)`) or an explicit constructor
@@ -220,8 +220,20 @@ the counts; a `defaultdict`'s also replaces `default_factory`).
 
 A deque compares with deques: `==` with `None` is false and `<` raises CPython's
 `TypeError`. Its reflected multiplication and comparisons with other containers,
-pickling, `namedtuple`, `ChainMap` and the `User*` classes are unavailable. A `deque` is
+pickling, `ChainMap` and the `User*` classes are unavailable. A `deque` is
 not a `collections.abc.Sequence` to `isinstance`.
+
+`namedtuple()` is carried out by the compiler: a module's top-level
+`NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
+literal arguments is a class statement, a NamedTuple whose fields each call that makes an object
+types (a class template). Construction by position and keyword, defaults, field access,
+indexing, unpacking, iteration, `len()`, comparisons, `hash()`, `repr()`, `str()`, `_make()`,
+`_asdict()` (of fields of one type), `_replace()`, `_fields`, `_field_defaults` and
+`type(x).__name__` and `__module__` behave as CPython's, and CPython's errors for invalid
+names and too many defaults are compile errors. Assigning the class's or a field's `__doc__` a
+string literal is accepted; reading it, other uses of the function, subclassing and a field
+given `None` are rejected (see
+[compatibility](../docs/language/compatibility.md#classes-dataclasses-and-namedtuples)).
 
 ## Shlex
 
@@ -267,6 +279,44 @@ raises). Positions and sizes count bytes, as in CPython.
 - Invalid argument types such as `BytesIO("x")`, `write("x")` (and so `print(..., file=)` to a
   `BytesIO`) are compile-time errors, as are attributes of the program's own on one.
 - `writelines([])` needs the empty list typed (`lines: list[bytes] = []`).
+
+`TextIOWrapper` is the text layer over a binary stream. Its buffer is any object with the
+methods CPython's calls: `readable()`, `writable()`, `seekable()` and `closed`; `read1()` or
+`read()` to read; `write()`, `flush()` and `close()`; and `tell()` for a seekable, writable
+buffer. Each buffer class gets its own specialization of the class.
+
+What it supports:
+- construction with `buffer`, `encoding`, `errors`, `newline`, `line_buffering` and
+  `write_through`;
+- `read`, `readline`, `readlines` and iteration; `write`, `writelines`, `flush` and `close`;
+  `with`, and `print(..., file=t)`;
+- the `encoding`, `errors`, `newlines`, `buffer`, `line_buffering`, `write_through`, `closed`
+  and `name` attributes, `repr()`, and the `readable`, `writable`, `seekable`, `isatty` and
+  `fileno` queries.
+
+It reads and writes the buffer as CPython's does: the same calls, in chunks of 8192 bytes. It has
+CPython's universal-newline decoding, newline translation and line buffering, and its codec
+errors. It raises CPython's errors for a closed stream or an unsupported operation.
+`io.UnsupportedOperation` is caught as `OSError` or `ValueError`: a program cannot name it.
+`read(n)`, `readline(n)`, `readlines(hint)` and `write()`'s result count characters, as in
+CPython.
+
+- The encodings are UTF-8, Latin-1 and ASCII, by any of their names. Another raises
+  `NotImplementedError` when the wrapper is made: CPython would use its codec, or raise
+  `LookupError` for a name it does not know.
+- Without `encoding=`, the encoding follows a file's rule, the runtime's form of CPython's
+  `locale.getpreferredencoding(False)`: `"utf-8"` in the C or POSIX locale (UTF-8 mode), and
+  otherwise the locale's codeset. `encoding="locale"` gives `locale.getencoding()`'s codeset,
+  with the C locale coerced to C.UTF-8 as CPython coerces it. The `PYTHONUTF8` and
+  `PYTHONCOERCECLOCALE` settings are not read.
+- `newlines` is `None` or the one kind of newline read. Once two or more kinds have been read,
+  CPython gives a tuple of them; Pystachy raises `NotImplementedError` instead.
+- `seek`, `tell`, `truncate`, `detach`, `reconfigure` and `_CHUNK_SIZE` are compile-time errors,
+  as are attributes the program adds (`t.mode = "r"`) and subclasses.
+- CPython's finalizer flushes and closes a wrapper the program drops; Pystachy's does not. Close
+  the wrapper, or leave its `with` block, to write what is waiting.
+- Where a buffer class has `read1()`, its `read()` must take a size. A subclass's `read1()`,
+  `write()` or `tell()` must also be its base class's.
 
 ## Csv
 

@@ -56,7 +56,10 @@ def lower_data(d: Data) -> str:
 def gen_cextern(self, f: FnInfo) -> None:
     # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
     # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
-    # ValueError for a NUL in it) and copies a returned char * (NULL: None, or ValueError). It calls
+    # ValueError for a NUL in it) and a list[float] or list[c_int64] as its items (double *,
+    # int64_t *: runtime.c's List.a, which C reads and writes in place for the call; the collector
+    # moves nothing, and no subset code runs until the call returns, so the list cannot grow
+    # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
     # the C function through @ffi.fp.<f.ll>, which the def statement set as ctypes.CDLL would find it, in
     # the library's own handle (pys_c_bind: see stmt's defaults)
     self.line = f.node.line
@@ -78,9 +81,16 @@ def gen_cextern(self, f: FnInfo) -> None:
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
             code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 16")  # (the bytes, after the length and dict hash: runtime.c's Str)
             cts.append("ptr")
+        elif c == "list[float]" or c == "list[c_int64]":
+            code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
+            code.append(f"  %p{j} = load ptr, ptr %l{j}")
+            cts.append("ptr")
         elif c == "float":
             code.append(f"  %p{j} = bitcast double %a{j} to double")  # (as it is: -0.0, inf and nan too)
             cts.append("double")
+        elif c == "c_float":
+            code.append(f"  %p{j} = fptrunc double %a{j} to float")  # (to the nearest float, ties to even; too large: an infinity)
+            cts.append("float")
         else:
             ll, k = CTYPES[c].split(":")
             v = f"%a{j}"
@@ -92,7 +102,7 @@ def gen_cextern(self, f: FnInfo) -> None:
             cts.append(ll)
         args.append(f"{cts[-1]} %p{j}")
     c = self.externtype(f.node.kids[1], f.ret, "returns", f)
-    r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "void" if c == "None" else CTYPES[c].split(":")[0]
+    r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
     rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
     cl = f"call {rr} %fp({', '.join(args)})"
     code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
@@ -103,6 +113,8 @@ def gen_cextern(self, f: FnInfo) -> None:
         code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 0})", "  ret ptr %s"])
     elif c == "float":
         code.extend([f"  %r = {cl}", "  ret double %r"])
+    elif c == "c_float":
+        code.extend([f"  %r = {cl}", "  %x = fpext float %r to double", "  ret double %x"])  # (exactly)
     else:
         k = CTYPES[c].split(":")[1]
         code.append(f"  %r = {cl}")

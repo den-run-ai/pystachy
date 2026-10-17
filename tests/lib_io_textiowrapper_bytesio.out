@@ -1,0 +1,24 @@
+<_io.TextIOWrapper encoding='utf-8'> utf-8 True True True True True
+['# coding: utf-8\n', "x = 'é€'\n", 'y = 2\n'] 36 False
+True True
+ValueError: I/O operation on closed file.
+None ['a\n', 'b\n', 'c\n', 'd']
+'' ['a\n', 'b\r\n', 'c\r', 'd']
+'\n' ['a\n', 'b\r\n', 'c\rd']
+'\r' ['a\nb\r', '\nc\r', 'd']
+'\r\n' ['a\nb\r\n', 'c\rd']
+12 b''
+b'h\xc3\xa9llo\r\nw\xc3\xb6rld\r\n' 16
+9000 9016 ''
+b'cr\xe8me\n'
+UnicodeEncodeError: 'latin-1' codec can't encode character '\u20ac' in position 0: ordinal not in range(256)
+b'cr\xe8me\nab'
+'abc\n' 8 1 ''
+b'abc\ndef\nX' ''
+'abc\nd' 'ef\n' 9
+["'Subject: caf\\udce9\\n'", "'\\n'", "'body \\udcff\\n'"] '\r\n'
+[b'Subject: caf\xe9\n', b'\n', b'body \xff\n']
+3000 True True True
+'line 0: \nl' True
+True
+[exit 0]

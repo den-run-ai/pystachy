@@ -18,7 +18,7 @@ print(list(items), items.index("blue"))
 
 - `OrderedSet` of strings: add/update, integer indexing, membership, iteration, copies, discard, pop and clear.
 - Set algebra is exposed through methods. `union()`, `intersection()` and `difference()` each take one `list[str]`, and `difference_update()` any number of them; pass `list(other)` for another ordered set.
-- Equality compares ordered sets in order. Generic items, slices/fancy indexing, pickling and the upstream ABC-supplied methods are outside this port’s API.
+- Equality compares an ordered set with another one or with a list, in order, as upstream compares a sequence. Generic items, slices/fancy indexing, pickling and the upstream ABC-supplied methods are outside this port’s API.
 
 <a id="deviations-it-hits"></a>
 
