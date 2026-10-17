@@ -476,8 +476,8 @@ its caller.
 
 Ordinary methods with unannotated parameters, `*args` or `**kwargs` also specialize, excluding
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
-`def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; `__init__` and other
-non-template methods cannot take one. The supported binary operator, comparison, `__call__`,
+`def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
+`__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
 `__getitem__` and `__contains__` methods can be templates. Other special methods require annotations;
 `__init__` is handled by class specialization below. A template method cannot change a field's
 established type, and comparison methods must return `bool`.
@@ -502,9 +502,10 @@ mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []`
 `xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
 the whole annotation, including any concrete parts. The same straight-line local retyping
 and branch, loop and global type restrictions apply as for unannotated variables. A variable
-declared without an initializer still needs a concrete annotation. `Any` remains unsupported
-in fields, `__init__`
-parameters, properties and other special methods.
+declared without an initializer still needs a concrete annotation. A class template's
+`__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
+arguments as described below. `Any` remains unsupported in field annotations, `__init__`
+returns, properties and other special methods.
 
 ### Variadic arguments
 
@@ -583,12 +584,19 @@ The annotation preserves the individual values' types; it does not convert integ
 
 ## Class templates and generic classes
 
-A class specializes when its `__init__` has an unannotated parameter, variadic parameters,
+A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
+`object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
 a parameter or constructed field using another class template, an `Iterator[T]` or
 `Iterable[T]` parameter, or an `iter()` call. Calls whose fields have
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
+
+If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
+the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
+Existing field types cannot change later. `Any` does not provide a shared boxed layout for
+these objects. Inheritance with class templates remains unsupported; use concrete constructor
+annotations there. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name

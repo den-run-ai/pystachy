@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `cffa99346bc1a920a0c609d6c6b4468fe193d867`.
+**Latest evaluated main:** `91407759c9a3e3e0efc4a5b46dd1625f1506d64f`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -693,6 +693,79 @@ evaluated main without conflicts; its import-sweep and benchmark-controller test
 pass (**10 + 16**). The audit diff against evaluated main passes whitespace checks.
 Historical reports and JSON remain unchanged.
 
+## 2026-10-17 — #630: constructor inference without dynamic fields
+
+Evaluated [main `91407759`](https://github.com/den-run-ai/pystachy/commit/91407759c9a3e3e0efc4a5b46dd1625f1506d64f)
+after [#630](https://github.com/den-run-ai/pystachy/pull/630) merged at 09:46:44 UTC.
+It is the only new merge after `cffa9934`; merge ancestry, changed files and the
+#491/#616/#630 coordination notes were checked. Compiler declaration and class
+specialization changed; runtime, library, port and benchmark sources did not.
+[Normalized evidence](compatibility-2026-10-17-constructors.json) retains exact
+programs, commands, outputs, input/compiler hashes, metadata and reproduction scripts.
+
+Fresh CPython **3.13.16** / LLVM **18.1.3** bootstrap reaches **620,426 compiler /
+18,388 runtime IR lines**. Compiler build and evaluated source are both `91407759`;
+binary SHA-256 is `13c73ecb5679d61c8056860883528a6a4a86ffc8a556eaba78fe3d3e463849b9`.
+The previous `cffa9934` compiler's source and retained binary hash were verified
+before differential measurements.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native tests | **37 passed**: 28 positive JIT/AOT checks under per-allocation GC, plus nine expected compile rejections. Covers constructor annotations/imports/defaults/variadics, existing Any inference, singleton/object power and namedtuple integration. |
+| CPython recordings | All **14 positive programs** match the checked-in recordings using pinned CPython; the typing_extensions 4.12.2 source hash is retained. |
+| Retained adapted ports | **18 JIT/AOT checks** pass over nine iniconfig, ordered-set, pyfiglet and tomli-w workloads. |
+| Differential API programs | All **21 CPython references** execute. Eleven programs match in both native JIT and AOT (**22 checks**); ten remain rejected at IR generation. Two programs change from previous rejection to matching execution: `Any` and direct `object` constructor parameters. |
+| FFI integration | **123 passed, zero failures/skips**, including embedded CPython and extension/client tests. These remain explicit interoperability, not native upstream-package execution. |
+| Native stdlib imports | **142/475**, 47 exclusions, 522-file inventory; every normalized result is unchanged, no timeouts. |
+| Stub-assisted diagnosis | **146/475**, 142 without stubs; no acceptance changes or timeouts. Four existing inheritance errors gain the guidance “with concrete types (not Any or object)”; this is diagnostic improvement, not newly compiled modules. |
+
+Ordinary explicit constructors can now keep these upstream annotations rather
+than deleting them or choosing a concrete type. Each call still creates a concrete
+class specialization. Nested `Any`, aliases, quoted annotations and imported
+constructors are covered by the focused tests. This removes a **minor annotation
+adaptation** for suitable classes; it does not supply uniform heterogeneous fields.
+The independently run dataclass-`Any` probe still rejects. Field retyping, rebinding
+between specializations, inheritance and `Any` constructor returns remain rejected;
+concrete parameter constraints and Annotated metadata boundaries remain enforced.
+[#618](https://github.com/den-run-ai/pystachy/issues/618) and
+[#616](https://github.com/den-run-ai/pystachy/issues/616) already reflect the merge
+and retain the residual scope; dynamic storage is separate work in #487.
+
+The same unmodified upstream package programs remain blocked at the same first
+errors, under their retained package-only module-path configuration:
+
+| Pinned package | First native blocker |
+|---|---|
+| tomli-w 1.2.0 | `types.MappingProxyType` in `_writer.py:21` |
+| pyfiglet 1.0.4 | Missing `importlib` on the configured module path |
+| ordered-set 4.1.0 | Unsupported `slice(None)` |
+| iniconfig 2.3.1 | Unsupported `\N{...}` escape in `_parse.py:8` |
+
+These are first-error observations, not claims that fixing them completes each
+package. Retained iterator-return, generator-send, unannotated/Any cache and
+forwarding-recursion probes still reject (#619/#633/#620/#595); the annotated
+cache/recursion and minimally adapted iniconfig controls still execute correctly.
+Native unittest/pytest/pyperf and full CPython regrtest are not established by this
+merge. No new uncovered correctness bug or lost successful probe was observed.
+No performance/memory trend is measured; unchanged broad benchmark and hosted
+compiler suites were not repeated.
+
+Reproduce from the evaluated checkout (scripts are embedded in the JSON):
+
+```sh
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-constructors/evaluate.py
+/root/.local/bin/python3.13 build/audit-constructors/build_evidence.py
+```
+
+Both sweeps use the retained audit's `import_sweep.py --metadata`, unchanged
+CPython inventory and shipped-library overlay; stub mode uses the hosted compiler
+and throwing stand-ins, not working C modules. The audit-tool tests pass **10 + 16**.
+An initial `python -m unittest tools...` invocation lacked `tools` on `sys.path`;
+the evidence records that setup failure and the successful direct-script reruns.
+Historical dated reports/JSON are unchanged. Evaluated main integrates cleanly
+into the audit branch; its diff against evaluated main passes whitespace checks.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -701,7 +774,7 @@ when practical, preserving attribution and the previous result.
 
 | Pending work | Focused remeasurement |
 |---|---|
-| #630–#631 constructor/iterator inference, following evaluated #607/#629 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
+| #631 iterator inference, following evaluated #607/#629/#630 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
 | Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |

@@ -217,9 +217,9 @@ def gen_derives(self, c: str, base: str) -> bool:
 
 def gen_init_template(self, st: Node) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
-    # and an __init__ of its own with a parameter but self that has no annotation, or one that
-    # names a class template; each object then belongs to a specialization, whose fields are
-    # typed by the arguments of the call that makes it (see specialize)
+    # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
+    # is object, or names a class template; each object belongs to a specialization, whose fields
+    # are typed by the arguments of the call that makes it (see specialize)
     if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
         return False
     for d in st.kids[0].kids:
@@ -228,7 +228,8 @@ def gen_init_template(self, st: Node) -> bool:
                 return True  # (its context can bind variables absent from __init__ parameters)
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
-                if ps[i].kids[0].kind == "noann" or (ps[i].kind == "param" and self.tmpl_ann(ps[i].kids[0])):
+                a = ps[i].kids[0]
+                if a.kind == "noann" or self.any_in([a]) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
                     return True  # (also *args or **kwargs without an annotation)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
@@ -244,7 +245,7 @@ def gen_template_fix(self, cs: list[Node]) -> str:
             if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
                 if reads_builtin(d.kids[2], "iter", False, False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
                     return "an __init__ that calls iter() or takes an Iterator[T] or Iterable[T] makes one (an iterator's type is its class)"
-    return "annotate __init__ parameters"
+    return "annotate __init__ parameters with concrete types (not Any or object)"
 
 def gen_makes_tmpl(self, n: Node) -> bool:
     # does n call a class template, making an object of one of its specializations? iter(x)

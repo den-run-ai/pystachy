@@ -1031,12 +1031,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
                 p.kids[0] = mk("noann", "", d.line, [])
         if self.typevar_in([d.kids[1]], tvs) != "":
             d.kids[1] = mk("noann", "", d.line, [])
+    init = d.s == "__init__" and self.tmpl_of(cls) != ""  # (a class template's: see specialize)
     for i in range(len(ps)):
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
-        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s)):
+        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s)) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1045,13 +1046,12 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not (cls != "" and i == 0 and f.deco != "staticmethod") and self.any_in([ps[i].kids[0]]):
                 ps[i].kids[0] = mk("noann", "", d.line, [])
                 f.anys.append(ps[i].s)
-        if self.any_in([d.kids[1]]):
+        if not init and self.any_in([d.kids[1]]):
             d.kids[1] = mk("noann", "", d.line, [])
             f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
     if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
         self.err(tvbad)
-    init = d.s == "__init__" and self.tmpl_of(cls) != ""  # (a class template's: see specialize)
     receiver = cls in self.classes and self.classes[cls].tag != 0 and f.deco == ""
     if receiver:
         # A base's inherited body must see the concrete receiver: it can call a method
