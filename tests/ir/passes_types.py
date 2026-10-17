@@ -2,6 +2,7 @@
 # compares the runtime calls of each function with passes_types.calls): a tuple key, an optional
 # dict, a NamedTuple's field and a boxed number are values like any other, and the container
 # protocol's dunders are calls, whose summaries say whether a dict lookup still holds after them.
+# Loading Seq.__iter__'s iter helper conservatively enables exception handling in main.
 from typing import Iterator, NamedTuple, Optional
 
 
