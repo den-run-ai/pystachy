@@ -182,12 +182,15 @@ def _norm_grad(model: GPT, name: str, x: NDArray, dy: NDArray, gradients: dict[s
     return dx
 
 
-def loss_and_grad_with_backend(model: GPT, tokens: list[int], targets: list[int], batch: int, length: int, matmul_fn) -> TrainingResult:
+def loss_and_grad_with_backend(model: GPT, tokens: list[int], targets: list[int], batch: int, length: int,
+                               matmul_fn, linear_fn=None) -> TrainingResult:
+    # linear_fn, as forward_hidden_with_backend takes it, computes only the forward
+    # projections; every backward product uses matmul_fn.
     for parameter in model.parameters.values():
         if not parameter.whole():
             raise ValueError("training parameters must be whole contiguous arrays")
     cache: dict[str, NDArray] = {}
-    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn, cache)
+    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn, cache, linear_fn)
     embedding_weight = model.parameters["transformer.wte.weight"]
     logits = matmul_fn(hidden, embedding_weight.T).reshape([batch, length, model.config.vocab_size])
     loss = cross_entropy(logits, targets)

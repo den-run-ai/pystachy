@@ -54,6 +54,19 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
+      # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
+      # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
+      # LD_LIBRARY_PATH selects each in turn; NumPy is check_blas.py's reference
+      - name: Optional BLAS adapter and nanoGPT fused-linear correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: |
+          python3 -m pip install numpy==2.5.4
+          OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/openblas-pthread \
+            make blas-check BENCH_COMPILER=build/verify/pystachy2
+          LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/blas make blas-check BENCH_COMPILER=build/verify/pystachy2
+
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

@@ -1,13 +1,14 @@
 """Optional native BLAS regression cases, run by check_blas.py in all tiers.
 
-Every output element is compared with the existing scalar matmul, and the
-checker independently compares these same operands/results with NumPy.
+Every output element is compared with the existing scalar matmul (for linear(),
+the scalar product plus the bias), and the checker independently compares these
+same operands/results with NumPy.
 """
 
 import math
 
 from ndarray import NDArray, array2, matmul as scalar_matmul, zeros
-from ndarray_blas import matmul
+from ndarray_blas import linear, matmul
 
 
 def matrix(rows: int, columns: int, seed: int) -> NDArray:
@@ -49,6 +50,35 @@ def cases() -> list[tuple[str, NDArray, NDArray]]:
     ]
 
 
+def linear_cases() -> list[tuple[str, NDArray, NDArray, NDArray, bool]]:
+    # (label, x, weight, bias, whether the bias is passed): x @ weight.T + bias
+    backing = [float(i - 20) / 7.0 for i in range(80)]
+    x = matrix(3, 4, 21)
+    weight = matrix(5, 4, 22)
+    bias = NDArray([float(j) / 8.0 - 0.25 for j in range(5)], [5], [1], 0)
+    return [
+        ("contiguous", x, weight, bias, True),
+        ("no_bias", x, weight, bias, False),
+        ("padded_input", NDArray(backing, [3, 4], [7, 1], 0), weight, bias, True),
+        ("offset_input", NDArray(backing, [3, 4], [4, 1], 9), weight, bias, True),
+        ("transposed_input", matrix(4, 3, 23).T, weight, bias, True),
+        ("transposed_weight", x, matrix(4, 5, 24).T, bias, True),
+        ("strided_bias", x, weight, NDArray(backing, [5], [3], 2), True),
+        ("shared_input_weight", NDArray(backing, [3, 4], [4, 1], 0), NDArray(backing, [5, 4], [4, 1], 0), bias, True),
+        ("bias_shares_weight", x, weight, NDArray(weight.data, [5], [4], 0), True),
+        ("empty_rows", zeros([0, 4]), weight, bias, True),
+        ("empty_features", x, zeros([0, 4]), zeros([0]), True),
+        ("empty_inner", zeros([3, 0]), zeros([5, 0]), bias, True),
+    ]
+
+
+def scalar_linear(x: NDArray, weight: NDArray, bias: NDArray, use_bias: bool) -> NDArray:
+    result = scalar_matmul(x, weight.T)
+    if use_bias:
+        result += bias
+    return result
+
+
 def same_values(actual: list[float], expected: list[float]) -> None:
     assert len(actual) == len(expected)
     for i in range(len(actual)):
@@ -65,6 +95,43 @@ def rejection(label: str, a: NDArray, b: NDArray) -> None:
         print("ERROR", (label, str(error)))
         return
     raise AssertionError("invalid BLAS input accepted: " + label)
+
+
+def linear_rejection(label: str, x: NDArray, weight: NDArray, bias: NDArray) -> None:
+    try:
+        linear(x, weight, bias)
+    except (ValueError, OverflowError) as error:
+        print("ERROR", (label, str(error)))
+        return
+    raise AssertionError("invalid BLAS linear input accepted: " + label)
+
+
+def check_linear() -> None:
+    for label, x, weight, bias, use_bias in linear_cases():
+        before = (list(x.data), list(weight.data), list(bias.data))
+        actual = linear(x, weight, bias if use_bias else None)
+        expected = scalar_linear(x, weight, bias, use_bias)
+        assert actual.shape == expected.shape
+        assert actual.data is not x.data and actual.data is not weight.data and actual.data is not bias.data
+        assert (list(x.data), list(weight.data), list(bias.data)) == before
+        same_values(actual.values(), expected.values())
+        print("LINEAR", (label, actual.shape, actual.values()))
+        # The bias is read afresh on every call, as training updates it in place.
+        if use_bias and bias.size != 0 and actual.size != 0:
+            original = bias.data[bias.offset]
+            bias.data[bias.offset] += 0.5
+            same_values(linear(x, weight, bias).values(), scalar_linear(x, weight, bias, True).values())
+            bias.data[bias.offset] = original
+
+    x = matrix(3, 4, 25)
+    weight = matrix(5, 4, 26)
+    linear_rejection("linear_bias_length", x, weight, zeros([4]))
+    linear_rejection("linear_bias_rank", x, weight, zeros([1, 5]))
+    linear_rejection("linear_inner_mismatch", x, matrix(5, 3, 27), zeros([5]))
+    linear_rejection("linear_input_rank", NDArray([1.0, 2.0, 3.0, 4.0], [4], [1], 0), weight, zeros([5]))
+    # The output's extent is checked before the bias is expanded into it.
+    huge = NDArray([], [2147483647, 0], [0, 1], 0)
+    linear_rejection("linear_output_byte_extent", huge, huge, NDArray([0.0], [2147483647], [0], 0))
 
 
 def main() -> None:
@@ -108,6 +175,7 @@ def main() -> None:
     rejection("negative_overflow", NDArray(data, [2, 2], [-9223372036854775807 - 1, 1], 3), one)
     rejection("inner_mismatch", zeros([2, 3]), zeros([4, 2]))
     rejection("empty_inner_mismatch", zeros([0, 3]), zeros([4, 0]))
+    check_linear()
 
 
 if __name__ == "__main__":

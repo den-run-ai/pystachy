@@ -9,6 +9,8 @@ Both operands are two-dimensional. Zero-offset row-major matrices and their
 transposes (including padded rows) lend their lists directly; other views are
 packed in logical row-major order. Every result has fresh storage, including
 products of operands which share their data. There is no stale weight cache.
+linear() computes PyTorch's Linear, x @ weight.T + bias, in one call by
+accumulating the product into the bias.
 """
 
 from ffi import c_int, extern
@@ -95,4 +97,40 @@ def matmul(a: NDArray, b: NDArray) -> NDArray:
     # CblasRowMajor=101. Result storage cannot alias either input.
     _dgemm(101, transa, transb, rows, columns, inner, 1.0, left, lda,
            right, ldb, 0.0, result.data, columns)
+    return result
+
+
+def linear(x: NDArray, weight: NDArray, bias: NDArray | None) -> NDArray:
+    """Return x @ weight.T + bias (PyTorch's Linear layout) in one cblas_dgemm call.
+
+    The result starts as the bias repeated for every row, and BLAS adds the
+    product into it (beta=1). That replaces zero-filling the output and a
+    separate pass adding the bias. BLAS adds its partial sums to the bias in its
+    own order, so a library that splits the inner dimension can round differently
+    from matmul(x, weight.T) + bias; agreement is within the BLAS tolerance.
+    Without a bias this is matmul(x, weight.T).
+    """
+    right = weight.T
+    if bias is None:
+        return matmul(x, right)
+    _check_matrix(x)
+    _check_matrix(right)
+    if x.shape[1] != right.shape[0]:
+        raise ValueError("BLAS linear inner dimensions do not match")
+    rows = x.shape[0]
+    inner = x.shape[1]
+    columns = right.shape[1]
+    if bias.shape != [columns]:
+        raise ValueError("BLAS linear bias must have one value per output feature")
+    # As zeros() would for the product: the output's byte extent must be valid.
+    _new_shape([rows, columns])
+    # values() reads a strided bias in logical order; the result is a new list.
+    result = NDArray(bias.values() * rows, [rows, columns], [columns, 1], 0)
+    # An empty product contributes nothing (K=0 leaves the bias); call no BLAS.
+    if rows == 0 or columns == 0 or inner == 0:
+        return result
+    left, transa, lda = _operand(x)
+    weights, transb, ldb = _operand(right)
+    _dgemm(101, transa, transb, rows, columns, inner, 1.0, left, lda,
+           weights, ldb, 1.0, result.data, columns)
     return result
