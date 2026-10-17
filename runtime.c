@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
@@ -4181,6 +4182,80 @@ void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PE
   while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
 }
 void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- select: a POSIX integer-descriptor subset ---------- */
+static int select_fds(List *fds, fd_set *set, int maxfd) {
+  FD_ZERO(set);
+  for (I i = 0; i < fds->len; i++) {
+    I fd = fds->a[i];
+    if (fd < INT32_MIN || fd > INT32_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+    if (fd < 0) failf("ValueError: file descriptor cannot be a negative integer (%lld)", (long long)fd);
+    if (fd >= FD_SETSIZE) pys_fail("ValueError: filedescriptor out of range in select()");
+    /* CPython converts and validates the first excess item before its count
+       error; items beyond that one must not replace the earlier error. */
+    if (i >= FD_SETSIZE) pys_fail("ValueError: too many file descriptors in select()");
+    FD_SET((int)fd, set);  /* checked before the macro indexes its fixed-size bitmap */
+    if (fd > maxfd) maxfd = (int)fd;
+  }
+  return maxfd;
+}
+void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  if (!blocking) {
+    if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
+    if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
+      pys_fail("OverflowError: timestamp out of range for C PyTime_t");
+    if (timeout < 0) pys_fail("ValueError: timeout must be non-negative");
+  }
+  fd_set original[3], ready[3];
+  int maxfd = select_fds(r, &original[0], -1);
+  maxfd = select_fds(w, &original[1], maxfd);
+  maxfd = select_fds(x, &original[2], maxfd);
+  double deadline = blocking ? 0 : pys_monotonic() + timeout;
+  double remaining = timeout;
+  for (;;) {
+    ready[0] = original[0]; ready[1] = original[1]; ready[2] = original[2];
+    struct timespec tv = {0, 0};
+    if (!blocking) {
+      tv.tv_sec = (time_t)remaining;
+      tv.tv_nsec = (long)ceil((remaining - (double)tv.tv_sec) * 1e9);
+      if (tv.tv_nsec >= 1000000000) { tv.tv_sec++; tv.tv_nsec -= 1000000000; }
+    }
+    /* Block SIGINT until the kernel starts waiting: if it arrived after io_in
+       but before select, the handler would merely note it and select could wait
+       forever. pselect atomically restores the caller's mask for the wait. */
+    sigset_t blocked, previous;
+    sigemptyset(&blocked); sigaddset(&blocked, SIGINT);
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous)) ioerr(errno);
+    if (io_intr) {
+      if (sigprocmask(SIG_SETMASK, &previous, NULL)) ioerr(errno);
+      kbint_exit();
+    }
+    io_in();
+    int n = pselect(maxfd + 1, &ready[0], &ready[1], &ready[2], blocking ? NULL : &tv, &previous);
+    int e = errno;
+    int mask_error = sigprocmask(SIG_SETMASK, &previous, NULL) ? errno : 0;
+    io_out();  /* a pending SIGINT retains the runtime's KeyboardInterrupt behavior */
+    if (mask_error) ioerr(mask_error);
+    if (n >= 0) break;
+    if (e != EINTR) ioerr(e);
+    if (!blocking) {
+      remaining = deadline - pys_monotonic();
+      if (remaining <= 0) {
+        FD_ZERO(&ready[0]); FD_ZERO(&ready[1]); FD_ZERO(&ready[2]);
+        break;
+      }
+    }
+  }
+  List *inputs[3] = {r, w, x};
+  void **out = pys_alloc(24);  /* a scanned fixed tuple keeps each result list alive */
+  for (int k = 0; k < 3; k++) {
+    List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
+    out[k] = dst;
+    for (I i = 0; i < src->len; i++)
+      if (FD_ISSET((int)src->a[i], &ready[k])) pys_list_append(dst, src->a[i]);
+  }
+  return out;
+}
 
 /* ---------- the errno module: the platform's error numbers ---------- */
 static const struct { const char *name; int value; } errnos[] = {
