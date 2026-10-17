@@ -1,0 +1,31 @@
+initial False
+acquire None
+nested True
+work 9.0
+outer True
+release None
+released False
+unheld not holding the import lock
+unwind True
+after unwind False
+missing pystachy_missing_frozen_module False
+None None
+None
+No such frozen object named 'pystachy_missing_frozen_module'
+No such frozen object named 'pystachy_missing_frozen_module'
+missing  False
+None None
+None
+No such frozen object named ''
+No such frozen object named ''
+missing missing.module False
+None None
+None
+No such frozen object named 'missing.module'
+No such frozen object named 'missing.module'
+missing missing'quote False
+None None
+None
+No such frozen object named "missing'quote"
+No such frozen object named "missing'quote"
+[exit 0]
