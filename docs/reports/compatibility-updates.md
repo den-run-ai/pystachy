@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `92a33b481d582f45ea8a8bfbf4f17ccfc9e072ac`.
+**Latest evaluated main:** `90dcffa17d7221e7ab34b32d1ca0752ecd7fcd16`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -930,6 +930,91 @@ PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
 /root/.local/bin/python3.13 build/audit-item-methods/build_evidence.py
 ```
 
+## 2026-10-17 — #633: generator channels and isolated iterator loading
+
+Evaluated [main `90dcffa1`](https://github.com/den-run-ai/pystachy/commit/90dcffa17d7221e7ab34b32d1ca0752ecd7fcd16),
+the only first-parent merge since evaluated `92a33b48`.
+[#633](https://github.com/den-run-ai/pystachy/pull/633) merged at
+**2026-10-17 14:52:41 UTC**, verified in main's history. The 27-file diff changes
+compiler inference/dependency scanning and tests/docs; runtime and all 55 library
+Python sources remain byte-identical to the previous compiler's source tree.
+Coordination #491/#616 and PR comments were read; no implementation branch was changed.
+
+Rebuilt with **CPython 3.13.16 / LLVM 18.1.3**. Compiler/runtime fixed points pass:
+**620,445 / 18,388 IR lines**. The new native compiler SHA-256 is
+`bf8f98aa5e8c1b341925c191f7f50e1a1122ca7b58477870344ae2a64e323cab`.
+The comparison uses the verified `92a33b48` compiler
+`9c1567d534ded166bf5de1293dd4d335580bc756c58f1293b99ecde60dbfbeb0`.
+[Normalized evidence](compatibility-2026-10-17-generators.json) retains exact
+programs, commands, inputs, source/compiler hashes, metadata and raw outputs.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native checks | **62 pass**: 54 positive JIT/AOT checks with per-allocation program GC and eight expected compile rejections, across 35 files. Covers generator channels, delegation/closing, optional returns, isolated aliases, mutation regression controls and properties. |
+| CPython references | **27/27** positive programs match checked-in recordings under CPython 3.13.16. |
+| Adapted ports | **22/22** JIT/AOT checks over 11 iniconfig, ordered-set, pyfiglet, sortedcontainers and tomli-w workloads. |
+| Adapted benchmark regression | Included in the focused checks: `tests/gen_pyperf.py` matches CPython, traversing a 1,000-item recursive tree three times. This is a bounded adaptation of pyperformance 1.14.0's generators workload, not native pyperf or a new full benchmark census. |
+| Differential API programs | All **26** CPython controls pass. **17** programs match CPython in JIT/AOT (34 execution checks); nine remain rejected. Three programs newly execute, listed below. |
+| Isolated loader controls | All **six** current programs match CPython in JIT/AOT (12 execution checks). The original fails both compile paths on previous main; its five workarounds pass on both revisions. |
+| Type-contract comparison | All **seven** new negative probes receive their expected diagnostics; five compiled on previous main. Three now enforce yield/return contracts, two reject Any-containing send channels at declaration. |
+| IR call contracts | Both changed `passes_types`/`tupleiter` snapshots pass compiler IR validation and LLVM assembly. |
+| Import sweeps | **142/475 native**, **146/475 with throwing diagnostic stubs**, unchanged 522-file inventory and 47 exclusions. Every normalized result is unchanged; no timeouts. |
+
+### Measured gains and limits
+
+The audit's standalone `__iter__() -> Iterator[Any]: return iter([1, 2])`
+reproducer now prints `[1, 2]` in both native modes. It no longer needs an
+extra outer `iter()` or removal of the return annotation. Separate merged
+tests also verify quoted/aliased and nested-alias forms without another call
+masking the dependency. This independently confirms the
+[#619](https://github.com/den-run-ai/pystachy/issues/619) loader fix.
+
+Three differential programs change from rejection to matching execution:
+
+- The retained non-generator structured Any iterator return.
+- The retained generator-bodied `__iter__() -> Iterator[Any]`.
+- A `Generator[Any, str | None, int]` delegated through `yield from`, which
+  preserves its string send channel and integer return while inferring yields.
+
+The broader positive generator recording also checks Any return inference,
+nested annotations, initialized generator variables and optional returns.
+This removes localized annotation workarounds for these native programs.
+**Any send remains unsupported**: the retained send probe now gives an actionable
+declaration error, rather than silently losing its annotation and failing later.
+Properties, annotation-only variables, dataclass Any, cache inference, forwarding
+recursion and heterogeneous storage retain their separate limits.
+
+The five newly rejected negative controls are intentional contract enforcement,
+not losses among the positive API probes. Previous main accepted a wrong string
+yield despite an integer yield annotation, a wrong string return despite an
+integer return annotation, a value return from `Iterator[Any]`, and direct/nested
+Any send declarations. Current main rejects all five precisely. No retained
+positive execution or successful import regressed.
+
+The helper is now loaded conservatively even for some concrete iterator returns.
+The two changed IR snapshots include `pys_eh_on` in main; their other call
+sequences still satisfy the checked-in contracts. No timing/memory trend is
+inferred from this static change or the correctness runs.
+
+The four unmodified upstream package probes still stop at their prior first
+errors: tomli-w 1.2.0 `MappingProxyType`, pyfiglet 1.0.4 missing `importlib`
+on its configured package-only path, ordered-set 4.1.0 `slice(None)`, and
+iniconfig 2.3.1 named Unicode escapes. These first errors can hide later blockers.
+The adapted workloads and native language gains do not establish whole-package
+acceptance. Native unittest/pytest/pyperf and full CPython regrtest remain
+unestablished; broad upstream/FFI/performance suites were not rerun.
+Both audit-tool suites pass again (**10 + 16**). Historical reports/JSON are preserved.
+
+Reproduction scripts are embedded in the evidence:
+
+```sh
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-generators/evaluate.py
+/root/.local/bin/python3.13 build/audit-generators/loader_probe.py
+/root/.local/bin/python3.13 build/audit-generators/contracts_probe.py
+/root/.local/bin/python3.13 build/audit-generators/build_evidence.py
+```
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -938,8 +1023,8 @@ when practical, preserving attribution and the previous result.
 
 | Pending work | Focused remeasurement |
 |---|---|
-| #619 iterator-helper follow-up after evaluated #631 | Retained standalone `Iterator[Any]` reproducer and six loader controls; test without another explicit `iter()` call that masks the dependency. Keep generator-bodied methods and heterogeneous iterator items separate. |
-| #633 generator channels and iterator-loader follow-up, #634 recursive diagnostics | Generator-channel tests; isolated iterator-helper controls; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Keep evaluated #632 mutation probes as regression controls. Do not treat an improved diagnostic as acceptance. |
+| #619 remaining property inference | Retained property rejection; keep the now-passing #633 isolated iterator and generator-channel programs as regression controls. |
+| #634 recursive diagnostics | Forwarding recursion (#595) versus improved direct-operand diagnostics. Keep evaluated #632 mutation and #633 generator probes as regression controls. Do not treat an improved diagnostic as acceptance. |
 | Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 

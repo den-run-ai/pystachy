@@ -174,13 +174,17 @@ def gen_gen_declare(self, f: FnInfo, d: Node) -> str:
         f.generic = True  # (its first yield decides what it yields, for each call's argument types)
         f.ret = ""
         f.gret = ""
+        f.gretinfer = True
         return ""
-    yr = self.gen_ann_ret(d.kids[1])
+    yr = self.gen_ann_ret(d.kids[1], True)
     if len(yr) == 1:
         return yr[0]
-    f.ret = self.gen_type(yr[0], yr[2])
+    f.ret = self.gen_type(yr[0], yr[2]) if yr[0] != "" else ""
     f.gret = yr[1]
+    f.gretinfer = yr[1] == ""
     f.gsend = yr[2]
+    if yr[0] == "" or f.gretinfer:
+        f.generic = True
     return ""
 
 
@@ -190,10 +194,11 @@ def gen_gen_type(self, y: str, s: str) -> str:
     return self.ctype("gen", [y] if s == "None" else [y, s])
 
 
-def gen_gen_ann_ret(self, n: Node) -> list[str]:
+def gen_gen_ann_ret(self, n: Node, infer: bool = False) -> list[str]:
     # [Y, R, S] of a generator's return annotation n: Iterator[Y] or Iterable[Y] (R and S None),
     # Generator[Y, S, R] or Generator[Y] (typing's or collections.abc's); [why] where it is no
-    # such annotation, or Pystachy does not support its types
+    # such annotation, or Pystachy does not support its types. In a function's annotation,
+    # Any in Y or R leaves that channel inferred (""); S needs a concrete native layout.
     if n.kind == "str":
         n = self.parse_expr(n.s)
     base = self.typing_ref(n.kids[0]) if n.kind == "index" else ""
@@ -204,11 +209,14 @@ def gen_gen_ann_ret(self, n: Node) -> list[str]:
         return [f"{base}[...] takes one type: {base}[T]"]
     if base == "Generator" and len(a) != 1 and len(a) != 3:
         return ["Generator[...] takes three types: Generator[Y, S, R]"]
-    why = self.ann_problem(a[0], False) if a[0].kind != "None" else ""
+    yi = infer and self.any_in([a[0]])
+    why = self.ann_problem(a[0], False) if a[0].kind != "None" and not yi else ""
     if why != "":
         return [why]
     sv = "None"
     if len(a) == 3 and a[1].kind != "None":
+        if infer and self.any_in([a[1]]):
+            return ["a generator's send type cannot contain Any: annotate Generator[Y, S, R] with a concrete send type S that may be None (for example str | None); future send() calls cannot infer it"]
         why = self.ann_problem(a[1], False)
         if why != "":
             return [why]
@@ -217,11 +225,14 @@ def gen_gen_ann_ret(self, n: Node) -> list[str]:
             return [f"a generator's send type must be one that may be None (next() sends None), not {typestr(sv)}"]
     r = "None"
     if len(a) == 3 and a[2].kind != "None":
-        why = self.ann_problem(a[2], False)
-        if why != "":
-            return [why]
-        r = self.ann(a[2])
-    return ["None" if a[0].kind == "None" else self.ann(a[0]), r, sv]
+        if infer and self.any_in([a[2]]):
+            r = ""
+        else:
+            why = self.ann_problem(a[2], False)
+            if why != "":
+                return [why]
+            r = self.ann(a[2])
+    return ["" if yi else "None" if a[0].kind == "None" else self.ann(a[0]), r, sv]
 
 
 def gen_gen_name(self, f: FnInfo) -> str:
@@ -290,10 +301,10 @@ def gen_gen_end(self, f: FnInfo) -> None:
         self.gen_none_end()
         self.gen_ret(Val("null", "None"))
     if f.ret == "":
-        f.ret = "gen[None]"  # (no yield is reached: it yields nothing)
+        f.ret = self.gen_type("None", f.gsend)  # (no yield is reached: it yields nothing)
     if f.gret == "":
         f.gret = "None"
-    elif fn.gnone and f.gret != "None" and f.node.kids[1].kind == "noann":
+    elif fn.gnone and f.gret != "None" and f.gretinfer:
         f.gret = self.optional(f.gret)  # (it also ends without a value: R | None, the same pointer)
     if fn.gpad != "":
         self.handler = ""
@@ -375,8 +386,8 @@ def gen_gen_none_end(self) -> None:
     # returning a number would need a box: an error
     f = self.curfn
     r = f.gret
-    if r != "" and r != "None" and self.optional(r) != r and (f.node.kids[1].kind != "noann" or not self.none_null(r)):
-        self.err(f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]" if f.node.kids[1].kind != "noann" else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, None, {typestr(r)} | None]")
+    if r != "" and r != "None" and self.optional(r) != r and (not f.gretinfer or not self.none_null(r)):
+        self.err(f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]" if not f.gretinfer else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]")
     self.fn.gnone = True
 
 
@@ -399,9 +410,9 @@ def gen_gen_return(self, n: Node) -> None:
             self.err(f"{short(f.name)}() is annotated to return no value (Iterator[T], Iterable[T] or Generator[Y, {'None' if f.gsend == 'None' else 'S'}, None]): annotate it Generator[Y, {typestr(f.gsend)}, R] to return one")
         elif r == "":
             if "?" in v.t:
-                self.err(f"cannot infer what {short(f.name)}() returns from {typestr(v.t)}; annotate it Generator[Y, None, R]")
+                self.err(f"cannot infer what {short(f.name)}() returns from {typestr(v.t)}; annotate it Generator[Y, {typestr(f.gsend)}, R]")
             if self.fn.gnone and self.optional(v.t) != v.t and not self.none_null(v.t):
-                self.err(f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, None, {typestr(v.t)} | None]")
+                self.err(f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(v.t)} | None]")
             f.gret = v.t
         else:
             v = self.coerce(v, r)
@@ -515,7 +526,7 @@ def gen_yield_stmt(self, n: Node) -> None:
         if "?" in v.t:
             self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> Iterator[T]")
         y = v.t
-        f.ret = self.ctype("gen", [y])
+        f.ret = self.gen_type(y, f.gsend)
     elif v.t != y:
         v = self.coerce(v, y)
     if dead:
@@ -565,7 +576,7 @@ def gen_yield_from(self, x: Node) -> Val:
     t = gelem(v.t)
     if y == "":
         y = t
-        f.ret = self.ctype("gen", [y])
+        f.ret = self.gen_type(y, f.gsend)
     if t != y and not self.widens(t, y):
         self.err(f"{short(f.name)}() yields {typestr(y)}, but yield from delegates to a generator that yields {typestr(t)}")
     if self.gproto:
