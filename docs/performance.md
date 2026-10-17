@@ -128,6 +128,14 @@ Memory savings depend on object representation and lifetime. The router's stream
 instead recorded higher AOT peak RSS because collection is deferred. Cached string hashes
 also consume space; [#99](https://github.com/den-run-ai/pystachy/pull/99) records that tradeoff.
 
+A collection runs when the bytes allocated since the last one reach the larger of 32 MiB and
+the bytes live after it. Pointer-free large objects (8,200 bytes or more: strs and the arrays
+of lists of numbers past 1,024 items) also start one when they are at least half of what was
+allocated since and reach 4 MiB, or as many bytes as were live. Only a collection frees one,
+so without that budget a program that mostly makes and drops big arrays goes through 32 MiB of
+them, cold in cache and zeroed again, between collections. Programs that mostly allocate small
+objects or lists of objects keep the 32 MiB window.
+
 ## Compile time
 
 Compile time changes with source size, imports, optimization settings and toolchain.
