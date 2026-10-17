@@ -1559,6 +1559,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
+        self.glue_field(o, t.s)
         p = self.field(o, t.s, True)
         self.frozen(o.t, t.s)
         if not self.frozen_store(o, t.s):

@@ -283,6 +283,8 @@ static void sweep(void) {
 }
 static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
 static void files_sweep(void);
+static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
+static void trk_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
@@ -295,6 +297,7 @@ __attribute__((noinline)) static void collect(void) {
     scan(p, p + n / 8);
   }
   if (nfiles) files_sweep();
+  if (ntrk) trk_sweep();
   sweep(); gc_n++;
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -392,9 +395,12 @@ static void gc_extern(I n) {           /* n malloc'd bytes more that heap object
   gc_ext += n;
   if ((gc_heap += n) > gc_peak) gc_peak = gc_heap;
 }
+static I trk_report(I *ex);
 static void gc_report(void) {
   fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
           (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+  I ex, n = trk_report(&ex);
+  if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
@@ -3294,6 +3300,9 @@ static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call
   out_flush(); fputs("KeyboardInterrupt\n", stderr);
   kbint = 1; pys_finish(); exit(130);
 }
+static int (*finish_hook)(void);       /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish); 1 if
+                                          flushing its sys.stdout failed, which CPython's exit status 120 shows */
+void pys_at_finish(int (*f)(void)) { finish_hook = f; }
 void pys_files_exit(void) {            /* the open files closed in the order they were opened (a failure is reported) */
   int e;
   for (I i = 0; i < nfiles; i++) if (!files[i]->closed && (e = shut(files[i]))) report(files[i], e);
@@ -3303,7 +3312,8 @@ static void **exit_hook;               /* the address of atexit's _hook (lib/_py
 void pys_exit_hook(void **hook) { exit_hook = hook; }   /* the program's main gives it, where it imports atexit */
 void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
                                           out_flush), atexit's callbacks run (once its module has run: CPython's
-                                          finalization runs them first), the collector's report, stdout flushed in
+                                          finalization runs them first), an embedded CPython finalized (finish_hook,
+                                          pyembed.c), the collector's report, stdout flushed in
                                           finalization (a failure is reported, status 120), the open files closed in
                                           the order they were opened (a failure is reported), and an uncaught
                                           KeyboardInterrupt's end by SIGINT */
@@ -3315,8 +3325,9 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
     exit_hook = 0;
     ((void (*)(void *))c[0])(c[1]);
   }
+  int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
+                                                    output and its atexit callbacks */
   if (gc_stats) gc_report();
-  int bad = 0, e;
   if (!std_out.closed && (e = flush1(&std_out))) {
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;
@@ -3345,7 +3356,7 @@ static void files_sweep(void) {        /* after marking: close the open files no
 }
 static _Noreturn void oserr(const char *path);
 static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
-/* CPython in the process (pyembed.c: an extension module's host): std_hook
+/* CPython in the process (pyembed.c: lib/pyobj.py embedding it, or an extension module's host): std_hook
    sees each write to sys.stdout or sys.stderr (n < 0: a flush) first, and takes it (1) when it goes
    through Python's sys.stdout or sys.stderr; in_hook reads sys.stdin through Python's (kind 0 input(),
    1 readline(), 2 read(n)) */
@@ -3365,6 +3376,7 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
+I pys_jit(void) { return jit; }
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
@@ -3396,6 +3408,9 @@ static I lib_depth;
 void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
 void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
 I pys_leave(void) { return --lib_depth; }
+void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
+  if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
+}
 void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
@@ -4661,6 +4676,46 @@ Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C
 Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
   if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
   return pys_str((const char *)a, n);
+}
+/* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
+   of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
+   ffi.collected() takes one at a time (released then, outside collect: Py_DecRef runs Python code).
+   The Python object a value holds is memory the collector does not see: it counts as allocated,
+   TRK_BYTES plus n, the object's size as lib/pyobj.py measures it (sys.getsizeof), and starts a
+   collection as an allocation of that size would, so that dropped owners are found as soon as
+   their size would be if it were the heap's */
+#define TRK_BYTES 512
+typedef struct { void *o; I v; } Trk;  /* (a free slot: o is NULL, v the next free one) */
+static Trk *trk;
+static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
+I pys_track(void *o, I v, I n) {
+  gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
+  if (!gc_off && gc_allocd >= gc_limit) collect();   /* (as an allocation of that size would: o is live in the caller) */
+  I i = trk_free;
+  if (i >= 0) trk_free = trk[i].v;
+  else {
+    if (ntrk == ctrk && !(trk = realloc(trk, (ctrk = 2 * ctrk + 64) * sizeof *trk))) oom();
+    i = ntrk++;
+  }
+  trk[i].o = o; trk[i].v = v;
+  return i;
+}
+void pys_untrack(I i) { if (i >= 0 && i < ntrk && trk[i].o) { trk[i].o = 0; trk[i].v = trk_free; trk_free = i; } }
+static void trk_sweep(void) {          /* after marking */
+  for (I i = 0; i < ntrk; i++)
+    if (trk[i].o && !gc_marked(trk[i].o)) {
+      if (ndq == cdq && !(dq = realloc(dq, (cdq = 2 * cdq + 64) * sizeof *dq))) oom();
+      dq[ndq++] = trk[i].v; trk_gc++; pys_untrack(i);
+    }
+}
+I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
+static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
+I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
+  static I i = -1;
+  if (ndq) return dq[--ndq];
+  if (i < 0) i = ntrk;
+  while (i > 0) if (trk[--i].o) { I v = trk[i].v; pys_untrack(i); trk_exit++; return v; }
+  return 0;
 }
 I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
   static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",

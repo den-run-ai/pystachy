@@ -772,6 +772,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return bm
         if o.t in self.classes:
             self.fn_attr_read(o, n.s)
+        self.glue_field(o, n.s)
         return self.getfield(o, self.field(o, n.s), n.s)
     if k == "index":
         return self.index(n, want)

@@ -82,7 +82,8 @@ The [compatibility reference](language/compatibility.md) lists the detailed rest
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of
 work; the repository's [issues](https://github.com/den-run-ai/pystachy/issues) track individual gaps.
-C calls and experimental CPython extension builds have their own [FFI guide](ffi.md).
+C calls, calls into an embedded CPython (`pyobj`) and experimental CPython extension builds
+have their own [FFI guide](ffi.md).
 
 <a id="2-method"></a>
 <a id="7-reproducing"></a>

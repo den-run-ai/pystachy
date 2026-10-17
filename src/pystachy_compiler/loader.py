@@ -60,6 +60,7 @@ from src.pystachy_compiler.specs import (
     CBUILTIN,
     CTYPES,
     GENERICS,
+    GLUE,
     ITERS,
     MODNAMES,
     MODULES,
@@ -514,6 +515,11 @@ class Loader:
 
     def find(self, name: str, line: int) -> Mod:
         # the user module called name, loaded with its parent packages unless it is already
+        if name == "ffi" and line >= LINES and self.in_lib(FILES[line // LINES]):
+            # (a module of Pystachy's lib/, such as pyobj, that declares C functions, and a program with an
+            # ffi module of its own, which the driver lets replace the builtin one, as CPython would)
+            lib = FILES[line // LINES]
+            fail(f"module '{lib[lib.rfind('/') + 1 : -3]}' needs Pystachy's builtin ffi module, which the program's own {self.modpath(name)} replaces: rename that module", line)
         if name in self.mods:
             return self.mods[name]
         dot = name.rfind(".")
@@ -562,8 +568,19 @@ class Loader:
         self.sure = sure
         self.maybe = maybe
         m.done = True
+        if self.in_lib(path):
+            for k in m.kinds.values():
+                if k == "b:ffi" or k.startswith("b:ffi."):
+                    GLUE[name] = self.public(m)
         self.order.append(m)
         return m
+
+    def in_lib(self, path: str) -> bool:
+        # a file of Pystachy's own lib/ (the last directory of the module path)
+        lib = self.dirs[-1] if len(self.dirs) > 0 else ""
+        lib = lib[2:] if lib.startswith("./") else lib
+        path = path[2:] if path.startswith("./") else path
+        return lib != "" and path.startswith(lib + "/")
 
     def parse(self, path: str) -> Node:
         # a module's file, parsed once for the looks before it is loaded (optional()) and the load
@@ -2224,6 +2241,8 @@ class Loader:
                     fail(f"'{a.s}' is bound both as a variable and as a function, class or import (not supported)", line)
                 if a.s == "*":
                     fail(f"'from {path} import *' is not supported", line)
+                if a.kids[0].s in ("ffi.track", "ffi.untrack", "ffi.collected") and not self.in_lib(m.path):
+                    fail(f"cannot import name '{a.kids[0].s[4:]}' from 'ffi': it is internal to Pystachy's lib/pyobj.py", line)
                 self.bind(m, a.s, "b:" + a.kids[0].s, infn, line)
                 if not infn and a.kids[0].s.startswith("builtins.") and is_excname(a.kids[0].s[9:]):
                     continue  # (a builtin exception class, which qname() names itself)
@@ -2481,6 +2500,8 @@ class Loader:
     def take(self, m: Mod, src: Mod, x: str, name: str, infn: bool, keep: Node, inits: Node, copies: list[Node], line: int) -> str:
         # from src import x as name; what x is in src ("" for a submodule, "v" for a variable, which
         # an assignment copies)
+        if src.name in GLUE and m.name not in GLUE and x not in GLUE[src.name]:
+            fail(f"cannot import name '{x}' from '{src.name}': Pystachy's {src.name} module offers {', '.join(GLUE[src.name])} (as its twin, tools/rt_cpython/{src.name}.py, does)", line)
         k = src.kinds.get(x, "")
         if src.name == m.name and not infn and x not in self.sure:
             # (from . import x in a package's own code takes the package's x if its code has bound x
@@ -2594,6 +2615,8 @@ class Loader:
             self.subchk.append(f"{self.fragile[key]} {n.s} M")
         if n.s in t.amb:
             k = "x:" + self.ambiguous(base, n.s)
+        if base in GLUE and m.name not in GLUE and n.s not in GLUE[base]:
+            k = f"x:{base}.{n.s} is not offered by Pystachy's {base} module, whose names are {', '.join(GLUE[base])}"
         if k.startswith("m:"):
             return k[2:]
         if k == "" and base + "." + n.s in self.mods:

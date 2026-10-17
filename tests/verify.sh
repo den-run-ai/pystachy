@@ -50,8 +50,8 @@
 #   streaming      tools/streamprobe.py: sum(), min() and max() of range() and of generator expressions
 #                  take the items as they come: 100,000,000 of them in 64 MiB, AOT
 #   ffi            tests/ffi/run.sh with the stage-2 compiler: @ffi.extern's C calls and the FFI's
-#                  compile-time errors, then, with $PY's libpython, pystachy ext's extension modules,
-#                  against the twins in tools/rt_cpython (docs/ffi.md)
+#                  compile-time errors, then, with $PY's libpython, lib/pyobj.py embedding CPython and
+#                  pystachy ext's extension modules, against the twins in tools/rt_cpython (docs/ffi.md)
 #   list-storage   tools/listprobe.c: cleared reachable lists release backing capacity and live bytes;
 #                  empty operations/reuse preserve sort's sentinel, without allocation in clear
 #   container-eq   tools/eqprobe.c: shared DAG comparisons stop within a fixed comparison budget,
@@ -545,7 +545,7 @@ $PY tools/streamprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
 step streaming $r "$s" "$L" ', "items": 100000000, "address_space_mib": 64'
 fi
 
-# ---- ffi: C functions, extension modules (docs/ffi.md)
+# ---- ffi: C functions, CPython embedded, extension modules (docs/ffi.md)
 if want ffi; then
 L=$V/ffi.log; s=$(now); r=fail
 PY=$PY tests/ffi/run.sh "$V/pystachy2" > "$L" 2>&1 && r=pass

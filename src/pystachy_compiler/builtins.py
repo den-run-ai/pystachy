@@ -16,6 +16,7 @@ from src.pystachy_compiler.specs import (
     FROZENUSE,
     GALIAS,
     GALIASUSE,
+    GLUE,
     IMPLEMENTATION,
     ITERS,
     METHODS,
@@ -306,6 +307,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "hasattr" and len(args) == 2 and args[1].kind == "str":
         # decided by the static type of the object (for an object: is it None)
         hv = self.expr(args[0], "")
+        if unopt(hv.t) in self.classes and self.classes[unopt(hv.t)].mod in GLUE:
+            self.refl_supported(unopt(hv.t), "hasattr()")  # (pyobj.Object's names are not its twin's)
         if self.refl_prop_in(hv.t, args[1].s) or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
             # (a property's getter, and each class of a union of classes: reflection.py)
             return self.refl_hasattr_lit(hv, args[1].s, self.knownobj(args[0]))
@@ -677,6 +680,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         key = f"{name}({','.join([v.t for v in vals])})"
     if (name == "any" or name == "all") and len(vals) == 1 and is_list(vals[0].t) and key not in CALLS:
         return self.anyall(vals[0], name)
+    if (name == "ffi.track" or name == "ffi.untrack" or name == "ffi.collected") and self.curfn.mod not in GLUE:
+        self.err(f"{name}() is internal to Pystachy's lib/pyobj.py")
+    if name == "ffi.track" and len(vals) == 3 and vals[0].t in self.classes and vals[1].t == "int" and vals[2].t == "int":
+        # ffi.track(owner, value, size): the runtime hands value to ffi.collected() once a collection finds
+        # owner dropped; the Python object counts as size more bytes allocated (see pys_track)
+        return Val(self.rt("pys_track", "i64", [f"ptr {vals[0].v}", f"i64 {vals[1].v}", f"i64 {vals[2].v}"]), "int")
     if key in CALLS:
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t

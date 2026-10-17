@@ -104,6 +104,9 @@ BUG_ONLY = ("IndexError: string index out of range", "IndexError: compare out of
 # reads the kind of a list's item array (scanned or not), which is fixed when the array is made
 END = RAISES | {"oom"}
 ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "gc_seg", "gc_find", "atomic_items"}
+# a collection, which A stands for: the allocator's (gc_slow), or pys_track's for the Python object
+# it counts as allocated
+COLLECTS = {"gc_slow", "collect"}
 # C library functions that use no state but the memory their arguments point to
 PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh exp log log2 log10 log1p expm1
     exp2 cbrt fmod atan2 pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
@@ -760,11 +763,11 @@ def main():
             if x not in pys.FX and x != "U?":
                 bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
-        if reaches(fns, sym, RAISES | pyr, {"gc_slow"}):
+        if reaches(fns, sym, RAISES | pyr, COLLECTS):
             derived.append("R")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, {"gc_slow"} | pya, EXC_MAKERS | RAISES):
+        if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES):
             derived.append("A")
         if reaches(fns, sym, USER | pyu, set()) and k not in NO_USER:
             derived.append("U")

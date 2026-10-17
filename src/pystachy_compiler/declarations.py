@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import (
     EXCFIELDS,
     EXCINIT,
     FROZENERR,
+    GLUE,
     IOPS,
     ITERS,
     METHODS,
@@ -2295,6 +2296,12 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.class_default(ci, name)
         return Val(ci.fglob[name], ci.ftypes[name])
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
+
+def gen_glue_field(self, o: Val, name: str) -> None:
+    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others
+    ci = self.classes.get(unopt(o.t), None)
+    if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
+        self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body

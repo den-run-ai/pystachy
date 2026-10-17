@@ -302,6 +302,7 @@ from src.pystachy_compiler.declarations import (
     gen_bad_class as declarations_bad_class,
     gen_fgep as declarations_fgep,
     gen_fn_attr_read as declarations_fn_attr_read,
+    gen_glue_field as declarations_glue_field,
     gen_field as declarations_field,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
@@ -1016,6 +1017,7 @@ class Gen:
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
         self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
+        self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
         self.extvars: dict[str, int] = {}  # pystachy ext: the main module's variables, and the line that binds each
         self.unicode_audit = os.getenv("PYSTACHY_UNICODE_AUDIT", "") == "1"
         self.rtmode = False  # compiling runtime.py: its pys_* functions join runtime.c's under their C names (see runtime_ir)
@@ -1780,6 +1782,9 @@ class Gen:
 
     def fn_attr_read(self, o: Val, name: str) -> None:
         return declarations_fn_attr_read(self, o, name)
+
+    def glue_field(self, o: Val, name: str) -> None:
+        return declarations_glue_field(self, o, name)
 
     def getfield(self, o: Val, p: Val, name: str) -> Val:
         return declarations_getfield(self, o, p, name)

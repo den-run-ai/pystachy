@@ -9,8 +9,8 @@
    of which the driver keeps one (internalize). pyembed.c, linked in too, makes the host's sys.stdin,
    sys.stdout and sys.stderr the program's, and turns a Python exception into a Pystachy one.
    The runtime is single-threaded: only the thread that imported the module may call it. When the
-   host's interpreter exits (atexit), the module's open files are closed, as CPython's would be; the
-   module refuses calls after that. */
+   host's interpreter exits (atexit), the references the module's objects own are released and its
+   open files closed, as CPython's would be; the module refuses calls after that. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +74,8 @@ List *pys_warnoptions(void);
 void pys_list_append(List *l, I v);
 void pys_enter(char *sb);
 I pys_leave(void);
+I pys_collected(void);
+I pys_trk_pop(void);
 void pys_files_exit(void);
 Exc *pyx_init(void);
 /* pyembed.c */
@@ -158,7 +160,11 @@ __attribute__((noinline)) PyObject *pyx_call(I idx, PyObject *const *args, Py_ss
   default: Py_IncRef(NONE); res = NONE;
   }
 out:
-  pys_leave();
+  if (!pys_leave()) {                  /* the outermost call: the references of Objects found dropped are released */
+    PyObject *e = res ? 0 : PyErr_GetRaisedException();
+    for (I v; (v = pys_collected());) Py_DecRef((PyObject *)(intptr_t)v);
+    if (e) PyErr_SetRaisedException(e);
+  }
   return res;
 }
 static void host_list(const char *name, List *(*to)(void)) {   /* the host's sys.<name>, appended to the list to() returns */
@@ -178,6 +184,7 @@ void pyx_argv(void) {                  /* sys.argv and sys.warnoptions: the host
 static PyObject *pyx_exit(PyObject *self, PyObject *unused) {   /* atexit, before the host's modules are torn down */
   (void)self; (void)unused;
   ended = 1;
+  for (I v; (v = pys_trk_pop());) Py_DecRef((PyObject *)(intptr_t)v);
   pys_files_exit();
   Py_IncRef(NONE); return NONE;
 }

@@ -12,6 +12,7 @@ from src.pystachy_compiler.specs import (
     DUNDER,
     FUTURE,
     FXBIT,
+    GLUE,
     MODULES,
     NONEVAR,
     OPTTYPES,
@@ -977,7 +978,7 @@ def gen_stmt(self, n: Node) -> None:
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
             self.hoist(self.funcs[n.s])
             ef = self.funcs[n.s]
-            if ef.extern and not self.rtmode:
+            if ef.extern and not self.rtmode and ef.mod not in GLUE:
                 # @ffi.extern looks its C function up when the def runs, as ctypes.CDLL does (cextern)
                 xs = ef.ll[1:]
                 self.rt("pys_c_bind", "void", [f"ptr @ffi.fp.{xs}", f"ptr @ffi.lib.{xs}", f"ptr @ffi.sym.{xs}"])
@@ -1111,6 +1112,7 @@ def gen_augassign(self, n: Node) -> None:
             # o.x op= v of a property x: its getter, then its setter
             self.prop_store(o, t.s, self.inplace(op, self.method_value(o, t.s), n.kids[1]))
             return
+        self.glue_field(o, t.s)
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
         cur = self.getfield(o, p, t.s)

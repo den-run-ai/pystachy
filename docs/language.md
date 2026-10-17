@@ -228,8 +228,9 @@ The shipped libraries include unchanged upstream modules, localized ports such a
 `Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `csv`. Each has its own supported operations and deviations.
 
 Use the [builtin API reference](language/modules.md#builtins) and
-[library port notes](../lib/README.md) for current coverage. C calls and experimental
-CPython extension builds are documented separately in [FFI](ffi.md).
+[library port notes](../lib/README.md) for current coverage. C calls, calls into an
+embedded CPython (`pyobj`) and experimental CPython extension builds are documented
+separately in [FFI](ffi.md).
 
 <a id="removed-on-purpose"></a>
 

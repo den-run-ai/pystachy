@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `dcdee6ba396b970b469bbf26a63a29a288b3deeb`.
+**Latest evaluated main:** `cffa99346bc1a920a0c609d6c6b4468fe193d867`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -625,6 +625,74 @@ in maintained ports, benchmarks or examples, so unrelated port/performance suite
 were not repeated. There is no new timing claim or uncovered correctness bug.
 Historical reports and JSON remain unchanged.
 
+## 2026-10-17 — explicit CPython embedding (#170)
+
+Evaluated [main `cffa9934`](https://github.com/den-run-ai/pystachy/commit/cffa99346bc1a920a0c609d6c6b4468fe193d867)
+after [#170](https://github.com/den-run-ai/pystachy/pull/170) merged at 08:55:28 UTC.
+This is the only new merge after `dcdee6ba`; ancestry, changed files and the
+#491/#616/#170 discussions were checked. [Normalized evidence](compatibility-2026-10-17-pyobj.json)
+retains input hashes, compiler and libpython hashes, commands, programs, metadata,
+bootstrap output and full import results.
+
+Compiler/runtime changes require a fresh build. CPython **3.13.16** and LLVM
+**18.1.3** reach fixed points of **620,366 / 18,388 IR lines**. The resulting
+compiler hash is `79df1005ae2fa5634d92c822db019f5497b3a72d8bdd32444ec168e094adbef7`.
+The build and evaluated source revisions are both `cffa9934`.
+
+| Evidence category | Fresh result |
+|---|---|
+| Full FFI runner | **123 passed, zero failed, no skipped cases**: 18 C-call JIT/AOT checks, 42 expected compile rejections, 42 embedded-CPython JIT/AOT checks, 10 extension builds and 11 CPython-hosted extension-client comparisons. Includes finalization/output, SystemExit, reference release, nested extension reentry and borrowed buffers. |
+| Native regression programs | **24 per-allocation-GC JIT/AOT checks** across 12 retained string, token, Any, power, ndarray, warning-options, numeric-container, TextIOWrapper and iniconfig programs. |
+| Explicit stdlib bridge | JSON round trip including UTF-8 text, JSON exception mapping, and Decimal addition match the CPython twin in JIT/AOT with per-allocation GC. |
+| Explicit PyPI bridge | NumPy **2.3.5** matrix multiplication, shared view mutation and shape-error mapping match the CPython twin in JIT/AOT with per-allocation GC. Both bridge programs are rejected by the previous checkout, which has no pyobj module. |
+| Direct native NumPy control | The same simple upstream program runs on CPython 3.13.16 but is rejected by both previous/current native compilers at `numpy._core._multiarray_umath`. Its wheel source and stdlib overlay are explicit. No transparent NumPy support is claimed. |
+| Native import sweep | **142/475**, with the same 47 exclusions and 522-file inventory; every normalized result equals `dcdee6ba`, no timeout. |
+| Stub-assisted sweep | **146/475**, including 142 without stubs; every normalized result equals `dcdee6ba`, no timeout. This is still dependency diagnosis only. |
+
+The two bridge programs add **four executed JIT/AOT checks**. They use explicit
+`import_module`/`Object`/scalar adapters: JSON, Decimal and NumPy execute inside
+installed CPython, not as compiled upstream package source. AOT links the pinned
+`libpython3.13.so.1.0`; `readelf` confirms it, while the standalone compiler has
+no libpython dependency. A NumPy Python object and its view preserve mutation
+identity across these calls; `of_list` remains an explicit copy, not automatic
+native-container interoperability. This is a useful opt-in route for selected
+library calls, not an implementation of general native dynamic Python (#108).
+
+The FFI runner's two memory checks were also repeated independently, asserting
+the printed bounds are **True**, not merely equal to the twin. In both JIT and
+AOT, 1,500 successive 1 MiB bytearrays (1,572,864,000 cumulative bytes) remain
+below **200 MiB process peak RSS** with normal GC, and 100,000 dropped wrapped
+integers leave fewer than 5,000 extra CPython allocated blocks with stress period
+50. These **four additional checks** show bounded behavior for those workloads;
+they are not repeated performance benchmarks or proof against all cross-runtime
+cycles. Accounting is shallow and release/finalizer timing remains delayed.
+
+Remaining contract boundaries are important: CPython 3.12+ shared-library setup;
+tested embedding platform x86-64 Linux/glibc; positional-only bridge calls;
+restricted extension exports and host-thread/subinterpreter behavior; no implicit
+container conversions; absent Python caller frames; and documented Ctrl-C/exit
+ordering differences. JIT adds `RTLD_DEEPBIND`; AOT is the reference tier. Native
+unittest/pytest/pyperf and full CPython regrtest have not become supported merely
+because their host interpreter can now be called. No full upstream suite or
+performance trend is claimed, and no new correctness failure was observed.
+
+Reproduction uses the retained `evaluate.py`, `bridges.py` and `memory.py`:
+
+```sh
+make PY=/root/.local/bin/python3.13
+PY=/root/.local/bin/python3.13 tests/ffi/run.sh ./pystachy 'jit aot'
+python3.13 build/audit-pyobj/evaluate.py
+python3.13 build/audit-pyobj/bridges.py
+python3.13 build/audit-pyobj/memory.py
+```
+
+The scripts retain exact `PYSTACHY_LIBPYTHON`, `PYTHONHOME`, module paths and GC
+settings; NumPy is pinned through `uv --with numpy==2.3.5`. Runtime contracts pass
+(430 entries, 70 exception classes, 170 functions). The audit branch incorporates
+evaluated main without conflicts; its import-sweep and benchmark-controller tests
+pass (**10 + 16**). The audit diff against evaluated main passes whitespace checks.
+Historical reports and JSON remain unchanged.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -635,7 +703,7 @@ when practical, preserving attribution and the previous result.
 |---|---|
 | #630–#631 constructor/iterator inference, following evaluated #607/#629 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
-| #170 CPython embedding; further ndarray/nanoGPT work after #583/#609/#640 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
+| Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 
 ## Recording rules

@@ -1,0 +1,1 @@
+ok "$(printf 'caf\351')" 'two words'

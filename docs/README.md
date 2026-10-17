@@ -15,7 +15,7 @@ are linked from the relevant guide.
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Compatibility audit (2026-10-17)](reports/compatibility-2026-10-17.md) | Measured stdlib, PyPI, benchmark and test-suite coverage at a pinned revision |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
-| [C and CPython interoperability](ffi.md) | Native C calls and CPython extension modules |
+| [C and CPython interoperability](ffi.md) | Native C calls, embedded CPython and CPython extension modules |
 | [Caching](caching.md) | Memoization, regex and text-processing workloads |
 | [Performance](performance.md) | Published speed, memory and startup measurements |
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |

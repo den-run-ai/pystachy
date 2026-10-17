@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -109,6 +109,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exc_object(f.s, args)
             if self.classes[f.s].bad != "":
                 self.err(self.classes[f.s].bad)
+            if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:
+                m = self.classes[f.s].mod
+                self.err(f"{m}.{short(f.s)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(f.s)])})")
             ab = self.abstract_of(f.s)
             if len(ab) > 0:
                 # an object of a class with abstract methods (ABCMeta): CPython evaluates the
@@ -658,6 +661,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"{short(o.t)} has no method {m}() of its own, and BaseException.{m}() is not supported" + (" (call super().__init__(...) in __init__)" if m == "__init__" else ""))
         if m not in ci.methods and m in ci.ftypes:
             self.fn_attr_read(o, m)
+            self.glue_field(o, m)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)

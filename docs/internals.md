@@ -20,7 +20,7 @@ explains differential checks and bootstrap validation.
 | `ryu/` | Ryu's float-to-string conversion, with its upstream license; see [Ryu's README](../ryu/README.md) |
 | `tests/`, `tools/` | CPython comparisons, rejection cases, IR probes, fuzzers and validation tools |
 | `bench/`, `examples/` | Performance workloads and complete applications |
-| `pyext.c`, `pyembed.c` | CPython extension glue; see [foreign functions](ffi.md) |
+| `pyext.c`, `pyembed.c` | CPython extension and embedding glue; see [foreign functions](ffi.md) |
 
 <a id="design-piece-by-piece"></a>
 
