@@ -337,6 +337,7 @@ def census(args, compiler, env):
             output = (result.stdout + result.stderr).replace(str(path.parent) + os.sep, "")
             row = {"name": name, "ported": name in BENCHMARKS,
                    "deferred": DEFERRED.get(name, ""),
+                   "compile_status": "compiled" if result.returncode == 0 else "error",
                    "first_error": first_error(output) if result.returncode else "",
                    "returncode": result.returncode}
             if name in BENCHMARKS:
@@ -351,7 +352,8 @@ def census(args, compiler, env):
     print("|---|---|---|")
     for row in rows:
         error = row["first_error"].replace("|", "\\|") or "none: compiles"
-        status = "ported" if row["ported"] else "deferred: " + row["deferred"] if row["deferred"] else "blocked"
+        status = ("ported" if row["ported"] else "deferred: " + row["deferred"] if row["deferred"]
+                  else "runner-only compiles; not ported" if row["returncode"] == 0 else "blocked")
         print(f"| `{row['name']}` | {status} | `{error}` |")
     failures = [f"{r['name']}: hunks without a 'Pystachy port' note at lines {', '.join(r['unmarked_hunks'])}"
                 for r in rows if r.get("unmarked_hunks")]
