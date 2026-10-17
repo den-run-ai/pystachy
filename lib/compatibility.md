@@ -385,6 +385,11 @@ dictionaries, positions, spans and expansion.
   group numbers are unavailable.
 
 `purge` clears pattern, replacement-template and last-input decoding caches.
+The last input's decoded code points stay cached for the next call on it, but
+`findall`, `finditer`, `split`, `sub` and `subn` drop a decoding they made of an
+input longer than 1 MB once they return. Bounded `findall` and `finditer` calls
+whose `endpos` precedes the input's end keep it, as do caches that `match` or
+`search` made, so loops over advancing windows reuse their decoded prefixes.
 Active operations retain their decoded input, so callbacks can safely purge;
 existing patterns and matches remain usable. ASCII character-class tables belong
 to their pattern and preserve scoped case folding and Unicode fallback.

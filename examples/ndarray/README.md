@@ -40,6 +40,67 @@ sum of 1e16, 100 ones, -1e16: total (pairwise) 84.0 lazy (compensated) 100.0
 CPython, the JIT and the executable print the same. `repr()` lists the items in C order and the
 shape; it is not NumPy's format.
 
+## Optional native BLAS matrix multiplication
+
+[`ndarray_blas.py`](ndarray_blas.py) adds a separate, opt-in matrix product:
+
+```python
+from ndarray import array2
+from ndarray_blas import matmul
+
+x = array2([[1.0, 2.0], [3.0, 4.0]])
+weight = array2([[5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
+y = matmul(x, weight.T)
+```
+
+The compiled program calls `libblas.so.3`'s `cblas_dgemm` directly using the
+[borrowed numeric-list FFI](../../docs/ffi.md). Execution needs the shared BLAS
+library and does not need CPython or NumPy. Importing ordinary `ndarray` and
+using its `matmul()` or `@` still uses the existing scalar implementation and
+does not load BLAS. The optional module raises a library/symbol loading error
+if its explicitly selected BLAS is unavailable; it does not silently switch
+backends.
+
+The binding requires the **LP64 CBLAS ABI**: dimensions and leading dimensions
+are 32-bit C `int`, and elements are 64-bit `double`. Each dimension is checked
+against `INT_MAX` before calling C. This is not an ILP64 binding; loading a
+symbol successfully, or multiplying small matrices, cannot establish its
+integer ABI. Use a provider documented to supply LP64 `libblas.so.3`. For the
+validation host, that name resolves to the reference BLAS
+`blas/libblas.so.3.12.0`, package `libblas3` version `3.12.0-3build1.1`; its
+exported `cblas_dgemm` uses 32-bit dimensions. An optimized provider such as
+OpenBLAS is a separate deployment choice, not a property of this adapter.
+
+The adapter checks shapes, strides, addressable byte extents and all referenced
+storage before passing pointers to C. It always creates fresh output, so the
+operands may share storage without output aliasing. Empty dimensions return
+correctly shaped zeros without calling BLAS. Zero-offset row-major arrays and
+their transposes, including padded rows, borrow their existing data. Thus
+`matmul(x, weight.T)` needs no transposed-weight copy. Other views, including
+nonzero offsets, reversed axes and broadcast strides, are packed in logical
+row-major order; that copying is part of a call's cost. Inputs are read afresh
+on every call, so weight updates need no cache invalidation.
+
+Validation is optional because the normal test suite does not require a BLAS
+installation. From this directory:
+
+```sh
+pystachy run blas_cases.py
+pystachy build blas_cases.py -o blas_cases
+PYSTACHY_GC_STRESS=1 ./blas_cases
+python3 check_blas.py --compiler ../../pystachy --stress 1
+```
+
+The last command requires NumPy in the checking interpreter. It verifies all
+elements of 24 matrix cases against both the existing scalar product and
+NumPy, plus 15 invalid-input rejections, under CPython, JIT, AOT and native GC
+stress. Cases include padded transposes, negative and zero strides, nonzero
+offsets, singleton strides, shared operands, repeated calls after mutation,
+empty products and integer-limit guards. The CPython FFI twin copies lists
+into C arrays; it is a correctness oracle and is not a measure of the native
+borrowed-buffer overhead. No speedup is claimed by these checks. BLAS may use
+a different accumulation order, so finite results use `1e-12` tolerances.
+
 ## Numerical behavior
 
 Elementwise arithmetic is one IEEE operation per item, so it gives NumPy's float64 results,

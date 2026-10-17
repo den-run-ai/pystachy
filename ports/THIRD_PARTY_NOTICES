@@ -3,6 +3,19 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+Karpathy microGPT benchmark (bench/microgpt/)
+--------------------------------------------
+
+The pinned upstream microgpt.py and its annotated adaptation derive from Andrej
+Karpathy's gist 8627fe009c40f57531cb18360106ce95, revision
+14fb038816c7aae0bb9342c2dbf1a51dd134a5ff. The author explicitly licensed it under
+MIT on 2026-02-24:
+https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95?permalink_comment_id=5999841
+The MIT license and attribution are retained in bench/microgpt/LICENSE; this
+license text records the author's grant (the gist has no separate license file).
+The benchmark README documents the source hash and adaptations. The names dataset
+is supplied separately by the benchmark user and is not included here.
+
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
 

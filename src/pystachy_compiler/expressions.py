@@ -2654,6 +2654,11 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     same = a.t == b.t or (self.tmpl_of(a.t) != "" and self.tmpl_of(a.t) == self.tmpl_of(b.t))
     sh = shown if shown != "" else op
     if op == "**":
+        # A builtin numeric exponent cannot supply a user reflected method or subclass
+        # priority. Keep object/object and reflected power outside this bounded dispatch.
+        if a.t in self.classes and self.isnum(b.t) and "__pow__" in self.classes[a.t].methods:
+            self.none_operand(shown if shown != "" else "** or pow()", a, b)
+            return self.call_fn(self.classes[a.t].methods["__pow__"], [a], [self.vnode(b)])
         # CPython calls a.__ipow__(b) (**=), a.__pow__(b), else b.__rpow__(a) (b of another class)
         pw = ""
         for x, n in [(a, "__ipow__" if shown == "**=" else ""), (a, "__pow__"), (b, "__rpow__" if not same else "")]:

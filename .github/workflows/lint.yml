@@ -52,6 +52,9 @@ jobs:
       - name: Import sweep provenance and argument tests
         run: python3 -m unittest discover -s tools -p test_import_sweep.py
 
+      - name: microGPT graph parity and benchmark contract tests
+        run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
+
       - name: Compiler effect summary tests
         run: python3 -m unittest discover -s tools -p test_function_summaries.py
 

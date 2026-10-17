@@ -511,8 +511,13 @@ supported alternatives.
 - reflected operator methods (`__radd__` & co), which CPython calls when the left operand's class
   has no method for the operator and the right operand's class is another (`3 & o` calls
   `o.__rand__(3)`), and first when the right operand's class derives from the left one's and
-  has the reflected method that one has not; and `**`, `**=` and `pow()` of objects whose class
-  defines `__pow__`, `__ipow__` or `__rpow__`
+  has the reflected method that one has not
+- object power with an object or optional numeric exponent, reflected `__rpow__`, and
+  three-argument `pow(o, n, modulus)`. With a builtin `int`, `float` or `bool` exponent,
+  `o ** n` and `pow(o, n)` call `__pow__`, and `o **= n` calls `__ipow__` when present,
+  otherwise `__pow__`. A base-typed receiver whose subclass introduces `__ipow__` that the
+  base lacks must be narrowed to the concrete receiver type before `**=`. Returning
+  `NotImplemented` remains unsupported
 - an `==` or `!=` between objects of different classes, which CPython would reflect to the right
   operand's `__eq__`, and between values of other types that cannot be equal (`1 == "1"`, or an
   `int | None` and a `str | None`, which CPython finds equal only when both are `None`)

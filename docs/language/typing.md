@@ -497,7 +497,13 @@ templates, also under `from __future__ import annotations`. A parameter takes it
 type, and `*args: Any` or `**kwargs: Any` those of each call's arguments; a return is inferred
 as an unannotated one is. Values keep their concrete types and are not boxed: a `list[Any]`
 parameter given a `list[int]` cannot append a `str`, and a function annotated `-> Any` returns
-one type for each specialization. `Any` remains unsupported in variables, fields, `__init__`
+one type for each specialization. An initialized module or local variable whose annotation
+mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by
+`xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
+the whole annotation, including any concrete parts. The same straight-line local retyping
+and branch, loop and global type restrictions apply as for unannotated variables. A variable
+declared without an initializer still needs a concrete annotation. `Any` remains unsupported
+in fields, `__init__`
 parameters, properties and other special methods.
 
 ### Variadic arguments

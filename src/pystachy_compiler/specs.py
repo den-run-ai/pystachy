@@ -287,7 +287,7 @@ RANGE_METHODS = {"join": 1, "extend": 1, "fromkeys": 1, "fsum": 1, "prod": 1, "u
                  "intersection_update": 3, "difference_update": 3, "symmetric_difference_update": 3}
 OPTTYPES = "class types, str, bytes, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
-ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), where each call types what it annotates (as if unannotated); annotate a concrete type here"
+ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}

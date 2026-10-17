@@ -489,11 +489,14 @@ __attribute__((format(printf, 3, 4))) static int fsnprintf(char *b, size_t n, co
   va_end(a); return r;
 }
 static I u8enc(char *o, I c);
+static Str *byte1(unsigned char c) {  /* the one str of byte c: chr(c), s[i], a 1-byte slice */
+  if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
+  return ch1[c];
+}
 Str *pys_chr(I c) {                    /* below 256 the byte itself (str holds bytes); above, UTF-8 */
   if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
   if (c > 255) { char b[4]; return pys_str(b, u8enc(b, c)); }
-  if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
-  return ch1[c];
+  return byte1((unsigned char)c);
 }
 static I u8char(const char *p, I n, I *cp) {   /* the character at p (n > 0 bytes left): its code point and byte
                                                   count; a UTF-8 sequence as chr() writes it, else one byte */
@@ -556,13 +559,23 @@ Str *pys_str_get(Str *s, I i) { return pys_chr((unsigned char)s->s[idx(i, s->len
    but where a bytes item is an int (b[i], iteration), and in their messages and repr(); they have
    names of their own, so that a str's that comes to work on code points leaves them as they are */
 I pys_bytes_get(Str *s, I i) { return (unsigned char)s->s[idx(i, s->len, "IndexError: index out of range")]; }
+/* the one empty str that an empty slice is, as CPython has one; a 1-byte slice is pys_chr's str of
+   its byte (byte1), as s[i] is, so that the parts of ",,,".split(",") are no new strs. Nothing writes a
+   str in place but what made it (pys_str_iadd's owned str is one an append allocated, _rt.str_new's
+   fill), except hstrd's cached dict_hash, which the bytes determine: str0 is zeroed and writable,
+   as a literal is, and the GC skips it as it does a literal (not in its heap) */
+static union { Str s; char b[sizeof(Str) + 1]; } str0;
+static Str *short_slice(Str *s, I lo, I n) { return n ? byte1((unsigned char)s->s[lo]) : &str0.s; }
 Str *pys_str_slice(Str *s, I lo, I hi) {      /* all of s is s itself, as in CPython: s[:], a strip that strips nothing */
   span(&lo, &hi, s->len);
-  return lo == 0 && hi == s->len ? s : pys_str(s->s + lo, hi - lo);
+  I n = hi - lo;
+  return n == s->len ? s : n < 2 ? short_slice(s, lo, n) : pys_str(s->s + lo, n);
 }
 Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes as s[lo:hi] is */
   I n = sspan(&lo, hi, &st, s->len);
-  if (st == 1) return n == s->len ? s : pys_str(s->s + lo, n);
+  if (st == 1 && n == s->len) return s;
+  if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
+  if (st == 1) return pys_str(s->s + lo, n);
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); r->len = n;
   for (I i = 0; i < n; i++) r->s[i] = s->s[lo + i * st];
   return r;

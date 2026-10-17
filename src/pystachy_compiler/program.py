@@ -842,6 +842,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.classes[st.s] = ClassInfo(st.s, st)
                 self.classes[st.s].mod = m.name
                 self.dc_options(self.classes[st.s])
+    for m in mods:
+        self.any_variables(m.body, False)
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():

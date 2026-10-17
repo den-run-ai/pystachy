@@ -289,6 +289,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
+    gen_any_variables as declarations_any_variables,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
     gen_class_params as declarations_class_params,
@@ -1587,6 +1588,9 @@ class Gen:
 
     def any_in(self, anns: list[Node]) -> bool:
         return declarations_any_in(self, anns)
+
+    def any_variables(self, n: Node, classbody: bool) -> None:
+        declarations_any_variables(self, n, classbody)
 
     def class_tvars(self, cls: str) -> list[str]:
         return declarations_class_tvars(self, cls)

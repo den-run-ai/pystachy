@@ -105,7 +105,9 @@ jobs:
 
   verify:
     name: make verify (Linux x86-64, LLVM 18, Python 3.13)
-    if: always()
+    # Report dependency failures, but release the PR concurrency slot on cancellation.
+    # always() keeps obsolete summary jobs queued and blocks the replacement run.
+    if: ${{ !cancelled() }}
     needs: [verification, port-check, upstream-large]
     runs-on: ubuntu-24.04
     # Artifact downloads alone have exceeded three minutes on otherwise green runs.

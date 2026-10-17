@@ -394,6 +394,24 @@ def gen_any_in(self, anns: list[Node]) -> bool:
             return True
     return False
 
+def gen_any_variables(self, n: Node, classbody: bool) -> None:
+    # Initialized module/local names can use the same inference as plain assignments.
+    # Do this before flow, global lookahead and local retyping inspect the statements.
+    # Class fields and attribute targets keep their storage annotations; annotation-only
+    # declarations also stay intact, since they establish a local without assigning it.
+    if n.kind == "class" or n.kind == "subclass":
+        for k in n.kids:
+            self.any_variables(k, True)
+        return
+    if n.kind == "def":
+        self.any_variables(n.kids[2], False)
+        return
+    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]):
+        n.kind = "assign"
+        n.kids = [n.kids[0], n.kids[2]]
+    for k in n.kids:
+        self.any_variables(k, classbody)
+
 def gen_class_params(self, st: Node) -> str:
     # class C[T, *Ts] (subclass node st, its type parameters its first base): why it cannot be a
     # generic class as class C(Generic[T, *Ts]) is, or "" once its type parameters are type

@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `dbac05d7d4ab02ffdc737497cff940b4e95ec278`.
+**Latest evaluated main:** `08e437b6e63f67de65aaea5b5ca08280a866807f`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -492,6 +492,91 @@ python3.13 /path/to/audit/tools/import_sweep.py -j 4 --metadata imports-metadata
 ```
 
 
+## 2026-10-17 — #643/#640/#624, then #623/#638/#639
+
+Two measured checkpoints cover all six merges since `dbac05d7`:
+
+- [Main `99879455`](https://github.com/den-run-ai/pystachy/commit/99879455b3db5ad4ccdbd014250aba484b4a240c):
+  [#643](https://github.com/den-run-ai/pystachy/pull/643) CI cancellation,
+  [#640](https://github.com/den-run-ai/pystachy/pull/640) optional ndarray CBLAS,
+  [#624](https://github.com/den-run-ai/pystachy/pull/624) regex subject-cache release.
+- [Main `08e437b6`](https://github.com/den-run-ai/pystachy/commit/08e437b6e63f67de65aaea5b5ca08280a866807f):
+  [#623](https://github.com/den-run-ai/pystachy/pull/623) shared short strings,
+  [#638](https://github.com/den-run-ai/pystachy/pull/638) object powers,
+  [#639](https://github.com/den-run-ai/pystachy/pull/639) adapted microGPT benchmark.
+
+All merges were re-fetched and verified in main's history; #491/#616 and the
+relevant PR discussions were read. [Normalized evidence](compatibility-2026-10-17-regex-blas-microgpt.json)
+retains exact commands, selected programs, reproduction scripts, hashes, import
+metadata, numerical comparisons, raw timing/RSS samples and one unsuccessful
+optional probe. CPython **3.13.16**, LLVM **18.1.3** and NumPy **2.3.5** are pinned.
+
+The first checkpoint changes no compiler/runtime source: it reuses the verified
+`dbac05d7` compiler (`d2973670…`) with `99879455` library/example files. The second
+rebuilds at `08e437b6` (`c46436b3…`), reaching compiler/runtime bootstrap fixed
+points of **617,984 / 18,388 IR lines**. Full compiler hashes are in the evidence.
+
+| Evidence category | Fresh result |
+|---|---|
+| Isolated imports, both checkpoints | **142/476** native, **146/476** with throwing C-module stubs; the same 46 exclusions. Every normalized module result matches its previous checkpoint; no timeout. |
+| Regex/array checkpoint | **28** normal JIT/AOT checks across regex APIs, four maintained iniconfig/pyfiglet workloads and three ndarray programs; **12** GC-stressed checks, including six documented-deviation checks. All 14 fresh CPython recordings match. Three adapted regex benchmark smoke programs match CPython/JIT/AOT. |
+| Final string/power checkpoint | **36** focused checks: 26 recorded JIT/AOT checks with per-allocation GC and ten expected compile rejections. All 13 fresh CPython recordings match. Eight affected port checks and four additional GC-stressed regex-policy checks pass. Runtime signatures/effects agree. |
+| Optional CBLAS, both checkpoints | Per checkpoint, **24 matrix cases + 15 invalid inputs** pass under CPython, JIT, AOT and both GC-stressed native modes (195 case checks). Every matrix element matches NumPy within `1e-12`; maximum absolute difference is approximately `3.55e-15`. |
+| microGPT | Original/adapted CPython and native JIT/AOT all verify **10 training steps, 73 tokens, three names**, with **58,698 numeric comparisons per process** including every gradient. JIT/adapted CPython are exact; AOT maximum absolute difference is approximately `8.47e-22`. Three hosted controller tests, including 26 graph cases, pass. |
+
+Object `**`, two-argument `pow` and `**=` with builtin numeric exponents now work
+in the two retained object-power programs that the previous compiler rejected.
+Nullable receivers, variadic binding, inherited overrides and evaluation order
+are covered. Reflected/object/optional exponents, modular object `pow` and
+`NotImplemented` remain outside this bounded support; #113 stays relevant.
+
+Unmodified microGPT still stops at `urllib.request` in both compilers. Its
+maintained adaptation preserves model/math/RNG behavior but changes annotations,
+recursive child storage, scalar boxing, sums and selected generator expressions.
+That is substantial source adaptation, not unmodified-source or general
+micrograd/PyPI compatibility. The pinned names dataset hash is retained. This
+ten-step run is a correctness check during concurrent audit work: its single-run
+timings do not replace #639's separately pinned performance study or establish
+full-training convergence. The controller and graph tests are CPython-hosted.
+
+The optional array module calls **LP64 `libblas.so.3:cblas_dgemm`** on float64
+buffers, with packing for unsupported views and disjoint output. This host uses
+Debian reference BLAS **3.12.0-3build1.1**, with its binary hash recorded; these
+checks make no optimized-BLAS speed claim. Native runs require that shared library,
+but not embedded CPython/NumPy. Neither this adapter nor the hosted NumPy checker
+establishes native NumPy import/suite support. #582 retains the remaining scope.
+
+Five alternating-order AOT samples per workload use normal GC, no CPU affinity,
+and a shared host. Raw ranges and load averages are retained; values below are
+medians. Regex comparisons isolate `dbac05d7 → 99879455`; split comparisons use
+`99879455 → 08e437b6`. All workload outputs match fresh CPython references.
+
+| Workload | Previous | Current | Interpretation |
+|---|---:|---:|---|
+| Full-scan regex, then retain 150 MB of unrelated strings: end RSS | 404.7 MiB | 297.2 MiB | Released decoding no longer remains live after later collections. Peak RSS falls less: 404.7 → 389.7 MiB. |
+| 20 full scans of one 2.16 MB nonmatching subject: process CPU | 0.1268 s | 0.4782 s | Documented re-decoding trade-off, **3.77× on this workload**; five ranges do not overlap. Peak RSS rises 36.0 → 68.5 MiB. This is not a universal regex slowdown. |
+| Ten million empty split parts: peak RSS / process CPU | 383.1 MiB / 0.2845 s | 151.3 MiB / 0.1851 s | Shared empty strings remove per-part allocations. |
+| Ten million one-byte split parts: peak RSS / process CPU | 392.7 MiB / 0.2985 s | 160.9 MiB / 0.2217 s | Shared one-byte strings reduce allocations; alias/hash checks still pass. |
+
+Regex compact decoding, large `search`/`match` cache retention, exception exits
+and the repeated-full-scan cost remain under #589. Growing bounded windows retain
+their cache and pass the stressed regression tests. An optional cross-revision
+counter probe failed because old `dbac05d7` has no `re._KEEP`; the evidence records
+that probe-version mismatch. Both complete memory/timing groups were saved before
+that optional failure. No product correctness failure was observed. Large split
+result-list overhead remains #628; one CPython correctness reference used about
+95.5/105.0 MiB for the empty/one-byte cases, not a repeated CPython timing baseline.
+
+#643 changes only the final CI report's cancellation condition. The audit branch
+incorporates evaluated main, preserving that fix and both import-sweep and
+microGPT lint checks when resolving their insertion conflict. No implementation
+branch or PR was changed by this audit. The three affected audit/controller test
+modules pass on the combined branch (**10 + 16 + 3** tests).
+
+Baseline reports and JSON remain unchanged. No full CPython regrtest, full
+upstream package suites, 52-source census or unrelated broad benchmarks were
+rerun; no new import capability is inferred from the passing adaptations.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -503,8 +588,7 @@ when practical, preserving attribution and the previous result.
 | #608 token, following evaluated #606 | Tokenize/inspect/doctest import and selected API probes; distinguish remaining module-level `del` (#612) from completed io/token support. |
 | #630–#631 constructor/iterator inference, following evaluated #607/#629 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
-| #623 shared short strings, #624 regex subject retention | Regex tests, split/subject-retention probes and selected regex timings; distinguish allocation/cache lifetime changes from matcher speed. |
-| #170 CPython embedding; follow-ups to merged #583/#609 | Example/FFI checks and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
+| #170 CPython embedding; further ndarray/nanoGPT work after #583/#609/#640 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 
 ## Recording rules
