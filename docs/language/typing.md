@@ -444,6 +444,9 @@ An ordinary function or method with fully annotated parameters, including one wi
 arguments, uses the same inference when it has no return annotation and returns a value.
 Its recursive calls can retain the existing `None` signature; value-returning recursion
 before a result type is known requires an explicit return annotation.
+This also applies to `-> Any`: it requests inference, not a dynamic return value.
+For example, `return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a
+separate base-case `return 1` before the recursive return.
 Unsupported code becomes an error when that specialization needs it; syntax errors are
 checked regardless of use.
 

@@ -2624,6 +2624,8 @@ def gen_unary(self, n: Node) -> Val:
     if v.t in self.classes and m in self.classes[v.t].methods:
         self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
         return self.call_fn(self.classes[v.t].methods[m], [v], [])
+    if v.infer_from != "":
+        self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
     self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
     return v
 
@@ -3099,6 +3101,12 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if op == "%" and a.t == "str":
         # CPython formats with any str on the left; only a literal format is compiled (percent)
         self.err(runtime_format("%"))
+    # A recursive inferred call temporarily keeps a void ABI. If this operation
+    # rejects its value, report the missing return type, not a spurious NoneType.
+    # Successful operations (including user methods accepting None) keep working.
+    for v in [a, b]:
+        if v.infer_from != "":
+            self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
     # CPython's TypeError, at compile time
     an = tname(a.t)
     bn = tname(b.t)
