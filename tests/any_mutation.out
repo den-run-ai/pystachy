@@ -1,0 +1,22 @@
+mods: init mods
+mods.shapes: init mods.shapes
+set 1 12
+value 3
+key x
+set x 3
+key x
+get x
+value 4
+set x 7
+{'1': 12, 'x': 7}
+del 1
+key x
+del x
+{}
+[[]]
+[3]
+set 2 5
+get 2
+5
+del 2
+[exit 0]

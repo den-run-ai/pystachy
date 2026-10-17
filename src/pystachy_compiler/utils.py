@@ -792,13 +792,14 @@ def template_ok(name: str) -> bool:
     # may a method of this name be a template, its unannotated parameters typed by each call (M2)?
     # Not __init__, whose parameters type the fields it assigns, nor a special method that CPython
     # calls implicitly, but an operator's (SPECIAL's of two parameters) and __call__, __getitem__,
-    # __contains__, __enter__ and __exit__, which a call compiles as any other (a with statement's
-    # too: its __exit__ is called with an exception, and with None for each argument)
+    # __setitem__, __delitem__, __contains__, __enter__ and __exit__, which a call compiles as
+    # any other (a with statement's too: its __exit__ is called with an exception, and with
+    # None for each argument)
     if not (name.startswith("__") and name.endswith("__")):
         return True
     # Power may also declare an optional modulus parameter: normal call binding checks
     # its signature, rather than SPECIAL's fixed binary-method arity.
-    return name in "__call__ __getitem__ __contains__ __enter__ __exit__ __pow__ __ipow__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
+    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
 
 
 def takes_self(f: FnInfo) -> bool:

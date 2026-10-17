@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `2497bd1f64156e1ac9e84e880bfda76b5e5829f6`.
+**Latest evaluated main:** `92a33b481d582f45ea8a8bfbf4f17ccfc9e072ac`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -862,6 +862,74 @@ test files matching main's blobs were preserved before clean branch integration.
 These setup failures are not product failures. The audit preserves every earlier
 dated report/JSON and changes only this rolling log and the new evidence file.
 
+## 2026-10-17 — #632: item assignment/deletion inference
+
+Evaluated [main `92a33b48`](https://github.com/den-run-ai/pystachy/commit/92a33b481d582f45ea8a8bfbf4f17ccfc9e072ac),
+the only first-parent merge since evaluated `2497bd1f`. GitHub confirms
+[#632](https://github.com/den-run-ai/pystachy/pull/632) merged at
+**2026-10-17 12:47:38 UTC**, and its merge commit is in main's history.
+Its six-file diff adds mutation-method tests/docs and changes the compiler's
+template-method allowlist. Runtime and all 55 library Python files are unchanged.
+
+Rebuilt from that exact source with **CPython 3.13.16 / LLVM 18.1.3**.
+Compiler/runtime fixed points pass: **620,535 / 18,388 IR lines**.
+The new compiler SHA-256 is
+`9c1567d534ded166bf5de1293dd4d335580bc756c58f1293b99ecde60dbfbeb0`;
+the comparison compiler remains the verified `2497bd1f` build
+`bbfa3644306ede2762b5c6a64ec01ccb87e36654e31b8c067408859e30ee711e`.
+[Normalized evidence](compatibility-2026-10-17-item-methods.json) retains programs,
+commands, source/compiler/tool/input hashes, import metadata and raw outcomes.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native checks | **40 pass**: 36 positive JIT/AOT checks with per-allocation program GC and four expected compile rejections. Includes imported/inherited mutation templates, evaluation order, augmented assignment, typed empty values, fixed-storage rejection, existing power methods, ndarray edges and iterator regressions. |
+| CPython references | **18/18** selected positive programs match checked-in recordings under CPython 3.13.16. |
+| Adapted ports | **22/22** JIT/AOT checks over 11 workloads: iniconfig, ordered-set, pyfiglet, sortedcontainers and tomli-w. Sortedcontainers deletion/index checks are included because of the changed dispatch allowlist. |
+| Differential API/boundary programs | All **25** CPython controls pass. **14** programs match CPython in both native modes (28 execution checks); 11 retain explicit compilation blockers. Two newly accepted mutation programs are detailed below. |
+| Native isolated imports | **142/475**, 47 overlay exclusions in the unchanged 522-file inventory; no timeout and every normalized module result unchanged. |
+| Throwing-stub diagnostic sweep | **146/475**, including 142 without stubs; same inventory/exclusions and every normalized result unchanged. Stub success is not implemented C-module support. |
+| Isolated iterator-loader controls | The original structured-return program still fails JIT and AOT compilation with the same missing-helper internal error on both compilers. All five alternate controls match CPython in JIT/AOT on both revisions. |
+
+The two new mutation programs use concrete `dict[str, int]` storage and
+`__setitem__`/`__delitem__` parameters annotated Any/object, or left unannotated.
+Both previously failed at method annotation validation; both now print
+`{'1': 12, 'x': 3}` then `{'x': 3}`, matching CPython in GC-stressed JIT/AOT.
+This removes a **minor parameter-annotation adaptation** for supported mutation
+methods. It does not make fields/containers dynamically typed: the merged
+incompatible-string assignment test still produces its expected rejection.
+Properties and other unsupported special methods remain separate limitations.
+
+The [#619](https://github.com/den-run-ai/pystachy/issues/619) iterator-helper bug
+from the preceding checkpoint is **not fixed by #632**. Its minimal
+`__iter__() -> Iterator[Any]: return iter([1, 2])`, consumed directly by
+`list(Values())`, still reaches the internal missing-`_pystachy_iterators`
+error. The six full controls are retained again. The implementation owner has
+acknowledged this and is preparing a fix in **unmerged #633**; no prospective
+fix is counted as supported. No implementation branch was changed.
+
+The four unmodified upstream package probes retain their prior first errors:
+tomli-w 1.2.0 (`MappingProxyType`), pyfiglet 1.0.4 (missing `importlib` on the
+configured package-only path), ordered-set 4.1.0 (`slice(None)`), and iniconfig
+2.3.1 (named Unicode escapes). Passing adapted workloads is not whole-package
+acceptance. The retained forwarding recursion, unannotated cache, dataclass Any,
+generator-send and generator-bodied Any iterator probes remain rejected.
+No previously accepted retained program or import was lost.
+
+Native unittest/pytest/pyperf and full CPython regrtest are not established by
+this merge. No performance/memory trend is claimed; broad benchmarks, FFI and
+full hosted compiler/upstream suites were not rerun because their implementations
+did not change. Both audit-tool suites pass again (**10 + 16**).
+Historical reports and JSON are unchanged.
+
+Reproduction scripts are embedded in the new JSON:
+
+```sh
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-item-methods/evaluate.py
+/root/.local/bin/python3.13 build/audit-item-methods/loader_probe.py
+/root/.local/bin/python3.13 build/audit-item-methods/build_evidence.py
+```
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -871,7 +939,7 @@ when practical, preserving attribution and the previous result.
 | Pending work | Focused remeasurement |
 |---|---|
 | #619 iterator-helper follow-up after evaluated #631 | Retained standalone `Iterator[Any]` reproducer and six loader controls; test without another explicit `iter()` call that masks the dependency. Keep generator-bodied methods and heterogeneous iterator items separate. |
-| #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
+| #633 generator channels and iterator-loader follow-up, #634 recursive diagnostics | Generator-channel tests; isolated iterator-helper controls; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Keep evaluated #632 mutation probes as regression controls. Do not treat an improved diagnostic as acceptance. |
 | Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 
