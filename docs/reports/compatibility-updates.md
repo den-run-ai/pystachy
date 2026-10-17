@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `08e437b6e63f67de65aaea5b5ca08280a866807f`.
+**Latest evaluated main:** `dcdee6ba396b970b469bbf26a63a29a288b3deeb`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -577,6 +577,54 @@ Baseline reports and JSON remain unchanged. No full CPython regrtest, full
 upstream package suites, 52-source census or unrelated broad benchmarks were
 rerun; no new import capability is inferred from the passing adaptations.
 
+## 2026-10-17 — token port (#608)
+
+Evaluated [main `dcdee6ba`](https://github.com/den-run-ai/pystachy/commit/dcdee6ba396b970b469bbf26a63a29a288b3deeb)
+after [#608](https://github.com/den-run-ai/pystachy/pull/608) merged at 08:43:03 UTC.
+This is the only new merge since `08e437b6`; ancestry and the six changed files
+were checked. #491/#616 and #608 comments were reviewed before testing.
+[Normalized evidence](compatibility-2026-10-17-token.json) retains the programs,
+commands, source/input hashes, metadata, full per-module results and exact deltas.
+
+No compiler/runtime source changed. The verified `08e437b6` compiler is reused
+(SHA-256 `c46436b382a00acf7596dc9111d607b6586dea3b4bd0ea410e6f273c339ff84b`),
+with library sources from `dcdee6ba`. CPython **3.13.16** and LLVM **18.1.3** are
+unchanged. This is not presented as a fresh compiler bootstrap.
+
+| Evidence | Result |
+|---|---|
+| Native token API | The full retained table/export recording matches fresh CPython: 73 exports, 68 token names, 48 exact-token entries and three predicates. **Four native checks pass**: JIT/AOT with normal GC and with per-allocation GC. The previous checkout rejects the same source at computed `token.__all__`. |
+| Isolated native imports | **142/475**, no timeout or lost successful imports. Same 522-file inventory; **47 exclusions**, up from 46 because shipped `lib/token.py` now replaces upstream `token.py`. The previous denominator was 476; this is an overlay change, not a regression or an extra successful upstream-source import. |
+| Stub-assisted imports | **146/475**, including 142 without stubs; same 47 exclusions, no timeout. Throwing stubs remain dependency diagnostics, not native module implementations. |
+| Native first errors | `tokenize` and `tabnanny` advance from computed token exports to missing **`_tokenize` at tokenize.py:37**. `inspect`, `doctest` and `unittest` still stop earlier at missing `_ast`. |
+| Stub-assisted first errors | **42 modules** advance past token exports to **`inspect.py:1725`**, where `namedtuple('_FrameInfo', ('frame',) + Traceback._fields)` exceeds the literal-field rule. `tokenize` and `tabnanny` instead reach module-level **`del token` at line 45**. |
+| API/blocker programs | Six small programs pass on CPython. Both previous/current native JIT and AOT-build attempts reject them before execution: tokenize, inspect, doctest, the retained unittest harness, module deletion and a minimal computed-namedtuple-fields reproduction. Exact first errors are retained; these are expected limitations, not six successful native APIs. |
+
+The new `token` port is a **minor maintained adaptation**: explicit tables replace
+two import-time computations; constants and predicates retain upstream behavior.
+It does not make upstream `tokenize`, reflection or test runners work. Missing
+`_tokenize` belongs with #491, module-name deletion with #612, and computed
+namedtuple fields with the existing #256 collections scope. These observations
+correct the stale prediction that module deletion would be the next *native*
+error for all token-dependent importers. Full CPython regrtest remains unrun.
+
+Reproduction uses the retained `evaluate.py` and `probes.py` scripts, notably:
+
+```sh
+python3.13 /path/to/audit/tools/import_sweep.py -j 4 --metadata imports-metadata.json ./pystachy /path/to/cpython3.13/Lib imports.json
+# For --stubs, set the imported sweep module's ROOT to the evaluated checkout;
+# evaluate.py records the exact hosted invocation and metadata.
+tests/run.sh ./pystachy 'jit aot' tests/lib_token.py
+PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/lib_token.py
+python3.13 -I tests/lib_token.py
+```
+
+The audit branch incorporates this main revision without conflicts; import-sweep
+tool tests pass again (**10 tests**). No direct token/tokenize imports were found
+in maintained ports, benchmarks or examples, so unrelated port/performance suites
+were not repeated. There is no new timing claim or uncovered correctness bug.
+Historical reports and JSON remain unchanged.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -585,7 +633,6 @@ when practical, preserving attribution and the previous result.
 
 | Pending work | Focused remeasurement |
 |---|---|
-| #608 token, following evaluated #606 | Tokenize/inspect/doctest import and selected API probes; distinguish remaining module-level `del` (#612) from completed io/token support. |
 | #630–#631 constructor/iterator inference, following evaluated #607/#629 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
 | #170 CPython embedding; further ndarray/nanoGPT work after #583/#609/#640 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
