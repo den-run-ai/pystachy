@@ -556,7 +556,7 @@ class Parser:
         name = self.expect("id").text
         tps: list[str] = []
         if self.peek() == "[":
-            self.typeparams(tps, line, [])
+            self.typeparams(tps, line, [], function=True)
             self.tparams[line] = " ".join(tps)
         if self.peek() != "(":
             self.fail("expected '('", self.line())
@@ -670,7 +670,7 @@ class Parser:
         params.s = f"{posonly},{kwonly}"
         return params
 
-    def typeparams(self, out: list[str], line: int, kinds: list[str]) -> None:
+    def typeparams(self, out: list[str], line: int, kinds: list[str], function: bool = False) -> None:
         # [T, U: bound, *Ts, **P, V = default] after the name of a def, a class or a type alias (on
         # line): their names, and in kinds "", "*" or "**" for each, with "=" after it if it has a
         # default
@@ -697,6 +697,8 @@ class Parser:
                 self.dropped(line, b)
             if self.eat("="):
                 b = self.item()
+                if b.kind == "starred" and kind != "TypeVarTuple":
+                    self.fail("expected '('" if function else "invalid syntax", line if function else b.line)
                 self.scoped(b, f"a {kind} default")
                 self.dropped(line, b)
                 kinds[len(kinds) - 1] = kinds[len(kinds) - 1] + "="
