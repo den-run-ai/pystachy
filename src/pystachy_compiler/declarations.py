@@ -1049,6 +1049,12 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         if not init and self.any_in([d.kids[1]]):
             d.kids[1] = mk("noann", "", d.line, [])
             f.anys.append("")
+    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]):
+        # These protocols already infer an omitted return from their body. An Any return
+        # (also Iterator[Any]) uses that path, without making their parameters templates.
+        # Generator annotations retain their separate yield, send and return channels.
+        d.kids[1] = mk("noann", "", d.line, [])
+        f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
     if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
         self.err(tvbad)

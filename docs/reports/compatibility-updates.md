@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `91407759c9a3e3e0efc4a5b46dd1625f1506d64f`.
+**Latest evaluated main:** `2497bd1f64156e1ac9e84e880bfda76b5e5829f6`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -766,6 +766,102 @@ the evidence records that setup failure and the successful direct-script reruns.
 Historical dated reports/JSON are unchanged. Evaluated main integrates cleanly
 into the audit branch; its diff against evaluated main passes whitespace checks.
 
+## 2026-10-17 — #631: iterator-return inference and a remaining loader hole
+
+Evaluated [main `2497bd1f`](https://github.com/den-run-ai/pystachy/commit/2497bd1f64156e1ac9e84e880bfda76b5e5829f6),
+merging [#631](https://github.com/den-run-ai/pystachy/pull/631) at 11:22:21 UTC.
+This is the only new main merge since `91407759`; ancestry and #491/#616/#631
+coordination notes were checked. The six-file diff adds non-generator iterator
+return inference, tests and documentation. Runtime, libraries, ports and benchmark
+sources are unchanged. [Normalized evidence](compatibility-2026-10-17-iterators.json)
+retains all exact probes, commands, results, source/input/compiler hashes and metadata.
+
+Rebuilt with CPython **3.13.16** and LLVM **18.1.3**: bootstrap fixed points are
+**620,535 compiler / 18,388 runtime IR lines**. Build and evaluated source are both
+`2497bd1f`; compiler SHA-256 is
+`bbfa3644306ede2762b5c6a64ec01ccb87e36654e31b8c067408859e30ee711e`.
+The prior compiler's retained hash was verified, and all 57 runtime/library source
+files used by the old/current comparison are byte-identical.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native suite | **29 passed**: 26 positive JIT/AOT checks with per-allocation GC plus three expected rejections (invalid iterator result, mixed next returns, Any property). Covers inferred/inherited iterator methods, constructor specializations, nested annotations, generator consumers and upstream-derived protocol cases. |
+| CPython recordings | All **13 positive programs** match the checked-in recordings. |
+| Retained adapted ports | **18 JIT/AOT checks** over nine iniconfig, ordered-set, pyfiglet and tomli-w workloads pass. |
+| Differential programs | All **23 CPython references** execute; twelve match in JIT/AOT (**24 checks**). The direct `__next__() -> Any` counter changes from rejection to matching execution. Eleven programs still reject, including the retained structured iterator annotation described below. |
+| Isolated loader controls | Six small CPython programs distinguish the remaining bug from working inference. Five execute correctly on current main in both modes (**10 checks**); three also execute correctly on the previous compiler (**six checks**). Original failing forms are checked with both JIT invocation and AOT build. |
+| Native import sweep | **142/475**, 47 exclusions, 522-file inventory; every normalized result is unchanged and there are no timeouts. |
+| Stub-assisted sweep | **146/475**, including 142 without stubs; every normalized result is unchanged, no timeouts. This remains hosted compiler diagnosis with throwing stand-ins, not native C-module support. |
+
+### Confirmed remaining bug: inferred return needs a helper that was not loaded
+
+The retained program is valid CPython and prints `[1, 2]`:
+
+```python
+from typing import Any, Iterator
+
+class Values:
+    def __iter__(self) -> Iterator[Any]:
+        return iter([1, 2])
+
+print(list(Values()))
+```
+
+At `91407759` it stops at the unsupported Any annotation. At `2497bd1f` that
+annotation is accepted, but JIT and AOT compilation stop with
+`internal error: iter() needs lib/_pystachy_iterators.py (not loaded for this program)`.
+This is a **newly exposed acceptance hole**, not evidence that a previously
+executing program regressed. The larger merged test also calls `iter()` elsewhere
+and therefore does not expose the missing helper.
+
+| Local change to that program | Previous compiler | Current compiler |
+|---|---|---|
+| Remove the return annotation | Matches CPython in JIT/AOT | Matches CPython in JIT/AOT |
+| Use `Iterator[int]` | Matches CPython in JIT/AOT | Matches CPython in JIT/AOT |
+| Use plain `Any` as the return annotation | Annotation rejected | Matches CPython in JIT/AOT |
+| Keep `Iterator[Any]`, consume with `list(iter(Values()))` | Annotation rejected | Matches CPython in JIT/AOT |
+
+Source inspection explains the interaction: `analysis.reads_builtin` treats an
+`Iterator[...]`/`Iterable[...]` return as a special list-stepping path and skips
+the inner `iter()` dependency. #631 subsequently erases an Any-containing return
+annotation, so lowering now needs an iterator object and its library helper.
+These two decisions disagree. Existing [#619](https://github.com/den-run-ai/pystachy/issues/619)
+owns this remaining Any-iterator scope; no duplicate issue or implementation
+branch change is needed. The minimal reproducer and working controls are retained.
+
+Supported iterator methods need fewer **minor annotation adaptations**, but this
+particular structured annotation still needs a local workaround. The new
+generator-bodied `__iter__() -> Iterator[Any]` control remains rejected in both
+compilers, as the merge deliberately excludes generators. Properties, mixed
+iterator returns and the retained generator-send/cache/forwarding-recursion/
+dataclass probes retain their documented limits. The four unmodified upstream
+packages keep the same first errors: MappingProxyType (tomli-w), missing importlib
+on the selected path (pyfiglet), slice(None) (ordered-set), and named Unicode
+escapes (iniconfig). Do not infer whole-package acceptance from the adapted tests.
+
+Native unittest/pytest/pyperf and full CPython regrtest are not established by this
+merge. No previously passing retained probe was lost. No performance/memory trend
+is claimed; unchanged FFI, broad benchmark and full hosted compiler suites were
+not rerun. Both audit-tool suites pass again (**10 + 16**).
+
+Reproduction scripts are embedded in the JSON:
+
+```sh
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-iterators/evaluate.py
+/root/.local/bin/python3.13 build/audit-iterators/loader_probe.py
+/root/.local/bin/python3.13 build/audit-iterators/build_evidence.py
+```
+
+Environment recovery is explicit: the prior checkout's shared Git object alternate
+and LLVM installation expired. A fresh independent clone and scratch-extracted
+Ubuntu **18.1.3-1ubuntu1** LLVM packages restored the pinned setup; download origins
+and package hashes are retained. A system-package update failed at `setgroups`;
+no privilege override or system package installation was used. Four untracked
+test files matching main's blobs were preserved before clean branch integration.
+These setup failures are not product failures. The audit preserves every earlier
+dated report/JSON and changes only this rolling log and the new evidence file.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -774,7 +870,7 @@ when practical, preserving attribution and the previous result.
 
 | Pending work | Focused remeasurement |
 |---|---|
-| #631 iterator inference, following evaluated #607/#629/#630 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
+| #619 iterator-helper follow-up after evaluated #631 | Retained standalone `Iterator[Any]` reproducer and six loader controls; test without another explicit `iter()` call that masks the dependency. Keep generator-bodied methods and heterogeneous iterator items separate. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
 | Further ndarray/nanoGPT/interop work after #583/#609/#640/#170 | Example/FFI checks, adapted inference/training correctness and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |

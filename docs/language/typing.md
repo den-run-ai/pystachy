@@ -505,7 +505,9 @@ and branch, loop and global type restrictions apply as for unannotated variables
 declared without an initializer still needs a concrete annotation. A class template's
 `__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
 arguments as described below. `Any` remains unsupported in field annotations, `__init__`
-returns, properties and other special methods.
+returns, properties and other special methods. Non-generator `__iter__` and `__next__`
+methods also infer returns annotated with `Any`, including `Iterator[Any]`; the iterator
+and its items still have concrete types.
 
 ### Variadic arguments
 
