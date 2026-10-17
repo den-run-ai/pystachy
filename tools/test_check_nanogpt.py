@@ -121,5 +121,22 @@ class ParityContractTests(unittest.TestCase):
                 BENCH.export_reference(weight, directory, [], 0, 1)
 
 
+    def test_requested_case_inventory_and_configuration_are_required(self):
+        manifest = {"cases": [{"name": case["name"]} for case in BENCH.CASES]}
+        BENCH.validate_cases(manifest, BENCH.CASES)
+        for actual in (manifest["cases"][:-1], manifest["cases"] * 2, list(reversed(manifest["cases"]))):
+            with self.subTest(actual=actual), self.assertRaises(ValueError):
+                BENCH.validate_cases({"cases": actual}, BENCH.CASES)
+        with self.assertRaises(ValueError):
+            BENCH.validate_cases(manifest, BENCH.CASES + [BENCH.BENCHMARK])
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            reference = directory / "case.json"
+            reference.write_text(json.dumps({"case": {"name": "wrong"}}))
+            entry = {"name": "case", "reference_sha256": BENCH.digest(reference)}
+            with self.assertRaisesRegex(ValueError, "configuration"):
+                BENCH.load_reference(directory, entry, BENCH.CASES[0])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -28,7 +28,7 @@ UPSTREAM_COMMIT = "3adf61e154c3fe3fca428ad6bc3818b27a3b8291"
 UPSTREAM_SHA256 = "7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c"
 PREFIX = "NANOGPT_"
 THREAD_ENV = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
-              "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS")
+              "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS", "BLIS_NUM_THREADS", "GOTO_NUM_THREADS")
 CASES = [
     {"name": "one_token", "n_layer": 1, "n_head": 1, "n_embd": 8,
      "block_size": 5, "vocab_size": 13, "bias": True, "batch": 1, "length": 1},
@@ -302,17 +302,26 @@ def blas_overlay(source, library, symbol):
     return source.replace(binding, f"@extern({library!r}, {symbol!r})")
 
 
-def load_reference(fixtures, entry):
+def load_reference(fixtures, entry, expected_case=None):
     name = entry["name"]
     reference_path = fixtures / f"{name}.json"
     if digest(reference_path) != entry["reference_sha256"]:
         raise ValueError("reference file hash differs")
     reference = json.loads(reference_path.read_text())
+    if expected_case is not None and reference.get("case") != expected_case:
+        raise ValueError("reference model configuration differs from requested case")
     weights = fixtures / f"{name}.weights"
     inputs = fixtures / f"{name}.input"
     if digest(weights) != reference["weight_sha256"] or digest(inputs) != reference["input_sha256"]:
         raise ValueError("input/weight fixture hash differs")
     return reference, weights, inputs
+
+
+def validate_cases(manifest, cases):
+    expected_names = [case["name"] for case in cases]
+    actual_names = [case["name"] for case in manifest["cases"]]
+    if actual_names != expected_names:
+        raise ValueError("fixture cases must exactly match requested cases and order")
 
 
 def main(argv=None):
@@ -355,7 +364,7 @@ def main(argv=None):
     status = execute(["git", "status", "--porcelain", "--", "pystachy.py", "runtime.py", "runtime.c", "src", "lib", "examples/nanogpt", "examples/ndarray", "tools/check_nanogpt.py"], env, args.timeout)
     report = {"schema": 1, "platform": platform.platform(), "machine": platform.machine(),
               "controller_python": sys.version, "thread_environment": {k: env[k] for k in THREAD_ENV},
-              "runtime_environment": {k: env[k] for k in ("PYSTACHY_LLVM", "PYSTACHY_GC", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_GC_STRESS_COMPILER") if k in env},
+              "runtime_environment": {k: env[k] for k in ("PYSTACHY_LLVM", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_OPT", "PYSTACHY_CFLAGS") if k in env},
               "git_revision": revision["stdout"].strip(), "git_status": status["stdout"].splitlines(),
               "source_hashes": source_hashes(), "builds": {}, "cases": {}, "errors": [],
               "all_verified": False, "reference_exported_in_this_run": args.fixtures is None}
@@ -393,6 +402,8 @@ def main(argv=None):
             raise ValueError("fixture upstream hash differs")
         if any(manifest[key] != getattr(args, key) for key in ("warmups", "repeats")):
             raise ValueError("fixture warmups/repeats differ from requested settings")
+        validate_cases(manifest, cases)
+        references = {entry["name"]: load_reference(fixtures, entry, case) for entry, case in zip(manifest["cases"], cases)}
         report["reference_manifest"] = manifest
         compiler = shlex.split(args.compiler)
         commands = {}
@@ -413,7 +424,7 @@ def main(argv=None):
             save()
         for case_index, entry in enumerate(manifest["cases"]):
             name = entry["name"]
-            reference, weights, inputs = load_reference(fixtures, entry)
+            reference, weights, inputs = references[name]
             record = {"reference": reference, "tiers": {}}
             report["cases"][name] = record
             tiers = list(commands)

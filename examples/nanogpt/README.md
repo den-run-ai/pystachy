@@ -70,8 +70,9 @@ python3 -m unittest discover -s tools -p test_check_nanogpt.py
 
 The optional `--blas-symbol` selects an explicitly named LP64 `dgemm` symbol.
 It cannot detect or convert an ILP64 ABI. The checker binds the selected library
-in a temporary module, without changing the example's default. All BLAS thread
-settings are fixed to one. Export/reference work, compilation, process wall
+in a temporary module, without changing the example's default. Common BLAS thread
+environment variables request one thread; verify the selected provider honors
+them. Export/reference work, compilation, process wall
 time, weight loading and warm operation timings are recorded separately.
 `--fixtures` reuses a hash-checked export without importing PyTorch.
 
