@@ -36,7 +36,10 @@ PyTorch or Python and read by the standalone executable. The runner defaults to
 `--last`; `--full` returns every position. With `--loss`, the loss covers the
 returned positions. Replace `run.py` with `run_blas.py` to select the optional
 `libblas.so.3` backend, with each block's bias folded into its BLAS product.
-That library must provide the documented LP64 ABI.
+That library must provide the documented LP64 ABI. Ubuntu's default
+`libblas.so.3` is the reference BLAS, 2.5 times slower than OpenBLAS on the
+benchmark model below; [install OpenBLAS](../ndarray/README.md#optional-native-blas-matrix-multiplication)
+to make it the provider.
 
 For CPython comparison, set `PYTHONPATH` to the same example directories and run
 `python3 examples/nanogpt/run.py ...`. The BLAS CPython twin additionally needs
@@ -92,7 +95,8 @@ The checker's BLAS tiers pass `ndarray_blas.linear`. Without PyTorch,
 `make blas-check` runs [`blas_parity.py`](blas_parity.py): the BLAS backend, with
 and without the folded bias, against the scalar one for full and last-position
 logits, the loss and every gradient, under CPython, JIT, AOT and GC stress,
-after the adapter's own checks. CI runs it with Ubuntu's reference BLAS.
+after the adapter's own checks. CI runs it against Ubuntu's OpenBLAS and against
+the reference BLAS.
 
 ## Native training
 

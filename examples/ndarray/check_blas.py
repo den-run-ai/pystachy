@@ -159,6 +159,7 @@ def main():
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    print("libblas.so.3 resolved to:", ", ".join(report["loaded_blas_paths"]) or "a path outside /proc/self/maps")
     print("LP64 CBLAS verification passed; no performance claim is made by this check.")
 
 

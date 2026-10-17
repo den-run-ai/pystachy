@@ -63,9 +63,9 @@ bench-pyperformance: $(BENCH_COMPILER)
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
 # The optional cblas_dgemm adapter (examples/ndarray/README.md) and nanoGPT's fused-bias linear:
-# correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libblas3) and, for check_blas.py's
-# reference, NumPy in $(PY). Each runs under CPython (tools/rt_cpython's FFI twin), JIT, AOT and with a
-# collection at every allocation.
+# correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libopenblas0-pthread or libblas3;
+# LD_LIBRARY_PATH=<its directory> selects one) and, for check_blas.py's reference, NumPy in $(PY). Each
+# runs under CPython (tools/rt_cpython's FFI twin), JIT, AOT and with a collection at every allocation.
 BLAS_PATH = $(CURDIR)/examples/nanogpt:$(CURDIR)/examples/ndarray
 blas-check: $(BENCH_COMPILER)
 	$(PY) examples/ndarray/check_blas.py --compiler "$(BENCH_COMPILER)" --stress 1

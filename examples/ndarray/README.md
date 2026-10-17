@@ -69,8 +69,16 @@ symbol successfully, or multiplying small matrices, cannot establish its
 integer ABI. Use a provider documented to supply LP64 `libblas.so.3`. For the
 validation host, that name resolves to the reference BLAS
 `blas/libblas.so.3.12.0`, package `libblas3` version `3.12.0-3build1.1`; its
-exported `cblas_dgemm` uses 32-bit dimensions. An optimized provider such as
-OpenBLAS is a separate deployment choice, not a property of this adapter.
+exported `cblas_dgemm` uses 32-bit dimensions.
+
+Prefer OpenBLAS. On Debian and Ubuntu, `libblas.so.3` is the reference BLAS
+until an optimized provider is installed. `apt install libopenblas0-pthread`
+registers OpenBLAS's own LP64 `libblas.so.3` at a higher alternatives priority
+(100 against 10), so this binding uses it without any change. On nanoGPT's
+benchmark model, BLAS AOT inference took 2.28 ms with the reference BLAS and
+0.92 ms with Ubuntu's OpenBLAS 0.3.26 ([recorded data](../nanogpt/results/blas-providers.json)).
+OpenBLAS starts a thread per core by default; at these sizes more threads did
+not help, so small products can run with `OPENBLAS_NUM_THREADS=1`.
 
 The adapter checks shapes, strides, addressable byte extents and all referenced
 storage before passing pointers to C. It always creates fresh output, so the
@@ -95,9 +103,10 @@ gave the same bits either way. Without a bias, `linear` is `matmul(x, weight.T)`
 
 Validation is optional because the normal test suite does not require a BLAS
 installation. `make blas-check` runs the checks below, then nanoGPT's BLAS
-parity check ([`blas_parity.py`](../nanogpt/blas_parity.py)); CI runs that target
-in its `benchmarks` group with Ubuntu's reference LP64 `libblas.so.3` and NumPy.
-From this directory:
+parity check ([`blas_parity.py`](../nanogpt/blas_parity.py)). CI runs that target
+in its `benchmarks` group twice, with NumPy as the reference: once against
+Ubuntu's OpenBLAS on one thread and once against the reference BLAS, selecting
+each one's `libblas.so.3` through `LD_LIBRARY_PATH`. From this directory:
 
 ```sh
 pystachy run blas_cases.py
