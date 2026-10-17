@@ -35,7 +35,8 @@ pretrained model downloader. Exported files can be copied to a machine without
 PyTorch or Python and read by the standalone executable. The runner defaults to
 `--last`; `--full` returns every position. With `--loss`, the loss covers the
 returned positions. Replace `run.py` with `run_blas.py` to select the optional
-`libblas.so.3` backend. That library must provide the documented LP64 ABI.
+`libblas.so.3` backend, with each block's bias folded into its BLAS product.
+That library must provide the documented LP64 ABI.
 
 For CPython comparison, set `PYTHONPATH` to the same example directories and run
 `python3 examples/nanogpt/run.py ...`. The BLAS CPython twin additionally needs
@@ -46,7 +47,11 @@ For CPython comparison, set `PYTHONPATH` to the same example directories and run
 `GPTConfig(n_layer, n_head, n_embd, block_size, vocab_size, bias)` and
 `GPT(config, parameters)` construct a model. `forward(model, tokens, batch,
 length, last_only=False)` uses scalar matrix products; `forward_with_backend`
-accepts a compatible `matmul(a, b)` callback. Tokens are flattened in batch-major
+accepts a compatible `matmul(a, b)` callback. Its optional last argument,
+`linear_fn(x, weight, bias)`, computes each block's four biased projections
+instead of the product followed by a bias pass: `ndarray_blas.linear` folds the
+bias into its BLAS product, and `run_blas.py` passes it. Attention and the
+output projection still use `matmul`. Tokens are flattened in batch-major
 order. Outputs have shape `[batch, length, vocab_size]`, or
 `[batch, 1, vocab_size]` for the last-position path. `cross_entropy` averages over
 nonignored positions (`-1` is ignored); an entirely ignored batch returns NaN.
@@ -83,6 +88,12 @@ last-position optimization. Normal tests include independent upstream numeric
 references, causal-prefix and batch-isolation checks, tied-weight mutation and
 malformed-file rejection; these pass JIT/AOT with GC on every allocation.
 
+The checker's BLAS tiers pass `ndarray_blas.linear`. Without PyTorch,
+`make blas-check` runs [`blas_parity.py`](blas_parity.py): the BLAS backend, with
+and without the folded bias, against the scalar one for full and last-position
+logits, the loss and every gradient, under CPython, JIT, AOT and GC stress,
+after the adapter's own checks. CI runs it with Ubuntu's reference BLAS.
+
 ## Native training
 
 [`training.py`](training.py) supplies analytic backward kernels and AdamW. It
@@ -92,7 +103,7 @@ uses of the tied token/output parameter into one gradient. For example:
 ```python
 from driver import read_input
 from model import load_weights
-from ndarray_blas import matmul
+from ndarray_blas import linear, matmul
 from training import AdamW, loss_and_grad_with_backend
 
 model = load_weights("model.weights")
@@ -100,15 +111,16 @@ inputs = read_input("batch.input")
 optimizer = AdamW(model)
 for step in range(10):
     result = loss_and_grad_with_backend(
-        model, inputs.tokens, inputs.targets, inputs.batch, inputs.length, matmul)
+        model, inputs.tokens, inputs.targets, inputs.batch, inputs.length, matmul, linear)
     optimizer.step(result.gradients)
     print(step, result.loss)
 ```
 
-Use `ndarray.matmul` for the scalar backend. Parameters and gradients must be
-whole contiguous arrays. AdamW validates every gradient before any parameter
-mutation and applies weight decay only to parameters with at least two dimensions,
-matching upstream grouping. A new gradient dictionary is returned per call.
+Use `ndarray.matmul` (and no `linear`) for the scalar backend. The optional
+`linear` computes only the forward projections; every backward product uses
+`matmul`. Parameters and gradients must be whole contiguous arrays. AdamW
+validates every gradient before any parameter mutation and applies weight decay
+only to parameters with at least two dimensions, matching upstream grouping. A new gradient dictionary is returned per call.
 All-ignored targets produce NaN loss and zero gradients; calling AdamW afterward
 still applies its optimizer state and weight-decay rules.
 
@@ -140,7 +152,9 @@ on this host is a different, reference implementation and was not used for
 these optimized timings. PyTorch uses its own CPU kernels, so this compares
 complete implementations rather than isolating compiler code generation.
 
-Medians of five operation timings after one warmup, within one process per tier:
+Medians of five operation timings after one warmup, within one process per tier.
+The BLAS rows predate folding the bias into the product; see the
+[paired measurement](#paired-measurement-folded-bias-and-a-cpython--numpy-baseline) below.
 
 | Runtime | Full logits + loss | Last-position logits |
 |---|---:|---:|
@@ -169,6 +183,47 @@ moments. Tests also cover all-ignored loss/zero gradients. The report retains
 the measured controller hash and the published controller hash: subsequent
 changes only tightened reused-fixture validation and environment reporting;
 the measured model, backward and BLAS sources are identical.
+
+## Paired measurement: folded bias and a CPython + NumPy baseline
+
+This measures folding each block's bias into its BLAS product, against the
+separate bias pass of the recorded result, together with a CPython + NumPy port
+of the same forward pass ([`nanogpt_numpy_baseline.py`](../../tools/nanogpt_numpy_baseline.py)).
+It ran on another host, a shared 4-vCPU Intel Xeon @ 2.80 GHz VM, with the same
+benchmark model and fixture, LLVM 18.1.3, CPython 3.12.3, NumPy 2.5.4 with SciPy
+1.18.1 (for GELU's exact erf) and PyTorch 2.14.1+cpu on one thread. The native
+BLAS rows load SciPy 1.18.1's LP64 OpenBLAS 0.3.31; NumPy uses its own OpenBLAS
+build. Compare rows within this table, not with the recorded one.
+
+Each tier ran in seven interleaved rounds, pinned to one CPU; each run timed 200
+operations after 20 warmups, and the table gives the median of the runs' medians.
+The folded and separate runners alternated their order each round.
+[Recorded data](results/folded-bias-paired.json) holds every round's medians.
+
+| Runtime | Full logits + loss | Last-position logits |
+|---|---:|---:|
+| Upstream PyTorch | 1.141 ms | 1.022 ms |
+| CPython + NumPy | 1.324 ms | 1.253 ms |
+| Pystachy AOT + OpenBLAS, bias folded | 1.761 ms | 1.691 ms |
+| Pystachy AOT + OpenBLAS, separate bias pass | 2.154 ms | 1.969 ms |
+| Pystachy JIT + OpenBLAS, bias folded | 2.109 ms | 1.974 ms |
+
+Folding the bias lowered full-inference latency in all seven paired rounds
+(median ratio 0.85) and last-position latency in five of seven (0.82); the logits
+were bit-identical with and without it. BLAS AOT now takes 1.54 times PyTorch's
+and 1.33 times NumPy's full-inference latency, from 1.89 and 1.63 times. NumPy
+matched every PyTorch logit and the loss within 3.9e-16. In a profile of the
+separate-bias runner, `cblas_dgemm` executed about a fifth of the forward pass's
+instructions. Most of the rest was elementwise array work (broadcast adds, layer
+norm, GELU's erf, indexing in attention and the loss), output allocation and
+collection: the next costs to remove.
+
+```sh
+python3 tools/check_nanogpt.py --upstream-model /path/to/nanoGPT/model.py \
+  --torch-python /path/to/python-with-torch --benchmark --export-only build/nanogpt-fixtures
+/path/to/python-with-torch tools/nanogpt_numpy_baseline.py --fixtures build/nanogpt-fixtures \
+  --upstream-model /path/to/nanoGPT/model.py --json build/nanogpt-numpy.json
+```
 
 ## Reusing autodiff components
 

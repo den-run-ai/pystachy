@@ -54,6 +54,16 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
+      # tools/setup.sh installs the reference LP64 libblas.so.3 (libblas3); NumPy is
+      # check_blas.py's reference for every matmul/linear case
+      - name: Optional BLAS adapter and nanoGPT fused-linear correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: |
+          python3 -m pip install numpy==2.5.4
+          make blas-check BENCH_COMPILER=build/verify/pystachy2
+
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

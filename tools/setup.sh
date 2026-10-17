@@ -1,5 +1,6 @@
 #!/bin/sh
-# Package-manager setup; --check never installs. No arguments retain CI's UBSan dependency.
+# Package-manager setup; --check never installs. No arguments retain CI's UBSan and reference BLAS
+# dependencies (make blas-check calls Ubuntu's LP64 libblas.so.3).
 set -eu
 mode=${1:---verify}
 case $mode in --check | --minimal | --verify) ;; *)
@@ -37,7 +38,7 @@ if [ "$mode" != --check ]; then
       }
       PKGS="git make python3"
       if [ "$valid" = false ]; then PKGS="$PKGS clang-18 llvm-18 llvm-18-runtime"; fi
-      if [ "$mode" = --verify ]; then PKGS="$PKGS libclang-rt-18-dev"; fi
+      if [ "$mode" = --verify ]; then PKGS="$PKGS libclang-rt-18-dev libblas3"; fi
       miss=
       for p in $PKGS; do
         dpkg-query -W -f '${Status}' "$p" 2> /dev/null | grep -q 'install ok installed' || miss="$miss $p"
