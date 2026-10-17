@@ -8,6 +8,7 @@ class Val:
     def __init__(self, v: str, t: str):
         self.v = v
         self.t = t
+        self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
 
 
 class Data:

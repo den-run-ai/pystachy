@@ -1174,7 +1174,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
     if f.ret == "None":
         self.add(c)
-        return Val("null", "None")
+        v = Val("null", "None")
+        if f.infer and f.ll in self.building:
+            v.infer_from = short(f.name)
+        return v
     if f.ll in self.guessed and f.ll != self.curfn.ll:
         self.guessed[self.curfn.ll] = self.guessed[f.ll]  # (what it returns may hold a guess)
     self.put(c, 1)
