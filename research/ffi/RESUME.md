@@ -16,6 +16,12 @@
   Each branch passed `make verify` (19/19), `make irsame REF=4dc548a` (1240 identical), `make lint`
   and `tests/ffi/run.sh` on CPython 3.11 to 3.15t before it was pushed. #170's tip is the prototype
   plus a rationale section in docs/ffi.md and one comment fix.
+- **2026-10-17:** #168 and #169 are merged. #170, still a draft, is rebased onto main `4e5a9a8` as one
+  commit, `07311c9`, ported to the modular compiler in `src/pystachy_compiler/` (#434). It now targets
+  `main`, with main's FFI fixes merged, Codex's `SystemExit` finding fixed and its thread resolved.
+  - Locally it passed the bootstrap, `tests/ffi/run.sh` on 3.11 to 3.15t (108/0 on 3.12+) and with the
+    hosted compiler, `make lint`, `check_runtime` and `rtabi`.
+  - The full `make verify` was left to CI, and `make irsame` against main was not run.
 - Not done yet: an independent refutation of the last fix round (the PRs' review takes its place).
 
 The notes below are the state at the pause on 2026-10-10, kept for history.
