@@ -27,6 +27,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
@@ -101,7 +102,8 @@ typedef struct Exc Exc;                                /* a raised exception (se
    stays near twice the live set. A file open for writing holds malloc'd buffers, which count
    as heap bytes (gc_ext: handed out, live, in the heap) and are allocated as a large object
    is, so files dropped without close() start collections too; a standard stream's do not,
-   as no collection frees them. Dead large objects go straight back to the C allocator;
+   as no collection frees them. Dead large objects go straight back to the C allocator, and a
+   live str that appends grew gives back the room they left (str_trim);
    empty chunks are kept for the next cycle's allocations, and beyond that every arena whose
    chunks are all empty is freed. A chunk that handed out nothing and lost nothing since the
    last sweep keeps its free list as is.
@@ -122,13 +124,15 @@ struct Seg {                           /* header on the first page of a chunk or
   I size, nobj, bump, lim;             /* slot size (large: bytes + 1) and count; slots [0, bump)
                                           have been handed out; lim: bytes from start that can hold
                                           objects (bump * size, large: size, pooled: 0) */
-  I nfree, nlive, nmark;               /* slots in free; survivors of the last sweep; marked now */
+  I nfree, nlive, nmark;               /* slots in free; survivors of the last sweep (large: a str's
+                                          length + 1 then, str_trim); marked now */
   uint64_t inv;                        /* ceil(2^40 / size): slot = offset * inv >> 40 */
   W free;                              /* complemented head of the free slots not yet handed out */
   void *raw;                           /* calloc'd block: the large object's, or the arena's (its
                                           first word counts the arena's chunks in use) */
   int k, large, used, dirty;           /* free list 2 * class + atomic (large: atomic); slots were
-                                          handed out since the last sweep; [bump, nobj) needs zeroing */
+                                          handed out since the last sweep (large: a str that appends
+                                          grew, str_grow); [bump, nobj) needs zeroing */
   uint64_t mark[];                     /* one bit per slot */
 };
 #define HB ((I)((sizeof(Seg) + 8 + 15) & ~(size_t)15))   /* large-object header: one mark word */
@@ -147,6 +151,7 @@ static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges 
 static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
+static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
 static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
                                      handled, the uncaught one whose str() is being shown, the one a with-file's
                                      close raised while unwinding (see exceptions), the one a generator raised
@@ -204,6 +209,7 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
+  scan((const W *)&warnopts, (const W *)(&warnopts + 1));
   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
     scan((const W *)&xr, (const W *)(&xr + 1));
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
@@ -224,6 +230,21 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
   }
   *tail = ~(uintptr_t)0;
 }
+/* s, a live large str that appends grew (str_grow), gives back the room past its length where
+   more than a quarter of it is unused (the copy that made s left room for as much again), once it
+   has not grown since the last sweep: a str that a loop is still appending to keeps its room, as
+   giving it back would only make the next append copy it. The block stays where it is, as the
+   str does; the whole pages past the str leave the page map and go back to the system, and the
+   heap counts the bytes no longer. Nothing wrote those pages, so they are zero for calloc */
+static void str_trim(Seg *s) {
+  I len = ((Str *)s->start)->len, m = (I)sizeof(Str) + len + 1, n = s->size - 1;
+  if (s->nlive != len + 1) { s->nlive = len + 1; return; }
+  if (4 * (n - m) <= n) return;
+  uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
+  s->size = s->lim = m + 1;
+  pmap_set(a, e, 0, m - n);
+  if (a < (e & ~(uintptr_t)(PAGE - 1))) madvise((void *)a, (e & ~(uintptr_t)(PAGE - 1)) - a, MADV_DONTNEED);
+}
 static void sweep(void) {
   I live = 0, spare = 0;
   memset(fl, 0, sizeof fl); memset(sfl, 0, sizeof sfl); memset(avail, 0, sizeof avail);
@@ -242,7 +263,7 @@ static void sweep(void) {
     pp = &s->next;
   }
   for (Seg **pp = &bigs, *s; (s = *pp);) {
-    if (s->mark[0]) { s->mark[0] = 0; live += s->size; pp = &s->next; continue; }
+    if (s->mark[0]) { s->mark[0] = 0; if (s->used) str_trim(s); live += s->size; pp = &s->next; continue; }
     *pp = s->next;                     /* the header lives in the block: unmap, then free */
     pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0, -(PAGE + HB + s->size - 1));
     free(s->raw);
@@ -262,6 +283,8 @@ static void sweep(void) {
 }
 static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
 static void files_sweep(void);
+static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
+static void trk_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
@@ -274,6 +297,7 @@ __attribute__((noinline)) static void collect(void) {
     scan(p, p + n / 8);
   }
   if (nfiles) files_sweep();
+  if (ntrk) trk_sweep();
   sweep(); gc_n++;
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -347,10 +371,15 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-static I gc_room(const void *p) {      /* the bytes object p (from gc_alloc) can hold: its slot's, or a large
-                                          object's, less the byte of slack, as for the n that cls(n) took */
+static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
+                                          its size less the byte of slack, as for the n that cls(n) took */
   uintptr_t a = (uintptr_t)p;
-  return pmap[a >> 30][a >> 12 & 0x3ffff]->size - 1;
+  return pmap[a >> 30][a >> 12 & 0x3ffff];
+}
+static Seg *gc_find(const void *p) {   /* gc_seg of any pointer: 0 where it is not in the heap (a constant) */
+  uintptr_t a = (uintptr_t)p;
+  Seg **m = pmap[a >> 30];
+  return m ? m[a >> 12 & 0x3ffff] : 0;
 }
 /* Whether x is in a frame between this one and @main's: the *args tuple that a call made in its
    own frame (Gen.stack_tuple), which the function called copies before it keeps it
@@ -366,9 +395,12 @@ static void gc_extern(I n) {           /* n malloc'd bytes more that heap object
   gc_ext += n;
   if ((gc_heap += n) > gc_peak) gc_peak = gc_heap;
 }
+static I trk_report(I *ex);
 static void gc_report(void) {
   fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
           (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+  I ex, n = trk_report(&ex);
+  if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
@@ -463,11 +495,14 @@ __attribute__((format(printf, 3, 4))) static int fsnprintf(char *b, size_t n, co
   va_end(a); return r;
 }
 static I u8enc(char *o, I c);
+static Str *byte1(unsigned char c) {  /* the one str of byte c: chr(c), s[i], a 1-byte slice */
+  if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
+  return ch1[c];
+}
 Str *pys_chr(I c) {                    /* below 256 the byte itself (str holds bytes); above, UTF-8 */
   if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
   if (c > 255) { char b[4]; return pys_str(b, u8enc(b, c)); }
-  if (!ch1[c]) { char b = (char)c; ch1[c] = pys_str(&b, 1); }
-  return ch1[c];
+  return byte1((unsigned char)c);
 }
 static I u8char(const char *p, I n, I *cp) {   /* the character at p (n > 0 bytes left): its code point and byte
                                                   count; a UTF-8 sequence as chr() writes it, else one byte */
@@ -530,13 +565,23 @@ Str *pys_str_get(Str *s, I i) { return pys_chr((unsigned char)s->s[idx(i, s->len
    but where a bytes item is an int (b[i], iteration), and in their messages and repr(); they have
    names of their own, so that a str's that comes to work on code points leaves them as they are */
 I pys_bytes_get(Str *s, I i) { return (unsigned char)s->s[idx(i, s->len, "IndexError: index out of range")]; }
+/* the one empty str that an empty slice is, as CPython has one; a 1-byte slice is pys_chr's str of
+   its byte (byte1), as s[i] is, so that the parts of ",,,".split(",") are no new strs. Nothing writes a
+   str in place but what made it (pys_str_iadd's owned str is one an append allocated, _rt.str_new's
+   fill), except hstrd's cached dict_hash, which the bytes determine: str0 is zeroed and writable,
+   as a literal is, and the GC skips it as it does a literal (not in its heap) */
+static union { Str s; char b[sizeof(Str) + 1]; } str0;
+static Str *short_slice(Str *s, I lo, I n) { return n ? byte1((unsigned char)s->s[lo]) : &str0.s; }
 Str *pys_str_slice(Str *s, I lo, I hi) {      /* all of s is s itself, as in CPython: s[:], a strip that strips nothing */
   span(&lo, &hi, s->len);
-  return lo == 0 && hi == s->len ? s : pys_str(s->s + lo, hi - lo);
+  I n = hi - lo;
+  return n == s->len ? s : n < 2 ? short_slice(s, lo, n) : pys_str(s->s + lo, n);
 }
 Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes as s[lo:hi] is */
   I n = sspan(&lo, hi, &st, s->len);
-  if (st == 1) return n == s->len ? s : pys_str(s->s + lo, n);
+  if (st == 1 && n == s->len) return s;
+  if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
+  if (st == 1) return pys_str(s->s + lo, n);
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); r->len = n;
   for (I i = 0; i < n; i++) r->s[i] = s->s[lo + i * st];
   return r;
@@ -548,19 +593,30 @@ Str *pys_str_add(Str *a, Str *b) {
   s->len = a->len + b->len; memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
 }
 /* s += t of a str local (Gen.str_append). owned: an append made s and nothing else holds it (nor
-   hashed it: dict_hash is 0), so t goes into s's own memory while it has room. Else a new str of
-   the size needed, which a small object's slot rounds up. Each copy of an owned str then takes a
-   larger size class, and past 136 bytes they grow by a seventh to a quarter: appending in a loop is
-   linear, as CPython's resizing in place of a str that one reference holds makes it, and a str that
-   appends build and a program keeps takes no more memory. A large object has no slack, so an owned
-   one's copy gets room for as much again */
+   hashed it: dict_hash is 0), so t goes into s's own memory while it has room (gc_seg). Else a new
+   str of the size needed, which a small object's slot rounds up. Each copy of an owned str then
+   takes a larger size class, and past 136 bytes they grow by a seventh to a quarter: appending in a
+   loop is linear, as CPython's resizing in place of a str that one reference holds makes it, and a
+   str that appends build and a program keeps takes no more memory. A large object (8,200 bytes or
+   more) has no slack (#567). The first large copy of an owned str fits exactly, as most strs that
+   cross 8,200 bytes stop soon after, and is marked (Seg.used); the copy of a marked owned str gets
+   room for as much again, so one that keeps growing is copied log(n) times, and the collector
+   gives back the room of one that a program keeps (str_trim). A copy of a marked str that is not
+   owned (a read may have kept it) fits exactly and stays marked, so the next append's copy has
+   room: a loop that reads the local now and then copies it twice per read, as it would without
+   the mark. The copy is out of line, and t is not passed to it: LLVM inlines the rest, and a
+   constant t stays one */
+__attribute__((noinline)) static Str *str_grow(Str *s, I m, I owned) {   /* s in a new str of m bytes */
+  Seg *g = gc_find(s);
+  int big = g && g->large && g->used;
+  Str *r = pys_alloc_atomic(owned && big ? 2 * m : m);
+  if (m >= SMALL && (owned || big)) gc_seg(r)->used = 1;
+  r->len = s->len; memcpy(r->s, s->s, s->len); return r;
+}
 Str *pys_str_iadd(Str *s, Str *t, I owned) {
   I n = s->len + t->len, m = (I)sizeof(Str) + n + 1;
-  if (owned && m <= gc_room(s)) {
-    memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; return s;
-  }
-  Str *r = pys_alloc_atomic(owned && m >= SMALL ? m + n : m);
-  r->len = n; memcpy(r->s, s->s, s->len); memcpy(r->s + s->len, t->s, t->len); return r;
+  if (!owned || m > gc_seg(s)->size - 1) s = str_grow(s, m, owned);
+  memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; return s;
 }
 /* the first n (3 to 8) of a..h as one str, each copied once: the pieces of an f-string or a % format.
    The loops run eight times, so they unroll where LLVM inlines a call (n is a constant there) */
@@ -3244,6 +3300,9 @@ static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call
   out_flush(); fputs("KeyboardInterrupt\n", stderr);
   kbint = 1; pys_finish(); exit(130);
 }
+static int (*finish_hook)(void);       /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish); 1 if
+                                          flushing its sys.stdout failed, which CPython's exit status 120 shows */
+void pys_at_finish(int (*f)(void)) { finish_hook = f; }
 void pys_files_exit(void) {            /* the open files closed in the order they were opened (a failure is reported) */
   int e;
   for (I i = 0; i < nfiles; i++) if (!files[i]->closed && (e = shut(files[i]))) report(files[i], e);
@@ -3253,7 +3312,8 @@ static void **exit_hook;               /* the address of atexit's _hook (lib/_py
 void pys_exit_hook(void **hook) { exit_hook = hook; }   /* the program's main gives it, where it imports atexit */
 void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
                                           out_flush), atexit's callbacks run (once its module has run: CPython's
-                                          finalization runs them first), the collector's report, stdout flushed in
+                                          finalization runs them first), an embedded CPython finalized (finish_hook,
+                                          pyembed.c), the collector's report, stdout flushed in
                                           finalization (a failure is reported, status 120), the open files closed in
                                           the order they were opened (a failure is reported), and an uncaught
                                           KeyboardInterrupt's end by SIGINT */
@@ -3265,8 +3325,9 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
     exit_hook = 0;
     ((void (*)(void *))c[0])(c[1]);
   }
+  int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
+                                                    output and its atexit callbacks */
   if (gc_stats) gc_report();
-  int bad = 0, e;
   if (!std_out.closed && (e = flush1(&std_out))) {
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;
@@ -3295,7 +3356,7 @@ static void files_sweep(void) {        /* after marking: close the open files no
 }
 static _Noreturn void oserr(const char *path);
 static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
-/* CPython in the process (pyembed.c: an extension module's host): std_hook
+/* CPython in the process (pyembed.c: lib/pyobj.py embedding it, or an extension module's host): std_hook
    sees each write to sys.stdout or sys.stderr (n < 0: a flush) first, and takes it (1) when it goes
    through Python's sys.stdout or sys.stderr; in_hook reads sys.stdin through Python's (kind 0 input(),
    1 readline(), 2 read(n)) */
@@ -3315,6 +3376,7 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
+I pys_jit(void) { return jit; }
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
@@ -3346,6 +3408,9 @@ static I lib_depth;
 void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
 void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
 I pys_leave(void) { return --lib_depth; }
+void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
+  if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
+}
 void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
@@ -3355,8 +3420,14 @@ void pys_init_lib(I **roots, I nroots) {
     std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
   }
   args = pys_list_new(0);              /* sys.argv: the host's (pyext.c's pyx_argv appends it) */
+  warnopts = 0;                        /* and sys.warnoptions (pyx_argv appends the host's, if any) */
 }
 List *pys_argv(void) { return args; }
+List *pys_warnoptions(void) {          /* sys.warnoptions: [], CPython's for a program run without -W options (and
+                                          without PYTHONWARNINGS or PYTHONDEVMODE, which Pystachy does not read) */
+  if (!warnopts) warnopts = pys_list_new(0);
+  return warnopts;
+}
 File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
 void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
 void pys_file_flush(File *f);
@@ -3621,6 +3692,27 @@ void pys_file_drop(File *f) {          /* the compiler's close of a file used in
 I pys_file_closed(File *f) { return f->closed; }
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
+/* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's
+   locale.getpreferredencoding(False)); the one encoding="locale" names, CPython's locale.getencoding(): the
+   codeset of the LC_CTYPE locale the environment names, where CPython coerces the C locale to C.UTF-8 (PEP 538,
+   which LC_ALL turns off); and its io.UnsupportedOperation, as a file's */
+Str *pys_io_defenc(void) { return cstr(defenc()); }
+Str *pys_io_locenc(void) {
+  static char e[40];
+  if (!*e) {
+    static const char *const utf8[] = {"C.UTF-8", "C.utf8", "UTF-8"};   /* (the coercion's, in its order) */
+    char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
+    const char *l = setlocale(LC_CTYPE, ""), *all = getenv("LC_ALL");
+    if (!l) l = setlocale(LC_CTYPE, "C");   /* (a locale the system does not have: CPython's stays C) */
+    if (l && !strcmp(l, "C") && !(all && *all))
+      for (int i = 0; i < 3 && !setlocale(LC_CTYPE, utf8[i]); i++) {}
+    const char *c = nl_langinfo(CODESET);
+    snprintf(e, sizeof e, "%s", c && *c ? c : "UTF-8");
+    setlocale(LC_CTYPE, old);
+  }
+  return cstr(e);
+}
+_Noreturn void pys_io_unsupported(Str *msg) { failf("io.UnsupportedOperation: %s", msg->s); }
 I pys_system(Str *c) {
   if (nul(c)) pys_fail("ValueError: embedded null byte");
   return system(c->s);                 /* like CPython, without flushing stdout first */
@@ -4584,6 +4676,46 @@ Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C
 Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
   if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
   return pys_str((const char *)a, n);
+}
+/* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
+   of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
+   ffi.collected() takes one at a time (released then, outside collect: Py_DecRef runs Python code).
+   The Python object a value holds is memory the collector does not see: it counts as allocated,
+   TRK_BYTES plus n, the object's size as lib/pyobj.py measures it (sys.getsizeof), and starts a
+   collection as an allocation of that size would, so that dropped owners are found as soon as
+   their size would be if it were the heap's */
+#define TRK_BYTES 512
+typedef struct { void *o; I v; } Trk;  /* (a free slot: o is NULL, v the next free one) */
+static Trk *trk;
+static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
+I pys_track(void *o, I v, I n) {
+  gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
+  if (!gc_off && gc_allocd >= gc_limit) collect();   /* (as an allocation of that size would: o is live in the caller) */
+  I i = trk_free;
+  if (i >= 0) trk_free = trk[i].v;
+  else {
+    if (ntrk == ctrk && !(trk = realloc(trk, (ctrk = 2 * ctrk + 64) * sizeof *trk))) oom();
+    i = ntrk++;
+  }
+  trk[i].o = o; trk[i].v = v;
+  return i;
+}
+void pys_untrack(I i) { if (i >= 0 && i < ntrk && trk[i].o) { trk[i].o = 0; trk[i].v = trk_free; trk_free = i; } }
+static void trk_sweep(void) {          /* after marking */
+  for (I i = 0; i < ntrk; i++)
+    if (trk[i].o && !gc_marked(trk[i].o)) {
+      if (ndq == cdq && !(dq = realloc(dq, (cdq = 2 * cdq + 64) * sizeof *dq))) oom();
+      dq[ndq++] = trk[i].v; trk_gc++; pys_untrack(i);
+    }
+}
+I pys_collected(void) { return ndq ? dq[--ndq] : 0; }   /* a value whose owner a collection found dropped, once; 0: none */
+static I trk_report(I *ex) { *ex = trk_exit; return trk ? trk_gc : -1; }
+I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not released yet, then 0 */
+  static I i = -1;
+  if (ndq) return dq[--ndq];
+  if (i < 0) i = ntrk;
+  while (i > 0) if (trk[--i].o) { I v = trk[i].v; pys_untrack(i); trk_exit++; return v; }
+  return 0;
 }
 I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
   static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",

@@ -100,6 +100,7 @@ CALLS: dict[str, str] = {
     "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
+    "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
@@ -157,6 +158,15 @@ CALLS["math.fma(float,float,float)"] = "pys_m_fma:float"
 CALLS["math.ldexp(float,int)"] = "pys_m_ldexp:float"
 CALLS["math.frexp(float)"] = "pys_m_frexp:tuple[float,int]"
 CALLS["math.modf(float)"] = "pys_m_modf:tuple[float,float]"
+# Pystachy's own builtin module, which only lib/io.py imports (Loader.import_stmt), for its
+# TextIOWrapper: the encoding of one made without encoding=, the runtime's as a file's (CPython's
+# locale.getpreferredencoding(False)), the one encoding="locale" names (CPython's
+# locale.getencoding()), and unsupported(), which raises io.UnsupportedOperation as the runtime
+# does for a file
+IOMOD = "_pystachy_io"
+CALLS[IOMOD + ".default_encoding()"] = "pys_io_defenc:str"
+CALLS[IOMOD + ".locale_encoding()"] = "pys_io_locenc:str"
+CALLS[IOMOD + ".unsupported(str)"] = "pys_io_unsupported:None"
 # the functions of the builtin modules, which a program may also use as values (Gen.call_value): those
 # of CALLS, and those Gen.builtin compiles itself
 MODFUNCS: dict[str, bool] = {}
@@ -167,6 +177,11 @@ for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod 
     MODFUNCS[_k] = True
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
+LIBS: list[str] = []  # "python" when lib/pyobj.py's @ffi.extern functions call libpython (the driver links it)
+# the modules of Pystachy's lib/ that use ffi (lib/pyobj.py): CPython runs their twins in tools/rt_cpython,
+# so a program may use only what those offer: the names in __all__, and no field of their classes, which
+# only the module itself makes; ffi.track, untrack, collected and @extern("python") are theirs alone
+GLUE: dict[str, list[str]] = {}  # (each with the names it offers)
 LINKDL: list[str] = []  # not empty: the program looks C functions up at run time (dlopen, dlsym), linked with -ldl
 # @ffi.extern's C integer types: LLVM type with its extension, and pys_c_check's kind (-1: none):
 # 0 C int, 1 C unsigned int, 2 an unsigned 64-bit argument (>= 0), 3 one's result (< 2**63)
@@ -175,7 +190,7 @@ CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "
 for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in ("sys.argv sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder math.pi math.e math.inf math.tau math.nan "
+for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder math.pi math.e math.inf math.tau math.nan "
            "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull").split():
     MODATTRS[_k] = True
 # the os module's constants on POSIX systems
@@ -211,6 +226,7 @@ for _k in ("AsyncGeneratorType BuiltinFunctionType BuiltinMethodType CapsuleType
            "resolve_bases").split():
     MODATTRS[TYPESMOD + "." + _k] = True
 MODULES[TYPESMOD] = True
+MODULES[IOMOD] = True
 GALIAS = TYPESMOD + ".GenericAlias"
 GALIASUSE = "types.GenericAlias is supported only as a class body's __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class: Pystachy has no generic aliases"
 TYPESUSE = "types.NAME is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
@@ -766,7 +782,7 @@ RUNTIME: dict[str, str] = {
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
-    "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|",
+    "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
@@ -797,10 +813,12 @@ RUNTIME: dict[str, str] = {
     "file.write": "int:S,str|R A I rF wF|", "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|",
+    # lib/io.py's TextIOWrapper (IOMOD): its default and "locale" encodings, io.UnsupportedOperation
+    "io.defenc": "str:|A I|", "io.locenc": "str:|A I|", "io.unsupported": "None:str|R N|",
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
     # _rt.str_done hands it out, so these need no letter either)
-    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "string_at": "str:int,int|R A|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
+    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "string_at": "str:int,int|R A|", "track": "int:%ptr,int,int|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before

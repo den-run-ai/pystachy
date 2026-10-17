@@ -95,6 +95,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             if ts[i].startswith("fn[") and self.fn_sig(ts[i])[0].startswith("!") and ps[i + 1].kind == "param" and a.kind != "noann" and self.names_tv(a, self.tparams[c]):
                 pt = self.named_param(a)
                 fi.ptypes[i + 1] = pt if not pt.startswith("!") else fi.ptypes[i + 1]
+    if c in self.cnts:
+        self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
     self.scan_fields(s, fi, init.node.kids[2].kids, {})
     if len(lits) > 0:
         s.lits = lits
@@ -107,6 +109,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     del self.specing[doing]
     if key in t.specs:
         del self.classes[name]
+        self.nts.pop(name, False)
         self.selfcls = sel
         self.making.pop()
         self.specdone[doing] = t.specs[key]
@@ -143,6 +146,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             g.mod = s.mod
             s.methods[g.name] = g  # (x.setter: a property's setter)
     s.hook = t.hook
+    if c in self.cnts:
+        self.dc_methods(s)  # (its __repr__)
     for f in s.methods.values():
         self.check_special(f)
     self.fl_fields(s)

@@ -259,7 +259,7 @@ handled (or `None`). `e.__cause__` is the cause that `raise ... from c` gave, or
 
 `lib/contextlib` provides `contextmanager` (also as a decorator, `@cm()`), `closing`,
 `nullcontext`, `suppress` (as a `with` statement's item, with exception classes named) and
-`AbstractContextManager`; `io.StringIO`, `io.BytesIO` and `_thread`'s locks are context managers too
+`AbstractContextManager`; `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `_thread`'s locks are context managers too
 ([library](../../lib/compatibility.md#contextlib)).
 
 ## Object protocols
@@ -271,6 +271,8 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Operation | Methods |
 |---|---|
 | Binary operators `+ - * / // % @ & \| ^ << >>` | `__add__` and the corresponding methods |
+| `o ** n`, `pow(o, n)` with builtin `int`, `float` or `bool` exponent | `__pow__` |
+| `o **= n` with a builtin numeric exponent | `__ipow__`, otherwise `__pow__` |
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
 | `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
@@ -282,8 +284,15 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | `reversed()` | Supported `__reversed__` |
 
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
-Reflected arithmetic methods such as `__radd__` and `__rdivmod__`, and object `__pow__`, are
-unsupported.
+Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
+unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
+three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
+modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
+from an operator remains unsupported.
+Power methods require a positional `self`; following arguments may use `*args`.
+For `**=`, a base-typed receiver whose subclass introduces an `__ipow__` that the base
+lacks must be narrowed to the concrete receiver type; otherwise compilation rejects the
+operation rather than skipping the subclass method.
 Objects in containers compare, sort and print through their methods.
 Lists and tuples test items with equality before ordering them, then compare length if all
 common items are equal. Sorting and `min()` use `<`; `max()` uses `>`.

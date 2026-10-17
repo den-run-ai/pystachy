@@ -5,12 +5,13 @@ from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_dict,
     codec,
+    elem,
     fbits,
     has_method,
     hpush,
@@ -108,6 +109,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exc_object(f.s, args)
             if self.classes[f.s].bad != "":
                 self.err(self.classes[f.s].bad)
+            if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:
+                m = self.classes[f.s].mod
+                self.err(f"{m}.{short(f.s)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(f.s)])})")
             ab = self.abstract_of(f.s)
             if len(ab) > 0:
                 # an object of a class with abstract methods (ABCMeta): CPython evaluates the
@@ -157,7 +161,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.kids[0].kind == "name" and "?" in self.rtype(f.kids[0].s):
             return self.fill(f.kids[0], f.s, args, want)
         if f.kids[0].kind == "name" and f.kids[0].s in self.nts and f.kids[0].s not in self.ltype and f.s == "_make":
-            self.err(f"{short(f.kids[0].s)}._make() is not supported: call {short(f.kids[0].s)}(...) with the fields")
+            self.class_ready(f.kids[0])
+            return self.nt_make(f.kids[0].s, args, want)
         if f.kids[0].kind == "name" and f.kids[0].s in self.classes and f.kids[0].s not in self.ltype:
             return self.class_call(f.kids[0], f.s, args, want, resultsoft)
         if self.refl_dict_of(f.kids[0]) is not None:
@@ -656,12 +661,15 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"{short(o.t)} has no method {m}() of its own, and BaseException.{m}() is not supported" + (" (call super().__init__(...) in __init__)" if m == "__init__" else ""))
         if m not in ci.methods and m in ci.ftypes:
             self.fn_attr_read(o, m)
+            self.glue_field(o, m)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
-        if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "index" or m == "count") and o.t in self.nts):
+        if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
         if m == "_asdict" and m not in ci.methods:
             return self.asdict(o, args)
+        if m == "_make" and m not in ci.methods:
+            return self.nt_make(ci.origin if ci.origin != "" else o.t, args, want)  # (a class method)
         if (m == "index" or m == "count") and m not in ci.methods:
             return self.tmethod(self.ntup(o, True), m, args)  # (tuple's, of its fields)
         if m not in ci.methods:
@@ -788,21 +796,71 @@ def gen_method_value(self, o: Val, name: str) -> Val:
     return Val("", "")
 
 def gen_replace(self, o: Val, args: list[Node]) -> Val:
-    # p._replace(f=v, ...): a new NamedTuple with the fields given, and p's others
+    # p._replace(f=v, ...): a new NamedTuple with the fields given, and p's others; of
+    # namedtuple()'s class template, of the specialization their types pick
     ci = self.classes[o.t]
     given: dict[str, Val] = {}
     npos = len([a for a in args if a.kind != "kw"])
     for a in args:
         if a.kind != "kw":
             self.err(f"{short(o.t)}._replace() takes 1 positional argument but {npos + 1} were given")
-        if a.s not in ci.ftypes:
-            self.err(f"Got unexpected field names: ['{a.s}']")
-        given[a.s] = self.expr(a.kids[0], ci.ftypes[a.s])
+    bad = [a.s for a in args if a.s not in ci.ftypes]
+    if len(bad) > 0:
+        self.err("Got unexpected field names: [" + ", ".join([f"'{x}'" for x in bad]) + "]")
+    for a in args:
+        given[a.s] = self.expr(a.kids[0], ci.ftypes[a.s], resultsoft=ci.origin in self.cnts)
+    if ci.origin in self.cnts:
+        return self.nt_new(ci.origin, [given[fl] if fl in given else self.getfield(o, self.field(o, fl), fl) for fl in ci.fields], "")
     vals: list[Val] = [self.new_obj(o.t)]
     for fl in ci.fields:
         vals.append(given[fl] if fl in given else self.getfield(o, self.field(o, fl), fl))
     self.call_fn(ci.methods["__init__"], vals, [])
     return vals[0]
+
+def gen_nt_new(self, c: str, vals: list[Val], want: str) -> Val:
+    # an object of NamedTuple class c whose fields hold vals, which its __init__ assigns: of the
+    # specialization their types pick where namedtuple() made c, a class template
+    args = [self.vnode(v) for v in vals]
+    if c in self.tmpl:
+        made = [Val("", c)]
+        self.call_fn(self.classes[c].methods["__init__"], made, args, want)
+        return made[0]
+    o = self.new_obj(c)
+    self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True)
+    return o
+
+def gen_nt_make(self, c: str, args: list[Node], want: str) -> Val:
+    # C._make(iterable) of NamedTuple class C (also through an object of C): an object of C whose
+    # fields are the iterable's items, which must be as many as its fields, else CPython's
+    # TypeError (tuple.__new__ takes them all, then _make counts them; defaults are not used)
+    n = len(self.nt_fields(c))
+    pos = [a for a in args if a.kind != "kw"]
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err(f"{short(c)}._make() with * or ** arguments is not supported")
+        if a.kind == "kw" and (a.s != "iterable" or len(pos) > 0):
+            self.err(f"{short(c)}._make() got an unexpected keyword argument '{a.s}'" if a.s != "iterable" else f"{short(c)}._make() got multiple values for argument 'iterable'")
+    if len(args) != 1:
+        self.err(f"{short(c)}._make() missing 1 required positional argument: 'iterable'" if len(args) == 0 else f"{short(c)}._make() takes 2 positional arguments but {len(args) + 1} were given")
+    v = self.expr(args[0].kids[0] if args[0].kind == "kw" else args[0], "")
+    if v.t in self.nts:
+        v = self.ntup(self.unwrap(v, "TypeError: 'NoneType' object is not iterable"), True)
+    if is_tuple(v.t):
+        if len(targs(v.t)) != n:
+            k = len(targs(v.t))
+            self.err(f"{short(c)}._make() of a tuple of {k} item{'s' if k != 1 else ''} is not supported: it raises TypeError: Expected {n} arguments, got {k}")
+        return self.nt_new(c, [self.tget(v, i) for i in range(n)], want)
+    if not is_list(v.t):
+        v = self.builtin("list", [self.vnode(v)], "")
+    v = self.unwrap(v, "TypeError: 'NoneType' object is not iterable")
+    ln = self.mload("int", v.v)
+    ok = self.label()
+    bad = self.label()
+    self.cbr(self.num_cmp("==", Val(ln, "int"), Val(str(n), "int")).v, ok, bad)
+    self.place(bad)
+    self.raise_("TypeError", self.concat([Val(self.sconst(f"Expected {n} arguments, got "), "str"), self.to_str(Val(ln, "int"))]).v)
+    self.place(ok)
+    return self.nt_new(c, [self.from_slot(self.list_slot(v, str(i)), elem(v.t)) for i in range(n)], want)
 
 def gen_dc_replace(self, args: list[Node]) -> Val:
     # dataclasses.replace(obj, **changes): a new object of obj's class, which its __init__ makes

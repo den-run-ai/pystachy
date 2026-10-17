@@ -18,7 +18,7 @@ Run these from the repository root:
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
-| `make test-ffi` | Check C calls, FFI diagnostics and CPython extension modules. |
+| `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
@@ -88,7 +88,7 @@ every program allocation. It also runs the contract checks below.
 |---|---|
 | Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation and inherited-AST storage, JIT dead-code removal and inlining. |
 | Runtime | CPython comparisons for subset runtime functions; dictionary probes and string-hash caching; list storage, shared-container comparisons, file-buffer accounting and streaming consumers. |
-| Libraries and interoperability | Regex differential fuzzing and deterministic matcher budgets; FFI calls and extension modules; runtime build-cache rules. |
+| Libraries and interoperability | Regex differential fuzzing and deterministic matcher budgets; FFI calls, embedded CPython and extension modules; runtime build-cache rules. |
 | Benchmarks | CPython-equivalent output plus advisory timings. |
 
 The implementation and exact budgets live in `tests/verify.sh` and its named `tools/` probes.

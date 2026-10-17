@@ -49,6 +49,9 @@ jobs:
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
 
+      - name: microGPT graph parity and benchmark contract tests
+        run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
+
       - name: Compiler effect summary tests
         run: python3 -m unittest discover -s tools -p test_function_summaries.py
 

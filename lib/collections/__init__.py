@@ -1,5 +1,5 @@
 """Pystachy's collections: deque, defaultdict, OrderedDict and Counter, generic classes written
-for the subset (lib/README.md).
+for the subset (lib/README.md), and namedtuple(), which the compiler carries out.
 
 CPython's collections is Lib/collections/__init__.py over the C types _collections.deque and
 _collections.defaultdict (Modules/_collectionsmodule.c) and OrderedDict (Objects/odictobject.c,
@@ -10,11 +10,16 @@ constructor's arguments, an annotation such as deque[int] or Counter[str], or an
 constructor such as deque[int](). CPython's mappings derive from dict; these hold dicts
 instead, so isinstance(x, dict) is false for them, and keys(), values() and items() return
 lists, as a dict's do here.
+
+namedtuple() makes its class at compile time: the compiler compiles NAME = namedtuple(...) in a
+module's top-level code, given literal arguments, as a class statement, a NamedTuple whose fields
+the calls that make its objects type (a class template), and rejects every other use of the
+function below, whose body never runs.
 """
 
 from typing import Callable, Generic, Iterable, Iterator, Self, TypeVar
 
-__all__ = ["deque", "defaultdict", "OrderedDict", "Counter"]
+__all__ = ["deque", "defaultdict", "namedtuple", "OrderedDict", "Counter"]
 
 # CPython's binds abc = _collections_abc, the module collections.abc; Pystachy's is builtin
 import collections.abc as abc
@@ -22,6 +27,11 @@ import collections.abc as abc
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+
+
+def namedtuple(typename, field_names, *, rename=False, defaults=None, module=None):
+    """Returns a new subclass of tuple with named fields (made by the compiler: see above)."""
+    raise NotImplementedError("namedtuple() is carried out by the compiler")
 
 
 class deque(Generic[_T]):

@@ -76,9 +76,11 @@ slower than CPython's `_sre`, even when cache hits are faster.
 Appending to a str local with `+=` is linear while the loop reads the local only through `len()`.
 Any other read (printing, comparing, slicing, passing or storing it) may share the str, so the
 next append copies it, where CPython copies only when another reference remains; such a loop is
-quadratic. `"".join(parts)` stays linear. A str that appends grow past 8,200 bytes, the largest
-size class, gets room for as much again and keeps up to twice its length while it lives; shorter
-ones take the same memory as other strs.
+quadratic. `"".join(parts)` stays linear. A str that appends keep growing past 8,200 bytes, the
+largest size class, gets room for as much again from its second copy on. After its length is
+unchanged across two consecutive sweeps, the collector trims excess capacity in place when
+more than a quarter of it is unused. On Linux, this also returns unused whole pages to the
+operating system; other platforms may retain those pages in RSS until the str is freed.
 
 Cross-function exceptions require stack unwinding and can be expensive in hot loops.
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
@@ -97,7 +99,7 @@ measures these paths separately, along with object dispatch and allocation.
 | `listfast` | Inlines checked `list[int]` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
 | Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied | [#308](https://github.com/den-run-ai/pystachy/pull/308) |
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
-| In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a copy leaves room for as much again | [#544](https://github.com/den-run-ai/pystachy/pull/544); no switch |
+| In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
 | JIT helper inlining | Inlines program functions up to 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:

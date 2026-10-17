@@ -14,11 +14,12 @@ are linked from the relevant guide.
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
-| [C and CPython interoperability](ffi.md) | Native C calls and CPython extension modules |
+| [C and CPython interoperability](ffi.md) | Native C calls, embedded CPython and CPython extension modules |
 | [Caching](caching.md) | Memoization, regex and text-processing workloads |
 | [Performance](performance.md) | Published speed, memory and startup measurements |
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
 | [pyperformance results](pyperformance.md) | Ported pyperformance benchmarks under CPython, JIT and AOT |
+| [microGPT benchmark](../bench/microgpt/README.md) | Scalar-autograd transformer training, numerical parity and native performance |
 | [Application examples](../examples/) | Small compiled command-line applications |
 
 ## Work on the compiler
