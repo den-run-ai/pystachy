@@ -99,11 +99,19 @@ typedef struct Exc Exc;                                /* a raised exception (se
    arrays in 4 KiB slices.
    Policy. A collection runs when a free list or a large allocation needs memory and the
    bytes handed out since the last one reach max(32 MiB, live bytes after it), so the heap
-   stays near twice the live set. A file open for writing holds malloc'd buffers, which count
-   as heap bytes (gc_ext: handed out, live, in the heap) and are allocated as a large object
-   is, so files dropped without close() start collections too; a standard stream's do not,
-   as no collection frees them. Dead large objects go straight back to the C allocator, and a
-   live str that appends grew gives back the room they left (str_trim);
+   stays near twice the live set. A large allocation also runs one when the pointer-free
+   large objects (numeric arrays and strs, which marking never scans) handed out since the
+   last are at least half of those bytes and reach max(4 MiB, live bytes after it): each is a
+   calloc'd block that only a collection frees, so a program that mostly makes and drops big
+   arrays would otherwise go through 32 MiB of cold blocks, which calloc zeroes again,
+   between collections, and while little is live a collection costs little. Programs that
+   mostly make small objects or arrays of pointers keep the 32 MiB window and its timing:
+   there, a collection that big arrays started would come mid-computation, when much more is
+   live, or would scan a growing list again. A file open for writing holds malloc'd buffers,
+   which count as heap bytes (gc_ext: handed out, live, in the heap) in the 32 MiB window as
+   a large object's do, so files dropped without close() start collections too; a standard
+   stream's do not, as no collection frees them. Dead large objects go straight back to the C
+   allocator, and a live str that appends grew gives back the room they left (str_trim);
    empty chunks are kept for the next cycle's allocations, and beyond that every arena whose
    chunks are all empty is freed. A chunk that handed out nothing and lost nothing since the
    last sweep keeps its free list as is.
@@ -116,6 +124,7 @@ typedef struct Exc Exc;                                /* a raised exception (se
 #define SMALL 8200                     /* largest size class */
 #define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
 #define GC_MIN ((I)32 << 20)           /* least allocation between collections */
+#define BIG_MIN ((I)4 << 20)           /* least pointer-free large-object allocation between them */
 typedef uintptr_t __attribute__((may_alias)) W;   /* a heap or stack word: aliases every type */
 typedef struct Seg Seg;
 struct Seg {                           /* header on the first page of a chunk or large object */
@@ -143,6 +152,7 @@ static W *fl[NK], *sfl[NK];            /* free list being allocated from; its st
 static Seg *avail[NK], *chunks, *pool, *bigs, ***pmap;
 static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
 static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
+static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
 static int gc_off, gc_stats;
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
@@ -270,6 +280,7 @@ static void sweep(void) {
   }
   live += gc_ext;                      /* the buffers of the files still open (files_sweep closed the others) */
   gc_live = live; gc_allocd = 0; gc_limit = live > GC_MIN ? live : GC_MIN;
+  gc_big = 0; gc_big_limit = live > BIG_MIN ? live : BIG_MIN;
   I pooled = 0;                        /* keep the empty chunks the next cycle may need; beyond */
   for (Seg *s = pool; s; s = s->next) pooled += CHUNK;   /* that, free arenas with none in use */
   for (Seg *s = pool; s && pooled > gc_limit - spare; s = s->next)
@@ -345,13 +356,13 @@ __attribute__((noinline)) static void *gc_slow(I n, int atomic) {
   if ((uint64_t)n > (uint64_t)1 << 40) oom();
   if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
   if (n >= SMALL) {                    /* large object: a page-aligned header in its own block */
-    if (!gc_off && gc_allocd + n >= gc_limit) collect();
+    if (!gc_off && (gc_allocd + n >= gc_limit || (gc_big + n >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
     char *raw = calloc(1, PAGE + HB + n);
     if (!raw) oom();
     Seg *s = (Seg *)(((uintptr_t)raw + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
     s->raw = raw; s->large = 1; s->k = atomic; s->size = s->lim = n + 1; s->start = (char *)s + HB;
     pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s, PAGE + HB + n);
-    s->next = bigs; bigs = s; gc_allocd += n;
+    s->next = bigs; bigs = s; gc_allocd += n; if (atomic) gc_big += n;
     return s->start;
   }
   int k = 2 * (int)cls(n) + atomic;
