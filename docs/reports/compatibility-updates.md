@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `765564a34fdbf7abfb807df236a43f93f1bfe06f`.
+**Latest evaluated main:** `dbac05d7d4ab02ffdc737497cff940b4e95ec278`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -428,6 +428,70 @@ The audit branch also incorporates this evaluated main and resolves its
 corrections about supported generators and bounded unions. No implementation
 branch was modified and no implementation PR was merged by this audit.
 
+## 2026-10-17 — #629: initialized Any variables
+
+Evaluated [main `dbac05d7`](https://github.com/den-run-ai/pystachy/commit/dbac05d7d4ab02ffdc737497cff940b4e95ec278),
+which merges [#629](https://github.com/den-run-ai/pystachy/pull/629). Its merge
+was re-fetched and verified in main's history. This is the only merge since the
+previous evaluated `765564a3`. The diff changes compiler annotation normalization,
+tests and typing documentation; runtime, library, port and benchmark sources are
+unchanged. Current #491/#616 and #629 coordination comments were read; #630 and
+later stack members are not counted as shipped.
+
+[Normalized evidence](compatibility-2026-10-17-any-variables.json) preserves the
+exact programs, commands, selected tests, package hashes, import metadata and
+compiler hashes. CPython 3.13.16 and LLVM 18.1.3 are retained. The compiler was
+rebuilt at this exact main revision and reached compiler/runtime bootstrap fixed
+points (**617,419 / 18,388** IR lines).
+
+| Evidence category | Fresh result |
+|---|---|
+| Isolated import programs | **142/476** compile, with the same 46 overlay exclusions; every result is identical to `765564a3`, with no timeout. |
+| Hosted compiler with throwing C-module stubs | **146/476**, including 142 without stubs; every result is identical to `765564a3`, with no timeout. |
+| Focused native checks | **19/19**: 14 positive JIT/AOT checks with per-allocation GC plus five expected rejections. These cover three new variable programs and four retained signature programs. |
+| Adapted port checks | **14/14** normal JIT/AOT checks across seven ordered-set, tomli-w and pyfiglet programs. |
+| Fresh CPython recordings | All seven selected positive programs match their checked-in recordings; typing_extensions 4.12.2's retained source supplies the reference dependency. |
+| Differential probes | 19 programs compare the prior and rebuilt compilers; nine execute in JIT/AOT and match fresh CPython results. Two previously rejected programs now pass: an initialized Any module variable, and nested inferred containers/local retyping. |
+
+Initialized module/local annotations containing Any now use assignment inference.
+The new programs cover aliases, quoted/future annotations, imports, empty
+containers filled later, concrete generic instances, nested functions and local
+retyping. The entire Any-containing annotation is inferred; its concrete parts
+do not become runtime checks. This is a useful removal of source annotations/
+adaptations, but it does not provide arbitrarily mixed storage. The tests still
+reject class fields and annotation-only Any declarations, changing a global's
+inferred type, and appending a string to an inferred integer list. Keep
+[#617](https://github.com/den-run-ai/pystachy/issues/617) narrowed to the remaining
+annotation-only scope, with dynamic storage tracked separately.
+
+Retained constructor, non-generator iterator-return, cached Any/unannotated
+function and generator-send probes still reject (#618/#619/#620/#616); forwarding
+recursion remains blocked (#595/#621), while its annotated control passes. The
+four pinned unmodified upstream package probes retain their earlier first errors:
+tomli-w `MappingProxyType`, ordered-set `slice(None)`, pyfiglet `importlib`, and
+iniconfig's named Unicode escape. The one-edit iniconfig iterator and maintained
+ordered-set/list equality controls still pass. First-error probes cannot establish
+whether later Any variables or whole upstream suites work; prior minor/major
+adaptation assessments remain unchanged.
+
+No new uncovered bug or regression was observed. This run makes no new
+performance claim. Unchanged broad benchmarks, the 52-source upstream census,
+full hosted suites and full CPython regrtest were not repeated. Prior measurements
+remain historical evidence. No implementation branch or PR was changed by this
+audit.
+
+Reproduce with the retained toolchain and the exact selected file lists/scripts
+embedded in the JSON:
+
+```sh
+make PY=python3.13
+PYSTACHY_JOBS=4 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' <gc_tests files>
+PYSTACHY_JOBS=4 tests/run.sh ./pystachy 'jit aot' <normal_ports files>
+python3.13 /path/to/audit/tools/import_sweep.py -j 4 --metadata imports-metadata.json ./pystachy "$CPYTHON_STDLIB" imports.json
+# Run retained stub_sweep.py and probes.py, adjusting checkout paths.
+```
+
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -437,7 +501,7 @@ when practical, preserving attribution and the previous result.
 | Pending work | Focused remeasurement |
 |---|---|
 | #608 token, following evaluated #606 | Tokenize/inspect/doctest import and selected API probes; distinguish remaining module-level `del` (#612) from completed io/token support. |
-| #629–#631 variable/constructor/iterator inference, following evaluated #607 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) remains a separate question. |
+| #630–#631 constructor/iterator inference, following evaluated #607/#629 | Exact upstream and minimal-adaptation package probes, especially tomli-w/ordered-set/pyfiglet/iniconfig; retained port workloads; Any metadata and iterator contracts. Cache signature inference (#620) and annotation-only Any declarations (#617) remain separate questions. |
 | #632 item mutation templates, #633 generator channels, #634 recursive diagnostics | Mutation and generator-channel tests; iniconfig iterator probe; forwarding recursion (#595) versus improved diagnostics. Do not treat an improved diagnostic as acceptance. |
 | #623 shared short strings, #624 regex subject retention | Regex tests, split/subject-retention probes and selected regex timings; distinguish allocation/cache lifetime changes from matcher speed. |
 | #170 CPython embedding; follow-ups to merged #583/#609 | Example/FFI checks and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
