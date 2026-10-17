@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `c916ca6c02061f427c72c92741fa446f7e2e626b`.
+**Latest evaluated main:** `cad7e04206d3743ac18284a5e33f49da86aa6206`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -95,6 +95,74 @@ python examples/ndarray/check_upstream.py
 python -I examples/ndarray/bench.py ./pystachy 4000000 5
 ```
 
+## 2026-10-17 — #609: typed calls into C libraries
+
+Evaluation target: main `cad7e04206d3743ac18284a5e33f49da86aa6206`, merging
+[#609](https://github.com/den-run-ai/pystachy/pull/609) after evaluated `c916ca6c`.
+This merge changes compiler annotation resolution and C-call lowering, and the
+CPython ctypes twin; runtime and shipped library/port sources are unchanged.
+The compiler was rebuilt from the target source before native measurements.
+
+The measured new capability is a typed C-library adapter: `list[float]` passes
+as `double *`, `list[ffi.c_int64]`/`list[ffi.c_ssize_t]` as `int64_t *`, and scalar
+`ffi.c_float` calls the C float32 ABI. Qualified imports, aliases, quoted
+annotations and `typing.List` spellings work in the selected calls. Existing C
+kernels with these simple signatures need a small explicit declaration rather
+than per-element shims. The CPython twin copies distinct lists in/out while
+preserving alias identity; native calls borrow list storage for the duration of
+the call. These are different performance models.
+
+Remaining boundaries: float32 **arrays** are still rejected, as are narrower
+integer arrays, optional lists, list return values and arbitrary containers.
+The C function still needs the correct ABI and separately supplied length; it
+must not retain the borrowed pointer. General NumPy/PyPI extension imports,
+callbacks, structs and CPython embedding do not follow from this change.
+[#582](https://github.com/den-run-ai/pystachy/issues/582) tracks optional BLAS
+integration into the array example; this merge does not accelerate its existing
+matmul. [#614](https://github.com/den-run-ai/pystachy/issues/614)'s qualified FFI
+annotation case is now accepted; the prior compiler's rejection is retained.
+
+No timing or peak-memory claim is made here. The previous ndarray benchmark
+remains a separate snapshot; BLAS adapter correctness is not a speed comparison.
+
+[Normalized evidence](compatibility-2026-10-17-ffi.json) retains compiler/source
+identity, source hashes, exact programs, commands, outputs and sweep metadata.
+Inputs: CPython **3.13.16**, LLVM **18.1.3**, Linux x86-64, system `libblas.so.3`
+(hash recorded). The compiler/runtime bootstrap reached **608,154 / 17,615**
+IR-line fixed points. Compiler SHA-256:
+`659b844a8167b6d3674595612d88ff2df3cc37eb9ef8dcaca4a4ce7e197c5b19`.
+
+| Evidence category | Result |
+|---|---|
+| Native FFI suite | **61 passed, 0 failed**, no extension skips. Includes 18 C-call JIT/AOT checks, 32 expected compile rejections, and 11 extension build/client checks hosted by CPython. |
+| Focused fresh CPython references | `c_lists`, `c_float`, `c_qualified`, `c_lists_typing` all match their checked-in recordings. The same sources are rejected by the baseline native compiler, with exact first errors retained. |
+| Per-allocation-GC native probes | Those four programs plus a system-BLAS adapter match CPython in JIT/AOT: **10/10**. The first eight repeat suite programs under stronger program-GC stress, not eight new workloads. |
+| System-BLAS adapter | `cblas_daxpy` gives `[12.0, 24.0, 36.0]` for distinct output, `[3.0, 6.0, 9.0]` for aliased input/output, and `[]` for length zero in CPython/JIT/AOT. Previous compiler rejects its `list[float]` signature. |
+| Existing ndarray regression programs | **6/6** JIT/AOT checks with collection at every program allocation; includes the 432 adapted upstream assertions per upstream-program execution. |
+| Isolated stdlib import IR | **141/476**, with **46 exclusions**, **335 errors**, **0 timeouts**. All 522 inventory entries and every normalized result/first error equal the original baseline. |
+
+The unchanged import results also retain the existing `unittest`/harness first
+blockers. An FFI improvement is not an import-count improvement. The stub sweep,
+full stdlib/API/port suites and pyperformance census were not repeated: no new
+FFI use was added to those workloads. No new correctness failure or compiler
+crash was observed in this focused evaluation; existing #582/#210/#615 scope
+remains separate and was not remeasured or closed.
+
+Reproduction (LLVM 18 on `PATH`, `PY` below selects CPython 3.13.16):
+
+```sh
+make PY=/root/.local/bin/python3.13
+PY=/root/.local/bin/python3.13 CC=clang tests/ffi/run.sh ./pystachy 'jit aot'
+PYSTACHY_JOBS=2 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/example_ndarray.py tests/example_ndarray_edges.py tests/example_ndarray_upstream.py
+# Use PR #635's metadata-enabled tool with the evaluated compiler and its lib/:
+python3.13 ../pystachy/tools/import_sweep.py -j 4 --metadata build/audit-609/imports-metadata.json ./pystachy <CPYTHON_STDLIB> build/audit-609/imports.json
+```
+
+The JSON contains the BLAS program and precise per-probe invocations. Build
+`tests/ffi/ffitest.c` as `libpystachy-ffitest.so` on `LD_LIBRARY_PATH`; CPython uses
+`PYTHONPATH=tools/rt_cpython`. The native probes use
+`PYSTACHY_GC_STRESS_PROGRAM=1` for JIT and `PYSTACHY_GC_STRESS=1` for AOT execution.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -111,7 +179,7 @@ when practical, preserving attribution and the previous result.
 | #604 replace, #605 owned-string capacity trim | Bounded/unbounded replacement correctness, selected port text workloads and memory probes. Separate capacity/peak-memory results from throughput; retain input sizes and GC settings. |
 | #623 shared short strings, #624 regex subject retention | Regex tests, split/subject-retention probes and selected regex timings; distinguish allocation/cache lifetime changes from matcher speed. |
 | #622 imported decorator names | Decorated imported-function diagnostics and affected API probes. Record diagnostic improvements separately from compatibility gains. |
-| #609 FFI buffers, #170 CPython embedding; follow-ups to merged #583 | Example/FFI checks and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
+| #170 CPython embedding; follow-ups to merged #583/#609 | Example/FFI checks and explicit interop calls. Classify standalone compiled arrays and embedded CPython separately from native NumPy/PyPI compatibility. |
 | Other compiler/runtime/library/port/test-tool merges | Read the actual changed files and run the matching retained probes. Documentation-only merges do not require another compiler build or unchanged sweep. |
 
 ## Recording rules
