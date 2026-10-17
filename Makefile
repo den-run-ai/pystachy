@@ -112,6 +112,16 @@ fileprobe: tools/fileprobe.c runtime.c runtime.py pystachy
 	build/fileprobe --lib
 	PYSTACHY_GC_STRESS=1 build/fileprobe
 
+# POSIX select prototype: real pipes, signal interruptions and timeout deadlines.
+selectprobe: tools/selectprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/selectprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/selectprobe.c -o build/selectprobe.ll
+	$(LLVMBIN)llvm-link build/selectprobe-rt.ll build/selectprobe.ll -o build/selectprobe.bc
+	$(LLVMBIN)clang -O2 build/selectprobe.bc -o build/selectprobe -lm
+	build/selectprobe
+	PYSTACHY_GC_STRESS=1 build/selectprobe
+
 # sum(), min() and max() of generators and range() stream: 10^8 items in 64 MiB (AOT).
 streamprobe: pystachy
 	$(PY) tools/streamprobe.py
@@ -212,7 +222,7 @@ re-probe:
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -229,4 +239,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

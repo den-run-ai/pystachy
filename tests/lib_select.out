@@ -1,0 +1,32 @@
+([], [], [])
+([], [], [])
+([], [], [])
+[7] [8] []
+([], [], [])
+True
+ValueError timeout must be non-negative
+ValueError Invalid value NaN (not a number)
+OverflowError timestamp out of range for C PyTime_t
+OverflowError timestamp out of range for C PyTime_t
+OverflowError timestamp out of range for C PyTime_t
+ValueError file descriptor cannot be a negative integer (-1)
+OverflowError Python int too large to convert to C int
+OverflowError Python int too large to convert to C int
+ValueError filedescriptor out of range in select()
+ValueError filedescriptor out of range in select()
+ValueError too many file descriptors in select()
+ValueError file descriptor cannot be a negative integer (-1)
+OverflowError Python int too large to convert to C int
+ValueError file descriptor cannot be a negative integer (-1)
+ValueError filedescriptor out of range in select()
+ValueError too many file descriptors in select()
+file descriptor cannot be a negative integer (-1) [-1]
+file descriptor cannot be a negative integer (-1) [-1]
+file descriptor cannot be a negative integer (-1) [-1]
+timeout must be non-negative
+timeout must be non-negative
+Invalid value NaN (not a number)
+timestamp out of range for C PyTime_t
+file descriptor cannot be a negative integer (-1)
+file descriptor cannot be a negative integer (-2)
+[exit 0]

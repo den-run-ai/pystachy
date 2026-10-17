@@ -59,6 +59,8 @@ The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
+The [POSIX select prototype](../docs/prototypes/select.md) provides
+`select.select` on integer descriptor lists; other select APIs remain unsupported.
 
 <!-- Existing section links remain valid. Detailed contracts moved to compatibility.md. -->
 <a id="difflib-a-port-of-cpythons"></a>

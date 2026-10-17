@@ -249,6 +249,21 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.iter_(args)
     if name == "open":
         return self.open_(args)
+    if name == "select.select":
+        if len(args) < 3 or len(args) > 4 or len([a for a in args if a.kind == "kw"]) != 0:
+            self.err("select.select() expects three list[int] arguments and an optional positional timeout")
+        fds: list[Val] = []
+        for i in range(3):
+            fds.append(self.coerce(self.expr(args[i], "list[int]"), "list[int]", f"argument {i + 1} of select.select()"))
+        timeout = self.expr(args[3], "") if len(args) == 4 else Val("null", "None")
+        blocking = "1" if timeout.t == "None" else "0"
+        if timeout.t == "None":
+            timeout = Val(fbits("0.0"), "float")
+        elif timeout.t == "int" or timeout.t == "bool" or timeout.t == "float":
+            timeout = self.as_float(timeout)
+        else:
+            self.err("select.select() timeout must be int, float or None; narrow optional values before the call")
+        return self.rres(self.rt("pys_select", "ptr", [self.rarg(v) for v in fds] + [self.rarg(timeout), "i64 " + blocking]), "tuple[list[int],list[int],list[int]]")
     if name == "set" or name == "frozenset":
         return self.set_new(name, args, want, resultsoft)
     if name == "map" or name == "filter":
