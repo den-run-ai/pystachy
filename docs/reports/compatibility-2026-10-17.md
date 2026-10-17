@@ -130,10 +130,14 @@ results on this shared machine are advisory; there is no wall-clock speed gate.
 
 ## Concurrent PRs
 
+Subsequent checks and merge-driven remeasurements are recorded in the
+[rolling findings log](compatibility-updates.md). The measurements above retain
+their original source revision.
+
 The main snapshot includes **#598 BytesIO, #599 singleton rebinding and #603
 pointer-free numeric list storage**. Other sessions' branches were monitored
 without modifying their work. At the final state check, the compatibility changes
-in #600–#609, #622–#624 and #629–#634, plus #583, were still open; none of their
+in #600–#602, #604–#609, #622–#624 and #629–#634, plus #583, were still open; none of their
 unmerged behavior is counted above. In particular, namedtuple, TextIOWrapper,
 token, sys.warnoptions and Any improvements belong in the next remeasurement
 after their respective merges. The detailed reports identify affected probes.
