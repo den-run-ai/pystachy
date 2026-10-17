@@ -23,8 +23,9 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO`, `csv`, `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata` and `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The library reference is the authority for each module's limits. For example, `difflib`
-supports matching strings and lists of strings, while its generator-based diff APIs do not
-compile. `textwrap` supports its public operations, but widths count UTF-8 bytes.
+supports matching strings and lists of strings, including `get_grouped_opcodes()`;
+its other diff APIs still have reflection, formatting or callback-type blockers.
+`textwrap` supports its public operations, but widths count UTF-8 bytes.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
@@ -68,9 +69,12 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Multiple/generic inheritance, arbitrary unions and `Any`, generator functions and first-class
-generator objects, `bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
-limit library coverage. CPython extensions and import
+Multiple/generic inheritance, arbitrary recursive value types and dynamic `Any` storage,
+`bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
+limit library coverage. Generator functions, resumable generator objects, bytes, bounded
+unions and per-call function/constructor specialization are already supported; their
+remaining restrictions depend on the operation and the concrete types involved.
+CPython extensions and import
 graphs through unavailable modules can block otherwise suitable pure-Python functions.
 The [compatibility reference](language/compatibility.md) lists the detailed restrictions.
 
@@ -83,6 +87,11 @@ C calls and experimental CPython extension builds have their own [FFI guide](ffi
 <a id="7-reproducing"></a>
 
 ## Measuring coverage
+
+The [2026-10-17 compatibility audit](reports/compatibility-2026-10-17.md) records a
+pinned main revision, execution checks, package adaptations, suite boundaries and
+remaining blockers. Treat its measurements as a snapshot, and rerun them after
+compiler or library changes.
 
 These tools answer different questions:
 
@@ -111,6 +120,10 @@ The census model predates shipped features and can flag constructs now supported
 results do not measure current compiler coverage.
 The sweep reports excluded modules separately. Preserve the compiler revision, CPython version
 and overlay policy with any result; compare sweeps only when their denominators agree.
+Use `--metadata build/import-sweep-meta.json` on a sweep to retain its compiler-file hash,
+source-repository revision, Python environment, overlay exclusions and result counts beside
+the unchanged module-to-result JSON. The source revision describes the checkout; the
+compiler hash identifies the executable and does not prove which sources built it.
 
 A plain sweep reports each module's first error, so a module built into CPython that Pystachy
 lacks hides the errors behind it. `--stubs` stands a stub in for each such module that some

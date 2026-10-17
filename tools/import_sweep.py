@@ -1,12 +1,14 @@
 """Try to compile 'import M' for every module of a Python standard library with Pystachy.
 
-usage: python3 tools/import_sweep.py [-j N] [COMPILER] [LIBDIR] [OUT.json]
+usage: python3 tools/import_sweep.py [-j N] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]
        (defaults: ./pystachy, the running CPython's stdlib directory, build/import-sweep.json)
        python3 tools/import_sweep.py --overlay [COMPILER] LIBDIR DIR
        python3 tools/import_sweep.py --stubs [-j N] [--only NAME,...] [LIBDIR] [OUT.json]
 Each module is compiled (pystachy ir) in a program of its own, with LIBDIR on PYSTACHY_PATH; the
 JSON maps each module to "OK", the compiler's error or a timeout, and a summary groups the errors.
 -j runs N compilations at a time (default: the number of CPUs).
+--metadata writes a separate provenance/counts JSON; the result JSON format is unchanged.
+An import result means compilation to IR, not execution or full module compatibility.
 
 PYSTACHY_PATH comes before the lib/ beside the compiler, so LIBDIR's own re, heapq, functools ...
 would hide the modules lib/ has in their place. PYSTACHY_PATH is therefore a directory of symbolic
@@ -28,6 +30,7 @@ import ast
 import builtins
 import collections
 import concurrent.futures
+import hashlib
 import importlib
 import json
 import math
@@ -37,6 +40,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import time
 
 TIMEOUT = 120  # seconds per module
 STUB_TIMEOUT = 600  # (the CPython-hosted compiler is slower)
@@ -207,26 +211,107 @@ def compile_one(cmd, env, d, m, timeout, stubs):
         return "OK", re.findall(r"^define internal void @init\.([^\s(]+)\(", f.read(), re.M)
 
 
-def main():
-    if sys.argv[1:2] == ["--overlay"]:
-        args = sys.argv[2:]
+def source_git(path):
+    # This describes the selected source tree, not which source built a native compiler.
+    def git(*args):
+        return subprocess.run(["git", "-C", path, *args], capture_output=True, text=True,
+                              check=True, timeout=10).stdout.strip()
+
+    try:
+        return {"root": git("rev-parse", "--show-toplevel"), "revision": git("rev-parse", "HEAD"),
+                "dirty": bool(git("status", "--porcelain", "--untracked-files=normal"))}
+    except (OSError, subprocess.SubprocessError):
+        return {"root": os.path.abspath(path), "revision": None, "dirty": None}
+
+
+def compiler_sha256(path):
+    if not os.path.isfile(path):
+        return None
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def counts(res, left):
+    excluded = set(left)
+    included = [v for m, v in res.items() if m not in excluded]
+    ok = sum(v.startswith("OK") for v in included)
+    timeout = sum(v.startswith("timeout:") for v in included)
+    return {"total": len(res), "included": len(included), "excluded": len(excluded),
+            "ok": ok, "error": len(included) - ok - timeout, "timeout": timeout,
+            "ok_without_stubs": sum(v == "OK" for v in included)}
+
+
+def write_json(path, value):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(value, f, indent=1, sort_keys=True)
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["--overlay"]:
+        parser = argparse.ArgumentParser(usage="%(prog)s --overlay [COMPILER] LIBDIR DIR")
+        parser.add_argument("args", nargs="*")
+        args = parser.parse_args(argv[1:]).args
         if len(args) not in (2, 3):
-            sys.exit("usage: python3 tools/import_sweep.py --overlay [COMPILER] LIBDIR DIR")
+            parser.error("--overlay requires [COMPILER] LIBDIR DIR")
+        if not os.path.isdir(args[-2]):
+            parser.error(f"stdlib directory does not exist: {args[-2]}")
+        if os.path.realpath(args[-2]) == os.path.realpath(args[-1]):
+            parser.error("overlay directory must differ from the stdlib directory")
         overlay(args[-2], ported(os.path.abspath(args[0] if len(args) == 3 else "./pystachy")), args[-1])
         return
-    parser = argparse.ArgumentParser(usage="%(prog)s [--stubs [--only NAME,...]] [-j N] [COMPILER] [LIBDIR] [OUT.json]")
+    parser = argparse.ArgumentParser(usage="%(prog)s [--stubs [--only NAME,...]] [-j N] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]")
     parser.add_argument("--stubs", action="store_true")
-    parser.add_argument("--only", default="")
+    parser.add_argument("--only", default=None)
+    parser.add_argument("--metadata", help="write provenance and counts to this separate JSON file")
     parser.add_argument("-j", type=int, default=os.cpu_count() or 1)
     parser.add_argument("args", nargs="*")
-    options = parser.parse_args()
+    options = parser.parse_args(argv)
+    if options.j < 1:
+        parser.error("-j must be at least 1")
+    if options.only is not None:
+        if not options.stubs:
+            parser.error("--only requires --stubs")
+        if not all(n.isidentifier() for n in options.only.split(",")):
+            parser.error("--only requires comma-separated module names")
+    if len(options.args) > (2 if options.stubs else 3):
+        parser.error("too many positional arguments")
     args = options.args
     if options.stubs:
-        pys = os.path.join(ROOT, "pystachy.py")
-        args = [pys] + args
+        args = [os.path.join(ROOT, "pystachy.py")] + args
     pys = os.path.abspath(args[0] if len(args) > 0 else "./pystachy")
-    lib = (args[1] if len(args) > 1 else sysconfig.get_paths()["stdlib"]).rstrip("/")
+    lib = os.path.abspath(args[1] if len(args) > 1 else sysconfig.get_paths()["stdlib"])
     out = args[2] if len(args) > 2 else "build/import-sweep.json"
+    if not os.path.isfile(pys):
+        parser.error(f"compiler file does not exist: {pys}")
+    if not options.stubs and not os.access(pys, os.X_OK):
+        parser.error(f"compiler is not executable: {pys}")
+    if not os.path.isdir(lib):
+        parser.error(f"stdlib directory does not exist: {lib}")
+    if not out or (options.metadata is not None and not options.metadata):
+        parser.error("output paths must not be empty")
+    for output_path in (out, options.metadata):
+        if output_path is not None and (os.path.isdir(output_path) or os.path.realpath(output_path) == os.path.realpath(pys)):
+            parser.error(f"output must be a file path different from the compiler: {output_path}")
+    if options.metadata and os.path.realpath(out) == os.path.realpath(options.metadata):
+        parser.error("--metadata must differ from the result JSON path")
+    start = time.monotonic()
+    metadata = None
+    if options.metadata:
+        metadata = {"schema_version": 1, "mode": "stubs" if options.stubs else "import",
+                    "python": {"executable": sys.executable, "version": sys.version,
+                               "implementation": sys.implementation.name},
+                    "stdlib": lib,
+                    "compiler": {"path": pys, "sha256": compiler_sha256(pys),
+                                 "kind": "hosted_entrypoint" if options.stubs else "executable"},
+                    "source_git": source_git(ROOT if options.stubs else home_of(pys)),
+                    "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+                    "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+                    "workers": options.j, "result_path": os.path.abspath(out)}
     names = ported(pys)
     res = {}
     left = []
@@ -248,6 +333,9 @@ def main():
             sys.path.insert(0, ROOT)
             from src.pystachy_compiler import specs
             missing = {n for n in specs.CBUILTIN if n not in getattr(specs, "STANDINS", {})}
+            if options.only is not None and set(options.only.split(",")) - missing:
+                parser.error("--only contains modules not eligible for stubbing: " +
+                             ", ".join(sorted(set(options.only.split(",")) - missing)))
             files = {}
             for m in todo:
                 f = os.path.join(lib, m.replace(".", os.sep))
@@ -269,7 +357,7 @@ def main():
             cmd = [sys.executable, "-c", HOSTED]
             timeout = STUB_TIMEOUT
             print(f"stubs for {len(stubs)} modules built into CPython: {' '.join(stubs)}\n")
-        with concurrent.futures.ThreadPoolExecutor(max(1, options.j)) as pool:
+        with concurrent.futures.ThreadPoolExecutor(options.j) as pool:
             jobs = {}
             for i, m in enumerate(todo):
                 os.makedirs(os.path.join(d, f"job{i}"))
@@ -279,9 +367,16 @@ def main():
                 # (the stubs it needs: those that a module it loads imports without a fallback)
                 used = sorted({s for x in loaded for s in by.get(x, ())} & set(stubs)) if stubs else []
                 res[m] = f"OK (stubs: {' '.join(used)})" if used else text.replace(path + "/", lib + "/").replace(d + "/", "")
-    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    with open(out, "w") as f:
-        json.dump(res, f, indent=1, sort_keys=True)
+    write_json(out, res)
+    if metadata is not None:
+        metadata.update({"counts": counts(res, left), "duration_s": time.monotonic() - start,
+                         "timeout_s": timeout, "stubs": stubs,
+                         "overlay": {"policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+                                     "compiler_home": os.path.abspath(home_of(pys)),
+                                     "ported_names": sorted(names), "excluded_modules": sorted(left),
+                                     "skipped_directories": list(SKIP),
+                                     "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'."}})
+        write_json(options.metadata, metadata)
     ok = sorted(m for m, v in res.items() if v.startswith("OK"))
     print(f"{len(ok)} of {len(res) - len(left)} modules import{' with the stubs' if stubs else ''}: {' '.join(ok)}\n")
     if left:
@@ -307,4 +402,5 @@ def main():
         print(f"{n:5}  {k}")
 
 
-main()
+if __name__ == "__main__":
+    main()

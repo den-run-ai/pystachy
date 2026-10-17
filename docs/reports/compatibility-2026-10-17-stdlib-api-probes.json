@@ -1,0 +1,348 @@
+{
+  "adaptations": {
+    "base64_one_line_port": {
+      "replace": "if isinstance(s, bytes_types):",
+      "scope": "bytes-only input branch, not bytearray/memoryview support",
+      "source": "CPython 3.13.16 base64.py",
+      "with": "if isinstance(s, bytes):"
+    }
+  },
+  "commands": {
+    "aot": "<EXE>",
+    "aot_build": "<PYSTACHY_ROOT>/pystachy build <PROBE> -o <EXE>",
+    "cpython": "<PYTHON> -I <PROBE>",
+    "hosted_ir": "<PYTHON> <PYSTACHY_ROOT>/pystachy.py ir <PROBE> -o /dev/null",
+    "jit": "<PYSTACHY_ROOT>/pystachy run <PROBE>"
+  },
+  "llvm": "18.1.3",
+  "overlay": "CPython stdlib with top-level lib/ replacements excluded; Pystachy builtins and shipped modules take their usual precedence.",
+  "probes": [
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8=' b'hello'\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/base64.py:40: error: isinstance() is only supported with the builtin types and classes as its second argument (compiling base64._bytes_from_decode_data(bytes) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/base64.py:83; compiling base64.b64decode(bytes, None, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_base64.py:3)\n",
+        "stdout": ""
+      },
+      "name": "base64",
+      "source": "import base64\ns = base64.b64encode(b'hello')\nprint(s, base64.b64decode(s))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'hello=3Dworld\\n' b'hello=world\\n'\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/quopri.py:106: error: importing module 'io' in a function of module 'quopri' is not supported: the program's module-level code does not import it (compiling quopri.encodestring(bytes, bool, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_quopri.py:2)\n",
+        "stdout": ""
+      },
+      "name": "quopri",
+      "source": "import quopri\ns = quopri.encodestring(b'hello=world\\n')\nprint(s, quopri.decodestring(s))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "['a', 'b', 'c']\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_graphlib.py:2: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)\n",
+        "stdout": ""
+      },
+      "name": "graphlib",
+      "source": "from graphlib import TopologicalSorter\nprint(list(TopologicalSorter({'a': [], 'b': ['a'], 'c': ['b']}).static_order()))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "True a\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "True a\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "True a\n"
+      },
+      "name": "stringprep",
+      "source": "import stringprep\nprint(stringprep.in_table_b1('\\u00ad'), stringprep.map_table_b2('A'))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "C:\\data\\b.txt\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "C:\\data\\b.txt\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "C:\\data\\b.txt\n"
+      },
+      "name": "ntpath",
+      "source": "import ntpath\nprint(ntpath.normpath(ntpath.join('C:\\\\data', 'a', '..', 'b.txt')))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "('Alice', 'alice@example.com')\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/email/utils.py:339: error: class email._parseaddr.AddressList is not supported: inheritance with generic class templates is not supported: annotate __init__ parameters (compiling email.utils.parseaddr(str, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_email_utils.py:2)\n",
+        "stdout": ""
+      },
+      "name": "email_utils",
+      "source": "from email.utils import parseaddr\nprint(parseaddr('Alice <alice@example.com>'))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "(b'caf\\xe9', 4) ('caf\u00e9', 4)\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "(b'caf\\xe9', 4) ('caf\u00e9', 4)\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "(b'caf\\xe9', 4) ('caf\u00e9', 4)\n"
+      },
+      "name": "encodings_cp1252",
+      "source": "from encodings.cp1252 import Codec\nprint(Codec().encode('caf\\u00e9'), Codec().decode(b'caf\\xe9'))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": false,
+        "status": 1,
+        "stderr": "NotImplementedError: codecs.utf_16_encode() is not supported: Pystachy's codecs are UTF-8, Latin-1, ASCII and charmap\n",
+        "stdout": ""
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "hello\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": false,
+        "status": 1,
+        "stderr": "NotImplementedError: codecs.utf_16_encode() is not supported: Pystachy's codecs are UTF-8, Latin-1, ASCII and charmap\n",
+        "stdout": ""
+      },
+      "name": "encodings_utf16",
+      "source": "from encodings.utf_16 import encode, decode\nprint(decode(encode('hello')[0])[0])\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "('text/plain', None)\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/mimetypes.py:393: error: class mimetypes.MimeTypes is not supported: cannot infer the type of field 'encodings_map'; annotate it (self.encodings_map: T = ...) (specializing mimetypes.MimeTypes(tuple[], bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/mimetypes.py:393; compiling mimetypes.init(None) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/mimetypes.py:323; compiling mimetypes.guess_type(str, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_mimetypes.py:2)\n",
+        "stdout": ""
+      },
+      "name": "mimetypes",
+      "source": "import mimetypes\nprint(mimetypes.guess_type('document.txt', strict=True))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "''\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/linecache.py:36: error: cannot infer the type of 'linecache.cache' from this use; annotate it (compiling linecache.getlines(str, None) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/linecache.py:26; compiling linecache.getline(str, int, None) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_linecache.py:2)\n",
+        "stdout": ""
+      },
+      "name": "linecache",
+      "source": "import linecache\nprint(repr(linecache.getline('missing_file_for_audit', 1)))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8='\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8='\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8='\n"
+      },
+      "name": "base64_encode",
+      "source": "import base64\nprint(base64.b64encode(b'hello'))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'hello'\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'hello'\n"
+      },
+      "hosted_ir": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'hello'\n"
+      },
+      "name": "base64_decode_str",
+      "source": "import base64\nprint(base64.b64decode('aGVsbG8='))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'hello=3Dworld\\n' b'hello=world\\n'\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/quopri.py:79: error: expected int, got bytes (compiling quopri.encode(io.BytesIO, io.BytesIO, bool, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/cpython-lib/quopri.py:109; compiling quopri.encodestring(bytes, bool, bool) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_quopri_import_io.py:3)\n",
+        "stdout": ""
+      },
+      "name": "quopri_import_io",
+      "source": "import io\nimport quopri\ns = quopri.encodestring(b'hello=world\\n')\nprint(s, quopri.decodestring(s))\n"
+    },
+    {
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "['a', 'b', 'c']\n"
+      },
+      "hosted_ir": {
+        "status": 1,
+        "stderr": "<PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_graphlib_annotated.py:3: error: class graphlib.TopologicalSorter is not supported: cannot infer the type of field '_node2info'; annotate it (self._node2info: T = ...) (specializing graphlib.TopologicalSorter(dict[str,list[str]]) for the call at <PYSTACHY_ROOT>/build/audit-stdlib/api-samples/probe_graphlib_annotated.py:3)\n",
+        "stdout": ""
+      },
+      "name": "graphlib_annotated",
+      "source": "from graphlib import TopologicalSorter\ng: dict[str, list[str]] = {'a': [], 'b': ['a'], 'c': ['b']}\nprint(list(TopologicalSorter(g).static_order()))\n"
+    },
+    {
+      "aot": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8=' b'hello'\n"
+      },
+      "aot_build": {
+        "status": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cpython": {
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8=' b'hello'\n"
+      },
+      "jit": {
+        "matches_cpython": true,
+        "status": 0,
+        "stderr": "",
+        "stdout": "b'aGVsbG8=' b'hello'\n"
+      },
+      "name": "base64_one_line_port",
+      "source": "import base64\ns = base64.b64encode(b'hello')\nprint(s, base64.b64decode(s))\n"
+    }
+  ],
+  "python": "3.13.16",
+  "revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+  "scope": "Selected API probes; success does not certify a complete module. Timings are incidental during concurrent work, not a benchmark."
+}
