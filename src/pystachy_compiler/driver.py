@@ -501,7 +501,7 @@ def main() -> None:
             f.close()
         # one module, optimized once: LLVM inlines runtime.c's helpers into runtime.py's code. No
         # pipes: a step that fails must fail the build, not hand the next one an empty module
-        code = sh(f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {q(rpl)} {q(rcb)} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        code = sh(f"{tc[0]} -O2 -fno-builtin-pow -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {q(rpl)} {q(rcb)} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:
@@ -613,7 +613,7 @@ def main() -> None:
         # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
-        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+        code = sh(f"{link} && {llvm}clang -O2 -fno-builtin-pow -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
