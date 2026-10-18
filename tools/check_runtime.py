@@ -570,15 +570,18 @@ assert cycle({"p": {"q"}, "q": {"c"}, "c": {"d"}, "d": {"q"}}, "p", {"c"}) is No
 assert cycle({"h": {"rt:g"}, "rt:g": {"g"}, "g": {"h"}}, "g", {"rt:g"}) == ["g", "h", "rt:g", "g"]
 
 
-def main():
-    verbose = "-v" in sys.argv[1:]
-    pys = load_compiler()
-    rt = pys.RUNTIME
+def compiler_source_problems(root, cached_sources):
+    """Check cache inputs independently of the driver's declared manifest."""
+    root = Path(root)
+    actual_sources = {str(p.relative_to(root)) for p in (root / "src").rglob("*.py")}
+    # Literal parsing also reads this shipped table outside src/. Keep it in the
+    # cache contract without treating every standard-library module as compiler
+    # source, or using the manifest being checked as its own expected set.
+    names_table = "lib/_pystachy_unicodedata_names.py"
+    actual_sources.add(names_table)
     bad = []
-    note = []
-    component_sources = sorted((Path(ROOT) / "src").rglob("*.py"))
-    actual_sources = {str(p.relative_to(ROOT)) for p in component_sources}
-    cached_sources = pys.runtime_ir.__globals__["COMPILER_SOURCES"]
+    if not (root / names_table).is_file():
+        bad.append("compiler dependency is missing: " + names_table)
     missing = actual_sources - set(cached_sources)
     obsolete = set(cached_sources) - actual_sources
     if missing:
@@ -587,6 +590,16 @@ def main():
         bad.append("runtime cache names missing compiler source: " + ", ".join(sorted(obsolete)))
     if len(cached_sources) != len(set(cached_sources)):
         bad.append("runtime cache repeats a compiler source path")
+    return bad
+
+
+def main():
+    verbose = "-v" in sys.argv[1:]
+    pys = load_compiler()
+    rt = pys.RUNTIME
+    bad = compiler_source_problems(ROOT, pys.runtime_ir.__globals__["COMPILER_SOURCES"])
+    note = []
+    component_sources = sorted((Path(ROOT) / "src").rglob("*.py"))
     ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c")
     fns = functions(ll)
     for f, g in STORES.items():

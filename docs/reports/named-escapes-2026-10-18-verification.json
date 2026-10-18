@@ -1,0 +1,717 @@
+{
+  "schema": "pystachy-named-escapes-verification-v1",
+  "source_commit": "f3d4d7e33019a589439439ab441c45f77bf753c9",
+  "base_commit": "44316e75fabc99108d3188c5b4d0d59e867f4a94",
+  "original_run": {
+    "command": "make verify",
+    "started_utc": "2026-10-18T13:03:20.560769+00:00",
+    "finished_utc": "2026-10-18T14:42:29.596851+00:00",
+    "seconds": 5949.036097581033,
+    "exit": 2,
+    "result": "fail",
+    "summary": {
+      "steps": 40,
+      "passed": 30,
+      "failed": 10,
+      "seconds": 5948.292
+    },
+    "timestamp_utc": "2026-10-18T14:42:28Z",
+    "corpora": {
+      "tests-cpython": {
+        "passed": 4466,
+        "failed": 2,
+        "expected": 4468
+      },
+      "tests-native": {
+        "passed": 4466,
+        "failed": 2,
+        "expected": 4468
+      },
+      "tests-opt-off": {
+        "passed": 4466,
+        "failed": 2,
+        "expected": 4468
+      },
+      "python-free": {
+        "passed": 4466,
+        "failed": 2,
+        "expected": 4468
+      },
+      "ubsan": {
+        "passed": 6312,
+        "failed": 2,
+        "expected": 6314
+      },
+      "gc-jit": {
+        "passed": 3156,
+        "failed": 1,
+        "expected": 3157
+      },
+      "gc-aot": {
+        "passed": 3156,
+        "failed": 1,
+        "expected": 3157
+      }
+    },
+    "steps": [
+      {
+        "name": "bootstrap",
+        "result": "pass",
+        "seconds": 177.584,
+        "log": {
+          "repository_relative_path": "build/verify/bootstrap.log",
+          "bytes": 123,
+          "sha256": "ded6ff37c6fdc1af978d1d718b3eb185aaac1ae223670658d733035969803e77"
+        }
+      },
+      {
+        "name": "tests-cpython-0",
+        "result": "pass",
+        "seconds": 292.346,
+        "expected": 1488,
+        "failed": 0,
+        "passed": 1488,
+        "log": {
+          "repository_relative_path": "build/verify/tests-cpython-0.log",
+          "bytes": 41,
+          "sha256": "3fffcfa4f2e6c9ef3a98b05658d8b05f16486e071b1b678ab9e3d1698b9a17fa"
+        }
+      },
+      {
+        "name": "tests-cpython-1",
+        "result": "pass",
+        "seconds": 276.104,
+        "expected": 1490,
+        "failed": 0,
+        "passed": 1490,
+        "log": {
+          "repository_relative_path": "build/verify/tests-cpython-1.log",
+          "bytes": 41,
+          "sha256": "6f823603142eacc730cde302d52488804d2857b13669de0fd11ce80aa1d9bc6c"
+        }
+      },
+      {
+        "name": "tests-cpython-2",
+        "result": "fail",
+        "seconds": 233.583,
+        "expected": 1490,
+        "failed": 2,
+        "passed": 1488,
+        "log": {
+          "repository_relative_path": "build/verify/tests-cpython-2.log",
+          "bytes": 321,
+          "sha256": "49871d22fef19d639ada808cb5fbc031988c818ec9819cc4522a6aa20218a2a7"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "tests-native-0",
+        "result": "pass",
+        "seconds": 266.114,
+        "expected": 2236,
+        "failed": 0,
+        "passed": 2236,
+        "log": {
+          "repository_relative_path": "build/verify/tests-native-0.log",
+          "bytes": 42,
+          "sha256": "3d383a7f235206158bce98fda99611d18575a847caedfaba08297095166bad69"
+        }
+      },
+      {
+        "name": "tests-native-1",
+        "result": "fail",
+        "seconds": 254.691,
+        "expected": 2232,
+        "failed": 2,
+        "passed": 2230,
+        "log": {
+          "repository_relative_path": "build/verify/tests-native-1.log",
+          "bytes": 322,
+          "sha256": "ee468345cfa1a0448add04cc51c2e58c87f5c315f29c2e8416a203dbbe7f2e23"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "tests-opt-off-0",
+        "result": "pass",
+        "seconds": 271.546,
+        "expected": 2236,
+        "failed": 0,
+        "passed": 2236,
+        "log": {
+          "repository_relative_path": "build/verify/tests-opt-off-0.log",
+          "bytes": 69,
+          "sha256": "e6a684537facdf78f78ca48d81d3f0be375d6102ef6f33e43f78079b8cae62d5"
+        }
+      },
+      {
+        "name": "tests-opt-off-1",
+        "result": "fail",
+        "seconds": 249.157,
+        "expected": 2232,
+        "failed": 2,
+        "passed": 2230,
+        "log": {
+          "repository_relative_path": "build/verify/tests-opt-off-1.log",
+          "bytes": 349,
+          "sha256": "3c6ba719caeeb8c6bdb32c29a51337edef3ff1d4c08dc30604f5f59713bd7bd6"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "runtime-cache",
+        "result": "pass",
+        "seconds": 368.12,
+        "expected": 121,
+        "failed": 0,
+        "passed": 121,
+        "log": {
+          "repository_relative_path": "build/verify/runtime-cache.log",
+          "bytes": 6169,
+          "sha256": "e6cdd45fc7725e1f9b8899191985642894e2041612b4ff0babb8c414ff411a65"
+        }
+      },
+      {
+        "name": "python-free-0",
+        "result": "pass",
+        "seconds": 301.485,
+        "expected": 1488,
+        "failed": 0,
+        "passed": 1488,
+        "log": {
+          "repository_relative_path": "build/verify/python-free-0.log",
+          "bytes": 3001,
+          "sha256": "cd36fa8c6158e026063f57dee000fef06cbf222eae626b7afcf51a2a31fd5005"
+        }
+      },
+      {
+        "name": "python-free-1",
+        "result": "pass",
+        "seconds": 200.519,
+        "expected": 1490,
+        "failed": 0,
+        "passed": 1490,
+        "log": {
+          "repository_relative_path": "build/verify/python-free-1.log",
+          "bytes": 3001,
+          "sha256": "a50b971094dce7fa88a7f1a4eafcf58d7fcc54a739c4c4f5bc3a359431730392"
+        }
+      },
+      {
+        "name": "python-free-2",
+        "result": "fail",
+        "seconds": 167.171,
+        "expected": 1490,
+        "failed": 2,
+        "passed": 1488,
+        "log": {
+          "repository_relative_path": "build/verify/python-free-2.log",
+          "bytes": 3281,
+          "sha256": "52fe6c4612ff98504ede278519293562e55b7bc5abb39dbb810b992cf4f18b28"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "ubsan-0",
+        "result": "pass",
+        "seconds": 304.424,
+        "expected": 2102,
+        "failed": 0,
+        "passed": 2102,
+        "log": {
+          "repository_relative_path": "build/verify/ubsan-0.log",
+          "bytes": 248,
+          "sha256": "365ddc16f04a5374dfb60b264cba96c1e5ed58721d945367bc960d215fecc5d4"
+        }
+      },
+      {
+        "name": "ubsan-1",
+        "result": "pass",
+        "seconds": 227.792,
+        "expected": 2106,
+        "failed": 0,
+        "passed": 2106,
+        "log": {
+          "repository_relative_path": "build/verify/ubsan-1.log",
+          "bytes": 248,
+          "sha256": "5e37e535f32495f7d8c1c22951ab5ecb79ba0b514113067bbc0e2e6b86c27b6f"
+        }
+      },
+      {
+        "name": "ubsan-2",
+        "result": "fail",
+        "seconds": 220.361,
+        "expected": 2106,
+        "failed": 2,
+        "passed": 2104,
+        "log": {
+          "repository_relative_path": "build/verify/ubsan-2.log",
+          "bytes": 528,
+          "sha256": "5f89e43627a47c4ff50396efdf21daca41ba79312a054f0ea34a2a76971abd9f"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "check-ir",
+        "result": "pass",
+        "seconds": 29.851,
+        "log": {
+          "repository_relative_path": "build/verify/check-ir.log",
+          "bytes": 56,
+          "sha256": "04761ba3d94ebc4c17888680eb6685bb660880130eb6471d015ce6da71466191"
+        }
+      },
+      {
+        "name": "runtime-table",
+        "result": "fail",
+        "seconds": 10.494,
+        "log": {
+          "repository_relative_path": "build/verify/runtime-table.log",
+          "bytes": 134,
+          "sha256": "0ecc64806cc75c14eb702ec8d184d7893d307b0e7a0a2a776eb5b7d648ed02be"
+        },
+        "classification": "Candidate integration defect: existing checker omitted the newly fingerprinted lib Unicode-name data from its expected compiler inputs. Corrected after this run; the original failure remains recorded."
+      },
+      {
+        "name": "gc-self",
+        "result": "fail",
+        "seconds": 0.007,
+        "log": {
+          "repository_relative_path": "build/verify/gc-self-check.log",
+          "bytes": 230,
+          "sha256": "9eb65ad9b9b277e5182ed0f5d9223f1d6eac02fcab2de86259f6d9bca3f08d16"
+        },
+        "classification": "Background GC-stressed compiler reached its 600-second bound without IR. This step time measures the later result check, not the background compilation. Exact baseline separately also timed out; differing uncontrolled host load leaves cause, overhead and stressed IR identity unresolved."
+      },
+      {
+        "name": "gc-jit-0",
+        "result": "pass",
+        "seconds": 260.272,
+        "expected": 1580,
+        "failed": 0,
+        "passed": 1580,
+        "log": {
+          "repository_relative_path": "build/verify/gc-jit-0.log",
+          "bytes": 42,
+          "sha256": "83d876885b73f0884e0aee3a5a435cfa0c5cd4949bb8b9f98e688004dc5723f7"
+        }
+      },
+      {
+        "name": "gc-jit-1",
+        "result": "fail",
+        "seconds": 223.555,
+        "expected": 1577,
+        "failed": 1,
+        "passed": 1576,
+        "log": {
+          "repository_relative_path": "build/verify/gc-jit-1.log",
+          "bytes": 182,
+          "sha256": "2cbc22d2977382851fe2439376b29c179fc659f882c49d5556b844b7d4b6adc1"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "gc-aot-0",
+        "result": "pass",
+        "seconds": 281.775,
+        "expected": 1051,
+        "failed": 0,
+        "passed": 1051,
+        "log": {
+          "repository_relative_path": "build/verify/gc-aot-0.log",
+          "bytes": 41,
+          "sha256": "128aac000b086b2094d25ad5b013f24f3b055910ecede1d1b2fca0a2843e4af4"
+        }
+      },
+      {
+        "name": "gc-aot-1",
+        "result": "pass",
+        "seconds": 280.37,
+        "expected": 1053,
+        "failed": 0,
+        "passed": 1053,
+        "log": {
+          "repository_relative_path": "build/verify/gc-aot-1.log",
+          "bytes": 41,
+          "sha256": "4a4178ba17767af786dd4d6b843cfd1b62af15ac1e3e857833f78086635bd789"
+        }
+      },
+      {
+        "name": "gc-aot-2",
+        "result": "fail",
+        "seconds": 329.18,
+        "expected": 1053,
+        "failed": 1,
+        "passed": 1052,
+        "log": {
+          "repository_relative_path": "build/verify/gc-aot-2.log",
+          "bytes": 181,
+          "sha256": "1b2468a2bd7f1990788e31ece90abc0be04ca4aa1bb02c034d1e153b45ab8db1"
+        },
+        "classification": "Unchanged exc_except_attr fixture expects ENOENT/FileNotFoundError for /nonexistent_zz; this read-only root returns EROFS/OSError. Both fixture source and recording match the base. No fixture or filesystem change made."
+      },
+      {
+        "name": "benchmarks",
+        "result": "pass",
+        "seconds": 30.357,
+        "log": {
+          "repository_relative_path": "build/verify/benchmarks.log",
+          "bytes": 149,
+          "sha256": "b86a811151f85574a7e947a4dcc92fd02019e38c21dd8218372ac7aad4837f01"
+        }
+      },
+      {
+        "name": "rtcheck",
+        "result": "pass",
+        "seconds": 18.861,
+        "cases": 519610,
+        "failed": 0,
+        "log": {
+          "repository_relative_path": "build/verify/rtcheck.log",
+          "bytes": 23,
+          "sha256": "32edc3c9467ea8611a2d7325a7b21b1da5a8a26c0e8a1cb64747380b211c14f1"
+        }
+      },
+      {
+        "name": "re-fuzz",
+        "result": "pass",
+        "seconds": 24.778,
+        "cases": 1506821,
+        "failed": 0,
+        "patterns": 2000,
+        "upstream_cases": 19,
+        "valid": 1745,
+        "log": {
+          "repository_relative_path": "build/verify/re-fuzz.log",
+          "bytes": 74,
+          "sha256": "e32743477b32bc2eee31273f05cd5222c643b99f9780d6221f76c875a5765a59"
+        }
+      },
+      {
+        "name": "re-probe",
+        "result": "pass",
+        "seconds": 1.078,
+        "failed": 0,
+        "operations": 5,
+        "log": {
+          "repository_relative_path": "build/verify/re-probe.log",
+          "bytes": 548,
+          "sha256": "85a12554c3a2c9bc34b3a3afc486fb1cf78dbfa1d413478f86adb72019872d85"
+        }
+      },
+      {
+        "name": "rt-abi",
+        "result": "pass",
+        "seconds": 13.725,
+        "log": {
+          "repository_relative_path": "build/verify/rt-abi.log",
+          "bytes": 180,
+          "sha256": "2623ee07123ae8a1beb5b7bb2103045917b48a3a2b2dcb4cd406905d1d040a33"
+        }
+      },
+      {
+        "name": "inherited-ast",
+        "result": "pass",
+        "seconds": 0.997,
+        "log": {
+          "repository_relative_path": "build/verify/inherited-ast.log",
+          "bytes": 318,
+          "sha256": "a465de11c49804f231b57f6d52c3251a982f05a1b33b0bbec1cace1728441898"
+        }
+      },
+      {
+        "name": "streaming",
+        "result": "pass",
+        "seconds": 1.075,
+        "log": {
+          "repository_relative_path": "build/verify/streaming.log",
+          "bytes": 84,
+          "sha256": "df375647cceedafdeb4ee3c0b2bb0c9596d3b58b59b8175cc7221ef8283729ca"
+        }
+      },
+      {
+        "name": "ffi",
+        "result": "fail",
+        "seconds": 0.021,
+        "log": {
+          "repository_relative_path": "build/verify/ffi.log",
+          "bytes": 36,
+          "sha256": "a22b0cbfd35c8ece49d4c9d72ee597d78f61f8feb655f0fcc97b3750ee4ba6f6"
+        },
+        "classification": "Fixture library could not build because cc was absent from the isolated PATH. No FFI assertions ran in this stage. Separate unchanged-harness follow-up with existing Clang explicitly selected passed125 checks."
+      },
+      {
+        "name": "list-storage",
+        "result": "pass",
+        "seconds": 8.385,
+        "log": {
+          "repository_relative_path": "build/verify/list-storage.log",
+          "bytes": 236,
+          "sha256": "e572dbb2768a6fe810e2a751baa4ced2df6874bacbed3d43a67425d097a94479"
+        }
+      },
+      {
+        "name": "container-eq",
+        "result": "pass",
+        "seconds": 6.668,
+        "log": {
+          "repository_relative_path": "build/verify/container-eq.log",
+          "bytes": 290,
+          "sha256": "399a5bea59d8ac7274a93e8f26de691e720d6090ac5763fd06b7b02ff7826f26"
+        }
+      },
+      {
+        "name": "file-buffers",
+        "result": "pass",
+        "seconds": 6.775,
+        "log": {
+          "repository_relative_path": "build/verify/file-buffers.log",
+          "bytes": 616,
+          "sha256": "5da0e1fb015cb71bbd3091aac4b668aa703c73251cc9e00e71378338ba4ffea9"
+        }
+      },
+      {
+        "name": "dict-probes",
+        "result": "pass",
+        "seconds": 7.484,
+        "log": {
+          "repository_relative_path": "build/verify/dict-probes.log",
+          "bytes": 5137,
+          "sha256": "c79a4de98389436951a7127de65cc5147c405eb3ad1d2dda3691ac1a502fcb04"
+        }
+      },
+      {
+        "name": "compile-limits",
+        "result": "pass",
+        "seconds": 33.906,
+        "log": {
+          "repository_relative_path": "build/verify/compile-limits.log",
+          "bytes": 82,
+          "sha256": "127fad952280c6464f8eff150abeaa649ea6f74a2c4077a058ad5595343f2cab"
+        }
+      },
+      {
+        "name": "jit-dead-code",
+        "result": "pass",
+        "seconds": 3.018,
+        "log": {
+          "repository_relative_path": "build/verify/jit-dead-code.log",
+          "bytes": 558,
+          "sha256": "51586fe1a07b696e59f9b86d755c905fc90e8e73c092b400afbf6e44a5fb093f"
+        }
+      },
+      {
+        "name": "unicode-audit",
+        "result": "pass",
+        "seconds": 47.375,
+        "log": {
+          "repository_relative_path": "build/verify/unicode-audit.log",
+          "bytes": 423,
+          "sha256": "cc8840ed6bca291e607db467f0b1cd857591ac51e0a0871ea81a59112bd4d30b"
+        }
+      },
+      {
+        "name": "scaling-0",
+        "result": "pass",
+        "seconds": 229.088,
+        "log": {
+          "repository_relative_path": "build/verify/scaling-0.log",
+          "bytes": 1471,
+          "sha256": "0ffc4a56efa8cf259b4c4412838274a5d5ef2f785f8955892e2b40fa9debc796"
+        }
+      },
+      {
+        "name": "scaling-1",
+        "result": "pass",
+        "seconds": 287.232,
+        "log": {
+          "repository_relative_path": "build/verify/scaling-1.log",
+          "bytes": 2264,
+          "sha256": "5ca073d88b1c9133f27d205c007e0cb31083da785cb346c35ae91fa1cf625f4b"
+        }
+      }
+    ]
+  },
+  "immutable_source_inputs_sha256": "adc8aaeee59ca352b3e63d8efdeec073ab1980bdbfd2c43f54de45fff149157e",
+  "separate_evidence": {
+    "checker_correction": {
+      "reviewed_utc": "2026-10-18T14:16:35.977149+00:00",
+      "base_commit": "f3d4d7e33019a589439439ab441c45f77bf753c9",
+      "verdict": "PASS_FOR_ISOLATED_CHECKER_CORRECTION",
+      "root_decision": "ACCEPT_E34_ISOLATED_CORRECTION",
+      "state_at_receipt": "Isolated candidate, not integrated in original verifier run.",
+      "files": [
+        {
+          "path": "tools/check_runtime.py",
+          "bytes": 42891,
+          "sha256": "bea97a24046d60b6672ff7c09a3399e55fc9b2e0593c8414578ac32a40f73e8a"
+        },
+        {
+          "path": "tools/test_verify_runtime_sources.py",
+          "bytes": 3141,
+          "sha256": "604bab75abc6e07984be610e07fdbb88a9e1542c2c5d4e4794e9ba59aa847c29"
+        }
+      ],
+      "unit": {
+        "tests": 10,
+        "exit": 0,
+        "seconds": 0.23462565382942557,
+        "log_sha256": "a4fd00f1addd9772f0e6cffba9d94cf5576ccb306eb190b2a21056ca6a2209de"
+      },
+      "ruff": {
+        "exit": 0,
+        "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      },
+      "runtime_table": {
+        "exit": 0,
+        "seconds": 15.020495318807662,
+        "entries": 446,
+        "exception_classes": 70,
+        "runtime_functions": 170,
+        "log_sha256": "3e4d9bfc9bae5be8d7fa06a2b2a093c9cf30ab265fd89f1f63b6e22f554b1dcc"
+      },
+      "limitation": "This isolated later pass does not replace the original failed runtime-table step or make the full matrix pass."
+    },
+    "baseline_gc_comparison": {
+      "baseline_commit": "44316e75fabc99108d3188c5b4d0d59e867f4a94",
+      "candidate_commit": "f3d4d7e33019a589439439ab441c45f77bf753c9",
+      "stress_interval": 5000,
+      "limit_seconds": 600,
+      "baseline_wall_seconds": 600.0433338587172,
+      "baseline_timeout_exit": 124,
+      "baseline_child_exit": 143,
+      "candidate_seconds": 600,
+      "candidate_child_exit": 143,
+      "baseline_log_sha256": "87fb41427eacf896c023f5a4d77ad2a4115b300ed8d46ad7d6aa3b1b452f7289",
+      "candidate_log_sha256": "b6a3db5c850a0a94d07be5194e22935e5b3cb8d199b1eae4e0604babe134637b",
+      "verdict": "BASELINE_TIMEOUT_REPRODUCED; candidate GC overhead unresolved",
+      "limitation": "Separate runs under uncontrolled different host load. No controlled performance comparison, candidate overhead, causal attribution or stressed IR identity established."
+    },
+    "evidence": [
+      {
+        "label": "run-check.py",
+        "bytes": 1231,
+        "sha256": "e2ee948879a594227f5cd8758fa2d732c1d20250fa10f2fdfb11e254d349cca6"
+      },
+      {
+        "label": "checker-fix/candidate.json",
+        "bytes": 924,
+        "sha256": "f2a3ed3aea36d627bae9b5006b30def459bab1dea4b72f74139b90cf9d604d03"
+      },
+      {
+        "label": "checker-fix/review/result.json",
+        "bytes": 5825,
+        "sha256": "67e2ec78e993238a2a68b32a2b4918d734502138d8c33897372356708fe1655b"
+      },
+      {
+        "label": "checker-fix/root-review.json",
+        "bytes": 527,
+        "sha256": "44ce948b6f46afc72db43a101c5c4f91ebfe739050c450a7a75a3b19ffd9314e"
+      },
+      {
+        "label": "checker-fix/runtime-table.json",
+        "bytes": 608,
+        "sha256": "0dbcd497f91874c2335c4e94fac135a91ee5681db39f37ce44d50805e1c6e687"
+      },
+      {
+        "label": "checker-fix/unit.json",
+        "bytes": 703,
+        "sha256": "818ffc5eeb3d88d2f3de3c9e4e0619692462d2cf2c7978217353f1bd9b8b55b2"
+      },
+      {
+        "label": "checker-fix/ruff.json",
+        "bytes": 663,
+        "sha256": "f4493dfa647430c972fe743212dc96590135db0a02226b6b58134a7c1a736ede"
+      },
+      {
+        "label": "gc-timeout-review/result.json",
+        "bytes": 6292,
+        "sha256": "e85b7f1485808db914ffaba903dae540d1d2117eab045882baf086ba3b23410f"
+      },
+      {
+        "label": "gc-timeout-review/baseline-execution.json",
+        "bytes": 1534,
+        "sha256": "09b997302af31523a750f769cc793f6393b9a32b68b5b06e1505ed130d5e7a94"
+      }
+    ]
+  },
+  "input_hashes": [
+    {
+      "label": "full-verify.json",
+      "bytes": 329,
+      "sha256": "0d39b56d01c0b030f0aae48718efd28c5c629b46127cb98a884bc98f61d13479"
+    },
+    {
+      "label": "build/verification.json",
+      "bytes": 19462,
+      "sha256": "437b76685c8c7436bffa4b8d1a912980d8bfbc4ae9c4a619b4b2c7447b7e3c18"
+    },
+    {
+      "label": "full-verify.log",
+      "bytes": 5851,
+      "sha256": "ca92ba043b0a9b9bf7dc7260d8533989fd6bec6684ad16801501d854f9ffc644"
+    },
+    {
+      "label": "immutable-inputs.json",
+      "bytes": 8476,
+      "sha256": "6819c11921cb3f26974013be3f82eca58642205eb6e6af0dcd505460fe0b09a2"
+    },
+    {
+      "label": "separate-evidence.json",
+      "bytes": 3753,
+      "sha256": "0ab1125a649598a52e7b01f616d8f9be05841fb2079c8e5dfec3fe4861221157"
+    }
+  ],
+  "limitations": [
+    "This records the completed original invocation, including failed stages. Later isolated checker success does not replace original results.",
+    "Seven failed corpus shards share one unchanged filesystem-sensitive fixture. GC-stressed self-compilation remains unresolved. The original full invocation failed and the pull request stays a draft.",
+    "Separate baseline/candidate GC runs had uncontrolled host load; no equal-performance, no-regression, causal or stressed-IR-identity claim.",
+    "No new run, CI observation, maintainer acceptance or whole-package compatibility is established by collecting evidence.",
+    "Only relative evidence labels, hashes, counts and timings are published; original logs and absolute workspace paths are excluded."
+  ],
+  "post_run_checks": {
+    "integrated_files": {
+      "tools/check_runtime.py": "bea97a24046d60b6672ff7c09a3399e55fc9b2e0593c8414578ac32a40f73e8a",
+      "tools/test_verify_runtime_sources.py": "604bab75abc6e07984be610e07fdbb88a9e1542c2c5d4e4794e9ba59aa847c29"
+    },
+    "checks": [
+      {
+        "label": "checker-integrated-unit",
+        "started_utc": "2026-10-18T14:49:04.875530+00:00",
+        "finished_utc": "2026-10-18T14:49:05.015037+00:00",
+        "seconds": 0.13950646901503205,
+        "exit": 0,
+        "checks_passed": 10,
+        "receipt_sha256": "9fb30ac2dda59f8a6e082f5cc55e273c638d4968aac44f5d6f42a989b19dcd2a",
+        "log_bytes": 1507,
+        "log_sha256": "2bfa50b91a01c4aafa5425340567e07d1958876ba1ede4005a2dcf3bd51b3e75"
+      },
+      {
+        "label": "checker-integrated-runtime",
+        "started_utc": "2026-10-18T14:49:04.875032+00:00",
+        "finished_utc": "2026-10-18T14:49:14.655646+00:00",
+        "seconds": 9.780606002081186,
+        "exit": 0,
+        "checks_passed": null,
+        "receipt_sha256": "8335350dc0582bf1bd6be4087f0c9802f1a3d0709597811347b9795d54d3d63d",
+        "log_bytes": 220,
+        "log_sha256": "3e4d9bfc9bae5be8d7fa06a2b2a093c9cf30ab265fd89f1f63b6e22f554b1dcc"
+      },
+      {
+        "label": "ffi-followup",
+        "started_utc": "2026-10-18T14:49:04.897173+00:00",
+        "finished_utc": "2026-10-18T14:50:00.370254+00:00",
+        "seconds": 55.47309061931446,
+        "exit": 0,
+        "checks_passed": 125,
+        "receipt_sha256": "0b98286bb33be88aa702eecd2b93d8222682cc0649d85ae346a0627f24c2659a",
+        "log_bytes": 21,
+        "log_sha256": "73615eca00025b62af3d7a7a196d340e20db129f1ff02b249c310e6a68859164"
+      }
+    ],
+    "runtime_checker": "446 runtime entries,70 exception classes,170 functions; signatures/coverage/effects agree.",
+    "ffi": "Original JIT+AOT harness, existing stage2 compiler, CC set per invocation to existing task-local Clang;125 passed,0 failed,no reported skips. No source, system or harness change.",
+    "scope": "Only the checker and its new regression tests change after the original compiler run. Compiler/runtime/data inputs are unchanged; these separate checks do not turn the original full run into a pass."
+  },
+  "reviewed_utc": "2026-10-18T14:52:26.092982+00:00"
+}
