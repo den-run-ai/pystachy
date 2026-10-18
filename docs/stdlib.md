@@ -18,19 +18,21 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Approach | Modules and useful APIs |
 |---|---|
 | Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, and `struct`, on a port of `_struct` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry) and the incremental `html.parser` probe |
+| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry) and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO`, `csv`, `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata` and `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper`, `csv`, `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata` and `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The library reference is the authority for each module's limits. For example, `difflib`
-supports matching strings and lists of strings, while its generator-based diff APIs do not
-compile. `textwrap` supports its public operations, but widths count UTF-8 bytes.
+supports matching strings and lists of strings, including `get_grouped_opcodes()`;
+its other diff APIs still have reflection, formatting or callback-type blockers.
+`textwrap` supports its public operations, but widths count UTF-8 bytes.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
 compiler support; this does not provide
 the full dynamic `collections` package; its shipped subset provides `deque`, `defaultdict`,
-`OrderedDict` and `Counter`, without `namedtuple`.
+`OrderedDict`, `Counter` and `namedtuple()`, whose class the compiler makes from a module's
+top-level `NAME = namedtuple(...)` with literal arguments.
 See the [builtin module table](language/modules.md#builtin-modules-and-files).
 
 <a id="1-the-changes"></a>
@@ -68,21 +70,30 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Multiple/generic inheritance, arbitrary unions and `Any`, generator functions and first-class
-generator objects, `bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
-limit library coverage. CPython extensions and import
+Multiple/generic inheritance, arbitrary recursive value types and dynamic `Any` storage,
+`bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
+limit library coverage. Generator functions, resumable generator objects, bytes, bounded
+unions and per-call function/constructor specialization are already supported; their
+remaining restrictions depend on the operation and the concrete types involved.
+CPython extensions and import
 graphs through unavailable modules can block otherwise suitable pure-Python functions.
 The [compatibility reference](language/compatibility.md) lists the detailed restrictions.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of
 work; the repository's [issues](https://github.com/den-run-ai/pystachy/issues) track individual gaps.
-C calls and experimental CPython extension builds have their own [FFI guide](ffi.md).
+C calls, calls into an embedded CPython (`pyobj`) and experimental CPython extension builds
+have their own [FFI guide](ffi.md).
 
 <a id="2-method"></a>
 <a id="7-reproducing"></a>
 
 ## Measuring coverage
+
+The [2026-10-17 compatibility audit](reports/compatibility-2026-10-17.md) records a
+pinned main revision, execution checks, package adaptations, suite boundaries and
+remaining blockers. Treat its measurements as a snapshot, and rerun them after
+compiler or library changes.
 
 These tools answer different questions:
 
@@ -111,6 +122,10 @@ The census model predates shipped features and can flag constructs now supported
 results do not measure current compiler coverage.
 The sweep reports excluded modules separately. Preserve the compiler revision, CPython version
 and overlay policy with any result; compare sweeps only when their denominators agree.
+Use `--metadata build/import-sweep-meta.json` on a sweep to retain its compiler-file hash,
+source-repository revision, Python environment, overlay exclusions and result counts beside
+the unchanged module-to-result JSON. The source revision describes the checkout; the
+compiler hash identifies the executable and does not prove which sources built it.
 
 A plain sweep reports each module's first error, so a module built into CPython that Pystachy
 lacks hides the errors behind it. `--stubs` stands a stub in for each such module that some

@@ -116,12 +116,13 @@ python3 check_blas.py --compiler ../../pystachy --stress 1
 ```
 
 The last command requires NumPy in the checking interpreter. It verifies all
-elements of 24 matrix cases and 12 `linear` cases against both the existing
-scalar product (plus the bias) and NumPy, plus 20 invalid-input rejections,
+elements of 24 matrix cases and 15 `linear` cases against both the existing
+scalar product (plus the bias) and NumPy, plus 32 invalid-input rejections,
 under CPython, JIT, AOT and native GC stress. Cases include padded transposes, negative and zero strides, nonzero
 offsets, singleton strides, shared operands, repeated calls after mutation,
-empty products and integer-limit guards; for `linear`, also strided biases, a
-bias sharing the weight's storage, no bias and a bias mismatch. The CPython FFI twin copies lists
+empty products and integer-limit guards; for `linear`, also reversed/broadcast biases, a
+bias sharing the weight's storage, no bias, and rejection of malformed bias
+strides, offsets and backing storage before any native call. The CPython FFI twin copies lists
 into C arrays; it is a correctness oracle and is not a measure of the native
 borrowed-buffer overhead. No speedup is claimed by these checks. BLAS may use
 a different accumulation order, so finite results use `1e-12` tolerances.

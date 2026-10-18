@@ -35,16 +35,27 @@ def _check_matrix(a: NDArray) -> None:
     # Packing a broadcast view must satisfy the same byte-extent limit as a
     # newly allocated array, even when its original storage is tiny.
     _new_shape(a.shape)
+    _check_storage(a)
+
+
+def _check_storage(a: NDArray) -> None:
+    # Shape/stride ranks and nonnegative dimensions are checked by the caller.
+    # Check every reachable index before values() can silently truncate a slice
+    # or an FFI call can borrow native storage.
     count = len(a.data)
-    if a.shape[0] == 0 or a.shape[1] == 0:
+    empty = False
+    for dimension in a.shape:
+        if dimension == 0:
+            empty = True
+    if empty:
         if a.offset < 0 or a.offset > count:
-            raise ValueError("BLAS matmul view is outside its data")
+            raise ValueError("BLAS view is outside its data")
         return
     if a.offset < 0 or a.offset >= count:
-        raise ValueError("BLAS matmul view is outside its data")
+        raise ValueError("BLAS view is outside its data")
     low = a.offset
     high = a.offset
-    for axis in range(2):
+    for axis in range(a.ndim):
         steps = a.shape[axis] - 1
         if steps != 0:
             stride = a.strides[axis]
@@ -52,11 +63,11 @@ def _check_matrix(a: NDArray) -> None:
             # abs(INT64_MIN) itself overflows. Valid products stay within data.
             if stride >= 0:
                 if stride > (count - 1 - high) // steps:
-                    raise ValueError("BLAS matmul view is outside its data")
+                    raise ValueError("BLAS view is outside its data")
                 high += steps * stride
             else:
                 if stride < -(low // steps):
-                    raise ValueError("BLAS matmul view is outside its data")
+                    raise ValueError("BLAS view is outside its data")
                 low += steps * stride
 
 
@@ -122,10 +133,16 @@ def linear(x: NDArray, weight: NDArray, bias: NDArray | None) -> NDArray:
     columns = right.shape[1]
     if bias.shape != [columns]:
         raise ValueError("BLAS linear bias must have one value per output feature")
+    if len(bias.strides) != 1:
+        raise ValueError("BLAS linear bias requires one stride")
     # As zeros() would for the product: the output's byte extent must be valid.
     _new_shape([rows, columns])
+    _check_storage(bias)
     # values() reads a strided bias in logical order; the result is a new list.
-    result = NDArray(bias.values() * rows, [rows, columns], [columns, 1], 0)
+    values = bias.values()
+    if len(values) != columns:
+        raise ValueError("BLAS linear bias storage does not match its shape")
+    result = NDArray(values * rows, [rows, columns], [columns, 1], 0)
     # An empty product contributes nothing (K=0 leaves the bias); call no BLAS.
     if rows == 0 or columns == 0 or inner == 0:
         return result

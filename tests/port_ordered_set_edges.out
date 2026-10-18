@@ -40,6 +40,7 @@ OrderedSet(['b', 'c']) {'b': 0, 'c': 1}
 OrderedSet(['c', 'd', 'd']) {'c': 0, 'd': 2} 3
 OrderedSet(['a', 'b', 'c']) {'a': 0, 'b': 1, 'c': 2}
 False True True False False True
+True False True True
 True 0 2 False
 ['pear', 'fig', 'apple', 'kiwi'] [(0, 'pear'), (1, 'fig'), (2, 'apple'), (3, 'kiwi')] ['apple', 'fig', 'kiwi', 'pear'] apple pear pear, fig, apple, kiwi [('pear', 'pear'), ('fig', 'fig'), ('apple', 'apple'), ('kiwi', 'kiwi')]
 16 ['pear', 'fig', 'apple', 'kiwi'] True True [] 3

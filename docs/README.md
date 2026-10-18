@@ -13,12 +13,14 @@ are linked from the relevant guide.
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
+| [Compatibility audit (2026-10-17)](reports/compatibility-2026-10-17.md) | Measured stdlib, PyPI, benchmark and test-suite coverage at a pinned revision |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
-| [C and CPython interoperability](ffi.md) | Native C calls and CPython extension modules |
+| [C and CPython interoperability](ffi.md) | Native C calls, embedded CPython and CPython extension modules |
 | [Caching](caching.md) | Memoization, regex and text-processing workloads |
 | [Performance](performance.md) | Published speed, memory and startup measurements |
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
 | [pyperformance results](pyperformance.md) | Ported pyperformance benchmarks under CPython, JIT and AOT |
+| [microGPT benchmark](../bench/microgpt/README.md) | Scalar-autograd transformer training, numerical parity and native performance |
 | [Application examples](../examples/) | Small compiled command-line applications |
 | [Native nanoGPT](../examples/nanogpt/README.md) | CPU transformer inference and training with ndarray and optional native BLAS |
 
@@ -26,6 +28,8 @@ are linked from the relevant guide.
 
 | Guide | Use it for |
 |---|---|
+| [Contributing](../CONTRIBUTING.md) | First PR, validation evidence, DCO sign-off and review policy |
+| [Agent onboarding](../AGENTS.md) | Shared Codex/Claude Code workflow, verification rules and regression lessons |
 | [Internals](internals.md) | Compiler stages, runtime, commands and settings |
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |

@@ -7,4 +7,4 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
-@main: pys_init pys_finish
+@main: pys_init pys_eh_on pys_finish

@@ -64,6 +64,10 @@ def linear_cases() -> list[tuple[str, NDArray, NDArray, NDArray, bool]]:
         ("transposed_input", matrix(4, 3, 23).T, weight, bias, True),
         ("transposed_weight", x, matrix(4, 5, 24).T, bias, True),
         ("strided_bias", x, weight, NDArray(backing, [5], [3], 2), True),
+        ("reversed_bias", x, weight, NDArray(backing, [5], [-3], 14), True),
+        ("broadcast_bias", x, weight, NDArray(backing, [5], [0], 2), True),
+        ("singleton_bias_stride", x, matrix(1, 4, 28),
+         NDArray(backing, [1], [-9223372036854775807 - 1], 2), True),
         ("shared_input_weight", NDArray(backing, [3, 4], [4, 1], 0), NDArray(backing, [5, 4], [4, 1], 0), bias, True),
         ("bias_shares_weight", x, weight, NDArray(weight.data, [5], [4], 0), True),
         ("empty_rows", zeros([0, 4]), weight, bias, True),
@@ -127,6 +131,21 @@ def check_linear() -> None:
     weight = matrix(5, 4, 26)
     linear_rejection("linear_bias_length", x, weight, zeros([4]))
     linear_rejection("linear_bias_rank", x, weight, zeros([1, 5]))
+    linear_rejection("linear_bias_short_storage", x, weight, NDArray([1.0], [5], [1], 0))
+    linear_rejection("linear_bias_missing_stride", x, weight, NDArray([1.0] * 5, [5], [], 0))
+    linear_rejection("linear_bias_extra_stride", x, weight, NDArray([1.0] * 5, [5], [1, 1], 0))
+    linear_rejection("linear_bias_negative_offset", x, weight, NDArray([1.0] * 5, [5], [1], -1))
+    linear_rejection("linear_bias_past_end_offset", x, weight, NDArray([1.0] * 5, [5], [1], 5))
+    linear_rejection("linear_bias_positive_extent", x, weight, NDArray([1.0] * 5, [5], [2], 0))
+    linear_rejection("linear_bias_negative_extent", x, weight, NDArray([1.0] * 5, [5], [-1], 3))
+    linear_rejection("linear_bias_positive_overflow", x, weight,
+                     NDArray([1.0] * 5, [5], [9223372036854775807], 0))
+    linear_rejection("linear_bias_negative_overflow", x, weight,
+                     NDArray([1.0] * 5, [5], [-9223372036854775807 - 1], 4))
+    linear_rejection("linear_bias_empty_bad_offset", x, zeros([0, 4]), NDArray([], [0], [1], 1))
+    # Validate malformed bias even when the product makes no native call.
+    linear_rejection("linear_bias_empty_rows", zeros([0, 4]), weight, NDArray([], [5], [1], 0))
+    linear_rejection("linear_bias_empty_inner", zeros([3, 0]), zeros([5, 0]), NDArray([], [5], [1], 0))
     linear_rejection("linear_inner_mismatch", x, matrix(5, 3, 27), zeros([5]))
     linear_rejection("linear_input_rank", NDArray([1.0, 2.0, 3.0, 4.0], [4], [1], 0), weight, zeros([5]))
     # The output's extent is checked before the bias is expanded into it.

@@ -1,0 +1,7 @@
+[1, 2, 3] [2, 4] 10
+True False True True
+1 2 99
+[1, 2] ['a', 'b']
+['red', 'green'] blue:orange
+[[1, 2], [3]] [1, 2]
+[exit 0]

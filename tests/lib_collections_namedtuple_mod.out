@@ -1,0 +1,8 @@
+mods: init mods
+mods.shapes: init mods.shapes
+[Mismatch(actual=2, expected=5, value=1), Mismatch(actual=3, expected=4, value=2)] x
+ModuleInfo(module_finder='finder', name='m', ispkg=False) ('module_finder', 'name', 'ispkg') True
+Event(time=2.5, priority=1, sequence=0, action='run', argument=(), kwargs={'k': 2.5}) 2.5 ('time', 'priority', 'sequence', 'action', 'argument', 'kwargs') True 1.0
+SelectorKey(fileobj='f', fd=3, events=1, data='data') ('fileobj', 'fd', 'events', 'data') SelectorKey(fileobj='f', fd=3, events=2, data='data') SelectorKey mods.ntmod
+Positions(lineno=0, end_lineno=0) Positions(lineno=3, end_lineno=0) {'lineno': 0, 'end_lineno': 0} Mismatch
+[exit 0]

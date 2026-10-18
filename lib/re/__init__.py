@@ -196,6 +196,23 @@ _last_codes: list[int] = []
 _last_offs: list[int] = []  # (the index in the str of each code point, and its length; [] for ASCII)
 _last_limit = 0  # greatest requested index covered, including a character at/after it if present
 _decoded = 0  # the code points decoded so far (tests/deviations/lib_re_decoding.py counts them)
+_KEEP = 1 << 20  # the longest subject (in bytes) that full scans leave cached
+
+
+def _release(string: str, cached: bool) -> None:
+    # Full scans decode the subject to its end, so their cache saves a later scan only its
+    # decoding, linear like the call itself. Past _KEEP bytes, drop it rather than keep 8 bytes
+    # per byte (16 per code point if not ASCII) alive once the program is done with the subject
+    # (#589). A cache that was there
+    # before the call stays: match() and search() loops with pos fill it, and need it. As purge(),
+    # this drops only the cache's references: an operation still running (an outer sub() whose
+    # callback made the call) keeps the lists its State has
+    global _last, _last_codes, _last_offs, _last_limit
+    if not cached and string is _last and len(string) > _KEEP:
+        _last = ""
+        _last_codes = []
+        _last_offs = []
+        _last_limit = 0
 
 
 def _codes(string: str, limit: int) -> list[int]:
@@ -1986,6 +2003,7 @@ class Pattern:
             # (the list of tuples CPython gives has no type Pystachy can give it: their length is
             # the pattern's group count)
             raise NotImplementedError("re.findall() of a pattern with %d groups returns tuples of that many items, which Pystachy does not have: use finditer() and m.group(1, 2, ...)" % self.groups)
+        cached = string is _last
         st = self._state(string, pos, endpos)
         offs = st.offs
         out: list[str] = []
@@ -2002,6 +2020,10 @@ class Pattern:
                 out.append(string[_to_index(offs, st.mark[0]) : _to_index(offs, st.mark[1])])
             st.must_advance = st.ptr == st.start
             st.start = st.ptr
+        # Bounded windows may advance through the subject: preserve their growing prefix cache
+        # just as search() does, or decoding each window's prefix would make that loop quadratic.
+        if st.endpos == len(string):
+            _release(string, cached)
         return out
 
     def finditer(self, string: str, pos: int = 0, endpos: int = _MAXSIZE) -> "list[Match]":
@@ -2009,6 +2031,7 @@ class Pattern:
 
         For each match, the iterator returns a match object."""
         # (a list of them: Pystachy has no iterator of matches made as the loop asks)
+        cached = string is _last
         st = self._state(string, pos, endpos)
         out: list[Match] = []
         while True:
@@ -2019,10 +2042,13 @@ class Pattern:
             out.append(self._new_match(string, st))
             st.must_advance = st.ptr == st.start
             st.start = st.ptr
+        if st.endpos == len(string):
+            _release(string, cached)
         return out
 
     def split(self, string: str, maxsplit: int = 0) -> list[str]:
         """Split string by the occurrences of pattern."""
+        cached = string is _last
         st = self._state(string, 0, _MAXSIZE)
         offs = st.offs
         out: list[str] = []
@@ -2047,6 +2073,7 @@ class Pattern:
             st.start = st.ptr
         # the segment after the last match (even if empty)
         out.append(string[_to_index(offs, last) : st.endpos])
+        _release(string, cached)
         return out
 
     def sub(self, repl, string: str, count: int = 0) -> str:
@@ -2070,6 +2097,7 @@ class Pattern:
                 if len(template.groups) == 0:
                     literal = template.literals[0]
                     template = Template()
+        cached = string is _last
         st = self._state(string, 0, _MAXSIZE)
         offs = st.offs
         out: list[str] = []
@@ -2100,6 +2128,7 @@ class Pattern:
         end = st.endpos
         if i < end:
             out.append(string[i:end])
+        _release(string, cached)
         return ("".join(out), n)
 
     def __repr__(self) -> str:

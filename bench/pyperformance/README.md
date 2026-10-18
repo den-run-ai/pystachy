@@ -7,11 +7,13 @@ inputs change the work, so these results are not comparable with published pyper
 The measurements are in [pyperformance results](../../docs/pyperformance.md).
 
 The 52 are the 31 benchmarks that this port set out to try, mostly CPU-bound and often cited,
-and the 21 others that need no third-party package. The release's other 21 benchmarks list
-packages in their `requirements.txt` that have no port: `asyncio_websockets`, `chameleon`,
+and the 21 others that need no third-party package. The release's other 21 benchmarks list third-party
+packages in their `requirements.txt` and are outside this runner's census: `asyncio_websockets`, `chameleon`,
 `coverage`, `dask`, `django_template`, `docutils`, `dulwich_log`, `fastapi`, `genshi`,
 `hg_startup`, `html5lib`, `mako`, `networkx`, `sphinx`, `sqlalchemy_declarative`,
 `sqlalchemy_imperative`, `sqlglot_v2`, `sympy`, `tornado_http`, `xdsl` and `yaml`.
+Their package dependencies need a separate assessment; exclusion from this census is not a
+measured compiler rejection.
 
 ## Run
 
@@ -68,7 +70,7 @@ reporting the first compiler error.
 | `float` | `b4f61a0978f5b0af2c0d07544ae26422868992e62b8f40e2967e3c694fc1b9a9` | ported |
 | `gc_collect` | `7886042f07e517abb79c58643a4b488710f3079936c6990522624bfb9c2acb9b` | blocked |
 | `gc_traversal` | `0798ab87ca12687c68e101d14ae9ac0c50eaa9b4f14ecee3882f7e499191828f` | blocked |
-| `generators` | `46c59dc44cb63b2c0fed75e6d82875daa237a92d03c87861078513c7b10d4621` | blocked |
+| `generators` | `46c59dc44cb63b2c0fed75e6d82875daa237a92d03c87861078513c7b10d4621` | runner-only compiles; not ported |
 | `go` | `ea4c0ebaf32515f8549c64c9291ab13d47bb802e01a82203c37b5066d1bfb463` | ported |
 | `hexiom` | `d7518220380d27449b8951bc9ca2e19593569d9bd9f5cb6d86867f354f22e115` | ported |
 | `json_dumps` | `023c991ff827fdcbfcfb2b7e3cadf023352a61d1903643d8af0ef302a0db1bf7` | blocked |
@@ -117,7 +119,10 @@ origins are listed so that a license review can confirm that this suffices. See
 
 ## Adaptations
 
-Each edit is marked `# Pystachy port:` in the source. Every port has these changes:
+Each edit is marked `# Pystachy port:` in the source. These describe the delivered files,
+including historical workarounds; newer compiler features make some unnecessary. In particular,
+generators, range values and slice assignment now work for the runner-only sources listed below.
+Every port has these changes:
 
 - `import pyperf` is removed. A main that reads the loop count and sizes from `sys.argv`
   replaces `pyperf.Runner` and prints the results, or a checksum.
@@ -154,67 +159,93 @@ Each edit is marked `# Pystachy port:` in the source. Every port has these chang
 The `random` substitutes produce 31-bit values, including `go`'s Zobrist hash strings.
 Results within a benchmark are checked against CPython, not against upstream pyperformance.
 
-## Blocked
+<a id="blocked"></a>
 
-`--census` reports these first errors with the compiler of main `bdc20a2`. Each upstream file
-has only pyperf's import and runner replaced with a direct call of the benchmark. The last column
-lists further blockers found by reading the upstream code; there may be others.
+## Current runner-only census
 
-| Benchmark | First compiler error | Other blockers |
-|---|---|---|
-| `2to3` | `bm_2to3.py:1: error: module 'glob' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no glob.py on the module path` | None to port: `runner.bench_command()` times a CPython subprocess that runs `lib2to3` |
-| `argparse` | `bm_argparse.py:9: error: module 'argparse' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no argparse.py on the module path` | The `argparse` module has no port |
-| `async_generators` | `bm_async_generators.py:21: error: async functions are not supported` | Asynchronous generators (`async for`, `yield` in `async def`) and an event loop |
-| `async_tree` | `bm_async_tree.py:20: error: module 'asyncio' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no asyncio.py on the module path` | `async def`, `await`, asyncio tasks and task groups, and `random` |
-| `asyncio_tcp` | `bm_asyncio_tcp.py:9: error: module 'asyncio' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no asyncio.py on the module path` | `async def`, asyncio streams over a TCP connection, and `ssl` |
-| `base64` | `bm_base64.py:10: error: module 'base64' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no base64.py on the module path` | The `base64` module, `bytes`, and `random.randbytes()` |
-| `bpe_tokeniser` | `bm_bpe_tokeniser.py:16: error: module 'pathlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no pathlib.py on the module path` | `bytes` keys and values, `collections.Counter`, `max(key=...)` over a counter |
-| `comprehensions` | `bm_comprehensions.py:8: error: module 'enum' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no enum.py on the module path` | Dict comprehensions, a slice step and `Iterable[Optional[Widget]]` parameters |
-| `concurrent_imap` | `bm_concurrent_imap.py:6: error: module 'multiprocessing' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no multiprocessing.py on the module path` | Process and thread pools |
-| `coroutines` | `bm_coroutines.py:10: error: async functions are not supported` | Coroutine objects and `send()` |
-| `crypto_pyaes` | `bm_crypto_pyaes.py:13: error: bytes literals are not supported (there is no bytes type)` | The pyaes port's CTR mode encrypts `str` code points, while Pystachy iterates non-ASCII text by UTF-8 bytes |
-| `decimal_factorial` | `bm_decimal_factorial.py:17: error: module 'decimal' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no decimal.py on the module path` | The `decimal` module |
-| `decimal_pi` | `bm_decimal_pi.py:19: error: module 'decimal' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no decimal.py on the module path` | The `decimal` module |
-| `deepcopy` | `bm_deepcopy.py:9: error: module 'copy' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no copy.py on the module path` | `__reduce__`, `__dict__`, and a dataclass field typed as bare `list` |
-| `gc_collect` | `bm_gc_collect.py:2: error: module 'gc' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no gc.py on the module path` | It times CPython's cycle collector through `gc.collect()` |
-| `gc_traversal` | `bm_gc_traversal.py:2: error: module 'gc' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no gc.py on the module path` | It times CPython's cycle collector through `gc.collect()` |
-| `generators` | `bm_generators.py:21: error: 'yield' is not supported (there are no generator functions): __iter__ can return iter(xs) of a list xs of the items` | `yield from`, `range` values and their slices |
-| `json_dumps` | `bm_json_dumps.py:1: error: module 'json' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no json.py on the module path` | `globals()`, and dicts whose values have different types |
-| `json_loads` | `bm_json_loads.py:10: error: module 'json' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no json.py on the module path` | The `json` module, and `random.Random` |
-| `logging` | `bm_logging.py:18: error: module 'logging' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no logging.py on the module path` | A dict of different functions; each function has its own type |
-| `mdp` | `bm_mdp.py:2: error: 'defaultdict' from 'collections' is not supported: no definition or submodule was found on the module path` | `fractions.Fraction`, `namedtuple`, generators, and dict keys that are tuples of different shapes |
-| `pathlib` | `bm_pathlib.py:10: error: module 'pathlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no pathlib.py on the module path` | `pathlib`, `shutil`, and a directory of files |
-| `pickle` | `bm_pickle.py:15: error: module 'datetime' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no datetime.py on the module path` | The `pickle` module, and `datetime` values |
-| `pidigits` | `bm_pidigits.py:11: error: module 'itertools' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no itertools.py on the module path` | Arbitrary-precision integers (Pystachy's are checked 64-bit) and generators |
-| `pprint` | `bm_pprint.py:9: error: module 'pprint' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no pprint.py on the module path` | `PrettyPrinter` on a list of mixed tuples |
-| `pyflate` | `bm_pyflate.py:19: error: module 'hashlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no hashlib.py on the module path` | `bytes`, `struct`, and a binary input file (bzip2 and gzip decoders) |
-| `python_startup` | `bm_python_startup.py:19: error: module 'subprocess' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no subprocess.py on the module path` | None to port: `runner.bench_command()` times the startup of a CPython subprocess |
-| `regex_compile` | `bm_regex_compile.py:23: error: cannot infer the type of 'regexes', which capture_compile() reads, where it is defined: annotate it (regexes: T = ...)` | Replacing `re.compile`, `re.search` and `re.sub` with closures, and importing the other two regex benchmarks as modules |
-| `sqlite_synth` | `bm_sqlite_synth.py:9: error: module 'sqlite3' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no sqlite3.py on the module path` | The `sqlite3` module |
-| `telco` | `bm_telco.py:18: error: module 'decimal' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no decimal.py on the module path` | The `decimal` module, `struct.unpack()`, and a binary input file |
-| `tomli_loads` | `bm_tomli_loads.py:12: error: module 'pathlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no pathlib.py on the module path` | The `tomli` package, which has no port; `ports/tomli_w` is the writer |
-| `typing_runtime_protocols` | `bm_typing_runtime_protocols.py:38: error: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` | `typing.Protocol` classes, and `isinstance()` checks against them |
-| `xml_etree` | `bm_xml_etree.py:15: error: 'defaultdict' from 'collections' is not supported: no definition or submodule was found on the module path` | `xml.etree.ElementTree`, `globals()`, and temporary files |
+Refreshed on 2026-10-17 against compiler source `d3fbfc6f`, using the CPython-hosted
+compiler, CPython 3.13.16 and the pinned 1.14.0 sdist. Source hashes, port annotations
+and timed-region checks passed. Each upstream file has only pyperf's import and runner
+replaced with a direct benchmark call; no algorithm/type adaptations are made here.
 
-The ported and deferred benchmarks' upstream files stop at these first errors before adaptation:
+**Six of 52 sources compile with that runner replacement:** `fannkuch`, `generators`,
+`nbody`, `nqueens`, `regex_v8` and `unpack_sequence`. The other 46 fail compilation,
+including the licence-deferred `deltablue`. Compilation alone does not verify runtime
+results or make a benchmark part of the 18 delivered ports. `generators` is now a
+candidate for adding to that suite; its former missing-generator/range blockers are gone.
 
-| Benchmark | First compiler error of the upstream file |
+The table reports only the first observed error, not every blocker and not a promise
+that one fix is sufficient. The compiler does not search CPython's installed stdlib
+by default, so a missing-module error means no shipped implementation was found with
+this census's `PYSTACHY_PATH=ports`; it does not establish that the upstream Python
+module cannot be compiled when explicitly supplied. See the
+[compatibility audit](../../docs/reports/compatibility-2026-10-17-benchmarks.md) for
+harness tests, runtime checks and performance caveats.
+
+### Sources without a delivered port
+
+| Benchmark | First compiler result |
+|---|---|
+| `2to3` | `bm_2to3.py:1: error: module 'glob' is not supported` |
+| `argparse` | `bm_argparse.py:9: error: module 'argparse' is not supported` |
+| `async_generators` | `bm_async_generators.py:21: error: async functions are not supported` |
+| `async_tree` | `bm_async_tree.py:20: error: module 'asyncio' is not supported` |
+| `asyncio_tcp` | `bm_asyncio_tcp.py:9: error: module 'asyncio' is not supported` |
+| `base64` | `bm_base64.py:10: error: module 'base64' is not supported` |
+| `bpe_tokeniser` | `bm_bpe_tokeniser.py:16: error: module 'pathlib' is not supported` |
+| `comprehensions` | `bm_comprehensions.py:8: error: module 'enum' is not supported` |
+| `concurrent_imap` | `bm_concurrent_imap.py:6: error: module 'multiprocessing' is not supported` |
+| `coroutines` | `bm_coroutines.py:10: error: async functions are not supported` |
+| `crypto_pyaes` | `bm_crypto_pyaes.py:24: error: class pyaes.aes.AESModeOfOperationCTR is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` |
+| `decimal_factorial` | `bm_decimal_factorial.py:17: error: module 'decimal' is not supported` |
+| `decimal_pi` | `bm_decimal_pi.py:19: error: module 'decimal' is not supported` |
+| `deepcopy` | `bm_deepcopy.py:9: error: module 'copy' is not supported` |
+| `gc_collect` | `bm_gc_collect.py:2: error: module 'gc' is not supported` |
+| `gc_traversal` | `bm_gc_traversal.py:2: error: module 'gc' is not supported` |
+| `generators` | Compiles after runner replacement |
+| `json_dumps` | `bm_json_dumps.py:1: error: module 'json' is not supported` |
+| `json_loads` | `bm_json_loads.py:10: error: module 'json' is not supported` |
+| `logging` | `bm_logging.py:18: error: module 'logging' is not supported` |
+| `mdp` | `bm_mdp.py:3: error: module 'fractions' is not supported` |
+| `pathlib` | `bm_pathlib.py:10: error: module 'pathlib' is not supported` |
+| `pickle` | `bm_pickle.py:253: error: module 'pickle' is not supported` |
+| `pidigits` | `bm_pidigits.py:22: error: map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod(), str.join() and list.extend(), and as the value assigned to a list slice, which take its items at once; elsewhere use a list comprehension` |
+| `pprint` | `bm_pprint.py:9: error: module 'pprint' is not supported` |
+| `pyflate` | `bm_pyflate.py:19: error: module 'hashlib' is not supported` |
+| `python_startup` | `bm_python_startup.py:19: error: module 'subprocess' is not supported` |
+| `regex_compile` | `bm_regex_compile.py:23: error: cannot infer the type of 'regexes', which capture_compile() reads, where it is defined: annotate it (regexes: T = ...)` |
+| `sqlite_synth` | `bm_sqlite_synth.py:9: error: module 'sqlite3' is not supported` |
+| `telco` | `bm_telco.py:18: error: module 'decimal' is not supported` |
+| `tomli_loads` | `bm_tomli_loads.py:12: error: module 'pathlib' is not supported` |
+| `typing_runtime_protocols` | `bm_typing_runtime_protocols.py:38: error: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` |
+| `xml_etree` | `bm_xml_etree.py:220: error: module 'xml' is not supported` |
+
+### Sources with delivered ports, before their adaptations
+
+The existing adaptations remain tested even where runner replacement is now sufficient.
+Removing them or restoring upstream inputs should be a separate change with refreshed
+checksums and timing records.
+
+| Benchmark | First compiler result |
 |---|---|
 | `barnes_hut` | `bm_barnes_hut.py:281: error: expected int, got float` |
-| `chaos` | `bm_chaos.py:7: error: module 'random' is not supported` |
-| `deltablue` | `bm_deltablue.py:26: error: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` |
-| `fannkuch` | `bm_fannkuch.py:34: error: assignment to a slice is not supported` |
+| `chaos` | `bm_chaos.py:46: error: cannot infer the type of class attribute '__rmul__'; annotate it (__rmul__: T = ...)` |
+| `fannkuch` | Compiles after runner replacement |
 | `float` | `bm_float.py:47: error: cannot infer the type of a list of None; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)` |
-| `go` | `bm_go.py:5: error: module 'random' is not supported` |
+| `go` | `bm_go.py:322: error: cannot infer the type of field 'bestchild'; annotate it (self.bestchild: T = ...)` |
 | `hexiom` | `bm_hexiom.py:151: error: class attribute 'HIGHEST_VALUE_STRATEGY' of 'Done' used in a class-body default is not supported` |
 | `meteor_contest` | `bm_meteor_contest.py:88: error: expected int, got float` |
-| `nbody`, `spectral_norm`, `unpack_sequence` | `range() is only supported in a for loop, after 'in', or as the argument of list(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()` |
-| `nqueens` | `bm_nqueens.py:54: error: 'yield' is not supported (there are no generator functions)` |
-| `raytrace`, `scimark` | `module 'array' is not supported` |
-| `regex_dna` | `bm_regex_dna.py:152: error: bytes literals are not supported (there is no bytes type)` |
+| `nbody` | Compiles after runner replacement |
+| `nqueens` | Compiles after runner replacement |
+| `raytrace` | `bm_raytrace.py:11: error: module 'array' is not supported` |
+| `regex_dna` | `bm_regex_dna.py:135: error: unsupported call bytearray()` |
 | `regex_effbot` | `bm_regex_effbot.py:156: error: type <function bench_regex_effbot> has no attribute 'data'` |
-| `regex_v8` | None: it compiles with only the runner replaced |
-| `richards`, `richards_super` | `inheritance with generic class templates is not supported: annotate __init__ parameters` |
+| `regex_v8` | Compiles after runner replacement |
+| `richards` | `bm_richards.py:176: error: inheritance with generic class templates is not supported: annotate __init__ parameters` |
+| `richards_super` | `bm_richards_super.py:177: error: inheritance with generic class templates is not supported: annotate __init__ parameters` |
+| `scimark` | `bm_scimark.py:1: error: module 'array' is not supported` |
+| `spectral_norm` | `bm_spectral_norm.py:37: error: expected int, got float` |
+| `unpack_sequence` | Compiles after runner replacement |
 
-The module messages in this second table are abbreviated after `is not supported`; the
-census reports the complete messages and line numbers.
+`deltablue` remains excluded pending licence provenance; its runner-only source also
+fails with `unsupported base class`.

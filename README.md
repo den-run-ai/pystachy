@@ -10,12 +10,24 @@ readability and reusing existing CPython library code. It targets CPU-intensive 
 where Python's runtime overhead gets in the way.
 
 Write ordinary `.py` files, then use `pystachy run` for JIT execution or `pystachy build`
-for a standalone executable that needs no Python installation to run.
+for a standalone native executable. Python is needed at runtime only if you opt into
+the [embedded CPython bridge](docs/ffi.md#calling-cpython-libpyobjpy).
 
 The self-hosting compiler and parts of the runtime are written in this same typed subset.
-Both compilation modes share a [typed IR](docs/typed-ir.md) before LLVM lowering.
+Both compilation modes share a [fully typed instruction IR](docs/typed-ir.md) before LLVM lowering.
 The compiler runs under CPython and compiles itself; CI checks that successive builds
 produce byte-identical LLVM IR.
+
+**Highlights:**
+
+- **Native machine learning:** an adapted microGPT trains and generates text with scalar
+  autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
+  faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
+- **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
+  with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
+  ([verification](docs/testing.md)).
+- **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
+  call existing Python packages through embedded CPython ([guide](docs/ffi.md)).
 
 ## A taste
 
@@ -89,58 +101,45 @@ on Linux x86-64.
 
 ## Performance
 
-| Cost / snapshot | CPython | JIT (`run`) | AOT (built executable) |
+| Measured workload | CPython | JIT (`run`) | AOT (built executable) |
 |---|---|---|---|
-| Startup | Interpreter + imports | Frontend + LLVM | Direct native launch |
-| Compilation | Bytecode; cached where possible | Program each run; runtime cached | Once per build |
-| Execution | Bytecode interpreter | Native; separate runtime | Native; program + runtime optimized together |
-| `nbody.py`, wall time | 1.82 s | 0.10 s | 0.03 s |
-| `words.py`, wall time | 0.17 s | 0.10 s | 0.05 s |
+| [microGPT, 100 training steps](bench/microgpt/README.md#measured-snapshot) | 15.152 s | 0.908 s | **0.896 s (16.9× faster)** |
+| microGPT, five generated names | 260.6 ms | 14.26 ms | **13.45 ms (19.4× faster)** |
 | [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 169 MiB | Not recorded | 34.2 MiB |
 
-These are [published snapshots](docs/performance.md#benchmarks), not a current rerun.
-JIT timings include compilation with a primed runtime cache; AOT timings exclude compilation.
-Memory depends on the workload; streaming programs can use more memory under AOT.
+These are published snapshots, not a rerun on the latest compiler. microGPT timings are
+training/inference phases, excluding startup and compilation; all parameters, losses and
+sampled names are checked against the original program. The adapted source also runs under
+CPython as a second baseline.
 
-Early AOT benchmark results against CPython, rounded for readability:
-
-| Workload | Result |
-|---|---|
-| Selected compute workloads | Up to about **70× faster** |
-| `fnmatch` event router, with only compiled-pattern caching | **About the same speed** in the paired launch check |
-| [Event router, with each event name's classification cached](examples/route/README.md#current-paired-snapshot) | About **1.9× faster** in the paired launch check |
-| [18 adapted pyperformance benchmarks](docs/pyperformance.md) | **1.5× to 84× faster** for 14; the 3 regex benchmarks **2.5–2.7× slower** |
-
-Both router comparisons use the same caching policy for CPython and Pystachy.
-The `fnmatch` variant still caches compiled patterns; caching classifications lets repeated
-names skip matching altogether.
-The paired launch check uses repeated names on one shared host; raw rounds and historical
-measurements are recorded in the router guide. Regex misses can be slower than CPython.
-
-These are workload-specific results, not a general speedup for all Python code.
-AOT timings exclude compilation; JIT startup includes it. Reproduction commands, exact
-measurements and benchmark environments are in [performance](docs/performance.md),
-the [router example](examples/route/README.md) and the [caching guide](docs/caching.md).
+Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
+snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
+one optimized-away workload has no meaningful AOT ratio. These are workload-specific
+measurements on adapted sources, not official pyperformance scores or a general Python speedup.
+JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
+memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.
 
 ## Libraries and compatibility
 
 Pystachy supports typed containers, classes and dataclasses, exceptions, functions as values,
-closures, decorators and limited generic typing. Unannotated functions can be specialized
-for their argument types.
+closures, decorators, generators (`send` / `throw` / `close`), context managers and generic typing.
+Unannotated functions and supported `Any` annotations specialize to concrete types;
+`Any` does not introduce dynamically typed storage. See the
+[typing rules](docs/language/typing.md#function-and-method-templates).
 
 Some standard-library modules compile unchanged. Others, including `fnmatch`, `textwrap`,
 `difflib`, `statistics` and `random`, use localized adaptations marked `# Pystachy port:`.
 The adapted code remains valid Python and can be diffed against upstream.
-The library also includes `re` and `functools.cache` / `lru_cache` implementations in the
-typed subset. See [library coverage and port notes](lib/README.md) for each module's scope.
+The library also includes `re`, `itertools`, Unicode normalization, `functools.cache` /
+`lru_cache`, `collections.namedtuple`, and in-memory binary I/O with `io.BytesIO`.
+See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
+There are also [15 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
+The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.
 
-Compatibility checks compare **700+ Python programs** with CPython through both JIT and AOT,
-using both the CPython-hosted and self-compiled compiler. CI also checks rejected programs,
-bootstrap consistency and garbage-collection stress. Details are in
-[testing and verification](docs/testing.md).
-
-Native C calls and experimental CPython extension builds are described in the
-[interoperability guide](docs/ffi.md).
+For numerical work, the [float64 array example](examples/ndarray/README.md) provides
+multidimensional views, broadcasting, fused expressions and optional BLAS matrix products.
+It is a focused native implementation; existing packages such as NumPy can instead run
+through the explicit CPython bridge, which requires Python and those packages at runtime.
 
 Reuse and ship libraries as ordinary Python wheels; uv/pip handles dependencies,
 and Pystachy compiles the installed `.py` sources. The [short package tutorial](examples/package/README.md)
@@ -153,7 +152,8 @@ Pystachy is experimental and supports a subset of Python. It is a good fit for t
 algorithmic code; broad compatibility with arbitrary PyPI packages is still limited.
 
 - Ordinary single inheritance is supported; multiple inheritance, `async`,
-  `bytearray` and binary files are not. See the [class rules](docs/language/typing.md#single-inheritance).
+  native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
+  See the [class rules](docs/language/typing.md#single-inheritance).
 - Integers are checked 64-bit values; overflow raises `OverflowError`.
 - Strings store UTF-8 bytes, so indexing and length differ from CPython for non-ASCII text.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
@@ -188,7 +188,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 | [Testing](docs/testing.md) | Differential tests, bootstrap checks and CI |
 | [Internals](docs/internals.md) | Compiler, runtime, commands and settings |
 | [Typed IR](docs/typed-ir.md) | Shared intermediate representation and optimizations |
-| [Interoperability](docs/ffi.md) | C calls and CPython extension modules |
+| [Interoperability](docs/ffi.md) | C calls, embedded CPython and CPython extension modules |
 | [Runtime in Python](docs/runtime-in-subset.md) | Runtime functions compiled from the typed subset |
 | [History](docs/history.md) | Design decisions and the Ouro v1 lineage |
 
@@ -197,13 +197,12 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 Feedback, bug reports and small library ports are welcome. Share a program that fails to
 compile or differs from CPython in the [issue tracker](https://github.com/den-run-ai/pystachy/issues).
 
-For code changes, run `make verify`, `make lint` and `make check-recordings` before opening a
-pull request. See the [testing guide](docs/testing.md) for adding differential tests and
-checking code-generator refactors.
+Start with the [contributor guide](CONTRIBUTING.md) for setup, focused tests, sign-off and
+review expectations. The [testing guide](docs/testing.md) covers differential tests and
+full verification before merge.
 
 ## License
 
 MIT ([LICENSE](LICENSE)). CPython-derived code is covered by the PSF License Version 2;
 see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES). Ryu float-formatting code uses the Boost
 Software License 1.0 ([ryu/README.md](ryu/README.md)).
-

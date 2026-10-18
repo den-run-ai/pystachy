@@ -25,8 +25,8 @@ ROOT = HERE.parents[1]
 
 
 MATRIX_CASES = 24
-LINEAR_CASES = 12
-INVALID_INPUTS = 20
+LINEAR_CASES = 15
+INVALID_INPUTS = 32
 
 
 def parse(stdout):

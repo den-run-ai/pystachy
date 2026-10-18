@@ -36,7 +36,7 @@ test-cache: pystachy
 	PY="$(PY)" tests/cache.sh ./pystachy
 	tests/cache.sh "$(PY) -m pystachy"
 
-# the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, extension modules
+# the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, CPython embedded and extension modules
 test-ffi: pystachy
 	PY="$(PY)" tests/ffi/run.sh ./pystachy "jit aot"
 
