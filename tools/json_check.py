@@ -29,15 +29,19 @@ def main() -> None:
             transport = input()
         except EOFError:
             break
-        source = json.loads(transport)
-        if isinstance(source, str):
-            try:
-                value = json.loads(source)
-                print("V", json.dumps(value),
-                      json.dumps(value, sort_keys=True, separators=(",", ":")),
-                      ascii(json.dumps(value, ensure_ascii=False)))
-            except json.JSONDecodeError as exc:
-                print("E", exc.pos, exc.lineno, exc.colno, json.dumps(exc.msg))
+        # Decimal code points, not a JSON string: a JSON-escaped pair of lone
+        # surrogates would arrive as the one character it encodes.
+        chars: list[str] = []
+        for code in transport.split():
+            chars.append(chr(int(code)))
+        source = "".join(chars)
+        try:
+            value = json.loads(source)
+            print("V", json.dumps(value),
+                  json.dumps(value, sort_keys=True, separators=(",", ":")),
+                  ascii(json.dumps(value, ensure_ascii=False)))
+        except json.JSONDecodeError as exc:
+            print("E", exc.pos, exc.lineno, exc.colno, json.dumps(exc.msg))
 
 
 main()
@@ -59,6 +63,42 @@ def generated_value(rng: random.Random, depth: int):
     if kind == 5:
         return [generated_value(rng, depth - 1) for _ in range(rng.randrange(5))]
     return {str(i): generated_value(rng, depth - 1) for i in range(rng.randrange(5))}
+
+
+def unicode_sources(rng: random.Random, invalid: int) -> list[str]:
+    """Texts whose character positions differ from their UTF-8 offsets.
+
+    Covers raw non-ASCII text, lone surrogates (which a str may hold), escapes
+    after multibyte characters and object keys that repeat or share a length and
+    first character. Surrogates and backslashes are built from code points here.
+    """
+    bs, high, low = chr(92), chr(0xD83D), chr(0xDE80)
+    sources = [
+        '"' + "\u00e9\u96ea" + chr(0x1F680) + chr(1) + '"', '["\u00e9", tru]', '{"\u00e9": 1,}', "\u00e9",
+        '"' + bs + "u12\u00e9" + '"', '"\u00e9' + bs + "ud83d" + bs + 'u12"', '"\u00e9' + bs + 'x"',
+        '"' + chr(0xD800) + '"', '"' + high + low + '"', '"' + high + bs + "ude80" + low + '"',
+        '{"' + chr(0xD800) + '": [1, "' + low + '"], "' + chr(0xD800) + '": 2}',
+        "[1, 2" + chr(0xDC00) + "]", '"' + chr(0xDC00) + "\u00e9" + bs + 'q"',
+        '{"ab": 1, "ac": 2, "ab": 3, "": 4, "b": 5, "": 6, "ba": 7}',
+        '[{"a' + bs + '"b": 1}, {"a' + bs + '"b": 2}, {"a' + bs + 'u0062": 3}, {"ab": 4}]',
+        '{"\u00e9": 1, "e": 2, "\u00e9": 3, "\u00e9\u00e9": 4}', '{"' + chr(0x1F680) + '": "' + chr(0x1F680) + '"}',
+        '{"k' + chr(31) + '": 1}', '{"k": 1, "k' + chr(10) + '": 2}', '{"' + "\u00e9\u96ea" + '": "unterminated}',
+        "[" + "\u00e9" * 3 + "]", '"' + "\u96ea" * 4 + bs + 'u00"', "\u00a0[1]", "[1]" + chr(0x3000),
+        '{"\u00e9":' + chr(0x85) + "1}", '{"a": 1}' + chr(0xFEFF),
+        # one key cache slot, one prefix: lengths 2 and 66 differ by 64
+        '[{"aa": 1, "' + "a" * 66 + '": 2}, {"' + "a" * 66 + '": 3, "aa": 4}]',
+    ]
+    keys = ["", "a", "b", "ab", "ac", "ba", "abc", "\u00e9", "e" + "\u00e9", "\u96ea\u00e9", chr(0x1F680),
+            chr(0xD800), high + low, 'q"', "q" + bs, "\t", chr(0x7F), "0", "1", "id", "di"]
+    for _ in range(200):
+        record = {rng.choice(keys): generated_value(rng, 2) for _ in range(rng.randrange(6))}
+        rows = [record, {rng.choice(keys): rng.randrange(3) for _ in range(3)}, record]
+        sources.append(json.dumps(rows, ensure_ascii=False))
+        sources.append(json.dumps(rows))
+    alphabet = '[]{}:,"' + bs + "u01239afnrt-+.eE \n" + "\u00e9\u96ea" + chr(0x1F680) + chr(0xD800) + chr(0xDC00) + high + low + chr(0x10) + chr(0x7F)
+    for _ in range(invalid):
+        sources.append("".join(rng.choice(alphabet) for _ in range(rng.randrange(30))))
+    return sources
 
 
 def outcome(module, source: str) -> str:
@@ -110,12 +150,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cases", type=int, default=1000)
     parser.add_argument("--invalid", type=int, default=10000)
+    parser.add_argument("--unicode-invalid", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=391)
     parser.add_argument("--native", action="store_true")
     parser.add_argument("--gc-stress", action="store_true")
     parser.add_argument("--compiler", default=shlex.join([sys.executable, "-m", "pystachy"]))
     args = parser.parse_args()
-    if args.cases < 0 or args.invalid < 0:
+    if args.cases < 0 or args.invalid < 0 or args.unicode_invalid < 0:
         parser.error("case counts must be nonnegative")
     expected_version = (ROOT / ".python-version").read_text().strip()
     actual_version = ".".join(str(x) for x in sys.version_info[:3])
@@ -131,6 +172,7 @@ def main() -> None:
         "-Infinity", '{"a":1,"a":[false,null]}', r'"\ud83d\ude80\ud800x\udc00"',
         "[1,]", '{"a":1,}', "\ufeffnull", '{\n "é": [1,]\n}',
     ]
+    raw_sources = []
     checks = 0
     for _ in range(args.cases):
         value = generated_value(rng, 4)
@@ -145,9 +187,14 @@ def main() -> None:
                     assert json.dumps(module.loads(expected)) == json.dumps(value)
                     checks += 1
         sources.append(json.dumps(value))
+        raw_sources.append(json.dumps(value, ensure_ascii=False))
     for _ in range(args.invalid):
         sources.append("".join(rng.choice('[]{}:,"\\u01239afnrt-+.eE \n')
                                for _ in range(rng.randrange(30))))
+    # Appended after the original corpus, from a separate generator, so the
+    # sources above stay those of earlier runs with the same seed.
+    sources.extend(raw_sources)
+    sources.extend(unicode_sources(random.Random(args.seed + 1), args.unicode_invalid))
     expected_lines = []
     for source in sources:
         expected = outcome(json, source)
@@ -165,7 +212,7 @@ def main() -> None:
     env = os.environ.copy()
     if args.gc_stress:
         env["PYSTACHY_GC_STRESS_PROGRAM"] = "1"
-    payload = "\n".join(json.dumps(source) for source in sources) + "\n"
+    payload = "".join(" ".join(str(ord(c)) for c in source) + "\n" for source in sources)
     expected_output = "\n".join(expected_lines) + "\n"
     with tempfile.TemporaryDirectory(prefix="pystachy-json-check-") as temp:
         source_path = Path(temp) / "check_json.py"

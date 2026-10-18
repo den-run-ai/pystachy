@@ -24,219 +24,319 @@ class JSONDecodeError(ValueError):
         super().__init__(f"{msg}: line {self.lineno} column {self.colno} (char {pos})")
 
 
-def _digit(c: str) -> bool:
-    return "0" <= c <= "9"
-
-
 class _Parser:
+    # The scanner reads the text's UTF-8 bytes: indexing bytes yields integers, without a
+    # one-character string or a code-point offset per step. Every delimiter, digit and escape
+    # is ASCII, so the parser stops only at character boundaries; error() converts such a
+    # byte offset into the character offset that CPython reports.
     def __init__(self, doc: str) -> None:
         self.doc = doc
+        self.lone = False
+        try:
+            self.data: bytes = doc.encode()
+        except UnicodeEncodeError:
+            # A str may hold lone surrogates: surrogatepass keeps each as its three bytes.
+            self.data = doc.encode("utf-8", "surrogatepass")
+            self.lone = True
         self.pos = 0
-        self.n = len(doc)
+        self.n = len(self.data)
+        # Recently decoded object keys by length and first byte; records of one shape repeat
+        # their keys, which then share one str (as CPython's decoder memo shares them).
+        self.key_bytes: list[bytes] = [b""] * 64
+        self.key_strs: list[str] = [""] * 64
+
+    def text(self, start: int, end: int) -> str:
+        # Without lone surrogates, decode() needs no error handler or codec name lookup.
+        if self.lone:
+            return self.data[start:end].decode("utf-8", "surrogatepass")
+        return self.data[start:end].decode()
+
+    def error(self, msg: str, at: int) -> JSONDecodeError:
+        return JSONDecodeError(msg, self.doc, len(self.text(0, at)))
 
     def skip(self) -> None:
-        while self.pos < self.n and self.doc[self.pos] in " \t\n\r":
-            self.pos += 1
+        data = self.data
+        n = len(data)
+        i = self.pos
+        while i < n:
+            c = data[i]
+            if c > 32 or (c != 32 and c != 9 and c != 10 and c != 13):
+                break
+            i += 1
+        self.pos = i
 
     def hex4(self, at: int) -> int:
         # at names the 'u', which is CPython's error position for this escape.
         if at + 4 >= self.n:
-            raise JSONDecodeError("Invalid \\uXXXX escape", self.doc, at)
+            raise self.error("Invalid \\uXXXX escape", at)
+        data = self.data
         value = 0
         for i in range(at + 1, at + 5):
-            c = self.doc[i]
-            if "0" <= c <= "9":
-                digit = ord(c) - 48
-            elif "a" <= c <= "f":
-                digit = ord(c) - 87
-            elif "A" <= c <= "F":
-                digit = ord(c) - 55
+            c = data[i]
+            if 48 <= c <= 57:
+                digit = c - 48
+            elif 97 <= c <= 102:
+                digit = c - 87
+            elif 65 <= c <= 70:
+                digit = c - 55
             else:
-                raise JSONDecodeError("Invalid \\uXXXX escape", self.doc, at)
+                raise self.error("Invalid \\uXXXX escape", at)
             value = value * 16 + digit
         return value
 
     def string(self) -> str:
+        # Most strings have no escape: one slice of the bytes is the result.
+        data = self.data
+        n = len(data)
         begin = self.pos
-        self.pos += 1
-        start = self.pos
-        chunks: list[str] = []
-        while self.pos < self.n:
-            c = self.doc[self.pos]
-            if c == '"':
-                chunks.append(self.doc[start:self.pos])
-                self.pos += 1
-                return "".join(chunks)
-            if ord(c) < 32:
-                raise JSONDecodeError("Invalid control character at", self.doc, self.pos)
-            if c != "\\":
-                self.pos += 1
-                continue
-            chunks.append(self.doc[start:self.pos])
-            slash = self.pos
-            self.pos += 1
-            if self.pos == self.n:
+        i = begin + 1
+        while i < n:
+            c = data[i]
+            if c == 34:
+                self.pos = i + 1
+                return self.text(begin + 1, i)
+            if c == 92:
+                return self.escaped(begin, i)
+            if c < 32:
+                raise self.error("Invalid control character at", i)
+            i += 1
+        raise self.error("Unterminated string starting at", begin)
+
+    def key(self) -> str:
+        data = self.data
+        n = len(data)
+        begin = self.pos
+        i = begin + 1
+        while i < n:
+            c = data[i]
+            if c == 34:
                 break
-            esc = self.doc[self.pos]
-            self.pos += 1
-            if esc == '"' or esc == "\\" or esc == "/":
-                chunks.append(esc)
-            elif esc == "b":
+            if c == 92 or c < 32:
+                return self.string()
+            i += 1
+        if i == n:
+            return self.string()
+        size = i - begin - 1
+        slot = (size * 31 + data[begin + 1]) & 63
+        known = self.key_bytes[slot]
+        self.pos = i + 1
+        if len(known) == size and data.startswith(known, begin + 1):
+            return self.key_strs[slot]
+        raw = data[begin + 1:i]
+        text = raw.decode("utf-8", "surrogatepass") if self.lone else raw.decode()
+        self.key_bytes[slot] = raw
+        self.key_strs[slot] = text
+        return text
+
+    def escaped(self, begin: int, i: int) -> str:
+        # The rest of the string that begins at begin, from its first backslash at i.
+        data = self.data
+        n = len(data)
+        start = begin + 1
+        chunks: list[str] = []
+        while i < n:
+            c = data[i]
+            if c == 34:
+                if i > start:
+                    chunks.append(self.text(start, i))
+                self.pos = i + 1
+                return "".join(chunks)
+            if c < 32:
+                raise self.error("Invalid control character at", i)
+            if c != 92:
+                i += 1
+                continue
+            if i > start:
+                chunks.append(self.text(start, i))
+            slash = i
+            i += 1
+            if i == n:
+                break
+            esc = data[i]
+            i += 1
+            if esc == 34:
+                chunks.append('"')
+            elif esc == 92:
+                chunks.append("\\")
+            elif esc == 47:
+                chunks.append("/")
+            elif esc == 98:
                 chunks.append("\b")
-            elif esc == "f":
+            elif esc == 102:
                 chunks.append("\f")
-            elif esc == "n":
+            elif esc == 110:
                 chunks.append("\n")
-            elif esc == "r":
+            elif esc == 114:
                 chunks.append("\r")
-            elif esc == "t":
+            elif esc == 116:
                 chunks.append("\t")
-            elif esc == "u":
-                cp = self.hex4(self.pos - 1)
-                self.pos += 4
-                if 0xD800 <= cp <= 0xDBFF and self.doc[self.pos:self.pos + 2] == "\\u":
-                    low = self.hex4(self.pos + 1)
+            elif esc == 117:
+                cp = self.hex4(i - 1)
+                i += 4
+                if 0xD800 <= cp <= 0xDBFF and i + 1 < n and data[i] == 92 and data[i + 1] == 117:
+                    low = self.hex4(i + 1)
                     if 0xDC00 <= low <= 0xDFFF:
                         cp = 0x10000 + ((cp - 0xD800) << 10) + low - 0xDC00
-                        self.pos += 6
+                        i += 6
                 chunks.append(chr(cp))
             else:
-                raise JSONDecodeError("Invalid \\escape", self.doc, slash)
-            start = self.pos
-        raise JSONDecodeError("Unterminated string starting at", self.doc, begin)
+                raise self.error("Invalid \\escape", slash)
+            start = i
+        raise self.error("Unterminated string starting at", begin)
 
     def number(self) -> JSONValue:
+        data = self.data
+        n = len(data)
         start = self.pos
         i = start
-        if self.doc[i] == "-":
+        negative = data[i] == 45
+        if negative:
             i += 1
-        if i >= self.n or not _digit(self.doc[i]):
-            raise JSONDecodeError("Expecting value", self.doc, start)
-        if self.doc[i] == "0":
-            i += 1
-        else:
-            while i < self.n and _digit(self.doc[i]):
+        if i >= n or not 48 <= data[i] <= 57:
+            raise self.error("Expecting value", start)
+        first = i
+        value = data[i] - 48
+        i += 1
+        if value != 0:
+            while i < n:
+                c = data[i]
+                if c < 48 or c > 57:
+                    break
+                if i - first < 18:  # (18 digits cannot overflow)
+                    value = value * 10 + c - 48
                 i += 1
+        digits = i - first
         real = False
-        if i + 1 < self.n and self.doc[i] == "." and _digit(self.doc[i + 1]):
+        if i + 1 < n and data[i] == 46 and 48 <= data[i + 1] <= 57:
             real = True
             i += 2
-            while i < self.n and _digit(self.doc[i]):
+            while i < n and 48 <= data[i] <= 57:
                 i += 1
-        if i < self.n and self.doc[i] in "eE":
+        if i < n and (data[i] == 101 or data[i] == 69):
             end = i + 1
-            if end < self.n and self.doc[end] in "+-":
+            if end < n and (data[end] == 43 or data[end] == 45):
                 end += 1
-            if end < self.n and _digit(self.doc[end]):
+            if end < n and 48 <= data[end] <= 57:
                 real = True
                 i = end + 1
-                while i < self.n and _digit(self.doc[i]):
+                while i < n and 48 <= data[i] <= 57:
                     i += 1
         self.pos = i
-        token = self.doc[start:i]
         if real:
-            return float(token)
-        digits = token[1:] if token.startswith("-") else token
-        bound = "9223372036854775808" if token.startswith("-") else "9223372036854775807"
-        if len(digits) > 19 or (len(digits) == 19 and digits > bound):
-            raise OverflowError("JSON integer exceeds signed 64-bit range")
-        return int(token)
+            return float(data[start:i].decode())
+        if digits > 18:
+            token = data[first:i].decode()
+            bound = "9223372036854775808" if negative else "9223372036854775807"
+            if digits > 19 or token > bound:
+                raise OverflowError("JSON integer exceeds signed 64-bit range")
+            return int(data[start:i].decode())
+        return -value if negative else value
 
     def array(self, depth: int) -> list[JSONValue]:
+        data = self.data
         self.pos += 1
         self.skip()
         out: list[JSONValue] = []
-        if self.pos < self.n and self.doc[self.pos] == "]":
+        if self.pos < self.n and data[self.pos] == 93:
             self.pos += 1
             return out
         while True:
             out.append(self.value(depth + 1))
             self.skip()
-            if self.pos < self.n and self.doc[self.pos] == "]":
-                self.pos += 1
+            i = self.pos
+            if i < self.n and data[i] == 93:
+                self.pos = i + 1
                 return out
-            if self.pos == self.n or self.doc[self.pos] != ",":
-                raise JSONDecodeError("Expecting ',' delimiter", self.doc, self.pos)
-            comma = self.pos
-            self.pos += 1
+            if i == self.n or data[i] != 44:
+                raise self.error("Expecting ',' delimiter", i)
+            self.pos = i + 1
             self.skip()
-            if self.pos < self.n and self.doc[self.pos] == "]":
-                raise JSONDecodeError("Illegal trailing comma before end of array", self.doc, comma)
+            if self.pos < self.n and data[self.pos] == 93:
+                raise self.error("Illegal trailing comma before end of array", i)
 
     def object(self, depth: int) -> dict[str, JSONValue]:
+        data = self.data
         self.pos += 1
         self.skip()
         out: dict[str, JSONValue] = {}
-        if self.pos < self.n and self.doc[self.pos] == "}":
+        if self.pos < self.n and data[self.pos] == 125:
             self.pos += 1
             return out
         while True:
-            if self.pos == self.n or self.doc[self.pos] != '"':
-                raise JSONDecodeError("Expecting property name enclosed in double quotes", self.doc, self.pos)
-            key = self.string()
+            i = self.pos
+            if i == self.n or data[i] != 34:
+                raise self.error("Expecting property name enclosed in double quotes", i)
+            key = self.key()
             self.skip()
-            if self.pos == self.n or self.doc[self.pos] != ":":
-                raise JSONDecodeError("Expecting ':' delimiter", self.doc, self.pos)
-            self.pos += 1
+            i = self.pos
+            if i == self.n or data[i] != 58:
+                raise self.error("Expecting ':' delimiter", i)
+            self.pos = i + 1
             self.skip()
             out[key] = self.value(depth + 1)
             self.skip()
-            if self.pos < self.n and self.doc[self.pos] == "}":
-                self.pos += 1
+            i = self.pos
+            if i < self.n and data[i] == 125:
+                self.pos = i + 1
                 return out
-            if self.pos == self.n or self.doc[self.pos] != ",":
-                raise JSONDecodeError("Expecting ',' delimiter", self.doc, self.pos)
-            comma = self.pos
-            self.pos += 1
+            if i == self.n or data[i] != 44:
+                raise self.error("Expecting ',' delimiter", i)
+            self.pos = i + 1
             self.skip()
-            if self.pos < self.n and self.doc[self.pos] == "}":
-                raise JSONDecodeError("Illegal trailing comma before end of object", self.doc, comma)
+            if self.pos < self.n and data[self.pos] == 125:
+                raise self.error("Illegal trailing comma before end of object", i)
 
     def value(self, depth: int) -> JSONValue:
-        if self.pos == self.n:
-            raise JSONDecodeError("Expecting value", self.doc, self.pos)
-        c = self.doc[self.pos]
-        if c == '"':
+        i = self.pos
+        if i == self.n:
+            raise self.error("Expecting value", i)
+        data = self.data
+        c = data[i]
+        if c == 34:
             return self.string()
-        if c == "[" or c == "{":
+        if c == 123 or c == 91:
             if depth >= 256:
                 raise RecursionError("maximum JSON nesting depth exceeded")
-            if c == "[":
+            if c == 91:
                 return self.array(depth)
             return self.object(depth)
-        if self.doc[self.pos:self.pos + 4] == "null":
-            self.pos += 4
-            return None
-        if self.doc[self.pos:self.pos + 4] == "true":
-            self.pos += 4
-            return True
-        if self.doc[self.pos:self.pos + 5] == "false":
-            self.pos += 5
-            return False
-        if self.doc[self.pos:self.pos + 3] == "NaN":
-            self.pos += 3
-            return float("nan")
-        if self.doc[self.pos:self.pos + 8] == "Infinity":
-            self.pos += 8
-            return float("inf")
-        if self.doc[self.pos:self.pos + 9] == "-Infinity":
-            self.pos += 9
-            return -float("inf")
-        if c == "-" or _digit(c):
+        if 48 <= c <= 57:
             return self.number()
-        raise JSONDecodeError("Expecting value", self.doc, self.pos)
+        if c == 45:
+            if data.startswith(b"-Infinity", i):
+                self.pos = i + 9
+                return -float("inf")
+            return self.number()
+        if c == 110 and data.startswith(b"null", i):
+            self.pos = i + 4
+            return None
+        if c == 116 and data.startswith(b"true", i):
+            self.pos = i + 4
+            return True
+        if c == 102 and data.startswith(b"false", i):
+            self.pos = i + 5
+            return False
+        if c == 78 and data.startswith(b"NaN", i):
+            self.pos = i + 3
+            return float("nan")
+        if c == 73 and data.startswith(b"Infinity", i):
+            self.pos = i + 8
+            return float("inf")
+        raise self.error("Expecting value", i)
 
 
 def loads(s: str) -> JSONValue:
     """Decode JSON text into recursive native values (signed 64-bit integers)."""
-    if s.startswith("\ufeff"):
-        raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", s, 0)
     parser = _Parser(s)
+    data = parser.data
+    if parser.n >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
+        # U+FEFF's UTF-8 bytes; s.startswith() would count the characters of all of s
+        raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", s, 0)
     parser.skip()
     value = parser.value(0)
     parser.skip()
     if parser.pos != parser.n:
-        raise JSONDecodeError("Extra data", s, parser.pos)
+        raise parser.error("Extra data", parser.pos)
     return value
 
 
