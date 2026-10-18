@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `6397781363e6edea98c61d294a2425eb4df05cc3`.
+**Latest evaluated main:** `3f6f42c7648b952940ca806fc711d59314ee381a`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1090,6 +1090,111 @@ PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
 /root/.local/bin/python3.13 build/audit-recursion/evaluate.py
 /root/.local/bin/python3.13 build/audit-recursion/boundaries.py
 /root/.local/bin/python3.13 build/audit-recursion/build_evidence.py
+```
+
+## 2026-10-18 — #657: faster list repetition, preserved compatibility
+
+Evaluated [main `3f6f42c7`](https://github.com/den-run-ai/pystachy/commit/3f6f42c7648b952940ca806fc711d59314ee381a),
+which merges [#657](https://github.com/den-run-ai/pystachy/pull/657) at
+2026-10-18 03:36:49 UTC (October 17 in America/Los_Angeles).
+The only preceding merge since evaluated `63977813` is the audit itself,
+[#635](https://github.com/den-run-ai/pystachy/pull/635), whose merged tree equals
+the already tested publication. No implementation gain is attributed to that merge.
+#657 changes `runtime.c` plus one recorded regression test: list repetition
+copies a doubling prefix, and a new one-element zero-bit pattern needs no fill.
+Ancestry was verified; #491/#616 coordination and #657 comments were read.
+The fresh review-thread list is empty; the bot failure banner accompanies a
+review quota error, not a retrieved code finding.
+
+[Normalized evidence](compatibility-2026-10-18-list-repeat.json) retains source
+and compiler revisions separately, hashes, programs, commands, import metadata,
+CPython stdlib file hashes, paired samples and reproduction scripts.
+CPython **3.13.16** was restored after its previous installation expired; its
+binary hash is identical to the previous audit. With LLVM **18.1.3**, the fresh
+bootstrap fixed points pass at **620,602 compiler / 18,388 runtime IR lines**.
+Compiler SHA-256:
+`66cd62d0a803e0a1d21c50b83e3e0043068c295e10560905e78284470bd6d6f4`.
+The previous compiler is the verified `63977813` build; 231 compiler/Python
+runtime/library/port/example/microGPT source files are byte-identical.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native correctness | **22/22** normal JIT/AOT checks over 11 list/storage/ndarray programs. |
+| Per-allocation program GC | **6/6** checks for repetition, allocation kinds and ndarray edges. |
+| Adapted ports | **14/14** JIT/AOT checks over seven pylev, pyaes, qrcode and sortedcontainers workloads. |
+| CPython reference recordings | All **18** selected focused/port programs match their recordings. |
+| Prior-runtime control | The new repetition program also passes JIT/AOT on the previous runtime: **2/2**, preserving behavior rather than adding API acceptance. |
+| Allocation/runtime contracts | `listprobe` passes normally and with GC stress; all **430** runtime entry contracts agree. |
+| Adapted microGPT | Original/adapted CPython and native JIT/AOT verify ten steps, 73 training tokens and three generated names: **58,698 numeric comparisons per run**, including every gradient; maximum AOT absolute difference `8.47e-22`. |
+| Isolated imports | **142/475 native**, **146/475 stub-assisted**, same 522-file inventory and 47 exclusions. Every normalized result is unchanged; no timeout. |
+
+The repetition test covers signed zero, NaN/infinities, integer bounds,
+non-power-of-two counts, reused nonzero storage, shared object/nested-list
+references, aliases, zero/negative/empty counts and MemoryError boundaries.
+The three ndarray programs retain their recorded subset behavior; this remains
+a native float64 example, not general native NumPy. The microGPT run is a
+correctness check under concurrent audit load; its single-sample phase timings
+do **not** establish a training speedup or regression.
+
+### Paired performance: strong improvement, workload-dependent CPython comparison
+
+After correctness jobs completed, both runtimes and CPython ran on CPU 0 in
+seven alternating-order process rounds. Inputs are `n=8192` and 2,000 allocations
+per pattern. Checksums match in every sample. Raw samples and load are retained;
+these shared-host observations are not universal performance guarantees.
+
+The **exact source from [#649](https://github.com/den-run-ai/pystachy/issues/649)**
+uses best-of-five wall times within each process. Medians of seven processes,
+nanoseconds per output item:
+
+| Exact issue workload | Previous AOT | Current AOT | CPython 3.13.16 |
+|---|---:|---:|---:|
+| `[0.0] * n` | 3.85 | 0.36 | 0.95 |
+| `[1.5] * n` | 3.73 | 0.58 | 0.91 |
+| `[0.0, 1.0] * (n // 2)` | 2.17 | 0.56 | 1.28 |
+
+This independently reproduces #649's acceptance criterion for those exact loops:
+approximately **3.9–10.7× faster** than previous AOT and below CPython.
+
+A separate **function-scoped** loop, with 100 warmups and one timed 2,000-iteration
+body per process, measures process CPU time rather than selecting the best wall
+sample. It improves substantially, but is not below CPython in every median:
+
+| Function-scoped workload | Previous AOT ns/item | Current AOT ns/item | CPython ns/item | Median paired current/previous CPU |
+|---|---:|---:|---:|---:|
+| Zero singleton | 5.08 | 1.58 | 0.93 | 0.308 |
+| Nonzero singleton | 4.97 | 1.56 | 1.09 | 0.324 |
+| Two-item pattern | 3.17 | 1.64 | 1.32 | 0.496 |
+| In-place singleton | 5.10 | 1.54 | 0.97 | 0.295 |
+| In-place two-item pattern | 3.54 | 1.53 | 1.48 | 0.446 |
+
+These variants use about **50–70% less paired CPU time**, without establishing
+CPython parity for every allocation/lifetime/timing configuration. Large outliers
+remain (current zero-fill: 1.18–11.62 ns/item). Scope and timing method differ;
+no cause for that difference or regression is inferred from the cross-comparison.
+The exact issue acceptance is confirmed, but broader performance claims must
+stay qualified. No RSS trend or unmerged nanoGPT speed result is claimed.
+
+No retained correctness/import regression or new uncovered bug was confirmed.
+Import compilation, executed APIs, adapted ports and hosted upstream references
+remain separate. Full CPython regrtest, broad PyPI compatibility, native test
+runners and general native NumPy were not evaluated by this update. Unchanged
+inference/Unicode/cache/encoding gaps were not individually rerun.
+Both audit-tool suites pass (**10 + 16**). Evidence records the initial missing
+Python bootstrap attempt and unavailable optional `/usr/bin/time` wrapper;
+restoration and a full timing restart succeeded. Final timings use in-program
+CPU/wall clocks, not the absent wrapper. Historical reports/JSON are preserved.
+
+Reproduction scripts are embedded in the evidence. Restore the pinned names
+dataset from its retained URL/hash before the microGPT check.
+
+```sh
+uv python install 3.13.16 --install-dir /workspace/scratch/3ba735e28fa7/python-audit-31316
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-list-repeat/evaluate.py
+/root/.local/bin/python3.13 build/audit-list-repeat/performance.py
+/root/.local/bin/python3.13 build/audit-list-repeat/exact_benchmark.py
+/root/.local/bin/python3.13 build/audit-list-repeat/build_evidence.py
 ```
 
 ## Checks to run when the pending work lands
