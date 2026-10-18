@@ -6,6 +6,10 @@ import re
 import runpy
 import subprocess
 import sys
+import tarfile
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -40,6 +44,31 @@ class CensusTests(unittest.TestCase):
         self.assertEqual(bench.unmarked_hunks(upstream, unmarked), ["7-7"])
         main = unmarked.replace("e = 5", "# Pystachy port: a deterministic main replaces pyperf.Runner")
         self.assertEqual(bench.unmarked_hunks(upstream, main), [])
+
+    def test_successful_unported_census_is_not_reported_as_blocked(self):
+        # A newly supported upstream workload is not automatically a delivered port.
+        source = self.UPSTREAM.encode()
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "upstream.tar.gz"
+            with tarfile.open(archive, "w:gz") as tar:
+                entry = tarfile.TarInfo(bench.SDIST_DIR + "bm_new/run_benchmark.py")
+                entry.size = len(source)
+                tar.addfile(entry, io.BytesIO(source))
+            args = SimpleNamespace(census=str(archive), timeout=5)
+            for code in (0, 1):
+                output = io.StringIO()
+                result = subprocess.CompletedProcess([], code, "", "error: unsupported" if code else "")
+                with mock.patch.object(bench, "SDIST_SHA256", bench.digest(archive.read_bytes())), \
+                        mock.patch.dict(bench.UPSTREAM, {"new": bench.digest(source)}, clear=True), \
+                        mock.patch.dict(bench.CENSUS_CALLS, {"new": "bench_x(1)"}, clear=True), \
+                        mock.patch.object(bench.subprocess, "run", return_value=result), \
+                        contextlib.redirect_stdout(output):
+                    report, valid = bench.census(args, ["compiler"], {})
+                self.assertTrue(valid)  # Provenance validity is separate from compilation.
+                row = report["benchmarks"][0]
+                self.assertFalse(row["ported"])
+                self.assertEqual(row["compile_status"], "error" if code else "compiled")
+                self.assertIn("| blocked |" if code else "| runner-only compiles; not ported |", output.getvalue())
 
 
 class TimingTests(unittest.TestCase):
@@ -168,8 +197,13 @@ class RecordTests(unittest.TestCase):
             row = re.search(rf"^\| `{name}` \|.*$", readme, re.M)
             self.assertIsNotNone(row, name)
             self.assertIn(sha, row.group(0), name)
-            status = "ported" if name in bench.BENCHMARKS else "deferred" if name in bench.DEFERRED else "blocked"
-            self.assertIn(status, row.group(0), name)
+            status = row.group(0).split("|")[3].strip()
+            if name in bench.BENCHMARKS:
+                self.assertEqual(status, "ported", name)
+            elif name in bench.DEFERRED:
+                self.assertTrue(status.startswith("deferred:"), name)
+            else:
+                self.assertIn(status, ("blocked", "runner-only compiles; not ported"), name)
 
 
 class ArgumentTests(unittest.TestCase):

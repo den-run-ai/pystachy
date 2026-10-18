@@ -1,7 +1,7 @@
 """Diagnostics component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import sys
-from src.pystachy_compiler.names import unspec
+from src.pystachy_compiler.names import RENAMED, unspec
 
 
 SRC = "<input>"
@@ -31,6 +31,8 @@ def shown(s: str) -> str:
     # identifier characters is the "." of a module attribute; the main program's names are
     # its own (__main__$len, a def that shadows a builtin, is len), and a class template's
     # specializations its class's (Box-2 is Box)
+    if len(RENAMED) > 0 and unspec(s) in RENAMED:
+        s = unspec(s)[: unspec(s).rfind("$") + 1] + RENAMED[unspec(s)]
     s = unspec(s.replace("__main__$", ""))
     out: list[str] = []
     for i in range(len(s)):

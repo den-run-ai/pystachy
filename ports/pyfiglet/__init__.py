@@ -68,7 +68,7 @@ else:
     SHARED_DIRECTORY = '/usr/local/share/pyfiglet/'
 
 
-def figlet_format(text:str, font:str=DEFAULT_FONT, **kwargs):  # Pystachy port: kwargs not Any (M4, #9)
+def figlet_format(text:str, font:str=DEFAULT_FONT, **kwargs:Any):
     fig = Figlet(font, **kwargs)
     return fig.renderText(text)
 

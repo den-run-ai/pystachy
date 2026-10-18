@@ -1,11 +1,11 @@
-# error: pow_method.py:11: error: ** and pow() of objects are not supported (V ** int calls V.__pow__)
-# CPython calls V.__pow__(v, 2); not CPython's TypeError, which would read as if the program were wrong
+# error: pow_method.py:11: error: ** and pow() of objects are not supported (V ** V calls V.__pow__)
+# Object exponents stay rejected until reflected/subclass power dispatch is implemented.
 class V:
     def __init__(self, n: int) -> None:
         self.n = n
 
-    def __pow__(self, k: int) -> "V":
-        return V(self.n ** k)
+    def __pow__(self, k: "V") -> "V":
+        return V(self.n ** k.n)
 
 
-print((V(3) ** 2).n)
+print((V(3) ** V(2)).n)

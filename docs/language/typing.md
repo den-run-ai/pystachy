@@ -71,13 +71,15 @@ lookup, and for each key of the same hash). A class that defines `__eq__` withou
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
 An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
 keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
-`__hash__` and tuples of these; a str's and an object's identity hash differ from CPython's,
+`__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
 `Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`.
 Explicit closed scalar unions such as `int | str` are supported, including `None`.
-Bounded native reference unions are also supported; a dynamic `Any` type is unsupported.
+Bounded native reference unions are also supported. `typing.Any` can annotate supported
+function/method signatures, constructor parameters and initialized module/local variables,
+which use concrete [inference](#function-and-method-templates); there is no dynamic `Any` value.
 `None` alone can annotate a return, but cannot be a container's entire element type.
 
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
@@ -442,6 +444,9 @@ An ordinary function or method with fully annotated parameters, including one wi
 arguments, uses the same inference when it has no return annotation and returns a value.
 Its recursive calls can retain the existing `None` signature; value-returning recursion
 before a result type is known requires an explicit return annotation.
+This also applies to `-> Any`: it requests inference, not a dynamic return value.
+For example, `return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a
+separate base-case `return 1` before the recursive return.
 Unsupported code becomes an error when that specialization needs it; syntax errors are
 checked regardless of use.
 
@@ -474,10 +479,11 @@ its caller.
 
 Ordinary methods with unannotated parameters, `*args` or `**kwargs` also specialize, excluding
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
-`def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; `__init__` and other
-non-template methods cannot take one. The supported binary operator, comparison, `__call__`,
-`__getitem__` and `__contains__` methods can be templates. Other special methods require annotations;
-`__init__` is handled by class specialization below. A template method cannot change a field's
+`def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
+`__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
+`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates.
+`__iter__` and `__next__` also infer omitted return annotations; other special methods require
+concrete annotations. `__init__` is handled by class specialization below. A template method cannot change a field's
 established type, and comparison methods must return `bool`.
 
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
@@ -487,6 +493,32 @@ A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its n
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
 `Concatenate[int, P]`). A module-level `ParamSpec` is unsupported.
+
+`typing.Any` in a parameter or return annotation, also inside another type such as `list[Any]`,
+`Mapping[str, Any]`, `Callable[..., Any]` or `Any | None`, makes that part of the signature
+inferred in the same way. This applies to functions, nested functions and methods that may be
+templates, also under `from __future__ import annotations`. A parameter takes its argument's
+type, and `*args: Any` or `**kwargs: Any` those of each call's arguments; a return is inferred
+as an unannotated one is. Values keep their concrete types and are not boxed: a `list[Any]`
+parameter given a `list[int]` cannot append a `str`, and a function annotated `-> Any` returns
+one type for each specialization. An initialized module or local variable whose annotation
+mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by
+`xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
+the whole annotation, including any concrete parts. The same straight-line local retyping
+and branch, loop and global type restrictions apply as for unannotated variables. A variable
+declared without an initializer still needs a concrete annotation. A class template's
+`__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
+arguments as described below. Non-generator `__iter__` and `__next__` methods also infer
+returns annotated with `Any`, including `Iterator[Any]`; the iterator and its items still
+have concrete types. `Any` remains unsupported in field annotations, `__init__` returns,
+properties and special-method signatures outside these supported cases.
+
+For a generator function, `Any` in `Generator[Y, S, R]`'s yield type `Y` or return type `R`
+infers only that channel; the other concrete types still apply. `Iterator[Any]` and
+`Iterable[Any]` infer yielded items and still require no return value. The send type `S`
+cannot contain `Any`: annotate it with a concrete type that accepts `None`, such as
+`str | None`. Its native layout must be known when the generator is compiled, before
+future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`.
 
 ### Variadic arguments
 
@@ -565,12 +597,19 @@ The annotation preserves the individual values' types; it does not convert integ
 
 ## Class templates and generic classes
 
-A class specializes when its `__init__` has an unannotated parameter, variadic parameters,
+A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
+`object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
 a parameter or constructed field using another class template, an `Iterator[T]` or
 `Iterable[T]` parameter, or an `iter()` call. Calls whose fields have
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
+
+If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
+the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
+Existing field types cannot change later. `Any` does not provide a shared boxed layout for
+these objects. Inheritance with class templates remains unsupported; use concrete constructor
+annotations there. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
@@ -783,9 +822,22 @@ class defines `__eq__` without `__hash__`, as a dataclass with `eq=True` does un
 frozen or has `unsafe_hash=True`) is rejected with CPython's message.
 
 An annotated `NamedTuple` class supports defaults, methods, unpacking, constant indexing,
-iteration, length, comparisons with tuples, `_replace()`, `_fields` and `_asdict()` when all
-fields share a type. Only construction can assign its fields. There is no functional
-`NamedTuple("Name", ...)` form, `_make()`, slicing, or a NamedTuple without fields.
+iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
+iterable with as many items as it has fields, else CPython's `TypeError`), `_replace()`, `_fields`
+and `_asdict()` when all fields share a type. Only construction can assign its fields. There is
+no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields.
+
+`collections.namedtuple()` makes such a class at compile time: a module's top-level
+`NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
+literal arguments (the field names in a string, separated by commas and/or spaces, or a list or
+tuple of strings; the defaults a list or tuple of constants) is a NamedTuple named `typename`
+whose fields have no annotations. It is a [class template](#class-templates-and-generic-classes):
+each call that makes an object types its fields, and `_replace()` with a value of another type
+makes an object of another specialization. Its objects behave as above, with
+`_field_defaults`, the class's own dict, through the class and its objects; CPython's errors
+for invalid names (`rename=True` renames them) and for too many defaults are compile errors.
+`NAME.__doc__ = "..."` and `NAME.field.__doc__ = "..."` are accepted, but Pystachy keeps no
+docstrings of classes, so reading one is rejected.
 
 Static and class methods can be called through their class or an instance, subject to the
 inheritance restrictions below. See [compatibility](compatibility.md#classes-dataclasses-and-namedtuples)

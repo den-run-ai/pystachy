@@ -469,6 +469,44 @@ def pys_str_replace_count(s: str, a: str, b: str, count: int) -> str:
     return replaced(s, a, b, count)
 
 
+def tally(h: str, n: str, st: int, most: int) -> int:
+    # pys_str_count(h, n, st, len(h)), up to most. One-byte needles use its optimized counting
+    # loop in bounded chunks, so a small count does not search a long unchanged tail and a large
+    # count keeps the same throughput. Multi-byte needles are counted by seek()'s
+    # candidates; but -1 once the failed ones have cost more than the bytes passed (and 64), where
+    # the count would go to memmem. replaced() then lists on: a text of costly candidates is
+    # searched once, as before, not counted and searched again (DNA's "CA" in ACG took 1.6 times
+    # as long, and "ab" * 70000 + "a" * 20000000 + "ab" 1.3 times)
+    m = len(n)
+    if m == 1:
+        c = 0
+        while st < len(h) and c < most:
+            end = st + min(len(h) - st, max(65536, most - c))
+            c += pys_str_count(h, n, st, end)
+            st = end
+        return min(c, most)
+    first = _rt.byte(n, 0)
+    last = len(h) - m
+    c = 0
+    i = st
+    paid = st - 64
+    while i <= last:
+        k = scan(h, first, i, last + 1)
+        if k < 0:
+            break
+        if match(h, k, n):
+            c += 1
+            if c == most:
+                break
+            i = k + m
+        else:
+            paid += toll(m)
+            if paid > k:
+                return -1
+            i = k + 1
+    return c
+
+
 def replaced(s: str, a: str, b: str, count: int) -> str:
     # the first count occurrences of a replaced (all of them for a negative count), as CPython's
     # replace() makes them
@@ -492,15 +530,28 @@ def replaced(s: str, a: str, b: str, count: int) -> str:
     pos: list[int] = []  # where a occurs: one search pass, not one to count and one to copy
     dense = False
     j = 0
-    while len(pos) < count:
-        j = again(s, a, j, n, 0, dense)
-        if j == -1:
+    cap = 65536  # occurrences listed before the list is weighed against the text it covers
+    weigh = 16  # bytes per occurrence at most for replaced_dense(): 0 once tally() gives up
+    while True:
+        stop = count if count < cap else cap  # (the inner loop as before: its test the only one)
+        while len(pos) < stop:
+            j = again(s, a, j, n, 0, dense)
+            if j == -1:
+                break
+            dense = j < -1
+            if dense:
+                j = -2 - j
+            pos.append(j)
+            j += len(a)
+        if j == -1 or len(pos) == count:
             break
-        dense = j < -1
-        if dense:
-            j = -2 - j
-        pos.append(j)
-        j += len(a)
+        if j <= cap * weigh:
+            # A bounded count must stop counting at its limit, including for one-byte needles.
+            rest = pys_str_count(s, a, j, n) if len(a) == 1 and count >= n else tally(s, a, j, count - len(pos))
+            if rest >= 0:
+                return replaced_dense(s, a, b, count, pos, rest)
+            weigh = 0  # costly candidates (DNA's "CA" in ACG): searched once, listed
+        cap *= 2  # sparse (long separators, lines): one pass, listed
     r = _rt.str_new(n + len(pos) * (len(b) - len(a)))
     i = 0
     at = 0
@@ -509,6 +560,45 @@ def replaced(s: str, a: str, b: str, count: int) -> str:
         _rt.copy(r, at + j - i, b, 0, len(b))
         at += j - i + len(b)
         i = j + len(a)
+    _rt.copy(r, at, s, i, n - i)
+    return _rt.str_done(r)
+
+
+def replaced_dense(s: str, a: str, b: str, count: int, pos: list[int], rest: int) -> str:
+    # replaced() where its list pos of the first occurrences shows one every 16 bytes or more
+    # often, so that a list of them all would outgrow the result ("*" * 10**7 replaced by "" took
+    # 7.6 times runtime.c's memory), and rest more were counted after them: the result allocated
+    # at its final size and each further occurrence copied into it as it is found, as runtime.c's
+    # replace did. An empty gap or replacement costs no copy, and one byte of replacement a store.
+    # The search is scan() and match(), not again(), whose seek() LLVM inlines into replaced()
+    # only while that is its one caller: tally() found the failed candidates no costlier than
+    # the bytes they passed, so these are the same candidates at the same cost
+    n = len(s)
+    m = len(a)
+    lb = len(b)
+    c = _rt.byte(b, 0) if lb == 1 else 0
+    first = _rt.byte(a, 0)
+    if rest > count - len(pos):
+        rest = count - len(pos)
+    r = _rt.str_new(n + (len(pos) + rest) * (lb - m))
+    i = 0
+    at = 0
+    for t in range(len(pos) + rest):
+        if t < len(pos):
+            j = pos[t]
+        else:
+            j = scan(s, first, i, n - m + 1)
+            while not match(s, j, a):
+                j = scan(s, first, j + 1, n - m + 1)
+        if j > i:
+            _rt.copy(r, at, s, i, j - i)
+            at += j - i
+        if lb == 1:
+            _rt.str_put(r, at, c)
+        elif lb > 1:
+            _rt.copy(r, at, b, 0, lb)
+        at += lb
+        i = j + m
     _rt.copy(r, at, s, i, n - i)
     return _rt.str_done(r)
 

@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, shown
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import RENAMED, short
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
@@ -58,6 +58,8 @@ def gen_subclass_problem(self, st: Node) -> str:
     # class declared before it, or one of the supported exception bases
     if st.kids[1].kind == "typeparams":
         return self.class_params(st)
+    if st.kids[1].kind == "call" and st.kids[1].kids[0].kind == "name" and st.kids[1].kids[0].s == "collections$namedtuple":
+        return "inheritance from a namedtuple() class is not supported"
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
     if len(st.kids) > 2:
@@ -215,10 +217,10 @@ def gen_derives(self, c: str, base: str) -> bool:
 
 def gen_init_template(self, st: Node) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
-    # and an __init__ of its own with a parameter but self that has no annotation, or one that
-    # names a class template; each object then belongs to a specialization, whose fields are
-    # typed by the arguments of the call that makes it (see specialize)
-    if len(st.kids) > 1 or st.s in self.nts:
+    # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
+    # is object, or names a class template; each object belongs to a specialization, whose fields
+    # are typed by the arguments of the call that makes it (see specialize)
+    if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
         return False
     for d in st.kids[0].kids:
         if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
@@ -226,7 +228,8 @@ def gen_init_template(self, st: Node) -> bool:
                 return True  # (its context can bind variables absent from __init__ parameters)
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
-                if ps[i].kids[0].kind == "noann" or (ps[i].kind == "param" and self.tmpl_ann(ps[i].kids[0])):
+                a = ps[i].kids[0]
+                if a.kind == "noann" or self.any_in([a]) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
                     return True  # (also *args or **kwargs without an annotation)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
@@ -240,9 +243,9 @@ def gen_template_fix(self, cs: list[Node]) -> str:
     for st in cs:
         for d in st.kids[0].kids:
             if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
-                if reads_builtin(d.kids[2], "iter", False, False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
+                if reads_builtin(d.kids[2], "iter", False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
                     return "an __init__ that calls iter() or takes an Iterator[T] or Iterable[T] makes one (an iterator's type is its class)"
-    return "annotate __init__ parameters"
+    return "annotate __init__ parameters with concrete types (not Any or object)"
 
 def gen_makes_tmpl(self, n: Node) -> bool:
     # does n call a class template, making an object of one of its specializations? iter(x)
@@ -757,6 +760,14 @@ def gen_program(self, mods: list[Mod]) -> str:
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
                 m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
                 self.nts[st.s] = True
+            elif st.kind == "subclass" and st.kids[1].kind == "namedtuple":
+                # NAME = namedtuple(...): a NamedTuple that is a class template, its fields typed by
+                # each call (Loader.nt_class); the class's name is the call's typename
+                m.body.kids[i] = st.kids[0]
+                self.nts[st.s] = True
+                self.cnts[st.s] = st.kids[1]
+                if st.kids[1].s != short(st.s):
+                    RENAMED[st.s] = st.kids[1].s
             elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_base(st.kids[1])) > 0:
                 m.body.kids[i] = st.kids[0]  # class C(Generic[T]): a class whose objects bind T (see bind)
                 self.tparams[st.s] = self.generic_base(st.kids[1])
@@ -832,6 +843,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.classes[st.s] = ClassInfo(st.s, st)
                 self.classes[st.s].mod = m.name
                 self.dc_options(self.classes[st.s])
+    for m in mods:
+        self.any_variables(m.body, False)
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():
@@ -888,6 +901,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.funcs[st.s] = self.declare_fn(st, "")
                 self.lib = False
                 self.funcs[st.s].mod = m.name
+                if st.s == "collections$namedtuple" and m.path == self.libdir + "/collections/__init__.py":
+                    # (lib's, which the compiler carries out: Loader.nt_class)
+                    self.funcs[st.s].bad = "namedtuple() is only supported as NAME = namedtuple(...) in a module's top-level code, with literal arguments (the compiler makes the class)"
                 top.append(mk("defaults", st.s, st.line, []))
             elif (st.kind == "class" or st.kind == "subclass") and st.s not in self.classes:
                 top.append(mk("lclass", st.s, st.line, []))  # (a class it leaves out: class_effect)
@@ -1143,7 +1159,9 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.fa = {}
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
-    return self.lower_module()
+    ir = self.lower_module()
+    RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
+    return ir
 
 # ---- definite assignment, before code generation: CPython raises UnboundLocalError or
 # NameError when a read finds its variable unassigned. Reads that cannot are plain loads;

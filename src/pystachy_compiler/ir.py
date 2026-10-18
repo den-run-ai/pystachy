@@ -8,6 +8,7 @@ class Val:
     def __init__(self, v: str, t: str):
         self.v = v
         self.t = t
+        self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
 
 
 class Data:
@@ -141,12 +142,14 @@ class FnInfo:
         # the parameters annotated Callable[[A, B], C] with C a class template: an argument that is
         # a function is that Callable of the specialization it returns (see pat_arg)
         self.pats: dict[int, Node] = {}
+        self.anys: list[str] = []  # the parameters annotated typing.Any, "" its return: left unannotated (see declare_fn)
         self.clo = -1  # a closure's function (a def or lambda inside a function): its Gen.closures position
         # a generator function (a def whose own body yields): a call makes a generator object, an
         # LLVM coroutine handle of type gen[Y] (ret; "" while a template's first yield decides Y),
         # and runs none of the body (docs/internals.md#generators)
         self.gen = False
         self.gret = ""  # its return value's type (return v, which yield from gives): "" until a return decides it
+        self.gretinfer = False  # no return-value annotation, or Any in Generator[Y, S, R]'s R
         self.gsend = "None"  # what send() sends it (Generator[Y, S, R]'s S): its yields' values are S | None
         self.gclose = False  # closing it while it is suspended may run its code: a yield in try, with or yield from
         self.gwith = False  # a yield inside a with block: its unwind actions are set aside while it is suspended

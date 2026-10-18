@@ -1,0 +1,16 @@
+Point(x=1, y=2) Point(x=3, y='x') Point(x=0, y=1) Point(x='a', y='b') Point(x='k', y='j')
+Point(x=7, y=8) Point(x=1, y=2) Point(x=5, y=6) Point(x=9, y=10)
+TypeError: Expected 2 arguments, got 1
+TypeError: Expected 2 arguments, got 3
+TypeError: Expected 2 arguments, got 0
+TypeError: Expected 2 arguments, got 5
+Row(name='a', count=1, ratio=2.0) Row(name='b', count=2, ratio=0.5) ('name', 'count', 'ratio') {'ratio': 0.5} {'ratio': 0.5}
+{'x': 1, 'y': 2} {'x': 'u', 'y': 'v'} [('x', 1), ('y', 2)] True
+Point(x=10, y=2) Point(x=1, y=2) Point(x=30, y=20) Point(x=1, y=2) Row(name='c', count=5, ratio=2.0)
+Point(x='now a str', y=2) NOW A STR Point
+Triple(a=1, b=2.5, c=3) Triple(a=4, b=5, c=[7])
+7 4.0 3
+[Point(x=0, y=0), Point(x=1, y=1), Point(x=2, y=4)] {1: Point(x=3, y=4)}
+TP(a=1, b='z') TP(a=3, b='w') True True
+3112700724483305790 -7823806182320511195 True
+[exit 0]

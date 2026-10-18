@@ -1,4 +1,5 @@
 mods: init mods
 mods.shapes: init mods.shapes
 42 4
+0 2 x2 y0
 [exit 0]

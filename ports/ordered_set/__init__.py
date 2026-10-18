@@ -163,7 +163,7 @@ class OrderedSet:  # Pystachy port: no MutableSet and Sequence bases, str for T 
         else:
             self.__init__(state)
 
-    def __contains__(self, key: str) -> bool:  # Pystachy port: str for Any (M4)
+    def __contains__(self, key: Any) -> bool:
         """
         Test if the item is in this ordered set.
 
@@ -330,7 +330,7 @@ class OrderedSet:  # Pystachy port: no MutableSet and Sequence bases, str for T 
             return "%s()" % (OrderedSet.__name__,)
         return "%s(%r)" % (OrderedSet.__name__, list(self))
 
-    def __eq__(self, other: "OrderedSet") -> bool:  # Pystachy port: an OrderedSet for Any (M4)
+    def __eq__(self, other: Any) -> bool:
         """
         Returns true if the containers have the same items. If `other` is a
         Sequence, then order is checked, otherwise it is ignored.

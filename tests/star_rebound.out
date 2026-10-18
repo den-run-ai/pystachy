@@ -1,0 +1,10 @@
+mods: init mods
+mods.shapes: init mods.shapes
+decorated
+over hello ann, base hello ann
+OVER HELLO BOB, BASE HELLO BOB
+30 20 True
+over hello cy, base hello cy 20 base helper 3
+main helper, not base helper 100 True
+caught Error boom True
+[exit 0]

@@ -885,6 +885,8 @@ def gen_hash_value(self, v: Val) -> Val:
     if is_list(t) or is_dict(t) or (is_set(t) and not is_fset(t)):
         self.raise_("TypeError", self.sconst(f"unhashable type: '{tname(t)}'"))
         return Val("0", "int")
+    if t in self.nts and "__eq__" not in self.classes[t].methods and "__hash__" not in self.classes[t].methods:
+        return self.hash_value(self.ntup(v))  # (a NamedTuple's: tuple's __hash__ of its fields)
     if not self.hashable(t):
         self.err(f"hash() of {typestr(t)} is not supported")
     return Val(self.rt("pys_hash", "i64", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.hash_desc(t))}"]), "int")

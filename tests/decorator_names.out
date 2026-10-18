@@ -1,0 +1,12 @@
+mods: init mods
+mods.shapes: init mods.shapes
+decorate greet greet
+decorate make make
+decorate add add
+decorate main_fn main_fn
+greet greet hello
+add add 3
+decorate nested make.<locals>.nested
+nested make.<locals>.nested 42
+main_fn main_fn 7
+[exit 0]
