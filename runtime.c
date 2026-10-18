@@ -1979,20 +1979,26 @@ List *pys_list_add(List *a, List *b) {
   List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
   pys_list_extend(r, a); pys_list_extend(r, b); return r;
 }
+static void repeat_items(I *a, I k, I m) {     /* a[0, k) repeated through a[k, m): the copied prefix
+                                                   doubles, log2(m / k) memcpys rather than m / k, as
+                                                   pys_str_mul copies (#649) */
+  for (I c; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(a + k, a, c * 8); }
+}
 void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
   if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   reserve(l, m * n);
-  for (I i = 1; i < n; i++) memcpy(l->a + i * m, l->a, m * 8);
+  repeat_items(l->a, m, m * n);
   l->len = m * n;
 }
-List *pys_list_mul(List *a, I n) {
+List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
+                                                    zero bits (0, 0.0, False, None) is not copied */
   I m = a->len;
   if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
-  for (I i = 0; i < n; i++) memcpy(r->a + i * m, a->a, m * 8);
+  if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }

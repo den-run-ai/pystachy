@@ -77,9 +77,9 @@ which change from run to run, but are equal for equal strs and for the same obje
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
 `Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`.
 Explicit closed scalar unions such as `int | str` are supported, including `None`.
-Bounded native reference unions are also supported. `typing.Any` can annotate function
-parameters and returns, which each call types ([templates](#function-and-method-templates));
-there is no dynamic `Any` value.
+Bounded native reference unions are also supported. `typing.Any` can annotate supported
+function/method signatures, constructor parameters and initialized module/local variables,
+which use concrete [inference](#function-and-method-templates); there is no dynamic `Any` value.
 `None` alone can annotate a return, but cannot be a container's entire element type.
 
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
@@ -444,6 +444,9 @@ An ordinary function or method with fully annotated parameters, including one wi
 arguments, uses the same inference when it has no return annotation and returns a value.
 Its recursive calls can retain the existing `None` signature; value-returning recursion
 before a result type is known requires an explicit return annotation.
+This also applies to `-> Any`: it requests inference, not a dynamic return value.
+For example, `return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a
+separate base-case `return 1` before the recursive return.
 Unsupported code becomes an error when that specialization needs it; syntax errors are
 checked regardless of use.
 
@@ -478,8 +481,9 @@ Ordinary methods with unannotated parameters, `*args` or `**kwargs` also special
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
 `def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
 `__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
-`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates. Other special methods require annotations;
-`__init__` is handled by class specialization below. A template method cannot change a field's
+`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates.
+`__iter__` and `__next__` also infer omitted return annotations; other special methods require
+concrete annotations. `__init__` is handled by class specialization below. A template method cannot change a field's
 established type, and comparison methods must return `bool`.
 
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
@@ -504,10 +508,17 @@ the whole annotation, including any concrete parts. The same straight-line local
 and branch, loop and global type restrictions apply as for unannotated variables. A variable
 declared without an initializer still needs a concrete annotation. A class template's
 `__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
-arguments as described below. `Any` remains unsupported in field annotations, `__init__`
-returns, properties and other special methods. Non-generator `__iter__` and `__next__`
-methods also infer returns annotated with `Any`, including `Iterator[Any]`; the iterator
-and its items still have concrete types.
+arguments as described below. Non-generator `__iter__` and `__next__` methods also infer
+returns annotated with `Any`, including `Iterator[Any]`; the iterator and its items still
+have concrete types. `Any` remains unsupported in field annotations, `__init__` returns,
+properties and special-method signatures outside these supported cases.
+
+For a generator function, `Any` in `Generator[Y, S, R]`'s yield type `Y` or return type `R`
+infers only that channel; the other concrete types still apply. `Iterator[Any]` and
+`Iterable[Any]` infer yielded items and still require no return value. The send type `S`
+cannot contain `Any`: annotate it with a concrete type that accepts `None`, such as
+`str | None`. Its native layout must be known when the generator is compiled, before
+future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`.
 
 ### Variadic arguments
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.specs import ABCS, ABCSMORE, CALLS, CTYPES, ERRNO, FUTURE, MODATTRS, MODFUNCS, MODULES, NOREF, RANGE_METHODS, RANGE_TAKERS, TYPING
-from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mentions, mk, names_in, other_return, starred_target
+from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mentions, mk, names_in, starred_target
 from src.pystachy_compiler.utils import int_fits
 
 
@@ -669,12 +669,13 @@ def module_strs(mods: list[Mod], tuples: dict[str, list[str]]) -> dict[str, str]
                 tuples[st.kids[0].s] = tuples[st.kids[1].s]
                 more = True
     return out
-def reads_builtin(n: Node, name: str, listed: bool, hidden: bool, mods: dict[str, bool]) -> bool:
+def reads_builtin(n: Node, name: str, hidden: bool, mods: dict[str, bool]) -> bool:
     # may code n read builtin name (iter or next): a name node that no scope around it binds
     # (hidden: one does; a class body's or a comprehension's own names do not hide it here),
     # name of the builtins module (mods: the names that import it) or from builtins import name.
-    # Not iter where an __iter__ annotated -> Iterator[T] returns iter(x) (listed, see
-    # Gen.iter_ret), which steps through a list rather than making an iterator object
+    # Count iter() even in an annotated __iter__: later Any/alias resolution can erase its
+    # return annotation and require an iterator object. Concrete iter_ret lowering may still
+    # step through a list directly; loading the helper does not change that optimization.
     k = n.kind
     if k == "name":
         return n.s == name and not hidden
@@ -682,19 +683,6 @@ def reads_builtin(n: Node, name: str, listed: bool, hidden: bool, mods: dict[str
         return True
     if k == "import":
         return len([a for a in n.kids if a.kids[0].s == "builtins." + name]) > 0
-    if k == "def" and n.s == "__iter__" and name == "iter":
-        a = n.kids[1]
-        t = a.s if a.kind == "str" else ""
-        if a.kind == "index" and (a.kids[0].kind == "name" or a.kids[0].kind == "attr"):
-            t = a.kids[0].s + "["
-        t = t[: t.find("[")] if "[" in t else ""
-        t = t[t.rfind(".") + 1 :]
-        listed = (t == "Iterator" or t == "Iterable") and not other_return(n.kids[2])
-    elif k == "def" or k == "lambda":
-        listed = False
-    if listed and k == "return" and len(n.kids) == 1 and n.kids[0].kind == "call" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == "iter":
-        c = n.kids[0]
-        return reads_builtin(c, name, False, hidden, mods) if len(c.kids) != 2 else reads_builtin(c.kids[1], name, listed, hidden, mods)
     inner = hidden  # (of a function's body; its defaults, annotations and decorators run outside)
     if k == "def" and hidden:
         decl: dict[str, bool] = {}
@@ -706,7 +694,7 @@ def reads_builtin(n: Node, name: str, listed: bool, hidden: bool, mods: dict[str
         inner = len([p for p in n.kids[0].kids if p.s == name]) > 0
     for i in range(len(n.kids)):
         body = (k == "def" and i == 2) or (k == "lambda" and i == 1)
-        if reads_builtin(n.kids[i], name, listed, inner if body else hidden, mods):
+        if reads_builtin(n.kids[i], name, inner if body else hidden, mods):
             return True
     return False
 
@@ -721,7 +709,7 @@ def module_reads(body: Node, name: str) -> bool:
         fn_globals(body, top)
     mods: dict[str, bool] = {}
     builtins_names(body, mods)
-    return reads_builtin(body, name, False, name in top, mods)
+    return reads_builtin(body, name, name in top, mods)
 
 
 def range_values(n: Node, fine: int) -> bool:

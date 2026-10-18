@@ -642,6 +642,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.iters = f.iters
     g.gen = f.gen
     g.gret = f.gret
+    g.gretinfer = f.gretinfer
     g.gsend = f.gsend
     g.gclose = f.gclose
     g.gwith = f.gwith
