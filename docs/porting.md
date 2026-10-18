@@ -59,24 +59,24 @@ operation or input remains unsupported or adapted. A similar input or a referenc
 to a test file is not evidence that every assertion of an upstream method has been
 preserved.
 
-Initial inventory (counts are upstream test methods, not individual assertions):
+Inventory (counts are upstream test methods, not individual assertions):
 
 | Module | Hosted upstream pass | Complete compiled mappings | Partial | Deviation | Unsupported | Not yet mapped |
 |---|---:|---:|---:|---:|---:|---:|
 | fnmatch | 17/17 | 12 | 2 | 0 | 3 | 0 |
-| textwrap | 66/66 | 63 | 1 | 2 | 0 | 0 |
+| textwrap | 66/66 | 65 | 1 | 0 | 0 | 0 |
 
 `make test-cpython-subset` runs the actual compiled expansion: the fnmatch suite,
-three textwrap files and seven selected cache/lru_cache methods from
+four textwrap files and seven selected cache/lru_cache methods from
 `test_functools.py`. It compares native JIT/AOT execution with CPython recordings.
-These five differential programs are in the normal corpus, so CI also exercises
+These six differential programs are in the normal corpus, so CI also exercises
 them with both compiler hosts, GC stress, UBSan and optimizations disabled. The
 individual upstream method IDs appear in the source and completion output.
 
 The fnmatch selection retains 2,372 assertions from 12 complete methods, plus seven
 assertions from the two partial methods. Textwrap retains the complete assertion
-sets of 63 methods. Its two Unicode failures are exercised in a separate deviation
-test. One method retains its result assertions with a changed wrapper initialization;
+sets of 65 methods, including two formerly divergent Unicode cases now recorded
+against CPython. One method retains its result assertions with a changed wrapper initialization;
 the original bool-to-int field assignment has its own rejection test and is counted
 as partial. No methods remain unmapped in either inventory.
 

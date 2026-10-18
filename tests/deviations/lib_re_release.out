@@ -14,7 +14,7 @@ long 2 ['ab', '1', ' cd', '2'] released True 0 0 True 150
 long 3 ['ab#', 'cd#', 'ef#'] released True 0 0 True 150
 long 4 30 released True 0 0 True 150
 wide 0 ['é', 'Ω', '𝔄'] released True 0 0 True 120
-wide 1 [(2, 3), (6, 8), (13, 16)] released True 0 0 True 120
+wide 1 [(1, 2), (4, 6), (8, 11)] released True 0 0 True 120
 wide 2 ['é', '1', ' Ω', '2'] released True 0 0 True 120
 wide 3 ['é#', 'Ω#', '𝔄#'] released True 0 0 True 120
 wide 4 30 released True 0 0 True 120
@@ -27,5 +27,5 @@ nested ['[ab', '30', '30', '2]1', '[cd', '30'] released True 0 0
 purged ['ab311', 'cd3122', 'ef31333'] released True 0 0
 nested ['[é', '30', '30', '2]1', '[Ω', '30'] released False 150 0
 purged ['é311', 'Ω3122', '𝔄31333'] released True 0 0
-matches released True 0 0 30 (2, 3) 2 166 333
+matches released True 0 0 30 (1, 2) 2 116 333
 [exit 0]

@@ -41,8 +41,10 @@ cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu "$H/" && cp "$f
 if [ -n "$PY" ] && [ -d src ]; then cp -R src "$T/bin/" || exit 1; fi
 # the runs start in $T: a runtime.c that took its includes from there would not compile
 printf '#error "ryu/d2s.c of the current directory"\n' > "$T/ryu/d2s.c" || exit 1
+# The runtime.py sentinel uses bytes.index: public str.index has its error in runtime.c.
+# Keep the two messages in distinct source files so each edit proves independent invalidation.
 # the edits: the same size, other messages
-sed 's/substring not found/substring NOT found/g' runtime.py > "$T/NOT.py"
+sed 's/subsection not found/subsection NOT found/g' runtime.py > "$T/NOT.py"
 sed 's/invalid literal for int()/INVALID literal for int()/g' runtime.c > "$T/INVALID.c"
 cp runtime.py "$T/orig.py" && cp runtime.c "$T/orig.c" || exit 1
 for f in py c; do
@@ -51,8 +53,8 @@ for f in py c; do
     echo "tests/cache.sh: cannot make a same-size edit of runtime.$f"; exit 1
   fi
 done
-printf 'try:\n    print("abc".index("z"))\nexcept ValueError as e:\n    print(e)\ntry:\n    print(int("x"))\nexcept ValueError as e:\n    print(e)\n' > "$T/prog.py"
-P0="substring not found"; P1="substring NOT found"
+printf 'try:\n    print(b"abc".index(b"z"))\nexcept ValueError as e:\n    print(e)\ntry:\n    print(int("x"))\nexcept ValueError as e:\n    print(e)\n' > "$T/prog.py"
+P0="subsection not found"; P1="subsection NOT found"
 C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() with base 10: 'x'"
 : > "$T/built"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)

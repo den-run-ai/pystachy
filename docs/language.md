@@ -31,8 +31,9 @@ type, and a constant index the item's own type. Runtime-length
 `int`, `float`, `bool`, `str`, or one of these with `None`.
 
 Explicit closed scalar unions such as `int | str`, bounded native reference unions,
-and optional unions are supported. `Any` in function parameter and return annotations is
-inferred for each call; dynamic `Any` values are not supported.
+and optional unions are supported. `Any` in supported function/method signatures,
+constructor parameters and initialized module/local variables uses concrete inference;
+dynamic `Any` values are not supported.
 Generic classes can infer type arguments from construction or name them explicitly with
 `Box[int]` annotations and constructor subscriptions; variadic generic classes remain inferred.
 Module-level type aliases (`Row = list[str]`, `type Pair[T] = tuple[T, T]`) name types in
@@ -260,7 +261,7 @@ The most important differences for supported programs are:
 | Area | Difference |
 |---|---|
 | Integers | Overflow raises instead of growing to arbitrary precision |
-| Strings | Length and indexing count UTF-8 bytes; Unicode support varies by operation |
+| Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
 | Recursion | The native stack, rather than `sys.setrecursionlimit()`, limits depth |

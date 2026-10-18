@@ -62,6 +62,21 @@ bench-extended-check: $(BENCH_COMPILER)
 bench-pyperformance: $(BENCH_COMPILER)
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
+# The optional cblas_dgemm adapter (examples/ndarray/README.md) and nanoGPT's fused-bias linear:
+# correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libopenblas0-pthread or libblas3;
+# LD_LIBRARY_PATH=<its directory> selects one) and, for check_blas.py's reference, NumPy in $(PY). Each
+# runs under CPython (tools/rt_cpython's FFI twin), JIT, AOT and with a collection at every allocation.
+BLAS_PATH = $(CURDIR)/examples/nanogpt:$(CURDIR)/examples/ndarray
+blas-check: $(BENCH_COMPILER)
+	$(PY) examples/ndarray/check_blas.py --compiler "$(BENCH_COMPILER)" --stress 1
+	mkdir -p build
+	PYTHONPATH="$(CURDIR)/tools/rt_cpython:$(BLAS_PATH)" $(PY) examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" PYSTACHY_GC_STRESS_PROGRAM=1 $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) build examples/nanogpt/blas_parity.py -o build/blas_parity
+	build/blas_parity
+	PYSTACHY_GC_STRESS=1 build/blas_parity
+
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
@@ -80,7 +95,10 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	build/dictprobe
 	PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
 
-# Empty lists release historical backing; range-list backing is pointer-free and safely mutable.
+# Empty lists release historical backing; range-list backing is pointer-free and safely mutable;
+# dropped pointer-free large arrays that are most of what is allocated run a collection every
+# 4 MiB of them; small objects, large arrays among more small objects and arrays of pointers,
+# every 32 MiB.
 listprobe: tools/listprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/listprobe-rt.ll
@@ -133,6 +151,16 @@ jitprobe: pystachy
 # Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
 unicode-audit: pystachy
 	$(PY) tools/unicode_audit.py
+
+# Code-point caches survive owned appends and GC; raw-byte joins invalidate unsafe counts.
+unicodeprobe: tools/unicodeprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/unicodeprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/unicodeprobe.c -o build/unicodeprobe.ll
+	$(LLVMBIN)llvm-link build/unicodeprobe-rt.ll build/unicodeprobe.ll -o build/unicodeprobe.bc
+	$(LLVMBIN)clang -O2 build/unicodeprobe.bc -o build/unicodeprobe -lm
+	build/unicodeprobe
+	PYSTACHY_GC_STRESS=1 build/unicodeprobe
 
 # Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
 # benchmarks, dict probes, scaling) -> build/verification.json
@@ -195,7 +223,7 @@ port-check:
 # These files also belong to the normal corpus, so every existing CI configuration runs them.
 CPYTHON_SUBSET_COMPILER ?= ./pystachy
 test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
-	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/deviations/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
 
 # Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
 # Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
@@ -222,7 +250,7 @@ re-probe:
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -239,4 +267,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

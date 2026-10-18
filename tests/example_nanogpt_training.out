@@ -1,0 +1,9 @@
+gradient directions and ignored targets True
+gradient directions and ignored targets False
+AdamW decays matrices and embeddings, not vectors
+AdamW rejects malformed gradients before updates
+training rejects nonwhole parameter views
+AdamW rejects nonwhole parameter views
+cross entropy rejects invalid target
+AdamW eps zero follows IEEE division
+[exit 0]

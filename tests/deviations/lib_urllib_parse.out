@@ -5,6 +5,5 @@ NotImplementedError: encoding 'utf-16': this urllib.parse has the codecs utf-8, 
 NotImplementedError: encoding 'utf-8-sig': this urllib.parse has the codecs utf-8, latin-1 and ascii
 NotImplementedError: encoding 'nosuch': this urllib.parse has the codecs utf-8, latin-1 and ascii
 NotImplementedError: the error handler 'namereplace' needs the names of the characters, which this urllib.parse has not
-%E9 %C3%A9
 UnicodeError: 'utf-8' codec can't decode byte 0xe9 in position 0: invalid continuation byte
 [exit 1]

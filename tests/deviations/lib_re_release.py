@@ -1,6 +1,6 @@
 # lib/re caches the last subject's code points (re._last_codes, absent in CPython) for the next
 # call on it. Unbounded findall()/finditer(), split(), sub() and subn() read the subject to its end, so they
-# release a cache that they filled for a subject longer than re._KEEP bytes (1 MB, lowered here):
+# release a cache that they filled for a subject longer than re._KEEP code points (lowered here):
 # its decoding does not outlive the call (#589). A cache that was there before, as match(s, pos)
 # loops fill it, stays. An operation keeps its own decoded lists, also while a sub() callback
 # matches the same or another long subject, and matches stay usable once the cache is gone.
@@ -8,9 +8,9 @@ import re
 
 re._KEEP = 64
 short = "ab1 cd22 ef333"
-edge = "ab1 cd22 ef333 " * 4 + "ghij"  # (exactly re._KEEP bytes: kept)
+edge = "ab1 cd22 ef333 " * 4 + "ghij"  # (exactly re._KEEP code points: kept)
 long = "ab1 cd22 ef333 " * 10
-wide = "é1 Ω22 𝔄333 " * 10  # (not ASCII: the cache also holds each code point's byte offset)
+wide = "é1 Ω22 𝔄333 " * 10  # (non-ASCII subjects use code-point positions too)
 word = re.compile(r"[^\W\d]+")
 num = re.compile(r"(\d)\d*")
 
@@ -57,8 +57,7 @@ print("scanner", n, len(num.findall(long)), num.sub("", long)[:10], state(long),
 
 
 # Bounded findall()/finditer() windows need the same geometrically growing prefix cache as
-# search(). Non-ASCII windows can start/end inside a UTF-8 character; the numeric matches still
-# have one byte each, and cache retention uses the normalized byte endpos, not a code-point index.
+# search(). Non-ASCII windows use code-point bounds, just like cache retention.
 for subject in [long, wide]:
     for k in range(2):
         re.purge()

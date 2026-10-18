@@ -34,8 +34,11 @@ mismatches, without imposing timing thresholds.
 The [pyperformance results](pyperformance.md) compare CPython, JIT and AOT on 18 benchmarks
 adapted from pyperformance 1.14.0. In that advisory snapshot, taken on a loaded machine, AOT ran
 14 of 17 comparable benchmarks 1.5× to 84× faster and the three regex benchmarks 2.5–2.7× slower
-than CPython. The [port notes](../bench/pyperformance/README.md#blocked) record why the other 33
-benchmarks tried do not compile. Deltablue is separately deferred for a licence provenance decision.
+than CPython. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
+[port notes](../bench/pyperformance/README.md#blocked) distinguish delivered ports from
+upstream sources that compile after replacing only the runner. Of the 33 nondeferred
+sources without a delivered port, 32 still reject and `generators` compiles.
+Deltablue is separately deferred for a licence provenance decision.
 
 ## Caching workloads
 
@@ -127,6 +130,14 @@ Managed-heap statistics measure a different quantity from process RSS.
 Memory savings depend on object representation and lifetime. The router's streaming workload
 instead recorded higher AOT peak RSS because collection is deferred. Cached string hashes
 also consume space; [#99](https://github.com/den-run-ai/pystachy/pull/99) records that tradeoff.
+
+A collection runs when the bytes allocated since the last one reach the larger of 32 MiB and
+the bytes live after it. Pointer-free large objects (8,200 bytes or more: strs and the arrays
+of lists of numbers past 1,024 items) also start one when they are at least half of what was
+allocated since and reach 4 MiB, or as many bytes as were live. Only a collection frees one,
+so without that budget a program that mostly makes and drops big arrays goes through 32 MiB of
+them, cold in cache and zeroed again, between collections. Programs that mostly allocate small
+objects or lists of objects keep the 32 MiB window.
 
 ## Compile time
 
