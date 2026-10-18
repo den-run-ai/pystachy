@@ -92,7 +92,7 @@ make lint check-recordings
 | Compiler/runtime/library behavior | Complete `make verify` or its required CI matrix on the reviewed tree before declaring merge-ready; report missing/failed stages |
 | Code-generation-preserving refactor | `make irsame REF=<base-sha>`; compare diagnostics/exit status as well as IR. The reference compiler uses REF's own `lib/`, so `lib/` changes show as IR differences |
 | Other compiler changes | `make irsame REF=<main-sha>` too, which CI does not run: explain every newly rejected program and changed exit status ([#434](https://github.com/den-run-ai/pystachy/issues/434), [#595](https://github.com/den-run-ai/pystachy/issues/595)). The corpus does not cover every shape |
-| GC, ownership, container layout | Focused JIT/AOT with `PYSTACHY_GC_STRESS_PROGRAM=1`; relevant `listprobe`, `dictprobe`, `eqprobe`, `fileprobe`, `unicodeprobe`; full GC groups. `Str`'s layout is repeated in `pyext.c`, `pyembed.c` and emitted constants |
+| GC, ownership, container layout | Focused JIT/AOT with `PYSTACHY_GC_STRESS_PROGRAM=1`; relevant `listprobe`, `dictprobe`, `eqprobe`, `fileprobe`, `unicodeprobe`, `weakrefprobe`; full GC groups. `Str`'s layout is repeated in `pyext.c`, `pyembed.c` and emitted constants |
 | Lowering, effects, runtime ABI | `make check-ir check-runtime`; affected `tests/ir/*.calls`/effect contracts. `check_runtime.py` treats every literal `pys_*` name in compiler source, comments included, as a runtime reference, and sees no name built with an f-string |
 | FFI, embedding, extensions | `make test-ffi`; CPython twins and actual native calls, with alias/lifetime cases; `make blas-check` with both BLAS providers for ndarray/BLAS views |
 | Driver/runtime cache | `make test-cache`; invalidation and failure paths |
