@@ -83,6 +83,111 @@ last-position optimization. Normal tests include independent upstream numeric
 references, causal-prefix and batch-isolation checks, tied-weight mutation and
 malformed-file rejection; these pass JIT/AOT with GC on every allocation.
 
+## Native training
+
+[`training.py`](training.py) supplies analytic backward kernels and AdamW. It
+shares the forward implementation and caches activations, and accumulates both
+uses of the tied token/output parameter into one gradient. For example:
+
+```python
+from driver import read_input
+from model import load_weights
+from ndarray_blas import matmul
+from training import AdamW, loss_and_grad_with_backend
+
+model = load_weights("model.weights")
+inputs = read_input("batch.input")
+optimizer = AdamW(model)
+for step in range(10):
+    result = loss_and_grad_with_backend(
+        model, inputs.tokens, inputs.targets, inputs.batch, inputs.length, matmul)
+    optimizer.step(result.gradients)
+    print(step, result.loss)
+```
+
+Use `ndarray.matmul` for the scalar backend. Parameters and gradients must be
+whole contiguous arrays. AdamW validates every gradient before any parameter
+mutation and applies weight decay only to parameters with at least two dimensions,
+matching upstream grouping. A new gradient dictionary is returned per call.
+All-ignored targets produce NaN loss and zero gradients; calling AdamW afterward
+still applies its optimizer state and weight-decay rules.
+
+The checker defaults to two successive training steps (`--training-steps 0`
+disables them), comparing every gradient, updated parameter and both optimizer
+moment vectors to upstream PyTorch. Tests also compare directional finite
+differences across every parameter and reject invalid optimizer inputs. Timing
+separates forward/backward from the optimizer. PyTorch lazily initializes moments
+inside its first optimizer step; the native constructor initializes them before
+the timer. First-step optimizer timings therefore include different setup work;
+use the later step for a steady-state comparison. Two steps establish bounded
+update parity, not training convergence or stable long-run throughput.
+
+## Recorded CPU result
+
+[Recorded data](results/native-cpu.json), collected 2026-10-17 UTC on a shared
+AMD EPYC 9V74 host, includes every timing sample, checks and source hashes.
+The model has 108,288 unique parameters: two layers, two heads, width 64,
+context capacity 64, vocabulary 64, bias enabled, batch 2 and sequence length 16.
+All paths use float64 and dropout zero. This is a small randomly initialized
+model, not a pretrained GPT-2 throughput claim.
+
+The compiler source is based on `cad7e042`, using LLVM 18.1.3, CPython 3.12.14
+and PyTorch 2.14.1+cpu. The native BLAS path directly loads the LP64 OpenBLAS
+0.3.30 shared library distributed in the host's SciPy installation; its config
+reports SkylakeX and its thread-count query confirms one thread. SciPy and
+CPython are not loaded by that native executable. The default `libblas.so.3`
+on this host is a different, reference implementation and was not used for
+these optimized timings. PyTorch uses its own CPU kernels, so this compares
+complete implementations rather than isolating compiler code generation.
+
+Medians of five operation timings after one warmup, within one process per tier:
+
+| Runtime | Full logits + loss | Last-position logits |
+|---|---:|---:|
+| Upstream PyTorch | 0.658 ms | 0.680 ms |
+| Pystachy AOT + OpenBLAS | 0.968 ms | 0.865 ms |
+| Pystachy JIT + OpenBLAS | 1.131 ms | 1.087 ms |
+| Pystachy scalar AOT | 3.967 ms | 3.776 ms |
+| Pystachy scalar JIT | 17.677 ms | 16.535 ms |
+| Typed port on CPython | 160.886 ms | 156.050 ms |
+
+For full inference, native BLAS AOT is about 4.1 times faster than scalar AOT
+and 166 times faster than the CPython port, while taking 1.47 times PyTorch's
+latency. Last-position latency is 1.27 times PyTorch's. Loading, compilation,
+output serialization and verification are excluded from these operation timers
+and recorded separately. AOT compilation took 1.99 s scalar and 2.12 s BLAS on
+this host with the runtime cache available. These are advisory measurements on
+shared hardware, with no independent-process confidence interval.
+
+The second training update took 3.176 ms for forward/backward and 0.841 ms for
+AdamW with BLAS AOT, versus PyTorch's 2.541 ms and 1.203 ms respectively. This is
+one later-step observation; the two-step run is primarily a correctness check.
+Across all four model cases and five port execution tiers, 5,309,520 numerical
+comparisons passed, with maximum absolute error `1.366e-14`. Comparisons include
+full/last logits, losses, all gradients, two parameter updates and both Adam
+moments. Tests also cover all-ignored loss/zero gradients. The report retains
+the measured controller hash and the published controller hash: subsequent
+changes only tightened reused-fixture validation and environment reporting;
+the measured model, backward and BLAS sources are identical.
+
+## Reusing autodiff components
+
+The existing microGPT port already uses the scalar reverse-mode engine that
+[micrograd recommends as its successor](https://github.com/karpathy/micrograd#training-a-gpt).
+Its local derivatives and reverse graph traversal are useful for scalar examples.
+Expanding matrix products into individual scalar graph nodes would discard the
+main benefit of the ndarray/BLAS path.
+
+[HIPS Autograd](https://github.com/HIPS/autograd) is a useful source of tensor
+gradient rules, especially broadcasting reductions, reshapes, transposes and
+matrix products. Its current package wraps NumPy dynamically and is not a drop-in
+native dependency. A future typed tensor tape could record whole ndarray
+operations and reuse this example's validated backward kernels, keeping matrix
+products in BLAS. The present example uses explicit analytic backward and does
+not provide general automatic or higher-order differentiation. No Autograd or
+micrograd code is vendored here; any future source adaptation must retain the
+upstream MIT notices.
+
 This example does not implement GPU execution, mixed precision, distributed
 training, dropout, the upstream data pipeline or direct `.pt` checkpoint
 loading. It demonstrates native execution and supplies bounded correctness and

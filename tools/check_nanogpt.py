@@ -117,20 +117,34 @@ def compare(expected, actual, rtol=1e-9, atol=1e-10):
             "max_tolerance_fraction": max_scaled, "rtol": rtol, "atol": atol}
 
 
-def parse_output(stdout, repeats):
+def parse_output(stdout, repeats, training_steps):
     checks = {}
     timings = {}
+    steps = []
     for line in stdout.splitlines():
         if not line.startswith(PREFIX):
             continue
         tag, payload = line.split(" ", 1)
         value = ast.literal_eval(payload)
-        if tag == PREFIX + "EDGE":
+        if tag == PREFIX + "STEP":
+            if len(value) != 8 or value[0] != len(steps):
+                raise ValueError("invalid/out-of-order training step")
+            index, shape, logits, loss, gradients, parameters, first, second = value
+            steps.append({"index": index, "shape": shape, "logits": logits, "loss": loss,
+                          "gradients": gradients, "parameters": parameters,
+                          "first_moment": first, "second_moment": second})
+        elif tag == PREFIX + "TRAIN_TIME":
+            if len(value) != 3 or value[0] != len(timings.setdefault("training", [])):
+                raise ValueError("invalid/out-of-order training timing")
+            timings["training"].append({"forward_backward_seconds": value[1], "optimizer_seconds": value[2]})
+        elif tag == PREFIX + "EDGE":
             if "edge" in checks:
                 raise ValueError("duplicate edge result")
-            if len(value) != 1:
+            if len(value) != (2 if training_steps else 1):
                 raise ValueError("invalid edge result")
             checks["edge"] = {"all_ignored_loss_is_nan": value[0]}
+            if training_steps:
+                checks["edge"]["all_ignored_gradients"] = value[1]
         elif tag in (PREFIX + "FULL", PREFIX + "LAST"):
             key = tag.removeprefix(PREFIX).lower()
             if key in checks:
@@ -149,14 +163,18 @@ def parse_output(stdout, repeats):
             raise ValueError(f"unexpected result tag {tag}")
     if checks.keys() != {"full", "last", "edge"}:
         raise ValueError("missing full, last-token, or edge results")
-    if timings.keys() != {"load_time", "full_time", "last_time"}:
+    if timings.keys() != {"load_time", "full_time", "last_time"} | ({"training"} if training_steps else set()):
         raise ValueError("missing/unexpected timings")
+    if len(steps) != training_steps or len(timings.get("training", [])) != training_steps:
+        raise ValueError("missing training steps")
     for key in ("full_time", "last_time"):
         if not isinstance(timings[key], list) or len(timings[key]) != repeats:
             raise ValueError("missing timing repeats")
-    flat_times = [timings["load_time"], *timings["full_time"], *timings["last_time"]]
+    flat_times = [timings["load_time"], *timings["full_time"], *timings["last_time"],
+                  *(value for row in timings.get("training", []) for value in row.values())]
     if any(isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t) or t < 0 for t in flat_times):
         raise ValueError("invalid timing")
+    checks["steps"] = steps
     return checks, timings
 
 
@@ -175,7 +193,7 @@ def write_weights(model, destination):
                 out.write(" ".join(repr(value) for value in values[start:start + 1024]) + "\n")
 
 
-def export_reference(upstream_path, directory, cases, warmups, repeats):
+def export_reference(upstream_path, directory, cases, warmups, repeats, training_steps):
     """Runs only in the selected torch-python subprocess."""
     if digest(upstream_path) != UPSTREAM_SHA256:
         raise ValueError("upstream model.py does not match the pinned source hash")
@@ -193,7 +211,7 @@ def export_reference(upstream_path, directory, cases, warmups, repeats):
                 "torch_version": torch.__version__, "torch_config": torch.__config__.show(), "python": sys.version,
                 "torch_num_threads": torch.get_num_threads(), "dtype": "float64",
                 "dropout": 0.0, "warmups": warmups, "repeats": repeats,
-                "created_unix": time.time(), "cases": []}
+                "training_steps": training_steps, "created_unix": time.time(), "cases": []}
     for case_index, case in enumerate(cases):
         torch.manual_seed(1729 + case_index)
         config = module.GPTConfig(**{key: value for key, value in case.items() if key not in ("name", "batch", "length")}, dropout=0.0)
@@ -227,8 +245,31 @@ def export_reference(upstream_path, directory, cases, warmups, repeats):
                     if iteration >= warmups:
                         timings[key + "_time"].append(elapsed)
         ignored = torch.full_like(y, -1)
+        model.zero_grad(set_to_none=True)
         _, ignored_loss = model(x, ignored)
         checks["edge"] = {"all_ignored_loss_is_nan": math.isnan(ignored_loss.item())}
+        if training_steps:
+            ignored_loss.backward()
+            checks["edge"]["all_ignored_gradients"] = {name: p.grad.detach().reshape(-1).tolist() for name, p in model.named_parameters()}
+        checks["steps"] = []
+        timings["training"] = []
+        optimizer = model.configure_optimizers(weight_decay=0.1, learning_rate=0.001, betas=(0.9, 0.999), device_type="cpu")
+        for step in range(training_steps):
+            model.zero_grad(set_to_none=True)
+            start = time.perf_counter()
+            logits, loss = model(x, y)
+            loss.backward()
+            backward_seconds = time.perf_counter() - start
+            gradients = {name: p.grad.detach().reshape(-1).tolist() for name, p in model.named_parameters()}
+            start = time.perf_counter()
+            optimizer.step()
+            optimizer_seconds = time.perf_counter() - start
+            checks["steps"].append({"index": step, "shape": list(logits.shape), "logits": logits.detach().reshape(-1).tolist(),
+                                    "loss": loss.item(), "gradients": gradients,
+                                    "parameters": {name: p.detach().reshape(-1).tolist() for name, p in model.named_parameters()},
+                                    "first_moment": {name: optimizer.state[p]["exp_avg"].reshape(-1).tolist() for name, p in model.named_parameters()},
+                                    "second_moment": {name: optimizer.state[p]["exp_avg_sq"].reshape(-1).tolist() for name, p in model.named_parameters()}})
+            timings["training"].append({"forward_backward_seconds": backward_seconds, "optimizer_seconds": optimizer_seconds})
         record = {"case": case, "inputs": inputs, "weight_sha256": digest(weights_path),
                   "input_sha256": digest(input_path), "checks": checks, "timings": timings,
                   "parameter_count": sum(p.numel() for p in model.parameters())}
@@ -238,19 +279,48 @@ def export_reference(upstream_path, directory, cases, warmups, repeats):
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 
-def runner_source(backend):
+def runner_source(backend, training_steps):
     imports = "from ndarray import matmul\n" if backend == "scalar" else "from ndarray_blas import matmul\n"
+    train_import = "from training import AdamW, loss_and_grad_with_backend\n" if training_steps else ""
     edge_code = """
+ignored = [-1] * len(targets)
+edge_result = loss_and_grad_with_backend(model, tokens, ignored, batch, length, matmul)
+ignored_gradients: dict[str, list[float]] = {}
+for name in model.parameters:
+    ignored_gradients[name] = edge_result.gradients[name].values()
+print("NANOGPT_EDGE", (math.isnan(edge_result.loss), ignored_gradients))
+""" if training_steps else """
 ignored = [-1] * len(targets)
 logits = forward_with_backend(model, tokens, batch, length, matmul, False)
 print("NANOGPT_EDGE", (math.isnan(cross_entropy(logits, ignored)),))
 """
+    train_code = """
+optimizer = AdamW(model)
+for step in range(STEPS):
+    start = time.perf_counter()
+    result = loss_and_grad_with_backend(model, tokens, targets, batch, length, matmul)
+    backward_seconds = time.perf_counter() - start
+    start = time.perf_counter()
+    optimizer.step(result.gradients)
+    optimizer_seconds = time.perf_counter() - start
+    gradients: dict[str, list[float]] = {}
+    parameters: dict[str, list[float]] = {}
+    first: dict[str, list[float]] = {}
+    second: dict[str, list[float]] = {}
+    for name in model.parameters:
+        gradients[name] = result.gradients[name].values()
+        parameters[name] = model.parameters[name].values()
+        first[name] = optimizer.first_moment[name].values()
+        second[name] = optimizer.second_moment[name].values()
+    print("NANOGPT_STEP", (step, result.logits.shape, result.logits.values(), result.loss, gradients, parameters, first, second))
+    print("NANOGPT_TRAIN_TIME", (step, backward_seconds, optimizer_seconds))
+""".replace("STEPS", str(training_steps)) if training_steps else ""
     return """import math
 import sys
 import time
 from model import load_weights, forward_with_backend, cross_entropy
 from driver import read_input
-""" + imports + """
+""" + imports + train_import + """
 start = time.perf_counter()
 model = load_weights(sys.argv[1])
 inputs = read_input(sys.argv[2])
@@ -283,7 +353,7 @@ for iteration in range(warmups + repeats):
     if iteration >= warmups:
         times.append(elapsed)
 print("NANOGPT_LAST_TIME", times)
-""" + edge_code
+""" + edge_code + train_code
 
 
 def source_hashes():
@@ -335,14 +405,15 @@ def main(argv=None):
     parser.add_argument("--benchmark", action="store_true", help="also run the larger 2-layer, 64-wide benchmark case")
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--training-steps", type=int, default=2)
     parser.add_argument("--blas-library", help="optional shared library path/name for native CBLAS")
     parser.add_argument("--blas-symbol", default="cblas_dgemm", help="LP64 CBLAS dgemm symbol (used with --blas-library)")
     parser.add_argument("--json", type=Path)
     parser.add_argument("--timeout", type=float, default=300.0)
     parser.add_argument("--reference-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if args.repeats < 1 or args.warmups < 0 or not math.isfinite(args.timeout) or args.timeout <= 0:
-        parser.error("repeats >= 1, warmups >= 0 and finite timeout > 0 are required")
+    if args.repeats < 1 or args.warmups < 0 or args.training_steps < 0 or not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("repeats >= 1, warmups/training-steps >= 0 and finite timeout > 0 are required")
     if args.fixtures and (args.export_only or args.upstream_model):
         parser.error("--fixtures cannot be combined with --upstream-model or --export-only")
     if not args.fixtures and args.upstream_model is None:
@@ -352,7 +423,7 @@ def main(argv=None):
     cases = CASES + ([BENCHMARK] if args.benchmark else [])
     if args.reference_worker:
         export_reference(args.upstream_model.resolve(), args.export_only.resolve(), cases,
-                         args.warmups, args.repeats)
+                         args.warmups, args.repeats, args.training_steps)
         return 0
     env = dict(os.environ)
     env.update({name: "1" for name in THREAD_ENV})
@@ -387,7 +458,8 @@ def main(argv=None):
         if not args.fixtures:
             command = [args.torch_python, str(Path(__file__).resolve()), "--reference-worker",
                        "--upstream-model", str(args.upstream_model.resolve()), "--export-only", str(fixtures),
-                       "--warmups", str(args.warmups), "--repeats", str(args.repeats)]
+                       "--warmups", str(args.warmups), "--repeats", str(args.repeats),
+                       "--training-steps", str(args.training_steps)]
             if args.benchmark:
                 command.append("--benchmark")
             result = execute(command, env, args.timeout)
@@ -400,8 +472,8 @@ def main(argv=None):
         manifest = json.loads((fixtures / "manifest.json").read_text())
         if manifest["upstream_sha256"] != UPSTREAM_SHA256:
             raise ValueError("fixture upstream hash differs")
-        if any(manifest[key] != getattr(args, key) for key in ("warmups", "repeats")):
-            raise ValueError("fixture warmups/repeats differ from requested settings")
+        if any(manifest[key] != getattr(args, key) for key in ("warmups", "repeats", "training_steps")):
+            raise ValueError("fixture warmups/repeats/training_steps differ from requested settings")
         validate_cases(manifest, cases)
         references = {entry["name"]: load_reference(fixtures, entry, case) for entry, case in zip(manifest["cases"], cases)}
         report["reference_manifest"] = manifest
@@ -409,7 +481,7 @@ def main(argv=None):
         commands = {}
         for backend in ["scalar"] + (["blas"] if args.blas_library else []):
             source = temp / f"runner_{backend}.py"
-            source.write_text(runner_source(backend))
+            source.write_text(runner_source(backend, args.training_steps))
             executable = temp / f"runner_{backend}"
             result = execute([*compiler, "build", str(source), "-o", str(executable)], env, args.timeout)
             report["builds"][backend] = process_record(result) | {"runner_sha256": digest(source)}
@@ -435,7 +507,7 @@ def main(argv=None):
                 record["tiers"][tier] = row
                 try:
                     require_success(result)
-                    actual, timings = parse_output(result["stdout"], args.repeats)
+                    actual, timings = parse_output(result["stdout"], args.repeats, args.training_steps)
                     row["comparison"] = compare(reference["checks"], actual)
                     row["timings"] = timings
                     row["median_full_seconds"] = statistics.median(timings["full_time"])

@@ -40,7 +40,7 @@ class ParityContractTests(unittest.TestCase):
             "NANOGPT_EDGE (True,)",
         ]
         valid = "\n".join(lines)
-        checks, timings = BENCH.parse_output(valid, 1)
+        checks, timings = BENCH.parse_output(valid, 1, 0)
         self.assertEqual(checks["full"]["logits"], [0.25, -0.25])
         self.assertEqual(timings["full_time"], [0.001])
         for invalid in (
@@ -52,17 +52,20 @@ class ParityContractTests(unittest.TestCase):
             valid + "\nNANOGPT_UNKNOWN []",
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
-                BENCH.parse_output(invalid, 1)
+                BENCH.parse_output(invalid, 1, 0)
+        with self.assertRaises(ValueError):
+            BENCH.parse_output(valid, 1, 1)
 
     def test_runner_has_no_torch_or_numpy_dependency(self):
         for backend in ("scalar", "blas"):
-            source = BENCH.runner_source(backend)
-            tree = ast.parse(source)
-            imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
-            self.assertNotIn("torch", imports)
-            self.assertNotIn("numpy", imports)
-            self.assertNotIn("training", imports)
-            self.assertIn("ndarray" if backend == "scalar" else "ndarray_blas", imports)
+            for steps in (0, 2):
+                source = BENCH.runner_source(backend, steps)
+                tree = ast.parse(source)
+                imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
+                self.assertNotIn("torch", imports)
+                self.assertNotIn("numpy", imports)
+                self.assertEqual("training" in imports, steps > 0)
+                self.assertIn("ndarray" if backend == "scalar" else "ndarray_blas", imports)
 
     def test_export_preserves_names_shapes_and_float64_values(self):
         class Tensor:
@@ -118,7 +121,7 @@ class ParityContractTests(unittest.TestCase):
                     BENCH.load_reference(directory, entry)
                 path.write_bytes(original)
             with self.assertRaisesRegex(ValueError, "pinned source hash"):
-                BENCH.export_reference(weight, directory, [], 0, 1)
+                BENCH.export_reference(weight, directory, [], 0, 1, 0)
 
 
     def test_requested_case_inventory_and_configuration_are_required(self):
