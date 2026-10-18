@@ -70,8 +70,12 @@ session's tools exist. When access is missing, report the specific limitation.
   and the report path are shared. Use `mktemp -d` for scratch probes; PID-only names
   can collide across sessions. Bound `PYSTACHY_JOBS` on shared hosts. Do not run
   timing benchmarks alongside heavy builds or broad test jobs.
-- Select cases with shell globs, as `FILES` does: the git pathspec in
-  `git ls-files 'tests/*.py'` also matches nested helpers; write `':(glob)tests/*.py'`.
+- `FILES` takes top-level `tests/*.py` programs and `tests/errors/` and
+  `tests/deviations/` cases. `tests/ir/` probes run through `make check-ir`, and other
+  subdirectories hold helper modules; the git pathspec `'tests/*.py'` matches those too,
+  `':(glob)tests/*.py'` does not. Do not name test files or packages after stdlib modules:
+  `tests/record.sh` runs cases with `tests/` first on `sys.path`, and CI's python.org
+  CPython loads more modules (such as `binascii`) from files that a test can shadow.
 
 Run commands from the repository root. Replace the example selectors with affected tests.
 
@@ -86,10 +90,10 @@ make lint check-recordings
 | Change/risk | Additional evidence |
 |---|---|
 | Compiler/runtime/library behavior | Complete `make verify` or its required CI matrix on the reviewed tree before declaring merge-ready; report missing/failed stages |
-| Code-generation-preserving refactor | `make irsame REF=<base-sha>`; compare diagnostics/exit status as well as IR |
+| Code-generation-preserving refactor | `make irsame REF=<base-sha>`; compare diagnostics/exit status as well as IR. The reference compiler uses REF's own `lib/`, so `lib/` changes show as IR differences |
 | Other compiler changes | `make irsame REF=<main-sha>` too, which CI does not run: explain every newly rejected program and changed exit status ([#434](https://github.com/den-run-ai/pystachy/issues/434), [#595](https://github.com/den-run-ai/pystachy/issues/595)). The corpus does not cover every shape |
 | GC, ownership, container layout | Focused JIT/AOT with `PYSTACHY_GC_STRESS_PROGRAM=1`; relevant `listprobe`, `dictprobe`, `eqprobe`, `fileprobe`, `unicodeprobe`; full GC groups. `Str`'s layout is repeated in `pyext.c`, `pyembed.c` and emitted constants |
-| Lowering, effects, runtime ABI | `make check-ir check-runtime`; affected `tests/ir/*.calls`/effect contracts. `check_runtime.py` treats every `pys_*` name in compiler source, comments included, as a runtime reference |
+| Lowering, effects, runtime ABI | `make check-ir check-runtime`; affected `tests/ir/*.calls`/effect contracts. `check_runtime.py` treats every literal `pys_*` name in compiler source, comments included, as a runtime reference, and sees no name built with an f-string |
 | FFI, embedding, extensions | `make test-ffi`; CPython twins and actual native calls, with alias/lifetime cases; `make blas-check` with both BLAS providers for ndarray/BLAS views |
 | Driver/runtime cache | `make test-cache`; invalidation and failure paths |
 | New setting, shell tool or module | Add a `PYSTACHY_*` setting that can change results to `tests/verify.sh`'s ignored-environment list and the [settings table](docs/internals.md#environment-variables); a shell utility the driver or tests call to the python-free stage's tool list; a compiler module to `COMPILER_SOURCES` (`make check-runtime` checks it) |
@@ -108,7 +112,10 @@ If a stage times out and passes alone, report both outcomes; do not relabel the 
 partial matrix as a complete pass. Do not disable gates to make a run green. A CI group
 over its job limit is cancelled even when its tests passed; groups target under ten
 minutes, so shard a slow one instead of raising the limit
-([#562](https://github.com/den-run-ai/pystachy/pull/562)).
+([#562](https://github.com/den-run-ai/pystachy/pull/562)). `gc-self` is a single
+GC-stressed self-compilation with its own ten-minute bound: a change that slows every
+compilation must be fixed in the compiler
+([#581](https://github.com/den-run-ai/pystachy/pull/581)).
 
 ## Hosted agent sessions
 
@@ -122,7 +129,8 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
 - `tools/setup.sh` installed the missing UBSan runtime and OpenBLAS in seconds. The
   preinstalled `ruff` was not the pinned version and `shellcheck` was missing: use a venv
   from `tools/requirements-dev.txt`. `tools/package_smoke.py` needs the uv and setuptools
-  pins in `packages.yml`. Without `/usr/bin/time`, read `VmHWM` in `/proc/PID/status`.
+  pins in `packages.yml`. `/usr/bin/time` and `perf` were absent: read `VmHWM` in
+  `/proc/PID/status` for peak memory and profile with callgrind.
 - `make` took 3 minutes and `make test` 8 (4,456 checks); `make check-recordings` and
   Lint's `tools/` tests took about a minute each. Each verify group bootstraps first, so
   use CI for the full matrix.
@@ -132,16 +140,21 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
   `&`: asynchronous jobs ignore SIGINT, so the `io_sigint*` cases fail or hang.
 - Never use `pkill -f` or a broad `pgrep` pattern; it has killed agents' own shells and
   other runs. Kill the PIDs you started.
-- Containers, scratch space and worktrees vanish with the session. Push what you keep, and
-  put the commands, logs and measurements you cite in the PR or issue. A stop hook may
-  require a clean checkout, so keep scratch files outside the repository.
+- Containers, scratch space and worktrees vanish with the session, and a container that
+  runs out of memory restarts mid-session, killing background jobs and agents. Run one
+  heavy build, valgrind or timing job at a time, push validated work early, and put the
+  commands, logs and measurements you cite in the PR or issue. A stop hook may require a
+  clean checkout, so keep scratch files outside the repository.
 - Here `gh` had an invalid token and GraphQL was blocked (`gh pr list` failed); REST reads
-  through `gh api repos/...` worked, and writes went through the GitHub connector. Its
-  tools have dropped footers and rewritten non-ASCII spacing, so re-read what you publish.
-- Permission classifiers may refuse force-pushes, branch replacement or compound
-  `git stash` commands; use plain pushes and merges or ask, never a workaround. Event
-  wake-ups can be late or missing, and `git checkout` refuses a branch checked out in
-  another worktree: re-read live PR state and `git branch --show-current` before acting.
+  through `gh api repos/...` worked, writes went through the GitHub connector, and branch
+  deletion was refused (HTTP 403), so leave cleanup lists to the owner. Connector tools
+  have dropped footers and rewritten non-ASCII spacing, and tool-call JSON decodes
+  `\uXXXX` escapes: re-read what you write.
+- Permission classifiers may refuse force-pushes, branch replacement, compound
+  `git stash` commands or a merge only its author reviewed; use plain pushes and merges,
+  get explicit authorization or ask, never a workaround. Event wake-ups can be late or
+  missing, and `git checkout` refuses a branch checked out in another worktree: re-read
+  live PR state and `git branch --show-current` before acting.
 
 ## Make regressions hard to hide
 
@@ -176,7 +189,10 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
 - Every test also runs with a collection at every allocation, under UBSan, without
   Python and unoptimized. Keep tests small and deterministic: no quadratic depth,
   busy-wait timers, core-dump-dependent signal text or CPython's "Did you mean" hints.
-  SIGINT cases must match `tests/run.sh`'s `kill -INT|KeyboardInterrupt` grep.
+  SIGINT cases must match `tests/run.sh`'s `kill -INT|KeyboardInterrupt` grep. Make
+  comparison helpers fail closed: a tolerance check must reject NaN against a finite value,
+  and `zip()` must not hide a length mismatch
+  ([#583](https://github.com/den-run-ai/pystachy/pull/583)).
 - Fixtures encode today's gaps and exact text: `tests/errors/optional_*.py` assume `json`
   is missing, `tests/cache.sh` edits runtime messages, and some `tests/errors` headers
   carry `FILE:LINE`. Search `tests/` and `tools/` before adding a module, rewording a
@@ -224,9 +240,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Keep upstream provenance, licenses, hashes and `# Pystachy port:` explanations.
   A small adaptation should remain runnable under CPython when that is its contract.
   Try unchanged upstream first, then minimal adaptations; avoid library-name special
-  cases where a general compiler fix is appropriate.
+  cases where a general compiler fix is appropriate. Compute provenance hashes from the
+  fetched upstream file, never from memory.
 - When a feature lands, search the README, `lib/README.md`, `docs/stdlib.md` and the
-  compatibility docs for statements it makes stale. Add only the reports a PR's claims need.
+  compatibility docs for statements it makes stale. Add only the reports a PR's claims
+  need. Keep the README concise, with a stable roadmap and no active issues, and take its
+  numbers from committed results (`bench/*/results`, `examples/*/results`, `docs/reports/`).
 - Check outputs/checksums before measuring. Distinguish original CPython, adapted
   CPython, old Pystachy and new Pystachy baselines; JIT startup/compilation, AOT build
   and steady-state execution are separate costs. Record flags, hardware, input size,
@@ -237,8 +256,10 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Compare variants built by the same compiler, pinned to one core and interleaved, using
   medians or callgrind instruction counts; sequential runs on a shared host have shown
   changes that interleaving removed. The first JIT run also builds the runtime cache, and
-  JIT inlining skips programs over `PYSTACHY_JIT_INLINE` lines of IR. Land a benchmark
-  driver with deterministic count guards (as `make re-probe` does) before optimizing.
+  JIT inlining skips programs over `PYSTACHY_JIT_INLINE` lines of IR. Name the BLAS
+  provider in comparisons. Check GC threshold changes on several workloads, and remove
+  avoidable allocations before tuning the collector. Land a benchmark driver with
+  deterministic count guards (as `make re-probe` does) before optimizing.
 
 ## Coordinate, publish and hand off
 
@@ -251,7 +272,9 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - When integrating stacks, preserve both sides' runtime hooks, shared tables,
   test registrations and workflow checks. Follow dependency order, refresh each
   dependent base after its predecessor lands and review the combined diff.
-  A clean textual merge is not semantic validation.
+  A clean textual merge is not semantic validation. Never rebuild a branch from an older
+  tree (`git commit-tree` once dropped 41 files); replay with merges or cherry-picks and
+  diff the result against main.
 - Name the kept side explicitly when scripting conflict resolution; `ours` and `theirs`
   swap with merge direction. Conflict hotspots: `THIRD_PARTY_NOTICES`, README and docs
   tables, the Makefile's `.PHONY` line, `tests/verify.sh`, `check_runtime.py`'s `ALLOC`
@@ -261,16 +284,21 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   older merge base is historical evidence. Validate the combined tree with current
   main, use an expected-head SHA where supported, and recheck main after merging.
   Green CI alone does not make an experimental PR ready; unresolved scope/design
-  risks remain reasons to keep it draft. PRs have been held despite green CI until an
-  independent adversarial review of the exact head passed
+  risks remain reasons to keep it draft. Green PRs have waited for an independent
+  adversarial review of the exact head
   ([#647](https://github.com/den-run-ai/pystachy/pull/647),
-  [#658](https://github.com/den-run-ai/pystachy/pull/658)).
+  [#658](https://github.com/den-run-ai/pystachy/pull/658)), and the authoring session's
+  own review is not independent. A mergeable state is not CI evidence: branch protection
+  requires only the DCO check, and admins bypass it. Page check runs with `per_page=100`;
+  the default page of 30 is shorter than one push's list.
 - `main` contains only merge commits: bring main into a branch by merging, not rebasing,
   and land stacks so each merge publishes a CI-tested tree. GitHub can refuse, or call
   dirty, a merge that is clean locally (criss-cross merge bases); merge main into the
   branch, push and compare the remote tree with the tested one
   ([#170](https://github.com/den-run-ai/pystachy/pull/170)). Before merging, check the
-  diff for stray files (`*.rej`, a file named `-`) and stale status text.
+  diff for stray files (`*.rej`, a file named `-`) and stale status text. When merging is
+  authorized, prefer landing green, independent PRs to growing stacks, and say whether a
+  merge you report was a local trial or happened on GitHub.
 - CI runs on pull requests, pushes to main and manual dispatch, so a branch without a PR
   gets none, and no `pull_request` workflow runs while a PR has conflicts. Each push
   queues about 30 jobs (about ten minutes) and cancels the PR's previous run: batch
@@ -303,10 +331,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   Put research findings and roadmaps in issues, and raw evaluation records on a
   separate research branch rather than in the docs of open PRs.
 - Answer the maintainer's direct questions first, after a short TL;DR; replies are often
-  read on a phone. Apply feedback that arrives mid-task before continuing. Keep effort
-  proportional: no agent fan-out for simple triage, and when asked to wrap up, finish on
-  CI evidence and file follow-ups. Comment on GitHub only to add information, take only
-  the outward actions you were asked to, and never name private correspondents publicly.
+  read on a phone. Apply feedback that arrives mid-task before continuing, and once a plan
+  is approved, implement it rather than drifting into triage. Keep effort proportional:
+  treat a stated token budget as a cap, ask before fanning out agents (and have them save
+  findings as they go), and when asked to wrap up, finish on CI evidence and file
+  follow-ups. Comment on GitHub only to add information, take only the outward actions you
+  were asked to, and never name private correspondents publicly.
 - Before stopping or handing off, leave a concrete summary: branch/worktree and
   commit/PR, changed behavior, tests completed/failed/not run, live jobs you own,
   remaining risks and the next action. Preserve authorized work in commits/pushed
