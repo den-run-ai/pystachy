@@ -28,7 +28,7 @@ jobs:
         with:
           python-version-file: .python-version
       - run: tools/setup.sh --minimal
-      - run: python3 -m pip install uv==0.12.23 setuptools==84.0.0 wheel==0.48.0
+      - run: python3 -m pip install -r tools/requirements-packaging.txt
       - run: make
       - run: python3 tools/package_smoke.py --no-build-isolation
       - run: python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
