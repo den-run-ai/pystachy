@@ -511,6 +511,10 @@ def typestr(t: str) -> str:
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
     t = t.replace("[?,?]", "").replace("[?]", "")
+    while "rec[" in t:
+        a = t.find("rec[")
+        b = t.find("]", a)
+        t = t[:a] + short(t[a + 4:b]) + t[b + 1:]
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7

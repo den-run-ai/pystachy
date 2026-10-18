@@ -602,6 +602,7 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
+    want = self.rec_type(want)
     k = n.kind
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:
@@ -3313,7 +3314,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t))))):
+        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -3474,7 +3475,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 a = Val(nk[0], unopt(elem(b.t)))
                 ok = nk[1]
             et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
-            if is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t)):
+            if is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t)):
                 et = self.union_type([elem(b.t), a.t])
             if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                 et = self.optional(elem(b.t))
@@ -3634,6 +3635,8 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
 def gen_numeric_comparable(self, t: str, u: str) -> bool:
     # Matching builtin container trees may differ at numeric leaves. Keep
     # optional/union widening and user comparison callbacks out of this path.
+    if ("rec[" in t or "rec[" in u) and self.ueq_type(t) and self.ueq_type(u):
+        return True  # paired descriptors preserve each recursive/native layout
     if t == u:
         return self.ueq_type(t)
     if self.isnum(t) and self.isnum(u):

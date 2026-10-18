@@ -1610,7 +1610,9 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
    has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
-   U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors.
+   U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
+   R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor.
+   skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
    __hash__, so that they hash and compare by identity alone, else H, hashed by the program's
@@ -1632,6 +1634,7 @@ static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__
 static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
+  if (nbusy >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
   if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
   busy[nbusy++] = p;
   if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
@@ -1655,11 +1658,16 @@ static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-
 }
 static const char *skip(const char *d) {
   char c = *d++;
+  if (c == 'R') { unum(&d); return d; }
   if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
   if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   if (c == 'U') for (I n = unum(&d); n > 0; n--) { unum(&d); d = skip(d); }
+  return d;
+}
+static const char *recdesc(const char *d) {
+  while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
   return d;
 }
 static const char *utype(I tag, const char *d) {
@@ -1734,6 +1742,7 @@ static const char *kdesc(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
 static int dlive(Dict *d, I e) { return d->hs[e] || d->keys[e]; }
 static const char *repr(Buf *b, I v, const char *d) {
   switch (*d++) {
+  case 'R': { const char *ref = d - 1; repr(b, v, recdesc(ref)); return skip(ref); }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr(b, v, member); return end; }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
@@ -1832,6 +1841,7 @@ static int eqpair(I a, I b, const char *x, const char *y);
    separate from direct comparison: equal unboxed float bits need not compare equal,
    and an optional scalar's box does not give that scalar Python object identity. */
 static int eqitem(I a, I b, const char *d) {
+  d = recdesc(d);
   char c = d[*d == '?'];
   if (c == 'U') return eqpair(a, b, d, d);
   return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
@@ -1840,6 +1850,7 @@ static int eqitem(I a, I b, const char *d) {
 #define EQ_PROBE()
 #endif
 static int eqv(I a, I b, const char *d) {
+  d = recdesc(d);
   EQ_PROBE();
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
@@ -1890,7 +1901,8 @@ typedef struct { I value; const char *desc; } EqValue;
 static EqValue eqresolve(I v, const char *d) {
   /* Each operand has its own layout: an optional number is a one-slot box,
      a union is a tag/payload box, and a concrete container is its original pointer. */
-  while (*d == '?' || *d == 'U') {
+  while (*d == '?' || *d == 'U' || *d == 'R') {
+    if (*d == 'R') { d = recdesc(d); continue; }
     if (*d == '?') { if (!v) return (EqValue){0, "n"}; v = unbox(v, ++d); }
     else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
   }
@@ -1900,7 +1912,7 @@ static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
   return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
 }
-static int eqpair(I a, I b, const char *x, const char *y) {
+static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   /* Only closed builtin value trees reach this path (the compiler rejects user
      callbacks). Never decode b with x: equal Python types may have different
      native element layouts, including nested unions and boxed optionals. */
@@ -1918,12 +1930,16 @@ static int eqpair(I a, I b, const char *x, const char *y) {
      matching Python, this keeps a shared DAG from expanding into its logical tree.
      Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
   if (a == b && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     A local depth argument survives native unwinding without mutable state. */
+  if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded in comparison");
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair(p->a[i], q->a[i], x + 1, y + 1)) return 0;
+    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth + 1)) return 0;
     return 1;
   }
   if (*x == 'D') {
@@ -1935,8 +1951,8 @@ static int eqpair(I a, I b, const char *x, const char *y) {
       if (!dlive(p, i)) continue;
       I j = -1;
       if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair(p->keys[i], q->keys[k], kx, ky)) { j = k; break; }
-      if (j < 0 || !eqpair(p->vals[i], q->vals[j], vx, vy)) return 0;
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth + 1)) { j = k; break; }
+      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth + 1)) return 0;
     }
     return 1;
   }
@@ -1947,7 +1963,7 @@ static int eqpair(I a, I b, const char *x, const char *y) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair(p[i], q[i], ex, ey)) return 0;
+      if (!eqpair_depth(p[i], q[i], ex, ey, depth + 1)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -1955,6 +1971,7 @@ static int eqpair(I a, I b, const char *x, const char *y) {
   }
   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
 }
+static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
 I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
 I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of

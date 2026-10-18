@@ -29,6 +29,7 @@ Imports search builtin modules first, then the program's directory,
 | `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
 | `io` | Subset implementation | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes | `StringIO`'s byte positions; lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure` |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
+| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators | Signed 64-bit integers, 256-container depth, string keys; no hooks, indentation or file APIs; see [scope](../docs/json-prototype.md) |
 | `re` | Subset port of parser/compiler and C engine | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Byte positions; other selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
 | `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
