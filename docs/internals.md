@@ -127,6 +127,13 @@ and cached code-point count plus one (zero means unknown), followed by the bytes
 but keeps byte-based semantics. Compiler literals, FFI adapters and the CPython glue must
 agree with this layout; cache writes do not change the immutable string value.
 
+A bounded, 64-entry weak position cache records byte/code-point offsets outside the string
+header. Nearby indexed reads and bounded searches reuse a hint instead of rescanning the
+prefix; this keeps the native lexer's sequential indexing practical for Unicode source.
+Collection clears all hints before reclaiming memory, and in-place append invalidates the
+changed string's hint. The cache retains no strings and adds no header fields; uncached or
+widely separated non-ASCII indexing remains O(n).
+
 Generic operations such as comparison, hashing, representation and sorting receive a compact
 type descriptor. The runtime interprets nested container descriptors and calls generated helpers
 for supported object methods. A dict's or set's descriptor of its keys tells objects hashed by

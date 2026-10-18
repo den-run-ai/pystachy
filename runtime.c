@@ -63,6 +63,14 @@ typedef struct { I len, kind, fill, mask, finger; I *keys, *hs; } Set; /* a set 
 typedef struct { char *p; I n, cap; } Buf;
 typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
 #define NONE INT64_MIN                                 /* omitted slice bound */
+/* Weak, bounded hints for repeated nearby indexing (the native lexer does src[i]).
+   They are not GC roots: collect clears them before any object can be reclaimed or
+   its address reused, and an owned append invalidates its string's hint. */
+typedef struct { Str *s; I byte, point; } TextHint;
+static TextHint text_hints[64];
+#ifndef TEXT_PROBE
+#define TEXT_PROBE() ((void)0)
+#endif
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
    Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
@@ -287,6 +295,7 @@ static I ntrk;                         /* Python references Pystachy objects own
 static void trk_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
+  memset(text_hints, 0, sizeof text_hints);
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
   mark_roots();
@@ -601,17 +610,48 @@ I pys_text_len(Str *s) {
   }
   return s->chars1 - 1;
 }
-static I text_offset(Str *s, I n) {   /* byte offset of code point n, with 0 <= n <= text_len(s) */
-  if (s->chars1 == s->len + 1) return n;
-  I i = 0, cp;
-  for (I k = 0; k < n; k++) i += u8char(s->s + i, s->len - i, &cp);
-  return i;
+static TextHint *text_hint_slot(Str *s) {
+  uintptr_t p = (uintptr_t)s;
+  return &text_hints[((p >> 4) ^ (p >> 12) ^ (p >> 20)) & 63];
 }
-static I text_index(Str *s, I at) {   /* code-point index of a byte boundary */
-  if (s->chars1 == s->len + 1) return at;
-  I n = 0, cp;
-  for (I i = 0; i < at; n++) i += u8char(s->s + i, s->len - i, &cp);
-  return n;
+static TextHint *text_hint(Str *s) {
+  TextHint *h = text_hint_slot(s);
+  if (h->s != s) *h = (TextHint){s, 0, 0};
+  return h;
+}
+static I text_before(Str *s, I at) {   /* preceding character, for a valid nonzero byte boundary */
+  if ((unsigned char)s->s[at - 1] < 128) return at - 1;
+  I start = at - 1, cp;
+  while (start > 0 && at - start < 4 && (s->s[start] & 0xC0) == 0x80) start--;
+  return u8char(s->s + start, at - start, &cp) == at - start ? start : at - 1;
+}
+static I text_offset(Str *s, I n) {   /* byte offset of code point n, with 0 <= n <= text_len(s) */
+  if (s->chars1 == s->len + 1 || !n) return n;
+  I len = s->chars1 - 1;
+  if (n == len) return s->len;   /* default search/slice endpoints must not evict an interior hint */
+  TextHint *h = text_hint(s);
+  I at = h->byte, point = h->point, cp, distance = point > n ? point - n : n - point;
+  if (n < distance) { at = point = 0; distance = n; }
+  if (len - n < distance) { at = s->len; point = len; }
+  while (point < n) { TEXT_PROBE(); at += u8char(s->s + at, s->len - at, &cp); point++; }
+  while (point > n) { TEXT_PROBE(); at = text_before(s, at); point--; }
+  h->byte = at; h->point = point; return at;
+}
+static I text_index(Str *s, I at) {   /* code-point index at a byte boundary (round up for raw invalid needles) */
+  if (s->chars1 == s->len + 1 || !at) return at;
+  I len = s->chars1 - 1;
+  if (at == s->len) return len;
+  TextHint *h = text_hint(s);
+  I byte = h->byte, point = h->point, cp, distance = byte > at ? byte - at : at - byte;
+  if (at < distance) { byte = point = 0; distance = at; }
+  if (s->len - at < distance) { byte = s->len; point = len; }
+  while (byte < at) { TEXT_PROBE(); byte += u8char(s->s + byte, s->len - byte, &cp); point++; }
+  while (byte > at) {
+    TEXT_PROBE(); I before = text_before(s, byte);
+    if (before < at) break;
+    byte = before; point--;
+  }
+  h->byte = byte; h->point = point; return point;
 }
 Str *pys_text_chr(I c) {
   if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
@@ -642,10 +682,7 @@ I pys_text_next(Str *s, I at) {
 I pys_text_prev(Str *s, I at) {
   if (!at) return -1;   /* exhausted reverse iterator */
   if (at < 0 || at > s->len) pys_fail("IndexError: string index out of range");
-  if ((unsigned char)s->s[at - 1] < 128) return at - 1;
-  I start = at - 1, cp;
-  while (start > 0 && at - start < 4 && (s->s[start] & 0xC0) == 0x80) start--;
-  return u8char(s->s + start, at - start, &cp) == at - start ? start : at - 1;
+  return text_before(s, at);
 }
 Str *pys_text_slice(Str *s, I lo, I hi) {
   span(&lo, &hi, pys_text_len(s));
@@ -719,6 +756,10 @@ __attribute__((noinline)) static Str *str_grow(Str *s, I m, I owned) {   /* s in
 Str *pys_str_iadd(Str *s, Str *t, I owned) {
   I n = s->len + t->len, m = (I)sizeof(Str) + n + 1, chars1 = text_cat_count(s->chars1, s->len, t);
   if (!owned || m > gc_seg(s)->size - 1) s = str_grow(s, m, owned);
+  else if (s->chars1 != s->len + 1) {
+    TextHint *hint = text_hint_slot(s);
+    if (hint->s == s) hint->s = 0;
+  }
   memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; s->chars1 = chars1; return s;
 }
 /* the first n (3 to 8) of a..h as one str, each copied once: the pieces of an f-string or a % format.

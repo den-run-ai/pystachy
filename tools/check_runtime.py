@@ -122,8 +122,9 @@ READS_ONLY = set("""memcmp bcmp memchr memmem strlen strchr strstr strcmp strnca
     __isoc23_strtoll fwrite fputs fprintf snprintf sprintf vsnprintf write""".split()) | HOOKS
 # runtime statics that keep no state from one call to the next: the cache of one-character
 # strings (immutable, made on first use), the scratch buffers of round(x, n), and the C locale that
-# float text uses once CPython or a C library shares the process (c_num: the text is the same)
-NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num"}
+# float text uses once CPython or a C library shares the process (c_num: the text is the same),
+# and weak string-position hints (cleared before GC reuse and on in-place string mutation).
+NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num", "text_hints"}
 # the parameter types whose memory the letters rL wL, rD wD and rF wF are about, by entry prefix
 # for S (the receiver)
 OWNER = {"list.": "L", "dict.": "D", "set.": "D", "file.": "F"}  # (a set's memory counts as a dict's)

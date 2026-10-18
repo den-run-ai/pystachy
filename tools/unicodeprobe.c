@@ -4,6 +4,8 @@
    continuation-byte invalidation rule. The real collector runs normally and under
    PYSTACHY_GC_STRESS=1. Like dictprobe, link with runtime.py's generated IR.
    usage: make unicodeprobe */
+static long long text_steps;
+#define TEXT_PROBE() (text_steps++)
 #include "../runtime.c"
 
 I pys_obj_eq(I c, I a, I b) { (void)c; return a == b; }
@@ -93,11 +95,45 @@ static void cursors(void) {
   collect();
   cached(current, 7, "cursor source lost across collection");
 }
+static void locality(void) {
+  /* A mostly ASCII source file with one Unicode literal must not make repeated
+     lexer-style src[i]/src[i+1] scan the whole prefix. Count actual mapping steps,
+     including actual text_get calls, rather than putting timings in the gate. */
+  const I n = 32768;
+  Str *x = hold(pys_text_chr('x')), *accent = hold(pys_text_chr(0xE9));
+  current = pys_str_add(pys_str_mul(x, n), accent);
+  text_steps = 0;
+  for (I i = 0; i < n; i++) {
+    if (pys_ord(pys_text_get(current, i)) != 'x' ||
+        pys_ord(pys_text_get(current, i + 1)) != (i + 1 == n ? 0xE9 : 'x')) bad("nearby indexed characters");
+  }
+  if (text_steps > 3 * n) bad("nearby get rescans prefixes");
+  text_steps = 0;
+  for (I i = n; i-- > 0;) if (pys_ord(pys_text_get(current, i)) != 'x') bad("backwards indexed characters");
+  if (text_steps > 2 * n) bad("backwards get rescans prefixes");
+  text_steps = 0;
+  for (I i = 0; i < n; i++) if (pys_text_find(current, x, i, INT64_MAX) != i) bad("nearby bounded find");
+  if (text_steps > 2 * n) bad("search default endpoint evicts interior hint");
+  collect();
+  for (I i = 0; i < 64; i++) if (text_hints[i].s) bad("GC kept a weak position hint");
+  if (pys_ord(pys_text_get(current, n)) != 0xE9) bad("index after clearing weak hints");
+  /* Force an in-place append with room already allocated. The suffix completes
+     an invalid raw sequence, changing the mapping before the previous end. */
+  current = pys_alloc_atomic(sizeof(Str) + 32);
+  current->len = 5; memcpy(current->s, "\xC3\xA9x\xF0\x9F", 5);
+  if (pys_text_len(current) != 4 || text_offset(current, 3) != 4) bad("raw append hint setup");
+  Str *tail = hold(pys_str("\xA6\x8A", 2));
+  text_offset(current, 3);   /* hold() may have collected under stress */
+  Str *before = current;
+  current = pys_str_iadd(current, tail, 1);
+  if (current != before || text_hint_slot(current)->s == current) bad("owned append retained a position hint");
+  if (pys_text_len(current) != 3 || pys_ord(pys_text_get(current, 2)) != 0x1F98A) bad("raw append changed cached segmentation");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 2);
   held = pys_list_new(32);
-  cache(); seams(); cursors();
-  if (gc_stress && gc_n <= 2) bad("GC stress did not add allocation-triggered collections");
-  puts("unicodeprobe: cached lengths/appends/concat/repeat, raw seam invalidation, code-point cursors and GC passed");
+  cache(); seams(); cursors(); locality();
+  if (gc_stress && gc_n <= 3) bad("GC stress did not add allocation-triggered collections");
+  puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors and GC passed");
   return 0;
 }
