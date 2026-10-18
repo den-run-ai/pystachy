@@ -62,6 +62,8 @@
 #   file-buffers   tools/fileprobe.c: writable files' malloc'd buffers count as heap bytes, so files
 #                  dropped without close() run collections; every close takes back exactly what was
 #                  counted, a standard stream's are never counted (deterministic counts, no RSS)
+#   select-io      tools/selectprobe.c: real pipe readiness, duplicate descriptors, EOF and EINTR
+#                  timeout-deadline/blocking retries, normally and with GC stress
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings);
 #                  the collector scans the key tables of strs and tuples, and none of ints
@@ -91,7 +93,7 @@ ROOT=$(pwd)
 # --list exposes the same plan to the final CI report gate, which rejects missing groups/steps.
 plan() {
   case $1 in
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -120,7 +122,7 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
-    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit' ;;
+    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
@@ -585,6 +587,16 @@ L=$V/file-buffers.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
   "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
 step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
+fi
+
+# ---- select-io: real descriptors, signal interruptions and readiness loops
+if want select-io; then
+L=$V/select-io.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/selectprobe.c -o "$V/selectprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/selectprobe.ll" -o "$V/selectprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/selectprobe.bc" -o "$V/selectprobe" -lm &&
+  "$V/selectprobe" && PYSTACHY_GC_STRESS=1 "$V/selectprobe" && r=pass; } > "$L" 2>&1
+step select-io $r "$s" "$L" ''
 fi
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control

@@ -69,6 +69,7 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(groups["native-" + shard], ["bootstrap", "tests-native-" + shard])
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
         self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks", "scaling-0"])
+        self.assertIn("select-io", groups["contracts"])
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             for group, steps in groups.items():
