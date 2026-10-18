@@ -4,6 +4,9 @@ Shared instructions for Codex, Claude Code and other coding agents. `CLAUDE.md`
 imports this file; keep project guidance here rather than maintaining two copies.
 This is an onboarding guide, not a snapshot of open issues or CI status.
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for submission policy, DCO sign-offs and
+AI-assistance disclosure. Keep those rules there; this guide covers development workflow.
+
 ## Start with the current tree
 
 1. Read the user's scope, `git status --short --branch`, `git remote -v`,
