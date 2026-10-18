@@ -25,6 +25,9 @@ end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports a
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
 `_imp` loads `lib/_pystachy_imp.py`, a [capability and one-thread lock
 prototype](../prototypes/imp.md) that does not add runtime module loading.
+`_ast` loads `lib/_pystachy_ast.py`, an [expression-node prototype](../prototypes/ast.md)
+without a parser, and `_weakref` loads `lib/_pystachy_weakref.py`, a [weak-reference
+prototype](../prototypes/weakref.md) that does not make `import weakref` work.
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
@@ -271,6 +274,7 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |
 | `math` | Functions and constants with CPython's domain and range errors; restrictions below. |
+| `select` | `select()` of `list[int]` file descriptors and an optional positional timeout, with CPython's results and errors; no `poll`, `epoll`, `fileno()` objects or keyword arguments ([prototype](../prototypes/select.md)). |
 | Type and compiler support | `typing`, `collections.abc` (also `_collections_abc`), `dataclasses`, `builtins`, `__future__`; [FFI](../ffi.md) provides `@ffi.extern` and `@ffi.export`. |
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`

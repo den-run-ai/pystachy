@@ -220,7 +220,7 @@ imports and code deferred until use.
 ## Builtins and library modules
 
 Common numeric, text, container, sorting and file operations are supported. Builtin modules
-provide selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile`.
+provide selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select`.
 An imported module name does not imply every CPython API is available.
 
 The shipped libraries include unchanged upstream modules, localized ports such as
