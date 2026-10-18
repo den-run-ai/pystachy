@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `3f6f42c7648b952940ca806fc711d59314ee381a`.
+**Latest evaluated main:** `43fb4007320c8bf2851e7cfcb6f32d66dc637fef`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1195,6 +1195,107 @@ PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
 /root/.local/bin/python3.13 build/audit-list-repeat/performance.py
 /root/.local/bin/python3.13 build/audit-list-repeat/exact_benchmark.py
 /root/.local/bin/python3.13 build/audit-list-repeat/build_evidence.py
+```
+
+## 2026-10-18 — #641/#642: native adapted nanoGPT inference and training
+
+Evaluated [main `43fb4007`](https://github.com/den-run-ai/pystachy/commit/43fb4007320c8bf2851e7cfcb6f32d66dc637fef),
+after measured `3f6f42c7`. This covers [#641](https://github.com/den-run-ai/pystachy/pull/641)
+(inference, merged 04:04:22 UTC as `1055a65f`) and
+[#642](https://github.com/den-run-ai/pystachy/pull/642)
+(backward/AdamW, merged 04:05:56 UTC as `43fb4007`).
+Intervening [#662](https://github.com/den-run-ai/pystachy/pull/662) changes only README;
+no implementation gain is attributed to it. All merge ancestors were verified.
+Read #491/#616 coordination and both PR discussions before evaluation.
+
+These merges add example code, tests, an offline checker and documentation,
+not compiler/runtime/library implementations. Reused the verified compiler built
+at `3f6f42c7`, SHA-256
+`66cd62d0a803e0a1d21c50b83e3e0043068c295e10560905e78284470bd6d6f4`.
+Compiler/runtime/lib/port Python sources, ndarray and import tooling are unchanged
+(the ports notice gains attribution). Source revision and compiler build revision
+are deliberately separate.
+
+[Normalized evidence](compatibility-2026-10-18-nanogpt.json) retains both checkpoints,
+commands, source/input/compiler/library hashes, fresh references, comparison
+counts/errors, raw timing samples and reproduction scripts. Large deterministic
+reference vectors are represented by hashes and exact export instructions.
+Inputs: **CPython 3.13.16, LLVM 18.1.3, PyTorch 2.14.1+cpu**, pinned upstream nanoGPT
+`3adf61e154c3fe3fca428ad6bc3818b27a3b8291` (`model.py` SHA-256
+`7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c`).
+PyTorch exports were freshly generated at both checkpoints, with one CPU thread,
+float64, dropout zero, fixed seeds, one warmup and three inference repeats.
+The optional native BLAS path uses this host's reference LP64
+`/lib/x86_64-linux-gnu/libblas.so.3`, not the optimized OpenBLAS provider in
+the example's historical performance table.
+
+| Fresh evidence | #641 checkpoint | #642 checkpoint |
+|---|---|---|
+| Native recorded regression checks | **8/8** JIT/AOT over nanoGPT and three ndarray programs | **10/10**, adding training |
+| Per-allocation program GC regression checks | **2/2** nanoGPT JIT/AOT | **4/4** inference + training |
+| Fresh CPython recordings | **4/4** match | **5/5** match |
+| Hosted checker contract tests | **7/7** | **7/7** |
+| Upstream-reference parity, normal | **15/15** case/tier comparisons; **1,965** numeric comparisons | **15/15**; **405,185** numeric comparisons |
+| Upstream-reference parity, program GC every allocation | Same **15/15**, **1,965** | Same **15/15**, **405,185** |
+| Maximum absolute parity error, either GC setting | `8.33e-17` | `3.74e-15` |
+
+Each parity run covers three models (one-token, batched bias, batched no-bias)
+and five tiers: scalar CPython, scalar JIT/AOT and BLAS JIT/AOT. Thus 12 of the
+15 comparisons per setting are native; the three CPython runs are hosted
+controls, not extra native coverage. Each model/tier has 27/229/137 numerical
+inference values at #641 and 9,343/37,331/34,363 values with training at #642.
+Training models contain 1,032 / 4,080 / 3,780 unique parameters. Two successive
+steps compare **every gradient, updated parameter and both Adam moments**,
+as well as logits/loss and all-ignored-target zero gradients.
+The normal regression separately checks directional finite differences across
+every parameter, tied embeddings, causality/batch isolation and malformed inputs.
+Four CPython CLI controls and **eight native CLI comparisons** also pass for
+scalar/BLAS, full/last logits and loss. Those CLI/model sources are unchanged by #642.
+
+### Compatibility gain and boundaries
+
+This is a substantial new **adapted native workload**, not a new unmodified
+PyPI import. Standalone execution of the CPU FP64 transformer now supports
+inference, model-specific analytic backward and AdamW without embedding
+CPython or loading NumPy/PyTorch. Only the offline exporter/oracle needs PyTorch;
+the optional native BLAS runner needs the explicitly selected LP64 library.
+
+Upstream nanoGPT still requires **major adaptation**: typed ndarray operations
+and explicit backward replace the dynamic PyTorch model/runtime. This is not
+general tensor autodiff, native PyTorch/NumPy compatibility, GPU/AMP/DDP,
+dropout, the original data pipeline or direct `.pt` checkpoint loading.
+Two random-model updates do not establish training convergence or long-run
+throughput. Existing ndarray dtype/indexing/ownership gaps remain in
+[#582](https://github.com/den-run-ai/pystachy/issues/582) and its linked issues.
+
+No correctness regression or new uncovered implementation bug was confirmed.
+The historical larger-model performance table in #642 was **not rerun**:
+this audit's tiny, concurrently executed checks (including GC stress) are not
+valid speedup/regression evidence. No memory trend is claimed.
+The initial audit selection named a nonexistent BLAS test and was corrected;
+an optional every-allocation *compiler* GC attempt was interrupted during
+compilation. Successful retries use compiler interval 1000 and program interval
+1. Both incomplete attempts remain explicit in the evidence.
+
+Native stdlib imports remain the **last measured 142/475**, or **146/475** with
+throwing stubs, at `3f6f42c7`; these unchanged inputs were **not reswept**.
+Broad port suites, unchanged Unicode/inference/cache gaps, native unittest/pytest/
+pyperf and full CPython regrtest were not rerun. No broader library acceptance
+is inferred from the new model example.
+
+Reproduce at each retained checkpoint with LLVM 18 on PATH, using the pinned
+upstream file and a PyTorch 2.14.1+cpu environment:
+
+```sh
+python3.13 tools/check_nanogpt.py --upstream-model UPSTREAM/model.py \
+  --torch-python TORCH_ENV/bin/python --export-only build/audit-nanogpt/fixtures \
+  --warmups 1 --repeats 3
+python3.13 tools/check_nanogpt.py --fixtures build/audit-nanogpt/fixtures \
+  --compiler COMPILER --python PY --blas-library /lib/x86_64-linux-gnu/libblas.so.3 \
+  --warmups 1 --repeats 3 --json build/audit-nanogpt/parity.json
+# #642 defaults to two training steps; #641 is inference-only.
+# For GC, set PYSTACHY_GC_STRESS_PROGRAM=1 and PYSTACHY_GC_STRESS=1,
+# and use --compiler "env PYSTACHY_GC_STRESS=1000 COMPILER".
 ```
 
 ## Checks to run when the pending work lands
