@@ -50,6 +50,13 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
                             "_imp": "_pystachy_imp",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
                             "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
+# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct): their
+# classes' fields are the module's own, which a program can neither read, assign, find by
+# hasattr() nor reflect over, and a call of __init__ on an object cannot initialize it again
+OPAQUE: dict[str, bool] = {"_weakref": True}
+# the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
+# not the module's own: weakref.ReferenceType, ast.Constant
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())

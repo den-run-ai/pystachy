@@ -172,12 +172,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
-    if name == "__pys_weakref_new" or name == "__pys_weakref_get":
+    if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr":
         # Private library primitives; a handle's opaque type preserves its referent type
         # without storing a strong reference or permitting ordinary field access to it.
         if self.curfn.mod != "_weakref" or len(args) != 1 or args[0].kind in ["kw", "starred", "dstar"]:
             self.err(f"name '{name}' is not defined")
         o = self.expr(args[0], "")
+        if name == "__pys_weakref_addr":
+            # (an object's address, which CPython's repr of a reference shows; a specialization for
+            # another referent is rejected as __pys_weakref_new rejects it, in whichever compiles first)
+            if o.t not in self.classes:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            return Val(self.scalar_cast('ptrtoint', Val(o.v, '%ptr'), 'int'), "int")
         if name == "__pys_weakref_new":
             if o.t not in self.classes or o.t in self.nts:
                 self.err("_weakref.ref() prototype requires an ordinary class instance")
