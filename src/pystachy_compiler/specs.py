@@ -48,7 +48,8 @@ ABSTRACT_DECOS: dict[str, str] = {"abc$abstractmethod": "", "abc$abstractpropert
 STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pystachy_codecs", "atexit": "_pystachy_atexit",
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
                             "_imp": "_pystachy_imp",
-                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools"}
+                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
+                            "_ast": "_pystachy_ast"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
