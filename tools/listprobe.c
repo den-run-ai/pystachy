@@ -3,9 +3,12 @@
    are pointer-free, and so are the arrays that growth, copies, slices, + and * make of them, and
    a cleared one's sentinel; headers and other lists' arrays are scanned, and stay so through the
    same operations. Ints in a pointer-free array that are the addresses of objects keep none of
-   them alive. These are deterministic allocation-kind, capacity and live-byte checks, not
-   RSS/timing thresholds. Like dictprobe, this includes the real runtime and links runtime.py's
-   IR. usage: make listprobe */
+   them alive. Dropped pointer-free large item arrays that are most of what is allocated start
+   collections of their own, every max(4 MiB, live bytes) of them; small objects, large arrays
+   among more small objects and arrays of pointers keep the 32 MiB window. These are
+   deterministic allocation-kind, capacity, live-byte and collection-count checks, not RSS/timing
+   thresholds. Like dictprobe, this includes the real runtime and links runtime.py's IR.
+   usage: make listprobe */
 #include "../runtime.c"
 
 I pys_obj_eq(I c, I a, I b) { (void)c; return a == b; }
@@ -194,8 +197,73 @@ static void numeric(void) {
   for (I i = 0; i < 16; i++) { Str *x = (Str *)h->a[i]; if (x->len != 1 << 20 || x->s[0] != 'a' + i) bad("a kept str changed"); }
   buffers = 0;
 }
+__attribute__((noinline)) static I churn(I n, I *most) {   /* n dropped lists of 8192 floats: their item
+                                                               arrays are large objects of 64 KiB */
+  I before = gc_n;
+  for (I i = 0; i < n; i++) {
+    pys_list_new_atomic(8192);
+    if (gc_heap > *most) *most = gc_heap;
+  }
+  return gc_n - before;
+}
+/* The candidate's bytes count toward the small large-object budget only when pointer-free.
+   A single scanned block above 4 MiB exposed this; the 64 KiB churn below cannot. Run first
+   so the empty-heap case has no allocation history, then check a mixed history and both
+   positive controls. GC stress deliberately collects at each allocation instead. */
+static void budget_candidates(void) {
+  I before = gc_n;
+  pys_alloc(5 << 20);
+  if (!gc_stress && gc_n != before) bad("a scanned candidate uses the pointer-free budget on an empty heap");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc_atomic(3 << 20);
+  pys_alloc(2 << 20);
+  if (!gc_stress && gc_n != before) bad("a scanned candidate completes the pointer-free budget");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc_atomic(5 << 20);
+  if (!gc_stress && gc_n - before != 1) bad("a pointer-free candidate uses its 4 MiB budget");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc(32 << 20);
+  if (!gc_stress && gc_n - before != 1) bad("a scanned candidate still uses the 32 MiB budget");
+  scrub_collect();
+}
+/* pointer-free large objects start collections of their own where they are most of what is
+   allocated: dropping 32 MiB of large float arrays while little is live runs one every 4 MiB
+   of them (BIG_MIN), so the heap grows by about 4 MiB rather than 32; with 8 MiB of them
+   live, one every 8 MiB. Small objects, large arrays among more small objects and arrays of
+   pointers keep the 32 MiB window. Counts only without GC stress, which collects at every
+   allocation */
+static void budgets(void) {
+  buffers = 0; scrub_collect();
+  I base = gc_heap, most = base, runs = churn(512, &most);
+  if (!gc_stress && runs != 8) bad("dropped large arrays run a collection every 4 MiB of them");
+  if (!gc_stress && most - base > (6 << 20)) bad("dropped large arrays grow the heap past 6 MiB");
+  buffers = pys_list_new(128);
+  for (I i = 0; i < 128; i++) pys_list_append(buffers, (I)pys_list_new_atomic(8192));
+  scrub_collect();
+  runs = churn(512, &most);
+  if (!gc_stress && runs != 3) bad("the large-object budget follows the live bytes");
+  buffers = 0; scrub_collect();
+  I before = gc_n;
+  for (I i = 0; i < (48 << 20) / 64; i++) pys_alloc_atomic(56);
+  if (!gc_stress && gc_n - before != 1) bad("small objects keep the 32 MiB window");
+  scrub_collect();
+  before = gc_n;                       /* 40 MiB: a 64 KiB array per 192 KiB of small objects */
+  for (I i = 0; i < 160; i++) {
+    pys_list_new_atomic(8192);
+    for (I j = 0; j < 3 * 1024; j++) pys_alloc_atomic(56);
+  }
+  if (!gc_stress && gc_n - before != 1) bad("large arrays among more small objects keep the 32 MiB window");
+  scrub_collect();
+  before = gc_n;                       /* 40 MiB of dropped 64 KiB arrays of pointers */
+  for (I i = 0; i < 640; i++) pys_list_new(8192);
+  if (!gc_stress && gc_n - before != 1) bad("dropped arrays of pointers keep the 32 MiB window");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
+  budget_candidates();
   clear_many();
   scrub_collect();
   scrub_collect();
@@ -204,6 +272,7 @@ int main(void) {
   operations();
   ranges();
   numeric();
-  puts("listprobe: empty-list reuse, range-list storage/mutation and pointer-free list kinds passed");
+  budgets();
+  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds and large-object collections passed");
   return 0;
 }
