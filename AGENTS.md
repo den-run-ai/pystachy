@@ -317,9 +317,10 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   and arrange review through available authorized means. Answer every bot thread: fix
   real, proportionate findings with a regression and name the commit, or decline with
   reasons; then resolve it.
-- An agent cannot certify the DCO: never add someone's `Signed-off-by`. CONTRIBUTING.md
-  says which PRs need a sign-off; where one does, leave it to the human contributor and
-  say so in the PR checklist ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
+- An agent cannot certify the DCO on its own: add a person's certification (a signer line
+  or `Signed-off-by`) only when that person asks you to, and never anyone else's.
+  CONTRIBUTING.md says which PRs need one; say in the PR checklist when it is missing
+  ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
 - PR descriptions should state the problem, resulting behavior, scope/remaining
   limits, linked issues and exact validation revision/commands/results. Separate
   local evidence from CI; update stale status after revisions. Keep old measurements
