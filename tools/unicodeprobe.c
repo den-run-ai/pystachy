@@ -73,6 +73,27 @@ static void seams(void) {
   current = pys_str_add(hold(cstr("a")), tail);
   if (pys_text_len(current) != 2) bad("conservative raw seam invalidation");
 }
+static void slice_seams(void) {
+  current = cstr("abcdef");
+  current = pys_text_slice_step(current, NONE, NONE, 2);
+  cached(current, 3, "ASCII stepped slice lost its known count");
+  current = cstr("a\xC3\xA9\xE4\xB8\xAD\xF0\x9F\xA6\x8A");
+  current = pys_text_slice_step(current, NONE, NONE, 2);
+  cached(current, 2, "Unicode stepped slice lost its known count");
+  /* Selecting isolated malformed bytes can assemble valid UTF-8. The selected
+     item count is then not the decoded result length, in either slice path. */
+  const char *raw[] = {"\xC3x\xA9x", "\xA9x\xC3", "\xC3\xA9x\xF0x\x9Fx\xA6x\x8Ax",
+                      "\x8Ax\xA6x\x9Fx\xF0x\xC3\xA9"};
+  for (I i = 0; i < 4; i++) {
+    current = cstr(raw[i]);
+    current = pys_text_slice_step(current, NONE, NONE, i & 1 ? -2 : 2);
+    I expected = i < 2 ? 1 : 2;
+    if (pys_text_len(current) != expected) bad("stepped slice caches a raw seam count");
+    if (pys_ord(pys_text_get(current, 0)) != 0xE9) bad("stepped slice first decoded character");
+    if (i >= 2 && pys_ord(pys_text_get(current, 1)) != 0x1F98A) bad("stepped slice joined UTF-8 character");
+    cached(current, expected, "stepped slice cached result count");
+  }
+}
 static void cursors(void) {
   const char text[] = "A\0\xC3\xA9\xE4\xB8\xAD\xF0\x9F\xA6\x8A\xED\xA0\x80Z";
   I at[] = {0, 1, 2, 4, 7, 11, 14, 15};
@@ -132,7 +153,7 @@ static void locality(void) {
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 2);
   held = pys_list_new(32);
-  cache(); seams(); cursors(); locality();
+  cache(); seams(); slice_seams(); cursors(); locality();
   if (gc_stress && gc_n <= 3) bad("GC stress did not add allocation-triggered collections");
   puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors and GC passed");
   return 0;

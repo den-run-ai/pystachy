@@ -592,7 +592,12 @@ Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes
   if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
   if (st == 1) return pys_str(s->s + lo, n);
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); r->len = n;
-  for (I i = 0; i < n; i++) r->s[i] = s->s[lo + i * st];
+  int ascii = 1;
+  for (I i = 0; i < n; i++) {
+    r->s[i] = s->s[lo + i * st];
+    ascii &= (unsigned char)r->s[i] < 128;
+  }
+  r->chars1 = ascii ? n + 1 : 0;
   return r;
 }
 Str *pys_bytes_slice(Str *s, I lo, I hi) { return pys_str_slice(s, lo, hi); }
@@ -697,18 +702,20 @@ Str *pys_text_slice_step(Str *s, I lo, I hi, I st) {
   I len = pys_text_len(s), n = sspan(&lo, hi, &st, len);
   if (!n) return &str0.s;
   if (st == 1) return pys_text_slice(s, lo, lo + n);
-  if (len == s->len) {
-    Str *r = pys_str_slice_step(s, lo, hi, st);
-    r->chars1 = n + 1; return r;
-  }
+  if (len == s->len) return pys_str_slice_step(s, lo, hi, st);
   /* Two linear passes: size the exact byte buffer, then copy selected characters.
      A negative step fills backwards, without reversing any UTF-8 sequence. */
-  I m = 0, cp, k;
+  I m = 0, cp, k, chars1 = n + 1;
   for (I at = 0, i = 0; at < s->len; at += k, i++) {
     k = u8char(s->s + at, s->len - at, &cp);
-    if (text_selected(i, lo, st, n)) m += k;
+    if (text_selected(i, lo, st, n)) {
+      m += k;
+      /* Raw one-byte fallbacks can join into a valid UTF-8 sequence after slicing.
+         Only complete characters preserve the selected count at the new seams. */
+      if (k == 1 && (unsigned char)s->s[at] >= 128) chars1 = 0;
+    }
   }
-  Str *r = pys_alloc_atomic(sizeof(Str) + m + 1); r->len = m; r->chars1 = n + 1;
+  Str *r = pys_alloc_atomic(sizeof(Str) + m + 1); r->len = m; r->chars1 = chars1;
   I out = st > 0 ? 0 : m;
   for (I at = 0, i = 0; at < s->len; at += k, i++) {
     k = u8char(s->s + at, s->len - at, &cp);
