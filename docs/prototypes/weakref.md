@@ -84,11 +84,17 @@ whose effects are at most `R`, and function summaries preserve `I` through the
 Python wrapper. LLVM can see that `weakref_get` reads its argument's memory, but
 allocation can call `collect`, which writes existing weak handles; allocation's
 fresh return value does not make it a pure operation. Review found no stale-read
-optimizer bug. A direct canonicalization regression and a live-read, last-owner
-removal, allocation-only collection, dead-read test protect these boundaries.
-The live read returns from its helper before collection: an earlier same-frame
-test retained stale target bits with IR optimizations disabled, which is valid
-conservative-GC behavior and is not evidence of expression reuse.
+optimizer bug. A direct canonicalization regression and live-read, last-owner
+removal, allocation-only collection, dead-read tests protect these boundaries.
+The public tests use cohorts. The transition test first observes every reference
+live, then at least one must clear after owners are dropped; any remaining
+target must stay valid.
+Requiring one particular target to clear is not portable even when its helper
+returns: AOT can inline that helper and leave the target in a callee-saved
+register throughout later allocation. The Unicode length fast path exposed
+exactly this valid conservative retention, not stale-read optimization.
+The C probe separately uses non-inlined helpers and stack scrubbing to assert
+exact clearing of every deliberately unrooted target.
 
 The two compiler primitives are available only while compiling this library
 module. An opaque handle does not masquerade as a target class instance; reads
@@ -113,13 +119,14 @@ cannot accidentally interpret the handle's storage as the referent's fields.
 ## Verification
 
 `tests/lib_weakref.py` compares live identity, mutation and typed references
-with CPython in JIT and AOT. `tests/lib_weakref_dead.py` creates the target in a
-returned helper and applies allocation pressure without dereferencing it, then
-checks `None` propagation through the typed wrapper.
-`tests/lib_weakref_transition.py` reads the same reference while live and after
-its last owner is removed and allocation pressure collects it. Its initial
-observation returns from a helper before collection to avoid retaining a stale
-target in an active frame. `tools/test_typed_ir.py` independently checks that
+with CPython in JIT and AOT. `tests/lib_weakref_dead.py` creates a cohort of
+targets in a returned helper and applies allocation pressure without
+dereferencing them, then checks that `None` propagates through typed wrappers.
+`tests/lib_weakref_transition.py` first observes every reference live, drops
+its strong owners, and checks that allocation pressure clears at least one
+reference while any remaining referents stay valid. These cohort assertions
+allow a few stale conservative roots; retaining every target strongly still
+fails them. `tools/test_typed_ir.py` independently checks that
 weak reads on either side of an allocating operation have distinct canonical
 values. Error/deviation cases cover
 unsupported target kinds, callbacks, private primitive access and equality/hash.

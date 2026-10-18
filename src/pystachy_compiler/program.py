@@ -243,7 +243,7 @@ def gen_template_fix(self, cs: list[Node]) -> str:
     for st in cs:
         for d in st.kids[0].kids:
             if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
-                if reads_builtin(d.kids[2], "iter", False, False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
+                if reads_builtin(d.kids[2], "iter", False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
                     return "an __init__ that calls iter() or takes an Iterator[T] or Iterable[T] makes one (an iterator's type is its class)"
     return "annotate __init__ parameters with concrete types (not Any or object)"
 

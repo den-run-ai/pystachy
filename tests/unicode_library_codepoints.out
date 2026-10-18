@@ -1,0 +1,8 @@
+datetime.datetime(2024, 2, 29, 12, 0)
+datetime.datetime(2024, 2, 29, 12, 0)
+1 True
+ValueError: Sample larger than population or is negative
+Invalid placeholder in string: line 1, col 3
+Invalid placeholder in string: line 2, col 7
+%C3%A9 %C3%83%C2%A9
+[exit 0]

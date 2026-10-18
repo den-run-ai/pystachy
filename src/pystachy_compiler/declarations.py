@@ -1041,14 +1041,19 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
-        # storage that a value of any type reaches (x: Any = v, a field) is still an error
+        # fields that would hold arbitrary types still need a dynamic representation
         for i in range(len(ps)):
             if not (cls != "" and i == 0 and f.deco != "staticmethod") and self.any_in([ps[i].kids[0]]):
                 ps[i].kids[0] = mk("noann", "", d.line, [])
                 f.anys.append(ps[i].s)
         if not init and self.any_in([d.kids[1]]):
-            d.kids[1] = mk("noann", "", d.line, [])
-            f.anys.append("")
+            a = self.parse_expr(d.kids[1].s) if d.kids[1].kind == "str" else d.kids[1]
+            # A generator has three independent channels. gen_declare infers only those
+            # annotated Any, retaining the concrete send and return types of the others.
+            genann = has_kind(d.kids[2], "yield") and a.kind == "index" and self.typing_ref(a.kids[0]) in ["Generator", "Iterator", "Iterable"]
+            if not genann:
+                d.kids[1] = mk("noann", "", d.line, [])
+                f.anys.append("")
     if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]):
         # These protocols already infer an omitted return from their body. An Any return
         # (also Iterator[Any]) uses that path, without making their parameters templates.

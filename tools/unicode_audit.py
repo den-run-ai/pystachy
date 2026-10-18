@@ -1,4 +1,4 @@
-"""Check opt-in Unicode auditing in JIT/AOT without changing default string behavior.
+"""Check remaining Unicode audit boundaries and code-point operations in JIT/AOT.
 
 usage: python3 tools/unicode_audit.py [-c LABEL=COMMAND]...
 Checks use one runtime cache, alternate normal/audit/normal compilation, and run AOT
@@ -13,7 +13,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
-OPS = [
+FIXED = [
     ("len(str)", "print(len(s))"),
     ("str.get", "print(repr(s[0]))"),
     ("str.slice", "print(repr(s[:2]))"),
@@ -24,14 +24,20 @@ OPS = [
     ("str.get", "print([c for i, c in enumerate(s)])"),
     ("str.get", "print([c for c, d in zip(s, s)])"),
     ("str.get", "print([c for c in reversed(s)])"),
-    ("str.upper", "f = s.upper\nprint(repr(f()))"),
-    ("str.upper", "s.upper()\nprint('discarded')"),
-    ("str.upper", "print(repr(audit_module.upper(s)))"),
     ("len(str)", "len(s)\nprint('discarded')"),
+    ("chr", "print([repr(chr(i)) for i in [0, 127, 128, 233, 255, 2047, 65535, 65536, 1114111]])"),
 ]
 for name, args in [
     ("find", "'b'"), ("rfind", "'b'"), ("index", "'b'"), ("rindex", "'b'"),
     ("count", "''"), ("startswith", "'a', 0, 2"), ("endswith", "'b', 0, 3"),
+]:
+    FIXED.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
+OPS = [
+    ("str.upper", "f = s.upper\nprint(repr(f()))"),
+    ("str.upper", "s.upper()\nprint('discarded')"),
+    ("str.upper", "print(repr(audit_module.upper(s)))"),
+]
+for name, args in [
     ("replace", "'', 'x'"), ("upper", ""), ("lower", ""), ("swapcase", ""),
     ("capitalize", ""), ("title", ""), ("casefold", ""), ("isdigit", ""),
     ("isalpha", ""), ("isalnum", ""), ("isupper", ""), ("islower", ""),
@@ -39,7 +45,7 @@ for name, args in [
 ]:
     OPS.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
 OPS.append(("str.replace_count", "print(repr(s.replace('', 'x', 2)))"))
-SAFE = """print(repr(s), bool(s), s == s, s in s, repr(s + s))
+SAFE = "\n".join(body for _, body in FIXED) + "\n" + """print(repr(s), bool(s), s == s, s in s, repr(s + s))
 print(s.split(), repr(s.strip()), repr(s.center(8)), s.isascii(), s.isspace())
 print(s.partition('b'))
 """
@@ -80,15 +86,16 @@ def main():
         env = dict(os.environ, PYSTACHY_IRCHECK="1", PYSTACHY_CACHE=str(temp / "cache"))
         env.pop("PYSTACHY_UNICODE_AUDIT", None)
         audit = env | {"PYSTACHY_UNICODE_AUDIT": "1"}
-        samples = [b"axb\n", b"a\0b\n", "añb\n".encode(), "a\0ñb\n".encode()]
+        samples = [b"axb\n", b"a\0b\n", "añb\n".encode(), "a\0ñb\n".encode(),
+                   "a日本😀b\n".encode(), "ae\u0301b\n".encode()]
         literal = temp / "literal.py"
         literal.write_text('try:\n    print(len("日本語"))\nexcept NotImplementedError as e:\n    print(str(e))\n'
                            'try:\n    print("ß".upper())\nexcept NotImplementedError as e:\n    print(str(e))\n'
                            'try:\n    print(len(chr(233)))\nexcept NotImplementedError as e:\n    print(str(e))\n'
                            'print(len(""), bool("日本語"), "é" == "é")\n')
-        literal_expected = ("Unicode audit: len(str) on non-ASCII str uses byte/ASCII semantics\n"
+        literal_expected = ("3\n"
                             "Unicode audit: str.upper on non-ASCII str uses byte/ASCII semantics\n"
-                            "Unicode audit: len(str) on non-ASCII str uses byte/ASCII semantics\n"
+                            "1\n"
                             "0 True True\n").encode()
         errors = "".join(f"Unicode audit: {name} on non-ASCII str uses byte/ASCII semantics\n" for name, _ in OPS).encode()
         for item in commands:
@@ -113,19 +120,22 @@ def main():
                                 raise RuntimeError(f"{label}/{enabled}/{mode}/{sample!r}: wrong output\n{result!r}\nwant {expected!r}")
                         elif b"Unicode audit:" in result:
                             raise RuntimeError("disabled audit raised")
+                        elif not result.endswith(expected):
+                            raise RuntimeError(f"{label}/{enabled}/{mode}/{sample!r}: code-point controls differ from CPython\n"
+                                               f"{result!r}\nwant suffix {expected!r}")
                         if not enabled:
                             ordinary.append(result)
-                        checked += len(OPS) + 3
+                        checked += len(OPS) + len(FIXED) + 3
             half = len(ordinary) // 2
             if ordinary[:half] != ordinary[half:]:
                 raise RuntimeError("normal/audit/normal changed default output")
-            # Literal folding and intentional raw-byte construction must not bypass checks.
+            # Literal folding and chr() keep code-point semantics with the audit enabled.
             literal_binary = temp / "literal"
             invoke(cmd + ["build", str(literal), "-o", str(literal_binary)], audit)
             for call, config in [(cmd + ["run", str(literal)], audit),
                                  ([str(literal_binary)], env | {"PYSTACHY_GC_STRESS": "1"})]:
                 if invoke(call, config) != literal_expected:
-                    raise RuntimeError("literal/raw-byte auditing or truth/empty-string controls failed")
+                    raise RuntimeError("literal/chr auditing or truth/empty-string controls failed")
                 checked += 6
             # Runtime IR is independent of audit mode, even when rebuilt rather than reused.
             irs = []

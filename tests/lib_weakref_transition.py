@@ -15,18 +15,24 @@ def churn() -> None:
 
 
 def create():
-    owners = [Item(7)]
-    return ref(owners[0]), owners
+    owners = [Item(i) for i in range(256)]
+    return [ref(item) for item in owners], owners
 
 
-def observe_and_release(r: ref[Item], owners: list[Item]) -> None:
-    # Return this frame before collecting: stale bits from the first dereference
-    # in an active frame can legitimately retain a target in a conservative GC.
-    print(r() is not None)
+def observe_and_release(refs: list[ref[Item]], owners: list[Item]) -> None:
+    # All references are first observed live. Even after this helper returns, AOT
+    # inlining can leave a few target addresses in active registers or stack slots.
+    print(all(r() is not None for r in refs))
     owners.clear()
 
 
-r, owners = create()
-observe_and_release(r, owners)
+refs, owners = create()
+observe_and_release(refs, owners)
 churn()
-print(r() is None)
+# Do not require a particular address to disappear from conservative roots; at
+# least one observed-live reference must change, and no surviving value is stale.
+print(any(r() is None for r in refs))
+for i, r in enumerate(refs):
+    value = r()
+    if value is not None:
+        assert value.value == i

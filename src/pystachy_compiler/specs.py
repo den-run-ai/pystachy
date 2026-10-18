@@ -295,7 +295,7 @@ RANGE_METHODS = {"join": 1, "extend": 1, "fromkeys": 1, "fsum": 1, "prod": 1, "u
                  "intersection_update": 3, "difference_update": 3, "symmetric_difference_update": 3}
 OPTTYPES = "class types, str, bytes, int, float, bool, list, dict and tuple"
 TYPEVAR = " is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it"
-ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
+ANYUSE = "typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here"
 STUB = "an @overload stub of 'NAME' must be followed by the def that implements it (calling a stub raises NotImplementedError)"
 PATHLIKE = "os.PathLike is only supported in a union with str (str | os.PathLike[str] is a str: Pystachy has no other path type)"
 FUTURE: dict[str, bool] = {}
@@ -537,9 +537,18 @@ METHODS: dict[str, str] = {
     "bytes.removeprefix": "bytes:bytes", "bytes.removesuffix": "bytes:bytes", "bytes.splitlines": "list[bytes]:bool=0",
     "str.encode": "bytes:str=null,str=null",
 }
+# Public code-point operations; runtime.py retains its byte-oriented implementation primitives.
+TEXT_OPS: dict[str, str] = {
+    "pys_str_get": "pys_text_get", "pys_str_slice": "pys_text_slice",
+    "pys_str_slice_step": "pys_text_slice_step", "pys_str_list": "pys_text_list",
+    "pys_str_find": "pys_text_find", "pys_str_rfind": "pys_text_rfind",
+    "pys_str_index": "pys_text_index", "pys_str_rindex": "pys_text_rindex",
+    "pys_str_count": "pys_text_count", "pys_str_startswith": "pys_text_startswith",
+    "pys_str_endswith": "pys_text_endswith",
+}
 # Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
 # These are conservative: even a byte-correct delimiter search is a porting audit hit.
-UNICODE_AUDIT: list[str] = ("get slice slice_step list find rfind index rindex count startswith endswith replace replace_count "
+UNICODE_AUDIT: list[str] = ("replace replace_count "
                             "upper lower swapcase capitalize title casefold isdigit isalpha isalnum "
                             "isupper islower istitle isdecimal isnumeric expandtabs").split()
 
@@ -712,6 +721,16 @@ RUNTIME: dict[str, str] = {
     "set.cmp": "int:S,S,int|rD U?|", "set.le_list": "bool:S,list[T]|A rL rD U?|", "set.ge_list": "bool:S,list[T]|rL rD U?|",
     "set.isdisjoint": "bool:S,S|rD U?|", "set.isdisjoint_list": "bool:S,list[T]|rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
+    # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
+    "text.len": "int:str||", "text.chr": "str:int|R A|",
+    "text.get": "str:str,int|R A|", "text.at": "str:str,int|R A|",
+    "text.next": "int:str,int|R|", "text.prev": "int:str,int|R|",
+    "text.slice": "str:str,int,int|A|", "text.slice_step": "str:str,int,int,int|R A|",
+    "text.list": "list[str]:str|R A|",
+    "text.find": "int:str,str,int,int|R|", "text.rfind": "int:str,str,int,int|R|",
+    "text.index": "int:str,str,int,int|R|", "text.rindex": "int:str,str,int,int|R|",
+    "text.count": "int:str,str,int,int|R|",
+    "text.startswith": "bool:str,str,int,int|R|", "text.endswith": "bool:str,str,int,int|R|",
     # strings
     "str.audit": "None:str,str|R|",
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.slice_step": "str:S,int,int,int|R A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",

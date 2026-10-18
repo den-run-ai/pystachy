@@ -1,7 +1,7 @@
 # Built-in prototype integration
 
-The review revision is a stack rooted at main
-`92a33b481d582f45ea8a8bfbf4f17ccfc9e072ac`:
+The merge-preparation revision is a stack rooted at main
+`a355c83ff7b60b64e3264867593064c3da9611a5`:
 
 | PR | Change | Base |
 |---|---|---|
@@ -11,7 +11,8 @@ The review revision is a stack rooted at main
 | [#648](https://github.com/den-run-ai/pystachy/pull/648) | `_weakref` | #646 branch |
 
 The #648 branch contains all four prototypes, including reconciled module
-registrations, both C probe targets, and both required verification steps. Its
+registrations, both C probe targets, and both required verification steps. The
+Makefile also preserves current main's Unicode probe and BLAS targets. Its
 collector retains `weakrefs_sweep`, `files_sweep` and CPython embedding's
 `trk_sweep` after marking and before reclaiming storage. None retains a target.
 The weak-reference probe tests a shared weak/CPython-tracked owner and verifies
@@ -38,7 +39,7 @@ the bootstrapped compiler, normally and with program GC stress:
 
 ```sh
 cases=$(git diff --name-only --diff-filter=AM \
-  92a33b481d582f45ea8a8bfbf4f17ccfc9e072ac HEAD -- tests | \
+  a355c83ff7b60b64e3264867593064c3da9611a5 HEAD -- tests | \
   sed -nE '/^tests\/(errors\/|deviations\/)?[^/]+\.py$/p')
 tests/run.sh ./pystachy 'jit aot' $cases
 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' $cases

@@ -1712,6 +1712,13 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
             # (item i of a range object, while i is below its count, which is unsigned)
             j = i
             ok = self.int_ucmp('<', Val(i, "int"), Val(st[k], "int")).v
+        elif s.t == "str" and not self.rtmode:
+            # The loop counter counts characters (enumerate/zip), while each string owns a
+            # byte cursor. Decode each character once instead of rescanning from its start.
+            j = self.mload('int', st[k])
+            if mode == "reversed":
+                j = self.rt("pys_text_prev", "i64", [f"ptr {s.v}", f"i64 {j}"])
+            ok = self.int_ucmp('<', Val(j, "int"), Val(used[k], "int")).v
         elif mode == "reversed":
             j = self.scalar('sub', [Val(self.scalar('sub', [Val(st[k], 'int'), Val('1', 'int')]), 'int'), Val(i, 'int')])
             # 0 <= j < the current length, as CPython's reversed iterator checks
@@ -1726,6 +1733,9 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         lp.tests.append(go)
         lp.idx.append(j)
         if is_dict(s.t) or is_set(s.t):
+            self.mstore('int', nx, st[k])
+        elif s.t == "str" and not self.rtmode:
+            nx = j if mode == "reversed" else self.rt("pys_text_next", "i64", [f"ptr {s.v}", f"i64 {j}"])
             self.mstore('int', nx, st[k])
         at.append(j)
         if now:
@@ -1762,7 +1772,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_tuple(s.t):
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
     if s.t == "str":
-        return [Val(self.rt("pys_str_get", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str")]
+        return [Val(self.rt("pys_str_get" if self.rtmode else "pys_text_at", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str")]
     if s.t == "bytes":
         return [Val(self.rt("pys_bytes_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), "int")]
     if s.t == "file":
@@ -1809,7 +1819,11 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         return
     n0 = self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
     made.used.append(n0)
-    if is_dict(s.t) or is_set(s.t):
+    if s.t == "str" and not self.rtmode:
+        pos = self.alloca("int", "")
+        self.mstore('int', n0 if mode == "reversed" else "0", pos)
+        made.st.append(pos)
+    elif is_dict(s.t) or is_set(s.t):
         pos = self.alloca("int", "")
         p0 = "0"
         if mode == "reversed":

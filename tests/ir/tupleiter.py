@@ -2,6 +2,7 @@
 # length its type gives. tupleiter.calls pins that these loops build no list (with
 # PYSTACHY_OPT=-tupleiter, each would call pys_list_new and pys_list_append for the tuple's items
 # first), and that iter() of a tuple in __iter__ still makes the list its iterator steps through.
+# Loading the iter helper conservatively enables exception handling, even for this concrete return.
 from typing import Iterator
 
 NB = ((0, 1), (1, 0), (0, -1), (-1, 0))

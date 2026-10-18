@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "evaluated_main": "cad7e04206d3743ac18284a5e33f49da86aa6206",
+  "previous_evaluated_main": "c916ca6c02061f427c72c92741fa446f7e2e626b",
+  "merged_prs": [
+    609
+  ],
+  "compiler": {
+    "source_revision": "cad7e04206d3743ac18284a5e33f49da86aa6206",
+    "sha256": "659b844a8167b6d3674595612d88ff2df3cc37eb9ef8dcaca4a4ce7e197c5b19",
+    "bootstrap_fixed_point": true,
+    "compiler_ir_lines": 608154,
+    "runtime_ir_lines": 17615,
+    "command": "make PY=<CPYTHON_3_13_16>"
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "blas_path": "/lib/x86_64-linux-gnu/libblas.so.3",
+    "blas_sha256": "e748efcae5753fe4a652877fccdb5895ac6f7605668a2db878b19c914e78e3a8",
+    "native_ffi_library_build": "clang -shared -fPIC tests/ffi/ffitest.c -o build/audit-609/libpystachy-ffitest.so",
+    "suite_PY": "<CPYTHON_3_13_16>",
+    "suite_CC": "clang 18.1.3"
+  },
+  "changed_file_sha256": {
+    "docs/ffi.md": "6273e03d184d75848239be01a5b51c2c6ed1a87ba3b62031b2d6e7dbb1c87fbb",
+    "docs/reference/ffi.md": "e38cb42ae0482f2c516a9197ac975ac782c1a8dd9b2914359701b50564ddfdbe",
+    "src/pystachy_compiler/analysis.py": "f5de174ba064c5957e8a590f2311aeb91f1c421a16bbd58b6654dd1fa5ae1b47",
+    "src/pystachy_compiler/declarations.py": "bb4db47eec024bc6d7d113913cce0890db5622908963409b76f384fc6f2253f2",
+    "src/pystachy_compiler/functions.py": "54e649972292e6f07661723f7a474912b671a44eb6f59f051a1b666675a75df3",
+    "src/pystachy_compiler/loader.py": "7e7fc367efd908bb6d0bef0d260377122cbc2764292895bf1bcecf87a82bb378",
+    "src/pystachy_compiler/lower_module.py": "f7e7eb2b9feb96251186fd2f324d2947057c6af06503a2358e56edc2a6077012",
+    "tests/ffi/c_float.out": "4749748d6b0c5f79a463e14cb425c9e6269b83495bb2f9b54a7081f4240d5adc",
+    "tests/ffi/c_float.py": "1a35fd1da00b331769f0f19a8789b885f25760ba9a95fcf828609023675175a8",
+    "tests/ffi/c_lists.out": "3b1cecfc1f56345bd78dc997f8ae3123056e9ab269209373ad218c8c421e6c9f",
+    "tests/ffi/c_lists.py": "eedfd3abbf23459c28a94e45d340b7037e773bc80ee2edb48751e7af9d8263fc",
+    "tests/ffi/c_lists_typing.out": "9bbb482377341bc4398969955bf28c2f98a8bb6b4c66665133dd625dc4ec866f",
+    "tests/ffi/c_lists_typing.py": "9f1735a4c5997191ac3212e4a1d802b9a336f52a73afadba0cd15939c16ee76e",
+    "tests/ffi/c_qualified.out": "cc4bbafa8edadab1557b64ff76900cf8f7fa72dcf0a39cada19fac652d268109",
+    "tests/ffi/c_qualified.py": "c07cb6fff6e961c356c3068b23e86a0af772a45a0c65b1199130cd154542af9b",
+    "tests/ffi/errors/c_bool.py": "59a536c901a8b0ec760a26388053a229e31fa6ff9b1c59f13ffc31e59d61d717",
+    "tests/ffi/errors/c_list.py": "00933bba28cff95d0e7a3fbf7db2614ed5d2bc9fc3425bfd3855a589523e122e",
+    "tests/ffi/errors/c_list_cfloat.py": "902329f4c3d8f75618ccab025e0e89c0738ceb06ed78e95e10a5d95add022ef0",
+    "tests/ffi/errors/c_list_cint.py": "14b6ad1f30dde27ddea46be294564395862fd9735f11b1d9fc93d103a48b0496",
+    "tests/ffi/errors/c_list_opt.py": "9b3b80cc171fb8ce11c7badd3acf02ff3f4addae660ba5f1baa676ac53161cb7",
+    "tests/ffi/errors/c_list_qualified_cfloat.py": "7a50e7011b13a24f58308106c78fb37cbe6bb4f9f3e21625d307dcfaa171788b",
+    "tests/ffi/errors/c_list_ret.py": "a30db8c7697cc4b2aad404ea0ad3e27010a94f1cdd4f854be50d8ee6be5c9e6a",
+    "tests/ffi/errors/c_list_str.py": "2e6ff14612f9e3d5ad552dae42ac6c41ec6418ca2d4d1cf2260ae5033fffa677",
+    "tests/ffi/ffitest.c": "b828961f509a9cfdab83ff053174ecb5cecc1888631e7fc5274090c45ee0b7fb",
+    "tools/rt_cpython/ffi.py": "2ae1ed2a1a847ef6bcff6de3a5fdef5cabd500c6eb68826100282d1cd4451a18"
+  },
+  "commands": [
+    {
+      "name": "ffi",
+      "argv": [
+        "tests/ffi/run.sh",
+        "./pystachy",
+        "jit aot"
+      ],
+      "environment": {},
+      "exit_code": 0
+    },
+    {
+      "name": "probes",
+      "argv": [
+        "<CPYTHON_3_13_16>",
+        "build/audit-609/native_probes.py"
+      ],
+      "environment": {},
+      "exit_code": 0
+    },
+    {
+      "name": "array",
+      "argv": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/example_ndarray.py",
+        "tests/example_ndarray_edges.py",
+        "tests/example_ndarray_upstream.py"
+      ],
+      "environment": {
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "exit_code": 0
+    },
+    {
+      "name": "imports",
+      "argv": [
+        "<CPYTHON_3_13_16>",
+        "../pystachy/tools/import_sweep.py",
+        "-j",
+        "4",
+        "--metadata",
+        "build/audit-609/imports-metadata.json",
+        "./pystachy",
+        "<CPYTHON_STDLIB>",
+        "build/audit-609/imports.json"
+      ],
+      "environment": {},
+      "exit_code": 0
+    }
+  ],
+  "logs": {
+    "bootstrap": "mkdir -p build\n<CPYTHON_3_13_16> pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n<CPYTHON_3_13_16> pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (608154 lines of IR)\n<CPYTHON_3_13_16> pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (17615 lines)\ncp build/pystachy2 pystachy\n",
+    "ffi": "61 passed, 0 failed\n",
+    "probes": "tests/ffi/c_lists.py True\ntests/ffi/c_float.py True\ntests/ffi/c_qualified.py True\ntests/ffi/c_lists_typing.py True\nbuild/audit-609/blas.py True\n",
+    "array": "selected 3 cases\n6 passed, 0 failed\n"
+  },
+  "focused_probes": [
+    {
+      "program": "tests/ffi/c_lists.py",
+      "source_sha256": "eedfd3abbf23459c28a94e45d340b7037e773bc80ee2edb48751e7af9d8263fc",
+      "cpython": {
+        "exit_code": 0,
+        "stdout": "10.0 0.0\n[12.0, 24.0, 36.0, 48.0] [1.0, 2.0, 3.0, 4.0]\n[-1.0, -2.0, 3.0, 4.0]\n[-3.0, -6.0, 9.0, 12.0]\n[4.0, 3.0, 3.0, 4.0] [4.0, 3.0, 2.0, 1.0] [1.0, 2.0, 3.0, 4.0]\n[-0.0, inf, -inf, nan, 5e-324, 1.7976931348623157e+308]\n249750.0 22.5\n9999900000.0 199998.0\n[1.0, 2.0, 3.0] [20.0, 30.0]\n0.0 []\n[-2, -1, 0, 1, 2] 0 4611686018427387903\n",
+        "stderr": ""
+      },
+      "recording_matches": true,
+      "baseline_compiler": {
+        "exit_code": 1,
+        "stderr": "tests/ffi/c_lists.py:9: error: C function ffi_sum() takes list[float]: an @extern function takes a C integer type, float or str\n"
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "tests/ffi/c_lists.py"
+        ],
+        "exit_code": 0,
+        "stdout": "10.0 0.0\n[12.0, 24.0, 36.0, 48.0] [1.0, 2.0, 3.0, 4.0]\n[-1.0, -2.0, 3.0, 4.0]\n[-3.0, -6.0, 9.0, 12.0]\n[4.0, 3.0, 3.0, 4.0] [4.0, 3.0, 2.0, 1.0] [1.0, 2.0, 3.0, 4.0]\n[-0.0, inf, -inf, nan, 5e-324, 1.7976931348623157e+308]\n249750.0 22.5\n9999900000.0 199998.0\n[1.0, 2.0, 3.0] [20.0, 30.0]\n0.0 []\n[-2, -1, 0, 1, 2] 0 4611686018427387903\n",
+        "stderr": ""
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "tests/ffi/c_lists.py",
+          "-o",
+          "build/audit-609/c_lists.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "build/audit-609/c_lists.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "10.0 0.0\n[12.0, 24.0, 36.0, 48.0] [1.0, 2.0, 3.0, 4.0]\n[-1.0, -2.0, 3.0, 4.0]\n[-3.0, -6.0, 9.0, 12.0]\n[4.0, 3.0, 3.0, 4.0] [4.0, 3.0, 2.0, 1.0] [1.0, 2.0, 3.0, 4.0]\n[-0.0, inf, -inf, nan, 5e-324, 1.7976931348623157e+308]\n249750.0 22.5\n9999900000.0 199998.0\n[1.0, 2.0, 3.0] [20.0, 30.0]\n0.0 []\n[-2, -1, 0, 1, 2] 0 4611686018427387903\n",
+        "stderr": ""
+      },
+      "native_matches_cpython": true
+    },
+    {
+      "program": "tests/ffi/c_float.py",
+      "source_sha256": "1a35fd1da00b331769f0f19a8789b885f25760ba9a95fcf828609023675175a8",
+      "cpython": {
+        "exit_code": 0,
+        "stdout": "1.4142135381698608 -0.0 1.1920928955078125e-07 nan\n0.10000000149011612 0.10000000149011612 3.0 0.30000001192092896\ninf -inf 0.0 -0.0 inf nan\n1.0 1.000000238418579 16777216.0 inf\n",
+        "stderr": ""
+      },
+      "recording_matches": true,
+      "baseline_compiler": {
+        "exit_code": 1,
+        "stderr": "tests/ffi/c_float.py:3: error: cannot import name 'c_float' from 'ffi': Pystachy's ffi module has no 'c_float'\n"
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "tests/ffi/c_float.py"
+        ],
+        "exit_code": 0,
+        "stdout": "1.4142135381698608 -0.0 1.1920928955078125e-07 nan\n0.10000000149011612 0.10000000149011612 3.0 0.30000001192092896\ninf -inf 0.0 -0.0 inf nan\n1.0 1.000000238418579 16777216.0 inf\n",
+        "stderr": ""
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "tests/ffi/c_float.py",
+          "-o",
+          "build/audit-609/c_float.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "build/audit-609/c_float.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "1.4142135381698608 -0.0 1.1920928955078125e-07 nan\n0.10000000149011612 0.10000000149011612 3.0 0.30000001192092896\ninf -inf 0.0 -0.0 inf nan\n1.0 1.000000238418579 16777216.0 inf\n",
+        "stderr": ""
+      },
+      "native_matches_cpython": true
+    },
+    {
+      "program": "tests/ffi/c_qualified.py",
+      "source_sha256": "c07cb6fff6e961c356c3068b23e86a0af772a45a0c65b1199130cd154542af9b",
+      "cpython": {
+        "exit_code": 0,
+        "stdout": "3 2.0 0.10000000149011612 2\n[-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "recording_matches": true,
+      "baseline_compiler": {
+        "exit_code": 1,
+        "stderr": "tests/ffi/c_qualified.py:7: error: an annotation that is not a type is not supported: only classes, typing's names, their subscripts and '|' of them (CPython evaluates this annotation when the def statement runs: quote it, or import annotations from __future__)\n"
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "tests/ffi/c_qualified.py"
+        ],
+        "exit_code": 0,
+        "stdout": "3 2.0 0.10000000149011612 2\n[-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "tests/ffi/c_qualified.py",
+          "-o",
+          "build/audit-609/c_qualified.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "build/audit-609/c_qualified.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "3 2.0 0.10000000149011612 2\n[-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "native_matches_cpython": true
+    },
+    {
+      "program": "tests/ffi/c_lists_typing.py",
+      "source_sha256": "9f1735a4c5997191ac3212e4a1d802b9a336f52a73afadba0cd15939c16ee76e",
+      "cpython": {
+        "exit_code": 0,
+        "stdout": "3.0 [-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "recording_matches": true,
+      "baseline_compiler": {
+        "exit_code": 1,
+        "stderr": "tests/ffi/c_lists_typing.py:7: error: C function ffi_sum() takes list[float]: an @extern function takes a C integer type, float or str\n"
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "tests/ffi/c_lists_typing.py"
+        ],
+        "exit_code": 0,
+        "stdout": "3.0 [-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "tests/ffi/c_lists_typing.py",
+          "-o",
+          "build/audit-609/c_lists_typing.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "build/audit-609/c_lists_typing.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "3.0 [-1, 0, 1] 0\n",
+        "stderr": ""
+      },
+      "native_matches_cpython": true
+    },
+    {
+      "program": "build/audit-609/blas.py",
+      "source_sha256": "c9b5f87d248c72c08718891b4dfd714a4cfb02f119bc2e5a4cef550e44e26dce",
+      "cpython": {
+        "exit_code": 0,
+        "stdout": "[1.0, 2.0, 3.0] [12.0, 24.0, 36.0]\n[3.0, 6.0, 9.0]\n[]\n",
+        "stderr": ""
+      },
+      "recording_matches": null,
+      "baseline_compiler": {
+        "exit_code": 1,
+        "stderr": "build/audit-609/blas.py:4: error: C function cblas_daxpy() takes list[float]: an @extern function takes a C integer type, float or str\n"
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "build/audit-609/blas.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[1.0, 2.0, 3.0] [12.0, 24.0, 36.0]\n[3.0, 6.0, 9.0]\n[]\n",
+        "stderr": ""
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "build/audit-609/blas.py",
+          "-o",
+          "build/audit-609/blas.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "build/audit-609/blas.aot"
+        ],
+        "exit_code": 0,
+        "stdout": "[1.0, 2.0, 3.0] [12.0, 24.0, 36.0]\n[3.0, 6.0, 9.0]\n[]\n",
+        "stderr": ""
+      },
+      "native_matches_cpython": true
+    }
+  ],
+  "focused_probe_environment": {
+    "jit": {
+      "PYSTACHY_GC_STRESS_PROGRAM": "1"
+    },
+    "aot": {
+      "PYSTACHY_GC_STRESS": "1"
+    },
+    "LD_LIBRARY_PATH": "<PYSTACHY_ROOT>/build/audit-609",
+    "cpython_PYTHONPATH": "<PYSTACHY_ROOT>/tools/rt_cpython"
+  },
+  "blas_program": "from ffi import extern, c_int\n\n@extern('libblas.so.3')\ndef cblas_daxpy(n: c_int, alpha: float, x: list[float], incx: c_int, y: list[float], incy: c_int) -> None: ...\n\nxs = [1.0, 2.0, 3.0]\nys = [10.0, 20.0, 30.0]\ncblas_daxpy(3, 2.0, xs, 1, ys, 1)\nprint(xs, ys)\ncblas_daxpy(3, 2.0, xs, 1, xs, 1)\nprint(xs)\nempty: list[float] = []\ncblas_daxpy(0, 2.0, empty, 1, empty, 1)\nprint(empty)\n",
+  "import_sweep": {
+    "metadata": {
+      "compiler": {
+        "kind": "executable",
+        "path": "<PYSTACHY_ROOT>/pystachy",
+        "sha256": "659b844a8167b6d3674595612d88ff2df3cc37eb9ef8dcaca4a4ce7e197c5b19"
+      },
+      "counts": {
+        "error": 335,
+        "excluded": 46,
+        "included": 476,
+        "ok": 141,
+        "ok_without_stubs": 141,
+        "timeout": 0,
+        "total": 522
+      },
+      "duration_s": 7.764912391001417,
+      "mode": "import",
+      "overlay": {
+        "compiler_home": "<PYSTACHY_ROOT>",
+        "excluded_modules": [
+          "_markupbase",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "curses.ascii",
+          "curses.has_key",
+          "curses.panel",
+          "curses.textpad",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "html.entities",
+          "html.parser",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "re._casefix",
+          "re._compiler",
+          "re._constants",
+          "re._parser",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib",
+          "urllib.error",
+          "urllib.parse",
+          "urllib.request",
+          "urllib.response",
+          "urllib.robotparser"
+        ],
+        "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+        "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+        "ported_names": [
+          "_markupbase",
+          "_pyrandom",
+          "_pystachy_abc",
+          "_pystachy_atexit",
+          "_pystachy_binascii",
+          "_pystachy_codecs",
+          "_pystachy_iterators",
+          "_pystachy_itertools",
+          "_pystachy_range",
+          "_pystachy_string",
+          "_pystachy_struct",
+          "_pystachy_thread",
+          "_pystachy_types",
+          "_pystachy_unicodedata",
+          "_pystachy_unicodedata_db",
+          "_pystachy_unicodedata_names",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib"
+        ],
+        "skipped_directories": [
+          "test",
+          "tests",
+          "idlelib",
+          "tkinter",
+          "turtledemo",
+          "site-packages",
+          "dist-packages",
+          "lib2to3",
+          "ensurepip",
+          "venv",
+          "__pycache__"
+        ]
+      },
+      "python": {
+        "executable": "<CPYTHON_3_13_16>",
+        "implementation": "cpython",
+        "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+      },
+      "result_path": "<PYSTACHY_ROOT>/build/audit-609/imports.json",
+      "schema_version": 1,
+      "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+      "source_git": {
+        "dirty": false,
+        "revision": "cad7e04206d3743ac18284a5e33f49da86aa6206",
+        "root": "<PYSTACHY_ROOT>"
+      },
+      "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+      "stdlib": "<CPYTHON_STDLIB>",
+      "stubs": [],
+      "timeout_s": 120,
+      "workers": 4
+    },
+    "baseline_file": "compatibility-2026-10-17-stdlib-imports.json",
+    "baseline_file_sha256": "b74ada4c0b011836a5ce8d9ed33c26d4f01b73088ff4335d3da5d4745c348594",
+    "baseline_evaluated_main": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+    "same_module_keys": true,
+    "all_normalized_results_identical": true,
+    "changed_results": {},
+    "normalized_result_canonical_sha256": "cc03b07b6d0ab5d3db6d9621c2e477d8163150263a7ee528bdf1b1ae5bfebc64",
+    "normalization": "Replace CPython installation stdlib and checkout paths with <CPYTHON_STDLIB> and <PYSTACHY_ROOT>. The entire normalized result dictionary equals the linked baseline, so no duplicate full inventory is stored.",
+    "tool_sha256": "c610fa1ecc9effc949939810131b268000131a8da499efebddf10fcc80a1a370",
+    "tool_branch_commit": "4cbbfb4c49973627941835d8b8bbb17548010660"
+  },
+  "scope": "Native explicit typed C bindings and compiled extensions hosted by CPython; not general NumPy/PyPI or embedded CPython support. No performance measurement.",
+  "baseline_compiler": {
+    "source_revision": "d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f",
+    "sha256": "5a0261e7c6cc269720dbf84d77306578ac8969ee3253798e758772d86a3bb99c"
+  }
+}

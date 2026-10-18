@@ -7,7 +7,10 @@ class Item:
 
 
 def create():
-    return ref(Item(7))
+    # A conservative collector can retain individual stale stack/register words,
+    # particularly when AOT inlines this helper. A cohort still requires real
+    # weak ownership: making every handle a strong edge would retain all targets.
+    return [ref(Item(i)) for i in range(256)]
 
 
 def churn() -> None:
@@ -18,6 +21,10 @@ def churn() -> None:
         assert len(text) >= 65536
 
 
-r = create()
+refs = create()
 churn()
-print(r() is None)
+print(any(r() is None for r in refs))
+for i, r in enumerate(refs):
+    value = r()
+    if value is not None:
+        assert value.value == i

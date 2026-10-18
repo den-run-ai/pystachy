@@ -400,7 +400,10 @@ def of_float(x: float) -> Object:
 def of_str(s: str) -> Object:
     g = _enter()
     try:
-        return _ref(PyUnicode_DecodeUTF8(s, len(s), "surrogatepass"), len(s))
+        # c_buf exposes the UTF-8 payload; CPython and allocation accounting need
+        # its byte size, while public len(s) counts Unicode code points.
+        n = __pys_text_size(s)
+        return _ref(PyUnicode_DecodeUTF8(s, n, "surrogatepass"), n)
     finally:
         _leave(g)
 
@@ -444,7 +447,7 @@ if Py_IsInitialized() == 0:
         _argv = PyList_New(0)
         _check()
         for _a in sys.argv:
-            _s = PyUnicode_DecodeUTF8(_a, len(_a), "surrogateescape")  # (as CPython decodes arguments)
+            _s = PyUnicode_DecodeUTF8(_a, __pys_text_size(_a), "surrogateescape")  # (as CPython decodes arguments)
             _check()
             PyList_Append(_argv, _s)
             Py_DecRef(_s)
@@ -460,7 +463,7 @@ if Py_IsInitialized() == 0:
         _t = PyTuple_New(2)
         _check()
         PyTuple_SetItem(_t, 0, PyLong_FromLongLong(0))
-        PyTuple_SetItem(_t, 1, PyUnicode_DecodeUTF8(_d, len(_d), "surrogateescape"))
+        PyTuple_SetItem(_t, 1, PyUnicode_DecodeUTF8(_d, __pys_text_size(_d), "surrogateescape"))
         _check()
         _r = PyObject_Call(_ins, _t, 0)
         Py_DecRef(_t)

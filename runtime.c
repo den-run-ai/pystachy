@@ -56,7 +56,7 @@ __attribute__((unused)) static char *d2s(double f);
 #endif
 
 typedef int64_t I;
-typedef struct { I len; uint64_t dict_hash; char s[]; } Str; /* immutable bytes, NUL-terminated; lazy dict hash (0: unset) */
+typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 bytes, NUL-terminated; lazy hash and code-point count + 1 (0: unset) */
 typedef struct { I len, cap; I *a; } List;
 typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; see dicts */
@@ -64,6 +64,14 @@ typedef struct { I len, kind, fill, mask, finger; I *keys, *hs; } Set; /* a set 
 typedef struct { char *p; I n, cap; } Buf;
 typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
 #define NONE INT64_MIN                                 /* omitted slice bound */
+/* Weak, bounded hints for repeated nearby indexing (the native lexer does src[i]).
+   They are not GC roots: collect clears them before any object can be reclaimed or
+   its address reused, and an owned append invalidates its string's hint. */
+typedef struct { Str *s; I byte, point; } TextHint;
+static TextHint text_hints[64];
+#ifndef TEXT_PROBE
+#define TEXT_PROBE() ((void)0)
+#endif
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
    Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
@@ -100,11 +108,19 @@ typedef struct Exc Exc;                                /* a raised exception (se
    arrays in 4 KiB slices.
    Policy. A collection runs when a free list or a large allocation needs memory and the
    bytes handed out since the last one reach max(32 MiB, live bytes after it), so the heap
-   stays near twice the live set. A file open for writing holds malloc'd buffers, which count
-   as heap bytes (gc_ext: handed out, live, in the heap) and are allocated as a large object
-   is, so files dropped without close() start collections too; a standard stream's do not,
-   as no collection frees them. Dead large objects go straight back to the C allocator, and a
-   live str that appends grew gives back the room they left (str_trim);
+   stays near twice the live set. A large allocation also runs one when the pointer-free
+   large objects (numeric arrays and strs, which marking never scans) handed out since the
+   last are at least half of those bytes and reach max(4 MiB, live bytes after it): each is a
+   calloc'd block that only a collection frees, so a program that mostly makes and drops big
+   arrays would otherwise go through 32 MiB of cold blocks, which calloc zeroes again,
+   between collections, and while little is live a collection costs little. Programs that
+   mostly make small objects or arrays of pointers keep the 32 MiB window and its timing:
+   there, a collection that big arrays started would come mid-computation, when much more is
+   live, or would scan a growing list again. A file open for writing holds malloc'd buffers,
+   which count as heap bytes (gc_ext: handed out, live, in the heap) in the 32 MiB window as
+   a large object's do, so files dropped without close() start collections too; a standard
+   stream's do not, as no collection frees them. Dead large objects go straight back to the C
+   allocator, and a live str that appends grew gives back the room they left (str_trim);
    empty chunks are kept for the next cycle's allocations, and beyond that every arena whose
    chunks are all empty is freed. A chunk that handed out nothing and lost nothing since the
    last sweep keeps its free list as is.
@@ -117,6 +133,7 @@ typedef struct Exc Exc;                                /* a raised exception (se
 #define SMALL 8200                     /* largest size class */
 #define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
 #define GC_MIN ((I)32 << 20)           /* least allocation between collections */
+#define BIG_MIN ((I)4 << 20)           /* least pointer-free large-object allocation between them */
 typedef uintptr_t __attribute__((may_alias)) W;   /* a heap or stack word: aliases every type */
 typedef struct Seg Seg;
 struct Seg {                           /* header on the first page of a chunk or large object */
@@ -144,6 +161,7 @@ static W *fl[NK], *sfl[NK];            /* free list being allocated from; its st
 static Seg *avail[NK], *chunks, *pool, *bigs, ***pmap;
 static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
 static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
+static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
 static int gc_off, gc_stats;
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
@@ -271,6 +289,7 @@ static void sweep(void) {
   }
   live += gc_ext;                      /* the buffers of the files still open (files_sweep closed the others) */
   gc_live = live; gc_allocd = 0; gc_limit = live > GC_MIN ? live : GC_MIN;
+  gc_big = 0; gc_big_limit = live > BIG_MIN ? live : BIG_MIN;
   I pooled = 0;                        /* keep the empty chunks the next cycle may need; beyond */
   for (Seg *s = pool; s; s = s->next) pooled += CHUNK;   /* that, free arenas with none in use */
   for (Seg *s = pool; s && pooled > gc_limit - spare; s = s->next)
@@ -290,6 +309,7 @@ static int gc_marked(const void *p);
 static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
+  memset(text_hints, 0, sizeof text_hints);
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
   mark_roots();
@@ -349,13 +369,14 @@ __attribute__((noinline)) static void *gc_slow(I n, int atomic) {
   if ((uint64_t)n > (uint64_t)1 << 40) oom();
   if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
   if (n >= SMALL) {                    /* large object: a page-aligned header in its own block */
-    if (!gc_off && gc_allocd + n >= gc_limit) collect();
+    if (!gc_off && (gc_allocd + n >= gc_limit ||
+        (gc_big + (atomic ? n : 0) >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
     char *raw = calloc(1, PAGE + HB + n);
     if (!raw) oom();
     Seg *s = (Seg *)(((uintptr_t)raw + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
     s->raw = raw; s->large = 1; s->k = atomic; s->size = s->lim = n + 1; s->start = (char *)s + HB;
     pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s, PAGE + HB + n);
-    s->next = bigs; bigs = s; gc_allocd += n;
+    s->next = bigs; bigs = s; gc_allocd += n; if (atomic) gc_big += n;
     return s->start;
   }
   int k = 2 * (int)cls(n) + atomic;
@@ -499,7 +520,7 @@ __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not
 }
 
 /* ---------- strings ---------- */
-Str *pys_str(const char *p, I n) { Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; if (n) memcpy(s->s, p, n); return s; }
+Str *pys_str(const char *p, I n) { Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); return s; }
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
 /* float text: CPython converts floats without the C locale (its own dtoa), so a Python that shares the
@@ -609,14 +630,152 @@ Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes
   if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
   if (st == 1) return pys_str(s->s + lo, n);
   Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); r->len = n;
-  for (I i = 0; i < n; i++) r->s[i] = s->s[lo + i * st];
+  int ascii = 1;
+  for (I i = 0; i < n; i++) {
+    r->s[i] = s->s[lo + i * st];
+    ascii &= (unsigned char)r->s[i] < 128;
+  }
+  r->chars1 = ascii ? n + 1 : 0;
   return r;
 }
 Str *pys_bytes_slice(Str *s, I lo, I hi) { return pys_str_slice(s, lo, hi); }
 Str *pys_bytes_slice_step(Str *s, I lo, I hi, I st) { return pys_str_slice_step(s, lo, hi, st); }
+/* Public str operations use code points; runtime.py and bytes retain the byte operations
+   above. Keeping len as the byte length preserves allocation, hashing, I/O and _rt's
+   contracts. chars1 caches the logical length; equality with len + 1 gives the byte fast
+   path. UTF-8 surrogates are individual code points, as in Python strings. Invalid raw
+   bytes retain u8char's one-byte fallback until the separate decoding-boundary work. */
+I pys_text_len(Str *s) {
+  if (!s->chars1) {
+    I n = 0, cp;
+    for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);
+    s->chars1 = n + 1;
+  }
+  return s->chars1 - 1;
+}
+static TextHint *text_hint_slot(Str *s) {
+  uintptr_t p = (uintptr_t)s;
+  return &text_hints[((p >> 4) ^ (p >> 12) ^ (p >> 20)) & 63];
+}
+static TextHint *text_hint(Str *s) {
+  TextHint *h = text_hint_slot(s);
+  if (h->s != s) *h = (TextHint){s, 0, 0};
+  return h;
+}
+static I text_before(Str *s, I at) {   /* preceding character, for a valid nonzero byte boundary */
+  if ((unsigned char)s->s[at - 1] < 128) return at - 1;
+  I start = at - 1, cp;
+  while (start > 0 && at - start < 4 && (s->s[start] & 0xC0) == 0x80) start--;
+  return u8char(s->s + start, at - start, &cp) == at - start ? start : at - 1;
+}
+static I text_offset(Str *s, I n) {   /* byte offset of code point n, with 0 <= n <= text_len(s) */
+  if (s->chars1 == s->len + 1 || !n) return n;
+  I len = s->chars1 - 1;
+  if (n == len) return s->len;   /* default search/slice endpoints must not evict an interior hint */
+  TextHint *h = text_hint(s);
+  I at = h->byte, point = h->point, cp, distance = point > n ? point - n : n - point;
+  if (n < distance) { at = point = 0; distance = n; }
+  if (len - n < distance) { at = s->len; point = len; }
+  while (point < n) { TEXT_PROBE(); at += u8char(s->s + at, s->len - at, &cp); point++; }
+  while (point > n) { TEXT_PROBE(); at = text_before(s, at); point--; }
+  h->byte = at; h->point = point; return at;
+}
+static I text_index(Str *s, I at) {   /* code-point index at a byte boundary (round up for raw invalid needles) */
+  if (s->chars1 == s->len + 1 || !at) return at;
+  I len = s->chars1 - 1;
+  if (at == s->len) return len;
+  TextHint *h = text_hint(s);
+  I byte = h->byte, point = h->point, cp, distance = byte > at ? byte - at : at - byte;
+  if (at < distance) { byte = point = 0; distance = at; }
+  if (s->len - at < distance) { byte = s->len; point = len; }
+  while (byte < at) { TEXT_PROBE(); byte += u8char(s->s + byte, s->len - byte, &cp); point++; }
+  while (byte > at) {
+    TEXT_PROBE(); I before = text_before(s, byte);
+    if (before < at) break;
+    byte = before; point--;
+  }
+  h->byte = byte; h->point = point; return point;
+}
+Str *pys_text_chr(I c) {
+  if (c < 0 || c > 0x10FFFF) pys_fail("ValueError: chr() arg not in range(0x110000)");
+  char b[4];
+  Str *s = c < 128 ? byte1((unsigned char)c) : pys_str(b, u8enc(b, c));
+  s->chars1 = 2; return s;
+}
+Str *pys_text_get(Str *s, I i) {
+  i = idx(i, pys_text_len(s), "IndexError: string index out of range");
+  if (s->chars1 == s->len + 1) return byte1((unsigned char)s->s[i]);
+  I at = text_offset(s, i), cp, k = u8char(s->s + at, s->len - at, &cp);
+  Str *r = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+  r->chars1 = 2; return r;
+}
+Str *pys_text_at(Str *s, I at) {   /* linear iteration's byte cursor, always at a character boundary */
+  if (at < 0 || at >= s->len) pys_fail("IndexError: string index out of range");
+  if ((unsigned char)s->s[at] < 128) return byte1((unsigned char)s->s[at]);
+  I cp, k = u8char(s->s + at, s->len - at, &cp);
+  Str *r = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+  r->chars1 = 2; return r;
+}
+I pys_text_next(Str *s, I at) {
+  if (at < 0 || at >= s->len) pys_fail("IndexError: string index out of range");
+  if ((unsigned char)s->s[at] < 128) return at + 1;
+  I cp;
+  return at + u8char(s->s + at, s->len - at, &cp);
+}
+I pys_text_prev(Str *s, I at) {
+  if (!at) return -1;   /* exhausted reverse iterator */
+  if (at < 0 || at > s->len) pys_fail("IndexError: string index out of range");
+  return text_before(s, at);
+}
+Str *pys_text_slice(Str *s, I lo, I hi) {
+  span(&lo, &hi, pys_text_len(s));
+  Str *r = pys_str_slice(s, text_offset(s, lo), text_offset(s, hi));
+  r->chars1 = hi - lo + 1; return r;
+}
+static int text_selected(I i, I lo, I st, I n) {
+  if (st > 0) return i >= lo && (i - lo) / st < n && (i - lo) % st == 0;
+  return i <= lo && (lo - i) / -st < n && (lo - i) % -st == 0;
+}
+Str *pys_text_slice_step(Str *s, I lo, I hi, I st) {
+  I len = pys_text_len(s), n = sspan(&lo, hi, &st, len);
+  if (!n) return &str0.s;
+  if (st == 1) return pys_text_slice(s, lo, lo + n);
+  if (len == s->len) return pys_str_slice_step(s, lo, hi, st);
+  /* Two linear passes: size the exact byte buffer, then copy selected characters.
+     A negative step fills backwards, without reversing any UTF-8 sequence. */
+  I m = 0, cp, k, chars1 = n + 1;
+  for (I at = 0, i = 0; at < s->len; at += k, i++) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    if (text_selected(i, lo, st, n)) {
+      m += k;
+      /* Raw one-byte fallbacks can join into a valid UTF-8 sequence after slicing.
+         Only complete characters preserve the selected count at the new seams. */
+      if (k == 1 && (unsigned char)s->s[at] >= 128) chars1 = 0;
+    }
+  }
+  Str *r = pys_alloc_atomic(sizeof(Str) + m + 1); r->len = m; r->chars1 = chars1;
+  I out = st > 0 ? 0 : m;
+  for (I at = 0, i = 0; at < s->len; at += k, i++) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    if (text_selected(i, lo, st, n)) {
+      if (st < 0) out -= k;
+      memcpy(r->s + out, s->s + at, k);
+      if (st > 0) out += k;
+    }
+  }
+  return r;
+}
+static I text_cat_count(I chars1, I len, Str *b) {
+  if (!len) return b->len ? b->chars1 : 1;
+  if (!b->len) return chars1;
+  /* A leading continuation byte can complete an invalid raw sequence at the seam.
+     Otherwise cached counts add, including Unicode and the common ASCII append. */
+  return chars1 && b->chars1 && (b->s[0] & 0xC0) != 0x80 ? chars1 + b->chars1 - 1 : 0;
+}
 Str *pys_str_add(Str *a, Str *b) {
   Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 1);
-  s->len = a->len + b->len; memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
+  s->len = a->len + b->len; s->chars1 = text_cat_count(a->chars1, a->len, b);
+  memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
 }
 /* s += t of a str local (Gen.str_append). owned: an append made s and nothing else holds it (nor
    hashed it: dict_hash is 0), so t goes into s's own memory while it has room (gc_seg). Else a new
@@ -640,17 +799,21 @@ __attribute__((noinline)) static Str *str_grow(Str *s, I m, I owned) {   /* s in
   r->len = s->len; memcpy(r->s, s->s, s->len); return r;
 }
 Str *pys_str_iadd(Str *s, Str *t, I owned) {
-  I n = s->len + t->len, m = (I)sizeof(Str) + n + 1;
+  I n = s->len + t->len, m = (I)sizeof(Str) + n + 1, chars1 = text_cat_count(s->chars1, s->len, t);
   if (!owned || m > gc_seg(s)->size - 1) s = str_grow(s, m, owned);
-  memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; return s;
+  else if (s->chars1 != s->len + 1) {
+    TextHint *hint = text_hint_slot(s);
+    if (hint->s == s) hint->s = 0;
+  }
+  memcpy(s->s + s->len, t->s, t->len); s->s[n] = 0; s->len = n; s->chars1 = chars1; return s;
 }
 /* the first n (3 to 8) of a..h as one str, each copied once: the pieces of an f-string or a % format.
    The loops run eight times, so they unroll where LLVM inlines a call (n is a constant there) */
 Str *pys_str_cat(I n, Str *a, Str *b, Str *c, Str *d, Str *e, Str *f, Str *g, Str *h) {
   Str *p[8] = {a, b, c, d, e, f, g, h};
-  I len = 0;
-  for (int i = 0; i < 8; i++) len += i < n ? p[i]->len : 0;
-  Str *s = pys_alloc_atomic(sizeof(Str) + len + 1); s->len = len;
+  I len = 0, chars1 = 1;
+  for (int i = 0; i < 8; i++) if (i < n) { chars1 = text_cat_count(chars1, len, p[i]); len += p[i]->len; }
+  Str *s = pys_alloc_atomic(sizeof(Str) + len + 1); s->len = len; s->chars1 = chars1;
   char *w = s->s;
   for (int i = 0; i < 8; i++) if (i < n) { memcpy(w, p[i]->s, p[i]->len); w += p[i]->len; }
   return s;
@@ -662,6 +825,7 @@ Str *pys_str_mul(Str *a, I n) {       /* as CPython's _PyBytes_Repeat: one byte 
   if (a->len * n > INT64_MAX - 64) pys_fail("MemoryError");
   I m = a->len * n, k = a->len, c;
   Str *s = pys_alloc_atomic(sizeof(Str) + m + 1); s->len = m;
+  s->chars1 = !n ? 1 : a->chars1 && (n == 1 || (a->s[0] & 0xC0) != 0x80) ? (a->chars1 - 1) * n + 1 : 0;
   if (k == 1) memset(s->s, a->s[0], m);
   else if (m) {
     memcpy(s->s, a->s, k);
@@ -687,6 +851,45 @@ I pys_bytes_has(Str *b, I x);
 I pys_bytes_contains(Str *h, Str *n);
 I pys_str_startswith(Str *s, Str *p, I st, I en);
 I pys_str_endswith(Str *s, Str *p, I st, I en);
+static int text_bounds(Str *s, I *st, I *en) {
+  I n = pys_text_len(s);
+  if (*st < 0 && (*st += n) < 0) *st = 0;
+  if (*en > n) *en = n;
+  else if (*en < 0 && (*en += n) < 0) *en = 0;
+  return *st <= *en;   /* unlike slices, a start past the end does not match an empty needle */
+}
+I pys_text_find(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return -1;
+  I at = pys_str_find(s, p, text_offset(s, st), text_offset(s, en));
+  return at < 0 ? -1 : text_index(s, at);
+}
+I pys_text_rfind(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return -1;
+  I at = pys_str_rfind(s, p, text_offset(s, st), text_offset(s, en));
+  return at < 0 ? -1 : text_index(s, at);
+}
+I pys_text_index(Str *s, Str *p, I st, I en) {
+  I at = pys_text_find(s, p, st, en);
+  if (at < 0) pys_fail("ValueError: substring not found");
+  return at;
+}
+I pys_text_rindex(Str *s, Str *p, I st, I en) {
+  I at = pys_text_rfind(s, p, st, en);
+  if (at < 0) pys_fail("ValueError: substring not found");
+  return at;
+}
+I pys_text_count(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  return !p->len ? en - st + 1 : pys_str_count(s, p, text_offset(s, st), text_offset(s, en));
+}
+I pys_text_startswith(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  return pys_str_startswith(s, p, text_offset(s, st), text_offset(s, en));
+}
+I pys_text_endswith(Str *s, Str *p, I st, I en) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  return pys_str_endswith(s, p, text_offset(s, st), text_offset(s, en));
+}
 Str *pys_str_replace(Str *s, Str *a, Str *b);
 Str *pys_str_replace_count(Str *s, Str *a, Str *b, I count);
 Str *pys_str_strip(Str *s, Str *cs);
@@ -1994,20 +2197,26 @@ List *pys_list_add(List *a, List *b) {
   List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
   pys_list_extend(r, a); pys_list_extend(r, b); return r;
 }
+static void repeat_items(I *a, I k, I m) {     /* a[0, k) repeated through a[k, m): the copied prefix
+                                                   doubles, log2(m / k) memcpys rather than m / k, as
+                                                   pys_str_mul copies (#649) */
+  for (I c; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(a + k, a, c * 8); }
+}
 void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
   if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   reserve(l, m * n);
-  for (I i = 1; i < n; i++) memcpy(l->a + i * m, l->a, m * 8);
+  repeat_items(l->a, m, m * n);
   l->len = m * n;
 }
-List *pys_list_mul(List *a, I n) {
+List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
+                                                    zero bits (0, 0.0, False, None) is not copied */
   I m = a->len;
   if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
   List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
-  for (I i = 0; i < n; i++) memcpy(r->a + i * m, a->a, m * 8);
+  if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }
@@ -2398,6 +2607,15 @@ List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once 
   l->len = (I)n; return l;
 }
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
+List *pys_text_list(Str *s) {
+  List *l = pys_list_new(pys_text_len(s));
+  for (I at = 0, cp, k; at < s->len; at += k) {
+    k = u8char(s->s + at, s->len - at, &cp);
+    Str *c = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
+    c->chars1 = 2; pys_list_append(l, (I)c);
+  }
+  return l;
+}
 List *pys_bytes_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (unsigned char)s->s[i]); return l; }
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */

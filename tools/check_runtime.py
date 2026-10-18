@@ -28,7 +28,8 @@ disagrees with its entry is an internal error. This tool checks the table itself
     the locals they are stored in, and the parameters of the runtime functions they are passed
     to (from clang -O1, whose SSA form leaves few locals; a C library function other than
     READS_ONLY counts as both, and user code as neither: that is U). Stores to Str.dict_hash
-    alone are excluded: caching a hash changes neither a string's value nor a container;
+    and Str.chars1 alone are excluded: caching a hash or code-point count changes neither a
+    string's value nor a container;
   - it has I if its call graph, outside a raise (R: the funnels, which end the program or
     unwind to a handler) and the allocator (A), reads or writes a mutable static of the runtime
     other than NO_STATE's or calls a C library function other than PURE_C's (I/O, the process,
@@ -121,8 +122,9 @@ READS_ONLY = set("""memcmp bcmp memchr memmem strlen strchr strstr strcmp strnca
     __isoc23_strtoll fwrite fputs fprintf snprintf sprintf vsnprintf write""".split()) | HOOKS
 # runtime statics that keep no state from one call to the next: the cache of one-character
 # strings (immutable, made on first use), the scratch buffers of round(x, n), and the C locale that
-# float text uses once CPython or a C library shares the process (c_num: the text is the same)
-NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num"}
+# float text uses once CPython or a C library shares the process (c_num: the text is the same),
+# and weak string-position hints (cleared before GC reuse and on in-place string mutation).
+NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num", "text_hints"}
 # the parameter types whose memory the letters rL wL, rD wD and rF wF are about, by entry prefix
 # for S (the receiver)
 OWNER = {"list.": "L", "dict.": "D", "set.": "D", "file.": "F"}  # (a set's memory counts as a dict's)
@@ -256,7 +258,7 @@ def params(ll):
     fns = {}
     cur = None
     hook = {}  # (a register loaded from a HOOKS static: the call through it is that hook's)
-    cache_layout = "%struct.Str = type { i64, i64, [0 x i8] }" in ll.split("\n")
+    cache_layout = "%struct.Str = type { i64, i64, i64, [0 x i8] }" in ll.split("\n")
     cache_fields = set()
     for line in ll.split("\n"):
         m = re.match(r"define [^@]*@([\w.]+)\((.*)\)[^(]*\{$", line)
@@ -271,9 +273,9 @@ def params(ll):
             h = re.match(r"\s*(%[\w.]+) = load ptr, ptr @(\w+)\b", line)
             if h and h.group(2) in HOOKS:
                 hook[h.group(1)] = h.group(2)
-            # Only a direct i64 store to Str's second field is an invisible cache write.
+            # Only a direct i64 store to Str's hash or character count is an invisible cache write.
             # Keep its loads, calls, and every other reachable store in the effect analysis.
-            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 1", line)
+            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 [12]", line)
             if cache_layout and m:
                 cache_fields.add(m.group(1))
             x = instruction(line.strip())
@@ -360,10 +362,12 @@ def derived(fns, eff, f, p):
 
 # The cache exception must not hide writes to string contents, lengths, or another struct.
 for _struct, _field, _store, _writes in [
-    ("Str", 1, "i64", False), ("Str", 0, "i64", True), ("Str", 2, "i8", True),
-    ("Dict", 1, "i64", True), ("Str", 1, "i32", True),
+    ("Str", 1, "i64", False), ("Str", 2, "i64", False),
+    ("Str", 0, "i64", True), ("Str", 3, "i8", True), ("Str", 3, "i64", True),
+    ("Dict", 1, "i64", True), ("Dict", 2, "i64", True),
+    ("Str", 1, "i32", True), ("Str", 2, "i32", True),
 ]:
-    _probe = f"""%struct.Str = type {{ i64, i64, [0 x i8] }}
+    _probe = f"""%struct.Str = type {{ i64, i64, i64, [0 x i8] }}
 define void @probe(ptr %p) {{
   %field = getelementptr inbounds %struct.{_struct}, ptr %p, i64 0, i32 {_field}
   store {_store} 1, ptr %field
@@ -371,6 +375,8 @@ define void @probe(ptr %p) {{
 }}
 """
     assert params(_probe)["probe"][0][1] is _writes
+    # A stale or unrelated layout must never acquire the cache exception.
+    assert params(_probe.replace("i64, i64, i64,", "i64, i64,"))["probe"][0][1] is True
 
 
 def state(ll):

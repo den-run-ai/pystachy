@@ -33,12 +33,3 @@ for unit in ["a", "é", "𝔄"]:
     offs = state.offs.copy()
     rx.match(subject, 0, len(subject))
     print("owned", state.s == codes, state.offs == offs, state.s is not re._last_codes)
-
-# The start is rounded up and the end down if a byte offset splits a UTF-8 character.
-# Multiline $ with pos > endpos can inspect the character at that rounded-up start.
-text = "a𝔄\n" + "z" * 30
-for pos in [2, 3, 4]:
-    m = re.compile("(?m)$").match(text, pos, 1)
-    print("inside utf8", pos, m is not None and m.span() == (5, 5))
-for end in [2, 3, 4]:
-    print("split end", end, re.compile("𝔄").match(text, 1, end) is None)

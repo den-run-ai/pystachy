@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-17",
+  "purpose": "BLAS AOT nanoGPT inference with each libblas.so.3 provider that Ubuntu 24.04 packages, through the adapter's unchanged LP64 binding",
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "vcpus": 4,
+    "shared_vm": true,
+    "pinned": false
+  },
+  "providers": {
+    "reference_blas_3.12": {
+      "package": "libblas3 3.12.0-3build1.1",
+      "library": "/usr/lib/x86_64-linux-gnu/blas/libblas.so.3",
+      "threads": 1
+    },
+    "ubuntu_openblas_0.3.26_one_thread": {
+      "package": "libopenblas0-pthread 0.3.26+ds-1ubuntu0.1",
+      "library": "/usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3",
+      "threads": 1
+    },
+    "ubuntu_openblas_0.3.26_default_threads": {
+      "package": "libopenblas0-pthread 0.3.26+ds-1ubuntu0.1",
+      "library": "/usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3",
+      "threads": "OpenBLAS default (4 vCPUs)"
+    }
+  },
+  "selection": "LD_LIBRARY_PATH set to the provider's directory; OPENBLAS_NUM_THREADS, OMP_NUM_THREADS and GOTO_NUM_THREADS set to 1 unless default threads",
+  "model": {
+    "name": "benchmark",
+    "n_layer": 2,
+    "n_head": 2,
+    "n_embd": 64,
+    "block_size": 64,
+    "vocab_size": 64,
+    "bias": true,
+    "batch": 2,
+    "length": 16
+  },
+  "fixture": {
+    "weight_sha256": "0cb4fec803794d46a0a05e1d19d5799c7969dbd74bdcb8582a3916e6cf4f0a2b",
+    "input_sha256": "935adb2787ae8be551bc3522cf6816be3412a1653686f46c408a30aebce6916b"
+  },
+  "method": {
+    "rounds": 5,
+    "warmups": 20,
+    "repeats": 200,
+    "statistic": "median over rounds of each run's median",
+    "runner": "tools/check_nanogpt.py runner_source('blas', 0), built AOT with the default libblas.so.3 binding"
+  },
+  "sources_sha256": {
+    "examples/nanogpt/model.py": "3dddd99ebc5218fd7ae90c8c985fe2d16bece9a3c5f9c3e473b72f2b764ac125",
+    "examples/ndarray/ndarray.py": "5ef5a1b878ad8d648aaf67747661420ea538a0dc4976f7fa71bb2c4762dbe626",
+    "examples/ndarray/ndarray_blas.py": "bd0c647f8db3a1bc21459a6c9935c9d73f62c6543e1f17c228d5836fa2ef2903",
+    "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141"
+  },
+  "rounds_median_ms": {
+    "reference_blas_3.12": {
+      "full": [
+        3.371193500015579,
+        2.209500500015338,
+        2.1821265000028234,
+        2.2807989999762412,
+        2.27827300003014
+      ],
+      "last": [
+        2.153769499983582,
+        2.1508979999964595,
+        2.119543000020485,
+        3.0998609999812743,
+        2.1142824999742516
+      ]
+    },
+    "ubuntu_openblas_0.3.26_one_thread": {
+      "full": [
+        1.2074924999865289,
+        0.9224590000087574,
+        0.8893110000087745,
+        0.8519755000122586,
+        1.2013539999884415
+      ],
+      "last": [
+        0.7617915000253106,
+        0.8338535000120828,
+        0.7920129999945402,
+        0.8584550000136915,
+        0.7450280000114162
+      ]
+    },
+    "ubuntu_openblas_0.3.26_default_threads": {
+      "full": [
+        0.7975700000031338,
+        1.1125430000049619,
+        1.1132225000096696,
+        1.0965889999852152,
+        1.0634180000010929
+      ],
+      "last": [
+        0.6972429999905216,
+        0.7436030000178562,
+        0.9589514999959192,
+        0.7026129999871955,
+        1.084815499979186
+      ]
+    }
+  },
+  "median_ms": {
+    "reference_blas_3.12": {
+      "full": 2.27827300003014,
+      "last": 2.1508979999964595
+    },
+    "ubuntu_openblas_0.3.26_one_thread": {
+      "full": 0.9224590000087574,
+      "last": 0.7920129999945402
+    },
+    "ubuntu_openblas_0.3.26_default_threads": {
+      "full": 1.0965889999852152,
+      "last": 0.7436030000178562
+    }
+  },
+  "output_sha256_prefix": {
+    "reference_blas_3.12": [
+      "3aed448431c4fb5a"
+    ],
+    "ubuntu_openblas_0.3.26_one_thread": [
+      "fb3fbab0abc7957d"
+    ],
+    "ubuntu_openblas_0.3.26_default_threads": [
+      "fb3fbab0abc7957d"
+    ]
+  },
+  "note": "An earlier session on the same VM, when it ran about twice as slow, measured medians of 4.802 ms (reference) and 1.748 ms (OpenBLAS, one thread) for full inference: a ratio of 2.7 against this session's 2.5."
+}
