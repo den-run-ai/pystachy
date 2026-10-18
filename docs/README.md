@@ -22,6 +22,7 @@ are linked from the relevant guide.
 | [pyperformance results](pyperformance.md) | Ported pyperformance benchmarks under CPython, JIT and AOT |
 | [microGPT benchmark](../bench/microgpt/README.md) | Scalar-autograd transformer training, numerical parity and native performance |
 | [Application examples](../examples/) | Small compiled command-line applications |
+| [Native nanoGPT](../examples/nanogpt/README.md) | CPU transformer inference with ndarray and optional native BLAS |
 
 ## Work on the compiler
 
