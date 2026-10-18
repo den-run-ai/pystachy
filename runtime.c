@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
@@ -304,6 +305,8 @@ static I nfiles;                       /* open files (see I/O): closed by the co
 static void files_sweep(void);
 static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
 static void trk_sweep(void);
+static int gc_marked(const void *p);
+static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   memset(text_hints, 0, sizeof text_hints);
@@ -316,6 +319,7 @@ __attribute__((noinline)) static void collect(void) {
     else msp -= 2;
     scan(p, p + n / 8);
   }
+  weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
   sweep(); gc_n++;
@@ -392,6 +396,28 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
+   the target nor the next registry entry is a strong edge. The registry itself is NOT a
+   collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused. */
+typedef struct WeakRef WeakRef;
+struct WeakRef { WeakRef *next; void *target; };
+static WeakRef *weakrefs;
+void *pys_weakref_new(void *target) {
+  WeakRef *ref = pys_alloc_atomic(sizeof *ref);
+  ref->target = target;
+  ref->next = weakrefs;
+  weakrefs = ref;
+  return ref;
+}
+void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+__attribute__((noinline)) static void weakrefs_sweep(void) {
+  for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
+    if (!gc_marked(ref)) { *link = ref->next; continue; }
+    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    link = &ref->next;
+  }
+}
 static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
                                           its size less the byte of slack, as for the n that cls(n) took */
   uintptr_t a = (uintptr_t)p;
@@ -4399,6 +4425,80 @@ void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PE
   while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
 }
 void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- select: a POSIX integer-descriptor subset ---------- */
+static int select_fds(List *fds, fd_set *set, int maxfd) {
+  FD_ZERO(set);
+  for (I i = 0; i < fds->len; i++) {
+    I fd = fds->a[i];
+    if (fd < INT32_MIN || fd > INT32_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+    if (fd < 0) failf("ValueError: file descriptor cannot be a negative integer (%lld)", (long long)fd);
+    if (fd >= FD_SETSIZE) pys_fail("ValueError: filedescriptor out of range in select()");
+    /* CPython converts and validates the first excess item before its count
+       error; items beyond that one must not replace the earlier error. */
+    if (i >= FD_SETSIZE) pys_fail("ValueError: too many file descriptors in select()");
+    FD_SET((int)fd, set);  /* checked before the macro indexes its fixed-size bitmap */
+    if (fd > maxfd) maxfd = (int)fd;
+  }
+  return maxfd;
+}
+void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  if (!blocking) {
+    if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
+    if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
+      pys_fail("OverflowError: timestamp out of range for C PyTime_t");
+    if (timeout < 0) pys_fail("ValueError: timeout must be non-negative");
+  }
+  fd_set original[3], ready[3];
+  int maxfd = select_fds(r, &original[0], -1);
+  maxfd = select_fds(w, &original[1], maxfd);
+  maxfd = select_fds(x, &original[2], maxfd);
+  double deadline = blocking ? 0 : pys_monotonic() + timeout;
+  double remaining = timeout;
+  for (;;) {
+    ready[0] = original[0]; ready[1] = original[1]; ready[2] = original[2];
+    struct timespec tv = {0, 0};
+    if (!blocking) {
+      tv.tv_sec = (time_t)remaining;
+      tv.tv_nsec = (long)ceil((remaining - (double)tv.tv_sec) * 1e9);
+      if (tv.tv_nsec >= 1000000000) { tv.tv_sec++; tv.tv_nsec -= 1000000000; }
+    }
+    /* Block SIGINT until the kernel starts waiting: if it arrived after io_in
+       but before select, the handler would merely note it and select could wait
+       forever. pselect atomically restores the caller's mask for the wait. */
+    sigset_t blocked, previous;
+    sigemptyset(&blocked); sigaddset(&blocked, SIGINT);
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous)) ioerr(errno);
+    if (io_intr) {
+      if (sigprocmask(SIG_SETMASK, &previous, NULL)) ioerr(errno);
+      kbint_exit();
+    }
+    io_in();
+    int n = pselect(maxfd + 1, &ready[0], &ready[1], &ready[2], blocking ? NULL : &tv, &previous);
+    int e = errno;
+    int mask_error = sigprocmask(SIG_SETMASK, &previous, NULL) ? errno : 0;
+    io_out();  /* a pending SIGINT retains the runtime's KeyboardInterrupt behavior */
+    if (mask_error) ioerr(mask_error);
+    if (n >= 0) break;
+    if (e != EINTR) ioerr(e);
+    if (!blocking) {
+      remaining = deadline - pys_monotonic();
+      if (remaining <= 0) {
+        FD_ZERO(&ready[0]); FD_ZERO(&ready[1]); FD_ZERO(&ready[2]);
+        break;
+      }
+    }
+  }
+  List *inputs[3] = {r, w, x};
+  void **out = pys_alloc(24);  /* a scanned fixed tuple keeps each result list alive */
+  for (int k = 0; k < 3; k++) {
+    List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
+    out[k] = dst;
+    for (I i = 0; i < src->len; i++)
+      if (FD_ISSET((int)src->a[i], &ready[k])) pys_list_append(dst, src->a[i]);
+  }
+  return out;
+}
 
 /* ---------- the errno module: the platform's error numbers ---------- */
 static const struct { const char *name; int value; } errnos[] = {

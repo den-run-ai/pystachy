@@ -48,7 +48,8 @@ ABSTRACT_DECOS: dict[str, str] = {"abc$abstractmethod": "", "abc$abstractpropert
 STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pystachy_codecs", "atexit": "_pystachy_atexit",
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
                             "_imp": "_pystachy_imp",
-                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools"}
+                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
+                            "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -174,7 +175,7 @@ MODFUNCS: dict[str, bool] = {}
 for _k in CALLS:
     if "." in _k[: _k.find("(")]:
         MODFUNCS[_k[: _k.find("(")]] = True
-for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose".split():
+for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose select.select".split():
     MODFUNCS[_k] = True
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
@@ -188,7 +189,7 @@ LINKDL: list[str] = []  # not empty: the program looks C functions up at run tim
 # 0 C int, 1 C unsigned int, 2 an unsigned 64-bit argument (>= 0), 3 one's result (< 2**63)
 CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "c_int64": "i64:-1", "c_ssize_t": "i64:-1",
                           "c_uint64": "i64:2", "c_size_t": "i64:2", "c_void_p": "ptr:-1"}
-for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi".split():
+for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi select".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
 for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder math.pi math.e math.inf math.tau math.nan "
@@ -666,6 +667,8 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
+    # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
+    "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",
@@ -808,6 +811,7 @@ RUNTIME: dict[str, str] = {
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
+    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
