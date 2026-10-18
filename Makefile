@@ -95,7 +95,10 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	build/dictprobe
 	PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
 
-# Empty lists release historical backing; range-list backing is pointer-free and safely mutable.
+# Empty lists release historical backing; range-list backing is pointer-free and safely mutable;
+# dropped pointer-free large arrays that are most of what is allocated run a collection every
+# 4 MiB of them; small objects, large arrays among more small objects and arrays of pointers,
+# every 32 MiB.
 listprobe: tools/listprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/listprobe-rt.ll
