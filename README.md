@@ -197,13 +197,12 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 Feedback, bug reports and small library ports are welcome. Share a program that fails to
 compile or differs from CPython in the [issue tracker](https://github.com/den-run-ai/pystachy/issues).
 
-For code changes, run `make verify`, `make lint` and `make check-recordings` before opening a
-pull request. See the [testing guide](docs/testing.md) for adding differential tests and
-checking code-generator refactors.
+Start with the [contributor guide](CONTRIBUTING.md) for setup, focused tests, sign-off and
+review expectations. The [testing guide](docs/testing.md) covers differential tests and
+full verification before merge.
 
 ## License
 
 MIT ([LICENSE](LICENSE)). CPython-derived code is covered by the PSF License Version 2;
 see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES). Ryu float-formatting code uses the Boost
 Software License 1.0 ([ryu/README.md](ryu/README.md)).
-
