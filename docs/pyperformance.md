@@ -69,6 +69,55 @@ AOT build time:
 | `spectral_norm` | 1.363 s | 0.0428 s | 0.0186 s | 31.9× | 73.2× | 0.9 s |
 | `unpack_sequence` | 1.054 s | 0.469 s | 0.2 µs | 2.2× | n/a | 19.1 s |
 
+## Regex repeat rerun
+
+Advisory paired rerun on 2026-10-18 UTC, against main `a355c83f` (including Unicode #667).
+The candidate is local implementation commit `c14b8dd5`; its matcher SHA-256 is
+`362cf7148831b2f672a343119c310121608dd8f3c6e2cf5390fd7b2953c37b3d`.
+The [raw samples](benchmarks/regex-repeat-2026-10-18.json) retain source/compiler hashes,
+commands, checksums, load averages, process wall/CPU times and all timed samples.
+
+CPython 3.13.16 and LLVM 18.1.3 ran on the same shared Linux x86-64 host (Xeon Platinum 8573C).
+Five rounds alternated the execution order of CPython, old/new AOT and old/new JIT; all checksums
+agreed. The arguments were DNA `4`, effbot `20`, V8 `20`. JIT used a primed runtime cache and
+both modes used default optimization. AOT builds and our correctness jobs finished before timings;
+other host activity was uncontrolled. These are medians of the in-process timed workload, not
+whole-process time or pure warmed matching. Ratios above 1 mean faster than old Pystachy.
+
+| Workload | CPython | Old → new AOT | AOT speedup | Old → new JIT | JIT speedup |
+|---|---:|---:|---:|---:|---:|
+| `regex_dna` | 0.929 s | 2.515 → 2.262 s | 1.11× | 2.668 → 2.628 s | 1.02× |
+| `regex_effbot` | 0.576 s | 1.662 → 0.927 s | 1.79× | 2.038 → 1.074 s | 1.90× |
+| `regex_v8` | 0.515 s | 1.765 → 1.495 s | 1.18× | 2.816 → 2.155 s | 1.31× |
+
+`regex_effbot` improves 1.79× AOT and 1.90× JIT: mandatory repeated-word patterns can skip
+impossible starts before entering the matcher. Its AOT ranges were 1.542–1.736 s old versus
+0.772–1.358 s new; JIT ranges were 1.865–2.421 s versus 0.925–1.620 s. It still trails CPython.
+The DNA and V8 ranges overlap, so their median differences are inconclusive on this host.
+
+Whole-process effbot medians were 1.688 → 0.942 s AOT and 3.266 → 2.241 s JIT (CPython 0.614 s).
+Whole-process measurements include setup and verification as well as startup/compilation;
+subtracting the timed part does not isolate JIT startup, particularly for V8's checksum pass.
+AOT build time was not measured in this rerun.
+
+The warmed repeat microbenchmark (`tools/re_repeat_bench.py 1000 --cpu`) separately exercises
+ASCII/Unicode folding, finite/lazy/possessive repeats, dense/sparse matches and plain controls.
+AOT medians improve 3.82× for ASCII greedy counting, 2.22× for Unicode greedy counting, and
+5.53× / 4.81× for ASCII / Unicode sparse searches. The four plain AOT controls remain within
+5% of their old medians. JIT sparse searches improve 4.35× / 3.48×, but Unicode lazy repeats
+have a 14% slower median with overlapping ranges; not every case improves. The raw file includes
+all controls and both execution modes. These advisory timings are not CI thresholds.
+
+Deterministic guards in `make re-probe` enforce the actual reduction in matcher entries:
+case-insensitive counting 12,012 → 12, sparse folded searches 24,012 → 12, and mandatory
+multi-character repeat searches 10,004 → 5. Removing each optimization fails its guard.
+Nullable repeats retain the existing search path. Separate plain/folded predicates preserve
+the original plain predicate's generated machine code.
+
+This is partial progress on [#345](https://github.com/den-run-ai/pystachy/issues/345).
+[#589](https://github.com/den-run-ai/pystachy/issues/589)'s subject decoding/storage trade-offs
+remain separate; neither issue is closed by these workload-specific improvements.
+
 ## Reading the results
 
 - AOT ran 14 of the 17 comparable benchmarks faster than CPython, by 1.5× to 84× in whole-process

@@ -114,7 +114,8 @@ CPython as a second baseline.
 
 Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
 snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
-one optimized-away workload has no meaningful AOT ratio. These are workload-specific
+one optimized-away workload has no meaningful AOT ratio. A [newer regex rerun](docs/pyperformance.md#regex-repeat-rerun)
+measures the repeat-matcher improvements. These are workload-specific
 measurements on adapted sources, not official pyperformance scores or a general Python speedup.
 JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
 memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.

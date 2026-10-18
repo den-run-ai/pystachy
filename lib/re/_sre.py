@@ -419,6 +419,12 @@ def sre_count(state: State, code: list[int], p: int, maxcount: int) -> int:
     if op == IN:
         while ptr < end and _charset(state, code, p + 2, s[ptr]):
             ptr += 1
+    elif op == IN_IGNORE:
+        while ptr < end and _charset(state, code, p + 2, lower_ascii(s[ptr])):
+            ptr += 1
+    elif op == IN_UNI_IGNORE:
+        while ptr < end and _charset(state, code, p + 2, lower_unicode(s[ptr])):
+            ptr += 1
     elif op == ANY:
         while ptr < end and s[ptr] != 10:
             ptr += 1
@@ -1020,13 +1026,15 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                     pattern += code[pattern]
                     continue
                 op = code[pattern + 1]
-                if (op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE) \
-                        and _repeated(code, pattern + 1) >= 0 and not _first(state, code, pattern + 5, ptr):
-                    # (not _sre's: an alternative that begins with a character repeated at least
-                    # once cannot match where that character is not; the opcode is tested here, as
-                    # the alternatives inside a lazy repeat's tail are tried at each character)
-                    pattern += code[pattern]
-                    continue
+                if op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE:
+                    item = _repeated(code, pattern + 1)
+                    if item >= 0:
+                        plain = code[item] == LITERAL or code[item] == IN
+                        if not (_first(state, code, item, ptr) if plain else _first_ignore(state, code, item, ptr)):
+                            # A mandatory first character rejects impossible alternatives. Keep
+                            # the existing single-character-repeat gate and its capture behavior.
+                            pattern += code[pattern]
+                            continue
                 state.ptr = ptr
                 nextp = pattern + 1
                 nextj = JUMP_BRANCH
@@ -1275,10 +1283,15 @@ def sre_search(state: State, code: list[int]) -> int:
         # groups' marks, can match only where that character is: the matcher is entered there
         # alone, which the general case below does at every position)
         item = _repeated(code, _after_marks(code, pattern))
+        plain = code[item] == LITERAL or code[item] == IN
         first = ptr  # (where must_advance applies, as in the general case)
         while True:
-            while ptr < end and not _first(state, code, item, ptr):
-                ptr += 1
+            if plain:
+                while ptr < end and not _first(state, code, item, ptr):
+                    ptr += 1
+            else:
+                while ptr < end and not _first_ignore(state, code, item, ptr):
+                    ptr += 1
             if ptr >= end:
                 # (where the general case's last position leaves them)
                 state.must_advance = False
@@ -1327,12 +1340,18 @@ def _after_marks(code: list[int], p: int) -> int:
 
 
 def _repeated(code: list[int], p: int) -> int:
-    # where the item is, a LITERAL or an IN, if the code at p is a REPEAT_ONE, MIN_REPEAT_ONE or
-    # POSSESSIVE_REPEAT_ONE of it, at least once (<op> <skip> <min> <max> item), else -1
+    # where a literal or class (including case-insensitive variants) is, if the code at p is a
+    # repeat with a nonzero minimum that begins with it, after any group marks, else -1
     op = code[p]
-    if (op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE) and code[p + 2] >= 1:
-        if code[p + 4] == LITERAL or code[p + 4] == IN:
-            return p + 4
+    if (op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE or op == REPEAT) \
+            and code[p + 2] >= 1:
+        # Both repeat layouts begin <op> <skip> <min> <max> <body>. Only skip MARKs: an
+        # assertion, alternative or optional item may let the body match without this character.
+        first = _after_marks(code, p + 4) if op == REPEAT else p + 4
+        item = code[first]
+        if item == LITERAL or item == IN or item == LITERAL_IGNORE or item == LITERAL_UNI_IGNORE \
+                or item == IN_IGNORE or item == IN_UNI_IGNORE:
+            return first
     return -1
 
 
@@ -1343,3 +1362,18 @@ def _first(state: State, code: list[int], item: int, ptr: int) -> bool:
     if code[item] == LITERAL:
         return state.s[ptr] == code[item + 1]
     return _charset(state, code, item + 2, state.s[ptr])
+
+
+def _first_ignore(state: State, code: list[int], item: int, ptr: int) -> bool:
+    # Keep Unicode mapping's live arguments out of the common case-sensitive first-item check.
+    if ptr >= state.end:
+        return False
+    op = code[item]
+    ch = state.s[ptr]
+    if op == LITERAL_IGNORE or op == IN_IGNORE:
+        ch = lower_ascii(ch)
+    elif op == LITERAL_UNI_IGNORE or op == IN_UNI_IGNORE:
+        ch = lower_unicode(ch)
+    if op == LITERAL_IGNORE or op == LITERAL_UNI_IGNORE:
+        return ch == code[item + 1]
+    return _charset(state, code, item + 2, ch)

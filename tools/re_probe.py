@@ -12,6 +12,8 @@ do more fails here, and one that makes it do less lowers the limits.
 The charset compiler also checks full BMP and non-BMP case-insensitive ranges against CPython's
 code and matches. Its bit-setting calls may only receive existing case-fix lists, never temporary
 singleton/empty lists per code point; this deterministic guard needs no timing threshold.
+Repeated case-insensitive classes must also count their run without entering the matcher for
+each character, with the same one entry and context as a case-sensitive class.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -123,6 +125,84 @@ def check_charset_allocations() -> int:
     return failed
 
 
+def check_ignorecase_repeats() -> int:
+    # A full match with no tail needs only its outer context, regardless of the run's length.
+    # A missing count fast path enters the full matcher once per character instead.
+    failed = entries = contexts = 0
+    for flags, text in [(re.I | re.A, "AbCd" * 250), (re.I, "AbCd" * 250),
+                        (re.I, "aſİıK" * 200)]:
+        for repeat in ["+", "{1000}", "{1000}?", "++"]:
+            pattern = "[a-z]" + repeat
+            mine = port.compile(pattern, flags)
+            theirs = re.compile(pattern, flags)
+            counts["entries"] = counts["contexts"] = 0
+            got = mine.fullmatch(text)
+            want = theirs.fullmatch(text)
+            if (None if got is None else got.group()) != (None if want is None else want.group()):
+                print(f'ignorecase repeat differs: {pattern!r}, {flags}')
+                failed += 1
+            e, c = counts["entries"], counts["contexts"]
+            entries += e
+            contexts += c
+            if e > 1 or c > 1:
+                print(f'ignorecase repeat: {pattern!r}, {flags}: {e} entries, {c} contexts (limit 1 each)')
+                failed += 1
+    print(f'ignorecase repeats: {entries} entries, {contexts} contexts (limit 12 each)')
+    return failed
+
+
+def check_ignorecase_searches() -> int:
+    # A nonempty repeat can only match where its first literal or class matches. Sparse and
+    # absent runs must not enter the matcher once for every rejected position.
+    failed = entries = contexts = 0
+    for flags in [re.I | re.A, re.I]:
+        for item in ["[a-z]", "a"]:
+            for repeat in ["+", "{1,3}?", "++"]:
+                pattern = "(" + item + repeat + ")!"
+                mine = port.compile(pattern, flags)
+                theirs = re.compile(pattern, flags)
+                for text, max_entries in [("0" * 1000, 0), ("0" * 1000 + "Aa!", 1)]:
+                    counts["entries"] = counts["contexts"] = 0
+                    got = mine.search(text)
+                    want = theirs.search(text)
+                    if (None if got is None else (got.span(), got.group(1))) != (None if want is None else (want.span(), want.group(1))):
+                        print(f'ignorecase search differs: {pattern!r}, {flags}')
+                        failed += 1
+                    e, c = counts["entries"], counts["contexts"]
+                    entries += e
+                    contexts += c
+                    if e > max_entries or c > 2 * max_entries:
+                        print(f'ignorecase search: {pattern!r}, {flags}: {e} entries, {c} contexts (limit {max_entries}, {2 * max_entries})')
+                        failed += 1
+    print(f'ignorecase searches: {entries} entries, {contexts} contexts (limit 12, 24)')
+    return failed
+
+
+def check_repeat_prefixes() -> int:
+    # These are the captured and noncaptured multi-character repeat heads from regex_effbot.
+    # MARK instructions preserve captures but cannot make a mandatory first character optional.
+    failed = entries = 0
+    for pattern in [r"([a-z][a-z0-9]*,)+", r"(?:[a-z][a-z0-9]*,)+",
+                    r"([a-z][a-z0-9]*,)+?", r"(?:([a-z])([0-9]),){1,3}",
+                    r"(?i:([a-z][a-z0-9]*,)+)"]:
+        mine = port.compile(pattern)
+        theirs = re.compile(pattern)
+        for text, max_entries in [("-" * 1000, 0), ("-" * 1000 + "a5,b7,c9,", 1)]:
+            counts["entries"] = counts["contexts"] = 0
+            got = mine.search(text)
+            want = theirs.search(text)
+            if (None if got is None else (got.span(), got.groups())) != (None if want is None else (want.span(), want.groups())):
+                print(f'repeat prefix differs: {pattern!r}')
+                failed += 1
+            e = counts["entries"]
+            entries += e
+            if e > max_entries:
+                print(f'repeat prefix: {pattern!r}: {e} entries (limit {max_entries})')
+                failed += 1
+    print(f'repeat prefixes: {entries} entries (limit 5)')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -142,6 +222,9 @@ def main() -> int:
         failed += over
         print(f"{name:30} {e / len(texts):8.1f} {c / len(texts):9.1f}   ({e} of {max_entries}, {c} of {max_contexts}){'  OVER THE LIMIT' if over else ''}")
     failed += check_charset_allocations()
+    failed += check_ignorecase_repeats()
+    failed += check_ignorecase_searches()
+    failed += check_repeat_prefixes()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:
