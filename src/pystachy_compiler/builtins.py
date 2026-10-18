@@ -157,6 +157,19 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if name.endswith("enter") else Val("null", "None")
     if name.startswith("__pys_dict_") or name.startswith("__pys_set_"):
         return self.walk(name, args)
+    if name.startswith("__pys_text_"):
+        # The builtin string iterator keeps a byte cursor, just like for_seq. These are
+        # internal primitives, so ordinary code cannot confuse byte and character offsets.
+        if (self.curfn.mod != ITERS and not (name == "__pys_text_size" and self.curfn.mod in GLUE)) or len(args) == 0:
+            self.err(f"name '{name}' is not defined")
+        s = self.expr(args[0], "str")
+        if name == "__pys_text_size" and len(args) == 1:
+            return Val(self.mload('int', s.v), "int")
+        if name in ["__pys_text_at", "__pys_text_next"] and len(args) == 2:
+            at = self.as_int(self.expr(args[1], "int"))
+            t = "str" if name.endswith("_at") else "int"
+            return Val(self.rt(name[2:], rtt(t), [f"ptr {s.v}", f"i64 {at.v}"]), t)
+        self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
@@ -717,8 +730,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # (tagged as the primitives' loads are, and bounded: LLVM then sees that index
             # arithmetic on lengths cannot overflow)
             return Val(self.mload('int', v.v, 'length.range'), "int")
-        if t == "str" and self.unicode_audit:
-            self.rt("pys_str_audit", "void", [f"ptr {v.v}", f"ptr {self.sconst('len(str)')}"])
+        if t == "str":
+            return Val(self.rt("pys_text_len", "i64", [f"ptr {v.v}"]), "int")
         if t == "str" or t == "bytes" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
             return Val(self.mload('int', v.v), "int")
         if is_tuple(t):

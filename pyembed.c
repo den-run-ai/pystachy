@@ -34,7 +34,7 @@
 typedef int64_t I;
 typedef intptr_t Py_ssize_t;
 typedef struct _object PyObject;
-typedef struct { I len; uint64_t dict_hash; char s[]; } Str; /* runtime.c's */
+typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* runtime.c's */
 /* CPython's stable ABI */
 extern PyObject PyUnicode_Type, PyLong_Type;
 extern PyObject *PyExc_RuntimeError, *PyExc_TypeError;

@@ -73,7 +73,8 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
-#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers
+#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
+#                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #   scaling-0/-1   tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -609,11 +610,15 @@ $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
 fi
 
-# ---- Unicode audit: opt-in checks persist in AOT and do not affect runtime-cache semantics
+# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
 if want unicode-audit; then
 L=$V/unicode-audit.log; s=$(now); r=fail
-$PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"]'
+{ $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
+  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
+step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
 fi
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)

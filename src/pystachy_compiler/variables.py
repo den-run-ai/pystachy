@@ -1613,7 +1613,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
         # xs, a __setitem__ that empties it, or a nested target whose item's __iter__ does), the
         # items are all read first; a store to a plain name runs no code, so with only those
         # each item is read within the length checked (list_slot)
-        self.rt("pys_unpack_check", "void", [f"i64 {self.mload('int', v.v)}", f"i64 {len(t.kids)}"])
+        size = self.rt("pys_text_len", "i64", [f"ptr {v.v}"]) if v.t == "str" and not self.rtmode else self.mload('int', v.v)
+        self.rt("pys_unpack_check", "void", [f"i64 {size}", f"i64 {len(t.kids)}"])
         first = v.t != "str" and not name_targets(t)
         items: list[Val] = []
         for i in range(len(t.kids)):

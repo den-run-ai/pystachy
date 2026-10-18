@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6`.
+**Latest evaluated main:** `a355c83ff7b60b64e3264867593064c3da9611a5`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1517,3 +1517,121 @@ were not rerun. The prior **142/475 native, 146/475 stub-assisted** import count
 remain historical measurements at `0e6392b2`, not new counts here. Full CPython
 regrtest and local `make verify` were not run. Existing unrelated blockers and
 performance issues were not reclassified by this example-only checkpoint.
+
+## 2026-10-18 — #667: code-point strings and downstream Unicode API gains
+
+Evaluated [main `a355c83f`](https://github.com/den-run-ai/pystachy/commit/a355c83ff7b60b64e3264867593064c3da9611a5),
+merging [#667](https://github.com/den-run-ai/pystachy/pull/667) at
+**2026-10-18 05:43:19 UTC**. Fresh PR metadata and git ancestry confirm it is
+the only first-parent merge since evaluated `6d4ed3d1`. Read #491/#616 and the
+implementation comments before selecting probes. The 85-file diff changes
+compiler/runtime, string ABI, decoded IO, iterators, embedding, tests and tooling.
+Rebuilt the compiler and runtime from this exact source using CPython **3.13.16**,
+LLVM **18.1.3**, Linux x86-64, two build workers. Three-stage fixed points:
+**621,418 compiler / 18,388 runtime IR lines**. Executable SHA-256:
+`6282b36345e91ae49eefeed10b43c8adff331c4835b2bec3a217a42b77fc90f5`.
+
+[Machine-readable evidence](compatibility-2026-10-18-unicode.json) retains the
+driver, commands, source/compiler/input/fixture hashes, outputs, previous/current
+comparisons and harness failures. Paired old runs use the verified `0e6392b2`
+compiler with **`6d4ed3d1` runtime/library home**, not the updated checkout.
+Those compiler/runtime sources were unchanged by #647. New runs explicitly use
+the rebuilt `a355c83f` compiler and source home.
+
+### Measured gains, not merely a stable import count
+
+All seven programs below newly match the pinned CPython reference in **both
+JIT and AOT**; the same programs did not match before the merge. Port probes use
+the repository's maintained adaptations under both CPython and Pystachy, not
+unmodified installed upstream packages.
+
+| Retained/targeted API | Before | After / CPython |
+|---|---|---|
+| Core text `café日本😀` | Length 15; byte-wise indexing/iteration | Length 7; matching iteration, reverse slice, search and `chr(233)` |
+| `textwrap.wrap("aa ää-ää", 7)` | Three lines: `aa`, `ää-`, `ää` | Two lines: `aa ää-`, `ää` |
+| Retained `len("café"), re.search("é", "café").span()` | `5 (3, 5)` | **`4 (3, 4)`** |
+| `StringIO("é日本😀").read(2)` | `é`, then `日本😀` | `é日`, then `本😀`; position 2 |
+| Three pylev algorithms: café/cafe, 日本/日, 😀/x | Distances 2, 3, 4 | All distances 1 |
+| `wcwidth.wcswidth("中文", len("中"))` | 4 | 2; ordinary CJK/accent widths also remain correct |
+| English Snowball `stemWord("boñing")` | `boñ` | `boñe` |
+
+This corrects important non-ASCII behavior within already importable libraries.
+It does not by itself remove their static typing,
+dynamic-object, loader or C-extension adaptations. In particular, native
+NumPy/PyPI compatibility cannot be inferred from string FFI or explicit CPython
+embedding. No blanket minor-adaptation reclassification is made for a whole
+package from these selected operations.
+
+| Fresh evidence category | Result and boundary |
+|---|---|
+| Isolated stdlib imports, with `--metadata` | **142/475 native**, **146/475 with throwing C-module stubs**; same 522-file CPython inventory and 47 overlay exclusions. All inventory hashes and normalized per-module results unchanged; zero timeouts. IR generation only, not API execution; stubs do not implement missing modules. |
+| Selected native text/library programs | **42/42 JIT/AOT** checks over 21 programs; the same **42/42** with compiler GC interval 1000 and program interval 1. Includes Latin-1, HTML parser positions, regex, IO, textwrap, Unicode iteration and string append/slicing. |
+| Remaining recorded deviations | **20/20** checks over 10 programs. These pass their deviation recordings, not CPython equivalence. |
+| Affected maintained ports | **18/18** checks over nine pylev/wcwidth/Snowball/pyfiglet programs. All 30 selected focused+port CPython programs independently match their exact recordings. |
+| Unicode audit/control tool | **2,280 operation/control checks** pass with normal/audit/normal execution, JIT/AOT and GC stress; runtime IR remains identical. This is targeted instrumentation coverage, not 2,280 upstream tests. |
+| Native mapping/GC probe and contracts | `unicodeprobe` passes normal and per-allocation GC locality/cache/seam controls; **446 runtime entries / 70 exception classes** and 170 runtime.py function contracts agree. IR + llvm-as accept **1,366 programs**. |
+| Native/hosted boundary | **125/125 FFI checks** pass, including Unicode round trips through explicit CPython embedding/extension boundaries. This does not establish a native upstream extension loader. |
+| Hosted upstream suites / compiled mapped subset | fnmatch **17/17 hosted**; mapping 12 compiled, three unsupported, two partial. textwrap **66/66 hosted**; mapping now **65 compiled + one partial**, previously 63 compiled + two deviations + one partial. The two promoted methods are `test_umlaut_followed_by_dash` and `test_narrow_non_breaking_space`; their compiled programs are included above. Hosted totals are not compiled-suite totals. |
+| Adapted benchmark correctness | `regex_dna`, `regex_effbot`, `regex_v8` smoke checks match across CPython/JIT/AOT. No full pyperf/pyperformance suite or performance regression claim. |
+
+### Remaining gaps and stale issue/documentation claims
+
+Fresh paired minimal programs still show **ASCII-only case/classification**
+(`é.upper()`, `É.lower()`, `ß.casefold()`, `é.isalpha()`), empty-pattern
+`"é".replace("", "x")` splitting UTF-8 storage rather than producing `xéx`, and
+native UTF-8 file `write("é")` returning **2 rather than 1**. UTF-16 encoding
+still raises **NotImplementedError** in both native modes, while CPython returns
+encoded bytes. Keep [#120](https://github.com/den-run-ai/pystachy/issues/120)
+open for measured Unicode follow-ups, but its old blanket byte-index/length
+claim is superseded by #667. Strict invalid decoding remains separately scoped
+by [#29](https://github.com/den-run-ai/pystachy/issues/29), not newly resolved
+here. No new uncovered issue was needed for these already-described gaps.
+
+Three port notes are stale: `ports/pylev/PORT.md`'s byte-distance example,
+`ports/wcwidth/PORT.md`'s bounded-length caveat, and
+`ports/snowballstemmer/PORT.md`'s `boñing` example now contradict measured
+results. Also, the byte-column `expandtabs` claims in
+`docs/language/compatibility.md` and `lib/compatibility.md` are stale:
+**30 selected cases** (BMP/astral/combining/newline/multiple-tab strings, five
+tab widths) match CPython in both old and new JIT/AOT. The prior runtime already
+counts non-continuation bytes as columns. Do **not** count this as a new fix or
+a confirmed remaining failure. These documentation corrections are recorded
+here without changing implementation/port branches.
+
+### Cost, reproduction and limits
+
+Source/ABI inspection shows the LP64 string storage header growing **16 → 24
+bytes**, before allocator rounding, and 64 weak position hints occupying
+**1,536 bytes**. These are structural costs, not measured RSS. The deterministic
+C probe validates bounded nearby-mapping work and GC clearing; uncached distant
+Unicode indexing can still require an O(n) scan. No paired speed/RSS experiment
+was run. Shared-host smoke timings with concurrent correctness work are retained
+for provenance only, not evidence of speedup or regression.
+
+Reproduce with the JSON's `bootstrap_command`, then its `test_driver` from the
+evaluated checkout using the pinned Python (`-I` for the controller). Driver
+modes are default, `references`, `probes`, and `probes textwrap tabs`; exact argv,
+source/port paths, selections and environments are retained. Principal commands
+are `tests/run.sh ./pystachy 'jit aot' <selection>`, the metadata-enabled native
+and `--stubs` import sweeps, `make unicodeprobe check-runtime check-ir`,
+`tools/unicode_audit.py -c native=./pystachy`, `make test-ffi`,
+`tools/port_check.py --json <output>`, and
+`tools/bench_pyperformance.py --compiler ./pystachy --smoke --benchmarks regex_dna
+regex_effbot regex_v8 --json <output>`. Relocate retained absolute paths together.
+
+An initial audit-generated `textwrap.py` shadowed the library and caused both
+CPython and native probe failures. Two retry invocations still encountered the
+lingering shadow; isolation in a `programs/` subdirectory plus prefixed filenames
+and controller `-I` resolved it. Failed initial output is preserved in JSON,
+not classified as a Pystachy bug. A separate capture-name collision overwrote
+the first successful port/regex raw reports; the driver now separates command
+envelopes and both tools were rerun to retain their raw reports. No test timeout
+or retained correctness regression occurred. Malformed old string output was
+captured with UTF-8 replacement decoding; those traces are not raw-byte oracles.
+
+The implementation head `3abdefc2` has four successful workflows, including
+[CI run 39099912261](https://github.com/den-run-ai/pystachy/actions/runs/39099912261).
+That is separate from this audit PR's checks. Local full `make verify`, full
+CPython regrtest, unrelated inference/recursion blockers and other package suites
+were not rerun. Historical global suite counts remain historical, not newly
+measured totals. The audit PR remains draft pending contributor DCO sign-off.

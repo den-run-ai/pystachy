@@ -17,7 +17,7 @@
 typedef int64_t I;
 typedef intptr_t Py_ssize_t;
 typedef struct _object PyObject;
-typedef struct { I len; uint64_t dict_hash; char s[]; } Str; /* runtime.c's */
+typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* runtime.c's */
 typedef struct Exc Exc;
 typedef struct { const char *name; void *meth; int flags; const char *doc; } PyMethodDef;
 /* CPython's stable ABI */
