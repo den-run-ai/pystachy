@@ -1,7 +1,11 @@
-"""Recursive JSON consumer; CPython uses its stdlib, Pystachy its native overlay.
+"""Recursive JSON consumer; CPython and PyPy use their stdlib, Pystachy its native overlay.
 
 The handguarded mode is a source-written control, NOT compiler specialization.
-Input generation and file I/O are outside the in-process measurements.
+Input generation and file I/O are outside the in-process measurements. A
+predecoded run decodes once, outside the timed region, so processing is timed
+without parser allocation or garbage; it also times rebuild(), which copies the
+decoded containers: a floor for any decoder (binary formats included) that
+builds the same values.
 """
 from __future__ import annotations
 
@@ -64,14 +68,71 @@ def process(value: json.JSONValue, handguarded: bool) -> int:
     return score
 
 
-def run(path: str, handguarded: bool, iterations: int, samples: int) -> None:
+def rebuild(value: json.JSONValue) -> json.JSONValue:
+    # New containers for the same scalars and strings: no text scanning, number
+    # conversion or string decoding, as any decoder of these values still allocates.
+    if isinstance(value, list):
+        items: list[json.JSONValue] = []
+        for item in value:
+            items.append(rebuild(item))
+        return items
+    if isinstance(value, dict):
+        fields: dict[str, json.JSONValue] = {}
+        for key in value:
+            fields[key] = rebuild(value[key])
+        return fields
+    return value
+
+
+def warm(source: str, value: json.JSONValue, handguarded: bool, predecoded: bool,
+         expected: int, warmup_ns: int) -> None:
+    # Run the measured operations for warmup_ns (at least once) before sampling,
+    # so tiers that compile while running (PyPy) report steady-state samples.
+    start = perf_counter_ns()
+    rounds = 0
+    while rounds == 0 or perf_counter_ns() - start < warmup_ns:
+        if predecoded:
+            ok = process(value, handguarded) == expected and process(rebuild(value), False) == expected
+        else:
+            ok = process(json.loads(source), handguarded) == expected
+        if not ok:
+            raise ValueError("warmup result changed")
+        rounds += 1
+    print("JSON_WARMUP", rounds, perf_counter_ns() - start)
+
+
+def run_predecoded(value: json.JSONValue, handguarded: bool, iterations: int, samples: int,
+                   expected: int) -> None:
+    for sample in range(samples):
+        start = perf_counter_ns()
+        processed = 0
+        for iteration in range(iterations):
+            processed += process(value, handguarded)
+        process_ns = perf_counter_ns() - start
+
+        start = perf_counter_ns()
+        copy = value
+        for iteration in range(iterations):
+            copy = rebuild(value)
+        rebuild_ns = perf_counter_ns() - start
+        if processed != expected * iterations or process(copy, False) != expected:
+            raise ValueError("processing result changed")
+        print("JSON_PREDECODED", sample, processed, process_ns, rebuild_ns)
+
+
+def run(path: str, handguarded: bool, iterations: int, samples: int, warmup_ns: int,
+        predecoded: bool) -> None:
     with open(path) as stream:
         source = stream.read()
     value = json.loads(source)
     expected = process(value, False)
     if process(value, True) != expected:
         raise ValueError("handguarded control disagrees with generic processing")
-    # Warm the processing paths; timings do not include validation or printing.
+    warm(source, value, handguarded, predecoded, expected, warmup_ns)
+    if predecoded:
+        run_predecoded(value, handguarded, iterations, samples, expected)
+        return
+    # Timings do not include validation or printing.
     for sample in range(samples):
         start = perf_counter_ns()
         parsed_count = 0
@@ -125,4 +186,6 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         smoke()
     else:
-        run(sys.argv[1], sys.argv[2] == "handguarded", int(sys.argv[3]), int(sys.argv[4]))
+        # PATH ALGORITHM ITERATIONS SAMPLES WARMUP_MS PHASES (all or predecoded)
+        run(sys.argv[1], sys.argv[2] == "handguarded", int(sys.argv[3]), int(sys.argv[4]),
+            int(sys.argv[5]) * 1000000, sys.argv[6] == "predecoded")
