@@ -2,7 +2,7 @@
 @f.pairs: pys_unpack_check pys_raise
 @f.ends: pys_unpack_ex_check pys_list_slice
 @f.swap: pys_unpack_check pys_list_set pys_list_set
-@f.chars: pys_unpack_check pys_str_get pys_str_get pys_str_add
+@f.chars: pys_text_len pys_unpack_check pys_text_get pys_text_get pys_str_add
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:

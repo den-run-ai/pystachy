@@ -12,7 +12,6 @@ float us OverflowError: Python int too large to convert to C int
 False True datetime.timezone.utc
 name None datetime.timezone(datetime.timedelta(seconds=3600))
 date < datetime TypeError: '>' not supported between instances of 'datetime.datetime' and 'datetime.date'
-separator ValueError: Invalid isoformat string: '2024-02-29é12:00'
 datetime.date(2024, 2, 29) False False
 datetime.date(2024, 2, 29)
 datetime.time(12, 34, 56, 789, tzinfo=datetime.timezone.utc, fold=1)

@@ -1,4 +1,4 @@
-# Pystachy HTMLParser reports UTF-8 byte columns, not Unicode character columns.
+# HTMLParser columns count code points, including after a newline.
 from html.parser import HTMLParser
 p = HTMLParser()
 p.feed('éπ')

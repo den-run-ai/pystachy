@@ -2,7 +2,7 @@
 
 CPython's io is a C module (Modules/_io); this one has StringIO, after Modules/_io/stringio.c of
 CPython 3.13.16: the same reads, writes, seeks, newline translation and errors, on a str buffer
-(lib/README.md). Positions and sizes count a str's bytes past ASCII, as len() and slicing do.
+(lib/README.md). Positions and sizes count Unicode code points, as len() and slicing do.
 BytesIO follows Modules/_io/bytesio.c in the same way, on a bytes buffer.
 TextIOWrapper, after Modules/_io/textio.c, is the text layer over a binary stream; its sizes count
 characters, as CPython's do.

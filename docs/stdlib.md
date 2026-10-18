@@ -25,7 +25,7 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`;
 its other diff APIs still have reflection, formatting or callback-type blockers.
-`textwrap` supports its public operations, but widths count UTF-8 bytes.
+`textwrap` supports its public operations with code-point widths; tab expansion still counts UTF-8 bytes.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have

@@ -261,7 +261,7 @@ The most important differences for supported programs are:
 | Area | Difference |
 |---|---|
 | Integers | Overflow raises instead of growing to arbitrary precision |
-| Strings | Length and indexing count UTF-8 bytes; Unicode support varies by operation |
+| Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
 | Recursion | The native stack, rather than `sys.setrecursionlimit()`, limits depth |

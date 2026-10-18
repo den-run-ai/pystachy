@@ -403,12 +403,12 @@
           "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_umlaut_followed_by_dash": {
-          "status": "deviation",
+          "status": "compiled",
           "evidence": [
-            "tests/deviations/upstream_textwrap_unicode.py",
-            "tests/deviations/upstream_textwrap_unicode.out"
+            "tests/upstream_textwrap_unicode.py",
+            "tests/upstream_textwrap_unicode.out"
           ],
-          "reason": "UTF-8 byte length changes the split of aa ää-ää at width 7: compiled returns three lines where upstream expects two (#120)."
+          "reason": "Complete upstream input and expected output retained in a CPython differential recording; code-point lengths now give the upstream two-line result (#120)."
         },
         "test_textwrap.WrapTestCase.test_non_breaking_space": {
           "status": "compiled",
@@ -419,12 +419,12 @@
           "reason": "Complete upstream inputs and assertion set retained; unittest scaffolding is replaced by standalone functions, with fresh setup values per method."
         },
         "test_textwrap.WrapTestCase.test_narrow_non_breaking_space": {
-          "status": "deviation",
+          "status": "compiled",
           "evidence": [
-            "tests/deviations/upstream_textwrap_unicode.py",
-            "tests/deviations/upstream_textwrap_unicode.out"
+            "tests/upstream_textwrap_unicode.py",
+            "tests/upstream_textwrap_unicode.out"
           ],
-          "reason": "With break_on_hyphens=False, byte lengths change wrapping around U+202F; the original True form matches, the False form deviates (#120)."
+          "reason": "Both original break_on_hyphens inputs and expected outputs are retained in CPython differential recordings; code-point lengths now match upstream around U+202F (#120)."
         },
         "test_textwrap.MaxLinesTestCase.test_simple": {
           "status": "compiled",

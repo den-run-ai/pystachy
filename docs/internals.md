@@ -121,6 +121,12 @@ serve multiple static element types. Optional reference values use null for `Non
 numbers use boxes. Integers use checked 64-bit arithmetic rather than CPython's arbitrary
 precision.
 
+Strings retain UTF-8 storage: their header holds the byte length, cached dictionary hash,
+and cached code-point count plus one (zero means unknown), followed by the bytes at offset
+24. ASCII literals start with the character count cached. `bytes` shares the storage layout
+but keeps byte-based semantics. Compiler literals, FFI adapters and the CPython glue must
+agree with this layout; cache writes do not change the immutable string value.
+
 Generic operations such as comparison, hashing, representation and sorting receive a compact
 type descriptor. The runtime interprets nested container descriptors and calls generated helpers
 for supported object methods. A dict's or set's descriptor of its keys tells objects hashed by

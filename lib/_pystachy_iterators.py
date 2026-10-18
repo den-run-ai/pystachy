@@ -48,7 +48,7 @@ class tuple_iterator:
 
 
 class str_ascii_iterator:
-    # iter(s) of a str: its characters
+    # iter(s) of a str: decode at a byte cursor, linear also for non-ASCII strings.
     def __init__(self, s):
         self._s = s
         self._i = 0
@@ -59,9 +59,9 @@ class str_ascii_iterator:
     def __next__(self):
         i = self._i
         s = self._s
-        if i < len(s):
-            self._i = i + 1
-            return s[i]
+        if i < __pys_text_size(s):
+            self._i = __pys_text_next(s, i)
+            return __pys_text_at(s, i)
         raise StopIteration
 
 
