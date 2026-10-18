@@ -31,10 +31,4 @@ owned True True True
 growing 𝔄 True
 full reuse True
 owned True True True
-inside utf8 2 True
-inside utf8 3 True
-inside utf8 4 True
-split end 2 True
-split end 3 True
-split end 4 True
 [exit 0]

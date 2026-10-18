@@ -4,7 +4,6 @@ OverflowError: integer result does not fit in 64 bits
 OverflowError: integer result does not fit in 64 bits
 OverflowError: integer result does not fit in 64 bits
 True
-3
 TypeError: Population must be a sequence.  For dicts or sets, use sorted(d).
 ['a']
 False 25

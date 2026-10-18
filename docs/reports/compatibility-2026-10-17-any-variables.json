@@ -1,0 +1,1742 @@
+{
+  "schema_version": 1,
+  "measured_utc": "2026-10-17T07:51:13.281742+00:00",
+  "source_revision": "dbac05d7d4ab02ffdc737497cff940b4e95ec278",
+  "previous_evaluated_source": "765564a34fdbf7abfb807df236a43f93f1bfe06f",
+  "merged_prs": [
+    {
+      "number": 629,
+      "url": "https://github.com/den-run-ai/pystachy/pull/629",
+      "merged_at": "2026-10-17T07:46:29Z",
+      "merge_sha": "dbac05d7d4ab02ffdc737497cff940b4e95ec278",
+      "verified_in_main_history": true
+    }
+  ],
+  "toolchain": {
+    "python": "CPython 3.13.16",
+    "llvm": "18.1.3",
+    "typing_extensions_reference": "4.12.2, pip-vendored source; SHA retained per reference"
+  },
+  "compiler": {
+    "source_revision": "dbac05d7d4ab02ffdc737497cff940b4e95ec278",
+    "sha256": "d2973670ce4d98150f4c8fc6b072a66641a782f9ee8211c333f4647cb8a3b898",
+    "previous_source_revision": "765564a34fdbf7abfb807df236a43f93f1bfe06f",
+    "previous_sha256": "849d62bf19635fd9e180c4f81329f9b6886a62a3ec406c96ee4db390c2da5009",
+    "bootstrap_command": "PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13",
+    "bootstrap_log": "mkdir -p build\n/root/.local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/root/.local/bin/python3.13 pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (617419 lines of IR)\n/root/.local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18388 lines)\ncp build/pystachy2 pystachy\n"
+  },
+  "changed_files": {
+    "docs/language/typing.md": "f041647ba225b8dc6fdd241c59522e59e0feab202fb58fff5e974f244f582ac6",
+    "src/pystachy_compiler/declarations.py": "1db56aa15971065bb5a043c93f8f8827b92d3f4089a26b040ba266e1ab1abb4e",
+    "src/pystachy_compiler/gen.py": "d0bd67f3da2cb61ab03ef8ba59bb7c3099e9e434337a3474529e2d978e6b714f",
+    "src/pystachy_compiler/program.py": "ab897a892363c227545b71a9ec6da38fcafe6cdf9ffc25cbf928295bfcb5c6ff",
+    "src/pystachy_compiler/specs.py": "0a65b93c449c1b4d8cdf7be0247006196b28ccff9457540ad8b4f543e1c781cf",
+    "tests/any_variables.out": "dcb4a76239655b0af54cfa093f54c0610d8ad990d4a43e37b5b8fb530097e919",
+    "tests/any_variables.py": "2ee2c89ca22372e882b1c10af5406c9a9c07e9185a461894decf44cf19e6c72b",
+    "tests/any_variables_annotated.out": "ec2c0ac300f8b631c7a67ab3d1300bccb07d1efb00017b107401266e93fcfcf2",
+    "tests/any_variables_annotated.py": "4c94ccfa24cf953521def1d7b3d26cf646bbc8f74e5410d27a3574a69480fc16",
+    "tests/any_variables_future.out": "e5ea18c9e5b52eca99341c883f1c5d9fbc2a7aca133dc7341a4eeb893ec7e3a0",
+    "tests/any_variables_future.py": "1eed96e370d78fefeb32521bea1a6c8062b2a885647ed57aa02394191c6d55d1",
+    "tests/errors/any_local.py": null,
+    "tests/errors/any_variable.py": null,
+    "tests/errors/any_variable_annotated_metadata.py": "687aa444c34c9fb6157fa71dac4aa8886fa89aeab3b7734c0a63f10169944660",
+    "tests/errors/any_variable_append.py": "e55be57cb99bf1b5f3c5efd42e9ac1514f9b3e23660e55f296f9f24e9d3a740a",
+    "tests/errors/any_variable_field.py": "8e58a7b3e453fd8f907ae9922d5420053259c483ba54a71df394cde207b2e0bb",
+    "tests/errors/any_variable_global_retype.py": "18fc99e0a102ec4ed3d6ced2d3a3ff739a2bf0e5387f0356a9bada46b6978fb9",
+    "tests/errors/any_variable_uninitialized.py": "5c63f8d7e9de6be12d054c565187e1f588502634f5d421147340f1f52e16a924",
+    "tests/mods/anyvars.py": "43c42aaa8d4fc567861cd078db6a8868c3f2314123f831e0a6cbcea441388ea5"
+  },
+  "selected": {
+    "gc_tests": [
+      "tests/any_variables.py",
+      "tests/any_variables_annotated.py",
+      "tests/any_variables_future.py",
+      "tests/errors/any_variable_annotated_metadata.py",
+      "tests/errors/any_variable_append.py",
+      "tests/errors/any_variable_field.py",
+      "tests/errors/any_variable_global_retype.py",
+      "tests/errors/any_variable_uninitialized.py",
+      "tests/any_templates.py",
+      "tests/any_methods.py",
+      "tests/any_future.py",
+      "tests/any_annotated.py"
+    ],
+    "normal_ports": [
+      "tests/port_ordered_set_api.py",
+      "tests/port_ordered_set_edges.py",
+      "tests/port_pyfiglet_edges.py",
+      "tests/port_pyfiglet_render.py",
+      "tests/port_tomli_w_ini2toml.py",
+      "tests/port_tomli_w_tables.py",
+      "tests/port_tomli_w_values.py"
+    ]
+  },
+  "commands": [
+    {
+      "name": "gc-tests",
+      "argv": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/any_variables.py",
+        "tests/any_variables_annotated.py",
+        "tests/any_variables_future.py",
+        "tests/errors/any_variable_annotated_metadata.py",
+        "tests/errors/any_variable_append.py",
+        "tests/errors/any_variable_field.py",
+        "tests/errors/any_variable_global_retype.py",
+        "tests/errors/any_variable_uninitialized.py",
+        "tests/any_templates.py",
+        "tests/any_methods.py",
+        "tests/any_future.py",
+        "tests/any_annotated.py"
+      ],
+      "environment": {
+        "PYSTACHY_JOBS": "4",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "exit_code": 0
+    },
+    {
+      "name": "ports",
+      "argv": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/port_ordered_set_api.py",
+        "tests/port_ordered_set_edges.py",
+        "tests/port_pyfiglet_edges.py",
+        "tests/port_pyfiglet_render.py",
+        "tests/port_tomli_w_ini2toml.py",
+        "tests/port_tomli_w_tables.py",
+        "tests/port_tomli_w_values.py"
+      ],
+      "environment": {
+        "PYSTACHY_JOBS": "4"
+      },
+      "exit_code": 0
+    },
+    {
+      "name": "imports",
+      "argv": [
+        "/root/.local/bin/python3.13",
+        "../pystachy/tools/import_sweep.py",
+        "-j",
+        "4",
+        "--metadata",
+        "build/audit-anyvars/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "build/audit-anyvars/imports.json"
+      ],
+      "environment": {},
+      "exit_code": 0
+    },
+    {
+      "name": "probes",
+      "argv": [
+        "/root/.local/bin/python3.13",
+        "build/audit-anyvars/probes.py"
+      ],
+      "environment": {},
+      "exit_code": 0
+    }
+  ],
+  "test_results": {
+    "gc_variable_tests": "selected 12 cases\n19 passed, 0 failed\n",
+    "affected_ports": "selected 7 cases\n14 passed, 0 failed\n"
+  },
+  "reference_programs": [
+    {
+      "file": "tests/any_variables.py",
+      "source_sha256": "2ee2c89ca22372e882b1c10af5406c9a9c07e9185a461894decf44cf19e6c72b",
+      "exit_code": 0,
+      "stdout": "5 ['ann'] {'one': 1} 3 [2, 4] alias 2.5 True\n3\n2 text 11 4 5 7\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_variables_annotated.py",
+      "source_sha256": "4c94ccfa24cf953521def1d7b3d26cf646bbc8f74e5410d27a3574a69480fc16",
+      "exit_code": 0,
+      "stdout": "7 text\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_variables_future.py",
+      "source_sha256": "1eed96e370d78fefeb32521bea1a6c8062b2a885647ed57aa02394191c6d55d1",
+      "exit_code": 0,
+      "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n4 9 {'first': 9}\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_templates.py",
+      "source_sha256": "4301195b7e56668d734c04500529ab983b2bbb3e247331fab462d21ed160877a",
+      "exit_code": 0,
+      "stdout": "<1> <a> <[1, 2]> <None> 42\n['a=1', 'b=2'] ['x=y']\n6 0.75 abc\nNone None 3 None None 'k' [1] 2\nnone 9 (1, 'b', 2)\nint 2\nint 3\nstr A bool none other [1] other 2.5\n4 7 <1.5>\n0 3 ['a', 'b'] 120 12\nlog x\n[3, 2, 1] [-1, -2] None\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_methods.py",
+      "source_sha256": "436ef95f5810db074fb8b6a81d981907cf85ec5186c1d42bc2134779e5db3221",
+      "exit_code": 0,
+      "stdout": "1 3 True False True False True\n3 [5] [s] [2] [1, 2, 3, 4]\n[(1, 'f'), (2, 'f'), (3, 'f')] [(7, None)]\nin [1, 2, 3]\nexit 3 True\nbody\nexit True None\nexit False boom\nafter\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_future.py",
+      "source_sha256": "26f44b557a28df0b591014648b503a892020c4a9e75b519285400a01c9892f7c",
+      "exit_code": 0,
+      "stdout": "['a', 'b'] ['x'] True False\n{'value': 1} {'value': 's'}\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    },
+    {
+      "file": "tests/any_annotated.py",
+      "source_sha256": "01b489a4b4427a298df5cc07e59e1069474d79f0431b3d25366a435ecabfe56f",
+      "exit_code": 0,
+      "stdout": "3 s 4 v 5 6\n",
+      "stderr": "",
+      "matches_recording": true,
+      "pythonpath": "/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor",
+      "dependency_sha256": "efc8459741e90d8fb29475150a759d5399d31f150fdbe4bedf011993a09098b9"
+    }
+  ],
+  "differential_probes": [
+    {
+      "name": "cache_unannotated",
+      "source": "from functools import lru_cache\n@lru_cache(maxsize=None)\ndef square(x):\n    return x*x\nprint(square(3), square(3))\n",
+      "source_sha256": "3ff424c263ecf236a842b3e0799b29f6b26f7cf81a99e54f72f51e41c99de46b",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py"
+        ],
+        "exit_code": 0,
+        "stdout": "9 9\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function square (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:3)>: square()'s parameter 'x' has no annotation, which the type variables it matches take their type from (specializing functools._lru_cache_wrapper(<function square (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:3)>, int, bool) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:square@3], int, bool) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:square@3]) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:2)\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function square (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:3)>: square()'s parameter 'x' has no annotation, which the type variables it matches take their type from (specializing functools._lru_cache_wrapper(<function square (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:3)>, int, bool) for the call at lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:square@3], int, bool) for the call at lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:square@3]) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_unannotated.py:2)\n"
+      }
+    },
+    {
+      "name": "cache_annotated",
+      "source": "from functools import lru_cache\n@lru_cache(maxsize=None)\ndef square(x: int) -> int:\n    return x*x\nprint(square(3), square(3))\n",
+      "source_sha256": "ee0f013f328209877d18008fbf3f8d0452f22df08f30eebcd9858a37d6204be6",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_annotated.py"
+        ],
+        "exit_code": 0,
+        "stdout": "9 9\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_annotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_annotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_annotated.py"
+        ],
+        "exit_code": 0,
+        "stdout": "9 9\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_cache_annotated.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_cache_annotated"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_cache_annotated"
+        ],
+        "exit_code": 0,
+        "stdout": "9 9\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "recursive_forward",
+      "source": "def empty(n):\n    out = []\n    return out\ndef a(n):\n    if n <= 0:\n        return empty(n)\n    r = b(n - 1)\n    r.append(n)\n    return r\ndef b(n):\n    return a(n)\nprint(a(3))\n",
+      "source_sha256": "f7a98d309bf083fcffbef94ac7cecb9e04c46d1968688564e4b258eac37b3c84",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[1, 2, 3]\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py:9: error: cannot infer what a() returns: it calls itself before a use shows what the list it returns holds; annotate its return type (compiling a(int) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py:12)\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py:9: error: cannot infer what a() returns: it calls itself before a use shows what the list it returns holds; annotate its return type (compiling a(int) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_forward.py:12)\n"
+      }
+    },
+    {
+      "name": "recursive_annotated",
+      "source": "def empty(n):\n    out = []\n    return out\ndef a(n) -> list[int]:\n    if n <= 0:\n        return empty(n)\n    r = b(n - 1)\n    r.append(n)\n    return r\ndef b(n):\n    return a(n)\nprint(a(3))\n",
+      "source_sha256": "0380c97c6122ccc82a1a8bf0c870cf43ebc4659e0bb8b4f79dd8158b54c4e331",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_annotated.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[1, 2, 3]\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_annotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_annotated.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_annotated.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[1, 2, 3]\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_recursive_annotated.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_recursive_annotated"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_recursive_annotated"
+        ],
+        "exit_code": 0,
+        "stdout": "[1, 2, 3]\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "any_signature",
+      "source": "from typing import Any\ndef twice(x: Any) -> Any:\n    return x * 2\nprint(twice(21))\n",
+      "source_sha256": "045cd504ffab8339267375ed53d0f7ae10940fce3e2df4357316da37980cc4ce",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_signature.py"
+        ],
+        "exit_code": 0,
+        "stdout": "42\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_signature.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_signature.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_signature.py"
+        ],
+        "exit_code": 0,
+        "stdout": "42\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_signature.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_signature"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_signature"
+        ],
+        "exit_code": 0,
+        "stdout": "42\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "any_mapping",
+      "source": "from collections.abc import Mapping\nfrom typing import Any\ndef describe(table: Mapping[str,Any]) -> list[str]:\n return [f'{k}={v}' for k,v in table.items()]\ndef count(*args: Any,**kwargs: Any) -> int:\n return len(args)+len(kwargs)\nprint(describe({'a':1}),describe({'x':'y'}),count(1,'a',k=2.0))\n",
+      "source_sha256": "f001643e2cea7a4d07b2fe16e061472cf87b0e836d6afdcea78652bce024abd8",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_mapping.py"
+        ],
+        "exit_code": 0,
+        "stdout": "['a=1'] ['x=y'] 3\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_mapping.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_mapping.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_mapping.py"
+        ],
+        "exit_code": 0,
+        "stdout": "['a=1'] ['x=y'] 3\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_mapping.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_mapping"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_mapping"
+        ],
+        "exit_code": 0,
+        "stdout": "['a=1'] ['x=y'] 3\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "any_generator_send",
+      "source": "from typing import Any,Generator\ndef gen() -> Generator[int,Any,None]:\n x=yield 1\n print(x)\ng=gen()\nprint(next(g))\ntry:\n g.send('hi')\nexcept StopIteration:\n print('done')\n",
+      "source_sha256": "18bbb304375e3e8ca754a8d7be1c1c37fe75c36ec6a1430c4de01f72ac8faf50",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_generator_send.py"
+        ],
+        "exit_code": 0,
+        "stdout": "1\nhi\ndone\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_generator_send.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_generator_send.py:8: error: cannot send str to Generator[int], whose send type is None: annotate its generator function -> Generator[Y, S, R]\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_generator_send.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_generator_send.py:8: error: cannot send str to Generator[int], whose send type is None: annotate its generator function -> Generator[Y, S, R]\n"
+      }
+    },
+    {
+      "name": "any_iterator_return",
+      "source": "from typing import Any,Iterator\nclass Values:\n def __iter__(self) -> Iterator[Any]:\n  return iter([1,2])\nprint(list(Values()))\n",
+      "source_sha256": "678349fa058bc726333acdb92775d423f14f83704e5be823b81a9ffcdd1e4e4c",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_iterator_return.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[1, 2]\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_iterator_return.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_iterator_return.py:3: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), where each call types what it annotates (as if unannotated); annotate a concrete type here\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_iterator_return.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_iterator_return.py:3: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here\n"
+      }
+    },
+    {
+      "name": "any_constructor",
+      "source": "from typing import Any\nclass Box:\n def __init__(self,value: Any):\n  self.value=value\nprint(Box(3).value)\n",
+      "source_sha256": "be2e28a9d80abfc14dadb099d3473393339771040c2a4f3519692fe6750d319a",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_constructor.py"
+        ],
+        "exit_code": 0,
+        "stdout": "3\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_constructor.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_constructor.py:3: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), where each call types what it annotates (as if unannotated); annotate a concrete type here\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_constructor.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_constructor.py:3: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here\n"
+      }
+    },
+    {
+      "name": "any_variable",
+      "source": "from typing import Any\nx: Any=3\nprint(x)\n",
+      "source_sha256": "f8bb32d963b561cf8f51a6dbc5a4d1868da08a3d66ba60e33754cc899cfe2757",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py"
+        ],
+        "exit_code": 0,
+        "stdout": "3\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py:2: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), where each call types what it annotates (as if unannotated); annotate a concrete type here\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py"
+        ],
+        "exit_code": 0,
+        "stdout": "3\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_variable.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_variable"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_variable"
+        ],
+        "exit_code": 0,
+        "stdout": "3\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "any_cache",
+      "source": "from typing import Any\nfrom functools import lru_cache\n@lru_cache(maxsize=None)\ndef twice(x: Any) -> Any:\n return x*2\nprint(twice(3),twice(3))\n",
+      "source_sha256": "d6560712f71fcb3a1a0127eba2e9f47b2547ff72e9456ce4cd4a7835ae2cce56",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py"
+        ],
+        "exit_code": 0,
+        "stdout": "6 6\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function twice (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:4)>: twice()'s parameter 'x' is annotated Any, which gives no type to the type variables it matches (specializing functools._lru_cache_wrapper(<function twice (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:4)>, int, bool) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:twice@4], int, bool) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-607/lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:twice@4]) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:3)\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function twice (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:4)>: twice()'s parameter 'x' is annotated Any, which gives no type to the type variables it matches (specializing functools._lru_cache_wrapper(<function twice (/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:4)>, int, bool) for the call at lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:twice@4], int, bool) for the call at lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:twice@4]) for the call at /workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_cache.py:3)\n"
+      }
+    },
+    {
+      "name": "any_namedtuple",
+      "source": "from collections import namedtuple\nfrom typing import Any\nPoint=namedtuple('Point','x y')\ndef copy(p: Any) -> Any:\n return p._replace(x=p.x+1)\nprint(copy(Point(2,3)))\n",
+      "source_sha256": "36a4b6686df4ce2d2aff886cf12116d5fb898f9f1ee2814c74132cdbbc27fc84",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_namedtuple.py"
+        ],
+        "exit_code": 0,
+        "stdout": "Point(x=3, y=3)\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_namedtuple.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_namedtuple.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_namedtuple.py"
+        ],
+        "exit_code": 0,
+        "stdout": "Point(x=3, y=3)\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_namedtuple.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_namedtuple"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_namedtuple"
+        ],
+        "exit_code": 0,
+        "stdout": "Point(x=3, y=3)\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "upstream_tomli_w",
+      "source": "import tomli_w\nprint(tomli_w.dumps({\"n\": 1}))\n",
+      "source_sha256": "0a5704b2b03d92360e89020b123e889444b1304fc2322f646c8f2b82c341c657",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_tomli_w.py"
+        ],
+        "exit_code": 0,
+        "stdout": "n = 1\n\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_tomli_w.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src/tomli_w/_writer.py:21: error: types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_tomli_w.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src/tomli_w/_writer.py:21: error: types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)\n"
+      }
+    },
+    {
+      "name": "upstream_pyfiglet",
+      "source": "import pyfiglet\nprint(pyfiglet.figlet_format(\"Hi\", font=\"standard\"))\n",
+      "source_sha256": "4bb6b279e9bdca03fe53b6120509de87fcb79262651de3807b3218ffe33e5a37",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_pyfiglet.py"
+        ],
+        "exit_code": 0,
+        "stdout": " _   _ _ \n| | | (_)\n| |_| | |\n|  _  | |\n|_| |_|_|\n         \n\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_pyfiglet.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4/pyfiglet/__init__.py:12: error: module 'importlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no importlib.py on the module path\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_pyfiglet.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4/pyfiglet/__init__.py:12: error: module 'importlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno) and there is no importlib.py on the module path\n"
+      }
+    },
+    {
+      "name": "upstream_ordered_set",
+      "source": "from ordered_set import OrderedSet\ns = OrderedSet([\"b\", \"a\", \"b\"])\nprint(list(s))\n",
+      "source_sha256": "ecc902c6a799995672eaf892d4bb0366227bf3ae3df6fbdb930f5f6c8f5934fc",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_ordered_set.py"
+        ],
+        "exit_code": 0,
+        "stdout": "['b', 'a']\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_ordered_set.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0/ordered_set/__init__.py:24: error: unsupported call slice(None)\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_ordered_set.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0/ordered_set/__init__.py:24: error: unsupported call slice(None)\n"
+      }
+    },
+    {
+      "name": "upstream_iniconfig",
+      "source": "from iniconfig import IniConfig\nc = IniConfig(\"sample\", \"[x]\\na = 2\\n\")\nprint(c[\"x\"][\"a\"])\n",
+      "source_sha256": "a2511b670d16d8f05bd8585e802d3a29ce562f75bad946d641faf3cbe8c366a3",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_iniconfig.py"
+        ],
+        "exit_code": 0,
+        "stdout": "2\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_iniconfig.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src/iniconfig/_parse.py:8: error: \\N{...} escapes are not supported\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_upstream_iniconfig.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src/iniconfig/_parse.py:8: error: \\N{...} escapes are not supported\n"
+      }
+    },
+    {
+      "name": "ported_ordered_set_equality",
+      "source": "from ordered_set import OrderedSet\ns=OrderedSet(['a','b'])\nprint(s==['a','b'],s==['b','a'])\n",
+      "source_sha256": "28b0f6cdd0b825203b01af534e0933db9c534409a1024f4ad7dc823cd1642945",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/ports",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy-audit-607/ports",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/upstream/ordered-set/ordered-set-4.1.0"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_ported_ordered_set_equality.py"
+        ],
+        "exit_code": 0,
+        "stdout": "True False\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_ported_ordered_set_equality.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_ported_ordered_set_equality.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_ported_ordered_set_equality.py"
+        ],
+        "exit_code": 0,
+        "stdout": "True False\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_ported_ordered_set_equality.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_ported_ordered_set_equality"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_ported_ordered_set_equality"
+        ],
+        "exit_code": 0,
+        "stdout": "True False\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "minor_iniconfig_iteration",
+      "source": "from iniconfig import IniConfig\nc=IniConfig('sample','[x]\\na = 2\\n')\nfor section in c:\n print(section.name)\n",
+      "source_sha256": "f9f2654954a5e868dd2204a5515a360f032675f5e70f2b834cbe01f31577b657",
+      "module_paths": {
+        "current": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/minor/iniconfig",
+        "previous": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/minor/iniconfig",
+        "cpython": "/workspace/scratch/49d63c0068bf/pystachy/build/audit-packages/minor/iniconfig"
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_minor_iniconfig_iteration.py"
+        ],
+        "exit_code": 0,
+        "stdout": "x\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_minor_iniconfig_iteration.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_minor_iniconfig_iteration.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_minor_iniconfig_iteration.py"
+        ],
+        "exit_code": 0,
+        "stdout": "x\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_minor_iniconfig_iteration.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_minor_iniconfig_iteration"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_minor_iniconfig_iteration"
+        ],
+        "exit_code": 0,
+        "stdout": "x\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    },
+    {
+      "name": "any_empty_nested",
+      "source": "from typing import Any\nxs: list[Any] = []\nxs.append(3)\nd: dict[str,Any] = {}\nd['x']=xs\nprint(xs,d)\ndef local():\n x: Any=3\n print(x+1)\n x='ok'\n print(x)\nlocal()\n",
+      "source_sha256": "c2a5076f82677a90712bdb428c5d54885ffa5946f9a0c0681a9e4ac92c6e0064",
+      "module_paths": {
+        "current": "",
+        "previous": "",
+        "cpython": ""
+      },
+      "cpython": {
+        "argv": [
+          "/root/.local/bin/python3.13",
+          "-I",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[3] {'x': [3]}\n4\nok\n",
+        "stderr": ""
+      },
+      "previous_ir": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-607/pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py:2: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template (not __init__, a property or most special methods), where each call types what it annotates (as if unannotated); annotate a concrete type here\n"
+      },
+      "current_ir": {
+        "argv": [
+          "./pystachy",
+          "ir",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py",
+          "-o",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "jit": {
+        "argv": [
+          "./pystachy",
+          "run",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py"
+        ],
+        "exit_code": 0,
+        "stdout": "[3] {'x': [3]}\n4\nok\n",
+        "stderr": "",
+        "matches_cpython": true
+      },
+      "build": {
+        "argv": [
+          "./pystachy",
+          "build",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/probe_any_empty_nested.py",
+          "-o",
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_empty_nested"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "aot": {
+        "argv": [
+          "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/exe_any_empty_nested"
+        ],
+        "exit_code": 0,
+        "stdout": "[3] {'x': [3]}\n4\nok\n",
+        "stderr": "",
+        "matches_cpython": true
+      }
+    }
+  ],
+  "incomplete_attempts": [],
+  "audit_tool_revision": "c2da77af2c461ba9b81280f6d989a973423daa2f",
+  "tool_sha256": {
+    "import_sweep.py": "c610fa1ecc9effc949939810131b268000131a8da499efebddf10fcc80a1a370",
+    "tests/run.sh": "f808375aac9ca707ca794cd398bf939163728366ef6c380f6568cb0e531fef8e"
+  },
+  "reproduction_scripts": {
+    "evaluate.py": "import hashlib,json,os,pathlib,subprocess,sysconfig\nout=pathlib.Path('build/audit-anyvars');py='/root/.local/bin/python3.13';env=dict(os.environ,PATH='/workspace/scratch/d940e91b6fea/llvm18/usr/lib/llvm-18/bin:'+os.environ['PATH'])\nchanged=subprocess.check_output(['git','diff','--name-only','--diff-filter=AM','765564a3','HEAD'],text=True).splitlines();files=[f for f in changed if f.endswith('.py') and (f.startswith('tests/errors/') and '/emods/' not in f or f.startswith('tests/') and f.count('/')==1) and '/port_' not in f];files += ['tests/any_templates.py','tests/any_methods.py','tests/any_future.py','tests/any_annotated.py'];ports=sorted(str(p) for pat in ['tests/port_pyfiglet*.py','tests/port_tomli_w*.py','tests/port_ordered_set*.py'] for p in pathlib.Path('.').glob(pat));(out/'selected.json').write_text(json.dumps({'gc_tests':files,'normal_ports':ports},indent=2)+'\\n');rows=[]\nfor name,cmd,extra in [('gc-tests',['tests/run.sh','./pystachy','jit aot',*files],{'PYSTACHY_JOBS':'4','PYSTACHY_GC_STRESS_PROGRAM':'1'}),('ports',['tests/run.sh','./pystachy','jit aot',*ports],{'PYSTACHY_JOBS':'4'}),('imports',[py,'../pystachy/tools/import_sweep.py','-j','4','--metadata',str(out/'imports-metadata.json'),'./pystachy',sysconfig.get_path('stdlib'),str(out/'imports.json')],{}),('probes',[py,str(out/'probes.py')],{})]:\n with (out/(name+'.log')).open('w') as log:r=subprocess.run(cmd,env=dict(env,**extra),stdout=log,stderr=subprocess.STDOUT,timeout=600)\n rows.append({'name':name,'argv':cmd,'environment':extra,'exit_code':r.returncode});(out/'commands.json').write_text(json.dumps(rows,indent=2)+'\\n');print(name,r.returncode,(out/(name+'.log')).read_text()[-1500:],flush=True)\nrefs=[]\nfor f in files:\n if '/errors/' in f:continue\n p=pathlib.Path(f);e={'PATH':env['PATH'],'PYTHONPATH':'/workspace/scratch/e53c6df0a0ab/venv/lib/python3.12/site-packages/pip/_vendor'};pp=p.with_suffix('.path')\n if pp.exists():e['PYTHONPATH']=pp.read_text().strip()\n r=subprocess.run([py,f,'a1','a2'],env=e,input='',capture_output=True,text=True,timeout=60);err=p.with_suffix('.err');refs.append({'file':f,'source_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'exit_code':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'matches_recording':r.stdout+f'[exit {r.returncode}]\\n'==p.with_suffix('.out').read_text() and (r.stderr.strip().splitlines()[-1] if r.stderr.strip() else '')==(err.read_text().strip() if err.exists() else '')})\n(out/'references.json').write_text(json.dumps(refs,indent=2)+'\\n');print('reference matches',all(r['matches_recording'] for r in refs),flush=True)\n",
+    "probes.py": "import hashlib,json,os,pathlib,subprocess,sysconfig\nroot=pathlib.Path.cwd();out=root/'build/audit-anyvars';audit=root.parent/'pystachy';old=root.parent/'pystachy-audit-607';py='/root/.local/bin/python3.13';llvm='/workspace/scratch/d940e91b6fea/llvm18/usr/lib/llvm-18/bin';env=dict(os.environ,PYSTACHY_LLVM=llvm);rows=[]\ndef run(cmd,e):\n try:\n  r=subprocess.run(cmd,env=e,text=True,capture_output=True,timeout=60);return {'argv':cmd,'exit_code':r.returncode,'stdout':r.stdout,'stderr':r.stderr}\n except subprocess.TimeoutExpired:return {'argv':cmd,'timeout_s':60}\ndef probe(name,source,current_path='',previous_path='',python_path='',reference_isolated=True):\n p=out/('probe_'+name+'.py');p.write_text(source);r={'name':name,'source':source,'source_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'module_paths':{'current':current_path,'previous':previous_path,'cpython':python_path}};ce=dict(env,PYSTACHY_PATH=current_path);pe=dict(env,PYSTACHY_PATH=previous_path)\n r['cpython']=run([py,*(['-I'] if reference_isolated else []),str(p)],dict(os.environ,PYTHONPATH=python_path));r['previous_ir']=run([str(old/'pystachy'),'ir',str(p),'-o','/dev/null'],pe);r['current_ir']=run(['./pystachy','ir',str(p),'-o','/dev/null'],ce)\n if r['current_ir'].get('exit_code')==0:\n  exe=str(out/('exe_'+name));r['jit']=run(['./pystachy','run',str(p)],dict(ce,PYSTACHY_GC_STRESS_PROGRAM='1'));r['build']=run(['./pystachy','build',str(p),'-o',exe],ce)\n  if r['build'].get('exit_code')==0:r['aot']=run([exe],dict(ce,PYSTACHY_GC_STRESS='1'))\n  for mode in ['jit','aot']:\n   if mode in r:r[mode]['matches_cpython']=all(r[mode].get(k)==r['cpython'].get(k) for k in ['exit_code','stdout','stderr'])\n rows.append(r);(out/'probes.json').write_text(json.dumps(rows,indent=2)+'\\n');print(name,r['current_ir'].get('stderr') or {m:r[m].get('matches_cpython') for m in ['jit','aot'] if m in r},flush=True)\nfor n,r in json.loads((audit/'docs/reports/compatibility-2026-10-17-gaps.json').read_text())['cases'].items():\n if n in ['cache_unannotated','cache_annotated','recursive_forward','recursive_annotated','any_signature']:probe(n,r['source'])\nprograms={\n'any_mapping':\"from collections.abc import Mapping\\nfrom typing import Any\\ndef describe(table: Mapping[str,Any]) -> list[str]:\\n return [f'{k}={v}' for k,v in table.items()]\\ndef count(*args: Any,**kwargs: Any) -> int:\\n return len(args)+len(kwargs)\\nprint(describe({'a':1}),describe({'x':'y'}),count(1,'a',k=2.0))\\n\",\n'any_generator_send':\"from typing import Any,Generator\\ndef gen() -> Generator[int,Any,None]:\\n x=yield 1\\n print(x)\\ng=gen()\\nprint(next(g))\\ntry:\\n g.send('hi')\\nexcept StopIteration:\\n print('done')\\n\",\n'any_iterator_return':\"from typing import Any,Iterator\\nclass Values:\\n def __iter__(self) -> Iterator[Any]:\\n  return iter([1,2])\\nprint(list(Values()))\\n\",\n'any_constructor':\"from typing import Any\\nclass Box:\\n def __init__(self,value: Any):\\n  self.value=value\\nprint(Box(3).value)\\n\",\n'any_variable':\"from typing import Any\\nx: Any=3\\nprint(x)\\n\",\n'any_cache':\"from typing import Any\\nfrom functools import lru_cache\\n@lru_cache(maxsize=None)\\ndef twice(x: Any) -> Any:\\n return x*2\\nprint(twice(3),twice(3))\\n\",\n'any_namedtuple':\"from collections import namedtuple\\nfrom typing import Any\\nPoint=namedtuple('Point','x y')\\ndef copy(p: Any) -> Any:\\n return p._replace(x=p.x+1)\\nprint(copy(Point(2,3)))\\n\"}\nfor n,s in programs.items():probe(n,s)\npackages=json.loads((audit/'docs/reports/compatibility-2026-10-17-packages.json').read_text())\nfor r in packages['upstream_probes']:\n if r['package'] in ['tomli-w','ordered-set','pyfiglet','iniconfig']:\n  mp=str(audit/r['module_root']);probe('upstream_'+r['package'].replace('-','_'),r['program'],mp,mp,mp,False)\nmp=str(audit/'build/audit-packages/upstream/ordered-set/ordered-set-4.1.0')\nprobe('ported_ordered_set_equality',\"from ordered_set import OrderedSet\\ns=OrderedSet(['a','b'])\\nprint(s==['a','b'],s==['b','a'])\\n\",str(root/'ports'),str(old/'ports'),mp,False)\nmp=str(audit/'build/audit-packages/minor/iniconfig')\nprobe('minor_iniconfig_iteration',\"from iniconfig import IniConfig\\nc=IniConfig('sample','[x]\\\\na = 2\\\\n')\\nfor section in c:\\n print(section.name)\\n\",mp,mp,mp,False)\n\nprobe('any_empty_nested',\"from typing import Any\\nxs: list[Any] = []\\nxs.append(3)\\nd: dict[str,Any] = {}\\nd['x']=xs\\nprint(xs,d)\\ndef local():\\n x: Any=3\\n print(x+1)\\n x='ok'\\n print(x)\\nlocal()\\n\")\n",
+    "stub_sweep.py": "import importlib.util,os,sysconfig\nspec=importlib.util.spec_from_file_location('audit_import_sweep','../pystachy/tools/import_sweep.py')\ns=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)\ns.ROOT=os.getcwd()\ns.main(['--stubs','-j','4','--metadata','build/audit-anyvars/stubs-metadata.json',sysconfig.get_path('stdlib'),'build/audit-anyvars/stubs.json'])\n"
+  },
+  "pinned_packages": [
+    {
+      "package": "tomli-w",
+      "version": "1.2.0",
+      "sha256": "2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021",
+      "filename": "tomli_w-1.2.0.tar.gz",
+      "source": "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz",
+      "module_root": "build/audit-packages/upstream/tomli-w/tomli_w-1.2.0/src"
+    },
+    {
+      "package": "pyfiglet",
+      "version": "1.0.4",
+      "sha256": "db9c9940ed1bf3048deff534ed52ff2dafbbc2cd7610b17bb5eca1df6d4278ef",
+      "filename": "pyfiglet-1.0.4.tar.gz",
+      "source": "https://files.pythonhosted.org/packages/c8/e3/0a86276ad2c383ce08d76110a8eec2fe22e7051c4b8ba3fa163a0b08c428/pyfiglet-1.0.4.tar.gz",
+      "module_root": "build/audit-packages/upstream/pyfiglet/pyfiglet-1.0.4"
+    },
+    {
+      "package": "ordered-set",
+      "version": "4.1.0",
+      "sha256": "694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364a8",
+      "filename": "ordered-set-4.1.0.tar.gz",
+      "source": "https://files.pythonhosted.org/packages/4c/ca/bfac8bc689799bcca4157e0e0ced07e70ce125193fc2e166d2e685b7e2fe/ordered-set-4.1.0.tar.gz",
+      "module_root": "build/audit-packages/upstream/ordered-set/ordered-set-4.1.0"
+    },
+    {
+      "package": "iniconfig",
+      "version": "2.3.1",
+      "sha256": "67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960",
+      "filename": "iniconfig-2.3.1.tar.gz",
+      "source": "https://files.pythonhosted.org/packages/01/e1/2069291243c926a2ff1cd706c7f3eeb9b62144bf60f77c9fb9ff2fb26bd3/iniconfig-2.3.1.tar.gz",
+      "module_root": "build/audit-packages/upstream/iniconfig/iniconfig-2.3.1/src"
+    }
+  ],
+  "scope_notes": [
+    "Compiler rebuilt; no runtime, lib, port or benchmark implementation changes in #629. Broader unchanged benchmarks, full hosted suite, upstream census and full CPython regrtest were not repeated.",
+    "Any-containing initialized module/local annotations request assignment inference for the whole annotation. This is not dynamic boxed storage."
+  ],
+  "imports": {
+    "metadata": {
+      "compiler": {
+        "kind": "executable",
+        "path": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/pystachy",
+        "sha256": "d2973670ce4d98150f4c8fc6b072a66641a782f9ee8211c333f4647cb8a3b898"
+      },
+      "counts": {
+        "error": 334,
+        "excluded": 46,
+        "included": 476,
+        "ok": 142,
+        "ok_without_stubs": 142,
+        "timeout": 0,
+        "total": 522
+      },
+      "duration_s": 8.54967931000283,
+      "mode": "import",
+      "overlay": {
+        "compiler_home": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars",
+        "excluded_modules": [
+          "_markupbase",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "curses.ascii",
+          "curses.has_key",
+          "curses.panel",
+          "curses.textpad",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "html.entities",
+          "html.parser",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "re._casefix",
+          "re._compiler",
+          "re._constants",
+          "re._parser",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib",
+          "urllib.error",
+          "urllib.parse",
+          "urllib.request",
+          "urllib.response",
+          "urllib.robotparser"
+        ],
+        "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+        "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+        "ported_names": [
+          "_markupbase",
+          "_pyrandom",
+          "_pystachy_abc",
+          "_pystachy_atexit",
+          "_pystachy_binascii",
+          "_pystachy_codecs",
+          "_pystachy_iterators",
+          "_pystachy_itertools",
+          "_pystachy_range",
+          "_pystachy_string",
+          "_pystachy_struct",
+          "_pystachy_thread",
+          "_pystachy_types",
+          "_pystachy_unicodedata",
+          "_pystachy_unicodedata_db",
+          "_pystachy_unicodedata_names",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib"
+        ],
+        "skipped_directories": [
+          "test",
+          "tests",
+          "idlelib",
+          "tkinter",
+          "turtledemo",
+          "site-packages",
+          "dist-packages",
+          "lib2to3",
+          "ensurepip",
+          "venv",
+          "__pycache__"
+        ]
+      },
+      "python": {
+        "executable": "/root/.local/bin/python3.13",
+        "implementation": "cpython",
+        "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+      },
+      "result_path": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/imports.json",
+      "schema_version": 1,
+      "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+      "source_git": {
+        "dirty": false,
+        "revision": "dbac05d7d4ab02ffdc737497cff940b4e95ec278",
+        "root": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars"
+      },
+      "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+      "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+      "stubs": [],
+      "timeout_s": 120,
+      "workers": 4
+    },
+    "previous_source_revision": "765564a34fdbf7abfb807df236a43f93f1bfe06f",
+    "previous_result_sha256": "3669f236b3673d26316437464e2e89472c5bc8459c5bb2c9250e0651454d6264",
+    "result_sha256": "3669f236b3673d26316437464e2e89472c5bc8459c5bb2c9250e0651454d6264",
+    "comparison": {
+      "modules": 522,
+      "changed": 0,
+      "new_modules": [],
+      "removed_modules": []
+    },
+    "changed_results": {},
+    "result_reference": "compatibility-2026-10-17-any-signatures.json -> imports (apply changed_results to prior result)"
+  },
+  "stubs": {
+    "metadata": {
+      "compiler": {
+        "kind": "hosted_entrypoint",
+        "path": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/pystachy.py",
+        "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+      },
+      "counts": {
+        "error": 330,
+        "excluded": 46,
+        "included": 476,
+        "ok": 146,
+        "ok_without_stubs": 142,
+        "timeout": 0,
+        "total": 522
+      },
+      "duration_s": 88.3661874870013,
+      "mode": "stubs",
+      "overlay": {
+        "compiler_home": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars",
+        "excluded_modules": [
+          "_markupbase",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "curses.ascii",
+          "curses.has_key",
+          "curses.panel",
+          "curses.textpad",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "html.entities",
+          "html.parser",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "re._casefix",
+          "re._compiler",
+          "re._constants",
+          "re._parser",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib",
+          "urllib.error",
+          "urllib.parse",
+          "urllib.request",
+          "urllib.response",
+          "urllib.robotparser"
+        ],
+        "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+        "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+        "ported_names": [
+          "_markupbase",
+          "_pyrandom",
+          "_pystachy_abc",
+          "_pystachy_atexit",
+          "_pystachy_binascii",
+          "_pystachy_codecs",
+          "_pystachy_iterators",
+          "_pystachy_itertools",
+          "_pystachy_range",
+          "_pystachy_string",
+          "_pystachy_struct",
+          "_pystachy_thread",
+          "_pystachy_types",
+          "_pystachy_unicodedata",
+          "_pystachy_unicodedata_db",
+          "_pystachy_unicodedata_names",
+          "bisect",
+          "codecs",
+          "collections",
+          "colorsys",
+          "contextlib",
+          "csv",
+          "curses",
+          "datetime",
+          "difflib",
+          "fnmatch",
+          "functools",
+          "genericpath",
+          "getopt",
+          "heapq",
+          "html",
+          "io",
+          "keyword",
+          "operator",
+          "posixpath",
+          "random",
+          "re",
+          "shlex",
+          "stat",
+          "statistics",
+          "string",
+          "struct",
+          "textwrap",
+          "this",
+          "types",
+          "urllib"
+        ],
+        "skipped_directories": [
+          "test",
+          "tests",
+          "idlelib",
+          "tkinter",
+          "turtledemo",
+          "site-packages",
+          "dist-packages",
+          "lib2to3",
+          "ensurepip",
+          "venv",
+          "__pycache__"
+        ]
+      },
+      "python": {
+        "executable": "/root/.local/bin/python3.13",
+        "implementation": "cpython",
+        "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+      },
+      "result_path": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars/build/audit-anyvars/stubs.json",
+      "schema_version": 1,
+      "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+      "source_git": {
+        "dirty": false,
+        "revision": "dbac05d7d4ab02ffdc737497cff940b4e95ec278",
+        "root": "/workspace/scratch/49d63c0068bf/pystachy-audit-anyvars"
+      },
+      "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+      "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+      "stubs": [
+        "_ast",
+        "_imp",
+        "_io",
+        "_opcode",
+        "_operator",
+        "_posixsubprocess",
+        "_signal",
+        "_socket",
+        "_symtable",
+        "_sysconfig",
+        "_tokenize",
+        "_tracemalloc",
+        "_typing",
+        "_warnings",
+        "_weakref",
+        "array",
+        "fcntl",
+        "gc",
+        "grp",
+        "marshal",
+        "posix",
+        "pwd",
+        "pyexpat",
+        "select",
+        "zlib"
+      ],
+      "timeout_s": 600,
+      "workers": 4
+    },
+    "previous_source_revision": "765564a34fdbf7abfb807df236a43f93f1bfe06f",
+    "previous_result_sha256": "6701fa47bf84828da5bee3e8bd5b06f21f74169bcfe2063091b50552bfd41b4d",
+    "result_sha256": "6701fa47bf84828da5bee3e8bd5b06f21f74169bcfe2063091b50552bfd41b4d",
+    "comparison": {
+      "modules": 522,
+      "changed": 0,
+      "new_modules": [],
+      "removed_modules": []
+    },
+    "changed_results": {},
+    "result_reference": "compatibility-2026-10-17-any-signatures.json -> stubs (apply changed_results to prior result)"
+  }
+}
