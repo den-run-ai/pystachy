@@ -16,7 +16,9 @@ Repeated case-insensitive classes must also count their run without entering the
 each character, with the same one entry and context as a case-sensitive class. Class runs and the
 scans of a search for a class make no class call per character (_charset() or charset()) once
 the Pattern's table for the class is built, for ASCII text and for classes whose members from
-U+0080 are one range, none or all.
+U+0080 are one range, none or all. An alternative's nested match is entered only where all its
+leading literals and classes match, and a greedy repeat whose tail begins with group marks and a
+literal enters the tail only where that literal is: the contexts the matcher enters are counted.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -26,6 +28,7 @@ usage: python3 tools/re_probe.py [--time PYSTACHY]   (make re-probe; a step of m
 """
 import importlib.util
 import os
+import random
 import re
 import re._compiler
 import re._parser
@@ -43,7 +46,7 @@ port = importlib.util.module_from_spec(_spec)
 sys.modules["pys_re"] = port
 _spec.loader.exec_module(port)
 sre = sys.modules["pys_re._sre"]
-counts = {"entries": 0, "contexts": 0}
+counts = {"entries": 0, "contexts": 0, "entered": 0}
 _sre_match = sre.sre_match
 _Ctx = sre.Ctx
 
@@ -54,9 +57,15 @@ def _counted_match(state, code, start, toplevel):
 
 
 class _CountedCtx(_Ctx):
+    # contexts: made; entered: made or reused (each match and each nested match it waits for)
     def __init__(self, *args):
         counts["contexts"] += 1
+        counts["entered"] += 1
         super().__init__(*args)
+
+    def reuse(self, *args):
+        counts["entered"] += 1
+        super().reuse(*args)
 
 
 sre.sre_match = _counted_match
@@ -260,6 +269,39 @@ def check_class_spans() -> int:
     return failed
 
 
+def check_nested_matches() -> int:
+    # An alternative's nested match begins only where its leading literals and classes all match,
+    # and a greedy repeat whose tail begins with group marks then a literal enters the tail only
+    # where that literal is: count the contexts the matcher enters, made or reused.
+    failed = total = 0
+    rng = random.Random(1)
+    dna = "".join([rng.choice("acgt") for _ in range(3000)])
+    dashes = "-" * 1000 + "Python" + "-" * 1000
+    cases = [
+        (r"agggtaaa|tttaccct", dna, 1500),
+        (r"[cgt]gggtaaa|tttaccc[acg]", dna, 3000),
+        (r"(a[act]ggtaaa|tttacc[agt]t)", dna, 1500),
+        (r".*(Python)", dashes, 2),
+        (r".*((P)y)thon", dashes, 2),
+        (r"(.*)(P)ython", dashes, 2),
+    ]
+    for pattern, text, limit in cases:
+        mine = port.compile(pattern)
+        theirs = re.compile(pattern)
+        counts["entered"] = 0
+        got = [(m.span(), m.groups()) for m in mine.finditer(text)] if text is dna else mine.search(text).groups()
+        if got != ([(m.span(), m.groups()) for m in theirs.finditer(text)] if text is dna else theirs.search(text).groups()):
+            print(f'nested matches differ: {pattern!r}')
+            failed += 1
+        n = counts["entered"]
+        total += n
+        if n > limit:
+            print(f'nested matches: {pattern!r}: {n} contexts entered (limit {limit})')
+            failed += 1
+    print(f'nested matches: {total} contexts entered over {len(cases)} cases')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -283,6 +325,7 @@ def main() -> int:
     failed += check_ignorecase_searches()
     failed += check_repeat_prefixes()
     failed += check_class_spans()
+    failed += check_nested_matches()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:

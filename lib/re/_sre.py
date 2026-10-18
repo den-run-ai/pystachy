@@ -422,10 +422,9 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
     if t < 0:
         t = _charset_table(state, code, i)
     table = state.charset_ascii
-    mode = table[t + 128]
-    lo = table[t + 129]
-    hi = table[t + 130]
-    within = mode == HIGH_IN  # (whether a code point from 128 in [lo, hi] is a member)
+    mode = -1  # (what the table says of code points from 128, read at the first one)
+    lo = 0
+    hi = 0
     while ptr < end:
         # A run of ASCII characters first, in loops that call nothing (so that what they read
         # of s and table may stay in registers), folded as lower_ascii() and lower_unicode() do
@@ -460,12 +459,16 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
         ch = s[ptr]
         if fold == 2:
             ch = _mapped(0, ch)
+        if mode < 0:
+            mode = table[t + 128]
+            lo = table[t + 129]
+            hi = table[t + 130]
         if ch < 128:
             member = table[t + ch] != 0
         elif mode == HIGH_EVAL:
             member = charset(code, i, ch)
         else:
-            member = (lo <= ch and ch <= hi) == within
+            member = (lo <= ch and ch <= hi) == (mode == HIGH_IN)
         if member != inside:
             break
         ptr += 1
@@ -499,24 +502,30 @@ class Ctx:
 
 
 def _mark_push(state: State, lastmark: int) -> None:
+    data = state.data
+    mark = state.mark
     for i in range(lastmark + 1):
-        state.data.append(state.mark[i])
+        data.append(mark[i])
 
 
 def _mark_pop(state: State, lastmark: int, discard: bool) -> None:
     n = lastmark + 1
     if n == 0:
         return
-    base = len(state.data) - n
+    data = state.data
+    mark = state.mark
+    base = len(data) - n
     for i in range(n):
-        state.mark[i] = state.data[base + i]
+        mark[i] = data[base + i]
     if discard:
         _drop(state, n)
 
 
 def _drop(state: State, n: int) -> None:
-    for _ in range(n):
-        state.data.pop()
+    # the last n items of the data stack (one deletion, not n pops; none for n = 0, which would
+    # detach an empty stack's array)
+    if n > 0:
+        del state.data[len(state.data) - n:]
 
 
 def _rep(ctx: Ctx) -> Repeat:
@@ -807,9 +816,14 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 ctx.lastindex = state.lastindex
                 if state.repeat is not None:
                     _mark_push(state, ctx.lastmark)
-                if code[tail] == LITERAL:
+                # (not _sre's: also after group marks past lastmark, which a tail that fails leaves
+                # where no group sees them, as it left them past lastmark)
+                lit = tail
+                while code[lit] == MARK and code[lit + 1] > state.lastmark:
+                    lit += 2
+                if code[lit] == LITERAL:
                     # the tail starts with a literal: skip the positions where it cannot match
-                    ctx.chr = code[tail + 1]
+                    ctx.chr = code[lit + 1]
                     k = K_REPEAT_ONE_LITERAL
                 else:
                     k = K_REPEAT_ONE
@@ -1176,18 +1190,34 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 if code[pattern + 1] == IN and (ptr >= end or not _charset(state, code, pattern + 3, s[ptr])):
                     pattern += code[pattern]
                     continue
-                op = code[pattern + 1]
+                # (not _sre's, which tests only the first literal or class here: the alternative's
+                # next literals and classes are tested too, which change nothing but the position,
+                # and its nested match begins after them, at q and at; never at an INFO, which is
+                # only at code[0])
+                q = pattern + 1
+                at = ptr
+                if code[q] == LITERAL or code[q] == IN:
+                    q += 2 if code[q] == LITERAL else code[q + 1] + 1
+                    at += 1
+                    while at < end and ((code[q] == LITERAL and s[at] == code[q + 1])
+                                        or (code[q] == IN and _charset(state, code, q + 2, s[at]))):
+                        q += 2 if code[q] == LITERAL else code[q + 1] + 1
+                        at += 1
+                    if code[q] == LITERAL or code[q] == IN:
+                        pattern += code[pattern]
+                        continue
+                op = code[q]
                 if op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE:
-                    item = _repeated(code, pattern + 1)
+                    item = _repeated(code, q)
                     if item >= 0:
                         plain = code[item] == LITERAL or code[item] == IN
-                        if not (_first(state, code, item, ptr) if plain else _first_ignore(state, code, item, ptr)):
+                        if not (_first(state, code, item, at) if plain else _first_ignore(state, code, item, at)):
                             # A mandatory first character rejects impossible alternatives. Keep
                             # the existing single-character-repeat gate and its capture behavior.
                             pattern += code[pattern]
                             continue
-                state.ptr = ptr
-                nextp = pattern + 1
+                state.ptr = at
+                nextp = q
                 nextj = JUMP_BRANCH
                 nextt = ctx.toplevel
                 break
@@ -1199,10 +1229,14 @@ def sre_match(state: State, code: list[int], start: int, toplevel: bool) -> int:
                 continue
         elif k == K_REPEAT_ONE_LITERAL:
             k = K_DISPATCH
-            while ctx.count >= code[pattern + 1] and (ptr >= end or s[ptr] != ctx.chr):
+            n = ctx.count  # (in locals, for the loop)
+            least = code[pattern + 1]
+            c = ctx.chr
+            while n >= least and (ptr >= end or s[ptr] != c):
                 ptr -= 1
-                ctx.count -= 1
-            if ctx.count < code[pattern + 1]:
+                n -= 1
+            ctx.count = n
+            if n < least:
                 if state.repeat is not None:
                     _drop(state, ctx.lastmark + 1)
                 ret = 0

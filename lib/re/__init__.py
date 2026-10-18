@@ -236,8 +236,12 @@ def _codes(string: str, limit: int) -> list[int]:
     codes: list[int] = []
     offs: list[int] = []
     if not _UTF8:
-        for c in source:
-            codes.append(ord(c))
+        if source.isascii():
+            # (an ASCII str's encoding is its code points: list() makes them in one call, not
+            # an ord() of each character, which is most of a scan's cost on a long subject)
+            codes = list(source.encode("ascii"))
+        else:
+            codes = [ord(c) for c in source]
     else:
         bs = [ord(c) for c in source]
         ascii = True
