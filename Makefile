@@ -140,6 +140,16 @@ selectprobe: tools/selectprobe.c runtime.c runtime.py pystachy
 	build/selectprobe
 	PYSTACHY_GC_STRESS=1 build/selectprobe
 
+# Real weak references: no strong target edge, cleared before reuse, dead handles pruned.
+weakrefprobe: tools/weakrefprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/weakrefprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/weakrefprobe.c -o build/weakrefprobe.ll
+	$(LLVMBIN)llvm-link build/weakrefprobe-rt.ll build/weakrefprobe.ll -o build/weakrefprobe.bc
+	$(LLVMBIN)clang -O2 build/weakrefprobe.bc -o build/weakrefprobe -lm
+	build/weakrefprobe
+	PYSTACHY_GC_STRESS=1 build/weakrefprobe
+
 # sum(), min() and max() of generators and range() stream: 10^8 items in 64 MiB (AOT).
 streamprobe: pystachy
 	$(PY) tools/streamprobe.py
@@ -250,7 +260,7 @@ re-probe:
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/unicodeprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -267,4 +277,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

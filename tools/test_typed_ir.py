@@ -449,6 +449,15 @@ class TypedIRTests(unittest.TestCase):
         self.assertIn("pys_alloc() implements an operation that it uses", error.getvalue())
         self.assertEqual(g.fn.blocks[0].code, [])
 
+    def test_weak_reference_reads_are_distinct_across_allocations(self):
+        g = Gen()
+        before = g.rt("pys_weakref_get", "ptr", ["ptr %a0"])
+        g.rt("pys_alloc", "ptr", ["i64 16"])
+        after = g.rt("pys_weakref_get", "ptr", ["ptr %a0"])
+        g.fn.n = g.n
+        values = Values(g.fn, {"entry": []})
+        self.assertNotEqual(g.canon(values, before), g.canon(values, after))
+
     def test_fixed_allocation_rejects_non_layout_types_and_extra_metadata(self):
         for t in ("", "Box", "int", "str", "list[int]", "vtuple[int]", "%ptr",
                   "opt[tuple[int]]", "union[int,str]", "tuple[int", "tuple[int]]",

@@ -49,7 +49,7 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
                             "_imp": "_pystachy_imp",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
-                            "_ast": "_pystachy_ast"}
+                            "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -667,6 +667,8 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
+    # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
+    "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",

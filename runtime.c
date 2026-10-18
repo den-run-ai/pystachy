@@ -305,6 +305,8 @@ static I nfiles;                       /* open files (see I/O): closed by the co
 static void files_sweep(void);
 static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
 static void trk_sweep(void);
+static int gc_marked(const void *p);
+static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   memset(text_hints, 0, sizeof text_hints);
@@ -317,6 +319,7 @@ __attribute__((noinline)) static void collect(void) {
     else msp -= 2;
     scan(p, p + n / 8);
   }
+  weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
   sweep(); gc_n++;
@@ -393,6 +396,28 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
+   the target nor the next registry entry is a strong edge. The registry itself is NOT a
+   collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused. */
+typedef struct WeakRef WeakRef;
+struct WeakRef { WeakRef *next; void *target; };
+static WeakRef *weakrefs;
+void *pys_weakref_new(void *target) {
+  WeakRef *ref = pys_alloc_atomic(sizeof *ref);
+  ref->target = target;
+  ref->next = weakrefs;
+  weakrefs = ref;
+  return ref;
+}
+void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+__attribute__((noinline)) static void weakrefs_sweep(void) {
+  for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
+    if (!gc_marked(ref)) { *link = ref->next; continue; }
+    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    link = &ref->next;
+  }
+}
 static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
                                           its size less the byte of slack, as for the n that cls(n) took */
   uintptr_t a = (uintptr_t)p;
