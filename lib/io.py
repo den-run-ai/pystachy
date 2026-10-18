@@ -518,28 +518,6 @@ def _unsupported(message: str) -> None:
     unsupported(message)
 
 
-def _nchars(s: str, i: int, j: int) -> int:
-    # the number of characters of s[i:j], a str holding UTF-8: its bytes that continue no sequence,
-    # as the runtime counts them (len() counts bytes)
-    n = 0
-    while i < j:
-        if ord(s[i]) & 0xC0 != 0x80:
-            n += 1
-        i += 1
-    return n
-
-
-def _skip(s: str, i: int, n: int) -> int:
-    # the offset of s n characters after offset i, or its end
-    end = len(s)
-    while n > 0 and i < end:
-        i += 1
-        while i < end and ord(s[i]) & 0xC0 == 0x80:
-            i += 1
-        n -= 1
-    return i
-
-
 def _utf8_tail(data: bytes) -> int:
     # the number of bytes at data's end that begin a UTF-8 sequence without ending it, which the
     # incremental decoder keeps for more data (lib/_pystachy_codecs.py's, after CPython's
@@ -655,7 +633,7 @@ class TextIOWrapper[B]:
     # The decoder is the codec's incremental one (UTF-8's keeps a sequence a chunk ends without
     # completing in _dpending), within IncrementalNewlineDecoder for newline None or "" (a final
     # \r waits in _pendingcr for the \n that may follow; _seennl, the newlines read). Positions in
-    # _decoded are offsets of its bytes; the sizes given count characters, as CPython's do.
+    # _decoded and the sizes given both count Unicode code points, as CPython's do.
 
     def __init__(self, buffer: B, encoding: str | None = None, errors: str | None = None, newline: str | None = None,
                  line_buffering: bool = False, write_through: bool = False) -> None:
@@ -690,7 +668,6 @@ class TextIOWrapper[B]:
         self._buffer = buffer
         self._decoded: str = ""  # decoded_chars: what reads take from, from _used on
         self._used: int = 0
-        self._dascii: bool = True  # (_decoded is ASCII: an offset is its characters' count)
         self._dpending: bytes = b""  # the UTF-8 decoder's bytes of an incomplete sequence
         self._pendingcr: bool = False
         self._seennl: int = 0  # 1 \r, 2 \n, 4 \r\n
@@ -789,18 +766,15 @@ class TextIOWrapper[B]:
     def _set_decoded(self, s: str) -> None:
         self._decoded = s
         self._used = 0
-        self._dascii = s.isascii()
 
     def _take(self, n: int) -> str:
         # textiowrapper_get_decoded_chars: n characters of _decoded (n < 0: all that is left)
         d = self._decoded
         start = self._used
-        if n < 0 or start + n >= len(d):
+        if n < 0 or n >= len(d) - start:
             end = len(d)
-        elif self._dascii:
-            end = start + n
         else:
-            end = _skip(d, start, n)
+            end = start + n
         self._used = end
         return d if start == 0 and end == len(d) else d[start:end]
 
@@ -867,7 +841,7 @@ class TextIOWrapper[B]:
         nbytes = len(data)
         decoded = self._decode(data, nbytes == 0)
         self._set_decoded(decoded)
-        nchars = len(decoded) if self._dascii else _nchars(decoded, 0, len(decoded))
+        nchars = len(decoded)
         self._b2cratio = nbytes / nchars if nchars > 0 else 0.0
         if self._telling:
             self._snapshot = True
@@ -886,7 +860,7 @@ class TextIOWrapper[B]:
         self._check_closed()
         if not self._writable:
             _unsupported("not writable")
-        n = len(text) if text.isascii() else _nchars(text, 0, len(text))
+        n = len(text)
         haslf = (self._writenl != "" or self._line_buffering) and "\n" in text
         if haslf and self._writenl != "":
             text = text.replace("\n", self._writenl)
@@ -934,12 +908,12 @@ class TextIOWrapper[B]:
                 self._snapshot = False
             return result
         result = self._take(n)
-        remaining = n - (len(result) if self._dascii else _nchars(result, 0, len(result)))
+        remaining = n - len(result)
         while remaining > 0:
             if not self._read_chunk(remaining):
                 break
             more = self._take(remaining)
-            remaining -= len(more) if self._dascii else _nchars(more, 0, len(more))
+            remaining -= len(more)
             result = result + more
         return result
 
@@ -974,7 +948,7 @@ class TextIOWrapper[B]:
         have = False
         start = 0
         endpos = 0
-        offset = 0  # (the bytes of remaining that begin line)
+        offset = 0  # (the characters of remaining that begin line)
         while True:
             more = True
             while self._decoded == "":
@@ -997,18 +971,18 @@ class TextIOWrapper[B]:
             have = True
             endpos = self._line_end(line, start)
             if endpos >= 0:
-                if limit >= 0 and _nchars(line, start, endpos) + chunked >= limit:
-                    endpos = _skip(line, start, limit - chunked)
+                if limit >= 0 and endpos - start + chunked >= limit:
+                    endpos = start + limit - chunked
                 break
             endpos = -1 - endpos
-            if limit >= 0 and _nchars(line, start, endpos) + chunked >= limit:
-                endpos = _skip(line, start, limit - chunked)
+            if limit >= 0 and endpos - start + chunked >= limit:
+                endpos = start + limit - chunked
                 break
             if endpos > start:
                 s = line[start:endpos]
                 chunks.append(s)
                 if limit >= 0:
-                    chunked += _nchars(s, 0, len(s))
+                    chunked += len(s)
             if endpos < len(line):
                 remaining = line[endpos:]
             have = False
@@ -1043,7 +1017,7 @@ class TextIOWrapper[B]:
         for line in self:
             lines.append(line)
             if h > 0:
-                n = len(line) if line.isascii() else _nchars(line, 0, len(line))
+                n = len(line)
                 if n > h - length:
                     break
                 length += n
