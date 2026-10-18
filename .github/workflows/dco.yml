@@ -1,10 +1,10 @@
-# Developer Certificate of Origin sign-offs on pull requests from forks (CONTRIBUTING.md):
-# tools/dco_check.py requires each non-merge commit to be signed off by its author or committer.
-# Pull requests from this repository's own branches, which only the owner and collaborators can
-# push (agent sessions working for them included), skip the job; a skipped required check passes.
-# pull_request_target runs this file and the script as main has them, so a pull request cannot
-# change its own check; the commits are read through the API, and no pull request code is checked
-# out or run.
+# Developer Certificate of Origin, certified once per contributor (CONTRIBUTING.md): a pull
+# request from a fork passes when .github/dco-signers.txt lists its author, on main or in the
+# pull request. Pull requests from this repository's own branches, which only the owner and
+# collaborators can push (agent sessions working for them included), skip the job; a skipped
+# required check passes. pull_request_target runs this file and tools/dco_check.py as main has
+# them, so a pull request cannot change its own check: the script reads the pull request's copy
+# of the signers file through the API, and no pull request code is checked out or run.
 name: DCO
 
 on:
@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: dco-${{ github.event.pull_request.number }}
@@ -21,16 +20,16 @@ concurrency:
 
 jobs:
   dco:
-    name: DCO sign-off (fork pull requests)
+    name: DCO certified (fork pull requests)
     if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          persist-credentials: false   # main's tools/dco_check.py; the pull request's code is never checked out
+          persist-credentials: false   # main's script and signers file; never the pull request's code
 
-      - name: Every non-merge commit is signed off
+      - name: The author is in .github/dco-signers.txt
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 tools/dco_check.py
