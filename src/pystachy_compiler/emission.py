@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, UNICODE_AUDIT
+from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     is_opt,
@@ -215,6 +215,11 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     # runtime mode, a function that runtime.py defines is called the same way: it is defined,
     # not declared, with RUNTIME's types, which Gen.function checks.) x: the descriptor of the
     # keys a dict or set op hashes (key_fx), for its U?
+    if not self.rtmode:
+        if name == "pys_chr":
+            name = "pys_text_chr"
+        elif name in TEXT_OPS:
+            name = TEXT_OPS[name]
     if self.unicode_audit and not self.rtmode and name.startswith("pys_str_") and name[8:] in UNICODE_AUDIT:
         self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
@@ -330,8 +335,8 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
                             (">", a[3], n1), (">", a[4], self.scalar('sub', [Val(n1, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
             self.guard(x.v, "IndexError: compare out of range")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
-        p1 = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
+        p1 = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('24', 'int')])}")
         return Val(self.scalar_cmp('eq', Val(self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}']), '%i32'), Val('0', '%i32')), "bool")
     if name == "find_byte":
         # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
@@ -339,21 +344,21 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
         self.guard(self.int_ucmp('>', Val(a[1], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('24', 'int')])}")
         f = self.rt("memchr", "ptr", [f"ptr {p0}", f"i32 {self.scalar_cast('trunc', Val(a[1], 'int'), '%i32')}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}"])
         d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
-        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('24', 'int')]), 'int')), "int")
     if name == "find_sub":
         # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
         n0 = self.mload('int', a[0], 'length.range')
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
-        p1 = self.maddr('%byte', a[1], '16')
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('24', 'int')])}")
+        p1 = self.maddr('%byte', a[1], '24')
         m = self.mload('int', a[1], 'length.range')
         f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}", f"ptr {p1}", f"i64 {m}"])
         d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
-        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('24', 'int')]), 'int')), "int")
     if name == "fail":
         if not a[0].startswith("@s."):
             self.err("_rt.fail() takes the exception's name as a str literal")
@@ -363,8 +368,8 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if name == "str_new":
         # a size the allocator cannot serve (negative, or past 2**63 with the header and NUL)
         # is CPython's MemoryError, as in runtime.c
-        self.guard(self.int_ucmp('>', Val(a[0], "int"), Val('9223372036854775790', "int")).v, "MemoryError: ")
-        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val('17', 'int')], 'nuw nsw')}"])  # zeroed: dict_hash and NUL
+        self.guard(self.int_ucmp('>', Val(a[0], "int"), Val('9223372036854775782', "int")).v, "MemoryError: ")
+        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val('25', 'int')], 'nuw nsw')}"])  # zeroed: dict_hash, chars1 and NUL
         self.mstore('int', a[0], r, 'length')
         return Val(r, "str")
     # the others index a str: an unsigned compare with its length also rejects a negative index
@@ -376,12 +381,12 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
                             (">", a[3], m), (">", a[4], self.scalar('sub', [Val(m, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
             self.guard(x.v, "IndexError: copy out of range")
-        dst = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
-        src = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
+        dst = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
+        src = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('24', 'int')])}")
         self.rt("llvm.memmove.p0.p0.i64", "void", [f"ptr {dst}", f"ptr {src}", f"i64 {a[4]}", "i1 false"])
         return Val("null", "None")
     self.guard(self.int_ucmp('>=', Val(a[1], "int"), Val(n, "int")).v, "IndexError: string index out of range")
-    p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
+    p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
     if name == "byte":
         return Val(self.scalar_cast('zext', Val(self.mload('%byte', p, 'bytes'), '%byte'), 'int'), "int")
     self.guard(self.int_ucmp('>', Val(a[2], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")

@@ -53,7 +53,10 @@
 #                  compile-time errors, then, with $PY's libpython, lib/pyobj.py embedding CPython and
 #                  pystachy ext's extension modules, against the twins in tools/rt_cpython (docs/ffi.md)
 #   list-storage   tools/listprobe.c: cleared reachable lists release backing capacity and live bytes;
-#                  empty operations/reuse preserve sort's sentinel, without allocation in clear
+#                  empty operations/reuse preserve sort's sentinel, without allocation in clear;
+#                  dropped pointer-free large arrays, when most of what is allocated, run
+#                  collections every max(4 MiB, live bytes) of them; small objects and arrays
+#                  of pointers keep the 32 MiB window
 #   container-eq   tools/eqprobe.c: shared DAG comparisons stop within a fixed comparison budget,
 #                  including ordering and list searches, normally and with GC stress
 #   file-buffers   tools/fileprobe.c: writable files' malloc'd buffers count as heap bytes, so files
@@ -70,7 +73,8 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
-#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers
+#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
+#                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #   scaling-0/-1   tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -552,14 +556,15 @@ PY=$PY tests/ffi/run.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
 step ffi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) passed, \([0-9]*\) failed.*$/, "passed": \1, "failed": \2/p' "$L")"
 fi
 
-# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists
+# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
+# collection counts for dropped large arrays
 if want list-storage; then
 L=$V/list-storage.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
   "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
   "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
-step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576'
+step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
 fi
 
 # ---- container-eq: bounded comparisons for small DAGs with exponentially many logical leaves
@@ -605,11 +610,15 @@ $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
 fi
 
-# ---- Unicode audit: opt-in checks persist in AOT and do not affect runtime-cache semantics
+# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
 if want unicode-audit; then
 L=$V/unicode-audit.log; s=$(now); r=fail
-$PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"]'
+{ $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
+  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
+step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
 fi
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)

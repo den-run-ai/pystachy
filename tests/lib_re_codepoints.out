@@ -1,0 +1,18 @@
+3 4 (3, 4) True
+1 4
+<re.Match object; span=(0, 1), match='é'>
+(2, 3) b 2 3
+(0, 2) aé 0 2
+['é'] <re.Match object; span=(1, 2), match='a'>
+past endpos 2 (2, 2)
+past endpos 3 None
+past endpos 4 None
+bounded end 2 (1, 2)
+bounded end 3 (1, 2)
+bounded end 4 (1, 2)
+a<é1>b<é3> ('<é0><é1><é2>', 3)
+[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]
+[(2, 3), (3, 4), (4, 5)]
+['日', '本', '😀']
+4 1 5
+[exit 0]

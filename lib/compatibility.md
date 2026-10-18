@@ -5,8 +5,10 @@ APIs when CPython runs them, because optional imports select CPython's C modules
 and dynamic features. Differential cases live in `tests/lib_*.py`; deliberate
 differences live in `tests/deviations/`, and rejected inputs in `tests/errors/`.
 
-Pystachy uses 64-bit integers, homogeneous containers and UTF-8 byte strings.
-Unless a module explicitly decodes characters, lengths and positions count bytes.
+Pystachy uses 64-bit integers, homogeneous containers and UTF-8 string storage.
+Public string lengths, indexing, slicing, iteration and search positions count Unicode
+code points. Unicode case mapping, most character tests and some byte-oriented runtime
+operations remain incomplete; individual modules may have additional restrictions.
 See [language compatibility](../docs/language/compatibility.md).
 
 ## `_imp` prototype
@@ -51,8 +53,7 @@ for example, `length_hint([1, 2])` and `index(2)` fail compilation.
 outside this supported API set. Builtin `os.path` has its own documented APIs.
 
 `stat` supports constants, `S_IS*`, `S_IMODE` and `S_IFMT`, but not `filemode`.
-`curses.ascii` supports ASCII characters; byte strings are not Unicode character
-sequences.
+`curses.ascii` supports ASCII characters.
 
 ## CPython-only code
 
@@ -96,11 +97,10 @@ data, comment, declaration, processing-instruction and reference callbacks.
 `scripting` are exercised by the probe tests, including RAWTEXT and RCDATA.
 Attribute records use `list[tuple[str, str | None]]`; missing values remain None.
 
-Native column offsets count UTF-8 bytes, and tag/attribute name case conversion
-uses ASCII-only `str.lower`. Unicode text and entity output remain supported,
-but these behaviors differ from CPython for non-ASCII columns and uppercase
-names. User subclass constructors and callback signatures need compatible
-annotations. Multiple inheritance and dynamic attributes remain unavailable.
+Column offsets count Unicode code points. Tag/attribute name case conversion uses
+ASCII-only `str.lower`, so non-ASCII uppercase names can differ from CPython. User subclass
+constructors and callback signatures need compatible annotations. Multiple inheritance
+and dynamic attributes remain unavailable.
 
 `_markupbase` is an internal implementation detail. Its abstract-construction
 guard is omitted and its field layout is declared in `__init__`. Its legacy SGML
@@ -152,7 +152,7 @@ Numeric references produce Unicode text, including Latin-1 characters, and named
 references use the upstream HTML5 table. Oversized references are replaced according
 to HTML rules without requiring arbitrary-precision integers. Decimal conversion
 keeps the default 4,300-digit limit; changing that limit with `sys` is unavailable.
-Caller indexing, slicing and lengths retain Pystachy's UTF-8 byte semantics.
+Caller indexing, slicing and lengths count Unicode code points.
 
 ## Keyword
 
@@ -264,7 +264,7 @@ truncation, closing and stream capability queries. It exposes `closed`,
 works. Newline translation, NUL padding after seeking past the end, and closed
 stream errors follow CPython's implementation.
 
-- Sizes and positions count bytes rather than Unicode characters.
+- Sizes and positions count Unicode code points.
 - Iteration and `next()` read one line at a time from the shared stream position.
 - `with StringIO() as f:` closes it as the block is left (`__enter__` raises CPython's
   `ValueError` for a closed one).
@@ -376,10 +376,9 @@ escaping and cache purging. `Match` supports group queries (up to five groups
 per `group` call), runtime-length `groups(default=None)` tuples, indexing,
 dictionaries, positions, spans and expansion.
 
-- Matches decode code points, but positions (`pos`, `endpos`, group spans and
-  pattern-error positions) are byte indices. A byte that `ord()` reads as no
-  character's part (a truncated, overlong or above-U+10FFFF sequence) is its own
-  character, as `chr()` made it.
+- Matches, bounds (`pos`, `endpos`), group spans and pattern-error positions count
+  Unicode code points. Invalid UTF-8 input retains the runtime's permissive behavior;
+  strict decoding remains outside this guarantee.
 - `findall` with two or more groups still raises `NotImplementedError`; its
   ported result contract remains `list[str]`. `Match.regs` remains unsupported
   because its runtime-length tuple contains tuple elements.
@@ -395,7 +394,7 @@ dictionaries, positions, spans and expansion.
 `purge` clears pattern, replacement-template and last-input decoding caches.
 The last input's decoded code points stay cached for the next call on it, but
 `findall`, `finditer`, `split`, `sub` and `subn` drop a decoding they made of an
-input longer than 1 MB once they return. Bounded `findall` and `finditer` calls
+input longer than 1,048,576 code points once they return. Bounded `findall` and `finditer` calls
 whose `endpos` precedes the input's end keep it, as do caches that `match` or
 `search` made, so loops over advancing windows reuse their decoded prefixes.
 Active operations retain their decoded input, so callbacks can safely purge;
@@ -490,9 +489,9 @@ unsupported: class decorators are not compiled.
 options, mutable wrapper options and overridable class attributes. Regex work
 uses `lib/re`.
 
-Widths count bytes. Breaking a long non-ASCII word may divide its UTF-8 bytes
-across lines. `unicode_whitespace_trans` must map ints to ints, with no string
-or `None` replacements; custom tables are looked up byte by byte. Mutated and
+Widths and long-word splitting count Unicode code points. Tab expansion still
+counts UTF-8 bytes before a tab. `unicode_whitespace_trans` must map ints to ints,
+with no string or `None` replacements; custom tables are looked up by code point. Mutated and
 custom tables retain their semantics when whitespace fast paths do not apply.
 `TextWrapper` subclasses are unsupported.
 
@@ -505,8 +504,7 @@ plus the template and pattern attributes, are available.
 
 Template subclasses are unsupported. Keyword values of different types, as in
 `substitute(name="Ann", count=3)`, are looked up as values of their union type.
-`Template.flags` is an int, invalid-placeholder columns count bytes, and
-`capwords` capitalizes ASCII letters only.
+`Template.flags` is an int, and `capwords` capitalizes ASCII letters only.
 
 `Formatter` supports `format`, `vformat`, `parse`, `get_field`, `get_value`,
 `check_unused_args`, `format_field` and `convert_field`, and subclasses that
@@ -526,7 +524,8 @@ which reads the attributes ([reflection](../docs/language/semantics.md#reflectio
 loop over a constant list of such templates unrolls. `check_unused_args` receives the keys used as a list in first-use order
 rather than a set. Overrides compile for every call's argument types in the
 program; an override, like other functions, must return one type for each.
-Field names count UTF-8 bytes, so only ASCII digits make positional ones.
+Only ASCII digits make positional field names; the field parser does not recognize
+Unicode decimal digits.
 
 ## Statistics
 
@@ -539,7 +538,7 @@ floats. Weighted `fmean` uses the port of CPython's
 - `median` and `quantiles` require floats: integer/bool inputs can produce
   different return types in CPython. `median_low` and `median_high` retain the
   item type. `median` of strings is unsupported.
-- `mode` and `multimode` cannot use float keys. String inputs iterate bytes.
+- `mode` and `multimode` cannot use float keys. String inputs iterate code points.
 - Integer products in weighted `fmean` can raise `OverflowError` beyond 64 bits;
   CPython's integers continue growing.
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
@@ -577,7 +576,7 @@ as Pystachy's `math` has none.
   before drawing. `randrange` and `randint` raise `OverflowError` where the width,
   `b + 1` or the width plus the step leaves 64 bits (`randint(a, 2**63 - 1)`).
 - Populations are lists, strings and runtime-length tuples; a `range` is not a
-  value, so pass `list(range(n))`. Strings are sequences of bytes past ASCII.
+  value, so pass `list(range(n))`. String populations are sequences of code points.
   Weights and counts share one numeric type. `sample` raises `TypeError` for a
   `deque`, which `isinstance` does not find a `Sequence`, and takes a dict view,
   which is a list.
@@ -680,8 +679,6 @@ can use the inherited `fromutc()`.
 - Objects of subclasses of `date`, `time` and `datetime` print as their base class, and
   arithmetic and `replace()` return objects of the base class.
 - Ordering a `date` with a `datetime` raises the `TypeError` of the reflected comparison.
-- Strings are UTF-8 bytes: `fromisoformat()` rejects a non-ASCII separator, and its length
-  checks count bytes, as `_datetime`'s parser does.
 
 ## Binascii
 
@@ -924,14 +921,10 @@ works as CPython's does, with its errors and messages: `category()`, `bidirectio
 named sequences and derived names (Hangul syllables, CJK and Tangut ideographs) in any case,
 `normalize()` and `is_normalized()` in the four forms, and `ucd_3_2_0`, the database of
 Unicode 3.2.0 that `stringprep` and the IDNA codec read. A function's character is the one code
-point that its `str` argument's UTF-8 encodes, and the strs it gives hold the code points' UTF-8
-(their `len()` counts bytes, as for any Pystachy str: see the [language
+point that its `str` argument's UTF-8 encodes, and its results use the same UTF-8 storage.
+String lengths and iteration count code points (see the [language
 reference](../docs/language/compatibility.md#text-and-file-positions)).
 
-- Iterating a str gives its bytes, so `[c for c in s if unicodedata.combining(c) == 0]` raises
-  `TypeError` for a character of more than one byte
-  ([deviation](../tests/deviations/lib_unicodedata_bytes.py)): `re.findall("(?s).", s)` gives
-  the characters, as in CPython ([test](../tests/lib_unicodedata_chars.py)).
 - `lookup()` takes a `str`; `bytes`, which CPython's also takes, is a compile-time error.
 - `unicodedata._ucnhash_CAPI`, the capsule through which CPython's `\N{...}` escapes find
   names, is not there.

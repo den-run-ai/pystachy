@@ -19,8 +19,15 @@ def gen_extern_decl(self, f: FnInfo) -> None:
 def lower_data(d: Data) -> str:
     if d.kind == "string":
         n = len(d.text) + 1
-        # Bytes are immutable; runtime.c's Str dictionary hash cache is writable.
-        return f'{d.name} = private unnamed_addr global {{i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, [{n} x i8] c"{llstr(d.text)}\\00"}}, align 8'
+        # The frontend stores one character per UTF-8 byte. Seed the code-point count
+        # for ASCII literals; runtime.c computes it lazily for all other text.
+        chars1 = n
+        for c in d.text:
+            if ord(c) >= 128:
+                chars1 = 0
+                break
+        # Bytes are immutable; runtime.c's Str hash and character-count caches are writable.
+        return f'{d.name} = private unnamed_addr global {{i64, i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, i64 {chars1}, [{n} x i8] c"{llstr(d.text)}\\00"}}, align 8'
     if d.kind == "tuple":
         # Fixed tuples use one i64 slot per item. These literals refer only to static strings,
         # so no heap allocation or collector root is needed; keep their address significant.
@@ -83,7 +90,7 @@ def gen_cextern(self, f: FnInfo) -> None:
             if c == "str":
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
-            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 16")  # (the bytes, after the length and dict hash: runtime.c's Str)
+            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 24")  # (bytes after Str's byte length, hash and character-count cache)
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
