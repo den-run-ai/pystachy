@@ -2590,7 +2590,11 @@ List *pys_text_list(Str *s) {
   }
   return l;
 }
-List *pys_bytes_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (unsigned char)s->s[i]); return l; }
+List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
+  List *l = pys_list_new_atomic(s->len);
+  for (I i = 0; i < s->len; i++) l->a[i] = (unsigned char)s->s[i];
+  l->len = s->len; return l;
+}
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */
 /* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a
