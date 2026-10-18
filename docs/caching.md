@@ -9,15 +9,19 @@ The [router example](../examples/route/README.md) shows an application result ca
 | `fnmatch._compile_pattern` | Glob translation and regex compilation | 32,768 patterns, LRU |
 | `re.compile` | Regex parsing and compilation | 512 patterns; 256-entry FIFO front, recency refresh on front misses |
 | Regex replacement template | Replacement parsing and group resolution | 512 templates; same two-level policy |
-| Pattern ASCII classes | Character-class opcode interpretation | 128 entries per used class, owned by pattern |
+| Pattern class tables | Character-class opcode interpretation | 131 entries per used class (+128 for a memo), owned by pattern |
+| Pattern search strategy | Choosing what a search may skip by | 5 entries per pattern, found at its first search |
+| Regex case-mapping memo | Searching the Unicode case tables | 256 recent code points per mapping, process-wide |
 | Regex decoded subject | Decoding the same string object again | Last subject only |
 | Application `lru_cache` | Entire function body | Chosen `maxsize` |
 
 The regex front caches reference entries in their larger caches; they do not compile extra
 patterns or templates. Repeated front hits only read the cache, and `re.purge()` clears both levels.
 
-ASCII tables are built lazily; non-ASCII characters retain the class evaluator. Stable integer
-constants also allow LLVM switches in regex dispatch. Textwrap skips unnecessary tab expansion
+Class tables are built lazily. They decide ASCII characters directly, and code points from
+U+0080 when the class's members there form one range (or none, or all); other classes keep the
+evaluator, behind a memo of its recent answers. Stable integer constants also allow LLVM
+switches in regex dispatch. Textwrap skips unnecessary tab expansion
 and uses literal replacements for its default whitespace table, while preserving custom tables
 and mutation behavior. These changes reduce uncached work; a result hit skips it altogether.
 

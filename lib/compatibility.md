@@ -390,8 +390,8 @@ input longer than 1,048,576 code points once they return. Bounded `findall` and 
 whose `endpos` precedes the input's end keep it, as do caches that `match` or
 `search` made, so loops over advancing windows reuse their decoded prefixes.
 Active operations retain their decoded input, so callbacks can safely purge;
-existing patterns and matches remain usable. ASCII character-class tables belong
-to their pattern and preserve scoped case folding and Unicode fallback.
+existing patterns and matches remain usable. Character-class tables and search
+strategies belong to their pattern and preserve scoped case folding and Unicode fallback.
 
 ## Fnmatch
 
