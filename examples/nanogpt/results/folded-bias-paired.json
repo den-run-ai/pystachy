@@ -1,0 +1,229 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-17",
+  "purpose": "paired timing of ndarray_blas.linear (bias folded into cblas_dgemm, beta=1) against the separate bias pass, with CPython + NumPy and upstream PyTorch baselines",
+  "base_commit": "2af6af82993373b4e9f3f61238d9ed8959593c5a",
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "vcpus": 4,
+    "shared_vm": true,
+    "pinned_cpu": 3
+  },
+  "toolchain": {
+    "llvm": "18.1.3",
+    "compiler_built_with_cpython": "3.13.16",
+    "baseline_cpython": "3.12.3",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "torch": "2.14.1+cpu",
+    "torch_threads": 1,
+    "native_blas": "SciPy 1.18.1's LP64 OpenBLAS 0.3.31.dev, symbol scipy_cblas_dgemm",
+    "thread_environment": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "BLIS_NUM_THREADS": "1",
+      "GOTO_NUM_THREADS": "1"
+    }
+  },
+  "model": {
+    "name": "benchmark",
+    "n_layer": 2,
+    "n_head": 2,
+    "n_embd": 64,
+    "block_size": 64,
+    "vocab_size": 64,
+    "bias": true,
+    "batch": 2,
+    "length": 16
+  },
+  "parameter_count": 108288,
+  "fixture": {
+    "weight_sha256": "0cb4fec803794d46a0a05e1d19d5799c7969dbd74bdcb8582a3916e6cf4f0a2b",
+    "input_sha256": "935adb2787ae8be551bc3522cf6816be3412a1653686f46c408a30aebce6916b"
+  },
+  "method": {
+    "rounds": 7,
+    "warmups": 20,
+    "repeats": 200,
+    "statistic": "median over rounds of each run's median",
+    "order": "per round: folded and separate AOT (order alternating), folded JIT, then NumPy and PyTorch in one process",
+    "runners": "tools/check_nanogpt.py runner_source('blas', 0); the separate-bias runner omits linear"
+  },
+  "sources_sha256": {
+    "examples/nanogpt/model.py": "3dddd99ebc5218fd7ae90c8c985fe2d16bece9a3c5f9c3e473b72f2b764ac125",
+    "examples/nanogpt/training.py": "de24f2c761a90f0f02301d4e3f99bf11d5c0c3914fd2378408320ce2da51594f",
+    "examples/nanogpt/driver.py": "8ec9f3dc2d267e90523199d30c43a2610a45797dba04ec01dff9e9321f274f28",
+    "examples/ndarray/ndarray.py": "5ef5a1b878ad8d648aaf67747661420ea538a0dc4976f7fa71bb2c4762dbe626",
+    "examples/ndarray/ndarray_blas.py": "bd0c647f8db3a1bc21459a6c9935c9d73f62c6543e1f17c228d5836fa2ef2903",
+    "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141",
+    "tools/nanogpt_numpy_baseline.py": "972f94a2c3e1a2936a3feeba2a2e3d5ff54ba0e6d72d6143ce2624cc000acb5f"
+  },
+  "rounds_median_ms": {
+    "pytorch": {
+      "full": [
+        1.400634999754402,
+        1.662345999648096,
+        1.0866279999390827,
+        1.1410125002839777,
+        0.9900860004563583,
+        1.03447999981654,
+        1.1433269996814488
+      ],
+      "last": [
+        1.0221734996775922,
+        1.2121749996367726,
+        1.0487845001989626,
+        1.011940500120545,
+        0.975521999407647,
+        1.0073485000248183,
+        1.0966535000989097
+      ]
+    },
+    "cpython_numpy": {
+      "full": [
+        1.249363499937317,
+        1.43281400005435,
+        1.3341700000637502,
+        1.3395860000855464,
+        1.2477929999477055,
+        1.3224680001258093,
+        1.323952000348072
+      ],
+      "last": [
+        1.1632109999482054,
+        1.2526089999482792,
+        1.871862500138377,
+        1.1598145001698867,
+        1.1438335000093502,
+        1.270867000130238,
+        1.841656499891542
+      ]
+    },
+    "pystachy_aot_openblas_bias_folded": {
+      "full": [
+        1.7611594998925284,
+        1.735130500037485,
+        1.8400909998490533,
+        1.74084300033428,
+        1.921307000429806,
+        1.7239189996871573,
+        2.0344330000625632
+      ],
+      "last": [
+        1.594014500369667,
+        2.052834999631159,
+        1.6911284997149778,
+        1.6474720000587695,
+        1.5984005003701895,
+        2.1070299999337294,
+        1.7311094998149201
+      ]
+    },
+    "pystachy_aot_openblas_separate_bias": {
+      "full": [
+        2.1543259999816655,
+        2.0417085002009117,
+        2.141654999832099,
+        2.9411694999907922,
+        2.0787319999726606,
+        2.1545165000134148,
+        2.2361439996529953
+      ],
+      "last": [
+        2.68868700004532,
+        1.955999500296457,
+        2.1103045000927523,
+        2.651832500305318,
+        1.9445964999249554,
+        1.9440864998614416,
+        1.9685519996528456
+      ]
+    },
+    "pystachy_jit_openblas_bias_folded": {
+      "full": [
+        2.108849999785889,
+        2.0741224998346297,
+        2.1041049999439565,
+        2.1404864996839024,
+        2.2590799994759436,
+        2.0809540001209825,
+        2.1440844998323882
+      ],
+      "last": [
+        1.974338000309217,
+        1.9408099997235695,
+        1.9244764998802566,
+        3.11364949993731,
+        1.8827250000867934,
+        2.0019119997414236,
+        1.9886595000571106
+      ]
+    }
+  },
+  "median_ms": {
+    "pytorch": {
+      "full": 1.1410125002839777,
+      "last": 1.0221734996775922
+    },
+    "cpython_numpy": {
+      "full": 1.323952000348072,
+      "last": 1.2526089999482792
+    },
+    "pystachy_aot_openblas_bias_folded": {
+      "full": 1.7611594998925284,
+      "last": 1.6911284997149778
+    },
+    "pystachy_aot_openblas_separate_bias": {
+      "full": 2.1543259999816655,
+      "last": 1.9685519996528456
+    },
+    "pystachy_jit_openblas_bias_folded": {
+      "full": 2.108849999785889,
+      "last": 1.974338000309217
+    }
+  },
+  "paired_folded_over_separate": {
+    "per_round": {
+      "full": [
+        0.8174990692715572,
+        0.8498424235716028,
+        0.8591911395595054,
+        0.5918880228901224,
+        0.9242687371219932,
+        0.8001419342466969,
+        0.9097951654179098
+      ],
+      "last": [
+        0.5928598235282867,
+        1.0495069141479971,
+        0.8013670537311791,
+        0.6212579413930135,
+        0.8219702650045261,
+        1.0838149434625985,
+        0.8793821550663643
+      ]
+    },
+    "median": {
+      "full": 0.8498424235716028,
+      "last": 0.8219702650045261
+    }
+  },
+  "output_sha256_prefix": {
+    "pystachy_aot_openblas_bias_folded": [
+      "fb3fbab0abc7957d"
+    ],
+    "pystachy_aot_openblas_separate_bias": [
+      "fb3fbab0abc7957d"
+    ],
+    "pystachy_jit_openblas_bias_folded": [
+      "fb3fbab0abc7957d"
+    ]
+  },
+  "max_abs_error_vs_reference": {
+    "cpython_numpy": 3.885780586188048e-16,
+    "pytorch": 0.0
+  }
+}

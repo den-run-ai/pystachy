@@ -45,12 +45,13 @@ shape; it is not NumPy's format.
 [`ndarray_blas.py`](ndarray_blas.py) adds a separate, opt-in matrix product:
 
 ```python
-from ndarray import array2
-from ndarray_blas import matmul
+from ndarray import array, array2
+from ndarray_blas import linear, matmul
 
 x = array2([[1.0, 2.0], [3.0, 4.0]])
 weight = array2([[5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
 y = matmul(x, weight.T)
+z = linear(x, weight, array([0.5, -0.5, 1.0]))   # x @ weight.T + bias, in one call
 ```
 
 The compiled program calls `libblas.so.3`'s `cblas_dgemm` directly using the
@@ -68,8 +69,16 @@ symbol successfully, or multiplying small matrices, cannot establish its
 integer ABI. Use a provider documented to supply LP64 `libblas.so.3`. For the
 validation host, that name resolves to the reference BLAS
 `blas/libblas.so.3.12.0`, package `libblas3` version `3.12.0-3build1.1`; its
-exported `cblas_dgemm` uses 32-bit dimensions. An optimized provider such as
-OpenBLAS is a separate deployment choice, not a property of this adapter.
+exported `cblas_dgemm` uses 32-bit dimensions.
+
+Prefer OpenBLAS. On Debian and Ubuntu, `libblas.so.3` is the reference BLAS
+until an optimized provider is installed. `apt install libopenblas0-pthread`
+registers OpenBLAS's own LP64 `libblas.so.3` at a higher alternatives priority
+(100 against 10), so this binding uses it without any change. On nanoGPT's
+benchmark model, BLAS AOT inference took 2.28 ms with the reference BLAS and
+0.92 ms with Ubuntu's OpenBLAS 0.3.26 ([recorded data](../nanogpt/results/blas-providers.json)).
+OpenBLAS starts a thread per core by default; at these sizes more threads did
+not help, so small products can run with `OPENBLAS_NUM_THREADS=1`.
 
 The adapter checks shapes, strides, addressable byte extents and all referenced
 storage before passing pointers to C. It always creates fresh output, so the
@@ -81,8 +90,23 @@ nonzero offsets, reversed axes and broadcast strides, are packed in logical
 row-major order; that copying is part of a call's cost. Inputs are read afresh
 on every call, so weight updates need no cache invalidation.
 
+`linear(x, weight, bias)` computes PyTorch's `Linear`, `x @ weight.T + bias`,
+with one `cblas_dgemm` call. Its result starts as the bias repeated for every
+row, and BLAS adds the product into it (`beta=1`). That replaces zero-filling
+the output and a second pass adding the bias. The operands follow `matmul`'s
+rules, the bias may be any 1-D view with one value per output feature, and it
+is also read afresh on every call. BLAS adds its partial sums to the bias in its
+own order: a library that splits the inner dimension can round differently from
+a separate addition, so agreement is within the BLAS tolerance below, not bit
+for bit. At nanoGPT's benchmark shapes, the reference BLAS and OpenBLAS 0.3.31
+gave the same bits either way. Without a bias, `linear` is `matmul(x, weight.T)`.
+
 Validation is optional because the normal test suite does not require a BLAS
-installation. From this directory:
+installation. `make blas-check` runs the checks below, then nanoGPT's BLAS
+parity check ([`blas_parity.py`](../nanogpt/blas_parity.py)). CI runs that target
+in its `benchmarks` group twice, with NumPy as the reference: once against
+Ubuntu's OpenBLAS on one thread and once against the reference BLAS, selecting
+each one's `libblas.so.3` through `LD_LIBRARY_PATH`. From this directory:
 
 ```sh
 pystachy run blas_cases.py
@@ -92,11 +116,13 @@ python3 check_blas.py --compiler ../../pystachy --stress 1
 ```
 
 The last command requires NumPy in the checking interpreter. It verifies all
-elements of 24 matrix cases against both the existing scalar product and
-NumPy, plus 15 invalid-input rejections, under CPython, JIT, AOT and native GC
-stress. Cases include padded transposes, negative and zero strides, nonzero
+elements of 24 matrix cases and 15 `linear` cases against both the existing
+scalar product (plus the bias) and NumPy, plus 32 invalid-input rejections,
+under CPython, JIT, AOT and native GC stress. Cases include padded transposes, negative and zero strides, nonzero
 offsets, singleton strides, shared operands, repeated calls after mutation,
-empty products and integer-limit guards. The CPython FFI twin copies lists
+empty products and integer-limit guards; for `linear`, also reversed/broadcast biases, a
+bias sharing the weight's storage, no bias, and rejection of malformed bias
+strides, offsets and backing storage before any native call. The CPython FFI twin copies lists
 into C arrays; it is a correctness oracle and is not a measure of the native
 borrowed-buffer overhead. No speedup is claimed by these checks. BLAS may use
 a different accumulation order, so finite results use `1e-12` tolerances.

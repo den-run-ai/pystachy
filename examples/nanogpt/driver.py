@@ -28,8 +28,11 @@ def read_input(path: str) -> InputBatch:
     return InputBatch(dimensions[0], dimensions[1], tokens, targets)
 
 
-def main(matmul_fn) -> None:
-    """Default: last-position logits. --loss evaluates only the returned positions."""
+def main(matmul_fn, linear_fn=None) -> None:
+    """Default: last-position logits. --loss evaluates only the returned positions.
+
+    linear_fn, when given, computes the model's biased projections (see model.py).
+    """
     usage = "usage: run.py WEIGHTS INPUT [--last|--full] [--loss]"
     if len(sys.argv) == 2 and sys.argv[1] == "--help":
         print(usage)
@@ -50,7 +53,7 @@ def main(matmul_fn) -> None:
             raise ValueError("unknown option: " + option)
     model = load_weights(sys.argv[1])
     inputs = read_input(sys.argv[2])
-    logits = forward_with_backend(model, inputs.tokens, inputs.batch, inputs.length, matmul_fn, last_only)
+    logits = forward_with_backend(model, inputs.tokens, inputs.batch, inputs.length, matmul_fn, last_only, linear_fn)
     print("shape", logits.shape)
     print("logits", logits.values())
     if evaluate_loss:
