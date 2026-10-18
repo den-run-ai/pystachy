@@ -356,7 +356,8 @@ __attribute__((noinline)) static void *gc_slow(I n, int atomic) {
   if ((uint64_t)n > (uint64_t)1 << 40) oom();
   if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
   if (n >= SMALL) {                    /* large object: a page-aligned header in its own block */
-    if (!gc_off && (gc_allocd + n >= gc_limit || (gc_big + n >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
+    if (!gc_off && (gc_allocd + n >= gc_limit ||
+        (gc_big + (atomic ? n : 0) >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
     char *raw = calloc(1, PAGE + HB + n);
     if (!raw) oom();
     Seg *s = (Seg *)(((uintptr_t)raw + PAGE - 1) & ~(uintptr_t)(PAGE - 1));

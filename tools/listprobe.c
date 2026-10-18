@@ -206,6 +206,29 @@ __attribute__((noinline)) static I churn(I n, I *most) {   /* n dropped lists of
   }
   return gc_n - before;
 }
+/* The candidate's bytes count toward the small large-object budget only when pointer-free.
+   A single scanned block above 4 MiB exposed this; the 64 KiB churn below cannot. Run first
+   so the empty-heap case has no allocation history, then check a mixed history and both
+   positive controls. GC stress deliberately collects at each allocation instead. */
+static void budget_candidates(void) {
+  I before = gc_n;
+  pys_alloc(5 << 20);
+  if (!gc_stress && gc_n != before) bad("a scanned candidate uses the pointer-free budget on an empty heap");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc_atomic(3 << 20);
+  pys_alloc(2 << 20);
+  if (!gc_stress && gc_n != before) bad("a scanned candidate completes the pointer-free budget");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc_atomic(5 << 20);
+  if (!gc_stress && gc_n - before != 1) bad("a pointer-free candidate uses its 4 MiB budget");
+  scrub_collect();
+  before = gc_n;
+  pys_alloc(32 << 20);
+  if (!gc_stress && gc_n - before != 1) bad("a scanned candidate still uses the 32 MiB budget");
+  scrub_collect();
+}
 /* pointer-free large objects start collections of their own where they are most of what is
    allocated: dropping 32 MiB of large float arrays while little is live runs one every 4 MiB
    of them (BIG_MIN), so the heap grows by about 4 MiB rather than 32; with 8 MiB of them
@@ -240,6 +263,7 @@ static void budgets(void) {
 }
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
+  budget_candidates();
   clear_many();
   scrub_collect();
   scrub_collect();
