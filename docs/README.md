@@ -28,6 +28,8 @@ are linked from the relevant guide.
 
 | Guide | Use it for |
 |---|---|
+| [Contributing](../CONTRIBUTING.md) | First PR, validation evidence, DCO sign-off and review policy |
+| [Agent onboarding](../AGENTS.md) | Shared Codex/Claude Code workflow, verification rules and regression lessons |
 | [Internals](internals.md) | Compiler stages, runtime, commands and settings |
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |

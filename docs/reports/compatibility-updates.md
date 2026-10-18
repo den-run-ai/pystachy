@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `6397781363e6edea98c61d294a2425eb4df05cc3`.
+**Latest evaluated main:** `43fb4007320c8bf2851e7cfcb6f32d66dc637fef`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1090,6 +1090,212 @@ PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
 /root/.local/bin/python3.13 build/audit-recursion/evaluate.py
 /root/.local/bin/python3.13 build/audit-recursion/boundaries.py
 /root/.local/bin/python3.13 build/audit-recursion/build_evidence.py
+```
+
+## 2026-10-18 — #657: faster list repetition, preserved compatibility
+
+Evaluated [main `3f6f42c7`](https://github.com/den-run-ai/pystachy/commit/3f6f42c7648b952940ca806fc711d59314ee381a),
+which merges [#657](https://github.com/den-run-ai/pystachy/pull/657) at
+2026-10-18 03:36:49 UTC (October 17 in America/Los_Angeles).
+The only preceding merge since evaluated `63977813` is the audit itself,
+[#635](https://github.com/den-run-ai/pystachy/pull/635), whose merged tree equals
+the already tested publication. No implementation gain is attributed to that merge.
+#657 changes `runtime.c` plus one recorded regression test: list repetition
+copies a doubling prefix, and a new one-element zero-bit pattern needs no fill.
+Ancestry was verified; #491/#616 coordination and #657 comments were read.
+The fresh review-thread list is empty; the bot failure banner accompanies a
+review quota error, not a retrieved code finding.
+
+[Normalized evidence](compatibility-2026-10-18-list-repeat.json) retains source
+and compiler revisions separately, hashes, programs, commands, import metadata,
+CPython stdlib file hashes, paired samples and reproduction scripts.
+CPython **3.13.16** was restored after its previous installation expired; its
+binary hash is identical to the previous audit. With LLVM **18.1.3**, the fresh
+bootstrap fixed points pass at **620,602 compiler / 18,388 runtime IR lines**.
+Compiler SHA-256:
+`66cd62d0a803e0a1d21c50b83e3e0043068c295e10560905e78284470bd6d6f4`.
+The previous compiler is the verified `63977813` build; 231 compiler/Python
+runtime/library/port/example/microGPT source files are byte-identical.
+
+| Evidence category | Fresh result |
+|---|---|
+| Focused native correctness | **22/22** normal JIT/AOT checks over 11 list/storage/ndarray programs. |
+| Per-allocation program GC | **6/6** checks for repetition, allocation kinds and ndarray edges. |
+| Adapted ports | **14/14** JIT/AOT checks over seven pylev, pyaes, qrcode and sortedcontainers workloads. |
+| CPython reference recordings | All **18** selected focused/port programs match their recordings. |
+| Prior-runtime control | The new repetition program also passes JIT/AOT on the previous runtime: **2/2**, preserving behavior rather than adding API acceptance. |
+| Allocation/runtime contracts | `listprobe` passes normally and with GC stress; all **430** runtime entry contracts agree. |
+| Adapted microGPT | Original/adapted CPython and native JIT/AOT verify ten steps, 73 training tokens and three generated names: **58,698 numeric comparisons per run**, including every gradient; maximum AOT absolute difference `8.47e-22`. |
+| Isolated imports | **142/475 native**, **146/475 stub-assisted**, same 522-file inventory and 47 exclusions. Every normalized result is unchanged; no timeout. |
+
+The repetition test covers signed zero, NaN/infinities, integer bounds,
+non-power-of-two counts, reused nonzero storage, shared object/nested-list
+references, aliases, zero/negative/empty counts and MemoryError boundaries.
+The three ndarray programs retain their recorded subset behavior; this remains
+a native float64 example, not general native NumPy. The microGPT run is a
+correctness check under concurrent audit load; its single-sample phase timings
+do **not** establish a training speedup or regression.
+
+### Paired performance: strong improvement, workload-dependent CPython comparison
+
+After correctness jobs completed, both runtimes and CPython ran on CPU 0 in
+seven alternating-order process rounds. Inputs are `n=8192` and 2,000 allocations
+per pattern. Checksums match in every sample. Raw samples and load are retained;
+these shared-host observations are not universal performance guarantees.
+
+The **exact source from [#649](https://github.com/den-run-ai/pystachy/issues/649)**
+uses best-of-five wall times within each process. Medians of seven processes,
+nanoseconds per output item:
+
+| Exact issue workload | Previous AOT | Current AOT | CPython 3.13.16 |
+|---|---:|---:|---:|
+| `[0.0] * n` | 3.85 | 0.36 | 0.95 |
+| `[1.5] * n` | 3.73 | 0.58 | 0.91 |
+| `[0.0, 1.0] * (n // 2)` | 2.17 | 0.56 | 1.28 |
+
+This independently reproduces #649's acceptance criterion for those exact loops:
+approximately **3.9–10.7× faster** than previous AOT and below CPython.
+
+A separate **function-scoped** loop, with 100 warmups and one timed 2,000-iteration
+body per process, measures process CPU time rather than selecting the best wall
+sample. It improves substantially, but is not below CPython in every median:
+
+| Function-scoped workload | Previous AOT ns/item | Current AOT ns/item | CPython ns/item | Median paired current/previous CPU |
+|---|---:|---:|---:|---:|
+| Zero singleton | 5.08 | 1.58 | 0.93 | 0.308 |
+| Nonzero singleton | 4.97 | 1.56 | 1.09 | 0.324 |
+| Two-item pattern | 3.17 | 1.64 | 1.32 | 0.496 |
+| In-place singleton | 5.10 | 1.54 | 0.97 | 0.295 |
+| In-place two-item pattern | 3.54 | 1.53 | 1.48 | 0.446 |
+
+These variants use about **50–70% less paired CPU time**, without establishing
+CPython parity for every allocation/lifetime/timing configuration. Large outliers
+remain (current zero-fill: 1.18–11.62 ns/item). Scope and timing method differ;
+no cause for that difference or regression is inferred from the cross-comparison.
+The exact issue acceptance is confirmed, but broader performance claims must
+stay qualified. No RSS trend or unmerged nanoGPT speed result is claimed.
+
+No retained correctness/import regression or new uncovered bug was confirmed.
+Import compilation, executed APIs, adapted ports and hosted upstream references
+remain separate. Full CPython regrtest, broad PyPI compatibility, native test
+runners and general native NumPy were not evaluated by this update. Unchanged
+inference/Unicode/cache/encoding gaps were not individually rerun.
+Both audit-tool suites pass (**10 + 16**). Evidence records the initial missing
+Python bootstrap attempt and unavailable optional `/usr/bin/time` wrapper;
+restoration and a full timing restart succeeded. Final timings use in-program
+CPU/wall clocks, not the absent wrapper. Historical reports/JSON are preserved.
+
+Reproduction scripts are embedded in the evidence. Restore the pinned names
+dataset from its retained URL/hash before the microGPT check.
+
+```sh
+uv python install 3.13.16 --install-dir /workspace/scratch/3ba735e28fa7/python-audit-31316
+PATH=$LLVM18/bin:$PATH make PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 build/audit-list-repeat/evaluate.py
+/root/.local/bin/python3.13 build/audit-list-repeat/performance.py
+/root/.local/bin/python3.13 build/audit-list-repeat/exact_benchmark.py
+/root/.local/bin/python3.13 build/audit-list-repeat/build_evidence.py
+```
+
+## 2026-10-18 — #641/#642: native adapted nanoGPT inference and training
+
+Evaluated [main `43fb4007`](https://github.com/den-run-ai/pystachy/commit/43fb4007320c8bf2851e7cfcb6f32d66dc637fef),
+after measured `3f6f42c7`. This covers [#641](https://github.com/den-run-ai/pystachy/pull/641)
+(inference, merged 04:04:22 UTC as `1055a65f`) and
+[#642](https://github.com/den-run-ai/pystachy/pull/642)
+(backward/AdamW, merged 04:05:56 UTC as `43fb4007`).
+Intervening [#662](https://github.com/den-run-ai/pystachy/pull/662) changes only README;
+no implementation gain is attributed to it. All merge ancestors were verified.
+Read #491/#616 coordination and both PR discussions before evaluation.
+
+These merges add example code, tests, an offline checker and documentation,
+not compiler/runtime/library implementations. Reused the verified compiler built
+at `3f6f42c7`, SHA-256
+`66cd62d0a803e0a1d21c50b83e3e0043068c295e10560905e78284470bd6d6f4`.
+Compiler/runtime/lib/port Python sources, ndarray and import tooling are unchanged
+(the ports notice gains attribution). Source revision and compiler build revision
+are deliberately separate.
+
+[Normalized evidence](compatibility-2026-10-18-nanogpt.json) retains both checkpoints,
+commands, source/input/compiler/library hashes, fresh references, comparison
+counts/errors, raw timing samples and reproduction scripts. Large deterministic
+reference vectors are represented by hashes and exact export instructions.
+Inputs: **CPython 3.13.16, LLVM 18.1.3, PyTorch 2.14.1+cpu**, pinned upstream nanoGPT
+`3adf61e154c3fe3fca428ad6bc3818b27a3b8291` (`model.py` SHA-256
+`7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c`).
+PyTorch exports were freshly generated at both checkpoints, with one CPU thread,
+float64, dropout zero, fixed seeds, one warmup and three inference repeats.
+The optional native BLAS path uses this host's reference LP64
+`/lib/x86_64-linux-gnu/libblas.so.3`, not the optimized OpenBLAS provider in
+the example's historical performance table.
+
+| Fresh evidence | #641 checkpoint | #642 checkpoint |
+|---|---|---|
+| Native recorded regression checks | **8/8** JIT/AOT over nanoGPT and three ndarray programs | **10/10**, adding training |
+| Per-allocation program GC regression checks | **2/2** nanoGPT JIT/AOT | **4/4** inference + training |
+| Fresh CPython recordings | **4/4** match | **5/5** match |
+| Hosted checker contract tests | **7/7** | **7/7** |
+| Upstream-reference parity, normal | **15/15** case/tier comparisons; **1,965** numeric comparisons | **15/15**; **405,185** numeric comparisons |
+| Upstream-reference parity, program GC every allocation | Same **15/15**, **1,965** | Same **15/15**, **405,185** |
+| Maximum absolute parity error, either GC setting | `8.33e-17` | `3.74e-15` |
+
+Each parity run covers three models (one-token, batched bias, batched no-bias)
+and five tiers: scalar CPython, scalar JIT/AOT and BLAS JIT/AOT. Thus 12 of the
+15 comparisons per setting are native; the three CPython runs are hosted
+controls, not extra native coverage. Each model/tier has 27/229/137 numerical
+inference values at #641 and 9,343/37,331/34,363 values with training at #642.
+Training models contain 1,032 / 4,080 / 3,780 unique parameters. Two successive
+steps compare **every gradient, updated parameter and both Adam moments**,
+as well as logits/loss and all-ignored-target zero gradients.
+The normal regression separately checks directional finite differences across
+every parameter, tied embeddings, causality/batch isolation and malformed inputs.
+Four CPython CLI controls and **eight native CLI comparisons** also pass for
+scalar/BLAS, full/last logits and loss. Those CLI/model sources are unchanged by #642.
+
+### Compatibility gain and boundaries
+
+This is a substantial new **adapted native workload**, not a new unmodified
+PyPI import. Standalone execution of the CPU FP64 transformer now supports
+inference, model-specific analytic backward and AdamW without embedding
+CPython or loading NumPy/PyTorch. Only the offline exporter/oracle needs PyTorch;
+the optional native BLAS runner needs the explicitly selected LP64 library.
+
+Upstream nanoGPT still requires **major adaptation**: typed ndarray operations
+and explicit backward replace the dynamic PyTorch model/runtime. This is not
+general tensor autodiff, native PyTorch/NumPy compatibility, GPU/AMP/DDP,
+dropout, the original data pipeline or direct `.pt` checkpoint loading.
+Two random-model updates do not establish training convergence or long-run
+throughput. Existing ndarray dtype/indexing/ownership gaps remain in
+[#582](https://github.com/den-run-ai/pystachy/issues/582) and its linked issues.
+
+No correctness regression or new uncovered implementation bug was confirmed.
+The historical larger-model performance table in #642 was **not rerun**:
+this audit's tiny, concurrently executed checks (including GC stress) are not
+valid speedup/regression evidence. No memory trend is claimed.
+The initial audit selection named a nonexistent BLAS test and was corrected;
+an optional every-allocation *compiler* GC attempt was interrupted during
+compilation. Successful retries use compiler interval 1000 and program interval
+1. Both incomplete attempts remain explicit in the evidence.
+
+Native stdlib imports remain the **last measured 142/475**, or **146/475** with
+throwing stubs, at `3f6f42c7`; these unchanged inputs were **not reswept**.
+Broad port suites, unchanged Unicode/inference/cache gaps, native unittest/pytest/
+pyperf and full CPython regrtest were not rerun. No broader library acceptance
+is inferred from the new model example.
+
+Reproduce at each retained checkpoint with LLVM 18 on PATH, using the pinned
+upstream file and a PyTorch 2.14.1+cpu environment:
+
+```sh
+python3.13 tools/check_nanogpt.py --upstream-model UPSTREAM/model.py \
+  --torch-python TORCH_ENV/bin/python --export-only build/audit-nanogpt/fixtures \
+  --warmups 1 --repeats 3
+python3.13 tools/check_nanogpt.py --fixtures build/audit-nanogpt/fixtures \
+  --compiler COMPILER --python PY --blas-library /lib/x86_64-linux-gnu/libblas.so.3 \
+  --warmups 1 --repeats 3 --json build/audit-nanogpt/parity.json
+# #642 defaults to two training steps; #641 is inference-only.
+# For GC, set PYSTACHY_GC_STRESS_PROGRAM=1 and PYSTACHY_GC_STRESS=1,
+# and use --compiler "env PYSTACHY_GC_STRESS=1000 COMPILER".
 ```
 
 ## Checks to run when the pending work lands
