@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `43fb4007320c8bf2851e7cfcb6f32d66dc637fef`.
+**Latest evaluated main:** `0e6392b22217cc84baf5ece6d51203cfdfe6f71c`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1297,6 +1297,98 @@ python3.13 tools/check_nanogpt.py --fixtures build/audit-nanogpt/fixtures \
 # For GC, set PYSTACHY_GC_STRESS_PROGRAM=1 and PYSTACHY_GC_STRESS=1,
 # and use --compiler "env PYSTACHY_GC_STRESS=1000 COMPILER".
 ```
+
+## 2026-10-18 — #658: large pointer-free allocation budget
+
+Evaluated [main `0e6392b2`](https://github.com/den-run-ai/pystachy/commit/0e6392b22217cc84baf5ece6d51203cfdfe6f71c),
+merging [#658](https://github.com/den-run-ai/pystachy/pull/658).
+Since the previous evaluated `43fb4007`, #664 and #666 changed onboarding/docs
+and the PR template; #663 merged the audit itself. Those documentation-only
+changes are accounted for but do not imply compatibility improvements.
+Only #658 changes runtime behavior; its other changes register/document the
+deterministic allocation probes. No implementation branch was modified.
+
+[Normalized evidence](compatibility-2026-10-18-gc-budget.json) retains commands,
+selected programs, source/tool/input hashes, full per-module import results,
+model comparisons, C probe source, three fresh processes per allocation case,
+and the deliberately defective scratch-only negative control.
+Toolchain: **CPython 3.13.16**, **LLVM 18.1.3**, Linux x86-64.
+The compiler was rebuilt from `0e6392b22217cc84baf5ece6d51203cfdfe6f71c`;
+compiler/runtime fixed points match at **620,602 / 18,388** IR lines.
+Compiler SHA-256:
+`8ad34ce1b632dfaa0d5e251dfed4eda6c5f3bff018366e83191306cb31eaadd8`.
+
+### Compatibility and correctness
+
+| Check | Fresh result |
+|---|---|
+| Selected list/string/GC/ndarray/nanoGPT regressions | **40/40** native JIT/AOT checks across 20 programs. |
+| Same selection, program GC every allocation | **40/40**, compiler GC interval 1000. |
+| Adapted ports | **14/14** JIT/AOT checks over seven iniconfig, pyaes, pyfiglet and sortedcontainers workloads. |
+| Fresh CPython references | All **27/27** selected recordings match, including expected exceptions. |
+| Allocation/container/file probes | `listprobe`, `dictprobe`, `eqprobe`, `fileprobe` pass with their normal/stress controls; **430** runtime contracts and **70** exception classes agree. File buffers still collect four times with at most **35,971,072** outstanding bytes in the normal controls. |
+| Isolated native imports | **142/475**; same 522-file inventory and 47 overlay exclusions. All input hashes and normalized results unchanged; no timeout. |
+| Throwing-stub import diagnosis | **146/475**, 142 needing no stub; every normalized result unchanged, no timeout. This sweep uses the CPython-hosted compiler, not a native C-module implementation. |
+| Adapted regex benchmark correctness | `regex_dna`, `regex_effbot`, `regex_v8` all match CPython in JIT/AOT at retained smoke inputs. |
+| Adapted microGPT | Ten steps, 73 training tokens, three samples, all-gradient checks pass against the original/adapted CPython references. |
+| Adapted nanoGPT | Three retained models × five tiers pass normally and under program GC every allocation: **405,185 numeric comparisons per setting**, max absolute error **3.74e-15**. |
+
+NanoGPT includes every gradient, two AdamW updates, updated parameters and both
+moment vectors. Of its 15 case/tier comparisons per setting, 12 are native
+scalar/BLAS JIT/AOT and three are hosted scalar CPython controls. The exact
+previously exported PyTorch **2.14.1+cpu** fixtures are reused and hashed, not
+claimed as newly exported. Upstream remains pinned to nanoGPT `3adf61e`;
+BLAS is the same LP64 reference `/lib/x86_64-linux-gnu/libblas.so.3`.
+These CPU FP64, dropout-free adapted models are not unmodified PyTorch/NumPy
+or general autodiff support.
+
+### Deterministic memory improvement and regression controls
+
+The independent C probe compares the previous runtime (source `3f6f42c7`,
+byte-identical through pre-merge `cbac6787`) with the merged runtime. Each case
+runs in three fresh processes; all three observations agree.
+
+| Allocation workload | Collections before → after | Peak managed heap before → after |
+|---|---:|---:|
+| Drop 512 numeric arrays of 8,192 items | 1 → **8** | 36,700,032 → **5,517,312 bytes** (35.0 → 5.26 MiB; about 85% less) |
+| Same churn with 128 such arrays retained (8 MiB item data) | 1 → **3** | 45,629,312 → **19,050,752 bytes** (43.52 → 18.17 MiB) |
+| 48 MiB of small atomic objects | 1 → 1 | 34,738,176 → 34,738,176 bytes |
+| 40 MiB mixed: 64 KiB numeric array per 192 KiB small objects | 1 → 1 | 35,246,080 → 35,246,080 bytes |
+| Drop 512 pointer-bearing arrays of 8,192 items | 1 → 1 | 36,700,032 → 36,700,032 bytes |
+
+The trade-off is intentional: collect more often around cheap-to-scan numeric
+storage to reduce peak managed heap. These numbers are **not RSS** or whole-model
+peak memory, and no fresh throughput/speedup claim is made. GC-disabled numeric
+churn remains at zero collections and 36,769,792 heap bytes in both runtimes.
+
+The review's candidate-accounting bug is independently confirmed **fixed**:
+a 5 MiB scanned allocation on an empty heap and 3 MiB atomic + 2 MiB scanned
+history each cause **zero** collections on merged main, as before #658.
+Restoring only the defective `gc_big + n` formula in a scratch copy makes
+each cause **one** collection. Positive controls also pass: a 5 MiB atomic
+candidate now collects once, and a 32 MiB scanned candidate still collects once.
+The shipped list probe independently passes its lifetime, allocation-kind,
+live-set and budget assertions under normal and stress settings.
+
+No retained correctness regression or new uncovered bug was found.
+[#650](https://github.com/den-run-ai/pystachy/issues/650)'s small-object tuning
+and [#591](https://github.com/den-run-ai/pystachy/issues/591)'s small-string
+concerns are not resolved by this large-object policy.
+The minor/major adaptation assessments remain unchanged. Dynamic library
+loading/object-model gaps, Unicode/UTF16, cache inference, broad unmodified
+PyPI suites and full CPython regrtest were not reevaluated by this focused
+runtime audit. Import acceptance remains a first-error/IR metric, not proof
+that all APIs in those modules execute correctly.
+
+Reproduction: the JSON embeds `evaluate.py`, `budget_probe.c` and
+`budgets.py`; run them at the recorded source with LLVM 18 on PATH after
+`make PY=python3.13`. Both import sweeps use `--metadata`, the same
+CPython installation and overlay. Model commands retain exact input paths/hashes;
+recreate the prior fixture export using the preceding checkpoint if needed.
+Short concurrent timings are retained only as diagnostics.
+This was a focused audit, **not** another full local `make verify`.
+The four implementation-head workflows were independently observed successful
+at `e712e091`; follow-up audit PR checks are a separate publication gate.
 
 ## Checks to run when the pending work lands
 
