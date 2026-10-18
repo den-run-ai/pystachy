@@ -289,6 +289,8 @@ class State:
         # until _state attaches them; direct engine callers retain charset()'s bytecode evaluation.
         self.charset_offsets: list[int] = []
         self.charset_ascii: list[int] = []
+        # (not _sre's) the Pattern's lazily found filter of the general search case: see _prefilter
+        self.prefilter: list[int] = []
 
     def reset(self) -> None:
         # state_reset
@@ -384,6 +386,17 @@ def _charset_high(code: list[int], i: int) -> list[int]:
     return [mode, lo, hi]
 
 
+def _table(state: State, code: list[int], i: int) -> int:
+    # where the set at code[i]'s table begins in state.charset_ascii (made at its first use), or -1
+    # for a state without tables
+    if len(state.charset_offsets) == 0:
+        return -1
+    t = state.charset_offsets[i]
+    if t < 0:
+        t = _charset_table(state, code, i)
+    return t
+
+
 def _charset(state: State, code: list[int], i: int, ch: int) -> bool:
     # charset() through the set's table (see _charset_table)
     if len(state.charset_offsets) == 0:
@@ -407,7 +420,8 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
     # SRE(charset) for each character.) The set's table is found once for the whole span, and
     # ASCII characters, or any character where its members from 128 are one range, need no call
     s = state.s
-    if len(state.charset_offsets) == 0:
+    t = _table(state, code, i)
+    if t < 0:
         while ptr < end:
             ch = s[ptr]
             if fold == 1:
@@ -418,9 +432,6 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
                 break
             ptr += 1
         return ptr
-    t = state.charset_offsets[i]
-    if t < 0:
-        t = _charset_table(state, code, i)
     table = state.charset_ascii
     mode = -1  # (what the table says of code points from 128, read at the first one)
     lo = 0
@@ -1426,10 +1437,30 @@ def sre_search(state: State, code: list[int]) -> int:
         # a character from a known set first
         end = state.end
         state.must_advance = False
+        pf = _prefilter(state, code, pattern)
+        b = pf[1] if pf[0] == PF_BRANCH else -1
+        t = _table(state, code, charset_at)
+        table = state.charset_ascii
         while True:
-            ptr = _span(state, code, charset_at, 0, ptr, end, False)
+            # (not _sre's loop of SRE(charset) calls: the set's ASCII nonmembers are skipped here, by
+            # its table, found once for the search; _span() decides the other characters)
+            if t >= 0:
+                while ptr < end:
+                    ch = s[ptr]
+                    if ch >= 128 or table[t + ch] != 0:
+                        break
+                    ptr += 1
+            if ptr < end and (t < 0 or s[ptr] >= 128):
+                ptr = _span(state, code, charset_at, 0, ptr, end, False)
             if ptr >= end:
                 return 0
+            if b >= 0 and not _branch_starts(state, code, b, ptr):
+                # (not _sre's: the set has the alternatives' first characters, but no alternative's
+                # leading literals and classes all match here)
+                ptr += 1
+                state.lastmark = -1
+                state.lastindex = -1
+                continue
             state.start = ptr
             state.ptr = ptr
             status = sre_match(state, code, pattern, False)
@@ -1485,6 +1516,64 @@ def sre_search(state: State, code: list[int]) -> int:
             if status != 0:
                 return status
             ptr += 1
+    elif _prefilter(state, code, pattern)[0] == PF_BRANCH:
+        # (not _sre's: a pattern that begins with alternatives, after groups' marks, each beginning
+        # with a literal or a class, can match only where all the leading literals and classes of
+        # one of them match: the matcher is entered there alone, which the general case below does
+        # at every position)
+        b = state.prefilter[1]
+        first = ptr  # (where must_advance applies, as in the general case)
+        while True:
+            while ptr < end and not _branch_starts(state, code, b, ptr):
+                ptr += 1
+            if ptr >= end:
+                # (where the general case's last position leaves them)
+                state.must_advance = False
+                state.start = end
+                state.ptr = end
+                return 0
+            state.lastmark = -1
+            state.lastindex = -1
+            state.start = ptr
+            state.ptr = ptr
+            status = sre_match(state, code, pattern, ptr == first)
+            state.must_advance = False
+            if status != 0:
+                return status
+            ptr += 1
+    elif state.prefilter[0] == PF_LITERAL:
+        # (not _sre's: every match has the literals from code[at] at an offset from its start from
+        # dmin to dmax: the matcher is entered only where they are found, at most once at each
+        # position, in order, which the general case below does at every position. Positions
+        # before the first literals found from a start's least offset cannot match)
+        dmin = state.prefilter[1]
+        dmax = state.prefilter[2]
+        at = state.prefilter[3]
+        n = state.prefilter[4]
+        first = ptr  # (where must_advance applies, as in the general case)
+        last = state.end - n  # (where the literals may begin, at most)
+        nxt = ptr  # (the first position neither tried nor ruled out)
+        while True:
+            q = _literals_find(state, code, at, n, nxt + dmin, last)
+            if q < 0:
+                break
+            ptr = q - dmax if q - dmax > nxt else nxt
+            while ptr <= q - dmin:
+                state.lastmark = -1
+                state.lastindex = -1
+                state.start = ptr
+                state.ptr = ptr
+                status = sre_match(state, code, pattern, ptr == first)
+                state.must_advance = False
+                if status != 0:
+                    return status
+                ptr += 1
+            nxt = q - dmin + 1
+        # (where the general case's last position leaves them)
+        state.must_advance = False
+        state.start = end
+        state.ptr = end
+        return 0
     else:
         # the general case
         state.start = ptr
@@ -1581,3 +1670,169 @@ def _first_ignore(state: State, code: list[int], item: int, ptr: int) -> bool:
     if op == LITERAL_IGNORE or op == LITERAL_UNI_IGNORE:
         return ch == code[item + 1]
     return _charset(state, code, item + 2, ch)
+
+
+# ---- (not _sre's) what the general search case may skip by, found once for each Pattern
+
+PF_NONE = 0  # [PF_NONE, 0, 0, 0, 0]: the general case
+PF_BRANCH = 1  # [PF_BRANCH, b, 0, 0, 0]: the BRANCH at code[b] begins it (_branch_starts)
+PF_LITERAL = 2  # [PF_LITERAL, dmin, dmax, at, n]: the literals of _literals_find (_walk's)
+
+
+def _prefilter(state: State, code: list[int], pattern: int) -> list[int]:
+    # state.prefilter (the Pattern's), found at the first search: whether the code at pattern
+    # begins, after groups' marks, with alternatives that each begin with a literal or a class, or
+    # else has literals at a bounded offset from the start of every match
+    pf = state.prefilter
+    if len(pf) == 0:
+        b = _after_marks(code, pattern)
+        found = [PF_NONE, 0, 0, 0, 0]
+        if code[b] == BRANCH and _branch_runs(code, b):
+            found = [PF_BRANCH, b, 0, 0, 0]
+        elif not (code[pattern] == AT and (code[pattern + 1] == AT_BEGINNING or code[pattern + 1] == AT_BEGINNING_STRING)):
+            # (the general case tries a ^ of the whole string, first, once)
+            w = _walk(code, pattern, True)
+            if w[0] >= 0:
+                n = 0
+                while code[w[0] + 2 * n] == LITERAL or code[w[0] + 2 * n] == LITERAL_IGNORE \
+                        or code[w[0] + 2 * n] == LITERAL_UNI_IGNORE:
+                    n += 1
+                found = [PF_LITERAL, w[1], w[2], w[0], n]
+        for x in found:
+            pf.append(x)
+    return pf
+
+
+def _branch_runs(code: list[int], b: int) -> bool:
+    # whether each alternative of the BRANCH at code[b] begins with a literal or a class
+    alt = b + 1
+    while code[alt] != 0:
+        if code[alt + 1] != LITERAL and code[alt + 1] != IN:
+            return False
+        alt += code[alt]
+    return True
+
+
+def _branch_starts(state: State, code: list[int], b: int, ptr: int) -> bool:
+    # whether an alternative of the BRANCH at code[b] may begin at ptr: all its leading literals
+    # and classes match there (as K_BRANCH tests them), or it begins with something else
+    s = state.s
+    end = state.end
+    alt = b + 1
+    while code[alt] != 0:
+        q = alt + 1
+        at = ptr
+        while True:
+            op = code[q]
+            if op == LITERAL:
+                if at >= end or s[at] != code[q + 1]:
+                    break
+                q += 2
+            elif op == IN:
+                if at >= end or not _charset(state, code, q + 2, s[at]):
+                    break
+                q += code[q + 1] + 1
+            else:
+                return True
+            at += 1
+        alt += code[alt]
+    return False
+
+
+def _walk(code: list[int], p: int, find: bool) -> list[int]:
+    # [where the items from code[p] end (at the JUMP that ends an alternative, or SUCCESS), the
+    # least and the greatest number of characters they match], or with find, [where the first
+    # literal (LITERAL, LITERAL_IGNORE or LITERAL_UNI_IGNORE) not in an alternative, an assertion
+    # or a repeat is, the least and greatest number before it]; [-1, 0, 0] where an item before is
+    # of no such bounded width
+    lo = 0
+    hi = 0
+    while True:
+        op = code[p]
+        if op == JUMP or op == SUCCESS:
+            return [-1, 0, 0] if find else [p, lo, hi]
+        if find and (op == LITERAL or op == LITERAL_IGNORE or op == LITERAL_UNI_IGNORE):
+            return [p, lo, hi]
+        if op == MARK or op == AT:
+            p += 2
+        elif op == ASSERT or op == ASSERT_NOT:
+            p += code[p + 1] + 1
+        elif op == LITERAL or op == NOT_LITERAL or op == CATEGORY or op == LITERAL_IGNORE \
+                or op == NOT_LITERAL_IGNORE or op == LITERAL_UNI_IGNORE or op == NOT_LITERAL_UNI_IGNORE:
+            lo += 1
+            hi += 1
+            p += 2
+        elif op == ANY or op == ANY_ALL:
+            lo += 1
+            hi += 1
+            p += 1
+        elif op == IN or op == IN_IGNORE or op == IN_UNI_IGNORE:
+            lo += 1
+            hi += 1
+            p += code[p + 1] + 1
+        elif op == REPEAT_ONE or op == MIN_REPEAT_ONE or op == POSSESSIVE_REPEAT_ONE:
+            # (of one character: <op> <skip> <min> <max> item <SUCCESS>)
+            if code[p + 3] == MAXREPEAT:
+                return [-1, 0, 0]
+            lo += code[p + 2]
+            hi += code[p + 3]
+            p += code[p + 1] + 1
+        elif op == BRANCH:
+            least = -1
+            most = 0
+            alt = p + 1
+            while code[alt] != 0:
+                w = _walk(code, alt + 1, False)
+                if w[0] < 0:
+                    return [-1, 0, 0]
+                least = w[1] if least < 0 or w[1] < least else least
+                most = w[2] if w[2] > most else most
+                alt += code[alt]
+            if least < 0:
+                return [-1, 0, 0]
+            lo += least
+            hi += most
+            p = alt + 1
+        else:
+            return [-1, 0, 0]
+
+
+def _literals_find(state: State, code: list[int], at: int, n: int, q: int, last: int) -> int:
+    # the first position from q (last at most) where the n literals from code[at] all match, each
+    # as the matcher tests it (lowered as lower_ascii() or lower_unicode() for the _IGNOREs), or -1
+    s = state.s
+    op = code[at]
+    c = code[at + 1]
+    while q <= last:
+        # the first literal, in a loop of its own
+        if op == LITERAL:
+            while q <= last and s[q] != c:
+                q += 1
+        else:
+            while q <= last:
+                ch = s[q]
+                if ch < 128:
+                    if 65 <= ch and ch <= 90:
+                        ch += 32
+                elif op == LITERAL_UNI_IGNORE:
+                    ch = _mapped(0, ch)
+                if ch == c:
+                    break
+                q += 1
+        if q > last:
+            return -1
+        j = 1
+        while j < n:
+            op2 = code[at + 2 * j]
+            ch = s[q + j]
+            if op2 == LITERAL_IGNORE:
+                ch = lower_ascii(ch)
+            elif op2 == LITERAL_UNI_IGNORE:
+                ch = lower_unicode(ch)
+            if ch != code[at + 2 * j + 1]:
+                break
+            j += 1
+        if j == n:
+            return q
+        q += 1
+    return -1

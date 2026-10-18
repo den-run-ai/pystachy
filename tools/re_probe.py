@@ -19,6 +19,9 @@ the Pattern's table for the class is built, for ASCII text and for classes whose
 U+0080 are one range, none or all. An alternative's nested match is entered only where all its
 leading literals and classes match, and a greedy repeat whose tail begins with group marks and a
 literal enters the tail only where that literal is: the contexts the matcher enters are counted.
+A search whose pattern begins with alternatives that all begin with literals and classes, or
+whose matches all hold literals at a bounded offset from their start, enters the matcher only
+where those can be: its entries are counted.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -278,9 +281,9 @@ def check_nested_matches() -> int:
     dna = "".join([rng.choice("acgt") for _ in range(3000)])
     dashes = "-" * 1000 + "Python" + "-" * 1000
     cases = [
-        (r"agggtaaa|tttaccct", dna, 1500),
-        (r"[cgt]gggtaaa|tttaccc[acg]", dna, 3000),
-        (r"(a[act]ggtaaa|tttacc[agt]t)", dna, 1500),
+        (r"[acgt](?:agggtaaa|tttaccct)", dna, 3000),
+        (r"[acgt](?:[cgt]gggtaaa|tttaccc[acg])", dna, 3000),
+        (r"[acgt](a[act]ggtaaa|tttacc[agt]t)", dna, 3000),
         (r".*(Python)", dashes, 2),
         (r".*((P)y)thon", dashes, 2),
         (r"(.*)(P)ython", dashes, 2),
@@ -299,6 +302,42 @@ def check_nested_matches() -> int:
             print(f'nested matches: {pattern!r}: {n} contexts entered (limit {limit})')
             failed += 1
     print(f'nested matches: {total} contexts entered over {len(cases)} cases')
+    return failed
+
+
+def check_prefilters() -> int:
+    # A search whose pattern begins with alternatives that all begin with literals and classes
+    # enters the matcher only where one of them can begin; one whose matches all have literals at
+    # a bounded offset from their start, only where those are found (as in regex_dna and
+    # regex_v8). Count the matcher's entries over each search.
+    failed = total = 0
+    rng = random.Random(2)
+    dna = "".join([rng.choice("acgt") for _ in range(3000)])
+    words = " ".join(["".join([rng.choice("abcdefgh;") for _ in range(rng.randint(1, 9))]) for _ in range(300)])
+    js = words[:1000] + '"\\/Qngr(1234)\\/"' + words[1000:]
+    cases = [
+        (r"agggtaaa|tttaccct", dna, 0),
+        (r"[cgt]gggtaaa|tttaccc[acg]", dna, 0),
+        (r"(a[act]ggtaaa|tttacc[agt]t)", dna, 1),
+        (r'(^|[^\\])\"\\\/Qngr\((-?[0-9]+)\)\\\/\"', js, 1),
+        (r"\s?;\s?", words, 250),
+        (r"(?i)TNQP=([^;]*)", words[:500] + "tnqp=1;" + words[500:], 1),
+        (r"\bdefg\b", words, 0),
+    ]
+    for pattern, text, limit in cases:
+        mine = port.compile(pattern)
+        theirs = re.compile(pattern)
+        counts["entries"] = 0
+        got = [(m.span(), m.groups()) for m in mine.finditer(text)]
+        if got != [(m.span(), m.groups()) for m in theirs.finditer(text)]:
+            print(f'prefilter differs: {pattern!r}')
+            failed += 1
+        n = counts["entries"]
+        total += n
+        if n > limit:
+            print(f'prefilter: {pattern!r}: {n} matcher entries (limit {limit})')
+            failed += 1
+    print(f'prefilters: {total} matcher entries over {len(cases)} searches')
     return failed
 
 
@@ -326,6 +365,7 @@ def main() -> int:
     failed += check_repeat_prefixes()
     failed += check_class_spans()
     failed += check_nested_matches()
+    failed += check_prefilters()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:
