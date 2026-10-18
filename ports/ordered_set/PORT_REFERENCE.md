@@ -16,7 +16,7 @@ Archive SHA-256: `694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364
 
 | file | upstream SHA-256 | edits |
 |---|---|---|
-| `__init__.py` | `cad6b380ab3204a8bdb85b41b7ddfcc97c50b5d6add55082ebcd6cf6cd0232a8` | 46 marked edits |
+| `__init__.py` | `cad6b380ab3204a8bdb85b41b7ddfcc97c50b5d6add55082ebcd6cf6cd0232a8` | 44 marked edits |
 
 ## Adaptation record
 
@@ -27,7 +27,7 @@ Archive SHA-256: `694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364
   and `difference()` take one list, and the last two test membership in an ordered set.
   Algorithms and stored indices otherwise follow upstream.
 - Fancy indexing, generic comparison branches, itertools-based multi-operand union and slice-object support are omitted.
-- Forty-six marked edits remain. The test suite deliberately retains upstream’s stale-index and duplicate-list behavior.
+- Forty-four marked edits remain. `__contains__()` and `__eq__()` keep upstream's `Any` parameters. The test suite deliberately retains upstream’s stale-index and duplicate-list behavior.
 
 ## Validation snapshot
 

@@ -17,11 +17,13 @@ Archive SHA-256: `2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae250
 | file | upstream SHA-256 | edits |
 |---|---|---|
 | `__init__.py` | `b85ea5a4b65f3f974a6a0327ece2d7d5702256eff8847315b8fba162afa3f410` | none |
-| `_writer.py` | `76c89f152db161fd62efa9a64727f3f72d76e710bb67f1d0f38e592a126c617b` | 11 edits, 26 markers |
+| `_writer.py` | `76c89f152db161fd62efa9a64727f3f72d76e710bb67f1d0f38e592a126c617b` | 11 edits, 24 markers |
 
 ## Adaptation record
 
-- Document/value functions become templates instead of accepting dynamic `Any`; temporary table/literal lists hold keys and look up typed values when rendered.
+- Document/value functions are templates. Their `Any` and `Mapping[str, Any]` parameters keep
+  upstream's annotations; those annotated `object`, `Mapping` or `tuple | list` are unannotated.
+  Temporary table/literal lists hold keys and look up typed values when rendered.
 - Type tests guard statically specialized branches. Chunk generators return lists.
 - Date/time imports and branches are omitted, and identity-keyed inline-table caching is removed.
 - `format_key_part()` has no `try` for the `TypeError` of a key that is no `str`: its message

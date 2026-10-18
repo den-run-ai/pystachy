@@ -1,0 +1,17 @@
+1 5
+yield result 43
+yield done
+10
+return result world!
+return done
+optional present
+optional first None
+[20, 30]
+optional None
+optional first after
+[20, 30]
+[1, 2]
+nested result [3]
+nested done
+[4, 5] ['inferred']
+[exit 0]

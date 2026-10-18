@@ -16,7 +16,7 @@ Archive SHA-256: `db9c9940ed1bf3048deff534ed52ff2dafbbc2cd7610b17bb5eca1df6d4278
 
 | file | upstream SHA-256 | edits |
 |---|---|---|
-| `__init__.py` | `bae593a5b013824c47412db63fb9b66c943b6b9cb0a940e0b785690ce3fb497f` | 40 marked edits in 20 diff hunks |
+| `__init__.py` | `bae593a5b013824c47412db63fb9b66c943b6b9cb0a940e0b785690ce3fb497f` | 39 marked edits in 19 diff hunks |
 | `version.py` | `b611991d8ea92cf84973a0b06018d4690ea91b12e1c0f329fe98e862c8b0bc8e` | none |
 | `fonts/standard.flf` | `398a52d40da3ec217ce3673f532eb8e2303023369cfa0dc27b11ff43cc306a4f` | none: a string of `_fontdata.py` |
 | `fonts/slant.flf` | `0a1f6ebfa9b0a1658107765d5273f537e2a626c79a6fb431e1ca1e5330a74f2a` | none: a string of `_fontdata.py` |

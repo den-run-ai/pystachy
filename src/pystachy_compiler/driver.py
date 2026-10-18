@@ -10,7 +10,7 @@ from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.specs import JIT_INLINE, LINKDL, MODULES, OPTS
+from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS
 from src.pystachy_compiler.utils import optimizations
 
 
@@ -299,6 +299,20 @@ def main() -> None:
         else:
             rest.append(argv[i])
             i += 1
+    embed = "python" in LIBS  # (lib/pyobj.py: pyembed.c is linked in, which ends the CPython it starts)
+    for i in range(len(LIBS)):
+        if LIBS[i] == "python":  # (lib/pyobj.py's: the libpython to embed; an extension's host has it)
+            LIBS[i] = os.getenv("PYSTACHY_LIBPYTHON", "") if cmd != "ext" else "-"
+            if LIBS[i] == "" and cmd != "ir":
+                fail("the program embeds CPython (it imports pyobj): set PYSTACHY_LIBPYTHON to its libpython3.X.so", 0)
+            v = os.path.realpath(LIBS[i]) if LIBS[i] != "" and LIBS[i] != "-" else ""
+            v = v[v.rfind("/") + 12 :] if v[v.rfind("/") + 1 :].startswith("libpython3.") else ""
+            k = 0
+            while k < len(v) and v[k].isdigit():
+                k += 1
+            if k > 0 and int(v[:k]) < 12 and cmd != "ir":
+                # (below the stable ABI lib/pyobj.py uses: the linker or lli would name a missing symbol)
+                fail(f"the program embeds CPython (it imports pyobj), which needs CPython 3.12 or later: PYSTACHY_LIBPYTHON is CPython 3.{v[:k]}'s ({LIBS[i]})", 0)
     if cmd == "ir":
         if out == "":
             print(ir, end="")
@@ -502,12 +516,14 @@ def main() -> None:
         useo = parto
     # pystachy ext links two more C files, compiled as runtime.c is and cached beside it by the same
     # rules: pyembed.c (CPython in the process, hosting an extension module: its stdio hooks) and
-    # pyext.c for the ABI. Each is named by the fnv() of the runtime's key, its tag and its bytes,
-    # runtime-py-<L>-<G>.<tag>.bc, and built under a name of its own (not part, which may hold this
-    # run's runtime): [tag, cached name, the name this run links, partial name]
+    # pyext.c for the ABI; a program that embeds CPython (lib/pyobj.py) links pyembed.c alone. Each is
+    # named by the fnv() of the runtime's key, its tag and its bytes, runtime-py-<L>-<G>.<tag>.bc, and
+    # built under a name of its own (not part, which may hold this run's runtime): [tag, cached name,
+    # the name this run links, partial name]
     glue: list[list[str]] = []
-    if code == 0 and cmd == "ext":
-        for g in [["pyembed", "pyembed.c", ""], [f"pyext-{abi}", "pyext.c", " -DPYX_ABI3T" if abi == "abi3t" else ""]]:
+    if code == 0 and (cmd == "ext" or embed):
+        cs = [["pyembed", "pyembed.c", ""]] + ([[f"pyext-{abi}", "pyext.c", " -DPYX_ABI3T" if abi == "abi3t" else ""]] if cmd == "ext" else [])
+        for g in cs:
             gs = hashed(home + "/" + g[1], memo, now, False)
             gb = f"{cache}/runtime-py-{lin}-{fnv(key + ' ' + g[0] + ' ' + gs[1])}.{g[0]}.bc"
             if trusted and gs[1] != "" and os.path.exists(gb):
@@ -526,6 +542,17 @@ def main() -> None:
             code = sh(f"{tc[0]} -O2 -fPIC -S -emit-llvm -x c - -o {q(rll)}{cflags} -fexceptions{g[2]} < {q(tmp + '/' + g[1])} && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(gp)}")
             if code != 0:
                 break
+    # pystachy run of a program that embeds CPython: pyembed.c's machine code too, which lli loads
+    # (-extra-object), cached beside its bitcode as the runtime's is: [cached name, the name this run
+    # loads, partial name]
+    peo = ["", "", ""]
+    if code == 0 and embed and cmd == "run":
+        pc = glue[0][1][:-3] + ".o"
+        if trusted and glue[0][3] == "" and os.path.exists(pc):
+            peo = [pc, pc, ""]
+        else:
+            peo = [pc, f"{pc}.{os.getpid()}.{own}", f"{pc}.{os.getpid()}.{own}"]
+            code = sh(f"{tc[0]} -O2 -fPIC -c -x ir {q(glue[0][2])} -o {q(peo[2])} -Wno-unused-command-line-argument{ccflags}")
     # what this run built is published if the tools' times had settled and they and the compiler are
     # as they were (else it uses it alone), with the hashes learnt
     mvs: list[str] = []
@@ -541,6 +568,9 @@ def main() -> None:
         if pub and g[3] != "":
             old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}.{g[0]}.bc"
             mvs.append(f"mv -f {q(g[3])} {q(g[1])}; for f in {old}; do [ \"$f\" = {q(g[1])} ] || rm -f \"$f\"; done")
+    if pub and peo[2] != "":
+        old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}.pyembed.o"
+        mvs.append(f"mv -f {q(peo[2])} {q(peo[0])}; for f in {old}; do [ \"$f\" = {q(peo[0])} ] || rm -f \"$f\"; done")
     learnt = "".join([f"{k} {memo[k]}\n" for k in [k for k in memo][-64:]])
     hp = f"{hf}.{os.getpid()}.{own}"
     if learnt != known:
@@ -560,9 +590,14 @@ def main() -> None:
         for g in glue:
             if g[2] == g[3] and not os.path.exists(g[3]):
                 g[2] = g[1]
+        if peo[1] == peo[2] and peo[2] != "" and not os.path.exists(peo[2]):
+            peo[1] = peo[0]
     llvm = q(llvm) if llvm != "" else ""  # shell prefix: preserve spaces and literal metacharacters
     link = f"{llvm}llvm-link --only-needed {q(ll)} {q(usebc)} -o {q(bc)}"
-    libs = " -ldl" if len(LINKDL) > 0 or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
+    if embed and cmd == "build":
+        link = f"{llvm}llvm-link {q(ll)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
+    libs = "".join([" " + (q(x) + " " + q("-Wl,-rpath," + x[: x.rfind("/")]) if "/" in x else q("-l:" + x)) for x in LIBS if x != "-"])  # (libpython)
+    libs += " -ldl" if len(LINKDL) > 0 or embed or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
     if code != 0:
         msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
     elif cmd == "ext":
@@ -646,14 +681,19 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, lnk, part, hp]:
+            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, lnk, part, hp, tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
             env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
-            run = f"{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags} -extra-object=/dev/fd/8 /dev/fd/9 {' '.join([q(a) for a in rest])}"
-            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useo)} && rm -f {q(bc)} {q(parto)} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, lnk, part, parto, hp, tmp + "/pyembed.c", tmp + "/pyext.c"] + [g[3] for g in glue]:
+            # A program that embeds CPython (lib/pyobj.py) has lli load its libpython (-dlopen) and
+            # pyembed.c's machine code, as the runtime's (on descriptor 7)
+            pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/7" if embed else "")
+            run = f"{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe} -extra-object=/dev/fd/8 /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            fds = f" 7< {q(peo[1])}" if embed else ""
+            parts = q(parto) + (" " + q(peo[2]) if peo[2] != "" else "")
+            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
+    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, lnk, part, parto, hp, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

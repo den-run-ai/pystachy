@@ -95,6 +95,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             if ts[i].startswith("fn[") and self.fn_sig(ts[i])[0].startswith("!") and ps[i + 1].kind == "param" and a.kind != "noann" and self.names_tv(a, self.tparams[c]):
                 pt = self.named_param(a)
                 fi.ptypes[i + 1] = pt if not pt.startswith("!") else fi.ptypes[i + 1]
+    if c in self.cnts:
+        self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
     self.scan_fields(s, fi, init.node.kids[2].kids, {})
     if len(lits) > 0:
         s.lits = lits
@@ -107,6 +109,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     del self.specing[doing]
     if key in t.specs:
         del self.classes[name]
+        self.nts.pop(name, False)
         self.selfcls = sel
         self.making.pop()
         self.specdone[doing] = t.specs[key]
@@ -143,6 +146,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             g.mod = s.mod
             s.methods[g.name] = g  # (x.setter: a property's setter)
     s.hook = t.hook
+    if c in self.cnts:
+        self.dc_methods(s)  # (its __repr__)
     for f in s.methods.values():
         self.check_special(f)
     self.fl_fields(s)
@@ -505,10 +510,14 @@ def gen_fn_sig(self, t: str) -> list[str]:
     for j in range(1 if f.clo >= 0 else 0, len(f.params)):  # (a closure's env aside)
         if j >= f.npos and f.defaults[j].kind == "noann":
             return [f"!{name} takes the keyword-only parameter '{f.params[j]}', which Callable[[...], R] does not match"]
+        if j < f.npos and f.ptypes[j] == "" and f.params[j] in f.anys:
+            return [f"!{name}'s parameter '{f.params[j]}' is annotated Any, which gives no type to the type variables it matches"]
         if j < f.npos and f.ptypes[j] == "":
             return [f"!{name}'s parameter '{f.params[j]}' has no annotation, which the type variables it matches take their type from"]
         if j < f.npos:
             out.append(f.ptypes[j])
+    if f.ret == "" and "" in f.anys:
+        return [f"!{name}'s return is annotated Any, which gives no type to the type variable it matches"]
     if f.ret == "":
         return [f"!{name} has no return annotation, which the type variable it matches takes its type from"]
     return out
@@ -633,6 +642,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.iters = f.iters
     g.gen = f.gen
     g.gret = f.gret
+    g.gretinfer = f.gretinfer
     g.gsend = f.gsend
     g.gclose = f.gclose
     g.gwith = f.gwith

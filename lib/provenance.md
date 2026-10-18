@@ -32,6 +32,7 @@ observable contract.
 | `html` | `Lib/html/__init__.py` | `923d82d821e75e8d235392c10c145ab8587927b3faf9c952bbd48081eebd8522` |
 | `html.entities` | `Lib/html/entities.py` | `d9c65fb2828dbc1f3e399058a341d51e9375ec5bca95a8e92599c41bd5b78bde` |
 | `keyword` | `Lib/keyword.py` | `18c2be738c04ad20ad375f6a71db34b3823c7f40b0340f5294d0e89f3c9b093b` |
+| `token` | `Lib/token.py` | `1d2ab814992e6afbd6f1e5323edcddd681f65f7679ad1eb87fe1357a433a5bdf` |
 | `shlex` | `Lib/shlex.py` | `f927227de5ba5b1b2bdd75e3d9c8cb72b602b3bba3cc8edbf8fb554de0dc1fd7` |
 | `random` | `Lib/random.py` | `fb2625eb54412c880e8f1af449785a74e125556159fc7997814e51dd054cc5da` |
 | `datetime` | `Lib/_pydatetime.py` | `9a6652ecbdc8bcb9774136febc36b13f99aa926c7b42c19ac77e6c84128560a4` |
@@ -60,13 +61,14 @@ CPython runs the source.
 
 | Module | Upstream reference | Implementation |
 |---|---|---|
-| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read |
+| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages |
 | `types` (`_pystachy_types`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`) | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
 | `collections.defaultdict` | `Modules/_collectionsmodule.c` | Typed dict wrapper with the C type's factory, repr and `\|` |
 | `collections.OrderedDict` | `Lib/collections/__init__.py`, `Objects/odictobject.c` | Two typed dicts, the first items reversed, with the Python class's docstrings and the C type's messages |
 | `collections.Counter` | `Lib/collections/__init__.py` | Typed dict wrapper keeping the Python class's methods and docstrings |
+| `collections.namedtuple` | `Lib/collections/__init__.py` | Made by the compiler (`Loader.nt_class`): the function's argument checks and messages, and a NamedTuple class template for the class |
 | `functools` | `Modules/_functoolsmodule.c`, `Lib/functools.py` | Generic cache wrapper, plus adapted reduction, comparison-key and `partial` fallbacks, and the unchanged `update_wrapper()` and `wraps()`, which the compiler applies |
 | `_pystachy_string` | `Objects/stringlib/unicode_format.h`, `Objects/unicodeobject.c` | `_string.formatter_parser()` and `formatter_field_name_split()`, returning lists |
 | `re` | `Lib/re/`, `Modules/_sre/sre_lib.h`, `sre.c` | Typed parser/compiler and matching engine with an explicit context stack |
@@ -129,7 +131,8 @@ The deque and defaultdict reference at the same pinned CPython commit,
 `tests/lib_collections.py` and `tests/lib_collections_mutation.py` exercise compiled
 queue operations, callback mutation and bounded repetition;
 `tests/lib_collections_counter.py`, `_defaultdict.py`, `_ordereddict.py` and
-`_reversed.py` the mappings and `reversed()`. Shlex's differential
+`_reversed.py` the mappings and `reversed()`; `tests/lib_collections_namedtuple.py`,
+`_methods.py` and `_mod.py` the namedtuple classes. Shlex's differential
 upstream selection retains its three split/join table methods; HTML retains both
 upstream methods, and keyword retains nine methods while excluding dynamic `exec`.
 Test headers record source-test hashes and exclusions.

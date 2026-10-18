@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import HASATTR, ITERS, RANGEC
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -163,6 +163,9 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         if c.startswith("_pystachy_iterators$") or c == RANGEC:
             return "builtins" if what == "__module__" else short(c)
         mod = q[: q.rfind(".")] if "." in q else "__main__"
+        o = ci.origin if ci.origin != "" else c
+        if o in self.cnts and self.cnts[o].kids[2].kind == "str":
+            mod = self.cnts[o].kids[2].s  # (namedtuple(..., module=...)'s)
         return mod if what == "__module__" else short(c)
     return ""
 
@@ -335,6 +338,8 @@ def gen_refl_has(self, c: str, a: str) -> str:
     # what hasattr(x, a) is for a value of exact type c: "y" true, "n" false, "f" its "is
     # assigned" flag says (a field __init__ may leave unassigned), "p" a property's getter says
     # (by raising AttributeError or not)
+    if c in self.classes and self.classes[c].mod in GLUE:
+        self.refl_supported(c, "hasattr() or getattr() with a default")  # (pyobj.Object's names are not its twin's)
     if c in self.classes and self.classes[c].exc == "" and c not in self.nts:
         ci = self.classes[c]
         if a in ci.methods and ci.methods[a].prop:
@@ -780,6 +785,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "an iterator of a builtin container"
     elif c == RANGEC:
         why = "a range"
+    elif ci.mod in GLUE and self.curfn.mod != ci.mod:
+        self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif ci.bad != "":
         why = ci.bad
     if why != "":

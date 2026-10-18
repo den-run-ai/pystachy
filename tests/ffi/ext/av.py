@@ -8,5 +8,10 @@ def nargs() -> int:
 
 
 @export
+def warnoptions() -> str:
+    return repr(sys.warnoptions)  # (the host's: tests/ffi/run.sh runs it with -W ignore)
+
+
+@export
 def say(s: str) -> None:
     print(s)

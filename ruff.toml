@@ -4,7 +4,7 @@
 target-version = "py313"
 # vendored CPython stdlib, ports, the test programs, whose output CPython recorded, and the adapted
 # pyperformance benchmarks
-extend-exclude = ["lib", "ports", "tests", "bench/pyperformance"]
+extend-exclude = ["lib", "ports", "tests", "bench/pyperformance", "bench/microgpt/upstream"]
 # also for paths named on the command line: tests/errors/nest_*.py overflow ruff's stack
 force-exclude = true
 

@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 
@@ -61,9 +61,13 @@ def gen_cextern(self, f: FnInfo) -> None:
     # moves nothing, and no subset code runs until the call returns, so the list cannot grow
     # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
     # the C function through @ffi.fp.<f.ll>, which the def statement set as ctypes.CDLL would find it, in
-    # the library's own handle (pys_c_bind: see stmt's defaults)
+    # the library's own handle (pys_c_bind: see stmt's defaults); only a GLUE module (lib/pyobj.py)
+    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("")
     self.line = f.node.line
     sym = f.csym[1:]
+    direct = f.mod in GLUE
+    if f.lib == "python" and not direct:
+        self.err('@extern("python") is reserved for Pystachy\'s lib/pyobj.py: import pyobj to call CPython')
     for pre in ("pys_", "pyx_", "PyInit_", "PyModExport_"):
         if sym.startswith(pre) or sym == "main":
             self.err(f"C function {sym} is reserved for Pystachy's runtime and extension modules")
@@ -104,8 +108,9 @@ def gen_cextern(self, f: FnInfo) -> None:
     c = self.externtype(f.node.kids[1], f.ret, "returns", f)
     r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
     rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
-    cl = f"call {rr} %fp({', '.join(args)})"
-    code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
+    cl = f"call {rr} {f.csym if direct else '%fp'}({', '.join(args)})"
+    if not direct:
+        code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
     if r == "void":
         code.extend([f"  {cl}", "  ret void"])
     elif c == "str" or c == "opt[str]":
@@ -126,22 +131,31 @@ def gen_cextern(self, f: FnInfo) -> None:
     decl = f"declare {rr} {f.csym}({', '.join(cts)})"
     tys = [r.split(" ")[0]] + [x.split(" ")[0] for x in cts]
     if sym in RTSYM:
-        # one the compiler or the runtime calls too (fabs, memchr, ...): RUNTIME's types
+        # one the compiler or the runtime calls too (fabs, memchr, ...): RUNTIME's types, declared from RUNTIME
         e = RtFn(RTSYM[sym]).ll
         if tys != e:
             self.err(f"C function {sym} is declared as {tys[0]}({', '.join(tys[1:])}), but Pystachy's runtime calls it as {e[0]}({', '.join(e[1:])})")
+        if direct:
+            self.runtime(sym)
     elif sym in self.csyms:
         if self.csyms[sym] != decl:
             self.err(f"C function {sym} is declared again with other types: {self.csyms[sym][8:]} at line {self.csymline[sym]}, {decl[8:]} here")
     else:
         self.csyms[sym] = decl
         self.csymline[sym] = f.node.line
-    # (the C function's address, and the library and symbol pys_c_bind looks it up by)
-    x = f.ll[1:]
-    decl = f"@ffi.fp.{x} = internal global ptr null\n@ffi.lib.{x} = private unnamed_addr constant [{len(f.lib) + 1} x i8] c\"{llstr(f.lib)}\\00\"\n@ffi.sym.{x} = private unnamed_addr constant [{len(sym) + 1} x i8] c\"{llstr(sym)}\\00\""
-    if len(LINKDL) == 0:
-        LINKDL.append("dl")
-    self.externs[f.ll] = decl + f"\ndefine internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
+    if direct:
+        # (the C function itself, declared once for the calls that name it)
+        decl = decl if sym not in RTSYM and sym not in self.cdirect else ""
+        self.cdirect[sym] = True
+    else:
+        # (the C function's address, and the library and symbol pys_c_bind looks it up by)
+        x = f.ll[1:]
+        decl = f"@ffi.fp.{x} = internal global ptr null\n@ffi.lib.{x} = private unnamed_addr constant [{len(f.lib) + 1} x i8] c\"{llstr(f.lib)}\\00\"\n@ffi.sym.{x} = private unnamed_addr constant [{len(sym) + 1} x i8] c\"{llstr(sym)}\\00\""
+        if len(LINKDL) == 0:
+            LINKDL.append("dl")
+    self.externs[f.ll] = (decl + "\n" if decl != "" else "") + f"define internal {lt(f.ret)} {f.ll}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
+    if f.lib == "python" and f.lib not in LIBS:
+        LIBS.append(f.lib)
 
 def gen_pyext(self) -> list[str]:
     # pystachy ext: in place of @main, what pyext.c calls. @pyx.init runs the module's code and

@@ -1,0 +1,8 @@
+Pair(left=[True], right={3: 4.5})
+Pair(left=[1.5], right={'y': 'new'})
+Pair(left=[], right={})
+Pair(left=[[True]], right=[{'y': 3.5}])
+Pair(left=[3], right={'y': 4})
+Pair(left=['x'], right=(True,))
+Pair(left=[1], right={'x': 2})
+[exit 0]
