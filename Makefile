@@ -142,6 +142,16 @@ jitprobe: pystachy
 unicode-audit: pystachy
 	$(PY) tools/unicode_audit.py
 
+# Code-point caches survive owned appends and GC; raw-byte joins invalidate unsafe counts.
+unicodeprobe: tools/unicodeprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/unicodeprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/unicodeprobe.c -o build/unicodeprobe.ll
+	$(LLVMBIN)llvm-link build/unicodeprobe-rt.ll build/unicodeprobe.ll -o build/unicodeprobe.bc
+	$(LLVMBIN)clang -O2 build/unicodeprobe.bc -o build/unicodeprobe -lm
+	build/unicodeprobe
+	PYSTACHY_GC_STRESS=1 build/unicodeprobe
+
 # Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
 # benchmarks, dict probes, scaling) -> build/verification.json
 verify:
@@ -203,7 +213,7 @@ port-check:
 # These files also belong to the normal corpus, so every existing CI configuration runs them.
 CPYTHON_SUBSET_COMPILER ?= ./pystachy
 test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
-	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/deviations/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
 
 # Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
 # Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
@@ -230,7 +240,7 @@ re-probe:
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -247,4 +257,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

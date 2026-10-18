@@ -272,7 +272,7 @@ t = TextIOWrapper(Raw(b"x" * 20000, log=True), encoding="ascii")
 print(len(t.read(10000)), len(t.read(9000)), len(t.read(1)), len(t.read()))
 t.close()
 t = TextIOWrapper(Raw("é".encode() * 6000, log=True), encoding="utf-8")
-print(t.read(5000) == "é" * 5000, t.read(4000) == "é" * 1000, t.read(10000) == "")  # (len() counts bytes in Pystachy)
+print(t.read(5000) == "é" * 5000, t.read(4000) == "é" * 1000, t.read(10000) == "")
 t.close()
 for chunk in range(1, 6):
     t = TextIOWrapper(Raw("é€😀\n€".encode(), chunk), encoding="utf-8")
@@ -283,6 +283,32 @@ print(t.readline(0) == "", t.readlines(1), t.readlines(3), t.readlines(None), t.
 t.close()
 t = TextIOWrapper(Raw("€\n€\n€\n".encode()), encoding="utf-8")
 print(t.readlines(2))
+t.close()
+# Decoded text already uses code-point indices. In particular, U+0080, U+00BF
+# and U+20AC must not be mistaken for UTF-8 continuation bytes by their low bits.
+chars = ["\u0080", "\u00bf", "€", "😀", "e", "\u0301", "\0", "\n"]
+text = "".join(chars)
+for chunk in [1, 2, 3, 4, 5, 8192]:
+    t = TextIOWrapper(Raw(text.encode(), chunk), encoding="utf-8")
+    for char in chars:
+        assert t.read(1) == char
+    assert t.read(1) == ""
+    t.close()
+    t = TextIOWrapper(Raw(text.encode(), chunk), encoding="utf-8")
+    assert t.readline(3) == "".join(chars[:3])
+    assert t.readline(3) == "".join(chars[3:6])
+    assert t.readline(3) == "".join(chars[6:])
+    assert t.readline(1) == ""
+    t.close()
+    t = TextIOWrapper(Raw(("\u0080€\n" * 3).encode(), chunk), encoding="utf-8")
+    assert t.readlines(3) == ["\u0080€\n", "\u0080€\n"]
+    assert t.readlines() == ["\u0080€\n"]
+    t.close()
+raw = Raw()
+t = TextIOWrapper(raw, encoding="utf-8", newline="\r\n")
+assert t.write(text) == len(chars)
+t.flush()
+assert raw.out == text.replace("\n", "\r\n").encode()
 t.close()
 t = TextIOWrapper(Raw(b"one\r\ntwo\r\nthree", 3), encoding="ascii", newline="\r\n")
 print(repr(t.readline(4)), repr(t.readline(1)), repr(t.readline()), repr(t.readline()), repr(t.readline()))

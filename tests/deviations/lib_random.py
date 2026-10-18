@@ -36,10 +36,6 @@ except OverflowError as e:
 # to run there); a Pystachy float has none, and its hash is 0: CPython prints False.
 print(Random(math.nan).random() == Random(0).random())
 
-# The items of a str are its bytes past ASCII, as indexing gives them: CPython raises ValueError
-# (Sample larger than population or is negative) for the two characters.
-print(len(Random(3).sample("ñu", 3)))
-
 # sample() takes what isinstance() finds a collections.abc.Sequence: a deque is none in Pystachy,
 # and a dict view, a list, is one: CPython prints [1, 3], then raises TypeError for the keys.
 try:

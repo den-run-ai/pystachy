@@ -1,9 +1,3 @@
-3 5 (3, 5) True
-3 6
-None
-(3, 4) b 2 4
-(0, 1) a 0 2
-[] <re.Match object; span=(2, 3), match='a'>
 2 10
 {'a': 1}
 3

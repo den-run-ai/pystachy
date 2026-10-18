@@ -1,26 +1,6 @@
 # Documented deviations of lib/re (Pystachy's port of CPython's re) from CPython 3.13.
 import re
 
-# A position is an index into the str, which holds UTF-8 in Pystachy, as slicing and find() count
-# it: past ASCII, a match's spans count bytes. CPython prints 3 4 (3, 4) and 1 4.
-m = re.search("é", "café")
-if m is not None:
-    print(m.start(), m.end(), m.span(), "café"[m.start():m.end()] == m.group())
-m = re.search(r"\w+", "€uro")
-if m is not None:
-    print(m.start(), m.end())
-
-# A pos or endpos inside a character's bytes: the match starts after that character, or ends
-# before it, and m.pos and m.endpos are the bounds as given (CPython's count code points)
-print(re.compile(".").match("é", 0, 1))
-m = re.compile(".").search("aéb", 2)
-if m is not None:
-    print(m.span(), m.group(), m.pos, m.endpos)
-m = re.compile(".+").search("aéb", 0, 2)
-if m is not None:
-    print(m.span(), m.group(), m.pos, m.endpos)
-print([x.group() for x in re.compile(".").finditer("éé", 1, 3)], re.compile(".").fullmatch("éa", 1, 3))
-
 # The flags are ints, not re.RegexFlag members; CPython prints re.IGNORECASE re.IGNORECASE|re.MULTILINE
 print(re.I, re.I | re.M)
 

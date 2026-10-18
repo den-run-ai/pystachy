@@ -17,7 +17,7 @@ constructor guard. Unused legacy SGML methods stay upstream and are not claimed
 as compiled APIs.
 
 Supported probes cover incremental `feed`, EOF `close`, lifecycle `reset`,
-`get_starttag_text`, ASCII `getpos`, subclass callbacks and base-typed receivers.
+`get_starttag_text`, `getpos`, subclass callbacks and base-typed receivers.
 They include declarations, comments, processing instructions, malformed/partial
 markup, named/numeric references, attributes, RAWTEXT, RCDATA, `scripting`,
 plaintext and Unicode text. This is an HTML tokenizer with callbacks, as upstream
@@ -26,7 +26,7 @@ packages.
 
 ## Boundaries
 
-- Native `getpos` column offsets count UTF-8 bytes rather than Unicode characters.
+- `getpos` column offsets count Unicode code points, including non-ASCII text.
 - Native tag and attribute names use ASCII-only case conversion. Non-ASCII
   uppercase name characters remain uppercase.
 - Typed subclass constructors/callbacks must follow the supported inheritance
@@ -36,8 +36,8 @@ packages.
 - Legacy SGML declaration helpers, arbitrary runtime monkey-patching and
   reflection are outside the validated surface.
 
-The three deviation programs record the column, case-conversion and base-guard
-boundaries explicitly.
+The column-position probe is a CPython differential test. Two deviation programs
+record the case-conversion and base-guard boundaries explicitly.
 
 ## Provenance
 
@@ -77,7 +77,7 @@ The tests live in the normal corpus, so the existing CI matrix exercises them:
 PYSTACHY_IRCHECK=1 python3 pystachy.py ir tests/upstream_html_parser.py -o build/html-parser.ll
 PYTHONPATH=lib python3 tests/upstream_html_parser.py
 PYTHONPATH=lib python3 tests/lib_html_parser.py
-make test FILES="tests/upstream_html_parser.py tests/lib_html_parser.py tests/deviations/lib_html_parser_positions.py tests/deviations/lib_html_parser_names.py tests/deviations/lib_markupbase_constructor.py"
+make test FILES="tests/upstream_html_parser.py tests/lib_html_parser.py tests/lib_html_parser_positions.py tests/deviations/lib_html_parser_names.py tests/deviations/lib_markupbase_constructor.py"
 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy "jit aot" tests/upstream_html_parser.py tests/lib_html_parser.py
 ```
 

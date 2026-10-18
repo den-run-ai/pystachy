@@ -15,6 +15,16 @@ BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):
+    def test_string_literal_header_matches_runtime_caches(self):
+        for text, chars1 in [("", 1), ("ascii", 6), ("a\x00b", 4), ("\xc3\xa9", 0), ("\xf0\x9f\x98\x80", 0)]:
+            with self.subTest(text=text):
+                data = Data("string", "@s.probe")
+                data.text = text
+                llvm = lower_data(data)
+                n = len(text) + 1
+                self.assertIn(f"global {{i64, i64, i64, [{n} x i8]}}", llvm)
+                self.assertIn(f"{{i64 {n - 1}, i64 0, i64 {chars1}, [{n} x i8]", llvm)
+
     def test_frontend_has_no_module_or_abi_llvm_templates(self):
         declaration = re.compile(
             r"(?:^|\n)\s*(?:define|declare)\s|"
