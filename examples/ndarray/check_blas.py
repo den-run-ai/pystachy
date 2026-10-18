@@ -2,8 +2,9 @@
 
 The CPython FFI twin calls the same library using copied arrays. JIT/AOT borrow
 native lists and need neither CPython nor NumPy at execution time. This checker
-does not benchmark that copying path. It runs every view/alias/bounds case in
-normal and GC-stressed native modes and compares every result with NumPy.
+does not benchmark that copying path. It runs every view/alias/bounds case of
+matmul() and linear() in normal and GC-stressed native modes and compares every
+result with NumPy.
 """
 
 import argparse
@@ -23,17 +24,24 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 
 
+MATRIX_CASES = 24
+LINEAR_CASES = 15
+INVALID_INPUTS = 32
+
+
 def parse(stdout):
     values = {}
+    linear = {}
     errors = {}
     for line in stdout.splitlines():
         tag, literal = line.split(" ", 1)
         record = ast.literal_eval(literal)
-        if tag == "CASE":
+        if tag == "CASE" or tag == "LINEAR":
             name, shape, data = record
-            if name in values:
+            target = values if tag == "CASE" else linear
+            if name in target:
                 raise ValueError("duplicate case: " + name)
-            values[name] = (shape, data)
+            target[name] = (shape, data)
         elif tag == "ERROR":
             name, message = record
             if name in errors:
@@ -41,9 +49,9 @@ def parse(stdout):
             errors[name] = message
         else:
             raise ValueError("unexpected output: " + line)
-    if len(values) != 24 or len(errors) != 15:
+    if len(values) != MATRIX_CASES or len(linear) != LINEAR_CASES or len(errors) != INVALID_INPUTS:
         raise ValueError("missing case/error records")
-    return values, errors
+    return values, linear, errors
 
 
 def run(command, env):
@@ -88,19 +96,23 @@ def main():
     import numpy as np
 
     sys.path.insert(0, str(ROOT / "tools" / "rt_cpython"))
-    from blas_cases import cases
+    from blas_cases import cases, linear_cases
+
+    # Independently interpret the NDArray views. Singleton-axis strides do
+    # not affect indexing and may exceed NumPy's byte-stride range.
+    def numpy_view(value):
+        data = np.asarray(value.data, dtype=np.float64)
+        strides = tuple(0 if dim <= 1 else stride * 8 for dim, stride in zip(value.shape, value.strides))
+        return np.ndarray(tuple(value.shape), dtype=np.float64, buffer=data,
+                          offset=value.offset * 8, strides=strides)
 
     expected = {}
     for name, a, b in cases():
-        # Independently interpret the NDArray views. Singleton-axis strides do
-        # not affect indexing and may exceed NumPy's byte-stride range.
-        def numpy_view(value):
-            data = np.asarray(value.data, dtype=np.float64)
-            strides = tuple(0 if dim <= 1 else stride * 8 for dim, stride in zip(value.shape, value.strides))
-            return np.ndarray(tuple(value.shape), dtype=np.float64, buffer=data,
-                              offset=value.offset * 8, strides=strides)
-
         expected[name] = numpy_view(a) @ numpy_view(b)
+    expected_linear = {}
+    for name, x, weight, bias, use_bias in linear_cases():
+        product = numpy_view(x) @ numpy_view(weight).T
+        expected_linear[name] = product + numpy_view(bias) if use_bias else product
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join([str(ROOT / "tools" / "rt_cpython"), str(HERE)])
     for name in ("PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM"):
@@ -110,7 +122,8 @@ def main():
     report = {"binding": "libblas.so.3:cblas_dgemm", "abi": "explicit LP64: 32-bit int, 64-bit double",
               "loaded_blas_paths": loaded_blas_paths(), "numpy": np.__version__,
               "source_sha256": hashlib.sha256((HERE / "ndarray_blas.py").read_bytes()).hexdigest(),
-              "cases": len(expected), "invalid_inputs": 15, "runs": {}}
+              "cases": len(expected), "linear_cases": len(expected_linear),
+              "invalid_inputs": INVALID_INPUTS, "runs": {}}
     with tempfile.TemporaryDirectory(prefix="ndarray-blas-check-") as directory:
         executable = Path(directory) / "cases"
         run(compiler + ["build", str(source), "-o", str(executable)], env)
@@ -122,27 +135,31 @@ def main():
             ("aot_gc", [str(executable)], {"PYSTACHY_GC_STRESS": str(args.stress)}),
         ]
         for name, command, extra in commands:
-            values, errors = parse(run(command, env | extra))
+            values, linear, errors = parse(run(command, env | extra))
             if reference_errors is None:
                 reference_errors = errors
-            if errors != reference_errors or values.keys() != expected.keys():
+            if (errors != reference_errors or values.keys() != expected.keys()
+                    or linear.keys() != expected_linear.keys()):
                 raise AssertionError(f"{name}: cases or rejection messages differ")
             maximum = 0.0
-            for label, target in expected.items():
-                shape, data = values[label]
-                if shape != list(target.shape) or len(data) != target.size:
-                    raise AssertionError(f"{name}/{label}: result shape or size differs")
-                actual = np.asarray(data, dtype=np.float64).reshape(shape)
-                if not np.isfinite(actual).all():
-                    raise AssertionError(f"{name}/{label}: nonfinite result")
-                np.testing.assert_allclose(actual, target, rtol=1e-12, atol=1e-12)
-                if target.size:
-                    maximum = max(maximum, float(np.max(np.abs(actual - target))))
+            for results, targets in ((values, expected), (linear, expected_linear)):
+                for label, target in targets.items():
+                    shape, data = results[label]
+                    if shape != list(target.shape) or len(data) != target.size:
+                        raise AssertionError(f"{name}/{label}: result shape or size differs")
+                    actual = np.asarray(data, dtype=np.float64).reshape(shape)
+                    if not np.isfinite(actual).all():
+                        raise AssertionError(f"{name}/{label}: nonfinite result")
+                    np.testing.assert_allclose(actual, target, rtol=1e-12, atol=1e-12)
+                    if target.size:
+                        maximum = max(maximum, float(np.max(np.abs(actual - target))))
             report["runs"][name] = {"max_abs_error_vs_numpy": maximum, "gc_allocation_interval": extra}
-            print(f"{name}: {len(values)} matrix cases and {len(errors)} invalid inputs passed")
+            print(f"{name}: {len(values)} matrix cases, {len(linear)} linear cases and "
+                  f"{len(errors)} invalid inputs passed")
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    print("libblas.so.3 resolved to:", ", ".join(report["loaded_blas_paths"]) or "a path outside /proc/self/maps")
     print("LP64 CBLAS verification passed; no performance claim is made by this check.")
 
 

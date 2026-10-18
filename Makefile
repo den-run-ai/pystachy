@@ -62,6 +62,21 @@ bench-extended-check: $(BENCH_COMPILER)
 bench-pyperformance: $(BENCH_COMPILER)
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
+# The optional cblas_dgemm adapter (examples/ndarray/README.md) and nanoGPT's fused-bias linear:
+# correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libopenblas0-pthread or libblas3;
+# LD_LIBRARY_PATH=<its directory> selects one) and, for check_blas.py's reference, NumPy in $(PY). Each
+# runs under CPython (tools/rt_cpython's FFI twin), JIT, AOT and with a collection at every allocation.
+BLAS_PATH = $(CURDIR)/examples/nanogpt:$(CURDIR)/examples/ndarray
+blas-check: $(BENCH_COMPILER)
+	$(PY) examples/ndarray/check_blas.py --compiler "$(BENCH_COMPILER)" --stress 1
+	mkdir -p build
+	PYTHONPATH="$(CURDIR)/tools/rt_cpython:$(BLAS_PATH)" $(PY) examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" PYSTACHY_GC_STRESS_PROGRAM=1 $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) build examples/nanogpt/blas_parity.py -o build/blas_parity
+	build/blas_parity
+	PYSTACHY_GC_STRESS=1 build/blas_parity
+
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
@@ -232,4 +247,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

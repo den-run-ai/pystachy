@@ -136,6 +136,14 @@ def linear(x: NDArray, weight: NDArray, bias: NDArray | None, matmul_fn) -> NDAr
     return result
 
 
+def _project(x: NDArray, weight: NDArray, bias: NDArray | None, matmul_fn, linear_fn) -> NDArray:
+    # A backend's linear_fn(x, weight, bias) may fold the bias into its matrix
+    # product (ndarray_blas.linear); without one, the product is followed by the bias.
+    if linear_fn is None:
+        return linear(x, weight, bias, matmul_fn)
+    return linear_fn(x, weight, bias)
+
+
 def layer_norm(x: NDArray, weight: NDArray, bias: NDArray | None) -> NDArray:
     """Normalize the last dimension with population variance and epsilon 1e-5."""
     if x.ndim != 2 or weight.shape != [x.shape[1]]:
@@ -233,8 +241,14 @@ def _cache(cache: dict[str, NDArray] | None, name: str, value: NDArray) -> None:
 
 
 def forward_hidden_with_backend(model: GPT, tokens: list[int], batch: int, length: int,
-                                matmul_fn, cache: dict[str, NDArray] | None = None) -> NDArray:
-    """Shared architecture; optional training cache retains pre-projection activations."""
+                                matmul_fn, cache: dict[str, NDArray] | None = None,
+                                linear_fn=None) -> NDArray:
+    """Shared architecture; optional training cache retains pre-projection activations.
+
+    linear_fn(x, weight, bias), when given, computes the four biased projections of
+    each block (ndarray_blas.linear folds the bias into the BLAS product); the
+    attention and output products still use matmul_fn.
+    """
     x = embedding(model, tokens, batch, length)
     parameters = model.parameters
     for i in range(model.config.n_layer):
@@ -243,19 +257,19 @@ def forward_hidden_with_backend(model: GPT, tokens: list[int], batch: int, lengt
         _cache(cache, key + ".input", x)
         norm1 = layer_norm(x, parameters[prefix + "ln_1.weight"], parameters.get(prefix + "ln_1.bias"))
         _cache(cache, key + ".norm1", norm1)
-        qkv = linear(norm1, parameters[prefix + "attn.c_attn.weight"], parameters.get(prefix + "attn.c_attn.bias"), matmul_fn)
+        qkv = _project(norm1, parameters[prefix + "attn.c_attn.weight"], parameters.get(prefix + "attn.c_attn.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".qkv", qkv)
         attention = causal_attention(qkv, batch, length, model.config.n_head, matmul_fn)
         _cache(cache, key + ".attention", attention)
-        x = x + linear(attention, parameters[prefix + "attn.c_proj.weight"], parameters.get(prefix + "attn.c_proj.bias"), matmul_fn)
+        x = x + _project(attention, parameters[prefix + "attn.c_proj.weight"], parameters.get(prefix + "attn.c_proj.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".residual", x)
         norm2 = layer_norm(x, parameters[prefix + "ln_2.weight"], parameters.get(prefix + "ln_2.bias"))
         _cache(cache, key + ".norm2", norm2)
-        fc = linear(norm2, parameters[prefix + "mlp.c_fc.weight"], parameters.get(prefix + "mlp.c_fc.bias"), matmul_fn)
+        fc = _project(norm2, parameters[prefix + "mlp.c_fc.weight"], parameters.get(prefix + "mlp.c_fc.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".fc", fc)
         activated = gelu(fc)
         _cache(cache, key + ".gelu", activated)
-        x = x + linear(activated, parameters[prefix + "mlp.c_proj.weight"], parameters.get(prefix + "mlp.c_proj.bias"), matmul_fn)
+        x = x + _project(activated, parameters[prefix + "mlp.c_proj.weight"], parameters.get(prefix + "mlp.c_proj.bias"), matmul_fn, linear_fn)
     _cache(cache, "final_input", x)
     result = layer_norm(x, parameters["transformer.ln_f.weight"], parameters.get("transformer.ln_f.bias"))
     _cache(cache, "final_norm", result)
@@ -273,9 +287,12 @@ def output_projection(model: GPT, hidden: NDArray, batch: int, length: int,
 
 
 def forward_with_backend(model: GPT, tokens: list[int], batch: int, length: int,
-                         matmul_fn, last_only: bool = False) -> NDArray:
-    """Use a nonmutating matrix backend with fresh results; last_only matches inference."""
-    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn)
+                         matmul_fn, last_only: bool = False, linear_fn=None) -> NDArray:
+    """Use a nonmutating matrix backend with fresh results; last_only matches inference.
+
+    An optional linear_fn(x, weight, bias) computes the biased projections.
+    """
+    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn, None, linear_fn)
     return output_projection(model, hidden, batch, length, matmul_fn, last_only)
 
 

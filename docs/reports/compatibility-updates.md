@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `0e6392b22217cc84baf5ece6d51203cfdfe6f71c`.
+**Latest evaluated main:** `6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -1424,3 +1424,96 @@ when practical, preserving attribution and the previous result.
 - If no relevant source or measured outcome changed, avoid another commit or
   repeated no-change comment. Keep the latest *evaluated* SHA distinct from a
   newer revision whose evaluation is blocked or incomplete.
+
+## 2026-10-18 — #647: folded BLAS bias, safety cases and hosted NumPy baseline
+
+Evaluated [main `6d4ed3d1`](https://github.com/den-run-ai/pystachy/commit/6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6),
+which merges [#647](https://github.com/den-run-ai/pystachy/pull/647) at
+**2026-10-18 05:37:44 UTC**. Fresh PR metadata and git ancestry confirm the merge;
+it is the only first-parent merge since evaluated `0e6392b2`. Read #491/#616 and
+the implementation review before testing. The 20-file diff changes example,
+checker, setup and CI files. Compiler/runtime/lib/ports implementation sources
+are byte-identical to `0e6392b2`, so the verified compiler built at that revision
+is reused (SHA-256 `8ad34ce1b632dfaa0d5e251dfed4eda6c5f3bff018366e83191306cb31eaadd8`).
+The compiler source remains `0e6392b2`; evaluated example/tool source is `6d4ed3d1`.
+`PYSTACHY_HOME` explicitly points to the evaluated checkout.
+
+[Machine-readable evidence](compatibility-2026-10-18-blas-fold.json) retains
+commands, outputs, driver source, changed-file and fixture hashes, provider
+identity, reference provenance, tolerances and comparison counts. Toolchain:
+CPython **3.13.16**, LLVM **18.1.3**, Linux x86-64; isolated hosted reference
+environment with **NumPy 2.3.5 / SciPy 1.16.3**. Actual native calls resolve to
+`/usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0`, Ubuntu package
+`libblas3:amd64 3.12.0-3build1.1`, explicit **LP64** ABI. NumPy's wheel BLAS is a
+separate hosted reference provider, not the library used by Pystachy's FFI.
+
+| Fresh check | Result / scope |
+|---|---|
+| BLAS views, aliases, storage bounds and folded bias | **24 matrix + 15 linear + 32 expected-rejection cases per tier**, all pass in CPython twin, JIT, AOT, per-allocation JIT GC and AOT GC. Maximum absolute error against independent NumPy interpretation: **3.55e-15**. |
+| End-to-end `make blas-check` | Passes; repeats the preceding case checker and runs nanoGPT folded/unfolded/scalar parity in all five tiers. **4,022 values per tier**, exact agreement on these fixtures. Includes full/last logits, training loss and every gradient, with and without bias. Do not double-count the repeated case checker as new coverage. |
+| Retained PyTorch-reference nanoGPT fixtures | All **15 case/tier runs** pass normally and all **15** in the GC configuration: **405,185 numeric comparisons in each configuration**, max error **3.738329090730019e-15**. Each configuration includes 12 native and 3 hosted runs. All gradients, two AdamW updates and both moment vectors remain checked. |
+| New CPython NumPy inference baseline | All three retained cases pass: **27 / 229 / 137 values** for one-token / batched-bias / batched-no-bias; maximum error **4.44e-16** against retained PyTorch references. SciPy supplies exact GELU `erf`. Hosted reference only. |
+| Checker contract tests | **8/8** pass, including AST checks that every generated BLAS forward/training call passes the folded-linear backend and scalar calls do not. |
+
+The retained fixture manifest and full reference contents are identical to the
+previous audit, including weights/input hashes. References were generated with
+PyTorch **2.14.1+cpu** from upstream nanoGPT
+`3adf61e154c3fe3fca428ad6bc3818b27a3b8291`; they were **not freshly exported** here.
+The full checker uses one warmup, three repeats and two training steps. Its GC
+run uses compiler interval 1000 and program/AOT interval 1. The standalone BLAS
+checker and make target use program/AOT interval 1.
+
+### Functional delta and safety boundary
+
+`ndarray_blas.linear(x, weight, bias)` now computes `x @ weight.T + bias` with
+one `cblas_dgemm` call and `beta=1`, starting with repeated bias storage. The
+nanoGPT BLAS runner selects it via an optional trailing backend argument;
+existing scalar callers remain valid. This is a **minor integration change for
+the already-adapted example**, not reduced adaptation of upstream NumPy or
+PyTorch: those packages still require their existing major native adaptations
+or explicit CPython hosting.
+
+The pre-merge review found an undersized-bias storage hazard. The merged code
+validates rank/stride count, offset and reachable storage extent before reading
+the bias or invoking BLAS. Fresh checks reject short storage, missing/extra
+strides, negative/past-end offsets, overflowing positive/negative extents and
+malformed empty-product biases; valid reversed, broadcast and singleton-stride
+bias views still pass. No unsafe pre-fix native call was executed. No new
+uncovered bug or retained correctness regression was found, so no duplicate
+issue was filed and no unrelated issue was closed.
+
+### Commands, limitations and CI
+
+Run the retained JSON's `test_driver` from the evaluated checkout; its absolute
+compiler/LLVM/fixture paths identify the inputs and can be relocated together.
+The principal commands are `make blas-check PY=<isolated-python>
+BENCH_COMPILER=<verified-compiler>`, `examples/ndarray/check_blas.py --stress 1
+--compiler <verified-compiler> --json <output>`, `tools/check_nanogpt.py --fixtures
+<retained-fixtures> --blas-library /lib/x86_64-linux-gnu/libblas.so.3 --warmups 1
+--repeats 3 --compiler <verified-compiler> --json <output>` (normal and GC),
+`tools/nanogpt_numpy_baseline.py --fixtures <retained-fixtures> --case <case>
+--warmups 1 --repeats 3 --json <output>`, and `python -m unittest discover -s
+tools -p test_check_nanogpt.py`. Full argv/environment are in JSON.
+
+All eight command groups finished successfully with no test timeout. Initial
+global Python lacked NumPy; installing the pinned packages in a new isolated
+environment resolved this setup gap. The existing torch environment lacked pip
+and was left unchanged. Configuration capture warned only that optional PyYAML
+would improve display formatting; numeric execution was unaffected.
+
+Only reference BLAS was executed locally; OpenBLAS coverage is not claimed as
+a fresh local measurement. The implementation head `1ae2374b` has four completed
+successful workflows, including [CI run 39099852656](https://github.com/den-run-ai/pystachy/actions/runs/39099852656),
+whose changed benchmark job specifies both reference BLAS and OpenBLAS. That is
+upstream implementation CI evidence, separate from this audit PR's checks.
+
+The retained short timings ran on a shared host with two concurrent correctness
+jobs. They establish neither speedup nor regression; no paired performance,
+RSS or memory-allocation experiment was run. Previous PR timing artifacts are
+not substituted for fresh measurements. The NumPy baseline is CPython-hosted;
+no NumPy/SciPy upstream suite or general package compatibility was established.
+Unchanged stdlib import/API, other ports, pyperformance and CPython suite probes
+were not rerun. The prior **142/475 native, 146/475 stub-assisted** import counts
+remain historical measurements at `0e6392b2`, not new counts here. Full CPython
+regrtest and local `make verify` were not run. Existing unrelated blockers and
+performance issues were not reclassified by this example-only checkpoint.

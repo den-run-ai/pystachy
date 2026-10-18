@@ -280,25 +280,29 @@ def export_reference(upstream_path, directory, cases, warmups, repeats, training
 
 
 def runner_source(backend, training_steps):
-    imports = "from ndarray import matmul\n" if backend == "scalar" else "from ndarray_blas import matmul\n"
+    # The BLAS runner also passes ndarray_blas.linear, which folds each block
+    # projection's bias into its product; the scalar runner keeps the model's
+    # matmul-then-bias default.
+    imports = "from ndarray import matmul\n" if backend == "scalar" else "from ndarray_blas import linear, matmul\n"
+    fused = "" if backend == "scalar" else ", linear"
     train_import = "from training import AdamW, loss_and_grad_with_backend\n" if training_steps else ""
     edge_code = """
 ignored = [-1] * len(targets)
-edge_result = loss_and_grad_with_backend(model, tokens, ignored, batch, length, matmul)
+edge_result = loss_and_grad_with_backend(model, tokens, ignored, batch, length, matmulLINEAR_ARG)
 ignored_gradients: dict[str, list[float]] = {}
 for name in model.parameters:
     ignored_gradients[name] = edge_result.gradients[name].values()
 print("NANOGPT_EDGE", (math.isnan(edge_result.loss), ignored_gradients))
 """ if training_steps else """
 ignored = [-1] * len(targets)
-logits = forward_with_backend(model, tokens, batch, length, matmul, False)
+logits = forward_with_backend(model, tokens, batch, length, matmul, FalseLINEAR_ARG)
 print("NANOGPT_EDGE", (math.isnan(cross_entropy(logits, ignored)),))
 """
     train_code = """
 optimizer = AdamW(model)
 for step in range(STEPS):
     start = time.perf_counter()
-    result = loss_and_grad_with_backend(model, tokens, targets, batch, length, matmul)
+    result = loss_and_grad_with_backend(model, tokens, targets, batch, length, matmulLINEAR_ARG)
     backward_seconds = time.perf_counter() - start
     start = time.perf_counter()
     optimizer.step(result.gradients)
@@ -315,7 +319,7 @@ for step in range(STEPS):
     print("NANOGPT_STEP", (step, result.logits.shape, result.logits.values(), result.loss, gradients, parameters, first, second))
     print("NANOGPT_TRAIN_TIME", (step, backward_seconds, optimizer_seconds))
 """.replace("STEPS", str(training_steps)) if training_steps else ""
-    return """import math
+    return ("""import math
 import sys
 import time
 from model import load_weights, forward_with_backend, cross_entropy
@@ -331,29 +335,29 @@ length = inputs.length
 warmups = int(sys.argv[3])
 repeats = int(sys.argv[4])
 print("NANOGPT_LOAD_TIME", time.perf_counter() - start)
-logits = forward_with_backend(model, tokens, batch, length, matmul, False)
+logits = forward_with_backend(model, tokens, batch, length, matmul, FalseLINEAR_ARG)
 loss = cross_entropy(logits, targets)
 print("NANOGPT_FULL", (logits.shape, logits.values(), loss))
 times: list[float] = []
 for iteration in range(warmups + repeats):
     start = time.perf_counter()
-    logits = forward_with_backend(model, tokens, batch, length, matmul, False)
+    logits = forward_with_backend(model, tokens, batch, length, matmul, FalseLINEAR_ARG)
     loss = cross_entropy(logits, targets)
     elapsed = time.perf_counter() - start
     if iteration >= warmups:
         times.append(elapsed)
 print("NANOGPT_FULL_TIME", times)
-logits = forward_with_backend(model, tokens, batch, length, matmul, True)
+logits = forward_with_backend(model, tokens, batch, length, matmul, TrueLINEAR_ARG)
 print("NANOGPT_LAST", (logits.shape, logits.values()))
 times = []
 for iteration in range(warmups + repeats):
     start = time.perf_counter()
-    logits = forward_with_backend(model, tokens, batch, length, matmul, True)
+    logits = forward_with_backend(model, tokens, batch, length, matmul, TrueLINEAR_ARG)
     elapsed = time.perf_counter() - start
     if iteration >= warmups:
         times.append(elapsed)
 print("NANOGPT_LAST_TIME", times)
-""" + edge_code + train_code
+""" + edge_code + train_code).replace("LINEAR_ARG", fused)
 
 
 def source_hashes():
