@@ -15,6 +15,9 @@ from ._constants import *
 _ranges: list[list[int]] = []
 _mapkeys: list[list[int]] = []
 _mapvals: list[list[int]] = []
+# (not sre.c's: _mapped()'s recent results, a code point and its map in each of 256 slots for each
+# table, by the code point's low byte; case-insensitive text uses few code points again and again)
+_mapmemo: list[int] = []
 
 
 def _decode() -> None:
@@ -38,6 +41,8 @@ def _decode() -> None:
             vals.append(at + int(w[cut + 1 :], 36) if up >= 0 else at - int(w[cut + 1 :], 36))
         _mapkeys.append(keys)
         _mapvals.append(vals)
+    for _ in range(2 * 256 * 2):
+        _mapmemo.append(-1)
 
 
 def _inranges(t: int, ch: int) -> bool:
@@ -59,6 +64,9 @@ def _inranges(t: int, ch: int) -> bool:
 def _mapped(t: int, ch: int) -> int:
     if len(_ranges) == 0:
         _decode()
+    slot = (t * 256 + (ch & 255)) * 2
+    if _mapmemo[slot] == ch:
+        return _mapmemo[slot + 1]
     keys = _mapkeys[t]
     lo = 0
     hi = len(keys)
@@ -68,9 +76,10 @@ def _mapped(t: int, ch: int) -> int:
             lo = mid + 1
         else:
             hi = mid
-    if lo < len(keys) and keys[lo] == ch:
-        return _mapvals[t][lo]
-    return ch
+    m = _mapvals[t][lo] if lo < len(keys) and keys[lo] == ch else ch
+    _mapmemo[slot] = ch
+    _mapmemo[slot + 1] = m
+    return m
 
 
 def ascii_isalnum(ch: int) -> bool:
@@ -302,10 +311,13 @@ class State:
 
 # What a set's table says of the code points from 128 (its entry at 128): HIGH_IN, those from
 # its entry at 129 to its entry at 130 are members; HIGH_OUT, all others are; HIGH_EVAL, charset()
-# decides. An empty range makes HIGH_IN none and HIGH_OUT all of them
+# decides. An empty range makes HIGH_IN none and HIGH_OUT all of them. A HIGH_EVAL table goes on
+# with a memo of charset()'s recent answers: HIGH_MEMO slots of a code point and whether it is a
+# member, by its low bits
 HIGH_IN = 0
 HIGH_OUT = 1
 HIGH_EVAL = 2
+HIGH_MEMO = 64
 MAXCHAR = 4294967295  # (past every code point: the end of a range of all those from 128)
 
 
@@ -317,10 +329,27 @@ def _charset_table(state: State, code: list[int], i: int) -> int:
     start = len(state.charset_ascii)
     for c in range(128):
         state.charset_ascii.append(int(charset(code, i, c)))
-    for x in _charset_high(code, i):
+    high = _charset_high(code, i)
+    for x in high:
         state.charset_ascii.append(x)
+    if high[0] == HIGH_EVAL:
+        for _ in range(HIGH_MEMO):
+            state.charset_ascii.append(-1)
+            state.charset_ascii.append(0)
     state.charset_offsets[i] = start
     return start
+
+
+def _charset_memo(state: State, code: list[int], i: int, t: int, ch: int) -> bool:
+    # charset() of a code point from 128 for a HIGH_EVAL set whose table begins at t, through its memo
+    table = state.charset_ascii
+    slot = t + 131 + (ch & (HIGH_MEMO - 1)) * 2
+    if table[slot] == ch:
+        return table[slot + 1] != 0
+    member = charset(code, i, ch)
+    table[slot] = ch
+    table[slot + 1] = int(member)
+    return member
 
 
 def _charset_high(code: list[int], i: int) -> list[int]:
@@ -409,7 +438,7 @@ def _charset(state: State, code: list[int], i: int, ch: int) -> bool:
         return table[start + ch] != 0
     mode = table[start + 128]
     if mode == HIGH_EVAL:
-        return charset(code, i, ch)
+        return _charset_memo(state, code, i, start, ch)
     return (table[start + 129] <= ch and ch <= table[start + 130]) == (mode == HIGH_IN)
 
 
@@ -417,10 +446,56 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
     # The end of the characters from ptr (to end at most) whose membership in the set at code[i]
     # is inside: sre_count's run of an IN, IN_IGNORE (fold 1) or IN_UNI_IGNORE (fold 2), whose
     # folding applies first, or a search's skip to the first member. (Not _sre's: its loops call
-    # SRE(charset) for each character.) The set's table is found once for the whole span, and
-    # ASCII characters, or any character where its members from 128 are one range, need no call
+    # SRE(charset) for each character.) The set's table is found once for the whole span, and its
+    # ASCII characters are decided here, in loops that call nothing, folded as lower_ascii() and
+    # lower_unicode() fold them; _span_rest() goes on from a character from 128
     s = state.s
     t = _table(state, code, i)
+    if t >= 0:
+        table = state.charset_ascii
+        if fold == 0:
+            if inside:
+                while ptr < end:
+                    ch = s[ptr]
+                    if ch >= 128:
+                        break
+                    if table[t + ch] == 0:
+                        return ptr
+                    ptr += 1
+            else:
+                while ptr < end:
+                    ch = s[ptr]
+                    if ch >= 128:
+                        break
+                    if table[t + ch] != 0:
+                        return ptr
+                    ptr += 1
+        elif inside:
+            while ptr < end:
+                ch = s[ptr]
+                if ch >= 128:
+                    break
+                if table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] == 0:
+                    return ptr
+                ptr += 1
+        else:
+            while ptr < end:
+                ch = s[ptr]
+                if ch >= 128:
+                    break
+                if table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] != 0:
+                    return ptr
+                ptr += 1
+        if ptr >= end:
+            return ptr
+    return _span_rest(state, code, i, t, fold, ptr, end, inside)
+
+
+def _span_rest(state: State, code: list[int], i: int, t: int, fold: int, ptr: int, end: int, inside: bool) -> int:
+    # _span() from a character from 128 on, or from ptr for a state without tables (t < 0): each
+    # character decided by the set's table where it can be, ASCII or one range from 128 (or none,
+    # or all), else by charset() through the table's memo
+    s = state.s
     if t < 0:
         while ptr < end:
             ch = s[ptr]
@@ -433,51 +508,21 @@ def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, 
             ptr += 1
         return ptr
     table = state.charset_ascii
-    mode = -1  # (what the table says of code points from 128, read at the first one)
-    lo = 0
-    hi = 0
+    mode = table[t + 128]
+    lo = table[t + 129]
+    hi = table[t + 130]
     while ptr < end:
-        # A run of ASCII characters first, in loops that call nothing (so that what they read
-        # of s and table may stay in registers), folded as lower_ascii() and lower_unicode() do
-        if fold == 0:
-            if inside:
-                while ptr < end:
-                    ch = s[ptr]
-                    if ch >= 128 or table[t + ch] == 0:
-                        break
-                    ptr += 1
-            else:
-                while ptr < end:
-                    ch = s[ptr]
-                    if ch >= 128 or table[t + ch] != 0:
-                        break
-                    ptr += 1
-        elif inside:
-            while ptr < end:
-                ch = s[ptr]
-                if ch >= 128 or table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] == 0:
-                    break
-                ptr += 1
-        else:
-            while ptr < end:
-                ch = s[ptr]
-                if ch >= 128 or table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] != 0:
-                    break
-                ptr += 1
-        if ptr >= end or s[ptr] < 128:
-            break
-        # then a character from 128 (which lower_unicode() may map to ASCII)
         ch = s[ptr]
-        if fold == 2:
-            ch = _mapped(0, ch)
-        if mode < 0:
-            mode = table[t + 128]
-            lo = table[t + 129]
-            hi = table[t + 130]
+        if ch < 128:
+            if fold != 0 and 65 <= ch and ch <= 90:
+                ch += 32
+        elif fold == 2:
+            ch = _mapped(0, ch)  # (which may map it to ASCII)
         if ch < 128:
             member = table[t + ch] != 0
         elif mode == HIGH_EVAL:
-            member = charset(code, i, ch)
+            slot = t + 131 + (ch & (HIGH_MEMO - 1)) * 2
+            member = table[slot + 1] != 0 if table[slot] == ch else _charset_memo(state, code, i, t, ch)
         else:
             member = (lo <= ch and ch <= hi) == (mode == HIGH_IN)
         if member != inside:
@@ -1433,11 +1478,11 @@ def sre_search(state: State, code: list[int]) -> int:
                 if i == 0:
                     break
         return 0
+    pf = _prefilter(state, code, pattern)
     if charset_at >= 0:
         # a character from a known set first
         end = state.end
         state.must_advance = False
-        pf = _prefilter(state, code, pattern)
         b = pf[1] if pf[0] == PF_BRANCH else -1
         t = _table(state, code, charset_at)
         table = state.charset_ascii
@@ -1469,7 +1514,7 @@ def sre_search(state: State, code: list[int]) -> int:
             ptr += 1
             state.lastmark = -1
             state.lastindex = -1
-    elif _at_line_start(code, pattern):
+    elif pf[0] == PF_LINE:
         # (not in _sre: a pattern that begins with ^ of MULTILINE, after marks, which match
         # anywhere, can match only where a line begins, as sre_at() says: at the string's start or
         # after a \n, not at pos; the matcher is entered there alone, which the general case below
@@ -1493,11 +1538,11 @@ def sre_search(state: State, code: list[int]) -> int:
             state.start = ptr
             state.ptr = ptr
             status = sre_match(state, code, pattern, False)
-    elif _repeated(code, _after_marks(code, pattern)) >= 0:
+    elif pf[0] == PF_REPEATED:
         # (not _sre's: a pattern that begins with a character repeated at least once, after
         # groups' marks, can match only where that character is: the matcher is entered there
         # alone, which the general case below does at every position)
-        item = _repeated(code, _after_marks(code, pattern))
+        item = pf[1]
         first = ptr  # (where must_advance applies, as in the general case)
         while True:
             ptr = _first_span(state, code, item, ptr, end)
@@ -1516,12 +1561,12 @@ def sre_search(state: State, code: list[int]) -> int:
             if status != 0:
                 return status
             ptr += 1
-    elif _prefilter(state, code, pattern)[0] == PF_BRANCH:
+    elif pf[0] == PF_BRANCH:
         # (not _sre's: a pattern that begins with alternatives, after groups' marks, each beginning
         # with a literal or a class, can match only where all the leading literals and classes of
         # one of them match: the matcher is entered there alone, which the general case below does
         # at every position)
-        b = state.prefilter[1]
+        b = pf[1]
         first = ptr  # (where must_advance applies, as in the general case)
         while True:
             while ptr < end and not _branch_starts(state, code, b, ptr):
@@ -1541,15 +1586,15 @@ def sre_search(state: State, code: list[int]) -> int:
             if status != 0:
                 return status
             ptr += 1
-    elif state.prefilter[0] == PF_LITERAL:
+    elif pf[0] == PF_LITERAL:
         # (not _sre's: every match has the literals from code[at] at an offset from its start from
         # dmin to dmax: the matcher is entered only where they are found, at most once at each
         # position, in order, which the general case below does at every position. Positions
         # before the first literals found from a start's least offset cannot match)
-        dmin = state.prefilter[1]
-        dmax = state.prefilter[2]
-        at = state.prefilter[3]
-        n = state.prefilter[4]
+        dmin = pf[1]
+        dmax = pf[2]
+        at = pf[3]
+        n = pf[4]
         first = ptr  # (where must_advance applies, as in the general case)
         last = state.end - n  # (where the literals may begin, at most)
         nxt = ptr  # (the first position neither tried nor ruled out)
@@ -1672,22 +1717,29 @@ def _first_ignore(state: State, code: list[int], item: int, ptr: int) -> bool:
     return _charset(state, code, item + 2, ch)
 
 
-# ---- (not _sre's) what the general search case may skip by, found once for each Pattern
+# ---- (not _sre's) what a search without a literal prefix may skip by, found once for each Pattern
 
 PF_NONE = 0  # [PF_NONE, 0, 0, 0, 0]: the general case
-PF_BRANCH = 1  # [PF_BRANCH, b, 0, 0, 0]: the BRANCH at code[b] begins it (_branch_starts)
-PF_LITERAL = 2  # [PF_LITERAL, dmin, dmax, at, n]: the literals of _literals_find (_walk's)
+PF_LINE = 1  # [PF_LINE, 0, 0, 0, 0]: a ^ of MULTILINE begins it (_at_line_start)
+PF_REPEATED = 2  # [PF_REPEATED, item, 0, 0, 0]: a repeat of the literal or class at item (_repeated)
+PF_BRANCH = 3  # [PF_BRANCH, b, 0, 0, 0]: the BRANCH at code[b] begins it (_branch_starts)
+PF_LITERAL = 4  # [PF_LITERAL, dmin, dmax, at, n]: the literals of _literals_find (_walk's)
 
 
 def _prefilter(state: State, code: list[int], pattern: int) -> list[int]:
-    # state.prefilter (the Pattern's), found at the first search: whether the code at pattern
-    # begins, after groups' marks, with alternatives that each begin with a literal or a class, or
-    # else has literals at a bounded offset from the start of every match
+    # state.prefilter (the Pattern's), found at its first search: whether the code at pattern
+    # begins, after groups' marks, with a ^ of MULTILINE, a mandatory repeat of a literal or a class,
+    # or alternatives that each begin with a literal or a class, or else has literals at a bounded
+    # offset from the start of every match, in that order (the charset search applies PF_BRANCH)
     pf = state.prefilter
     if len(pf) == 0:
         b = _after_marks(code, pattern)
         found = [PF_NONE, 0, 0, 0, 0]
-        if code[b] == BRANCH and _branch_runs(code, b):
+        if _at_line_start(code, pattern):
+            found = [PF_LINE, 0, 0, 0, 0]
+        elif _repeated(code, b) >= 0:
+            found = [PF_REPEATED, _repeated(code, b), 0, 0, 0]
+        elif code[b] == BRANCH and _branch_runs(code, b):
             found = [PF_BRANCH, b, 0, 0, 0]
         elif not (code[pattern] == AT and (code[pattern + 1] == AT_BEGINNING or code[pattern + 1] == AT_BEGINNING_STRING)):
             # (the general case tries a ^ of the whole string, first, once)

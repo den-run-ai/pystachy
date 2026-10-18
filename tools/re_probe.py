@@ -21,7 +21,8 @@ leading literals and classes match, and a greedy repeat whose tail begins with g
 literal enters the tail only where that literal is: the contexts the matcher enters are counted.
 A search whose pattern begins with alternatives that all begin with literals and classes, or
 whose matches all hold literals at a bounded offset from their start, enters the matcher only
-where those can be: its entries are counted.
+where those can be: its entries are counted. Warm case-insensitive and Unicode classes answer
+repeated non-ASCII code points from memos: no charset() evaluation, no case-mapping search.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -341,6 +342,55 @@ def check_prefilters() -> int:
     return failed
 
 
+def check_unicode_memos() -> int:
+    # Case-insensitive and Unicode classes over text that repeats its non-ASCII code points: once
+    # warm, a set that charset() must evaluate answers from its table's memo, and a case mapping
+    # from _mapped()'s, with no bytecode evaluation and no binary search of the mapping tables.
+    failed = total = 0
+    original = sre.charset
+    counted = {"charset": 0, "search": 0}
+
+    def counted_charset(code, i, ch):
+        counted["charset"] += 1
+        return original(code, i, ch)
+
+    class CountedKeys(list):
+        def __getitem__(self, t):
+            counted["search"] += 1
+            return super().__getitem__(t)
+
+    sre._mapped(0, 0x100)  # (decodes the tables, so that they can be wrapped)
+    keys = sre._mapkeys
+    sre._mapkeys = CountedKeys(keys)
+    sre.charset = counted_charset
+    cases = [
+        (r"[A-Z_\u00c9\u03a3]+", re.I, "Ab\u212a\u017f\u00e9\u00c9\u03c3\u03a3_" * 100 + "!"),
+        (r"\w+", 0, "\u041f\u0440\u0438\u0432\u0435\u0442 \u043c\u0438\u0440 " * 100),
+        (r"(?i)[\u0400-\u04ff]+", 0, "\u0410\u0430\u0416\u0436 " * 100),
+        (r"(?i)\u00e9t\u00e9", 0, "\u00c9T\u00c9 \u00e9t\u00e9 \u00e8 " * 100),
+    ]
+    try:
+        for pattern, flags, text in cases:
+            mine = port.compile(pattern, flags)
+            theirs = re.compile(pattern, flags)
+            mine.findall(text)  # (warms the memos)
+            counted["charset"] = counted["search"] = 0
+            if mine.findall(text) != theirs.findall(text):
+                print(f'unicode memo differs: {pattern!r}')
+                failed += 1
+            n = counted["charset"] + counted["search"]
+            total += n
+            if n > 0:
+                print(f'unicode memos: {pattern!r}: {counted["charset"]} charset() calls and '
+                      f'{counted["search"]} mapping searches (limit 0)')
+                failed += 1
+    finally:
+        sre.charset = original
+        sre._mapkeys = keys
+    print(f'unicode memos: {total} charset() calls and mapping searches over {len(cases)} warm cases (limit 0)')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -366,6 +416,7 @@ def main() -> int:
     failed += check_class_spans()
     failed += check_nested_matches()
     failed += check_prefilters()
+    failed += check_unicode_memos()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:
