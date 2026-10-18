@@ -289,8 +289,9 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   ([#647](https://github.com/den-run-ai/pystachy/pull/647),
   [#658](https://github.com/den-run-ai/pystachy/pull/658)), and the authoring session's
   own review is not independent. A mergeable state is not CI evidence: branch protection
-  requires only the DCO check, and admins bypass it. Page check runs with `per_page=100`;
-  the default page of 30 is shorter than one push's list.
+  did not require the verification gate (on 2026-10-18 only a DCO check), and admins
+  bypass it. Page check runs with `per_page=100`; the default page of 30 is shorter than
+  one push's list.
 - `main` contains only merge commits: bring main into a branch by merging, not rebasing,
   and land stacks so each merge publishes a CI-tested tree. GitHub can refuse, or call
   dirty, a merge that is clean locally (criss-cross merge bases); merge main into the
@@ -316,9 +317,9 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   and arrange review through available authorized means. Answer every bot thread: fix
   real, proportionate findings with a regression and name the commit, or decline with
   reasons; then resolve it.
-- An agent cannot certify the DCO: never add someone's `Signed-off-by`. Leave the
-  sign-off to the human contributor, say so in the PR checklist and keep the PR draft
-  until the DCO check passes ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
+- An agent cannot certify the DCO: never add someone's `Signed-off-by`. CONTRIBUTING.md
+  says which PRs need a sign-off; where one does, leave it to the human contributor and
+  say so in the PR checklist ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
 - PR descriptions should state the problem, resulting behavior, scope/remaining
   limits, linked issues and exact validation revision/commands/results. Separate
   local evidence from CI; update stale status after revisions. Keep old measurements
