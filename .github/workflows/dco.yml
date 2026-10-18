@@ -1,0 +1,36 @@
+# Developer Certificate of Origin sign-offs on pull requests from forks (CONTRIBUTING.md):
+# tools/dco_check.py requires each non-merge commit to be signed off by its author or committer.
+# Pull requests from this repository's own branches, which only the owner and collaborators can
+# push (agent sessions working for them included), skip the job; a skipped required check passes.
+# pull_request_target runs this file and the script as main has them, so a pull request cannot
+# change its own check; the commits are read through the API, and no pull request code is checked
+# out or run.
+name: DCO
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dco-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dco:
+    name: DCO sign-off (fork pull requests)
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false   # main's tools/dco_check.py; the pull request's code is never checked out
+
+      - name: Every non-merge commit is signed off
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/dco_check.py

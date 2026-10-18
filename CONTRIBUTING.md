@@ -48,15 +48,17 @@ Submit only work you have the right to contribute under the applicable project l
 [MIT](LICENSE) for original project code; preserve third-party licenses, attribution and
 [notices](THIRD_PARTY_NOTICES) for adapted material. Identify upstream sources and changes.
 
-New PRs opened after this guide is merged require each contributor's own
+PRs from forks opened after this guide was merged require each contributor's own
 [Developer Certificate of Origin 1.1](https://developercertificate.org/) sign-off on
 each new non-merge commit they author in the PR. After reading the DCO, use `git commit -s` to add
 `Signed-off-by: Your Name <your-email>` with your own identity. Never add someone else's
 sign-off on their behalf. Sign-offs remain in public history; they are provenance
 attestations, not cryptographic signatures or security verification.
 
-Maintainers check sign-offs manually until automated enforcement is configured.
-Already-open PRs follow the existing process; do not rewrite merged history to add
+The [DCO workflow](.github/workflows/dco.yml) checks fork PRs: every non-merge commit needs
+a sign-off naming its author or committer. PRs from this repository's own branches, which
+only the owner and collaborators can push, skip the check, including agent sessions working
+for them. Earlier PRs follow the existing process; do not rewrite merged history to add
 sign-offs. No separate CLA is required.
 
 ## AI assistance and review
