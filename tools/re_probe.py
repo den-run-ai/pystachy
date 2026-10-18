@@ -13,7 +13,10 @@ The charset compiler also checks full BMP and non-BMP case-insensitive ranges ag
 code and matches. Its bit-setting calls may only receive existing case-fix lists, never temporary
 singleton/empty lists per code point; this deterministic guard needs no timing threshold.
 Repeated case-insensitive classes must also count their run without entering the matcher for
-each character, with the same one entry and context as a case-sensitive class.
+each character, with the same one entry and context as a case-sensitive class. Class runs and the
+scans of a search for a class make no class call per character (_charset() or charset()) once
+the Pattern's table for the class is built, for ASCII text and for classes whose members from
+U+0080 are one range, none or all.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -203,6 +206,60 @@ def check_repeat_prefixes() -> int:
     return failed
 
 
+def check_class_spans() -> int:
+    # A class run (a repeat's count) or a class scan (a search's skip to its first character)
+    # finds the set's table once. Then neither an ASCII character nor, in a set whose members
+    # from U+0080 are one range, none or all, any other one needs a call: not of _charset() for
+    # each character, nor of charset()'s bytecode evaluation once the table is built. (A match
+    # that begins with a single class, not a repeat, tests its one character with _charset().)
+    failed = calls = 0
+    counted = {"_charset": 0, "charset": 0}
+    original = (sre._charset, sre.charset)
+
+    def counted_charset_ascii(state, code, i, ch):
+        counted["_charset"] += 1
+        return original[0](state, code, i, ch)
+
+    def counted_charset(code, i, ch):
+        counted["charset"] += 1
+        return original[1](code, i, ch)
+
+    cases = [
+        (r"[A-Za-z_]+", "AbCdEf_" * 150 + "!"),
+        (r"(?ai:[a-z_]+)", "AbCdEf_" * 150 + "!"),
+        (r"(?i:[a-z_]+)", "AbCdEf_" * 150 + "!"),
+        (r"[^#?]+", "éА\U0001f600a" * 250 + "#"),
+        (r"[Ѐ-ӿ]+", "Ая" * 500 + "!"),
+        (r"[^\U00010000-\U0010ffff]+", "aé￿" * 300 + "\U00010000"),
+        (r"([#?é])", "-" * 1000 + "é"),
+        (r"([^\x00-\x7f])", "-" * 1000 + "А"),
+        (r"([a-z]+)!", "0" * 1000 + "ab!"),
+        (r"(?i:([a-z]+))!", "0" * 1000 + "Ab!"),
+        (r"(?i:(k+))!", "0" * 1000 + "kK!"),
+    ]
+    sre._charset = counted_charset_ascii
+    sre.charset = counted_charset
+    try:
+        for pattern, text in cases:
+            mine = port.compile(pattern)
+            theirs = re.compile(pattern)
+            mine.findall(text)  # (builds the tables)
+            counted["_charset"] = counted["charset"] = 0
+            got = mine.findall(text)
+            if got != theirs.findall(text):
+                print(f'class span differs: {pattern!r}')
+                failed += 1
+            n = counted["_charset"] + counted["charset"]
+            calls += n
+            if n > 1:
+                print(f'class span: {pattern!r}: {counted["_charset"]} _charset() and {counted["charset"]} charset() calls (limit 1)')
+                failed += 1
+    finally:
+        sre._charset, sre.charset = original
+    print(f'class spans: {calls} class calls over {len(cases)} cases (limit 1 each)')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -225,6 +282,7 @@ def main() -> int:
     failed += check_ignorecase_repeats()
     failed += check_ignorecase_searches()
     failed += check_repeat_prefixes()
+    failed += check_class_spans()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:

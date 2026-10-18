@@ -285,8 +285,8 @@ class State:
         # in use, by sre_match() and the calls nested in it through sre_count(), the others free)
         self.ctxs: list[Ctx] = []
         self.top = 0
-        # Pattern's lazily built ASCII class tables, shared by its states. Empty until _state
-        # attaches them; direct engine callers retain charset()'s bytecode evaluation.
+        # Pattern's lazily built class tables, shared by its states (see _charset_table). Empty
+        # until _state attaches them; direct engine callers retain charset()'s bytecode evaluation.
         self.charset_offsets: list[int] = []
         self.charset_ascii: list[int] = []
 
@@ -298,24 +298,178 @@ class State:
         self.data = []
 
 
+# What a set's table says of the code points from 128 (its entry at 128): HIGH_IN, those from
+# its entry at 129 to its entry at 130 are members; HIGH_OUT, all others are; HIGH_EVAL, charset()
+# decides. An empty range makes HIGH_IN none and HIGH_OUT all of them
+HIGH_IN = 0
+HIGH_OUT = 1
+HIGH_EVAL = 2
+MAXCHAR = 4294967295  # (past every code point: the end of a range of all those from 128)
+
+
 def _charset_table(state: State, code: list[int], i: int) -> int:
+    # The set at code[i]'s table, where it begins in state.charset_ascii: whether each ASCII
+    # character is a member, then what the set says of the others (HIGH_*). The caller applies an
+    # IN_IGNORE/IN_UNI_IGNORE's folding first, so each code position has one fixed set, including
+    # scoped flags, independent of the string. CPython's bytecode stays as it is
     start = len(state.charset_ascii)
     for c in range(128):
         state.charset_ascii.append(int(charset(code, i, c)))
+    for x in _charset_high(code, i):
+        state.charset_ascii.append(x)
     state.charset_offsets[i] = start
     return start
 
 
+def _charset_high(code: list[int], i: int) -> list[int]:
+    # [HIGH_IN or HIGH_OUT, lo, hi] when the members from 128 of the set at code[i] are the
+    # code points of one range (maybe empty), which a leading NEGATE turns inside out; else
+    # [HIGH_EVAL, 0, 0]: a BIGCHARSET, a Unicode category or case-insensitive range, members in
+    # two ranges or more, or a NEGATE elsewhere (which charset()'s order of items makes matter)
+    lo = 1  # (the members from 128 so far: an empty range)
+    hi = 0
+    mode = HIGH_IN
+    if code[i] == NEGATE:
+        mode = HIGH_OUT
+        i += 1
+    while code[i] != FAILURE:
+        op = code[i]
+        a = 1  # (this item's members from 128: a range, empty unless they are found)
+        b = 0
+        if op == LITERAL:
+            if code[i + 1] >= 128:
+                a = code[i + 1]
+                b = a
+            i += 2
+        elif op == RANGE:
+            if code[i + 2] >= 128:
+                a = code[i + 1] if code[i + 1] >= 128 else 128
+                b = code[i + 2]
+            i += 3
+        elif op == CHARSET:
+            # the bitmap's words 4 to 7 (128 to 255): one run of set bits at most
+            for c in range(128, 256):
+                if (code[i + 1 + (c >> 5)] >> (c & 31)) & 1 != 0:
+                    if a > b:
+                        a = c
+                        b = c
+                    elif c == b + 1:
+                        b = c
+                    else:
+                        return [HIGH_EVAL, 0, 0]
+            i += 9
+        elif op == CATEGORY:
+            # the categories that test ASCII alone match all code points from 128 or none
+            cat = code[i + 1]
+            if cat == CATEGORY_NOT_DIGIT or cat == CATEGORY_NOT_SPACE or cat == CATEGORY_NOT_WORD \
+                    or cat == CATEGORY_LOC_NOT_WORD or cat == CATEGORY_NOT_LINEBREAK:
+                a = 128
+                b = MAXCHAR
+            elif not (cat == CATEGORY_DIGIT or cat == CATEGORY_SPACE or cat == CATEGORY_WORD
+                      or cat == CATEGORY_LOC_WORD or cat == CATEGORY_LINEBREAK):
+                return [HIGH_EVAL, 0, 0]
+            i += 2
+        else:
+            return [HIGH_EVAL, 0, 0]
+        if a <= b:
+            if lo > hi:
+                lo = a
+                hi = b
+            elif a <= hi + 1 and lo <= b + 1:
+                # (overlapping or adjacent: one range still)
+                lo = a if a < lo else lo
+                hi = b if b > hi else hi
+            else:
+                return [HIGH_EVAL, 0, 0]
+    return [mode, lo, hi]
+
+
 def _charset(state: State, code: list[int], i: int, ch: int) -> bool:
-    # The caller applies an IN_IGNORE/IN_UNI_IGNORE's folding before arriving here. Each code
-    # position therefore has one fixed set, including scoped flags, independent of the string.
-    # Keep CPython's bytecode untouched and non-ASCII characters on its original evaluator.
-    if ch >= 128 or len(state.charset_offsets) == 0:
+    # charset() through the set's table (see _charset_table)
+    if len(state.charset_offsets) == 0:
         return charset(code, i, ch)
     start = state.charset_offsets[i]
     if start < 0:
         start = _charset_table(state, code, i)
-    return state.charset_ascii[start + ch] != 0
+    table = state.charset_ascii
+    if ch < 128:
+        return table[start + ch] != 0
+    mode = table[start + 128]
+    if mode == HIGH_EVAL:
+        return charset(code, i, ch)
+    return (table[start + 129] <= ch and ch <= table[start + 130]) == (mode == HIGH_IN)
+
+
+def _span(state: State, code: list[int], i: int, fold: int, ptr: int, end: int, inside: bool) -> int:
+    # The end of the characters from ptr (to end at most) whose membership in the set at code[i]
+    # is inside: sre_count's run of an IN, IN_IGNORE (fold 1) or IN_UNI_IGNORE (fold 2), whose
+    # folding applies first, or a search's skip to the first member. (Not _sre's: its loops call
+    # SRE(charset) for each character.) The set's table is found once for the whole span, and
+    # ASCII characters, or any character where its members from 128 are one range, need no call
+    s = state.s
+    if len(state.charset_offsets) == 0:
+        while ptr < end:
+            ch = s[ptr]
+            if fold == 1:
+                ch = lower_ascii(ch)
+            elif fold == 2:
+                ch = lower_unicode(ch)
+            if charset(code, i, ch) != inside:
+                break
+            ptr += 1
+        return ptr
+    t = state.charset_offsets[i]
+    if t < 0:
+        t = _charset_table(state, code, i)
+    table = state.charset_ascii
+    mode = table[t + 128]
+    lo = table[t + 129]
+    hi = table[t + 130]
+    within = mode == HIGH_IN  # (whether a code point from 128 in [lo, hi] is a member)
+    while ptr < end:
+        # A run of ASCII characters first, in loops that call nothing (so that what they read
+        # of s and table may stay in registers), folded as lower_ascii() and lower_unicode() do
+        if fold == 0:
+            if inside:
+                while ptr < end:
+                    ch = s[ptr]
+                    if ch >= 128 or table[t + ch] == 0:
+                        break
+                    ptr += 1
+            else:
+                while ptr < end:
+                    ch = s[ptr]
+                    if ch >= 128 or table[t + ch] != 0:
+                        break
+                    ptr += 1
+        elif inside:
+            while ptr < end:
+                ch = s[ptr]
+                if ch >= 128 or table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] == 0:
+                    break
+                ptr += 1
+        else:
+            while ptr < end:
+                ch = s[ptr]
+                if ch >= 128 or table[t + (ch + 32 if 65 <= ch and ch <= 90 else ch)] != 0:
+                    break
+                ptr += 1
+        if ptr >= end or s[ptr] < 128:
+            break
+        # then a character from 128 (which lower_unicode() may map to ASCII)
+        ch = s[ptr]
+        if fold == 2:
+            ch = _mapped(0, ch)
+        if ch < 128:
+            member = table[t + ch] != 0
+        elif mode == HIGH_EVAL:
+            member = charset(code, i, ch)
+        else:
+            member = (lo <= ch and ch <= hi) == within
+        if member != inside:
+            break
+        ptr += 1
+    return ptr
 
 
 class Ctx:
@@ -417,14 +571,11 @@ def sre_count(state: State, code: list[int], p: int, maxcount: int) -> int:
         end = ptr + maxcount
     op = code[p]
     if op == IN:
-        while ptr < end and _charset(state, code, p + 2, s[ptr]):
-            ptr += 1
+        ptr = _span(state, code, p + 2, 0, ptr, end, True)
     elif op == IN_IGNORE:
-        while ptr < end and _charset(state, code, p + 2, lower_ascii(s[ptr])):
-            ptr += 1
+        ptr = _span(state, code, p + 2, 1, ptr, end, True)
     elif op == IN_UNI_IGNORE:
-        while ptr < end and _charset(state, code, p + 2, lower_unicode(s[ptr])):
-            ptr += 1
+        ptr = _span(state, code, p + 2, 2, ptr, end, True)
     elif op == ANY:
         while ptr < end and s[ptr] != 10:
             ptr += 1
@@ -1242,8 +1393,7 @@ def sre_search(state: State, code: list[int]) -> int:
         end = state.end
         state.must_advance = False
         while True:
-            while ptr < end and not _charset(state, code, charset_at, s[ptr]):
-                ptr += 1
+            ptr = _span(state, code, charset_at, 0, ptr, end, False)
             if ptr >= end:
                 return 0
             state.start = ptr
@@ -1283,15 +1433,9 @@ def sre_search(state: State, code: list[int]) -> int:
         # groups' marks, can match only where that character is: the matcher is entered there
         # alone, which the general case below does at every position)
         item = _repeated(code, _after_marks(code, pattern))
-        plain = code[item] == LITERAL or code[item] == IN
         first = ptr  # (where must_advance applies, as in the general case)
         while True:
-            if plain:
-                while ptr < end and not _first(state, code, item, ptr):
-                    ptr += 1
-            else:
-                while ptr < end and not _first_ignore(state, code, item, ptr):
-                    ptr += 1
+            ptr = _first_span(state, code, item, ptr, end)
             if ptr >= end:
                 # (where the general case's last position leaves them)
                 state.must_advance = False
@@ -1362,6 +1506,32 @@ def _first(state: State, code: list[int], item: int, ptr: int) -> bool:
     if code[item] == LITERAL:
         return state.s[ptr] == code[item + 1]
     return _charset(state, code, item + 2, state.s[ptr])
+
+
+def _first_span(state: State, code: list[int], item: int, ptr: int, end: int) -> int:
+    # the first position from ptr (end at most) where the literal or class at item (_repeated's)
+    # matches, each character tested as _first() or _first_ignore() would
+    s = state.s
+    op = code[item]
+    if op == IN or op == IN_IGNORE or op == IN_UNI_IGNORE:
+        return _span(state, code, item + 2, 0 if op == IN else 1 if op == IN_IGNORE else 2, ptr, end, False)
+    c = code[item + 1]
+    if op == LITERAL:
+        while ptr < end and s[ptr] != c:
+            ptr += 1
+        return ptr
+    while ptr < end:
+        # (lower_ascii() and, for LITERAL_UNI_IGNORE, lower_unicode() as they would apply)
+        ch = s[ptr]
+        if ch < 128:
+            if 65 <= ch and ch <= 90:
+                ch += 32
+        elif op == LITERAL_UNI_IGNORE:
+            ch = _mapped(0, ch)
+        if ch == c:
+            break
+        ptr += 1
+    return ptr
 
 
 def _first_ignore(state: State, code: list[int], item: int, ptr: int) -> bool:
