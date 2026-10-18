@@ -140,7 +140,10 @@ ordinary execution with a hand-written guarded control. Correct generic fallback
 behavior is required for every alternative. This prototype makes no performance
 claim and does not demonstrate a benefit from online specialization. A
 [measured checkpoint](reports/native-json-2026-10-18.md) finds parsing dominates
-this workload and the guarded-processing results remain inconclusive.
+this workload and the guarded-processing results remain inconclusive. A
+[parser follow-up](reports/native-json-parser-2026-10-18.md) makes AOT parsing
+7.5–8.6× faster, compares CPython and PyPy, and times processing without parsing;
+the guard stays inconclusive in AOT, and allocation now dominates the parse.
 
 ## Validation and reproduction
 
