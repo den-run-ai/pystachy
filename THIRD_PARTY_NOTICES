@@ -129,6 +129,10 @@ tools/unicodedata_tables.py from CPython's unicodedata module and from the Unico
 Database (see "Unicode Character Database" below). They are derived from Python and are used
 under the same license and copyright notice.
 
+src/pystachy_compiler/unicode_names.py adapts the names-only decoder from
+lib/_pystachy_unicodedata.py for single-character source literal escapes. It reuses
+the generated names table and is used under the same Python license and notice.
+
 lib/_pystachy_itertools.py ports CPython 3.13.16's Modules/itertoolsmodule.c to Pystachy's
 subset as generators that follow the pure-Python equivalents in its Doc/library/itertools.rst,
 with the C module's behaviour, messages and docstrings; it is derived from Python and is used

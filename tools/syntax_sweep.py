@@ -7,7 +7,7 @@ method and of a class. CPython's compile() is the reference (it never runs what 
 compiler (default ./pystachy; "python3 pystachy.py" works too) runs "check", which parses the
 file with the checks CPython makes before running a file and compiles nothing. Prints each case
 whose verdicts differ (the SyntaxError's line and message, or none), then the counts. Valid code
-Pystachy cannot parse (tabs in indentation, \\N{...} escapes) counts apart.
+Pystachy cannot parse (such as tabs in indentation) counts apart.
 """
 import concurrent.futures
 import os

@@ -294,7 +294,7 @@ for shard in 0 1 2; do
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
   [ $# != 0 ] || { echo 'empty CPython-hosted shard' > "$L"; step tests-cpython-$shard fail "$s" "$L" ""; continue; }
-  { $PY -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]' &&
+  { $PY -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py", "lib/_pystachy_unicodedata_names.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]' &&
     tests/run.sh "$PY -m pystachy" "jit aot" "$@"; } > "$L" 2>&1
   x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
   step tests-cpython-$shard $r "$s" "$L" ', "compiler": "CPython-hosted", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 3'"$x"
@@ -330,13 +330,13 @@ for shard in 0 1; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 58 with the native compiler and 60 with CPython's, including component edits)
+# whose checks are 58 with the native compiler and 63 with CPython's, including component/table edits)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
 PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((58 + 60)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((58 + 63)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 
@@ -657,7 +657,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-paths = [Path(p) for p in ("pystachy.py", "runtime.c", "runtime.py")]
+paths = [Path(p) for p in ("pystachy.py", "runtime.c", "runtime.py", "lib/_pystachy_unicodedata_names.py")]
 paths += sorted(Path("src").rglob("*.py"))
 sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
                     "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}
