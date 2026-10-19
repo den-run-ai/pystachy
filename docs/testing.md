@@ -119,8 +119,9 @@ The oracle compares emitted IR byte for byte, and rejection messages and exit st
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
-`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries or
-runtime calls recorded for `tests/ir/*.py`. These probes compile without running;
+`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
+runtime calls or function attributes recorded for `tests/ir/*.py` (`NAME.fx`, `NAME.calls`,
+`NAME.attrs`). These probes compile without running;
 `tests/ir/pending/` holds probes for open bugs.
 
 ## Syntax errors against CPython
@@ -141,6 +142,8 @@ counts and syntax-survey results are retained as [historical snapshots](archive/
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
+A pull request that changes only Markdown files or `docs/` skips the CI, Installation and
+Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 Twenty-three groups run in parallel, each with its own fixed-point bootstrap. The target is under

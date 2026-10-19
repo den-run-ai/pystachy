@@ -66,6 +66,30 @@ int main(void) {
   pys_list_remove(haystack, (I)uright, desc);
   if (haystack->len != 1 || haystack->a[0] != (I)uleft) bad("boxed DAG removal");
   limit = (I)1 << 40;
+  /* Named recursive descriptors use byte-relative edges rather than expanding
+     a JSON-shaped type to the input's depth. The same boxes retain aliases. */
+  desc = cstr("?U4:1:i2:s3:LR13:4:DsR21:");
+  child = pys_list_new(3);
+  pys_list_append(child, (I)pys_ubox(1, 7));
+  pys_list_append(child, 0);
+  pys_list_append(child, (I)pys_ubox(2, (I)cstr("text")));
+  dleft = pys_dict_new(1, 0);
+  pys_dict_set(dleft, (I)cstr("items"), (I)pys_ubox(3, (I)child));
+  left = pys_list_new(1);
+  pys_list_append(left, (I)pys_ubox(4, (I)dleft));
+  dright = pys_dict_new(1, 0);
+  pys_dict_set(dright, (I)cstr("items"), (I)pys_ubox(3, (I)pys_list_copy(child)));
+  right = pys_list_new(1);
+  pys_list_append(right, (I)pys_ubox(4, (I)dright));
+  uleft = pys_ubox(3, (I)left); uright = pys_ubox(3, (I)right);
+  if (!pys_eq((I)uleft, (I)uright, desc)) bad("recursive descriptor equality");
+  if (strcmp(pys_repr((I)uleft, desc)->s, "[{'items': [7, None, 'text']}]") != 0) bad("recursive descriptor repr");
+  pys_list_append(child, (I)pys_ubox(1, 8));
+  if (pys_eq((I)uleft, (I)uright, desc)) bad("recursive descendant mutation lost");
+  left = pys_list_new(1); uleft = pys_ubox(3, (I)left);
+  pys_list_append(left, (I)uleft);
+  if (strcmp(pys_repr((I)uleft, desc)->s, "[[...]]") != 0 || !pys_eq((I)uleft, (I)uleft, desc))
+    bad("recursive cycle identity or repr");
   for (int h = 0; h < 2; h++) {        /* objects of field i: P000 by identity, H000 by i % 4 and their fields */
     I kind = (I)cstr(h ? "H000" : "P000");
     dleft = pys_dict_new(kind, 0); dright = pys_dict_new(kind, 0); sleft = pys_set_new(kind); sright = pys_set_new(kind);

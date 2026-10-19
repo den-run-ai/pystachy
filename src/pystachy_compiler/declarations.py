@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     ITERS,
     METHODS,
     MODFUNCS,
+    OPAQUE,
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
@@ -28,6 +29,7 @@ from src.pystachy_compiler.specs import (
     STANDINS,
     STUB,
     TYPEARGS,
+    TYPEMODS,
     TYPEVAR,
     TYPE_SIZE,
     TYPING,
@@ -70,6 +72,12 @@ from src.pystachy_compiler.utils import (
 def gen_ctype(self, base: str, ts: list[str]) -> str:
     # A composite type, checking its serialized size before join copies any children.
     # In a recursive template, a two-item tuple may double this on every instance.
+    # Recursive value aliases have finite self edges in mutable storage. Only
+    # fold the exact element/value type; never widen an existing container.
+    if base == "list" and len(ts) == 1:
+        ts = [self.rec_fold(ts[0])]
+    elif base == "dict" and len(ts) == 2:
+        ts = [ts[0], self.rec_fold(ts[1])]
     size = len(base) + 2 + (len(ts) - 1 if len(ts) > 0 else 0)
     for t in ts:
         size += len(t)
@@ -578,6 +586,48 @@ def gen_alias_kept(self, name: str) -> bool:
         return self.alias_kept(v.s)
     return v.kind == "name" and v.s in ["int", "float", "str", "bool"]
 
+def gen_rec_type(self, t: str) -> str:
+    # Unfold one named edge only. The result still contains finite rec[...] edges.
+    if t.startswith("rec[") and t.endswith("]"):
+        return self.recursive.get(t[4:-1], t)
+    return t
+
+def gen_rec_fold(self, t: str) -> str:
+    # Mutable storage uses the named edge, while values expose its outer shape.
+    for name in self.recursive:
+        if self.recursive[name] == t:
+            return "rec[" + name + "]"
+    return t
+
+def gen_recursive_aliases(self) -> None:
+    # Nongeneric PEP 695 aliases of scalar/None members, list[Self] and
+    # dict[str, Self]. Self edges occur only behind containers. Other recursive
+    # forms keep alias_ann's diagnostic; no alias cycles or depth expansion.
+    for name in self.taliases:
+        st = self.taliases[name]
+        if st.kind != "typealias" or st.kids[0].s != "":
+            continue
+        members: list[str] = []
+        recursive = False
+        valid = True
+        for n in self.union_members(self.alias_value(name), []):
+            if n.kind == "None":
+                members.append("None")
+            elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
+                members.append(n.s)
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and n.kids[1].kind == "name" and n.kids[1].s == name:
+                members.append("list[rec[" + name + "]]")
+                recursive = True
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and n.kids[1].kids[1].kind == "name" and n.kids[1].kids[1].s == name:
+                members.append("dict[str,rec[" + name + "]]")
+                recursive = True
+            else:
+                valid = False
+        if valid and recursive:
+            t = self.union_type(members)
+            if is_union(unopt(t)):
+                self.recursive[name] = t
+
 def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     # annotation a with each type alias that it names replaced by the alias's value, where a
     # generic alias's type arguments replace its type parameters; what cannot be replaced (a
@@ -586,6 +636,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     k = a.kind
     if k == "noann":
         return a  # (a generic def's, which types nothing)
+    if k == "name" and a.s in self.recursive:
+        return a  # preserve the named graph, never expand its self edge
     self.unaliased += 1  # (the nodes it has made of the annotation, which aliases of aliases can double)
     if self.unaliased > TYPE_SIZE:
         self.err(f"the type aliases this annotation names expand to more than {TYPE_SIZE} nodes (not supported: simplify them)")
@@ -616,6 +668,8 @@ def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
 def gen_alias_ann(self, n: Node) -> str:
     # the type that annotation n, type alias X or X[...], denotes, or "!" and why not
     name = n.s if n.kind == "name" else n.kids[0].s
+    if n.kind == "name" and name in self.recursive:
+        return self.recursive[name]
     tps = self.alias_params(name)
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
@@ -787,6 +841,8 @@ def gen_opt(self, t: str, x: Node) -> str:
 
 def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none
+    if self.rec_type(t) != t:
+        return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
         return t
     if is_union(t):
@@ -839,8 +895,8 @@ def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be
     # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
     # containers made of both; "" if there is none (an int is no int | None as it is: that is a box)
-    if a == b:
-        return a
+    if self.rec_type(a) == self.rec_type(b):
+        return b
     if a in self.classes and b in self.classes:
         return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
@@ -919,6 +975,8 @@ def gen_widens(self, a: str, b: str) -> bool:
     # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
     # type), an object of an exception class as one of a base class (whose layout its own
     # extends), and a tuple item by item (tuples cannot change, so their items can widen)
+    a = self.rec_type(a)
+    b = self.rec_type(b)
     if a == b:
         return True
     if is_opt(b):
@@ -2312,10 +2370,13 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
 
 def gen_glue_field(self, o: Val, name: str) -> None:
-    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others
+    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others;
+    # one of OPAQUE's (weakref.ReferenceType) too, as CPython's object has no such attribute
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
+    if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+        self.err(f"'{TYPEMODS.get(ci.mod, ci.mod)}.{short(ci.name)}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body

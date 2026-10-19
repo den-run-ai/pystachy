@@ -16,23 +16,31 @@ CPython's `ast.py`, `inspect`, `unittest`, pytest or regrtest now work.
 
 | Surface | Contract |
 |---|---|
-| Bases | `AST`, `mod`, `expr`, `expr_context`, `operator`, `unaryop`; normal subclass `isinstance` checks |
+| Bases | `AST`, `mod`, `expr`, `expr_context`, `boolop`, `operator`, `unaryop`, `cmpop`; normal subclass `isinstance` checks |
 | Roots | `Expression(body: expr)` |
 | Leaves | `Constant(value, kind=None)` for `int`, `float`, `str`, `bool`, `None`; `Name(id: str, ctx: expr_context | None = Load())` |
-| Expressions | `BinOp(left: expr, op: operator, right: expr)`, `UnaryOp(op: unaryop, operand: expr)` |
+| Operations | `BinOp(left, op: operator, right)`, `UnaryOp(op: unaryop, operand)`, `BoolOp(op: boolop, values: list[expr])`, `Compare(left, ops: list[cmpop], comparators: list[expr])`, `IfExp(test, body, orelse)`, `NamedExpr(target, value)` |
+| Calls and access | `Call(func, args: list[expr], keywords: list[keyword])`, `keyword(arg: str | None, value)`, `Attribute(value, attr: str, ctx)`, `Subscript(value, slice, ctx)`, `Slice(lower=None, upper=None, step=None)`, `Starred(value, ctx)` |
+| Displays | `List(elts, ctx)`, `Tuple(elts, ctx)`, `Set(elts)`, `Dict(keys: list[expr | None], values: list[expr])`; a `None` key stands for `**mapping` |
+| Generators and coroutines | `Await(value)`, `Yield(value=None)`, `YieldFrom(value)` |
 | Context tags | `Load`, `Store`, `Del` |
+| Boolean operator tags | `And`, `Or` |
 | Binary operator tags | `Add`, `Sub`, `Mult`, `MatMult`, `Div`, `Mod`, `Pow`, `LShift`, `RShift`, `BitOr`, `BitXor`, `BitAnd`, `FloorDiv` |
 | Unary operator tags | `Invert`, `Not`, `UAdd`, `USub` |
-| Metadata | CPython 3.13's `_fields`, `_attributes` and `__match_args__` tuples for these classes and instances, including inherited metadata |
+| Comparison tags | `Eq`, `NotEq`, `Lt`, `LtE`, `Gt`, `GtE`, `Is`, `IsNot`, `In`, `NotIn` |
+| Metadata | CPython 3.13's `_fields`, `_attributes` and `__match_args__` tuples for these classes and instances, including inherited metadata; `type(node).__module__` and reprs name `ast`, as CPython's types do |
 | Flags | `PyCF_ONLY_AST`, `PyCF_TYPE_COMMENTS`, `PyCF_ALLOW_TOP_LEVEL_AWAIT`, `PyCF_OPTIMIZED_AST`; exposing values does not implement the associated `compile()` operations |
 | Mutation | Existing typed fields can be reassigned; sharing a child preserves reference identity and makes mutations visible through its parents |
 
 Constructors accept the named fields as positional or keyword arguments. Supply
-all required fields explicitly. `Constant.kind` defaults to `None`; `Name.ctx`
-defaults to a shared `Load` object, as in CPython 3.13. Explicit `ctx=None` stays
-`None`, and an explicitly supplied context retains its identity. Changing one
-name's `ctx` field does not change another name's field. Operator tags describe
-syntax; their presence does not add evaluation of those operators to the module.
+all required fields explicitly. Unannotated fields above are `expr`. As in CPython
+3.13, an optional field left out is `None`, a list field left out is a new empty
+list of the node's own, and a context left out is the one `Load` object that every
+node shares (`List().ctx is Name("x").ctx`). Explicit `ctx=None` stays `None`, and
+an explicitly supplied context or list retains its identity: the node keeps the
+list it is given, not a copy. Changing one name's `ctx` field does not change
+another name's field. Operator tags describe syntax; their presence does not add
+evaluation of those operators to the module.
 
 Example, unchanged under CPython:
 
@@ -47,9 +55,14 @@ node.right = ast.Constant(5)
 
 ## Explicit boundaries
 
-- No statements, modules of statements, calls, comparisons, collections,
-  comprehensions, function definitions, pattern matching or type parameters.
-  Importing an absent class such as `Module` is rejected by the compiler.
+- No statements, modules of statements, comprehensions (`ListComp` and the
+  others, `comprehension`), `Lambda` and its `arguments`/`arg`, f-string nodes
+  (`JoinedStr`, `FormattedValue`), function definitions, pattern matching or type
+  parameters. Importing an absent class such as `Module` is rejected by the compiler.
+- `keyword` takes `arg` explicitly (`keyword(None, value)` for `**mapping`): CPython
+  3.13's default `None` precedes the required `value`, which a typed constructor
+  cannot express. A list field takes a list; CPython keeps an explicit `None` there
+  and rejects it only in `compile()`.
 - No source parser or `compile(..., PyCF_ONLY_AST)` bridge. `compile()` remains
   an unsupported call. `_ast` itself does not have CPython's `ast.parse()` helper;
   adding an inert function with that name would not implement the public API.
@@ -74,8 +87,9 @@ node.right = ast.Constant(5)
 - Typed constructors and mutation enforce the field types they declare. CPython
   permits several malformed tree constructions and validates them later in
   `compile()`. This slice does not implement that delayed validation protocol.
-- Traversal and transformation in the test are application functions, not an
-  implementation of `ast.walk`, `NodeVisitor`, `NodeTransformer` or `ast.dump`.
+- Traversal, transformation, printing and evaluation in the tests are application
+  functions, not an implementation of `ast.walk`, `NodeVisitor`, `NodeTransformer`,
+  `ast.dump`, `ast.unparse` or `ast.literal_eval`.
 
 The public `AST` hierarchy makes typed visitors feasible, but deep recursion,
 cycles and whole-schema compatibility have not been established. A future parser
@@ -134,7 +148,7 @@ the metadata path to crash or silently treating them as ordinary classes.
 ```sh
 make
 PYTHON=python3.13 tests/record.sh lib_ast_nodes lib_ast_transform lib_ast_match_args \
-  lib_ast_name_default class_field_metadata
+  lib_ast_name_default lib_ast_expressions class_field_metadata
 tests/run.sh ./pystachy "jit aot" tests/lib_ast_*.py \
   tests/class_field_metadata.py tests/errors/lib_ast_*.py \
   tests/errors/namedtuple_subclass_*.py
@@ -145,7 +159,12 @@ PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy "jit aot" \
 The tests compare the same programs directly to CPython's native `_ast`, including
 all supported constant kinds and operator tags, inherited metadata, field
 mutation, shared children, recursive construction and a tree-transform consumer.
-Rejection tests cover bytes constants, location keywords, statement nodes,
+`tests/lib_ast_expressions.py` adds every other node's metadata, the 3.13
+defaults (fresh lists, the shared `Load`, `None`), kept lists, and a source
+printer and evaluator over boolean operations, chained comparisons, calls with
+keywords and unpacking, subscripts, slices and displays, then rewrites shared
+children in place. Rejection tests cover bytes constants, location keywords,
+statement and comprehension nodes, a `keyword` without `arg`, a `None` list field,
 invalid operator types, the unsupported `compile` bridge, actual `match`
 statements and NamedTuple subclass metadata. These measure API
 execution and honest boundaries; they do not turn an import-only audit result

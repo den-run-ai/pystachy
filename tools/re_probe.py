@@ -22,7 +22,9 @@ literal enters the tail only where that literal is: the contexts the matcher ent
 A search whose pattern begins with alternatives that all begin with literals and classes, or
 whose matches all hold literals at a bounded offset from their start, enters the matcher only
 where those can be: its entries are counted. Warm case-insensitive and Unicode classes answer
-repeated non-ASCII code points from memos: no charset() evaluation, no case-mapping search.
+repeated non-ASCII code points from memos: no charset() evaluation, no case-mapping search. The
+bit-parallel filter of such alternatives gives no bits, untested, to a non-ASCII character that
+none of their leading items may match, and answers the others from its memo once warm.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -30,6 +32,7 @@ CPython's own re, for information only.
 
 usage: python3 tools/re_probe.py [--time PYSTACHY]   (make re-probe; a step of make verify)
 """
+import builtins
 import importlib.util
 import os
 import random
@@ -44,6 +47,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import re_bench  # noqa: E402  (the patterns and the inputs)
 
+# lib/re's private primitives, which Pystachy compiles for re alone: a str's UTF-8 size, and the
+# bytes of a str whose every character is a byte (an ASCII str, on CPython)
+builtins.__pys_text_size = lambda s: len(s.encode("utf-8", "surrogatepass"))
+builtins.__pys_text_bytes = lambda s: s.encode("latin-1")
 _spec = importlib.util.spec_from_file_location("pys_re", os.path.join(ROOT, "lib", "re", "__init__.py"),
                                                submodule_search_locations=[os.path.join(ROOT, "lib", "re")])
 port = importlib.util.module_from_spec(_spec)
@@ -391,6 +398,64 @@ def check_unicode_memos() -> int:
     return failed
 
 
+def check_branch_memos() -> int:
+    # The bit-parallel filter of alternatives over text from U+0080: a character that none of their
+    # leading literals and classes may match has no bits, untested. Another, once warm, answers
+    # from the filter's memo which alternatives it begins, and tests only the next items of the
+    # matches under way, never every item (_branch_bits(), which does, is not called). The items
+    # _branch_test() tests are counted.
+    failed = total = 0
+    original = (sre._branch_test, sre._branch_bits)
+    counted = {"tests": 0, "bits": 0}
+
+    def counted_test(state, code, pf, cand, ch):
+        counted["tests"] += bin(cand).count("1")
+        return original[0](state, code, pf, cand, ch)
+
+    def counted_bits(state, code, b, n, ch):
+        counted["bits"] += 1
+        return original[1](state, code, b, n, ch)
+
+    cyr = "абвгдежзийклмнопрстуфхцчшщъыьэюя"
+    words = ["привет", "мир", "ошибка", "сообщение", "журнал", "error", "запись"]
+    russian = " ".join([words[(i * 5 + i // 3) % 7] for i in range(2000)])
+    letters = "".join([cyr[(i * 7) % 32] for i in range(3000)])
+    # (3,000 characters from U+4E00, more than the memo holds, and two phrases of 31 of them)
+    cjk = "".join([chr(0x4E00 + ((i * 7919) % 3000 if i % 3 else (i * 31) % 200)) for i in range(3000)])
+    phrases = "".join([chr(0x4E00 + (i * 37) % 3000) for i in range(31)]) + "|" + \
+        "".join([chr(0x4E00 + (i * 41 + 5) % 3000) for i in range(31)])
+    cases = [
+        (r"(?:error|warning)", russian, 0),
+        (r"agggtaaa|tttaccct", letters, 0),
+        (r"[cgt]gggtaaa|tttaccc[acg]", russian, 0),
+        (r"(?:прив|мир)", russian, 1429),
+        (r"(?:" + cyr[:31] + "|" + cyr[1:32] + ")", letters, 187),
+        (r"(?:[а-я][б-я]x|[в-я][г-я]y)", letters, 5811),
+        (r"(?:" + phrases + ")", cjk, 5919),
+    ]
+    sre._branch_test, sre._branch_bits = counted_test, counted_bits
+    try:
+        for pattern, text, limit in cases:
+            mine = port.compile(pattern)
+            theirs = re.compile(pattern)
+            mine.findall(text)  # (builds the filter and warms its memo)
+            counted["tests"] = counted["bits"] = 0
+            if mine.findall(text) != theirs.findall(text):
+                print(f'branch memo differs: {pattern[:40]!r}')
+                failed += 1
+            n = counted["tests"]
+            total += n
+            if n > limit or counted["bits"] > 0:
+                print(f'branch memos: {pattern[:40]!r}: {n} items tested (limit {limit}), '
+                      f'{counted["bits"]} _branch_bits() calls (limit 0)')
+                failed += 1
+    finally:
+        sre._branch_test, sre._branch_bits = original
+    print(f'branch memos: {total} items tested over {len(cases)} warm cases of {sum([len(c[1]) for c in cases])} '
+          f'characters, no _branch_bits() call')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -417,6 +482,7 @@ def main() -> int:
     failed += check_nested_matches()
     failed += check_prefilters()
     failed += check_unicode_memos()
+    failed += check_branch_memos()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:

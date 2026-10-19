@@ -1591,8 +1591,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
             o = self.unwrap(o, nosub)
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment"))
+            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
+            # the frame where __setitem__ only reads it: stack_key)
+            keyt = self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.notnone(o, nosub)
             self.protocol(o, "__setitem__", [ik, v])
         elif is_kw(o.t):

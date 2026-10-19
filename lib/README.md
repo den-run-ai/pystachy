@@ -29,6 +29,7 @@ Imports search builtin modules first, then the program's directory,
 | `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
 | `io` | Subset implementation | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes | `StringIO`'s byte positions; lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure` |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
+| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators | Signed 64-bit integers, 256-container depth, string keys; no hooks, indentation or file APIs; see [scope](../docs/json-prototype.md) |
 | `re` | Subset port of parser/compiler and C engine | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
 | `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
@@ -50,7 +51,8 @@ Imports search builtin modules first, then the program's directory,
 | `types` | Subset implementation (`_pystachy_types`, and the compiler's `_pystachy_typenames`) | `TracebackType`, for `__exit__`'s annotation; `GenericAlias`, for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` in a class body | Its other names import, but any use of one is a compile-time error; a generic-alias class's subscripts at run time are too |
 | `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 | `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
-| `_ast` | Experimental typed subset (`_pystachy_ast`) | `Expression`, `Constant`, `Name`, `BinOp`, `UnaryOp`, operator/context tags and their metadata | Constructor/field-access prototype only; no source parsing, AST compilation, statements or locations; see [scope and tests](../docs/prototypes/ast.md) |
+| `_ast` | Experimental typed subset (`_pystachy_ast`) | `Expression` and the expression nodes but comprehensions, lambdas and f-strings (`Constant`, `Name`, `BinOp`, `UnaryOp`, `BoolOp`, `Compare`, `Call`, `keyword`, `Attribute`, `Subscript`, `Slice`, `List`, `Tuple`, `Dict`, ...), operator/context tags and their metadata | Constructor/field-access prototype only; no source parsing, AST compilation, statements or locations; see [scope and tests](../docs/prototypes/ast.md) |
+| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()` and `repr()` as CPython's, though referents die at collection rather than at the last reference | No callbacks, proxies, reference counts or weak containers; the `weakref` module does not import; see [contract](../docs/prototypes/weakref.md) |
 
 The [compatibility reference](compatibility.md) defines each module's accepted
 inputs, unsupported APIs and observable differences from CPython. The
@@ -60,7 +62,8 @@ coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
 The [POSIX select prototype](../docs/prototypes/select.md) provides
-`select.select` on integer descriptor lists; other select APIs remain unsupported.
+`select.select` on integer descriptor lists, which a file's `fileno()` gives;
+other select APIs remain unsupported.
 
 <!-- Existing section links remain valid. Detailed contracts moved to compatibility.md. -->
 <a id="difflib-a-port-of-cpythons"></a>
@@ -142,7 +145,4 @@ Example tables record particular runs; they are not universal performance claims
 CPython-derived files and code are used under the PSF License Version 2.
 See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES). The
 [stdlib coverage guide](../docs/stdlib.md) describes the wider import sweep.
-
-The experimental [`_weakref` prototype](../docs/prototypes/weakref.md) provides
-typed, collector-backed references to ordinary class instances, with explicit API limits.
 

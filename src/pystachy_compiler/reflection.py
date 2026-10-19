@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, RANGEC
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OPAQUE, RANGEC, TYPEMODS
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -163,6 +163,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         if c.startswith("_pystachy_iterators$") or c == RANGEC:
             return "builtins" if what == "__module__" else short(c)
         mod = q[: q.rfind(".")] if "." in q else "__main__"
+        mod = TYPEMODS.get(mod, mod)  # (_weakref's ReferenceType is CPython's weakref.ReferenceType)
         o = ci.origin if ci.origin != "" else c
         if o in self.cnts and self.cnts[o].kids[2].kind == "str":
             mod = self.cnts[o].kids[2].s  # (namedtuple(..., module=...)'s)
@@ -787,6 +788,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "a range"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
+    elif ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+        self.err(f"{what} of a {TYPEMODS.get(ci.mod, ci.mod)}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own, and CPython's object has no attributes of its own")
     elif ci.bad != "":
         why = ci.bad
     if why != "":
