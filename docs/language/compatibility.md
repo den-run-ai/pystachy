@@ -779,8 +779,9 @@ supported alternatives.
   `dir()` and `vars()`
 - `object()` with arguments (CPython's `TypeError`), assigning an attribute of an object it
   makes (CPython's `AttributeError`), and a variable, return value or `dict.get()` default that
-  would hold either such an object or a value of another type: no union holds one yet (#251); see
-  [sentinels](semantics.md#sentinels)
+  would hold either such an object or a value of another type: no union holds one yet (#251); a
+  call of `object` by another name (`builtins.object()`, an alias) in a module that never calls
+  `object()` itself: see [sentinels](semantics.md#sentinels)
 - a keyword argument Pystachy does not take (`os.path.realpath(p, strict=True)`)
 - a `key=` that may be `None` (`Callable | None`) of items that have no order without a key (a
   closed union, functions)
