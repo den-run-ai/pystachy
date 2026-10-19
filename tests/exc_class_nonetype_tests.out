@@ -1,0 +1,17 @@
+NoneType True True False False
+False False False True
+False False True True
+True
+KeyError True False True False
+True True True True
+True True True False
+False
+True
+TypeError isinstance() arg 2 must be a type, a tuple of types, or a union
+TypeError isinstance() arg 2 must be a type, a tuple of types, or a union
+TypeError isinstance() arg 2 must be a type, a tuple of types, or a union
+True True
+False False
+False False
+True True
+[exit 0]

@@ -185,7 +185,9 @@ keys, division by zero, failed file opens and integer overflow can be caught.
 
 User-defined exception classes can derive from a supported builtin exception or another
 exception class in the program. They can define fields, constructors and string
-representations. `raise`, bare re-raise and `raise ... from ...` are supported.
+representations. `raise`, bare re-raise and `raise ... from ...` are supported. Exception
+classes are values too: stored, compared, tested with `issubclass()` and `isinstance()`,
+called and raised ([exception classes as values](language/semantics.md#exception-classes-as-values)).
 
 Exception attributes such as `e.args`, exception groups and `except*` are not supported.
 Uncaught exceptions print the final error line rather than a complete traceback.

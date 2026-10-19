@@ -264,7 +264,8 @@ in the code being compiled and in the module-level code compiled so far; for a g
 arm of a value that reads the global itself (`n = 1 if n is None else n + 1`); for a field, in
 the class's `self.x = v` assignments, typed as `__init__`'s are. Otherwise a function or method
 that assigns it, unless it is a template (a parameter without an annotation), is compiled
-first. A comparison with `None` by `is` needs no type. A global or field that no code gives
+first; `self.x = v` in a method of an unrelated class assigns that class's own field, not this
+one. A comparison with `None` by `is` needs no type. A global or field that no code gives
 another value reads as `None`. Where none of this finds a type in time, annotate it:
 `last: str | None = None`, `self.next: Node | None = None`.
 

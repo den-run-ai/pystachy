@@ -1,0 +1,13 @@
+text plain NoneType
+UserWarning w NoneType
+text v NoneType
+AppWarning a type
+text t type
+False False False
+False False False
+True True False
+type type builtins
+type type builtins
+type type builtins
+NoneType builtins type builtins type builtins
+[exit 0]

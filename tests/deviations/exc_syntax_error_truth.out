@@ -1,0 +1,7 @@
+__bool__
+SyntaxError flag
+__bool__
+SyntaxError flag
+__bool__
+IndentationError flag
+[exit 0]

@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNARY,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.utils import (
@@ -408,6 +409,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
+    if c.s == "type" and t == "exctype":
+        return 1  # (an exception class's class object is a type)
+    if is_excname(c.s) and t != "exc" and not (t in self.classes and self.classes[t].exc != ""):
+        return 0  # (a value that is no exception, such as a class object, is no instance of one)
     if c.s == "type" and t.startswith("fn[b:"):
         # a builtin's value: one of CPython's builtin classes (int, list, ...) is a type
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
@@ -616,8 +621,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "excinfo":
-        # (with_cm's except clause: the exception it handles, and its class as an exctype)
-        return Val(self.excs[-1].v, "exctype" if n.s == "type" else "exc")
+        # (with_cm's except clause: the exception it handles, and its class's class object)
+        if n.s == "type":
+            return self.exc_type_of(Val(self.excs[-1].v, "exc"))
+        return Val(self.excs[-1].v, "exc")
+    if k == "excobj":
+        # (exc_ctors: an object of exception class n.s, made of the arguments n.kids)
+        return self.exc_of(self.exc_object(n.s, n.kids))
     if k == "int":
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
@@ -722,6 +732,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
+            self.class_ready(n.kids[0])
+            q = shown(c)
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -765,10 +780,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "exc" and n.s == "__cause__" and self.causeread:
             # (raise ... from c's c, or the StopIteration of PEP 479's RuntimeError; else None)
             return Val(self.rt("pys_exc_cause", "ptr", [f"ptr {o.v}"]), "opt[exc]")
-        if unopt(o.t) == "exctype" and n.s == "__name__":
-            # (the class of an exception, as __exit__ takes it: the exception itself)
-            o = self.unwrap(o, "AttributeError: 'NoneType' object has no attribute '__name__'")
-            return Val(self.rt("pys_exc_name", "ptr", [f"ptr {o.v}"]), "str")
+        if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's class object: its name, qualified name and module)
+            o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
+            return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
@@ -3477,6 +3493,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
             self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
         return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
+    if (op == "==" or op == "!=") and (unopt(a.t) == "exctype" or unopt(b.t) == "exctype"):
+        # class objects of exception classes: by identity (each class has one), and never equal
+        # to a value of another type (but None, which a class object that may be None is)
+        o = b.t if unopt(a.t) == "exctype" else a.t
+        if unopt(o) == "exctype" or o == "None":
+            return self.ptr_cmp(op, a, b)
+        if o in self.classes or is_union(unopt(o)):
+            self.err(f"comparing an exception class with {typestr(o)} is not supported")
+        return Val("false" if op == "==" else "true", "bool")
     if op == "is" or op == "is not":
         if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
             # a number or bool is never None

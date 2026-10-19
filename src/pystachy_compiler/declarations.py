@@ -2123,6 +2123,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return f"fn[f:{e.s}]" if e.s in self.funcs else f"fn[b:{e.s}]"
+    if k == "name" and ((e.s in self.classes and self.classes[e.s].exc != "") or (is_excname(e.s) and e.s not in self.funcs and e.s not in self.classes and e.s not in self.mvars)):
+        # an exception class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "exctype"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2434,8 +2440,17 @@ def gen_field_early(self, root: ClassInfo, name: str) -> str:
     # value of another type than None is compiled: each function or method that stores to an
     # attribute name a value other than None, and that is no template, is compiled now (the
     # methods of root and of the classes deriving from it first), as early compiles a function
-    # for a global, until one of them gives the field its type; "" if none does
+    # for a global, until one of them gives the field its type; "" if none does. As for
+    # set_elsewhere, self.name = v in a method of a class that neither derives from root nor is a
+    # base of it stores that class's own field, so such a method is not compiled for it
     fam = [root] + [c for c in self.classes.values() if c is not root and self.derives(c.name, root.name)]
+    rel: dict[str, bool] = {}  # (the names of root's family and of its bases)
+    for c in fam:
+        rel[c.name] = True
+    b = root.base
+    while b in self.classes:
+        rel[b] = True
+        b = self.classes[b].base
     fs: list[FnInfo] = []
     for c in fam:
         fs.extend([m for m in c.methods.values() if m.cls == c.name])
@@ -2450,7 +2465,8 @@ def gen_field_early(self, root: ClassInfo, name: str) -> str:
             continue
         found: list[Node] = []
         attr_fills(m.node.kids[2].kids, name, found)
-        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i])]) == 0 or self.unready(m.node.kids[2], m.mod, {}):
+        me = m.params[0] if takes_self(m) and len(m.params) > 0 and m.cls not in rel else ""
+        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i]) and not (found[i - 1].kind == "name" and found[i - 1].s == me)]) == 0 or self.unready(m.node.kids[2], m.mod, {}):
             continue
         self.making.append(f"compiling {short(m.name) if m.cls == '' else short(m.cls) + '.' + m.name}() for the type of field '{name}' at {where(self.line)}")
         fr = self.save()
