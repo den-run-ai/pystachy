@@ -9,7 +9,8 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 
 static List *refs;
 static void *strong;
-static I *roots[] = {(I *)&refs, (I *)&strong};
+static void *owner;                   /* what a reference object with a callback would be: it keeps its fire function */
+static I *roots[] = {(I *)&refs, (I *)&strong, (I *)&owner};
 static _Noreturn void bad(const char *what) { fprintf(stderr, "weakrefprobe: %s\n", what); exit(1); }
 
 __attribute__((noinline)) static void scrub_collect(void) {
@@ -26,7 +27,7 @@ __attribute__((noinline)) static void make_pair(I size) {
   strong = target;
   pys_track(target, size, 0);        /* the same owner exercises the independent ffi.track sweep */
   for (I i = 0; i < 2; i++) {
-    WeakRef *r = pys_weakref_new(target);
+    WeakRef *r = pys_weakref_new(target, NULL);
     if (!(gc_seg(r)->k & 1)) bad("weak handle must be atomic");
     pys_list_append(refs, (I)r);     /* can collect between handle allocation and publication */
   }
@@ -49,7 +50,7 @@ __attribute__((noinline)) static void churn(void) {
   for (I i = 0; i < 1000; i++) {
     I *target = pys_alloc(16);
     target[0] = i;
-    WeakRef *r = pys_weakref_new(target);
+    WeakRef *r = pys_weakref_new(target, NULL);
     if (pys_weakref_get(r) != target) bad("new reference has wrong target");
   }
 }
@@ -58,6 +59,42 @@ __attribute__((noinline)) static I registry_size(void) {
   I n = 0;
   for (WeakRef *r = weakrefs; r; r = r->next) n++;
   return n;
+}
+
+/* A reference with a callback: its fire function (a heap object here) is queued once where its
+   target dies while the function is marked, and the queue keeps it until it is taken; one whose
+   reference object is dead is never queued. */
+__attribute__((noinline)) static void make_fired(I mark) {
+  I *target = pys_alloc(16);
+  target[1] = 321;
+  strong = target;
+  I *fire = pys_alloc(32);
+  fire[0] = mark;
+  owner = fire;
+  WeakRef *r = pys_weakref_new(target, fire);
+  pys_list_append(refs, (I)r);
+}
+
+__attribute__((noinline)) static void fired(void) {
+  refs = pys_list_new(4);
+  make_fired(777);
+  scrub_collect();
+  if (pys_weakref_fired()) bad("fire function queued while its target lives");
+  strong = NULL;
+  scrub_collect();
+  owner = NULL;                     /* only the queue keeps the fire function now */
+  churn(); scrub_collect(); scrub_collect();
+  I *f = pys_weakref_fired();
+  if (!f || f[0] != 777) bad("dead target's fire function not queued once, or not kept by the queue");
+  if (pys_weakref_fired()) bad("fire function queued twice");
+  scrub_collect();
+  if (pys_weakref_fired()) bad("fire function queued again after its target was cleared");
+  make_fired(778);                  /* the reference object dies with its target, while a stale */
+  owner = NULL; strong = NULL;      /* word might still mark the handle (refs here): no callback */
+  scrub_collect(); scrub_collect();
+  if (pys_weakref_fired()) bad("dead reference's fire function queued");
+  pys_list_clear(refs);
+  refs = NULL;
 }
 
 __attribute__((noinline)) static void exercise(void) {
@@ -81,10 +118,11 @@ __attribute__((noinline)) static void exercise(void) {
 }
 
 int main(void) {
-  gc_init(__builtin_frame_address(0), roots, 2);
+  gc_init(__builtin_frame_address(0), roots, 3);
   exercise();
+  fired();
   scrub_collect(); scrub_collect();
   if (registry_size() != 0) bad("registry not empty after dropping all references");
-  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning and tracked owners passed");
+  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners and callbacks passed");
   return 0;
 }

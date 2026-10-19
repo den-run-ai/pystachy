@@ -171,6 +171,8 @@ static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
 static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
+static void **wr_fired;                /* the fire functions of weak references whose referents died, */
+static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
 static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
                                      handled, the uncaught one whose str() is being shown, the one a with-file's
                                      close raised while unwinding (see exceptions), the one a generator raised
@@ -229,6 +231,7 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
   scan((const W *)&warnopts, (const W *)(&warnopts + 1));
+  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */
   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
     scan((const W *)&xr, (const W *)(&xr + 1));
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
@@ -396,25 +399,46 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
-   the target nor the next registry entry is a strong edge. The registry itself is NOT a
-   collector root. Prune dead handles before sweeping their storage, and clear surviving
-   handles whose targets were not marked before the target's address can be reused. */
+/* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
+   nor the next registry entry, nor the fire function is a strong edge. The registry itself is
+   NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused.
+   The fire function of a reference with a callback (_weakref's, a Callable[[], None] that calls
+   the callback with the reference, and that the reference object keeps alive) goes to wr_fired
+   where a collection clears its target while it is itself marked, so while the reference is:
+   once, newest handle first, as CPython calls a referent's callbacks, a newest reference first.
+   wr_fired is a root until _weakref takes the function to call it (pys_weakref_fired): a
+   collection runs no code, and a dead reference's callback is not called, as in CPython. */
 typedef struct WeakRef WeakRef;
-struct WeakRef { WeakRef *next; void *target; };
+struct WeakRef { WeakRef *next; void *target; void *fire; };
 static WeakRef *weakrefs;
-void *pys_weakref_new(void *target) {
+void *pys_weakref_new(void *target, void *fire) {
   WeakRef *ref = pys_alloc_atomic(sizeof *ref);
   ref->target = target;
+  ref->fire = fire;
   ref->next = weakrefs;
   weakrefs = ref;
   return ref;
 }
 void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+void *pys_weakref_fired(void) {        /* the next fire function to call, once; NULL: none */
+  if (wr_head == wr_nfired) return NULL;
+  void *f = wr_fired[wr_head];
+  wr_fired[wr_head++] = NULL;
+  if (wr_head == wr_nfired) wr_head = wr_nfired = 0;
+  return f;
+}
 __attribute__((noinline)) static void weakrefs_sweep(void) {
   for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
     if (!gc_marked(ref)) { *link = ref->next; continue; }
-    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    if (ref->target && !gc_marked(ref->target)) {
+      ref->target = NULL;
+      if (ref->fire && gc_marked(ref->fire)) {
+        if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
+        wr_fired[wr_nfired++] = ref->fire;
+      }
+      ref->fire = NULL;
+    }
     link = &ref->next;
   }
 }

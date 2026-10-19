@@ -179,11 +179,17 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
-    if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr":
+    if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr" or name == "__pys_weakref_fired":
         # Private library primitives; a handle's opaque type preserves its referent type
         # without storing a strong reference or permitting ordinary field access to it.
-        if self.curfn.mod != "_weakref" or len(args) != 1 or args[0].kind in ["kw", "starred", "dstar"]:
+        # __pys_weakref_new(o, fire) also holds fire, a Callable[[], None], unscanned, and
+        # __pys_weakref_fired() gives each fire function whose referent a collection found dead
+        # once (runtime.c, weak references), or None
+        n = 0 if name == "__pys_weakref_fired" else 2 if name == "__pys_weakref_new" and len(args) == 2 else 1
+        if self.curfn.mod != "_weakref" or len(args) != n or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
             self.err(f"name '{name}' is not defined")
+        if name == "__pys_weakref_fired":
+            return Val(self.rt("pys_weakref_fired", "ptr", []), "opt[callable[None]]")
         o = self.expr(args[0], "")
         if name == "__pys_weakref_addr":
             # (an object's address, which CPython's repr of a reference shows; a specialization for
@@ -198,7 +204,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                 self.err("_weakref.ref() prototype does not support exception or slotted instances")
             if self.classes[o.t].mod == "_weakref":
                 self.err("cannot create weak reference to a weakref.ReferenceType object")
-            return Val(self.rt("pys_weakref_new", "ptr", [f"ptr {o.v}"]), "weakhandle[" + o.t + "]")
+            fire = self.coerce(self.expr(args[1], "callable[None]"), "callable[None]").v if n == 2 else "null"
+            return Val(self.rt("pys_weakref_new", "ptr", [f"ptr {o.v}", f"ptr {fire}"]), "weakhandle[" + o.t + "]")
         if not o.t.startswith("weakhandle["):
             self.err("_weakref.ref() prototype requires an internal weak handle")
         return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
