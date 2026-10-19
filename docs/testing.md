@@ -199,3 +199,9 @@ The final report job allows ten minutes for artifact downloads and validation.
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
+
+The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
+fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
+the repository's own branches skip it. It runs main's copy of the workflow and of
+`tools/dco_check.py`, so a change to either takes effect once merged. The
+[contributor guide](../CONTRIBUTING.md#rights-and-sign-off) states the rule.
