@@ -24,12 +24,34 @@ class JSONDecodeError(ValueError):
         super().__init__(f"{msg}: line {self.lineno} column {self.colno} (char {pos})")
 
 
+def _u8len(data: bytes, i: int) -> int:
+    # The bytes of the character at data[i] as Pystachy's str counts characters: a UTF-8
+    # sequence (surrogates included), else the one byte.
+    c = data[i]
+    k = 1 if c < 0xC2 or c > 0xF4 else 2 if c < 0xE0 else 3 if c < 0xF0 else 4
+    if k == 1 or i + k > len(data):
+        return 1
+    value = c & (0x7F >> k)
+    for j in range(i + 1, i + k):
+        d = data[j]
+        if (d & 0xC0) != 0x80:
+            return 1
+        value = (value << 6) | (d & 0x3F)
+    if value < (0x80 if k == 2 else 0x800 if k == 3 else 0x10000) or value > 0x10FFFF:
+        return 1
+    return k
+
+
+_NO_KEY_BYTES: list[bytes] = []  # (never filled: key() replaces them)
+_NO_KEY_STRS: list[str] = []
+
+
 class _Parser:
     # The scanner reads the text's UTF-8 bytes: indexing bytes yields integers, without a
     # one-character string or a code-point offset per step. Every delimiter, digit and escape
     # is ASCII, so the parser stops only at character boundaries; error() converts such a
     # byte offset into the character offset that CPython reports.
-    def __init__(self, doc: str) -> None:
+    def __init__(self, doc: str, raw: bool) -> None:
         self.doc = doc
         self.lone = False
         try:
@@ -38,21 +60,51 @@ class _Parser:
             # A str may hold lone surrogates: surrogatepass keeps each as its three bytes.
             self.data = doc.encode("utf-8", "surrogatepass")
             self.lone = True
+        # raw: the text holds bytes that are not UTF-8, which Pystachy reads from files,
+        # input() and sys.argv without checking them; strings are then slices of doc.
+        self.raw = raw
+        self.plain: bool = not raw and not self.lone  # decode() alone makes each string
         self.pos = 0
         self.n = len(self.data)
-        # Recently decoded object keys by length and first byte; records of one shape repeat
-        # their keys, which then share one str (as CPython's decoder memo shares them).
-        self.key_bytes: list[bytes] = [b""] * 64
-        self.key_strs: list[str] = [""] * 64
+        self.mark_byte = 0  # where char_index() last counted to, as the parser moves forward
+        self.mark_char = 0
+        # Recently decoded object keys by length and first byte, made at the first key;
+        # records of one shape repeat their keys, which then share one str (as CPython's
+        # decoder memo shares them). Until then both hold shared empty lists.
+        self.key_bytes: list[bytes] = _NO_KEY_BYTES
+        self.key_strs: list[str] = _NO_KEY_STRS
+
+    def char_index(self, at: int) -> int:
+        # The characters before byte offset at, counted on from the offset asked before.
+        if at < self.mark_byte:
+            self.mark_byte = 0
+            self.mark_char = 0
+        data = self.data
+        i = self.mark_byte
+        count = self.mark_char
+        while i < at:
+            i += _u8len(data, i)
+            count += 1
+        self.mark_byte = i
+        self.mark_char = count
+        return count
 
     def text(self, start: int, end: int) -> str:
         # Without lone surrogates, decode() needs no error handler or codec name lookup.
-        if self.lone:
-            return self.data[start:end].decode("utf-8", "surrogatepass")
-        return self.data[start:end].decode()
+        if self.plain:
+            return self.data[start:end].decode()
+        return self.decoded(self.data[start:end], start, end)
+
+    def decoded(self, raw: bytes, start: int, end: int) -> str:
+        # The str of raw, which is data[start:end].
+        if self.plain:
+            return raw.decode()
+        if self.lone and not self.raw:
+            return raw.decode("utf-8", "surrogatepass")
+        return self.doc[self.char_index(start):self.char_index(end)]
 
     def error(self, msg: str, at: int) -> JSONDecodeError:
-        return JSONDecodeError(msg, self.doc, len(self.text(0, at)))
+        return JSONDecodeError(msg, self.doc, self.char_index(at))
 
     def skip(self) -> None:
         data = self.data
@@ -84,52 +136,55 @@ class _Parser:
             value = value * 16 + digit
         return value
 
+    def plain_end(self, begin: int) -> int:
+        # The closing quote of the string that begins at begin when no escape or control
+        # character comes first; else -1 - the offset where the scan stopped (or the end).
+        data = self.data
+        n = len(data)
+        i = begin + 1
+        while i < n:
+            c = data[i]
+            if c == 34:
+                return i
+            if c == 92 or c < 32:
+                return -1 - i
+            i += 1
+        return -1 - n
+
     def string(self) -> str:
         # Most strings have no escape: one slice of the bytes is the result.
-        data = self.data
-        n = len(data)
         begin = self.pos
-        i = begin + 1
-        while i < n:
-            c = data[i]
-            if c == 34:
-                self.pos = i + 1
-                return self.text(begin + 1, i)
-            if c == 92:
-                return self.escaped(begin, i)
-            if c < 32:
-                raise self.error("Invalid control character at", i)
-            i += 1
-        raise self.error("Unterminated string starting at", begin)
+        end = self.plain_end(begin)
+        if end < 0:
+            return self.escaped(begin, -1 - end)
+        self.pos = end + 1
+        return self.text(begin + 1, end)
 
     def key(self) -> str:
-        data = self.data
-        n = len(data)
+        # An object key: a key equal to one seen before in this document returns its str.
         begin = self.pos
-        i = begin + 1
-        while i < n:
-            c = data[i]
-            if c == 34:
-                break
-            if c == 92 or c < 32:
-                return self.string()
-            i += 1
-        if i == n:
-            return self.string()
-        size = i - begin - 1
+        end = self.plain_end(begin)
+        if end < 0:
+            return self.escaped(begin, -1 - end)
+        self.pos = end + 1
+        if not self.key_bytes:
+            self.key_bytes = [b""] * 64
+            self.key_strs = [""] * 64
+        data = self.data
+        size = end - begin - 1
         slot = (size * 31 + data[begin + 1]) & 63
         known = self.key_bytes[slot]
-        self.pos = i + 1
         if len(known) == size and data.startswith(known, begin + 1):
             return self.key_strs[slot]
-        raw = data[begin + 1:i]
-        text = raw.decode("utf-8", "surrogatepass") if self.lone else raw.decode()
+        raw = data[begin + 1:end]
+        text = self.decoded(raw, begin + 1, end)
         self.key_bytes[slot] = raw
         self.key_strs[slot] = text
         return text
 
     def escaped(self, begin: int, i: int) -> str:
-        # The rest of the string that begins at begin, from its first backslash at i.
+        # The rest of the string that begins at begin, from where plain_end() stopped: its
+        # first backslash, a control character or the end of the text.
         data = self.data
         n = len(data)
         start = begin + 1
@@ -327,11 +382,19 @@ class _Parser:
 
 def loads(s: str) -> JSONValue:
     """Decode JSON text into recursive native values (signed 64-bit integers)."""
-    parser = _Parser(s)
+    try:
+        return _parse(_Parser(s, False))
+    except UnicodeDecodeError:
+        # s holds bytes that are not UTF-8, which decode() rejects: parse it again, taking
+        # each string from s itself, as Pystachy's str counts characters.
+        return _parse(_Parser(s, True))
+
+
+def _parse(parser: _Parser) -> JSONValue:
     data = parser.data
     if parser.n >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
         # U+FEFF's UTF-8 bytes; s.startswith() would count the characters of all of s
-        raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", s, 0)
+        raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", parser.doc, 0)
     parser.skip()
     value = parser.value(0)
     parser.skip()
