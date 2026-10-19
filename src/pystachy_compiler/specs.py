@@ -199,7 +199,8 @@ CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "
 for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi select".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder math.pi math.e math.inf math.tau math.nan "
+for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder sys.prefix sys.base_prefix "
+           "sys.exec_prefix sys.base_exec_prefix math.pi math.e math.inf math.tau math.nan "
            "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull").split():
     MODATTRS[_k] = True
 # the os module's constants on POSIX systems
