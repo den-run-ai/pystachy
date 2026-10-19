@@ -21,4 +21,5 @@ model rejected: input shape must be positive B*T within the context length
 model rejected: input shape must be positive B*T within the context length
 model rejected: target outside vocabulary
 model rejected: embedding width must be divisible by attention heads
+backend rejected: matrix backend returned shape [2, 3], expected [3, 3]
 [exit 0]
