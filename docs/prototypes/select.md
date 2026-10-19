@@ -37,6 +37,10 @@ arguments, `select.error`, `PIPE_BUF`, `poll`, `epoll`, `devpoll`, `kqueue` and 
 constants. The prototype targets the existing Linux/macOS POSIX runtime; it does
 not implement Windows socket-only select semantics. No descriptor creation API
 is added to `os`; applications can use existing C FFI for their native handles.
+A file's `fileno()`, also of `sys.stdin`, `sys.stdout` and `sys.stderr`, is its
+descriptor, so `select([f.fileno()], [], [], 0)` waits on an open file; a closed
+file's raises CPython's `ValueError: I/O operation on closed file`. The file
+objects themselves are not accepted in the lists.
 `select.error` remains explicitly unsupported: an honest alias needs consistent
 import, construction, exception-handler and class-base handling in the compiler.
 For accepted list/numeric values, runtime validation checks timeout first, then
@@ -74,6 +78,8 @@ errors, duplicate/order preservation, fresh lists and indefinite waits through
 the Python API. `tests/lib_select_sigint.py` exercises an interrupted public wait.
 `tests/ffi/py_select.py` checks native and embedded CPython select in the same
 program, including a descriptor created by embedded CPython and polled natively.
+`tests/lib_select_files.py` selects on the descriptors of the standard streams
+and of open files (`fileno()`), and checks a closed file's error.
 All are CPython 3.13.16 differential cases, with JIT/AOT and GC-stress coverage.
 
 These cases adapt the *intent* of upstream `test_error_conditions`, `test_errno`

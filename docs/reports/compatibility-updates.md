@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `43fb4007320c8bf2851e7cfcb6f32d66dc637fef`.
+**Latest evaluated main:** `2359de695e2668a6b9d72519d195680ee0661c38`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -14,6 +14,7 @@ Do not replace a result merely because a PR description predicts an improvement.
 |---|---|---|
 | 2026-10-17 initial audit | `d3fbfc6f`; includes #598, #599 and #603 | 141/476 import programs compile; 46 upstream files excluded by overlay. 501 selected stdlib checks and 62 port checks pass; all 18 adapted benchmark programs match. Detailed evidence is linked from the baseline. |
 | 2026-10-17 follow-up | Same `d3fbfc6f`; no additional merges | Existing results still describe current main. No unchanged full suites were rerun. #600–#602, #604–#609, #622–#624, #629–#634, #583 and #170 remain open at this checkpoint; proposed support is not counted as shipped. |
+| 2026-10-19 builtin-module prototypes | `2359de69`; #644, #645, #646 and #648 after `a355c83f`, plus CI-only #677 | **144/475** native imports, up from 142, with none lost; **146/475** stub-assisted. All 27 package probes keep their first errors, and the pyperformance census stays at 6/52. Adds three compiled upstream test files. [Report](compatibility-2026-10-19-prototypes.md). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -1297,6 +1298,52 @@ python3.13 tools/check_nanogpt.py --fixtures build/audit-nanogpt/fixtures \
 # For GC, set PYSTACHY_GC_STRESS_PROGRAM=1 and PYSTACHY_GC_STRESS=1,
 # and use --compiler "env PYSTACHY_GC_STRESS=1000 COMPILER".
 ```
+
+## 2026-10-19 — #644/#645/#646/#648: builtin-module prototypes
+
+Evaluated [main `2359de69`](https://github.com/den-run-ai/pystachy/commit/2359de695e2668a6b9d72519d195680ee0661c38).
+Its first-parent merges after [`a355c83f`](https://github.com/den-run-ai/pystachy/commit/a355c83ff7b60b64e3264867593064c3da9611a5)
+are [#644](https://github.com/den-run-ai/pystachy/pull/644) (`_imp`),
+[#645](https://github.com/den-run-ai/pystachy/pull/645) (`_ast`),
+[#646](https://github.com/den-run-ai/pystachy/pull/646) (`select`),
+[#648](https://github.com/den-run-ai/pystachy/pull/648) (`_weakref`) and the CI-only
+[#677](https://github.com/den-run-ai/pystachy/pull/677). Both import sweeps were rerun
+at `a355c83f` with the same input, so each change is attributed to the four merges.
+[#678](https://github.com/den-run-ai/pystachy/pull/678)'s head `8eda0b87` gives the
+same result as main in every check. Main has since moved to `83b5835c`, adding the
+docs-only [#675](https://github.com/den-run-ai/pystachy/pull/675). The [report](compatibility-2026-10-19-prototypes.md)
+has the tables, blockers and caveats. The [evidence](compatibility-2026-10-19-prototypes.json)
+has the commands, hashes, per-module results and scripts. Toolchain: CPython 3.13.16,
+LLVM 18.1.3, Linux x86-64.
+
+| Check | Result |
+|---|---|
+| Native imports | **144/475**, up from 142 at `3f6f42c7` and `a355c83f`. `_py_abc` and `_weakrefset` are new; none lost. 165 first errors move. The inventory is 522 files with 47 exclusions; 521 sources are byte-identical to the previous sweep's, and `ssl.py` is upstream's. |
+| Stub-assisted imports | **146/475**, 2 needing stubs (was 4). 99 now stop at `weakref.py:12`, where six `_weakref` names are missing. A diagnostic stubbing those names unlocks no import. |
+| 27 package probes | Every first error is as on 2026-10-17. With the CPython stdlib overlay, a new configuration, 14 probes then stop in the stdlib or a C extension, and sortedcontainers in its own Python 2 branch. |
+| Harness probes | pyperf now stops at `_contextvars`, the pyperformance CLI at `_io`, and pytest, unittest and unmodified `test_fnmatch.py` at `_opcode`. |
+| pyperformance | The census stays at **6/52**. With the stdlib overlay, `weakref.py:12` stops 6 benchmarks. |
+| Compiled upstream tests | `tests/upstream_{weakref,select,ast}.py`: 15 CPython test methods, 6 of them complete. They pass in JIT and AOT, with GC stress and with optimizations off. |
+
+Native blockers now:
+
+| First error | Modules |
+|---|---:|
+| `weakref.py:12` | 54 |
+| `_io` | 34 |
+| `_signal` | 26 |
+| `_opcode` | 24 |
+| `email/charset.py:99`, a dict of `None` values | 16 |
+
+With the C modules stubbed, subset patterns lead:
+
+| First error | Modules |
+|---|---:|
+| `socket.py:53` ([#611](https://github.com/den-run-ai/pystachy/issues/611)) | 68 |
+| `inspect.py:1725` ([#256](https://github.com/den-run-ai/pystachy/issues/256)) | 42 |
+| `enum.py:1412` ([#610](https://github.com/den-run-ai/pystachy/issues/610)) | 13 |
+
+Not run: full `make verify` on the audit head, CPython regrtest and timings.
 
 ## Checks to run when the pending work lands
 

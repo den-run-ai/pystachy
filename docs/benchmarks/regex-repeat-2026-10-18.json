@@ -1,0 +1,3735 @@
+{
+  "base_commit": "a355c83ff7b60b64e3264867593064c3da9611a5",
+  "candidate_commit": "c14b8dd586701f559278fc51059d9c3371f34947",
+  "timestamp_utc": "2026-10-18T06:17:21.474723+00:00",
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "python": "Python 3.13.16",
+  "llvm": "18.1.3",
+  "samples": [
+    {
+      "benchmark": "regex_dna",
+      "round": 0,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.7002343089989154
+      },
+      "whole_process_wall_seconds": 3.143974246999278,
+      "whole_process_cpu_seconds": 3.115296,
+      "loadavg": [
+        4.9072265625,
+        3.91552734375,
+        3.2060546875
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 0,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 4.167927025999234
+      },
+      "whole_process_wall_seconds": 4.242043729998841,
+      "whole_process_cpu_seconds": 4.231698,
+      "loadavg": [
+        4.83447265625,
+        3.9169921875,
+        3.21044921875
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 0,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 4.618659168001614
+      },
+      "whole_process_wall_seconds": 4.661730597999849,
+      "whole_process_cpu_seconds": 4.617341999999999,
+      "loadavg": [
+        4.83447265625,
+        3.9169921875,
+        3.21044921875
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 0,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 4.055500443002529
+      },
+      "whole_process_wall_seconds": 6.00912943000003,
+      "whole_process_cpu_seconds": 6.005865000000004,
+      "loadavg": [
+        4.86669921875,
+        3.953125,
+        3.22998046875
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 0,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 3.4585644219987444
+      },
+      "whole_process_wall_seconds": 5.079689882000821,
+      "whole_process_cpu_seconds": 5.069533999999999,
+      "loadavg": [
+        4.796875,
+        3.9541015625,
+        3.234375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 1,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 3.21143044800192
+      },
+      "whole_process_wall_seconds": 5.225100396000926,
+      "whole_process_cpu_seconds": 5.217461000000002,
+      "loadavg": [
+        4.65283203125,
+        3.93798828125,
+        3.23291015625
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 1,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 3.5831408710000687
+      },
+      "whole_process_wall_seconds": 5.077972027000214,
+      "whole_process_cpu_seconds": 5.0619830000000015,
+      "loadavg": [
+        4.6806640625,
+        3.9560546875,
+        3.24267578125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 1,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.5957655099991825
+      },
+      "whole_process_wall_seconds": 2.640123175999179,
+      "whole_process_cpu_seconds": 2.639502000000001,
+      "loadavg": [
+        4.6806640625,
+        3.9560546875,
+        3.24267578125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 1,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.515215387000353
+      },
+      "whole_process_wall_seconds": 2.5490725149975333,
+      "whole_process_cpu_seconds": 2.5418889999999976,
+      "loadavg": [
+        4.6259765625,
+        3.95703125,
+        3.2470703125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 1,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.910557980001613
+      },
+      "whole_process_wall_seconds": 1.0380730190008762,
+      "whole_process_cpu_seconds": 1.0364640000000045,
+      "loadavg": [
+        4.6259765625,
+        3.95703125,
+        3.2470703125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 2,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.9290339199978916
+      },
+      "whole_process_wall_seconds": 1.0550997180034756,
+      "whole_process_cpu_seconds": 1.0520190000000027,
+      "loadavg": [
+        4.6259765625,
+        3.95703125,
+        3.2470703125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 2,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.628602716002206
+      },
+      "whole_process_wall_seconds": 2.675836798000091,
+      "whole_process_cpu_seconds": 2.6751559999999954,
+      "loadavg": [
+        4.41552734375,
+        3.92431640625,
+        3.240234375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 2,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.2412448009999935
+      },
+      "whole_process_wall_seconds": 2.2775792610009375,
+      "whole_process_cpu_seconds": 2.2758809999999956,
+      "loadavg": [
+        4.41552734375,
+        3.92431640625,
+        3.240234375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 2,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.646460099000251
+      },
+      "whole_process_wall_seconds": 3.9289834900009737,
+      "whole_process_cpu_seconds": 3.927628000000004,
+      "loadavg": [
+        4.3818359375,
+        3.92578125,
+        3.24462890625
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 2,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.628086123000685
+      },
+      "whole_process_wall_seconds": 3.8919176560011692,
+      "whole_process_cpu_seconds": 3.8869309999999953,
+      "loadavg": [
+        4.19091796875,
+        3.8935546875,
+        3.23779296875
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 3,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.6125229059980484
+      },
+      "whole_process_wall_seconds": 3.8606929699999455,
+      "whole_process_cpu_seconds": 3.857019000000003,
+      "loadavg": [
+        4.01513671875,
+        3.86181640625,
+        3.23095703125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 3,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.6575126989991986
+      },
+      "whole_process_wall_seconds": 3.9677387440024177,
+      "whole_process_cpu_seconds": 3.9635409999999998,
+      "loadavg": [
+        4.01513671875,
+        3.86181640625,
+        3.23095703125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 3,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.166745696998987
+      },
+      "whole_process_wall_seconds": 2.207181022000441,
+      "whole_process_cpu_seconds": 2.206497999999997,
+      "loadavg": [
+        3.853515625,
+        3.83056640625,
+        3.22412109375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 3,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.4100090299980366
+      },
+      "whole_process_wall_seconds": 2.4517872169999464,
+      "whole_process_cpu_seconds": 2.442344000000011,
+      "loadavg": [
+        3.853515625,
+        3.83056640625,
+        3.22412109375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 3,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.8801628049986903
+      },
+      "whole_process_wall_seconds": 1.0193866059998982,
+      "whole_process_cpu_seconds": 1.016166000000005,
+      "loadavg": [
+        3.853515625,
+        3.83056640625,
+        3.22412109375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 4,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.9825342510011978
+      },
+      "whole_process_wall_seconds": 1.1071427230017434,
+      "whole_process_cpu_seconds": 1.1059090000000036,
+      "loadavg": [
+        3.705078125,
+        3.7998046875,
+        3.21728515625
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 4,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.446340186997986
+      },
+      "whole_process_wall_seconds": 2.4825836710006115,
+      "whole_process_cpu_seconds": 2.4821070000000027,
+      "loadavg": [
+        3.705078125,
+        3.7998046875,
+        3.21728515625
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 4,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_dna",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.2620929019976757
+      },
+      "whole_process_wall_seconds": 2.298369072999776,
+      "whole_process_cpu_seconds": 2.298034000000008,
+      "loadavg": [
+        3.6484375,
+        3.7861328125,
+        3.2158203125
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 4,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.6680167889971926
+      },
+      "whole_process_wall_seconds": 4.612777157002711,
+      "whole_process_cpu_seconds": 4.591480000000001,
+      "loadavg": [
+        3.51611328125,
+        3.75634765625,
+        3.208984375
+      ]
+    },
+    {
+      "benchmark": "regex_dna",
+      "round": 4,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_dna.py",
+        "4"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.472845418000361
+      },
+      "whole_process_wall_seconds": 3.7135423679974338,
+      "whole_process_cpu_seconds": 3.711309999999999,
+      "loadavg": [
+        3.51611328125,
+        3.75634765625,
+        3.208984375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 0,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5755427880030766
+      },
+      "whole_process_wall_seconds": 0.6061444810002286,
+      "whole_process_cpu_seconds": 0.6057509999999962,
+      "loadavg": [
+        3.51611328125,
+        3.75634765625,
+        3.208984375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 0,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.541589513002691
+      },
+      "whole_process_wall_seconds": 1.5649138490007317,
+      "whole_process_cpu_seconds": 1.5641370000000085,
+      "loadavg": [
+        3.39453125,
+        3.72705078125,
+        3.2021484375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 0,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.8056786810011545
+      },
+      "whole_process_wall_seconds": 0.821297267000773,
+      "whole_process_cpu_seconds": 0.8207199999999952,
+      "loadavg": [
+        3.39453125,
+        3.72705078125,
+        3.2021484375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 0,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.201500221999595
+      },
+      "whole_process_wall_seconds": 3.502742501998,
+      "whole_process_cpu_seconds": 3.502283999999997,
+      "loadavg": [
+        3.28271484375,
+        3.6982421875,
+        3.1953125
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 0,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.5062934769994172
+      },
+      "whole_process_wall_seconds": 2.980468429999746,
+      "whole_process_cpu_seconds": 2.9783150000000003,
+      "loadavg": [
+        3.28271484375,
+        3.6982421875,
+        3.1953125
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 1,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.9246397310016619
+      },
+      "whole_process_wall_seconds": 2.0230518659991503,
+      "whole_process_cpu_seconds": 2.0222140000000097,
+      "loadavg": [
+        3.259765625,
+        3.6865234375,
+        3.19384765625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 1,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.420853512998292
+      },
+      "whole_process_wall_seconds": 3.6191991929990763,
+      "whole_process_cpu_seconds": 3.6148610000000083,
+      "loadavg": [
+        3.259765625,
+        3.6865234375,
+        3.19384765625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 1,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.9267888899994432
+      },
+      "whole_process_wall_seconds": 0.9414990160003072,
+      "whole_process_cpu_seconds": 0.940677999999993,
+      "loadavg": [
+        3.3193359375,
+        3.69189453125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 1,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.7355203160004748
+      },
+      "whole_process_wall_seconds": 1.763709505998122,
+      "whole_process_cpu_seconds": 1.7617209999999925,
+      "loadavg": [
+        3.3193359375,
+        3.69189453125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 1,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.534386811999866
+      },
+      "whole_process_wall_seconds": 0.5660145330002706,
+      "whole_process_cpu_seconds": 0.5653100000000055,
+      "loadavg": [
+        3.3193359375,
+        3.69189453125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 2,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5735761750001984
+      },
+      "whole_process_wall_seconds": 0.6140605380023771,
+      "whole_process_cpu_seconds": 0.613230000000005,
+      "loadavg": [
+        3.3193359375,
+        3.69189453125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 2,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.7041350929976034
+      },
+      "whole_process_wall_seconds": 1.7365669190003246,
+      "whole_process_cpu_seconds": 1.7345760000000077,
+      "loadavg": [
+        3.3193359375,
+        3.69189453125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 2,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.77156683299836
+      },
+      "whole_process_wall_seconds": 0.7837067309992563,
+      "whole_process_cpu_seconds": 0.7831869999999883,
+      "loadavg": [
+        3.21337890625,
+        3.66357421875,
+        3.19140625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 2,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.0381175209986395
+      },
+      "whole_process_wall_seconds": 3.2657523689995287,
+      "whole_process_cpu_seconds": 3.2648700000000153,
+      "loadavg": [
+        3.21337890625,
+        3.66357421875,
+        3.19140625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 2,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.0742528010014212
+      },
+      "whole_process_wall_seconds": 2.2408306500001345,
+      "whole_process_cpu_seconds": 2.235334999999999,
+      "loadavg": [
+        3.1162109375,
+        3.6357421875,
+        3.1845703125
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 3,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.6203559540008428
+      },
+      "whole_process_wall_seconds": 3.0687756029983575,
+      "whole_process_cpu_seconds": 3.0670729999999944,
+      "loadavg": [
+        3.1162109375,
+        3.6357421875,
+        3.1845703125
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 3,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.0009101220020966
+      },
+      "whole_process_wall_seconds": 3.1103800620003312,
+      "whole_process_cpu_seconds": 3.1092700000000084,
+      "loadavg": [
+        3.0263671875,
+        3.6083984375,
+        3.177734375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 3,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.2909098740019544
+      },
+      "whole_process_wall_seconds": 1.3109821769976406,
+      "whole_process_cpu_seconds": 1.3046249999999855,
+      "loadavg": [
+        3.0263671875,
+        3.6083984375,
+        3.177734375
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 3,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.6501556690018333
+      },
+      "whole_process_wall_seconds": 1.6711595239976305,
+      "whole_process_cpu_seconds": 1.670319000000017,
+      "loadavg": [
+        2.94384765625,
+        3.58154296875,
+        3.17138671875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 3,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5947310619994823
+      },
+      "whole_process_wall_seconds": 0.636779452997871,
+      "whole_process_cpu_seconds": 0.6364919999999961,
+      "loadavg": [
+        2.94384765625,
+        3.58154296875,
+        3.17138671875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 4,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.2639387479975994
+      },
+      "whole_process_wall_seconds": 1.3722345130008762,
+      "whole_process_cpu_seconds": 1.371736999999995,
+      "loadavg": [
+        2.94384765625,
+        3.58154296875,
+        3.17138671875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 4,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.6621791899997334
+      },
+      "whole_process_wall_seconds": 1.6875178220034286,
+      "whole_process_cpu_seconds": 1.6869209999999963,
+      "loadavg": [
+        2.94384765625,
+        3.58154296875,
+        3.17138671875
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 4,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_effbot",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.3576315389982483
+      },
+      "whole_process_wall_seconds": 1.3813795060013945,
+      "whole_process_cpu_seconds": 1.3806059999999958,
+      "loadavg": [
+        2.8681640625,
+        3.55517578125,
+        3.1650390625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 4,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.8650874029990518
+      },
+      "whole_process_wall_seconds": 2.9232068300007086,
+      "whole_process_cpu_seconds": 2.9202419999999965,
+      "loadavg": [
+        2.8681640625,
+        3.55517578125,
+        3.1650390625
+      ]
+    },
+    {
+      "benchmark": "regex_effbot",
+      "round": 4,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_effbot.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.0343182830001751
+      },
+      "whole_process_wall_seconds": 2.120487347001472,
+      "whole_process_cpu_seconds": 2.1196779999999915,
+      "loadavg": [
+        2.958984375,
+        3.56298828125,
+        3.169921875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 0,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5534357510005066
+      },
+      "whole_process_wall_seconds": 1.360986186999071,
+      "whole_process_cpu_seconds": 1.3601610000000157,
+      "loadavg": [
+        2.958984375,
+        3.56298828125,
+        3.169921875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 0,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.462820909000584
+      },
+      "whole_process_wall_seconds": 5.05503804700129,
+      "whole_process_cpu_seconds": 5.054277999999988,
+      "loadavg": [
+        2.8818359375,
+        3.53662109375,
+        3.16357421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 0,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.5441878260025987
+      },
+      "whole_process_wall_seconds": 3.041024281999853,
+      "whole_process_cpu_seconds": 3.0393619999999695,
+      "loadavg": [
+        2.8818359375,
+        3.53662109375,
+        3.16357421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 0,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.0089678980002645
+      },
+      "whole_process_wall_seconds": 6.749449467999511,
+      "whole_process_cpu_seconds": 6.744113000000013,
+      "loadavg": [
+        3.21435546875,
+        3.58544921875,
+        3.18408203125
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 0,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.862898715000483
+      },
+      "whole_process_wall_seconds": 7.496200940997369,
+      "whole_process_cpu_seconds": 7.4899570000000075,
+      "loadavg": [
+        3.19677734375,
+        3.57568359375,
+        3.1826171875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 1,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.1551281760002894
+      },
+      "whole_process_wall_seconds": 7.307387275999645,
+      "whole_process_cpu_seconds": 7.304876000000003,
+      "loadavg": [
+        3.240234375,
+        3.5732421875,
+        3.185546875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 1,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.8158582270007173
+      },
+      "whole_process_wall_seconds": 8.085261145999539,
+      "whole_process_cpu_seconds": 8.071890000000003,
+      "loadavg": [
+        3.38134765625,
+        3.59716796875,
+        3.1953125
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 1,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.4952457719991799
+      },
+      "whole_process_wall_seconds": 3.082086505000916,
+      "whole_process_cpu_seconds": 3.0807439999999815,
+      "loadavg": [
+        3.3505859375,
+        3.5869140625,
+        3.19384765625
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 1,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.6320871419993637
+      },
+      "whole_process_wall_seconds": 3.328849175999494,
+      "whole_process_cpu_seconds": 3.3276769999999933,
+      "loadavg": [
+        3.40283203125,
+        3.59423828125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 1,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.4357639920017391
+      },
+      "whole_process_wall_seconds": 1.2726615270003094,
+      "whole_process_cpu_seconds": 1.2721639999999965,
+      "loadavg": [
+        3.40283203125,
+        3.59423828125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 2,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.4242012290014827
+      },
+      "whole_process_wall_seconds": 1.2311678859987296,
+      "whole_process_cpu_seconds": 1.2304289999999893,
+      "loadavg": [
+        3.40283203125,
+        3.59423828125,
+        3.1982421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 2,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.677763263000088
+      },
+      "whole_process_wall_seconds": 3.6594834309980797,
+      "whole_process_cpu_seconds": 3.658126000000025,
+      "loadavg": [
+        3.45068359375,
+        3.60107421875,
+        3.20263671875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 2,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.6626508289991762
+      },
+      "whole_process_wall_seconds": 3.1970764720026636,
+      "whole_process_cpu_seconds": 3.196131999999986,
+      "loadavg": [
+        3.5751953125,
+        3.62451171875,
+        3.21240234375
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 2,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.9427906700002495
+      },
+      "whole_process_wall_seconds": 9.264392876000784,
+      "whole_process_cpu_seconds": 9.257951000000018,
+      "loadavg": [
+        3.609375,
+        3.630859375,
+        3.216796875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 2,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.029797277999023
+      },
+      "whole_process_wall_seconds": 7.262484277001931,
+      "whole_process_cpu_seconds": 7.260179999999966,
+      "loadavg": [
+        3.58935546875,
+        3.62646484375,
+        3.2197265625
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 3,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.8672305500003858
+      },
+      "whole_process_wall_seconds": 7.21449803699943,
+      "whole_process_cpu_seconds": 7.201384000000035,
+      "loadavg": [
+        3.62255859375,
+        3.6328125,
+        3.22412109375
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 3,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.858213961997535
+      },
+      "whole_process_wall_seconds": 8.753570574997866,
+      "whole_process_cpu_seconds": 8.734553999999983,
+      "loadavg": [
+        3.908203125,
+        3.69482421875,
+        3.2490234375
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 3,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.363270822999766
+      },
+      "whole_process_wall_seconds": 2.9504782500007423,
+      "whole_process_cpu_seconds": 2.949642000000013,
+      "loadavg": [
+        3.75537109375,
+        3.66650390625,
+        3.2421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 3,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.8693043849998503
+      },
+      "whole_process_wall_seconds": 3.565233448000072,
+      "whole_process_cpu_seconds": 3.494150000000003,
+      "loadavg": [
+        3.75537109375,
+        3.66650390625,
+        3.2421875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 3,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5205553689993394
+      },
+      "whole_process_wall_seconds": 1.5145854330003203,
+      "whole_process_cpu_seconds": 1.5131210000000248,
+      "loadavg": [
+        3.69482421875,
+        3.6552734375,
+        3.24072265625
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 4,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 0.5151164409980993
+      },
+      "whole_process_wall_seconds": 1.5202723209986289,
+      "whole_process_cpu_seconds": 1.5192959999999776,
+      "loadavg": [
+        3.69482421875,
+        3.6552734375,
+        3.24072265625
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 4,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.7653363620011078
+      },
+      "whole_process_wall_seconds": 3.6345682999999553,
+      "whole_process_cpu_seconds": 3.634128999999991,
+      "loadavg": [
+        3.55908203125,
+        3.62744140625,
+        3.23388671875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 4,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-regex_v8",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 1.4765813759986486
+      },
+      "whole_process_wall_seconds": 2.945865796998987,
+      "whole_process_cpu_seconds": 2.9403760000000094,
+      "loadavg": [
+        3.55908203125,
+        3.62744140625,
+        3.23388671875
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 4,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.0154668409995793
+      },
+      "whole_process_wall_seconds": 6.624725917998148,
+      "whole_process_cpu_seconds": 6.6220569999999785,
+      "loadavg": [
+        3.47265625,
+        3.6064453125,
+        3.23095703125
+      ]
+    },
+    {
+      "benchmark": "regex_v8",
+      "round": 4,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/bench/pyperformance/regex_v8.py",
+        "20"
+      ],
+      "phase_seconds": {
+        "timed_part": 2.2339849950003554
+      },
+      "whole_process_wall_seconds": 7.489010650999262,
+      "whole_process_cpu_seconds": 7.480621000000033,
+      "loadavg": [
+        3.51513671875,
+        3.61328125,
+        3.2353515625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 0,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.010511,
+        "ascii-ignore-finite": 0.013302,
+        "ascii-ignore-lazy": 0.043528,
+        "ascii-ignore-possessive": 0.013668,
+        "ascii-ignore-dense": 0.055631,
+        "ascii-ignore-sparse": 0.045013,
+        "unicode-ignore-greedy": 0.009348,
+        "unicode-ignore-finite": 0.019199,
+        "unicode-ignore-lazy": 0.058834,
+        "unicode-ignore-possessive": 0.012387,
+        "unicode-ignore-dense": 0.063588,
+        "unicode-ignore-sparse": 0.050431,
+        "ascii-plain-greedy": 0.002952,
+        "ascii-plain-dense": 0.057552,
+        "unicode-plain-greedy": 0.006502,
+        "unicode-plain-dense": 0.06175
+      },
+      "whole_process_wall_seconds": 1.6103672389981512,
+      "whole_process_cpu_seconds": 1.6012949999999773,
+      "loadavg": [
+        3.51513671875,
+        3.61328125,
+        3.2353515625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 0,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.027103,
+        "ascii-ignore-finite": 0.028377,
+        "ascii-ignore-lazy": 0.083377,
+        "ascii-ignore-possessive": 0.041507,
+        "ascii-ignore-dense": 0.089741,
+        "ascii-ignore-sparse": 0.101064,
+        "unicode-ignore-greedy": 0.048418,
+        "unicode-ignore-finite": 0.083045,
+        "unicode-ignore-lazy": 0.117998,
+        "unicode-ignore-possessive": 0.049312,
+        "unicode-ignore-dense": 0.142741,
+        "unicode-ignore-sparse": 0.06461,
+        "ascii-plain-greedy": 0.004617,
+        "ascii-plain-dense": 0.036637,
+        "unicode-plain-greedy": 0.008773,
+        "unicode-plain-dense": 0.044838
+      },
+      "whole_process_wall_seconds": 3.2074867180017463,
+      "whole_process_cpu_seconds": 3.1784709999999894,
+      "loadavg": [
+        3.3935546875,
+        3.58642578125,
+        3.228515625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 0,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.005381,
+        "ascii-ignore-finite": 0.011587,
+        "ascii-ignore-lazy": 0.053488,
+        "ascii-ignore-possessive": 0.007688,
+        "ascii-ignore-dense": 0.033401,
+        "ascii-ignore-sparse": 0.010284,
+        "unicode-ignore-greedy": 0.016351,
+        "unicode-ignore-finite": 0.023523,
+        "unicode-ignore-lazy": 0.068644,
+        "unicode-ignore-possessive": 0.01714,
+        "unicode-ignore-dense": 0.070741,
+        "unicode-ignore-sparse": 0.011733,
+        "ascii-plain-greedy": 0.00412,
+        "ascii-plain-dense": 0.033049,
+        "unicode-plain-greedy": 0.007274,
+        "unicode-plain-dense": 0.043375
+      },
+      "whole_process_wall_seconds": 1.4539749750001647,
+      "whole_process_cpu_seconds": 1.4491940000000287,
+      "loadavg": [
+        3.3935546875,
+        3.58642578125,
+        3.228515625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 0,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.025888,
+        "ascii-ignore-finite": 0.042001,
+        "ascii-ignore-lazy": 0.072445,
+        "ascii-ignore-possessive": 0.026904,
+        "ascii-ignore-dense": 0.066561,
+        "ascii-ignore-sparse": 0.063096,
+        "unicode-ignore-greedy": 0.07395,
+        "unicode-ignore-finite": 0.072994,
+        "unicode-ignore-lazy": 0.114546,
+        "unicode-ignore-possessive": 0.066922,
+        "unicode-ignore-dense": 0.120725,
+        "unicode-ignore-sparse": 0.065211,
+        "ascii-plain-greedy": 0.004588,
+        "ascii-plain-dense": 0.042965,
+        "unicode-plain-greedy": 0.013048,
+        "unicode-plain-dense": 0.066268
+      },
+      "whole_process_wall_seconds": 3.983833307000168,
+      "whole_process_cpu_seconds": 3.9823290000000036,
+      "loadavg": [
+        3.28173828125,
+        3.56005859375,
+        3.2216796875
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 0,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.00602,
+        "ascii-ignore-finite": 0.011437,
+        "ascii-ignore-lazy": 0.061939,
+        "ascii-ignore-possessive": 0.004979,
+        "ascii-ignore-dense": 0.050854,
+        "ascii-ignore-sparse": 0.013284,
+        "unicode-ignore-greedy": 0.052219,
+        "unicode-ignore-finite": 0.059852,
+        "unicode-ignore-lazy": 0.135536,
+        "unicode-ignore-possessive": 0.054563,
+        "unicode-ignore-dense": 0.118058,
+        "unicode-ignore-sparse": 0.017936,
+        "ascii-plain-greedy": 0.003968,
+        "ascii-plain-dense": 0.044927,
+        "unicode-plain-greedy": 0.013298,
+        "unicode-plain-dense": 0.064672
+      },
+      "whole_process_wall_seconds": 3.3163301139975374,
+      "whole_process_cpu_seconds": 3.3045130000000213,
+      "loadavg": [
+        3.1787109375,
+        3.53369140625,
+        3.21484375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 1,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.006234,
+        "ascii-ignore-finite": 0.012446,
+        "ascii-ignore-lazy": 0.066843,
+        "ascii-ignore-possessive": 0.005988,
+        "ascii-ignore-dense": 0.051602,
+        "ascii-ignore-sparse": 0.014118,
+        "unicode-ignore-greedy": 0.052033,
+        "unicode-ignore-finite": 0.057957,
+        "unicode-ignore-lazy": 0.127915,
+        "unicode-ignore-possessive": 0.049578,
+        "unicode-ignore-dense": 0.119521,
+        "unicode-ignore-sparse": 0.016289,
+        "ascii-plain-greedy": 0.00441,
+        "ascii-plain-dense": 0.044193,
+        "unicode-plain-greedy": 0.012129,
+        "unicode-plain-dense": 0.065106
+      },
+      "whole_process_wall_seconds": 3.2589903629996115,
+      "whole_process_cpu_seconds": 3.239469000000007,
+      "loadavg": [
+        3.1787109375,
+        3.53369140625,
+        3.21484375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 1,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.023986,
+        "ascii-ignore-finite": 0.028874,
+        "ascii-ignore-lazy": 0.064144,
+        "ascii-ignore-possessive": 0.023986,
+        "ascii-ignore-dense": 0.06433,
+        "ascii-ignore-sparse": 0.059656,
+        "unicode-ignore-greedy": 0.061948,
+        "unicode-ignore-finite": 0.069269,
+        "unicode-ignore-lazy": 0.110153,
+        "unicode-ignore-possessive": 0.060527,
+        "unicode-ignore-dense": 0.113374,
+        "unicode-ignore-sparse": 0.058234,
+        "ascii-plain-greedy": 0.003854,
+        "ascii-plain-dense": 0.040153,
+        "unicode-plain-greedy": 0.014841,
+        "unicode-plain-dense": 0.062784
+      },
+      "whole_process_wall_seconds": 3.6706621599987557,
+      "whole_process_cpu_seconds": 3.667432999999967,
+      "loadavg": [
+        3.1640625,
+        3.5244140625,
+        3.21337890625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 1,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.005724,
+        "ascii-ignore-finite": 0.010752,
+        "ascii-ignore-lazy": 0.042121,
+        "ascii-ignore-possessive": 0.004999,
+        "ascii-ignore-dense": 0.036488,
+        "ascii-ignore-sparse": 0.009782,
+        "unicode-ignore-greedy": 0.017796,
+        "unicode-ignore-finite": 0.02485,
+        "unicode-ignore-lazy": 0.070286,
+        "unicode-ignore-possessive": 0.01809,
+        "unicode-ignore-dense": 0.065874,
+        "unicode-ignore-sparse": 0.011766,
+        "ascii-plain-greedy": 0.004986,
+        "ascii-plain-dense": 0.035817,
+        "unicode-plain-greedy": 0.008272,
+        "unicode-plain-dense": 0.065629
+      },
+      "whole_process_wall_seconds": 1.318671319000714,
+      "whole_process_cpu_seconds": 1.318199999999976,
+      "loadavg": [
+        3.1640625,
+        3.5244140625,
+        3.21337890625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 1,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.02189,
+        "ascii-ignore-finite": 0.025671,
+        "ascii-ignore-lazy": 0.065606,
+        "ascii-ignore-possessive": 0.021604,
+        "ascii-ignore-dense": 0.065545,
+        "ascii-ignore-sparse": 0.062233,
+        "unicode-ignore-greedy": 0.033585,
+        "unicode-ignore-finite": 0.046413,
+        "unicode-ignore-lazy": 0.093525,
+        "unicode-ignore-possessive": 0.037931,
+        "unicode-ignore-dense": 0.085114,
+        "unicode-ignore-sparse": 0.061274,
+        "ascii-plain-greedy": 0.004507,
+        "ascii-plain-dense": 0.037581,
+        "unicode-plain-greedy": 0.007615,
+        "unicode-plain-dense": 0.047643
+      },
+      "whole_process_wall_seconds": 2.2634821129977354,
+      "whole_process_cpu_seconds": 2.262263000000061,
+      "loadavg": [
+        3.2314453125,
+        3.53271484375,
+        3.2177734375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 1,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.010063,
+        "ascii-ignore-finite": 0.013034,
+        "ascii-ignore-lazy": 0.047273,
+        "ascii-ignore-possessive": 0.00968,
+        "ascii-ignore-dense": 0.039704,
+        "ascii-ignore-sparse": 0.030901,
+        "unicode-ignore-greedy": 0.011528,
+        "unicode-ignore-finite": 0.013188,
+        "unicode-ignore-lazy": 0.046141,
+        "unicode-ignore-possessive": 0.01263,
+        "unicode-ignore-dense": 0.053484,
+        "unicode-ignore-sparse": 0.038631,
+        "ascii-plain-greedy": 0.001495,
+        "ascii-plain-dense": 0.033092,
+        "unicode-plain-greedy": 0.004179,
+        "unicode-plain-dense": 0.038515
+      },
+      "whole_process_wall_seconds": 1.2762534460016468,
+      "whole_process_cpu_seconds": 1.275794999999972,
+      "loadavg": [
+        3.2314453125,
+        3.53271484375,
+        3.2177734375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 2,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.009839,
+        "ascii-ignore-finite": 0.013667,
+        "ascii-ignore-lazy": 0.041659,
+        "ascii-ignore-possessive": 0.010703,
+        "ascii-ignore-dense": 0.044395,
+        "ascii-ignore-sparse": 0.031315,
+        "unicode-ignore-greedy": 0.010064,
+        "unicode-ignore-finite": 0.013042,
+        "unicode-ignore-lazy": 0.047046,
+        "unicode-ignore-possessive": 0.010863,
+        "unicode-ignore-dense": 0.052419,
+        "unicode-ignore-sparse": 0.036146,
+        "ascii-plain-greedy": 0.001771,
+        "ascii-plain-dense": 0.032483,
+        "unicode-plain-greedy": 0.003267,
+        "unicode-plain-dense": 0.035243
+      },
+      "whole_process_wall_seconds": 1.2704133140032354,
+      "whole_process_cpu_seconds": 1.2700809999999763,
+      "loadavg": [
+        3.2314453125,
+        3.53271484375,
+        3.2177734375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 2,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.028937,
+        "ascii-ignore-finite": 0.030601,
+        "ascii-ignore-lazy": 0.063495,
+        "ascii-ignore-possessive": 0.025484,
+        "ascii-ignore-dense": 0.080059,
+        "ascii-ignore-sparse": 0.055546,
+        "unicode-ignore-greedy": 0.038323,
+        "unicode-ignore-finite": 0.041208,
+        "unicode-ignore-lazy": 0.073261,
+        "unicode-ignore-possessive": 0.031571,
+        "unicode-ignore-dense": 0.08153,
+        "unicode-ignore-sparse": 0.056411,
+        "ascii-plain-greedy": 0.004835,
+        "ascii-plain-dense": 0.036289,
+        "unicode-plain-greedy": 0.00834,
+        "unicode-plain-dense": 0.04626
+      },
+      "whole_process_wall_seconds": 2.154835674999049,
+      "whole_process_cpu_seconds": 2.1540640000000195,
+      "loadavg": [
+        3.052734375,
+        3.490234375,
+        3.20556640625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 2,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.006323,
+        "ascii-ignore-finite": 0.010035,
+        "ascii-ignore-lazy": 0.042437,
+        "ascii-ignore-possessive": 0.004304,
+        "ascii-ignore-dense": 0.036305,
+        "ascii-ignore-sparse": 0.010628,
+        "unicode-ignore-greedy": 0.017277,
+        "unicode-ignore-finite": 0.02426,
+        "unicode-ignore-lazy": 0.070828,
+        "unicode-ignore-possessive": 0.017474,
+        "unicode-ignore-dense": 0.064354,
+        "unicode-ignore-sparse": 0.011625,
+        "ascii-plain-greedy": 0.004677,
+        "ascii-plain-dense": 0.035653,
+        "unicode-plain-greedy": 0.009415,
+        "unicode-plain-dense": 0.047275
+      },
+      "whole_process_wall_seconds": 1.2750768840014644,
+      "whole_process_cpu_seconds": 1.2727880000000074,
+      "loadavg": [
+        3.052734375,
+        3.490234375,
+        3.20556640625
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 2,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.024016,
+        "ascii-ignore-finite": 0.027843,
+        "ascii-ignore-lazy": 0.061676,
+        "ascii-ignore-possessive": 0.022348,
+        "ascii-ignore-dense": 0.064693,
+        "ascii-ignore-sparse": 0.057745,
+        "unicode-ignore-greedy": 0.059075,
+        "unicode-ignore-finite": 0.066503,
+        "unicode-ignore-lazy": 0.118861,
+        "unicode-ignore-possessive": 0.066279,
+        "unicode-ignore-dense": 0.106905,
+        "unicode-ignore-sparse": 0.05843,
+        "ascii-plain-greedy": 0.004161,
+        "ascii-plain-dense": 0.042012,
+        "unicode-plain-greedy": 0.013544,
+        "unicode-plain-dense": 0.067288
+      },
+      "whole_process_wall_seconds": 3.6958738020002784,
+      "whole_process_cpu_seconds": 3.6952090000000393,
+      "loadavg": [
+        2.88818359375,
+        3.44873046875,
+        3.193359375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 2,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.006772,
+        "ascii-ignore-finite": 0.011782,
+        "ascii-ignore-lazy": 0.056582,
+        "ascii-ignore-possessive": 0.004929,
+        "ascii-ignore-dense": 0.053269,
+        "ascii-ignore-sparse": 0.01375,
+        "unicode-ignore-greedy": 0.050665,
+        "unicode-ignore-finite": 0.061433,
+        "unicode-ignore-lazy": 0.133426,
+        "unicode-ignore-possessive": 0.053677,
+        "unicode-ignore-dense": 0.122932,
+        "unicode-ignore-sparse": 0.017594,
+        "ascii-plain-greedy": 0.005973,
+        "ascii-plain-dense": 0.046741,
+        "unicode-plain-greedy": 0.017111,
+        "unicode-plain-dense": 0.065688
+      },
+      "whole_process_wall_seconds": 3.415499571001419,
+      "whole_process_cpu_seconds": 3.4143190000000008,
+      "loadavg": [
+        2.88818359375,
+        3.44873046875,
+        3.193359375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 3,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.006775,
+        "ascii-ignore-finite": 0.011034,
+        "ascii-ignore-lazy": 0.05749,
+        "ascii-ignore-possessive": 0.004927,
+        "ascii-ignore-dense": 0.048037,
+        "ascii-ignore-sparse": 0.01301,
+        "unicode-ignore-greedy": 0.048309,
+        "unicode-ignore-finite": 0.058933,
+        "unicode-ignore-lazy": 0.119583,
+        "unicode-ignore-possessive": 0.045706,
+        "unicode-ignore-dense": 0.118632,
+        "unicode-ignore-sparse": 0.015766,
+        "ascii-plain-greedy": 0.004135,
+        "ascii-plain-dense": 0.044665,
+        "unicode-plain-greedy": 0.012038,
+        "unicode-plain-dense": 0.065338
+      },
+      "whole_process_wall_seconds": 3.207331175002764,
+      "whole_process_cpu_seconds": 3.2045579999999845,
+      "loadavg": [
+        2.81689453125,
+        3.42431640625,
+        3.1865234375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 3,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.02838,
+        "ascii-ignore-finite": 0.032056,
+        "ascii-ignore-lazy": 0.092288,
+        "ascii-ignore-possessive": 0.023627,
+        "ascii-ignore-dense": 0.069623,
+        "ascii-ignore-sparse": 0.066177,
+        "unicode-ignore-greedy": 0.090392,
+        "unicode-ignore-finite": 0.108265,
+        "unicode-ignore-lazy": 0.187708,
+        "unicode-ignore-possessive": 0.09219,
+        "unicode-ignore-dense": 0.199936,
+        "unicode-ignore-sparse": 0.061167,
+        "ascii-plain-greedy": 0.004481,
+        "ascii-plain-dense": 0.040072,
+        "unicode-plain-greedy": 0.014936,
+        "unicode-plain-dense": 0.068989
+      },
+      "whole_process_wall_seconds": 4.921256587000244,
+      "whole_process_cpu_seconds": 4.909884000000021,
+      "loadavg": [
+        2.75146484375,
+        3.400390625,
+        3.1796875
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 3,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.005144,
+        "ascii-ignore-finite": 0.009245,
+        "ascii-ignore-lazy": 0.045731,
+        "ascii-ignore-possessive": 0.004907,
+        "ascii-ignore-dense": 0.03704,
+        "ascii-ignore-sparse": 0.014676,
+        "unicode-ignore-greedy": 0.018833,
+        "unicode-ignore-finite": 0.025393,
+        "unicode-ignore-lazy": 0.081884,
+        "unicode-ignore-possessive": 0.017156,
+        "unicode-ignore-dense": 0.069751,
+        "unicode-ignore-sparse": 0.011712,
+        "ascii-plain-greedy": 0.004315,
+        "ascii-plain-dense": 0.038301,
+        "unicode-plain-greedy": 0.007612,
+        "unicode-plain-dense": 0.046007
+      },
+      "whole_process_wall_seconds": 1.3327806480010622,
+      "whole_process_cpu_seconds": 1.33249999999998,
+      "loadavg": [
+        2.75146484375,
+        3.400390625,
+        3.1796875
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 3,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.020532,
+        "ascii-ignore-finite": 0.038251,
+        "ascii-ignore-lazy": 0.051157,
+        "ascii-ignore-possessive": 0.019914,
+        "ascii-ignore-dense": 0.054631,
+        "ascii-ignore-sparse": 0.05881,
+        "unicode-ignore-greedy": 0.031028,
+        "unicode-ignore-finite": 0.044201,
+        "unicode-ignore-lazy": 0.070003,
+        "unicode-ignore-possessive": 0.034351,
+        "unicode-ignore-dense": 0.082851,
+        "unicode-ignore-sparse": 0.053374,
+        "ascii-plain-greedy": 0.005142,
+        "ascii-plain-dense": 0.032846,
+        "unicode-plain-greedy": 0.006396,
+        "unicode-plain-dense": 0.047188
+      },
+      "whole_process_wall_seconds": 1.95624274399961,
+      "whole_process_cpu_seconds": 1.9557080000000209,
+      "loadavg": [
+        2.771484375,
+        3.3935546875,
+        3.1787109375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 3,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.009215,
+        "ascii-ignore-finite": 0.012502,
+        "ascii-ignore-lazy": 0.040209,
+        "ascii-ignore-possessive": 0.010113,
+        "ascii-ignore-dense": 0.063527,
+        "ascii-ignore-sparse": 0.037582,
+        "unicode-ignore-greedy": 0.009216,
+        "unicode-ignore-finite": 0.012811,
+        "unicode-ignore-lazy": 0.04531,
+        "unicode-ignore-possessive": 0.008888,
+        "unicode-ignore-dense": 0.045606,
+        "unicode-ignore-sparse": 0.031507,
+        "ascii-plain-greedy": 0.002511,
+        "ascii-plain-dense": 0.030359,
+        "unicode-plain-greedy": 0.003105,
+        "unicode-plain-dense": 0.03433
+      },
+      "whole_process_wall_seconds": 1.2349238980023074,
+      "whole_process_cpu_seconds": 1.2346050000000055,
+      "loadavg": [
+        2.771484375,
+        3.3935546875,
+        3.1787109375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 4,
+      "mode": "cpython",
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/python-audit-31316/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.009183,
+        "ascii-ignore-finite": 0.012955,
+        "ascii-ignore-lazy": 0.037032,
+        "ascii-ignore-possessive": 0.009278,
+        "ascii-ignore-dense": 0.037712,
+        "ascii-ignore-sparse": 0.030468,
+        "unicode-ignore-greedy": 0.010404,
+        "unicode-ignore-finite": 0.014082,
+        "unicode-ignore-lazy": 0.041786,
+        "unicode-ignore-possessive": 0.009573,
+        "unicode-ignore-dense": 0.049668,
+        "unicode-ignore-sparse": 0.032665,
+        "ascii-plain-greedy": 0.001378,
+        "ascii-plain-dense": 0.03571,
+        "unicode-plain-greedy": 0.003406,
+        "unicode-plain-dense": 0.03247
+      },
+      "whole_process_wall_seconds": 1.169945811998332,
+      "whole_process_cpu_seconds": 1.1587780000000585,
+      "loadavg": [
+        2.771484375,
+        3.3935546875,
+        3.1787109375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 4,
+      "mode": "base",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/base-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.021583,
+        "ascii-ignore-finite": 0.025166,
+        "ascii-ignore-lazy": 0.051162,
+        "ascii-ignore-possessive": 0.020479,
+        "ascii-ignore-dense": 0.064286,
+        "ascii-ignore-sparse": 0.054148,
+        "unicode-ignore-greedy": 0.039442,
+        "unicode-ignore-finite": 0.035703,
+        "unicode-ignore-lazy": 0.06398,
+        "unicode-ignore-possessive": 0.029248,
+        "unicode-ignore-dense": 0.095459,
+        "unicode-ignore-sparse": 0.055448,
+        "ascii-plain-greedy": 0.004148,
+        "ascii-plain-dense": 0.042247,
+        "unicode-plain-greedy": 0.008084,
+        "unicode-plain-dense": 0.038837
+      },
+      "whole_process_wall_seconds": 1.987937656998838,
+      "whole_process_cpu_seconds": 1.9840669999999339,
+      "loadavg": [
+        2.7900390625,
+        3.38671875,
+        3.177734375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 4,
+      "mode": "new",
+      "command": [
+        "/workspace/scratch/1be456409258/pystachy-regex/build/regex-perf/final-repeat",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.005878,
+        "ascii-ignore-finite": 0.012578,
+        "ascii-ignore-lazy": 0.050966,
+        "ascii-ignore-possessive": 0.004826,
+        "ascii-ignore-dense": 0.038708,
+        "ascii-ignore-sparse": 0.010804,
+        "unicode-ignore-greedy": 0.016658,
+        "unicode-ignore-finite": 0.027099,
+        "unicode-ignore-lazy": 0.069148,
+        "unicode-ignore-possessive": 0.01808,
+        "unicode-ignore-dense": 0.063031,
+        "unicode-ignore-sparse": 0.014152,
+        "ascii-plain-greedy": 0.004412,
+        "ascii-plain-dense": 0.035425,
+        "unicode-plain-greedy": 0.008115,
+        "unicode-plain-dense": 0.043548
+      },
+      "whole_process_wall_seconds": 1.3434660999992047,
+      "whole_process_cpu_seconds": 1.343136000000003,
+      "loadavg": [
+        2.7900390625,
+        3.38671875,
+        3.177734375
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 4,
+      "mode": "base-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex-base",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.023758,
+        "ascii-ignore-finite": 0.027007,
+        "ascii-ignore-lazy": 0.071017,
+        "ascii-ignore-possessive": 0.024836,
+        "ascii-ignore-dense": 0.065051,
+        "ascii-ignore-sparse": 0.058897,
+        "unicode-ignore-greedy": 0.067708,
+        "unicode-ignore-finite": 0.067435,
+        "unicode-ignore-lazy": 0.114468,
+        "unicode-ignore-possessive": 0.069484,
+        "unicode-ignore-dense": 0.123185,
+        "unicode-ignore-sparse": 0.083981,
+        "ascii-plain-greedy": 0.007814,
+        "ascii-plain-dense": 0.065435,
+        "unicode-plain-greedy": 0.016186,
+        "unicode-plain-dense": 0.095443
+      },
+      "whole_process_wall_seconds": 3.9632492509990698,
+      "whole_process_cpu_seconds": 3.9596700000000187,
+      "loadavg": [
+        2.7265625,
+        3.36328125,
+        3.17138671875
+      ]
+    },
+    {
+      "benchmark": "repeat",
+      "round": 4,
+      "mode": "new-jit",
+      "command": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/1be456409258/pystachy-regex",
+        "/workspace/scratch/1be456409258/pystachy-regex/pystachy",
+        "run",
+        "/workspace/scratch/1be456409258/pystachy-regex/tools/re_repeat_bench.py",
+        "1000",
+        "--cpu"
+      ],
+      "phase_seconds": {
+        "ascii-ignore-greedy": 0.005738,
+        "ascii-ignore-finite": 0.020179,
+        "ascii-ignore-lazy": 0.081254,
+        "ascii-ignore-possessive": 0.005358,
+        "ascii-ignore-dense": 0.053296,
+        "ascii-ignore-sparse": 0.013714,
+        "unicode-ignore-greedy": 0.065352,
+        "unicode-ignore-finite": 0.062367,
+        "unicode-ignore-lazy": 0.146688,
+        "unicode-ignore-possessive": 0.05202,
+        "unicode-ignore-dense": 0.144121,
+        "unicode-ignore-sparse": 0.019293,
+        "ascii-plain-greedy": 0.005125,
+        "ascii-plain-dense": 0.048463,
+        "unicode-plain-greedy": 0.013216,
+        "unicode-plain-dense": 0.098296
+      },
+      "whole_process_wall_seconds": 3.7261224480025703,
+      "whole_process_cpu_seconds": 3.7225939999999955,
+      "loadavg": [
+        2.7265625,
+        3.36328125,
+        3.17138671875
+      ]
+    }
+  ],
+  "summary": {
+    "regex_dna/timed_part": {
+      "cpython": {
+        "median": 0.9290339199978916,
+        "min": 0.8801628049986903,
+        "max": 2.7002343089989154,
+        "samples": [
+          2.7002343089989154,
+          0.910557980001613,
+          0.9290339199978916,
+          0.8801628049986903,
+          0.9825342510011978
+        ]
+      },
+      "base": {
+        "median": 2.515215387000353,
+        "min": 2.4100090299980366,
+        "max": 4.167927025999234,
+        "samples": [
+          4.167927025999234,
+          2.515215387000353,
+          2.628602716002206,
+          2.4100090299980366,
+          2.446340186997986
+        ]
+      },
+      "new": {
+        "median": 2.2620929019976757,
+        "min": 2.166745696998987,
+        "max": 4.618659168001614,
+        "samples": [
+          4.618659168001614,
+          2.5957655099991825,
+          2.2412448009999935,
+          2.166745696998987,
+          2.2620929019976757
+        ]
+      },
+      "base-jit": {
+        "median": 2.6680167889971926,
+        "min": 2.646460099000251,
+        "max": 4.055500443002529,
+        "samples": [
+          4.055500443002529,
+          3.5831408710000687,
+          2.646460099000251,
+          2.6575126989991986,
+          2.6680167889971926
+        ]
+      },
+      "new-jit": {
+        "median": 2.628086123000685,
+        "min": 2.472845418000361,
+        "max": 3.4585644219987444,
+        "samples": [
+          3.4585644219987444,
+          3.21143044800192,
+          2.628086123000685,
+          2.6125229059980484,
+          2.472845418000361
+        ]
+      },
+      "base_over_new": 1.1118974754658142,
+      "new_over_cpython": 2.4348873096073924
+    },
+    "regex_effbot/timed_part": {
+      "cpython": {
+        "median": 0.5755427880030766,
+        "min": 0.534386811999866,
+        "max": 1.2639387479975994,
+        "samples": [
+          0.5755427880030766,
+          0.534386811999866,
+          0.5735761750001984,
+          0.5947310619994823,
+          1.2639387479975994
+        ]
+      },
+      "base": {
+        "median": 1.6621791899997334,
+        "min": 1.541589513002691,
+        "max": 1.7355203160004748,
+        "samples": [
+          1.541589513002691,
+          1.7355203160004748,
+          1.7041350929976034,
+          1.6501556690018333,
+          1.6621791899997334
+        ]
+      },
+      "new": {
+        "median": 0.9267888899994432,
+        "min": 0.77156683299836,
+        "max": 1.3576315389982483,
+        "samples": [
+          0.8056786810011545,
+          0.9267888899994432,
+          0.77156683299836,
+          1.2909098740019544,
+          1.3576315389982483
+        ]
+      },
+      "base-jit": {
+        "median": 2.0381175209986395,
+        "min": 1.8650874029990518,
+        "max": 2.420853512998292,
+        "samples": [
+          2.201500221999595,
+          2.420853512998292,
+          2.0381175209986395,
+          2.0009101220020966,
+          1.8650874029990518
+        ]
+      },
+      "new-jit": {
+        "median": 1.0742528010014212,
+        "min": 0.9246397310016619,
+        "max": 1.6203559540008428,
+        "samples": [
+          1.5062934769994172,
+          0.9246397310016619,
+          1.0742528010014212,
+          1.6203559540008428,
+          1.0343182830001751
+        ]
+      },
+      "base_over_new": 1.7934819978266376,
+      "new_over_cpython": 1.610286688180148
+    },
+    "regex_v8/timed_part": {
+      "cpython": {
+        "median": 0.5151164409980993,
+        "min": 0.4242012290014827,
+        "max": 0.5534357510005066,
+        "samples": [
+          0.5534357510005066,
+          0.4357639920017391,
+          0.4242012290014827,
+          0.5205553689993394,
+          0.5151164409980993
+        ]
+      },
+      "base": {
+        "median": 1.7653363620011078,
+        "min": 1.6320871419993637,
+        "max": 2.462820909000584,
+        "samples": [
+          2.462820909000584,
+          1.6320871419993637,
+          1.677763263000088,
+          1.8693043849998503,
+          1.7653363620011078
+        ]
+      },
+      "new": {
+        "median": 1.4952457719991799,
+        "min": 1.363270822999766,
+        "max": 1.6626508289991762,
+        "samples": [
+          1.5441878260025987,
+          1.4952457719991799,
+          1.6626508289991762,
+          1.363270822999766,
+          1.4765813759986486
+        ]
+      },
+      "base-jit": {
+        "median": 2.8158582270007173,
+        "min": 2.0089678980002645,
+        "max": 2.9427906700002495,
+        "samples": [
+          2.0089678980002645,
+          2.8158582270007173,
+          2.9427906700002495,
+          2.858213961997535,
+          2.0154668409995793
+        ]
+      },
+      "new-jit": {
+        "median": 2.1551281760002894,
+        "min": 1.8672305500003858,
+        "max": 2.862898715000483,
+        "samples": [
+          2.862898715000483,
+          2.1551281760002894,
+          2.029797277999023,
+          1.8672305500003858,
+          2.2339849950003554
+        ]
+      },
+      "base_over_new": 1.1806329066831671,
+      "new_over_cpython": 2.9027335433168537
+    },
+    "repeat/ascii-ignore-greedy": {
+      "cpython": {
+        "median": 0.009839,
+        "min": 0.009183,
+        "max": 0.010511,
+        "samples": [
+          0.010511,
+          0.010063,
+          0.009839,
+          0.009215,
+          0.009183
+        ]
+      },
+      "base": {
+        "median": 0.02189,
+        "min": 0.020532,
+        "max": 0.028937,
+        "samples": [
+          0.027103,
+          0.02189,
+          0.028937,
+          0.020532,
+          0.021583
+        ]
+      },
+      "new": {
+        "median": 0.005724,
+        "min": 0.005144,
+        "max": 0.006323,
+        "samples": [
+          0.005381,
+          0.005724,
+          0.006323,
+          0.005144,
+          0.005878
+        ]
+      },
+      "base-jit": {
+        "median": 0.024016,
+        "min": 0.023758,
+        "max": 0.02838,
+        "samples": [
+          0.025888,
+          0.023986,
+          0.024016,
+          0.02838,
+          0.023758
+        ]
+      },
+      "new-jit": {
+        "median": 0.006234,
+        "min": 0.005738,
+        "max": 0.006775,
+        "samples": [
+          0.00602,
+          0.006234,
+          0.006772,
+          0.006775,
+          0.005738
+        ]
+      },
+      "base_over_new": 3.824248777078966,
+      "new_over_cpython": 0.5817664396788291
+    },
+    "repeat/ascii-ignore-finite": {
+      "cpython": {
+        "median": 0.013034,
+        "min": 0.012502,
+        "max": 0.013667,
+        "samples": [
+          0.013302,
+          0.013034,
+          0.013667,
+          0.012502,
+          0.012955
+        ]
+      },
+      "base": {
+        "median": 0.028377,
+        "min": 0.025166,
+        "max": 0.038251,
+        "samples": [
+          0.028377,
+          0.025671,
+          0.030601,
+          0.038251,
+          0.025166
+        ]
+      },
+      "new": {
+        "median": 0.010752,
+        "min": 0.009245,
+        "max": 0.012578,
+        "samples": [
+          0.011587,
+          0.010752,
+          0.010035,
+          0.009245,
+          0.012578
+        ]
+      },
+      "base-jit": {
+        "median": 0.028874,
+        "min": 0.027007,
+        "max": 0.042001,
+        "samples": [
+          0.042001,
+          0.028874,
+          0.027843,
+          0.032056,
+          0.027007
+        ]
+      },
+      "new-jit": {
+        "median": 0.011782,
+        "min": 0.011034,
+        "max": 0.020179,
+        "samples": [
+          0.011437,
+          0.012446,
+          0.011782,
+          0.011034,
+          0.020179
+        ]
+      },
+      "base_over_new": 2.6392299107142856,
+      "new_over_cpython": 0.8249194414607948
+    },
+    "repeat/ascii-ignore-lazy": {
+      "cpython": {
+        "median": 0.041659,
+        "min": 0.037032,
+        "max": 0.047273,
+        "samples": [
+          0.043528,
+          0.047273,
+          0.041659,
+          0.040209,
+          0.037032
+        ]
+      },
+      "base": {
+        "median": 0.063495,
+        "min": 0.051157,
+        "max": 0.083377,
+        "samples": [
+          0.083377,
+          0.065606,
+          0.063495,
+          0.051157,
+          0.051162
+        ]
+      },
+      "new": {
+        "median": 0.045731,
+        "min": 0.042121,
+        "max": 0.053488,
+        "samples": [
+          0.053488,
+          0.042121,
+          0.042437,
+          0.045731,
+          0.050966
+        ]
+      },
+      "base-jit": {
+        "median": 0.071017,
+        "min": 0.061676,
+        "max": 0.092288,
+        "samples": [
+          0.072445,
+          0.064144,
+          0.061676,
+          0.092288,
+          0.071017
+        ]
+      },
+      "new-jit": {
+        "median": 0.061939,
+        "min": 0.056582,
+        "max": 0.081254,
+        "samples": [
+          0.061939,
+          0.066843,
+          0.056582,
+          0.05749,
+          0.081254
+        ]
+      },
+      "base_over_new": 1.3884454746233408,
+      "new_over_cpython": 1.097745985261288
+    },
+    "repeat/ascii-ignore-possessive": {
+      "cpython": {
+        "median": 0.010113,
+        "min": 0.009278,
+        "max": 0.013668,
+        "samples": [
+          0.013668,
+          0.00968,
+          0.010703,
+          0.010113,
+          0.009278
+        ]
+      },
+      "base": {
+        "median": 0.021604,
+        "min": 0.019914,
+        "max": 0.041507,
+        "samples": [
+          0.041507,
+          0.021604,
+          0.025484,
+          0.019914,
+          0.020479
+        ]
+      },
+      "new": {
+        "median": 0.004907,
+        "min": 0.004304,
+        "max": 0.007688,
+        "samples": [
+          0.007688,
+          0.004999,
+          0.004304,
+          0.004907,
+          0.004826
+        ]
+      },
+      "base-jit": {
+        "median": 0.023986,
+        "min": 0.022348,
+        "max": 0.026904,
+        "samples": [
+          0.026904,
+          0.023986,
+          0.022348,
+          0.023627,
+          0.024836
+        ]
+      },
+      "new-jit": {
+        "median": 0.004979,
+        "min": 0.004927,
+        "max": 0.005988,
+        "samples": [
+          0.004979,
+          0.005988,
+          0.004929,
+          0.004927,
+          0.005358
+        ]
+      },
+      "base_over_new": 4.402690034644386,
+      "new_over_cpython": 0.485217047364778
+    },
+    "repeat/ascii-ignore-dense": {
+      "cpython": {
+        "median": 0.044395,
+        "min": 0.037712,
+        "max": 0.063527,
+        "samples": [
+          0.055631,
+          0.039704,
+          0.044395,
+          0.063527,
+          0.037712
+        ]
+      },
+      "base": {
+        "median": 0.065545,
+        "min": 0.054631,
+        "max": 0.089741,
+        "samples": [
+          0.089741,
+          0.065545,
+          0.080059,
+          0.054631,
+          0.064286
+        ]
+      },
+      "new": {
+        "median": 0.036488,
+        "min": 0.033401,
+        "max": 0.038708,
+        "samples": [
+          0.033401,
+          0.036488,
+          0.036305,
+          0.03704,
+          0.038708
+        ]
+      },
+      "base-jit": {
+        "median": 0.065051,
+        "min": 0.06433,
+        "max": 0.069623,
+        "samples": [
+          0.066561,
+          0.06433,
+          0.064693,
+          0.069623,
+          0.065051
+        ]
+      },
+      "new-jit": {
+        "median": 0.051602,
+        "min": 0.048037,
+        "max": 0.053296,
+        "samples": [
+          0.050854,
+          0.051602,
+          0.053269,
+          0.048037,
+          0.053296
+        ]
+      },
+      "base_over_new": 1.7963440035080027,
+      "new_over_cpython": 0.8218943574726885
+    },
+    "repeat/ascii-ignore-sparse": {
+      "cpython": {
+        "median": 0.031315,
+        "min": 0.030468,
+        "max": 0.045013,
+        "samples": [
+          0.045013,
+          0.030901,
+          0.031315,
+          0.037582,
+          0.030468
+        ]
+      },
+      "base": {
+        "median": 0.05881,
+        "min": 0.054148,
+        "max": 0.101064,
+        "samples": [
+          0.101064,
+          0.062233,
+          0.055546,
+          0.05881,
+          0.054148
+        ]
+      },
+      "new": {
+        "median": 0.010628,
+        "min": 0.009782,
+        "max": 0.014676,
+        "samples": [
+          0.010284,
+          0.009782,
+          0.010628,
+          0.014676,
+          0.010804
+        ]
+      },
+      "base-jit": {
+        "median": 0.059656,
+        "min": 0.057745,
+        "max": 0.066177,
+        "samples": [
+          0.063096,
+          0.059656,
+          0.057745,
+          0.066177,
+          0.058897
+        ]
+      },
+      "new-jit": {
+        "median": 0.013714,
+        "min": 0.01301,
+        "max": 0.014118,
+        "samples": [
+          0.013284,
+          0.014118,
+          0.01375,
+          0.01301,
+          0.013714
+        ]
+      },
+      "base_over_new": 5.533496424538954,
+      "new_over_cpython": 0.339390068657193
+    },
+    "repeat/unicode-ignore-greedy": {
+      "cpython": {
+        "median": 0.010064,
+        "min": 0.009216,
+        "max": 0.011528,
+        "samples": [
+          0.009348,
+          0.011528,
+          0.010064,
+          0.009216,
+          0.010404
+        ]
+      },
+      "base": {
+        "median": 0.038323,
+        "min": 0.031028,
+        "max": 0.048418,
+        "samples": [
+          0.048418,
+          0.033585,
+          0.038323,
+          0.031028,
+          0.039442
+        ]
+      },
+      "new": {
+        "median": 0.017277,
+        "min": 0.016351,
+        "max": 0.018833,
+        "samples": [
+          0.016351,
+          0.017796,
+          0.017277,
+          0.018833,
+          0.016658
+        ]
+      },
+      "base-jit": {
+        "median": 0.067708,
+        "min": 0.059075,
+        "max": 0.090392,
+        "samples": [
+          0.07395,
+          0.061948,
+          0.059075,
+          0.090392,
+          0.067708
+        ]
+      },
+      "new-jit": {
+        "median": 0.052033,
+        "min": 0.048309,
+        "max": 0.065352,
+        "samples": [
+          0.052219,
+          0.052033,
+          0.050665,
+          0.048309,
+          0.065352
+        ]
+      },
+      "base_over_new": 2.218151299415408,
+      "new_over_cpython": 1.7167130365659777
+    },
+    "repeat/unicode-ignore-finite": {
+      "cpython": {
+        "median": 0.013188,
+        "min": 0.012811,
+        "max": 0.019199,
+        "samples": [
+          0.019199,
+          0.013188,
+          0.013042,
+          0.012811,
+          0.014082
+        ]
+      },
+      "base": {
+        "median": 0.044201,
+        "min": 0.035703,
+        "max": 0.083045,
+        "samples": [
+          0.083045,
+          0.046413,
+          0.041208,
+          0.044201,
+          0.035703
+        ]
+      },
+      "new": {
+        "median": 0.02485,
+        "min": 0.023523,
+        "max": 0.027099,
+        "samples": [
+          0.023523,
+          0.02485,
+          0.02426,
+          0.025393,
+          0.027099
+        ]
+      },
+      "base-jit": {
+        "median": 0.069269,
+        "min": 0.066503,
+        "max": 0.108265,
+        "samples": [
+          0.072994,
+          0.069269,
+          0.066503,
+          0.108265,
+          0.067435
+        ]
+      },
+      "new-jit": {
+        "median": 0.059852,
+        "min": 0.057957,
+        "max": 0.062367,
+        "samples": [
+          0.059852,
+          0.057957,
+          0.061433,
+          0.058933,
+          0.062367
+        ]
+      },
+      "base_over_new": 1.778712273641851,
+      "new_over_cpython": 1.8842887473460723
+    },
+    "repeat/unicode-ignore-lazy": {
+      "cpython": {
+        "median": 0.046141,
+        "min": 0.041786,
+        "max": 0.058834,
+        "samples": [
+          0.058834,
+          0.046141,
+          0.047046,
+          0.04531,
+          0.041786
+        ]
+      },
+      "base": {
+        "median": 0.073261,
+        "min": 0.06398,
+        "max": 0.117998,
+        "samples": [
+          0.117998,
+          0.093525,
+          0.073261,
+          0.070003,
+          0.06398
+        ]
+      },
+      "new": {
+        "median": 0.070286,
+        "min": 0.068644,
+        "max": 0.081884,
+        "samples": [
+          0.068644,
+          0.070286,
+          0.070828,
+          0.081884,
+          0.069148
+        ]
+      },
+      "base-jit": {
+        "median": 0.114546,
+        "min": 0.110153,
+        "max": 0.187708,
+        "samples": [
+          0.114546,
+          0.110153,
+          0.118861,
+          0.187708,
+          0.114468
+        ]
+      },
+      "new-jit": {
+        "median": 0.133426,
+        "min": 0.119583,
+        "max": 0.146688,
+        "samples": [
+          0.135536,
+          0.127915,
+          0.133426,
+          0.119583,
+          0.146688
+        ]
+      },
+      "base_over_new": 1.0423270637111233,
+      "new_over_cpython": 1.5232873149693331
+    },
+    "repeat/unicode-ignore-possessive": {
+      "cpython": {
+        "median": 0.010863,
+        "min": 0.008888,
+        "max": 0.01263,
+        "samples": [
+          0.012387,
+          0.01263,
+          0.010863,
+          0.008888,
+          0.009573
+        ]
+      },
+      "base": {
+        "median": 0.034351,
+        "min": 0.029248,
+        "max": 0.049312,
+        "samples": [
+          0.049312,
+          0.037931,
+          0.031571,
+          0.034351,
+          0.029248
+        ]
+      },
+      "new": {
+        "median": 0.017474,
+        "min": 0.01714,
+        "max": 0.01809,
+        "samples": [
+          0.01714,
+          0.01809,
+          0.017474,
+          0.017156,
+          0.01808
+        ]
+      },
+      "base-jit": {
+        "median": 0.066922,
+        "min": 0.060527,
+        "max": 0.09219,
+        "samples": [
+          0.066922,
+          0.060527,
+          0.066279,
+          0.09219,
+          0.069484
+        ]
+      },
+      "new-jit": {
+        "median": 0.05202,
+        "min": 0.045706,
+        "max": 0.054563,
+        "samples": [
+          0.054563,
+          0.049578,
+          0.053677,
+          0.045706,
+          0.05202
+        ]
+      },
+      "base_over_new": 1.9658349547899736,
+      "new_over_cpython": 1.6085795820675688
+    },
+    "repeat/unicode-ignore-dense": {
+      "cpython": {
+        "median": 0.052419,
+        "min": 0.045606,
+        "max": 0.063588,
+        "samples": [
+          0.063588,
+          0.053484,
+          0.052419,
+          0.045606,
+          0.049668
+        ]
+      },
+      "base": {
+        "median": 0.085114,
+        "min": 0.08153,
+        "max": 0.142741,
+        "samples": [
+          0.142741,
+          0.085114,
+          0.08153,
+          0.082851,
+          0.095459
+        ]
+      },
+      "new": {
+        "median": 0.065874,
+        "min": 0.063031,
+        "max": 0.070741,
+        "samples": [
+          0.070741,
+          0.065874,
+          0.064354,
+          0.069751,
+          0.063031
+        ]
+      },
+      "base-jit": {
+        "median": 0.120725,
+        "min": 0.106905,
+        "max": 0.199936,
+        "samples": [
+          0.120725,
+          0.113374,
+          0.106905,
+          0.199936,
+          0.123185
+        ]
+      },
+      "new-jit": {
+        "median": 0.119521,
+        "min": 0.118058,
+        "max": 0.144121,
+        "samples": [
+          0.118058,
+          0.119521,
+          0.122932,
+          0.118632,
+          0.144121
+        ]
+      },
+      "base_over_new": 1.2920727449373044,
+      "new_over_cpython": 1.2566817375379156
+    },
+    "repeat/unicode-ignore-sparse": {
+      "cpython": {
+        "median": 0.036146,
+        "min": 0.031507,
+        "max": 0.050431,
+        "samples": [
+          0.050431,
+          0.038631,
+          0.036146,
+          0.031507,
+          0.032665
+        ]
+      },
+      "base": {
+        "median": 0.056411,
+        "min": 0.053374,
+        "max": 0.06461,
+        "samples": [
+          0.06461,
+          0.061274,
+          0.056411,
+          0.053374,
+          0.055448
+        ]
+      },
+      "new": {
+        "median": 0.011733,
+        "min": 0.011625,
+        "max": 0.014152,
+        "samples": [
+          0.011733,
+          0.011766,
+          0.011625,
+          0.011712,
+          0.014152
+        ]
+      },
+      "base-jit": {
+        "median": 0.061167,
+        "min": 0.058234,
+        "max": 0.083981,
+        "samples": [
+          0.065211,
+          0.058234,
+          0.05843,
+          0.061167,
+          0.083981
+        ]
+      },
+      "new-jit": {
+        "median": 0.017594,
+        "min": 0.015766,
+        "max": 0.019293,
+        "samples": [
+          0.017936,
+          0.016289,
+          0.017594,
+          0.015766,
+          0.019293
+        ]
+      },
+      "base_over_new": 4.807892269666752,
+      "new_over_cpython": 0.32460023239085933
+    },
+    "repeat/ascii-plain-greedy": {
+      "cpython": {
+        "median": 0.001771,
+        "min": 0.001378,
+        "max": 0.002952,
+        "samples": [
+          0.002952,
+          0.001495,
+          0.001771,
+          0.002511,
+          0.001378
+        ]
+      },
+      "base": {
+        "median": 0.004617,
+        "min": 0.004148,
+        "max": 0.005142,
+        "samples": [
+          0.004617,
+          0.004507,
+          0.004835,
+          0.005142,
+          0.004148
+        ]
+      },
+      "new": {
+        "median": 0.004412,
+        "min": 0.00412,
+        "max": 0.004986,
+        "samples": [
+          0.00412,
+          0.004986,
+          0.004677,
+          0.004315,
+          0.004412
+        ]
+      },
+      "base-jit": {
+        "median": 0.004481,
+        "min": 0.003854,
+        "max": 0.007814,
+        "samples": [
+          0.004588,
+          0.003854,
+          0.004161,
+          0.004481,
+          0.007814
+        ]
+      },
+      "new-jit": {
+        "median": 0.00441,
+        "min": 0.003968,
+        "max": 0.005973,
+        "samples": [
+          0.003968,
+          0.00441,
+          0.005973,
+          0.004135,
+          0.005125
+        ]
+      },
+      "base_over_new": 1.046464188576609,
+      "new_over_cpython": 2.4912478825522304
+    },
+    "repeat/ascii-plain-dense": {
+      "cpython": {
+        "median": 0.033092,
+        "min": 0.030359,
+        "max": 0.057552,
+        "samples": [
+          0.057552,
+          0.033092,
+          0.032483,
+          0.030359,
+          0.03571
+        ]
+      },
+      "base": {
+        "median": 0.036637,
+        "min": 0.032846,
+        "max": 0.042247,
+        "samples": [
+          0.036637,
+          0.037581,
+          0.036289,
+          0.032846,
+          0.042247
+        ]
+      },
+      "new": {
+        "median": 0.035653,
+        "min": 0.033049,
+        "max": 0.038301,
+        "samples": [
+          0.033049,
+          0.035817,
+          0.035653,
+          0.038301,
+          0.035425
+        ]
+      },
+      "base-jit": {
+        "median": 0.042012,
+        "min": 0.040072,
+        "max": 0.065435,
+        "samples": [
+          0.042965,
+          0.040153,
+          0.042012,
+          0.040072,
+          0.065435
+        ]
+      },
+      "new-jit": {
+        "median": 0.044927,
+        "min": 0.044193,
+        "max": 0.048463,
+        "samples": [
+          0.044927,
+          0.044193,
+          0.046741,
+          0.044665,
+          0.048463
+        ]
+      },
+      "base_over_new": 1.0275993605026226,
+      "new_over_cpython": 1.077390305814094
+    },
+    "repeat/unicode-plain-greedy": {
+      "cpython": {
+        "median": 0.003406,
+        "min": 0.003105,
+        "max": 0.006502,
+        "samples": [
+          0.006502,
+          0.004179,
+          0.003267,
+          0.003105,
+          0.003406
+        ]
+      },
+      "base": {
+        "median": 0.008084,
+        "min": 0.006396,
+        "max": 0.008773,
+        "samples": [
+          0.008773,
+          0.007615,
+          0.00834,
+          0.006396,
+          0.008084
+        ]
+      },
+      "new": {
+        "median": 0.008115,
+        "min": 0.007274,
+        "max": 0.009415,
+        "samples": [
+          0.007274,
+          0.008272,
+          0.009415,
+          0.007612,
+          0.008115
+        ]
+      },
+      "base-jit": {
+        "median": 0.014841,
+        "min": 0.013048,
+        "max": 0.016186,
+        "samples": [
+          0.013048,
+          0.014841,
+          0.013544,
+          0.014936,
+          0.016186
+        ]
+      },
+      "new-jit": {
+        "median": 0.013216,
+        "min": 0.012038,
+        "max": 0.017111,
+        "samples": [
+          0.013298,
+          0.012129,
+          0.017111,
+          0.012038,
+          0.013216
+        ]
+      },
+      "base_over_new": 0.9961799137399875,
+      "new_over_cpython": 2.3825601879036995
+    },
+    "repeat/unicode-plain-dense": {
+      "cpython": {
+        "median": 0.035243,
+        "min": 0.03247,
+        "max": 0.06175,
+        "samples": [
+          0.06175,
+          0.038515,
+          0.035243,
+          0.03433,
+          0.03247
+        ]
+      },
+      "base": {
+        "median": 0.04626,
+        "min": 0.038837,
+        "max": 0.047643,
+        "samples": [
+          0.044838,
+          0.047643,
+          0.04626,
+          0.047188,
+          0.038837
+        ]
+      },
+      "new": {
+        "median": 0.046007,
+        "min": 0.043375,
+        "max": 0.065629,
+        "samples": [
+          0.043375,
+          0.065629,
+          0.047275,
+          0.046007,
+          0.043548
+        ]
+      },
+      "base-jit": {
+        "median": 0.067288,
+        "min": 0.062784,
+        "max": 0.095443,
+        "samples": [
+          0.066268,
+          0.062784,
+          0.067288,
+          0.068989,
+          0.095443
+        ]
+      },
+      "new-jit": {
+        "median": 0.065338,
+        "min": 0.064672,
+        "max": 0.098296,
+        "samples": [
+          0.064672,
+          0.065106,
+          0.065688,
+          0.065338,
+          0.098296
+        ]
+      },
+      "base_over_new": 1.0054991631708219,
+      "new_over_cpython": 1.3054223533751383
+    }
+  },
+  "compiler_sha256": "6282b36345e91ae49eefeed10b43c8adff331c4835b2bec3a217a42b77fc90f5",
+  "implementation_sha256": "362cf7148831b2f672a343119c310121608dd8f3c6e2cf5390fd7b2953c37b3d",
+  "source_sha256": {
+    "regex_dna": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+    "regex_effbot": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+    "regex_v8": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+    "repeat": "2d09411e9cd9ba4c551c983034ccb911b90e7ac90008cca545629219dd247d42"
+  },
+  "checksums": {
+    "regex_dna": "regex_dna 4 100000 ([6, 26, 86, 58, 113, 31, 31, 32, 43], 1016745, 1000000, 1336326)\n",
+    "regex_effbot": "regex_effbot 20 636833\n",
+    "regex_v8": "regex_v8 20 369067584475\n",
+    "repeat": "loops 1000 samples 3 clock cpu\nascii-ignore-greedy seconds checksum 1056 count 3000\nascii-ignore-finite seconds checksum 82720 count 84000\nascii-ignore-lazy seconds checksum 17334208 count 1344000\nascii-ignore-possessive seconds checksum 1056 count 3000\nascii-ignore-dense seconds checksum 6936096 count 864000\nascii-ignore-sparse seconds checksum 165 count 3000\nunicode-ignore-greedy seconds checksum 1024 count 3000\nunicode-ignore-finite seconds checksum 1008090 count 81000\nunicode-ignore-lazy seconds checksum 237745296 count 1296000\nunicode-ignore-possessive seconds checksum 1024 count 3000\nunicode-ignore-dense seconds checksum 143130240 count 864000\nunicode-ignore-sparse seconds checksum 8590 count 3000\nascii-plain-greedy seconds checksum 1056 count 3000\nascii-plain-dense seconds checksum 6936096 count 864000\nunicode-plain-greedy seconds checksum 1024 count 3000\nunicode-plain-dense seconds checksum 143130240 count 864000"
+  },
+  "notes": [
+    "Five alternating-order rounds on a shared host; no concurrent builds or broad test jobs owned by this experiment. Other host activity was uncontrolled.",
+    "JIT runtime cache primed; default compiler optimization. AOT build time was not measured.",
+    "All outputs/checksums agreed across CPython, baseline and candidate in both modes.",
+    "candidate_commit is the local implementation commit; implementation_sha256 identifies the measured matcher independently of publication metadata.",
+    "Timed pyperformance workloads include any in-loop lazy initialization/cache misses. Whole-process time additionally includes setup, checksums, startup and JIT compilation.",
+    "repeat uses 1000 loops and the process CPU clock; each process reports the median of three warmed samples per case."
+  ],
+  "build_commands": [
+    "PYSTACHY_HOME=<base-or-candidate> ./pystachy build bench/pyperformance/<name>.py -o <binary>",
+    "PYSTACHY_HOME=<base-or-candidate> ./pystachy build tools/re_repeat_bench.py -o <binary>"
+  ]
+}

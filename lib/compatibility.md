@@ -19,6 +19,35 @@ frozen modules. Runtime builtin queries and module loading raise explicitly;
 compiler builtin namespaces are not a runtime importer registry. The prototype
 does not make upstream `importlib` or Python bytecode execution available.
 
+## `_ast` prototype
+
+The [prototype contract](../docs/prototypes/ast.md) covers constructing, inspecting
+and mutating typed expression nodes: constants, names, operators, boolean
+operations, comparisons, calls and keywords, attributes, subscripts and slices,
+starred values, list, tuple, set and dict displays, conditional and assignment
+expressions, `await` and `yield`, with CPython 3.13's `_fields`, `_attributes`,
+`__match_args__` and constructor defaults. Their module is `ast`, as CPython's
+types name it. There is no parser (`ast.parse()`), `compile()` of trees,
+statement node, comprehension, lambda, f-string node or location attribute.
+`keyword` takes its `arg` explicitly, and a list field takes a list, not `None`.
+
+## `_weakref` prototype
+
+The [prototype contract](../docs/prototypes/weakref.md) covers `ref` and
+`ReferenceType`, one class, to ordinary class instances: calling a reference
+returns its referent, or `None` once the collector has reclaimed it. While both
+referents live, `==`, `!=` and `hash()` are the referents'; a dead reference
+equals only itself and keeps a hash computed before. Referents die when the
+collector finds them unreachable, not when CPython's last counted reference
+goes, so a reference to a temporary still compares by its referent until a
+collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPython
+adds for a referent whose class defines `__name__`. A reference has no attributes
+of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
+which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
+unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
+`getweakrefs()`, weak containers and the reuse of one reference per referent
+(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
+
 ## Operator
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
@@ -398,8 +427,8 @@ input longer than 1,048,576 code points once they return. Bounded `findall` and 
 whose `endpos` precedes the input's end keep it, as do caches that `match` or
 `search` made, so loops over advancing windows reuse their decoded prefixes.
 Active operations retain their decoded input, so callbacks can safely purge;
-existing patterns and matches remain usable. ASCII character-class tables belong
-to their pattern and preserve scoped case folding and Unicode fallback.
+existing patterns and matches remain usable. Character-class tables and search
+strategies belong to their pattern and preserve scoped case folding and Unicode fallback.
 
 ## Fnmatch
 
@@ -489,8 +518,8 @@ unsupported: class decorators are not compiled.
 options, mutable wrapper options and overridable class attributes. Regex work
 uses `lib/re`.
 
-Widths and long-word splitting count Unicode code points. Tab expansion still
-counts UTF-8 bytes before a tab. `unicode_whitespace_trans` must map ints to ints,
+Widths, long-word splitting and tab expansion count Unicode code points.
+`unicode_whitespace_trans` must map ints to ints,
 with no string or `None` replacements; custom tables are looked up by code point. Mutated and
 custom tables retain their semantics when whitespace fast paths do not apply.
 `TextWrapper` subclasses are unsupported.

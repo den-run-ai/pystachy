@@ -2616,7 +2616,11 @@ List *pys_text_list(Str *s) {
   }
   return l;
 }
-List *pys_bytes_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (unsigned char)s->s[i]); return l; }
+List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
+  List *l = pys_list_new_atomic(s->len);
+  for (I i = 0; i < s->len; i++) l->a[i] = (unsigned char)s->s[i];
+  l->len = s->len; return l;
+}
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */
 /* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a
@@ -3934,6 +3938,10 @@ void pys_file_drop(File *f) {          /* the compiler's close of a file used in
   io_in(); int e = shut(f); if (e) report(f, e); io_out();
 }
 I pys_file_closed(File *f) { return f->closed; }
+I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raises FileIO's error, without the "." */
+  if (f->closed) pys_fail("ValueError: I/O operation on closed file");
+  return fileno(f->f);
+}
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
 /* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's

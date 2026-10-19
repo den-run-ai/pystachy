@@ -41,7 +41,7 @@ In these cases a program can compile but behave differently from CPython.
   scans from the start, while ordinary forward iteration uses a byte cursor. No per-string
   index table is retained yet.
   Case mapping and the `is*()` tests but `isspace()` and `isascii()` still know only ASCII;
-  `replace("", s)`'s gaps and `expandtabs()`'s columns still count bytes. These remain
+  `replace("", s)`'s gaps still count bytes. These remain
   follow-ups to [#120](https://github.com/den-run-ai/pystachy/issues/120).
   Escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and

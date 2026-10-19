@@ -23,6 +23,10 @@ unbounded, such patterns backtrack exponentially, in _sre too.
 
 Deterministic: the patterns and strings come from random.Random(SEED). Compiled Pystachy runs the
 same port: tests/upstream_re_*.py and tests/lib_re.py check it against CPython's re.
+After them, N/4 more patterns of the shapes the search's prefilters take (lib/re/_sre.py
+_prefilter: alternatives that all begin with literals and classes, or literals after a head of
+bounded width, case-insensitive ones too) run the same checks on longer strings as well, from a
+generator of their own, so that the patterns above stay the same for a given SEED.
 The inline-flag alphabetic classifier and its identifier-start delta are also checked exhaustively
 against str.isalpha()/str.isidentifier() for every code point U+0000..U+10FFFF, including surrogates.
 
@@ -47,7 +51,8 @@ _spec.loader.exec_module(port)
 warnings.simplefilter("ignore", FutureWarning)
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
-R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
+SEED = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+R = random.Random(SEED)
 STRINGS = 19  # strings per valid pattern
 # characters of patterns and strings: ASCII letters and digits, separators, and non-ASCII ones that
 # case-fold in interesting ways (K and the Kelvin sign, s and the long s, sharp s, dotless i, Greek
@@ -472,5 +477,40 @@ for k in range(N):
     p, f = pattern(), flags()
     utf8(k % 2 == 1)
     check(p, f)
+
+
+# ---- the prefilters' shapes, on longer strings (their own generator: see the top)
+
+P = random.Random("prefilter %d" % SEED)
+PF_TEXT = "abcx \u00e9\u00c9K\u212a\u017fsS"
+
+
+def pf_run():
+    # literals and classes, as an alternative begins
+    return "".join(P.choice(["a", "b", "c", "x", "\u00e9", "[ab]", "[^a]", "[a-c]", "[\u00e9\u00c9]", "\\s", "."])
+                   for _ in range(P.randint(1, 3)))
+
+
+def pf_head():
+    # a head of bounded width (or none) before literals
+    return P.choice(["", "a?", "[ab]{0,2}", "(?:a|bc)", "\\b", "(?=a)", "(?<=b)", "(^|x)", "(?:x|)", "\\s?",
+                     "(?:ab|)c?", "x{1,3}", "(?!c)", "(a)?", "[^a]", "\\B", "(?:(a)|b)", "^", "(?m:^)", "$?"])
+
+
+def pf_pattern():
+    tail = P.choice(["", "c*", "(x)", "\\b", "[ab]+", "(?=x)", "$", "a|b", "(c|)", ".*", "\\1"])
+    lits = "".join(P.choice("abcx\u00e9") for _ in range(P.randint(1, 3)))
+    if P.randrange(2) == 0:
+        p = "(?:" + "|".join([pf_run() + P.choice(["", "b*", "(c)", "a+", "[bc]?"]) for _ in range(P.randint(2, 4))]) + ")"
+        p = ("(" + p + ")" if P.randrange(3) == 0 else p) + tail
+    else:
+        p = pf_head() + P.choice(["", pf_head()]) + lits + tail
+    return p
+
+
+for k in range(N // 4):
+    p, f = pf_pattern(), P.choice([0, 0, re.I, re.I | re.A, re.M, re.S])
+    utf8(k % 2 == 1)
+    check(p, f, ["".join(P.choice(PF_TEXT) for _ in range(P.randint(11, 40))) for _ in range(4)])
 print(f"{len(UPSTREAM)} upstream cases and {patterns} patterns ({valid} valid): {cases} cases, {fails} failed")
 sys.exit(1 if fails else 0)
