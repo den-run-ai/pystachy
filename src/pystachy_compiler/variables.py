@@ -595,7 +595,12 @@ def gen_none_global(self, name: str) -> str:
         del self.fieldbusy[key]
         if self.gtypes[name] != NONEVAR:
             return self.gtypes[name]
-        if len(fs) == 0 and only_none(self.inits[owner(name)].node.kids, name):
+        body = self.inits[owner(name)].node.kids
+        gone: dict[str, bool] = {}
+        deleted(body, gone)
+        if len(fs) == 0 and (only_none(body, name) or (bind_count(body, name) == 1 and name not in gone)):
+            # (None wherever its module's code binds it, or its one binding there, compiled
+            # already, gave it a value of type None: x = setup(), as for a local)
             self.nonereads[key] = where(self.line)
             return "None"
     if self.nonecmp:
