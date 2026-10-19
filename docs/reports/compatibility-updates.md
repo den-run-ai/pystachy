@@ -1310,7 +1310,8 @@ are [#644](https://github.com/den-run-ai/pystachy/pull/644) (`_imp`),
 [#677](https://github.com/den-run-ai/pystachy/pull/677). Both import sweeps were rerun
 at `a355c83f` with the same input, so each change is attributed to the four merges.
 [#678](https://github.com/den-run-ai/pystachy/pull/678)'s head `8eda0b87` gives the
-same result as main in every check. The [report](compatibility-2026-10-19-prototypes.md)
+same result as main in every check. Main has since moved to `83b5835c`, adding the
+docs-only [#675](https://github.com/den-run-ai/pystachy/pull/675). The [report](compatibility-2026-10-19-prototypes.md)
 has the tables, blockers and caveats. The [evidence](compatibility-2026-10-19-prototypes.json)
 has the commands, hashes, per-module results and scripts. Toolchain: CPython 3.13.16,
 LLVM 18.1.3, Linux x86-64.

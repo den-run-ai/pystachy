@@ -40,7 +40,7 @@ hashes, every per-module result, the transitions and the scripts.
 
 | Item | Value |
 |---|---|
-| Main | [`2359de69`](https://github.com/den-run-ai/pystachy/commit/2359de695e2668a6b9d72519d195680ee0661c38), after #644, #645, #646, #648 and [#677](https://github.com/den-run-ai/pystachy/pull/677). #677 changes CI and DCO files only, so `lib/`, `src/` and the runtime equal those at `bb5ac4ab`, the #648 merge. |
+| Main | [`2359de69`](https://github.com/den-run-ai/pystachy/commit/2359de695e2668a6b9d72519d195680ee0661c38), after #644, #645, #646, #648 and [#677](https://github.com/den-run-ai/pystachy/pull/677). #677 changes CI and DCO files only, so `lib/`, `src/` and the runtime equal those at `bb5ac4ab`, the #648 merge. Main has since moved to [`83b5835c`](https://github.com/den-run-ai/pystachy/commit/83b5835c74283a9bc280a2ea9d62cc0243b739ee) with [#675](https://github.com/den-run-ai/pystachy/pull/675), which changes only `AGENTS.md` and `docs/install.md`. |
 | Before the four merges | [`a355c83f`](https://github.com/den-run-ai/pystachy/commit/a355c83ff7b60b64e3264867593064c3da9611a5) (#667). The first-parent merges after it are exactly #644, #645, #646, #648 and #677. |
 | Previous import sweep | [`3f6f42c7`](https://github.com/den-run-ai/pystachy/commit/3f6f42c7648b952940ca806fc711d59314ee381a) ([evidence](compatibility-2026-10-18-list-repeat.json)): 142/475 native, 146/475 stub-assisted |
 | Previous package and benchmark audit | `d3fbfc6f` ([packages](compatibility-2026-10-17-packages.md), [benchmarks](compatibility-2026-10-17-benchmarks.md)) |
@@ -321,7 +321,7 @@ patterns lead. `unittest`, `doctest` and pytest sit behind several of these at o
 - New tests: `tests/run.sh ./pystachy "jit aot"` gives 6 of 6. So does each of
   `PYSTACHY_GC_STRESS_PROGRAM=1`, `PYSTACHY_OPT=-all` and `make test-py`.
 - `make check-recordings`: 1,251 recordings and 76 deviations, 0 failed.
-- `ruff check` passes. `shellcheck` is not installed, and no shell script changed.
+- `make lint` passes with the pinned ruff 0.17.0 and shellcheck from `tools/requirements-dev.txt`, as do the `tools/` unit tests that CI's lint job runs.
 - #678's earlier native, opt-off, GC-stress and contract runs, and its 32 CI checks,
   cover the implementation, which these tests and reports do not change.
 - Not run: full `make verify` on this head, CPython's regrtest, timing benchmarks.
