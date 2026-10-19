@@ -100,13 +100,20 @@ Deliberate limits:
 `loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it
 creates no one-character strings and translates no code-point offsets while
 scanning. Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
-the text contains a character from U+D000 to U+DFFF. Every delimiter, digit and
-escape is ASCII: the scanner stops only at character boundaries, and an error
-converts its byte offset into the character position CPython reports. A string
-without escapes is one slice of the bytes, decoded without an error handler or
-codec lookup; a document that holds lone surrogates, which `encode()` rejects,
-decodes its slices with `surrogatepass`. Integers of up to 18 digits accumulate
-as they are scanned; longer ones keep the signed 64-bit bound check.
+the text contains a character from U+D000 to U+DFFF; then it checks and copies
+every character. Every delimiter, digit and escape is ASCII: the scanner stops
+only at character boundaries, and an error converts its byte offset into the
+character position CPython reports. A string without escapes is one slice of the
+bytes, decoded without an error handler or codec lookup; a document that holds
+lone surrogates, which `encode()` rejects, decodes its slices with
+`surrogatepass`. Pystachy reads files
+([deviation](language/compatibility.md#text-and-file-positions)), `input()` and
+`sys.argv` without checking their bytes, and `encode()` returns such text
+unchanged. When a slice is not UTF-8, `loads()` parses the text again and takes
+each string from the `str` itself, at character offsets counted as `str` counts
+them, as the character-by-character decoder this one replaced did. Integers of up
+to 18 digits accumulate as they are scanned; longer ones keep the signed 64-bit
+bound check.
 
 A 64-entry cache indexed by key length and first byte, and checked byte for
 byte, returns the string of an equal object key seen earlier in the same
@@ -142,8 +149,9 @@ claim and does not demonstrate a benefit from online specialization. A
 [measured checkpoint](reports/native-json-2026-10-18.md) finds parsing dominates
 this workload and the guarded-processing results remain inconclusive. A
 [parser follow-up](reports/native-json-parser-2026-10-18.md) makes AOT parsing
-7.5–8.6× faster, compares CPython and PyPy, and times processing without parsing;
-the guard stays inconclusive in AOT, and allocation now dominates the parse.
+6.1–7.3× faster, compares CPython and PyPy, and times processing without parsing;
+the guard stays inconclusive in AOT and the JIT, and allocation now dominates the
+parse.
 
 ## Validation and reproduction
 
@@ -152,7 +160,7 @@ From the repository root:
 
 ```sh
 PYTHON=python3.13 tests/record.sh json_roundtrip json_unicode json_errors json_mutation json_scanner
-PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/json_*.py tests/recursive_alias_*.py tests/deviations/json_limits.py tests/deviations/recursive_alias_limits.py"
+PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/json_*.py tests/recursive_alias_*.py tests/deviations/json_*.py tests/deviations/recursive_alias_limits.py"
 python3.13 tools/json_check.py --native --gc-stress
 python3.13 tools/bench_json.py --compiler "python3.13 -m pystachy" --smoke
 ```
