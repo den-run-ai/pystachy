@@ -385,13 +385,39 @@ def _binary(a: NDArray, b: NDArray, op, out: NDArray | None) -> NDArray:
         return res
     if a.shape == shape and a.contiguous():
         if b.shape == shape and b.contiguous():
+            if oo == 0 and ao == 0 and bo == 0:
+                # (each at the start of its list, as a new array is: an index needs no offset
+                # added, which would be checked for overflow and wrapped where negative)
+                for i in range(n):
+                    od[i] = op(ad[i], bd[i])
+                return res
             for i in range(n):
                 od[oo + i] = op(ad[ao + i], bd[bo + i])
             return res
         if b.size == 1:
             y = bd[bo]
+            if oo == 0 and ao == 0:
+                for i in range(n):
+                    od[i] = op(ad[i], y)
+                return res
             for i in range(n):
                 od[oo + i] = op(ad[ao + i], y)
+            return res
+        w = shape[len(shape) - 1]
+        if w > 1 and b.size == w and b.shape[len(b.shape) - 1] == w and b.contiguous():
+            # b broadcast along the leading axes, one row of w items (x + bias): the rows of a
+            # in turn, each against the whole of b
+            if oo == 0 and ao == 0 and bo == 0:
+                for r in range(n // w):
+                    base = r * w
+                    for j in range(w):
+                        od[base + j] = op(ad[base + j], bd[j])
+                return res
+            for r in range(n // w):
+                pa = ao + r * w
+                po = oo + r * w
+                for j in range(w):
+                    od[po + j] = op(ad[pa + j], bd[bo + j])
             return res
     nd = len(shape)
     if nd == 0:
