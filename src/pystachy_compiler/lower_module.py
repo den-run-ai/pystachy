@@ -11,6 +11,17 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
+# pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
+# constructor, which the driver adds to the program's module, that hands the library the program's
+# object callbacks (gen_dispatch) before @main
+OBJHOOKS = """declare void @pys_obj_hooks(ptr, ptr, ptr)
+define internal void @pys.obj.hooks() {
+  call void @pys_obj_hooks(ptr @pys_obj_eq, ptr @pys_obj_cmp, ptr @pys_obj_repr)
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
+"""
+
 
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
