@@ -1,0 +1,76 @@
+E Extra data 11 1 12
+E Expecting value 6 1 7
+E Invalid control character at 2 1 3
+E Invalid \escape 2 1 3
+E Invalid \uXXXX escape 3 1 4
+E Invalid \uXXXX escape 3 1 4
+E Expecting ',' delimiter 5 1 6
+E Expecting ':' delimiter 5 1 6
+E Expecting property name enclosed in double quotes 9 1 10
+E Unterminated string starting at 0 1 1
+E Expecting value 1 1 2
+E Extra data 8 1 9
+E Extra data 9 4 2
+E Illegal trailing comma before end of array 11 1 12
+E Expecting value 19 1 20
+E Expecting value 0 1 1
+E Extra data 3 1 4
+V "\ud800" '"\ud800"'
+1 [55296]
+V "\ud83d\ude80" '"\ud83d\ude80"'
+2 [55357, 56960]
+V "\ud83d\ude80\ude80" '"\ud83d\ude80\ude80"'
+3 [55357, 56960, 56960]
+V {"\udc00": [1, "\ud800\u00e9"]} '{"\udc00": [1, "\ud800\xe9"]}'
+E Expecting value 9 1 10
+V {"\ud83d": 3, "\ude80": 2} '{"\ud83d": 3, "\ude80": 2}'
+V [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}, {"name": "c", "id": 3}] '[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}, {"name": "c", "id": 3}]'
+[2, 4]
+[2, 4]
+[4, 2]
+V [{"ab": 1, "ac": 2}, {"ac": 3, "ab": 4}, {"ab": 5, "ba": 6}] '[{"ab": 1, "ac": 2}, {"ac": 3, "ab": 4}, {"ab": 5, "ba": 6}]'
+[2, 2]
+[2, 2]
+[2, 2]
+V [{"aa": 1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 2}, {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 3, "aa": 4}] '[{"aa": 1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 2}, {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 3, "aa": 4}]'
+[2, 66]
+[66, 2]
+V [{"a\"b": 1}, {"ab": 3, "a\"b": 4}] '[{"a\\"b": 1}, {"ab": 3, "a\\"b": 4}]'
+[3]
+[2, 3]
+V [{"": 1}, {"": 2, "x": 3}, {"x": 4}] '[{"": 1}, {"": 2, "x": 3}, {"x": 4}]'
+[0]
+[0, 1]
+[1]
+V [{"\u00e9": 1, "\u96ea": 2}, {"\u96ea": 3, "\u00e9": 4, "e": 5}] '[{"\xe9": 1, "\u96ea": 2}, {"\u96ea": 3, "\xe9": 4, "e": 5}]'
+[1, 1]
+[1, 1, 1]
+V {"k": 3, "k\n": 2} '{"k": 3, "k\\n": 2}'
+V 999999999999999999 '999999999999999999'
+142857142857142857 0
+V -999999999999999999 '-999999999999999999'
+-142857142857142857 0
+V 1000000000000000000 '1000000000000000000'
+142857142857142857 1
+V -1000000000000000000 '-1000000000000000000'
+-142857142857142858 6
+V 1234567890123456789 '1234567890123456789'
+176366841446208112 5
+V -9223372036854775807 '-9223372036854775807'
+-1317624576693539401 0
+V [0, 0, 10, -10, 0.5, -0.5] '[0, 0, 10, -10, 0.5, -0.5]'
+V 0.0 '0.0'
+V -0.0 '-0.0'
+V 100.0 '100.0'
+V 0.0015 '0.0015'
+V 2500.0 '2500.0'
+V 0.0 '0.0'
+V 0.1 '0.1'
+V 1.7976931348623157e+308 '1.7976931348623157e+308'
+V [NaN, Infinity, -Infinity, null, true, false] '[NaN, Infinity, -Infinity, null, true, false]'
+V {"a": -Infinity, "b": NaN} '{"a": -Infinity, "b": NaN}'
+E Extra data 9 1 10
+E Expecting value 0 1 1
+E Expecting value 0 1 1
+V [1, 2] '[1, 2]'
+[exit 0]

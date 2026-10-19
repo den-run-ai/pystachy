@@ -1,0 +1,5 @@
+{'items': [1, {'nested': True}, None, 'text', 2.5]}
+4.5 7.0
+True
+False
+[exit 0]

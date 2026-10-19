@@ -303,6 +303,9 @@ def _view(string: str) -> bytes:
     return __pys_text_bytes(string)
 
 
+_NO_OFFS: list[int] = []  # (the offs of a _flat string's States, which nothing appends to)
+
+
 def _to_char(offs: list[int], pos: int) -> int:
     # the code point at index pos of the str (or the next one, inside a character's bytes)
     if len(offs) == 0:
@@ -1969,11 +1972,8 @@ class Pattern:
         endpos = 0 if endpos < 0 else n if endpos > n else endpos
         codes = _codes(string, max(pos, endpos))
         offs = _last_offs
-        st = _sre.State(codes, _to_char(offs, pos), _to_char_floor(offs, endpos), self.groups)
-        st.charset_offsets = self._charset_offsets
-        st.charset_ascii = self._charset_ascii
-        st.prefilter = self._prefilter
-        st.offs = offs
+        st = _sre.State(codes, _to_char(offs, pos), _to_char_floor(offs, endpos), self.groups, offs,
+                        self._charset_offsets, self._charset_ascii, self._prefilter)
         st.pos = pos
         st.endpos = endpos
         return st
@@ -1983,10 +1983,8 @@ class Pattern:
         n = len(string)
         pos = 0 if pos < 0 else n if pos > n else pos
         endpos = 0 if endpos < 0 else n if endpos > n else endpos
-        st = _sre.State(_view(string), pos, endpos, self.groups)
-        st.charset_offsets = self._charset_offsets
-        st.charset_ascii = self._charset_ascii
-        st.prefilter = self._prefilter
+        st = _sre.State(_view(string), pos, endpos, self.groups, _NO_OFFS, self._charset_offsets, self._charset_ascii,
+                        self._prefilter)
         st.pos = pos
         st.endpos = endpos
         return st

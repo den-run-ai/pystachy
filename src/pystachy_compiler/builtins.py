@@ -150,6 +150,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     want = "" if want == "?" else want
     if name.startswith(TYPESMOD + "."):
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
+    if name == "ffi.at":
+        self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -1991,13 +1993,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             if key == "dict.get" and i == 0 and self.lookup_key(args[0]):
                 self.stkkey = args[0]  # (memo.get((i, j), -1))
             want_arg = pt
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
                 # A search needle is not stored in the list. Infer a fresh display's
                 # own layout before comparing it, rather than forcing list[float]
                 # into a list[int] member. Empty/None-only displays still need context.
                 pending = [args[i]]
                 contextual = False
-                nested_union = any(["union[" in member for member in umembers(unopt(T))])
+                nested_union = any(["union[" in member or "rec[" in member for member in umembers(unopt(self.rec_type(T)))])
                 while len(pending) > 0:
                     query = pending.pop()
                     if query.kind in ["list", "dict"] and only_nones(query):
@@ -2065,7 +2067,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 nk = self.numkey(v, unopt(T))
                 v = Val(nk[0], unopt(T))
                 numok = nk[1]
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
                 pt = self.union_type([T, v.t])
                 dt = pt
             if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":
