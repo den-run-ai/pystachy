@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `5db1e4b5e14e4da6d8bfa5e0952cd191fbc08959`.
+**Latest evaluated main:** `898d0b95f66772774b59137b1eeb5791ff17e8e5`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -16,6 +16,7 @@ Do not replace a result merely because a PR description predicts an improvement.
 | 2026-10-17 follow-up | Same `d3fbfc6f`; no additional merges | Existing results still describe current main. No unchanged full suites were rerun. #600–#602, #604–#609, #622–#624, #629–#634, #583 and #170 remain open at this checkpoint; proposed support is not counted as shipped. |
 | 2026-10-19 builtin-module prototypes | `2359de69`; #644, #645, #646 and #648 after `a355c83f`, plus CI-only #677 | **144/475** native imports, up from 142, with none lost; **146/475** stub-assisted. All 27 package probes keep their first errors, and the pyperformance census stays at 6/52. Adds three compiled upstream test files. [Report](compatibility-2026-10-19-prototypes.md). |
 | 2026-10-19 merge catch-up | `5db1e4b5`; #678 integration, #670 native JSON, regex/compiler/array changes through #699, and #723 recorded benchmarks | **144/470** native, **146/470** stub-assisted; five JSON files move into the overlay, no successful imports lost. Native JSON passes 14,444 cases in each JIT/AOT mode with GC stress. Focused checks, affected ports, FFI and BLAS parity pass. [Evidence](compatibility-2026-10-19-catchup.json). |
+| 2026-10-19 JSON/effect follow-up | `898d0b95`; #722 | Imports and first errors unchanged; JSON differentials, 64 focused checks, 52 GC-stressed checks and 8 adapted port checks pass. Corrected recursive equality depth boundary and alias diagnostics. Independent paired encoder medians improve **3.47–4.82x** on two bounded inputs, not whole-library coverage. [Evidence](compatibility-2026-10-19-json-followup.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -1834,3 +1835,109 @@ The report-only diff passes `git diff --cached origin/main --check`. Checking
 the integration against the old audit head also reports nine trailing blank
 lines in already-merged JSON/recursive-alias test fixtures; those inherited
 implementation files are unchanged by this audit.
+
+## 2026-10-19 — #722: JSON encoder, recursive diagnostics and effects
+
+Evaluated [main `898d0b95f66772774b59137b1eeb5791ff17e8e5`](https://github.com/den-run-ai/pystachy/commit/898d0b95f66772774b59137b1eeb5791ff17e8e5).
+Live [#722](https://github.com/den-run-ai/pystachy/pull/722) metadata and local
+ancestry agree that it merged at 18:32:13 UTC. It is the only first-parent merge
+after the preceding evaluated `5db1e4b5`. The audit's own docs are not counted as
+new compatibility. Reviewed the changed-file list, PR discussion and #491/#616
+coordination comments; no implementation branch or issue state was changed.
+
+[Machine-readable evidence](compatibility-2026-10-19-json-followup.json) retains
+commands, exact fixture/tool/input hashes, output, source and compiler identities,
+the before/after controls, source census and timing samples. Rebuilt from clean
+`898d0b95` using CPython **3.13.16** and LLVM **18.1.3**. Compiler SHA-256:
+`db27087b4f26a178852401e2b2ef266b72f6757a7ef0710c5b88b42d84abe52e`.
+Compiler/runtime three-stage fixed points pass at **629,754 / 18,388** IR lines.
+The old control binary remains identified separately as the `5db1e4b5` build,
+SHA-256 `33f66f7e745cd8581d1f743cc3085381173b6b613b63ba695de83f4dbaf59f75`;
+each control explicitly uses its own checkout's `PYSTACHY_HOME`.
+
+### Correctness and compatibility deltas
+
+| Check | Fresh result and boundary |
+|---|---|
+| Isolated imports with metadata | **144/470** native; **146/470** stub-assisted. Same 522 hashed CPython inputs and 52 overlay exclusions. No result or first-error changes, no timeouts. Import/IR acceptance is not API execution. |
+| Selected JSON/recursive-alias/container fixtures | **64/64** checks: 23 CPython-recorded positive programs and 3 documented deviations in both JIT/AOT, plus 12 compiler rejections. |
+| Program GC stress | **52/52**, the same 26 executable cases in both native modes. |
+| Adapted ordered-set/sortedcontainers APIs | **8/8** JIT/AOT checks across four retained programs. These are adapted ports, not unmodified installed PyPI suites. |
+| CPython reference recordings | **27/27**, the 23 positive programs plus four port programs. Deviations are deliberately not counted as CPython matches. |
+| JSON differential tool | **22,449** hosted checks; **14,444** cases per native mode with collection at every allocation. |
+| Runtime / IR / equality contracts | **451** runtime entries and **70** exception classes; **1,420** IR programs accepted; shared-DAG equality/search budget probe passes normally and with GC stress. |
+| JSON benchmark correctness gates | **7/7** controller unit tests; nine profile/text combinations pass CPython/JIT/AOT, generic/handguarded, end-to-end/predecoded checks. Encoding is checked against CPython's length and order-sensitive digest as well as decoded checksum. Smoke times are not performance evidence. |
+| Upstream pyperformance 1.14.0 JSON sources | Both remain blocked after the census's existing runner replacement: `json_dumps` at line 7 (empty-dict inference), `json_loads` at line 50 (`expected int, got str`). No whole-package or upstream-suite improvement inferred. |
+
+The before/after depth control catches a real contract correction: distinct
+recursive lists ending in a string now compare successfully at **512** alias
+edges, like integer leaves; the previous compiler raised early for the string
+case. Equality and repr reject **513**, and unwind/reuse and cyclic-container
+checks pass. This is the documented native budget, **not** CPython recursion-limit
+parity or a resolution of general recursion issue #595.
+
+Diagnostics now say `list[JSONValue]` instead of `list[rec[json.JSONValue]]`, and
+the string-join rejection names alias `V` instead of `rec`. Quoted user text
+`'rec[1]'` is unchanged in old and new output. The new IR effect contract keeps
+raising effects for recursive comparisons/membership/count/repr while removing
+them from equivalent nonrecursive operations and str-key dictionary storage.
+This is compiler-effect precision, not additional runtime dynamic typing.
+
+### Performance evidence and scope
+
+The merged [encoder report](native-json-encoder-2026-10-19.md) reports
+3.6–6.3x faster JIT/AOT encoding for its 5,000-record inputs. Recomputed its
+per-process medians, ranges and MADs from the stored samples and regenerated
+both input hashes. Its before/after compiler binary is the same, but the metadata
+records dirty earlier revisions and seven compiler/runtime source hashes differ
+from this evaluated main. Its encoder and benchmark source hashes match. Therefore
+those numbers remain attributed to the author's experiment, not relabeled as a
+fresh current-main measurement. Its 44.4/43.5 MiB UTF-8/ASCII heap peaks are unchanged
+between before/after; this is not evidence of a memory reduction.
+
+After correctness jobs finished, independently ran the same current compiler and
+runtime with `lib/json.py` from `5db1e4b5` versus `898d0b95`, selected through
+`PYSTACHY_PATH`. Three rounds alternate before/after order; each has one process
+per mode/algorithm, three samples of three documents after 200 ms warmup, pinned
+to one available CPU. Inputs are 5,000 skewed records in UTF-8 and ASCII; native
+`dumps()` uses its default `ensure_ascii=True`. All runs pass checksum, encoded
+length and order-sensitive digest gates. Generic-path results, milliseconds per
+document (median of each round's process median):
+
+| Input / mode | Before ms | After ms | Median paired speedup | Paired range |
+|---|---:|---:|---:|---:|
+| UTF-8 / JIT | 25.31 | 7.26 | 3.47x | 2.65–3.80x |
+| UTF-8 / AOT | 25.38 | 5.92 | 4.29x | 3.96–4.74x |
+| ASCII / JIT | 19.97 | 4.59 | 4.35x | 4.13–4.86x |
+| ASCII / AOT | 19.02 | 3.81 | 4.82x | 4.60–7.96x |
+
+The unchanged CPython encoder controls have paired medians 1.08x / 0.95x;
+the shared host and short warmup still produce noise, notably the first ASCII
+AOT before run. No isolated single sample is used as a regression claim. Current
+median encoding remains about **1.07–2.03x CPython's time** across these cells;
+UTF-8 escaping is the slower relative case. This confirms a substantial bounded
+encoder improvement, not a full application speedup, pyperf-quality distribution,
+memory reduction or general JSON compatibility. Raw samples, load, affinity,
+compiler/module hashes and the handguarded control are retained in JSON.
+
+### Reproduction and limits
+
+The evidence embeds `audit-722.py` (run `references`, default, `controls`, and
+`census`), `audit-722-artifacts.py`, `audit-722-timing.py` and the aggregation
+script; relocate the explicit checkout/LLVM paths. Core commands are
+`tools/import_sweep.py --metadata` (native and `--stubs`),
+`tools/json_check.py --compiler ./pystachy --native --gc-stress`,
+`make check-runtime check-ir eqprobe`, and
+`tools/bench_json.py --compiler ./pystachy --smoke --texts utf8 ascii escaped`.
+Fixtures and source selection are explicit in JSON, including the two upstream
+sources from the retained pinned sdist. The census edits its controller's
+in-memory selection only, not the upstream code beyond the existing runner shim.
+
+All **31 jobs** in the four PR workflows on implementation head `196c95ce` were
+read fresh and succeeded, including the full CI merge-verification job
+([CI run](https://github.com/den-run-ai/pystachy/actions/runs/39298259734)). This is
+remote implementation evidence, separate from this audit's focused local checks
+and from the audit PR's own docs-only checks. No full local `make verify`, CPython
+regrtest, 27-package sweep, full 52-source census, UBSan rerun or NumPy assessment
+is claimed. General JSON/PyPI blockers and minor/major adaptation boundaries from
+the preceding checkpoint remain; no new uncovered bug was confirmed by this pass.
