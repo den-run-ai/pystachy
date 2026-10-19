@@ -82,6 +82,13 @@ def _operand(a: NDArray) -> tuple[list[float], int, int]:
         if a.strides[0] == 1 and a.shape[0] <= a.strides[1] <= 2147483647:
             return a.data, 112, a.strides[1]
     result: list[float] = []
+    if a.strides[1] == 1:
+        # rows at unit stride, as attention's per-head views of the packed QKV matrix are: a
+        # slice of each row (_check_storage has checked that every row lies within the data)
+        for row in range(a.shape[0]):
+            base = a.offset + row * a.strides[0]
+            result.extend(a.data[base : base + a.shape[1]])
+        return result, 111, a.shape[1]
     for row in range(a.shape[0]):
         base = a.offset + row * a.strides[0]
         for column in range(a.shape[1]):
