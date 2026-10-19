@@ -3,5 +3,5 @@
 <sys>:0: UserWarning: twice
 f.py:3: UserWarning: explicit
 tuple 1
-('default', None, <class 'DeprecationWarning'>, re.compile('__main__'), 0)
+('default', None, <class 'DeprecationWarning'>, re.compile('__main__\\Z'), 0)
 [exit 0]

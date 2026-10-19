@@ -296,7 +296,11 @@ def warn(message, category=None, stacklevel: int = 1, source=None,
     if not (isinstance(cat, type) and issubclass(cat, Warning)):
         raise TypeError("category must be a Warning subclass, "
                         "not '{:s}'".format(type(cat).__name__))
-    # Pystachy port: (skip_file_prefixes is tested above)
+    # Pystachy port: (skip_file_prefixes is tested above) each prefix is a str, as C's warn()
+    # requires once the category is checked; it walks no frames here, which would read them
+    for prefix in skip_file_prefixes:
+        if not isinstance(prefix, str):
+            raise TypeError("Found non-str '" + type(prefix).__name__ + "' in skip_file_prefixes.")
     if skip_file_prefixes:
         stacklevel = max(2, stacklevel)
     # Get context information
@@ -748,8 +752,10 @@ if not _warnings_defaults:
     # Pystachy port: sys has no gettotalrefcount (a debug build's), which hasattr() of a module
     # does not test
     if True:
+        # Pystachy port: the C module's filter keeps the str "__main__", which only the module
+        # named __main__ equals; a pattern matches a prefix, so this one ends there (\Z)
         filterwarnings("default", category=DeprecationWarning,
-                       module="__main__", append=1)
+                       module="__main__\\Z", append=1)
         simplefilter("ignore", category=DeprecationWarning, append=1)
         simplefilter("ignore", category=PendingDeprecationWarning, append=1)
         simplefilter("ignore", category=ImportWarning, append=1)

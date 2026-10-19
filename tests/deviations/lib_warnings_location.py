@@ -4,8 +4,8 @@
 # the main program's: its module is "__main__" and its registry the main program's, so the
 # default action shows a text and category once in the program, where CPython shows it once per
 # location. A registry's keys are (text, category, lineno) tuples, also its filters version's,
-# with 1 for True; the default filter's module is a pattern, as warnings.py's own code makes it,
-# where CPython's C module keeps the str "__main__"
+# with 1 for True; the default filter's module is the pattern __main__\Z, which matches only the
+# module __main__, where CPython's C module keeps the str "__main__"
 import warnings
 
 

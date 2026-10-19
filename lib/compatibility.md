@@ -1117,8 +1117,10 @@ formats `_deprecated()`'s message.
 - A registry's keys are `(text, category, lineno)` tuples, as a dict's keys have one type:
   CPython's `(text, category)` key has a line number that no C int is, and so has the key of the
   filters version, `version` in CPython; a value is 1 for `True`. The default filter's module is
-  the pattern `re.compile('__main__')`, as `warnings.py`'s own code makes it, where CPython's C
-  module keeps the str `'__main__'`, which no other module name matches (same deviation test).
+  the pattern `re.compile('__main__\\Z')`, which matches the module name `__main__` alone, as the
+  str `'__main__'` that CPython's C module keeps does
+  ([test](../tests/lib_warnings_main_filter.py)); `warnings.filters` shows the pattern (same
+  deviation test).
 - A message that is neither a `str` nor a warning raises `TypeError`, where CPython takes the
   object itself as the warning's text; `showwarning()` and `formatwarning()` given a `str` make a
   warning of its category of it, which a recorded message holds, where CPython keeps the `str`
@@ -1135,5 +1137,9 @@ Not supported, as compile-time errors:
   ([error test](../tests/errors/lib_warnings_message_file.py)).
 - A filter of a tuple of categories, which CPython's `issubclass()` takes
   ([error test](../tests/errors/lib_warnings_category_tuple.py)).
+- A `skip_file_prefixes` tuple of a `str` and an item of another type, as `warn()` checks its
+  items one by one ([error test](../tests/errors/lib_warnings_skip_prefixes_mixed.py)): CPython
+  raises `TypeError` for it where the call runs, as for a tuple of other items alone
+  ([test](../tests/lib_warnings_skip_prefixes.py)).
 - `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
   it with `functools.wraps()` ([error test](../tests/errors/lib_warnings_deprecated.py)).
