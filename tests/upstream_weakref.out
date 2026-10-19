@@ -1,0 +1,8 @@
+test_basic_ref True
+test_ref_repr True
+test_equality True
+test_hashing True
+ModuleTestCase_test_names ReferenceType ReferenceType 0
+True
+True
+[exit 0]

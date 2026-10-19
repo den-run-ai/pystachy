@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import ITERS, NONEVAR, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -31,6 +31,17 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+
+def repr_name(c: str) -> str:
+    # the name object.__repr__ shows for an object of class c: <__main__.Name object at 0x...>,
+    # <module.Name object at 0x...>, of the module CPython's type names (<ast.Constant ...>), and
+    # <list_iterator object at 0x...> of a builtin type's, whose module is builtins
+    if c.startswith(ITERS + "$"):
+        return short(c)
+    q = shown(c) if "$" in c and not c.startswith("__main__$") else "__main__." + short(c)
+    m = q[: q.rfind(".")]
+    return TYPEMODS[m] + q[q.rfind(".") :] if m in TYPEMODS else q
 
 
 def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -786,8 +797,7 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
             if method in c.methods:
                 r = self.call_fn(c.methods[method], [Val(v.v, c.name)], [], direct=True)
             else:
-                qn = shown(c.name) if "$" in c.name and not c.name.startswith("__main__$") else "__main__." + short(c.name)
-                r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
+                r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(repr_name(c.name))}", f"ptr {v.v}"]), "str")
             if not self.term:
                 self.incoming(ph, r.v, self.cur)
                 self.br(end)
@@ -818,10 +828,7 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
     elif m in ms:
         r = self.call_fn(ms[m], [v], [])
     else:
-        # object.__repr__: <__main__.Name object at 0x...>, <module.Name object at 0x...>
-        # (<list_iterator object at 0x...> of a builtin type's, whose module is builtins)
-        qn = short(v.t) if v.t.startswith(ITERS + "$") else shown(v.t) if "$" in v.t and not v.t.startswith("__main__$") else "__main__." + short(v.t)
-        r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
+        r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(repr_name(v.t))}", f"ptr {v.v}"]), "str")
     e2 = self.cur
     self.br(l3)
     self.place(l3)

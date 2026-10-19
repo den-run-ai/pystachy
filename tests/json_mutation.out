@@ -1,0 +1,8 @@
+True 5
+{"items": [2.5, true, null, "added", false], "meta": {}, "alias": [2.5, true, null, "added", false]}
+Circular reference detected
+Circular reference detected
+{"alias":[2.5,true,null,"added",false],"items":[2.5,true,null,"added",false],"meta":{"count":null,"name":"record"}}
+[{"x": 1}, [], {"x": 1}]
+[{"x": "changed"}, [], {"x": "changed"}]
+[exit 0]

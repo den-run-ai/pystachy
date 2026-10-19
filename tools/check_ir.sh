@@ -8,8 +8,10 @@
 # rejects: each failure is listed with the first lines of its message. A tests/ir/NAME.py with a
 # NAME.fx is compiled with PYSTACHY_IRFX=1, which prints each function's effect summary: they must be
 # the ones NAME.fx lists. One with a NAME.calls must call the runtime functions it lists: for each
-# function its IR defines, the pys_ functions it calls or invokes, in the order of its text. Both
-# are compiled with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The
+# function its IR defines, the pys_ functions it calls or invokes, in the order of its text. One
+# with a NAME.attrs must define each function with the attributes it lists: those after its
+# parameters, but for a personality. All three are compiled with every optimization on (an empty
+# PYSTACHY_OPT), whose rewrites they pin. The
 # programs run from the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit
 # status 0 only if every program compiled and passed its checks.
 # usage: tools/check_ir.sh [COMPILER [FILE...]]   (default: ./pystachy and the corpus; make check-ir,
@@ -38,18 +40,27 @@ calls() {
     /^  .*(call|invoke) [^@]*@pys_/ { s = $0; sub(/^.*(call|invoke) [^@]*@/, "", s); sub(/\(.*/, "", s); c = c " " s }
     /^}/ && f != "" { print f ":" c; f = "" }' "$1"
 }
+# attrs IR: each function IR defines, and the attributes its definition gives it after its parameters
+# (cold noinline, presplitcoroutine), but for its personality
+attrs() {
+  awk '/^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f)
+      a = $0; sub(/^[^(]*\([^)]*\)/, "", a); sub(/ *\{$/, "", a); sub(/ personality .*/, "", a)
+      print f ":" a }' "$1"
+}
 # check FILE DIR: DIR/result is ok, skip (does not compile), internal (an internal error, such as the
 # IR check's), fx (other effect summaries than FILE's .fx lists), calls (other runtime calls than its
-# .calls lists) or bad (llvm-as rejects the IR); DIR/msg says why
+# .calls lists), attrs (other attributes than its .attrs lists) or bad (llvm-as rejects the IR);
+# DIR/msg says why
 check() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
   fx=; [ -f "${1%.py}.fx" ] && fx=1
   how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
-  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] && opt=
+  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] && opt=
   if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS $how "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
   elif [ -f "${1%.py}.calls" ] && ! calls "$2/ir.ll" | diff "${1%.py}.calls" - > "$2/calls" 2>&1; then r=calls; mv "$2/calls" "$2/msg"
+  elif [ -f "${1%.py}.attrs" ] && ! attrs "$2/ir.ll" | diff "${1%.py}.attrs" - > "$2/attrs" 2>&1; then r=attrs; mv "$2/attrs" "$2/msg"
   elif "${LLVM}llvm-as" -o /dev/null < "$2/ir.ll" > "$2/msg" 2>&1; then r=ok
   else r=bad; fi
   rm -f "$2/ir.ll"
@@ -79,6 +90,7 @@ for f; do
     internal) bad=$((bad + 1)); echo "INTERNAL ERROR $f"; head -5 "$T/$n/msg" ;;
     fx) bad=$((bad + 1)); echo "OTHER EFFECTS $f (than ${f%.py}.fx lists)"; head -10 "$T/$n/msg" ;;
     calls) bad=$((bad + 1)); echo "OTHER CALLS $f (than ${f%.py}.calls lists)"; head -10 "$T/$n/msg" ;;
+    attrs) bad=$((bad + 1)); echo "OTHER ATTRIBUTES $f (than ${f%.py}.attrs lists)"; head -10 "$T/$n/msg" ;;
     bad) bad=$((bad + 1)); echo "REJECTED $f (by llvm-as)"; head -5 "$T/$n/msg" ;;
     *) bad=$((bad + 1)); echo "FAIL $f: no result (its worker died)" ;;
   esac
