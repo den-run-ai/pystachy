@@ -552,17 +552,31 @@ def gen_cause(self, c: Node) -> Val:
     k = self.exc_class(c)
     if k == "" or k in self.classes:
         v = self.exc_value_of(c, k)
-        if unopt(v.t) == "exctype":
-            if is_opt(v.t):
-                self.err("raise ... from a class object that may be None is not supported")
+        if unopt(v.t) == "exctype" and is_opt(v.t):
+            # (a class object that may be None: None is no cause, as from None; a class, an
+            # object of it, as below)
+            e0 = self.cur
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
+            self.place(l1)
+            made = self.exc_call(Val(v.v, "exctype"), [], 16)
+            e1 = self.cur
+            self.br(l2)
+            self.place(l2)
+            ph = Ins("phi", "opt[exc]", "")
+            self.incoming(ph, "null", e0)
+            self.incoming(ph, made.v, e1)
+            v = Val(self.phi(ph), "opt[exc]")
+        elif unopt(v.t) == "exctype":
             v = self.exc_call(v, [], 16)  # (from C of a class object C: an object of its class, C())
-        if v.t != "exc" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
+        if v.t != "exc" and v.t != "opt[exc]" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
             self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
             self.place(self.label())  # (what follows, the raise itself, is never reached)
             return Val("", "")
         if self.causeread and v.t in self.classes:
             return self.exc_of(v)
-        return v if self.causeread and v.t == "exc" else Val("", "")
+        return v if self.causeread and (v.t == "exc" or v.t == "opt[exc]") else Val("", "")  # (an exception, or None: no cause)
     name = c.kids[0].s if c.kind == "call" else c.s
     vals = self.exc_vals(self.exc_args(c), c.kids[0].s if c.kind == "call" else "")
     if not self.causeread or not self.eh or name == "SystemExit":
