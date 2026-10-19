@@ -1486,6 +1486,10 @@ def sre_search(state: State[_S], code: list[int]) -> int:
                     break
         return 0
     pf = _prefilter(state, code, pattern)
+    if pf[0] == PF_BRANCH and pf[2] != 0:
+        # (not _sre's: the alternatives' first literals and classes, found by their bit-parallel
+        # filter, where the search below would test them at each position)
+        return _branch_search(state, code, pattern, pf, ptr, state.end if charset_at >= 0 else end, charset_at >= 0)
     if charset_at >= 0:
         # a character from a known set first
         end = state.end
@@ -1729,7 +1733,7 @@ def _first_ignore(state: State[_S], code: list[int], item: int, ptr: int) -> boo
 PF_NONE = 0  # [PF_NONE, 0, 0, 0, 0]: the general case
 PF_LINE = 1  # [PF_LINE, 0, 0, 0, 0]: a ^ of MULTILINE begins it (_at_line_start)
 PF_REPEATED = 2  # [PF_REPEATED, item, 0, 0, 0]: a repeat of the literal or class at item (_repeated)
-PF_BRANCH = 3  # [PF_BRANCH, b, 0, 0, 0]: the BRANCH at code[b] begins it (_branch_starts)
+PF_BRANCH = 3  # [PF_BRANCH, b, n, starts, ends, masks...]: the BRANCH at code[b] begins it (_branch_starts, _branch_masks)
 PF_LITERAL = 4  # [PF_LITERAL, dmin, dmax, at, n]: the literals of _literals_find (_walk's)
 
 
@@ -1748,6 +1752,7 @@ def _prefilter(state: State[_S], code: list[int], pattern: int) -> list[int]:
             found = [PF_REPEATED, _repeated(code, b), 0, 0, 0]
         elif code[b] == BRANCH and _branch_runs(code, b):
             found = [PF_BRANCH, b, 0, 0, 0]
+            _branch_masks(state, code, b, found)
         elif not (code[pattern] == AT and (code[pattern + 1] == AT_BEGINNING or code[pattern + 1] == AT_BEGINNING_STRING)):
             # (the general case tries a ^ of the whole string, first, once)
             w = _walk(code, pattern, True)
@@ -1770,6 +1775,117 @@ def _branch_runs(code: list[int], b: int) -> bool:
             return False
         alt += code[alt]
     return True
+
+
+def _branch_masks(state: State[_S], code: list[int], b: int, found: list[int]) -> None:
+    # (not _sre's) PF_BRANCH's bit-parallel filter (Shift-And), where the alternatives' runs of
+    # leading literals and classes are of n >= 2 items at least: bits k * n to k * n + n - 1 of a
+    # word stand for the first n items of alternative k (at most 62 bits). found[5 + c] has the
+    # bits of the items that each ASCII character c matches, found[3] the first item of each
+    # alternative and found[4] the last; found[5 + 128] and found[5 + 129] are a character from 128
+    # and its bits, the last that _branch_high found. found[2] stays 0 where there is no filter
+    k = 0
+    n = 62
+    alt = b + 1
+    while code[alt] != 0:
+        q = alt + 1
+        run = 0
+        while code[q] == LITERAL or code[q] == IN:
+            run += 1
+            q += 2 if code[q] == LITERAL else code[q + 1] + 1
+        n = run if run < n else n
+        k += 1
+        alt += code[alt]
+    if k == 0:
+        return
+    if n * k > 62:
+        n = 62 // k
+    if n < 2:
+        return
+    starts = 0
+    for i in range(k):
+        starts |= 1 << (i * n)
+    found[2] = n
+    found[3] = starts
+    found[4] = starts << (n - 1)
+    for c in range(128):
+        found.append(_branch_bits(state, code, b, n, c))
+    found.append(-1)
+    found.append(0)
+
+
+def _branch_bits(state: State[_S], code: list[int], b: int, n: int, ch: int) -> int:
+    # the bits of the first n items of the alternatives of the BRANCH at code[b] that ch matches,
+    # as _branch_starts tests them (see _branch_masks)
+    bits = 0
+    bit = 1
+    alt = b + 1
+    while code[alt] != 0:
+        q = alt + 1
+        for _ in range(n):
+            if code[q] == LITERAL:
+                if ch == code[q + 1]:
+                    bits |= bit
+                q += 2
+            else:
+                if _charset(state, code, q + 2, ch):
+                    bits |= bit
+                q += code[q + 1] + 1
+            bit <<= 1
+        alt += code[alt]
+    return bits
+
+
+def _branch_high(state: State[_S], code: list[int], pf: list[int], ch: int) -> int:
+    # _branch_bits of a character from 128, whose last answer pf keeps
+    if pf[5 + 128] != ch:
+        pf[5 + 129] = _branch_bits(state, code, pf[1], pf[2], ch)
+        pf[5 + 128] = ch
+    return pf[5 + 129]
+
+
+def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int], ptr: int, end: int, charset: bool) -> int:
+    # (not _sre's) the search of a PF_BRANCH pattern that has its bit-parallel filter: d has the bits
+    # of the alternatives' items that the characters up to s[j] match in order from an item that
+    # begins its alternative's run (Shift-And), so a set last bit means that alternative's first n
+    # items match from j - n + 1. Only those positions can satisfy _branch_starts; the matcher is
+    # entered at each that does, below end, as the charset search (charset) or PF_BRANCH's loop
+    # enters it, with their bounds, flags and resets
+    s = state.s
+    stop = state.end
+    b = pf[1]
+    n = pf[2]
+    starts = pf[3]
+    ends = pf[4]
+    first = ptr
+    if charset:
+        state.must_advance = False
+    d = 0
+    j = ptr
+    while j < stop:
+        c = s[j]
+        d = ((d << 1) | starts) & (pf[5 + c] if c < 128 else _branch_high(state, code, pf, c))
+        if d & ends != 0:
+            at = j - n + 1
+            if at >= end:
+                break
+            if _branch_starts(state, code, b, at):
+                state.lastmark = -1
+                state.lastindex = -1
+                state.start = at
+                state.ptr = at
+                status = sre_match(state, code, pattern, False if charset else at == first)
+                if not charset:
+                    state.must_advance = False
+                if status != 0:
+                    return status
+        j += 1
+    if not charset:
+        # (where the general case's last position leaves them)
+        state.must_advance = False
+        state.start = end
+        state.ptr = end
+    return 0
 
 
 def _branch_starts(state: State[_S], code: list[int], b: int, ptr: int) -> bool:
