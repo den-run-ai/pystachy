@@ -64,4 +64,7 @@ jobs:
       - name: Typed IR tests
         run: python3 -m unittest discover -s tools -p 'test_typed*.py'
 
+      - name: DCO certification check tests
+        run: python3 -m unittest discover -s tools -p test_dco_check.py
+
       - run: make check-recordings
