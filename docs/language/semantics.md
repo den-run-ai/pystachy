@@ -49,7 +49,11 @@ reuse the f-string's quote, nest f-strings, and hold backslashes, newlines and c
 assignment binds to one (`FMT = "%8.3f"`, also `Final`) where nothing else in the program, not
 even a function's local, binds its name. It supports `s r a d i u x X o e E f F g G c`, flags,
 widths and precisions, but not named substitutions, `*` widths or precisions, or integer
-precisions. A variable format string such as `fmt % value` is rejected.
+precisions. A variable format string such as `fmt % value` is rejected. A literal format of
+only `%s`, `%r` and `%a` conversions, whose widths and precisions have at most two digits,
+applied to a tuple display with one item for each, is evaluated as CPython 3.11+ compiles it,
+as an f-string: each item just before its conversion. Any other `%` evaluates all its
+arguments first.
 
 `str.format()` and `str.format_map()` (also `str.format(FMT, ...)`) also require a literal format
 string or such a module global, compiled like an f-string: automatic and manual numbering, keyword
