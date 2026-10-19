@@ -927,22 +927,13 @@ def pys_str_istitle(s: str) -> int:
     return seen
 
 
+def pys_text_len(s: str) -> int: ...
+
+
 def ulen(s: str) -> int:
-    # the length in characters, as uchar reads them (runtime.c's u8char, which len() counts by):
-    # the bytes where none is above 127 (counted in a loop that LLVM vectorizes), else each
-    # character read in turn
-    n = len(s)
-    hi = 0
-    for i in range(n):
-        hi += _rt.byte(s, i) >> 7
-    if hi == 0:
-        return n
-    k = 0
-    i = 0
-    while i < n:
-        i += 1 if _rt.byte(s, i) < 128 else uchar(s, i, n) & 7
-        k += 1
-    return k
+    # the length in characters: runtime.c's count, which len() gives (u8char's characters, as
+    # uchar reads them, counted once and kept in the str)
+    return pys_text_len(s)
 
 
 def fillrun(r: str, at: int, fill: str, count: int) -> None:

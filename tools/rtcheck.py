@@ -315,6 +315,18 @@ def fmt_float(m, ty, prec, alt):
 rt.pys_fmt_float = fmt_float
 
 
+def text_len(s):
+    # runtime.c's pys_text_len, which ulen calls: the characters as u8char (uchar) reads them
+    n, i, k = len(s), 0, 0
+    while i < n:
+        i += 1 if ord(s[i]) < 128 else rt.uchar(s, i, n) & 7
+        k += 1
+    return k
+
+
+rt.pys_text_len = text_len
+
+
 def spec():
     # a random format spec, mostly well-formed
     parts = []
