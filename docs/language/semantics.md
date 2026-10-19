@@ -549,11 +549,13 @@ class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, 
 - `str()`, `repr()` and formatting give CPython's text (`<class 'KeyError'>`,
   `<class '__main__.E'>`); `__name__`, `__qualname__` and `__module__` are its names (`builtins`,
   `io`, or the module of a class of the program). Ordering raises CPython's `TypeError`.
-- `issubclass(c, b)` and `isinstance(x, b)` take as `b` a class object, a tuple of them (nested
-  ones too) or classes named. A tuple's classes are tested in turn, as CPython tests them: the
-  first that matches stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is
-  true, and `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is
-  false. `type(c).__name__` is `type`.
+- `issubclass(c, b)` and `isinstance(x, b)` take as `b` a class object (also one that an
+  expression gives: `type(e)`, `kinds[0]`, a call, a conditional expression), a tuple of them
+  (nested ones too) or classes named. A tuple's classes are tested in turn, as CPython tests them: the first that matches
+  stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is true, and
+  `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is false, but
+  `None` is an instance of `NoneType`'s class object, which derives from no exception class
+  (`BaseException` included). `type(c).__name__` is `type`.
 - A class object is callable (`callable(c)` is true). A call of it makes an object of its class
   from none or one positional argument, as CPython's call does (a `KeyError`'s `str()` is its
   argument's `repr()`, a `SystemExit`'s status its `int`); `raise c` raises `c()`, as
@@ -561,7 +563,8 @@ class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, 
   of the program runs its `__init__`, which raises CPython's `TypeError` where it takes another
   number of arguments; one that takes another type than the argument's raises `TypeError`
   instead ([deviation](compatibility.md#exceptions-and-exception-classes)).
-- `contextlib.suppress()` kept as a value tests its classes as CPython's does.
+- `contextlib.suppress()` given class objects (`suppress(type(e))`), or kept as a value, tests
+  its classes as CPython's does.
 
 An `except` clause names its classes; one that takes class objects is not supported.
 

@@ -329,7 +329,7 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         nrec = self.refl_record("None")
         if rec.v.startswith("@") and rec.v != nrec:
             return Val("true" if neg else "false", "bool")
-        nt = Val(self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"]), "exctype")
+        nt = self.exc_none_class()
         both = Val(self.scalar('and', [self.ptr_cmp('==', cobj, nt), Val(self.scalar_cmp('eq', rec, Val(nrec, '%ptr')), 'bool')]), "bool")
         return Val(self.scalar('xor', [both, Val('true', 'bool')]), "bool") if neg else both
     if unopt(sides[0].t) == "exctype":
