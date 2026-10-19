@@ -412,6 +412,18 @@ class TestGenerated(unittest.TestCase):
             self.assertGreaterEqual(port.compile("a+", re.I)._fast, 0)
             self.assertEqual(port.search("a+", "xAaA", re.I).span(), re.search("a+", "xAaA", re.I).span())
 
+    def test_generate_profiles(self):
+        # --min-calls counts a pattern's calls in all the profiles
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            paths = []
+            for i, entries in enumerate([[("a+", 600), ("b+", 900)], [("a+", 600)]]):
+                paths.append(os.path.join(tmp, "p%d.json" % i))
+                with open(paths[-1], "w") as f:
+                    json.dump({"format": re_specialize.FORMAT, "program": "p.py",
+                               "patterns": [{"pattern": p, "flags": int(re.U), "calls": n} for p, n in entries]}, f)
+            module = re_specialize.generate(paths, [], 1000, os.path.join(tmp, "_pystachy_re_specialized.py"))
+            self.assertEqual([(p[0], p[1], p[4]) for p in module.patterns], [("a+", re.U, "1200 calls")])
+
     def test_lookup_checks_code(self):
         # a matcher made from other code than the pattern compiles to is not used
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
@@ -430,21 +442,23 @@ class TestGenerated(unittest.TestCase):
         self.assertEqual(port.compile("a+b")._fast, -1)
 
     def test_record(self):
-        # the program runs as python prog.py runs it, importing helper.py from its own directory
+        # the program runs as python prog.py runs it, importing helper.py from its own directory; the
+        # profile goes where -o names, in a new directory, though the program changes its directory
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             prog = os.path.join(tmp, "prog.py")
+            os.mkdir(os.path.join(tmp, "elsewhere"))
             with open(os.path.join(tmp, "helper.py"), "w") as f:
                 f.write("import re\nQ = re.compile('c+')\n")
             with open(prog, "w") as f:
-                f.write("import re\nimport sys\nimport helper\nP = re.compile(r'\\d+')\nfor _ in range(int(sys.argv[1])):\n"
-                        "    P.search('a1')\nre.findall('b+', 'abb')\nre.compile('unused')\nhelper.Q.match('cc')\n"
-                        "print(sys.path[0])\n")
-            out = os.path.join(tmp, "profiles", "profile.json")
+                f.write("import os\nimport re\nimport sys\nimport helper\nP = re.compile(r'\\d+')\n"
+                        "for _ in range(int(sys.argv[1])):\n    P.search('a1')\nre.findall('b+', 'abb')\n"
+                        "re.compile('unused')\nhelper.Q.match('cc')\nprint(sys.path[0])\nos.chdir('elsewhere')\n")
+            out = os.path.join("profiles", "profile.json")
             run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
-                                  prog, "7"], check=True, capture_output=True, text=True)
-            plain = subprocess.run([sys.executable, prog, "7"], check=True, capture_output=True, text=True)
+                                  prog, "7"], check=True, capture_output=True, text=True, cwd=tmp)
+            plain = subprocess.run([sys.executable, prog, "7"], check=True, capture_output=True, text=True, cwd=tmp)
             self.assertEqual(run.stdout, plain.stdout)
-            with open(out) as f:
+            with open(os.path.join(tmp, out)) as f:
                 profile = json.load(f)
             calls = {(e["pattern"], e["flags"]): e["calls"] for e in profile["patterns"]}
             self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1, ("c+", re.U): 1})

@@ -772,6 +772,7 @@ def record(argv, out):
     """Run the program argv[0] with argv under CPython, counting the matching calls made on each
     compiled pattern (through sys.monitoring: the calls of Pattern's methods, wherever made)."""
     import re
+    out = os.path.abspath(out)  # (the program may change the working directory)
     counts = {}
     methods = {"match", "fullmatch", "search", "findall", "finditer", "split", "sub", "subn", "scanner"}
     mon = sys.monitoring
@@ -817,6 +818,7 @@ def generate(profiles, patterns, min_calls, out):
     module = Module(port)
     seen = set()
     sources = []
+    calls = {}  # (pattern, flags) -> its calls in all the profiles, in the order first seen
     for path in profiles:
         with open(path, encoding="utf-8") as fh:
             profile = json.load(fh)
@@ -825,9 +827,11 @@ def generate(profiles, patterns, min_calls, out):
         sources.append(os.path.basename(path))
         for entry in profile["patterns"]:
             key = (entry["pattern"], entry["flags"])
-            if entry["calls"] >= min_calls and key not in seen:
-                seen.add(key)
-                module.add(key[0], key[1], "%d calls" % entry["calls"])
+            calls[key] = calls.get(key, 0) + entry["calls"]
+    for key, n in calls.items():
+        if n >= min_calls:
+            seen.add(key)
+            module.add(key[0], key[1], "%d calls" % n)
     for pattern, flags in patterns:
         try:
             flags = port.compile(pattern, flags).flags

@@ -31,8 +31,8 @@ PYSTACHY_PATH=build/prog-re ./pystachy build prog.py -o prog
 on each compiled pattern: `match`, `fullmatch`, `search`, `findall`, `finditer`, `split`, `sub`,
 `subn` and `scanner`, wherever they are called (also through bound methods, as `fnmatch` makes
 them). `generate` writes one matcher for each pattern called at least `--min-calls` times
-(default 1). It also takes `--pattern P [--flags F]`. The module's docstring lists the patterns it
-could not generate, with the reason.
+(default 1), counting the calls of all the profiles it reads. It also takes `--pattern P [--flags F]`.
+The module's docstring lists the patterns it could not generate, with the reason.
 
 Imports find the generated module before `lib/_pystachy_re_specialized.py`, which has no matchers.
 That holds when the module is on `PYSTACHY_PATH` or in the program's own directory, which comes
