@@ -148,6 +148,13 @@ RTL: dict[str, str] = {
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+# a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
+# lowering first tags each field, and the type nodes they name follow them (lower_module); the
+# members a class's struct may have, each with its size, which is its alignment too, and the name
+# of its scalar type node
+TBAA_FIELDS = 16
+TBAA_SIZES: dict[str, int] = {"i1": 1, "i8": 1, "i32": 4, "i64": 8, "double": 8, "ptr": 8}
+TBAA_NAMES: dict[str, str] = {"i1": "bool", "i8": "byte", "i32": "i32", "i64": "int", "double": "float", "ptr": "pointer"}
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -619,9 +626,11 @@ GENTHROWC = 3
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1) and
 # tupleiter and listfast, choices of lowering (a tuple's slots in Gen.iterable, and checked
 # list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
-# byte reads of a loop over a bytes, in gen_seq_item), which PYSTACHY_OPT turns off: "-name",
-# comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "unionslots"]
+# byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
+# gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
+# functions return by value to the calls that only read their slots (Gen.tuple_rets), which
+# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)

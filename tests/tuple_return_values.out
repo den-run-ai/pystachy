@@ -1,0 +1,17 @@
+893363
+(12586269025, 20365011074)
+1548008755920 2504730781961 89
+['alpha', 'beta', 'gamma']
+ValueError: empty field at 2
+-1.25 9.0 False True
+[2, 2, 2, 7] kk True
+[([0, 0, 0], '', False), ([1, 1, 1], 'k', False), ([2, 2, 2], 'kk', True)]
+8
+13
+(2, 3) True True
+True False True
+1 2
+-1 7 (-1, 7)
+ValueError: b < 0 ['a=-4', 'b=4', 'a=4']
+20200
+[exit 0]
