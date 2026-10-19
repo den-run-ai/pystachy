@@ -173,6 +173,11 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
 def gen_desc(self, t: str, use: str) -> str:
     if "rec[" in t:
         return gen_rec_desc(self, t, use, {}, 0)
+    return gen_plain_desc(self, t, use)
+
+
+def gen_plain_desc(self, t: str, use: str) -> str:
+    # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
         if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
             self.err("closed union operations require narrowing with isinstance() first")
@@ -291,6 +296,9 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
     if is_union(t):
         if use != "repr" and use != "==":
             self.err("recursive value ordering requires narrowing with isinstance() first")
+        # (as gen_desc's unions: the runtime compares and prints only these members by descriptor)
+        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
+            self.err("closed union operations require narrowing with isinstance() first")
         ms = umembers(t)
         out = "U" + str(len(ms)) + ":"
         for m in ms:
@@ -311,6 +319,6 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
         for m in ts:
             out += gen_rec_desc(self, m, use, active, offset + len(out))
         return out
-    return self.desc(t, use)
+    return gen_plain_desc(self, t, use)  # (not self.desc, which would hand t back here)
 
 # ---- types and declarations

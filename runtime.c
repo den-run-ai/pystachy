@@ -1660,7 +1660,6 @@ static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__
 static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
-  if (nbusy >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
   if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
   busy[nbusy++] = p;
   if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
@@ -1766,10 +1765,18 @@ static const char *kdesc(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
 /* is entry e no hole: a hole has hash 0 and no key (an H kind's key, an object or a tuple, may hash
    to 0; another's hash is never 0) */
 static int dlive(Dict *d, I e) { return d->hs[e] || d->keys[e]; }
-static const char *repr(Buf *b, I v, const char *d) {
+/* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
+   so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
+   reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
+   argument survives native unwinding without mutable state. */
+static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   switch (*d++) {
-  case 'R': { const char *ref = d - 1; repr(b, v, recdesc(ref)); return skip(ref); }
-  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr(b, v, member); return end; }
+  case 'R': {
+    const char *ref = d - 1;
+    if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
+    repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
+  }
+  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
@@ -1779,7 +1786,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     List *l = (List *)v;
     if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
     put(b, "[", 1);
-    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr(b, l->a[i], d); }
+    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, l->a[i], d, depth); }
     put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
@@ -1790,7 +1797,7 @@ static const char *repr(Buf *b, I v, const char *d) {
       if (!dlive(m, e)) continue;
       if (k++) put(b, ", ", 2);
       I key = m->keys[e], val = m->vals[e];         /* (a key's __repr__ may empty the dict) */
-      repr(b, key, d); put(b, ": ", 2); repr(b, val, dv);
+      repr_depth(b, key, d, depth); put(b, ": ", 2); repr_depth(b, val, dv, depth);
     }
     put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
@@ -1798,13 +1805,13 @@ static const char *repr(Buf *b, I v, const char *d) {
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
-    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) { if (n++) put(b, ", ", 2); repr(b, s->keys[i], d); }
+    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) { if (n++) put(b, ", ", 2); repr_depth(b, s->keys[i], d, depth); }
     put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
-    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
+    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, t[i], d, depth); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'V': {
@@ -1812,16 +1819,17 @@ static const char *repr(Buf *b, I v, const char *d) {
     VTuple *t = (VTuple *)v;
     if (!pys_repr_enter(t)) { put(b, "(...)", 5); return skip(d); }
     put(b, "(", 1);
-    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr(b, t->a[i], d); }
+    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, t->a[i], d, depth); }
     put(b, t->len == 1 ? ",)" : ")", t->len == 1 ? 2 : 1);
     pys_repr_leave(t); return skip(d);
   }
   case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
-  case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
+  case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
   case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
   }
   return d;
 }
+static const char *repr(Buf *b, I v, const char *d) { return repr_depth(b, v, d, 0); }
 Str *pys_repr(I v, Str *d) { Buf b = {0}; repr(&b, v, d->s); return done(&b); }
 /* A class's reflection record (the compiler's reflection.py; lowered by lower_module.py): an
    internal constant per class that reaches a reflective site, whose address is the class's

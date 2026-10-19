@@ -189,7 +189,8 @@ Recursive container slots hold existing tagged union boxes. `isinstance()` narro
 locals and parameters to the original list/dict pointer, preserving shared mutation;
 existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
-native JSON codec has its own depth/int64 limits. See the
+native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
+alias is nominal: another alias with the same members is a different type. See the
 [JSON prototype](../json-prototype.md) for representation, operations and API scope.
 `Any` remains inference-only; this adds no runtime compilation.
 
