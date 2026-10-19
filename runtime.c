@@ -1155,7 +1155,13 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
 }
-double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
+/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
+   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
+   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
+   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
+   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
+   runtime.py's code and the program's */
+__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
   if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
   if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
   double r = pow(a, b);
@@ -1201,7 +1207,7 @@ double pys_m_ulp(double x) {          /* the distance from |x| to the next float
   double a = fabs(x), b = nextafter(a, INFINITY);
   return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
 }
-double pys_m_pow(double x, double y) {
+__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }

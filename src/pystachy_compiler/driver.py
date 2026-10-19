@@ -9,9 +9,10 @@ from src.pystachy_compiler.diagnostics import FILES, MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.lower_module import OBJHOOKS
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS
+from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations
 
@@ -134,6 +135,21 @@ CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping"
 # digits, ryu/README.md): the runtime is built from their bytes too
 RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table.h", "ryu/d2s_intrinsics.h",
                       "ryu/d2s_small_table.h"]
+# On Linux, pystachy run's lli loads the runtime as a shared library (-dlopen) rather than linking the
+# runtime's machine code into each run (-extra-object), which cost about 35 ms a run (#704). The
+# library is the cached runtime's .o, linked with RTSO: the runtime calls back into the program
+# for objects' ==, order and repr (pys_obj_eq, pys_obj_cmp, pys_obj_repr, which every program defines,
+# lower_module), which no library can name, so RTSO's stand-ins call what the program hands them first,
+# from a constructor that each run adds to the program's IR (lower_module's OBJHOOKS)
+RTSO = """typedef long long I;
+static I (*eq)(I, I, I);
+static I (*cmp)(I, I, I, I);
+static void *(*repr)(I, I, I);
+I pys_obj_eq(I c, I a, I b) { return eq(c, a, b); }
+I pys_obj_cmp(I c, I op, I a, I b) { return cmp(c, op, a, b); }
+void *pys_obj_repr(I c, I a, I b) { return repr(c, a, b); }
+void pys_obj_hooks(I (*e)(I, I, I), I (*c)(I, I, I, I), void *(*r)(I, I, I)) { eq = e; cmp = c; repr = r; }
+"""
 
 
 def fnv(s: str) -> str:
@@ -494,7 +510,9 @@ def main() -> None:
     rcb = tmp + "/runtime-c.bc"
     rpl = tmp + "/rtpy.ll"
     lnk = tmp + "/runtime-l.bc"
+    rso = tmp + "/runtime-so.c"
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
+    rts = rtb[:-3] + ".so"  # and that as a shared library, which it loads on Linux (RTSO)
     # the runtime's bitcode and machine code are written to names of this process's own in the
     # cache's directory, then renamed over the cache once complete (in one file system, so that the
     # rename is atomic). The process ID alone is no such name: processes in separate PID namespaces
@@ -502,14 +520,16 @@ def main() -> None:
     own = tmp[tmp.rfind("/") + 1 :]
     part = f"{rtb}.{os.getpid()}.{own}"
     parto = f"{rto}.{os.getpid()}.{own}"
+    partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
     f.write(ir)
     f.close()
     tc = [q(paths[i]) if paths[i] != "" else tools[i] for i in range(len(tools))]
     msg = ""
     code = 0
-    usebc = rtb  # the runtime this run links: the cache's, or the one it builds (part, parto)
+    usebc = rtb  # the runtime this run links: the cache's, or the one it builds (part, parto, partso)
     useo = rto
+    useso = ""  # (the shared library this run loads, if any: lli links useo without one)
     if rtir != "":
         f = open(rpl, "w", encoding=RAW)
         f.write(rtir)
@@ -545,6 +565,23 @@ def main() -> None:
         # -x ir: clang would take a name not ending in .bc, as part's, for a linker input, and do nothing)
         code = sh(f"{tc[0]} -O2 -fPIC -c -x ir {q(usebc)} -o {q(parto)} -Wno-unused-command-line-argument{ccflags}")
         useo = parto
+    if code == 0 and cmd == "run" and PLATFORM == "linux":
+        # the shared library: the cache's, made from the cache's .o, or one of this run's (from its own
+        # .o, or from the cache's where no library is cached: published as the .o is). -Bsymbolic: the
+        # runtime's calls of its own functions go to them, not through the PLT; libm and libdl are the
+        # C library functions runtime.c calls, and pys_obj_hooks is all the program calls of RTSO. A
+        # cache that cannot be written, or whose file system runs nothing (mounted noexec: lli could
+        # map no library from it, which a script there shows first), gets none, nor does a link that
+        # fails, and a run that may not execute the library it finds uses none (see opt's shell
+        # below): lli links the .o then, as elsewhere
+        useso = rts
+        if useo == parto or not os.path.exists(rts):
+            f = open(rso, "w", encoding=RAW)
+            f.write(RTSO)
+            f.close()
+            xp = f"{rts}.x.{os.getpid()}.{own}"
+            useso = partso if sh(f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
+            sh(f"rm -f {q(xp)}")
     # pystachy ext links two more C files, compiled as runtime.c is and cached beside it by the same
     # rules: pyembed.c (CPython in the process, hosting an extension module: its stdio hooks) and
     # pyext.c for the ABI; a program that embeds CPython (lib/pyobj.py) links pyembed.c alone. Each is
@@ -588,13 +625,15 @@ def main() -> None:
     # as they were (else it uses it alone), with the hashes learnt
     mvs: list[str] = []
     pub = code == 0 and trusted and len([t for t in times if not settled(t, now)]) == 0 and [stat3(p) for p in paths] == times and stat3(comp) == cst and [stat3(p) for p in sources] == sourceborn
-    if pub and (usebc == part or useo == parto):
+    if pub and (usebc == part or useo == parto or useso == partso):
         if usebc == part:
             mvs.append(f"mv -f {q(part)} {q(rtb)}")
         if useo == parto:
             mvs.append(f"mv -f {q(parto)} {q(rto)}")
+        if useso == partso:
+            mvs.append(f"mv -f {q(partso)} {q(rts)}")
         old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}"
-        mvs.append(f"for f in {old}.bc {old}.o {old}.target; do case $f in {q(rtb)} | {q(rto)} | {q(rtb[:-3] + '.target')}) ;; *) rm -f \"$f\" ;; esac; done")
+        mvs.append(f"for f in {old}.bc {old}.o {old}.so {old}.target; do case $f in {q(rtb)} | {q(rto)} | {q(rts)} | {q(rtb[:-3] + '.target')}) ;; *) rm -f \"$f\" ;; esac; done")
     for g in glue:
         if pub and g[3] != "":
             old = f"{q(cache)}/runtime-py-{lin}-{'?' * 16}.{g[0]}.bc"
@@ -618,6 +657,8 @@ def main() -> None:
             usebc = rtb
         if useo == parto and not os.path.exists(parto):
             useo = rto
+        if useso == partso and not os.path.exists(partso):
+            useso = rts
         for g in glue:
             if g[2] == g[3] and not os.path.exists(g[3]):
                 g[2] = g[1]
@@ -681,7 +722,7 @@ def main() -> None:
                             pass
         if code == 0:
             f = open(ll, "w", encoding=RAW)
-            f.write(layout + ir)
+            f.write(layout + ir + (OBJHOOKS if useso != "" else ""))  # (the shared library's callbacks: RTSO)
             f.close()
         # JIT tier: discard unused internal functions before SSA cleanup and ORC's module-wide
         # code generation. The frontend still checks their bodies; external pys_obj_* dispatch
@@ -704,15 +745,27 @@ def main() -> None:
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             fast = f"{llvm}opt -passes='coro-early,globaldce,{split},coro-cleanup,globaldce'"
         if code == 0:
-            code = sh(f"{fast} {q(ll)} -o {q(bc)}")
+            # the cache's library may lie on a file system mounted noexec since it was made (or copied
+            # there), from which lli could map nothing: the shell that runs opt first asks whether this
+            # run may execute it (Linux's access(X_OK) fails on such a mount), and exits 3 if not, when
+            # the program is written again without the callbacks' constructor, for lli to link the .o
+            code = sh((f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
+            if code == 3 and useso != "":
+                useso = ""
+                f = open(ll, "w", encoding=RAW)
+                f.write(layout + ir)
+                f.close()
+                code = sh(f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
-            # then this process becomes lli, through a shell that opens the bitcode and the runtime's
-            # machine code for it (the cache's, or this run's own) and removes the files: the program's
-            # end is pystachy run's own, a signal that kills it too.
+            # then this process becomes lli, through a shell that opens the bitcode and the runtime
+            # for it (the cache's, or this run's own: the shared library, or else the machine code that
+            # lli links) and removes the files: the program's end is pystachy run's own, a signal that
+            # kills it too. lli opens the library as /dev/fd/8 (dlopen follows Linux's descriptor
+            # link to the file, also where it was removed).
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, lnk, part, hp, tmp + "/pyembed.c"] + [g[3] for g in glue]:
+            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
@@ -720,11 +773,12 @@ def main() -> None:
             # A program that embeds CPython (lib/pyobj.py) has lli load its libpython (-dlopen) and
             # pyembed.c's machine code, as the runtime's (on descriptor 7)
             pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/7" if embed else "")
-            run = f"{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe} -extra-object=/dev/fd/8 /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            rt = " -dlopen=/dev/fd/8" if useso != "" else " -extra-object=/dev/fd/8"
+            run = f"{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             fds = f" 7< {q(peo[1])}" if embed else ""
-            parts = q(parto) + (" " + q(peo[2]) if peo[2] != "" else "")
-            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, lnk, part, parto, hp, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+            parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
+            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
+    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
