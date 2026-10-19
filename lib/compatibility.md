@@ -958,15 +958,17 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   manager that `super().NAME()` makes and that decorates a function makes its generator for each
   call with the method of the object's class; an override of a method of a class of another module is
   rejected as the program compiles (the managers' types differ).
-- `suppress()` takes exception classes, named, as a `with` statement's item, which is compiled
-  as an `except` clause that catches them (exception classes are no values of the subset);
-  `with suppress(...) as x`, and a `suppress` object elsewhere, are compile-time errors.
+- `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
+  `except` clause that catches them; one kept as a value, or given exception classes held as
+  values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`
+  is a compile-time error.
 - `nullcontext(enter_result)` takes it positionally, and not `None` alone (`nullcontext(None)`
   is `nullcontext()`); `nullcontext` is a function that makes one of two classes' objects, and
   the managers are no subclasses of `AbstractContextManager` (class templates have no bases).
 - `__doc__`, `__name__` (no `functools.wraps()`) and `gen` of a `_GeneratorContextManager` are
   not available, and its `__exit__` called with a class but no exception returns `False` (CPython
-  makes the exception, `typ()`; a class is no value).
+  makes the exception, `typ()`, which the port leaves out: a `with` statement passes the
+  exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
 - `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers

@@ -1,0 +1,13 @@
+ValueError('') ValueError('') KeyError('') E('') F('')
+OSError('') SyntaxError('') RuntimeError('') StopIteration('')
+ValueError() E() ValueError('x') SystemExit('') SyntaxError()
+["ValueError('')", "OSError('')", "SyntaxError('')", "StopIteration('')", "SystemExit('')", "KeyError('')", "IndentationError('')", "E('')", "F('')"]
+['', '', "''"]
+["ValueError('x')", "OSError('x')", "SyntaxError('x')", "StopIteration('x')", "SystemExit('x')", "KeyError('x')", "IndentationError('x')", "E('x')", "F('x')"]
+['x', 'x', "'x'"]
+['ValueError("it\'s")', 'OSError("it\'s")', 'SyntaxError("it\'s")', 'StopIteration("it\'s")', 'SystemExit("it\'s")', 'KeyError("it\'s")', 'IndentationError("it\'s")', 'E("it\'s")', 'F("it\'s")']
+["it's", "it's", '"it\'s"']
+ValueError('') True
+RuntimeError('') ''
+Exception('', '') UnicodeError('') ValueError('')
+[exit 0]

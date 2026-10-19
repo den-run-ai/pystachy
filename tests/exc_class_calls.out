@@ -1,0 +1,11 @@
+Quiet Quiet('copy') True
+KeyError KeyError('copy') True
+OSError OSError('copy') True
+TypeError: Pair.__init__() missing 1 required positional argument: 'b'
+got KeyError expected LookupError False True
+got Quiet expected Quiet True True
+nothing raised, expected ValueError
+got KeyError expected ValueError False False
+escaped KeyError('not suppressed')
+TypeError: Keyed.__init__() missing 1 required keyword-only argument: 'code'
+[exit 0]

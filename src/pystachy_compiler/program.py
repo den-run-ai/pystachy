@@ -1078,7 +1078,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1099,6 +1099,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in xmade:
                 xmade[c] = True
                 self.exc_helpers(c)
+        self.exc_ctors()  # (calls of class objects: the functions that make objects of the program's classes)
         at = -1
         later: list[int] = []
         while len(self.wake) > 0:
@@ -1112,8 +1113,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) == before:
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors) == before:
             break
+    self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
