@@ -1,5 +1,8 @@
 """Guard benchmark evidence against corrupt results and missing rare inputs."""
 import json
+import os
+from pathlib import Path
+import tempfile
 import unittest
 
 import bench_json as bench
@@ -60,6 +63,24 @@ class EvidenceTests(unittest.TestCase):
                    for row in json.loads(utf8)]
         self.assertEqual(lengths, [[len(row["details"]["name"])] + [len(tag) for tag in row["details"]["tags"]]
                                    for row in json.loads(ascii_text)])
+
+    def test_json_module_is_the_one_the_compiler_compiles(self):
+        here = (bench.ROOT / "lib/json.py").resolve()
+        self.assertEqual(bench.compiled_json_module({}, ["./pystachy"]), here)
+        self.assertEqual(bench.compiled_json_module({}, ["python3.13", "-m", "pystachy"]), here)
+        with tempfile.TemporaryDirectory() as tmp:
+            other = Path(tmp).resolve()
+            (other / "runtime.c").write_text("")
+            (other / "lib").mkdir()
+            (other / "lib/json.py").write_text("")
+            elsewhere = (other / "lib/json.py").resolve()
+            # another checkout's compiler reads its own lib/, unless PYSTACHY_HOME says otherwise
+            self.assertEqual(bench.compiled_json_module({}, [str(other / "pystachy")]), elsewhere)
+            self.assertEqual(bench.compiled_json_module({"PYSTACHY_HOME": str(bench.ROOT)},
+                                                        [str(other / "pystachy")]), here)
+            # PYSTACHY_PATH comes first; relative entries are relative to the compiler's cwd, ROOT
+            relative = os.path.relpath(other / "lib", bench.ROOT)
+            self.assertEqual(bench.compiled_json_module({"PYSTACHY_PATH": relative}, ["./pystachy"]), elsewhere)
 
 
 if __name__ == "__main__":

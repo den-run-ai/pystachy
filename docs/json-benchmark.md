@@ -31,13 +31,18 @@ the full measurement mode.
 
 The `-lib` modes compare three ways of executing one parser source. PyPy 3.11
 lacks the PEP 695 `type` statement, so its copy names `JSONValue` with a plain
-assignment; nothing else changes. Each run checks which `json.py` it imported.
-The controller must run on the pinned CPython, which provides every reference
-checksum; it records the implementation, version and binary hash of each
-interpreter (`--pypy` defaults to `pypy3` on `PATH`). The report also records
-the path and hash of the `json.py` that the compiler resolves: to compare parser
-revisions with one compiler binary, put a directory holding the other `json.py`
-on `PYSTACHY_PATH`.
+assignment; nothing else changes. Before measuring, the controller checks which
+`json` each interpreter mode imports with `bench/` first on its module path, as
+the measured runs have it: the standard library's for `cpython` and `pypy`, the
+copy for the `-lib` modes. The report records those paths. The controller must
+run on the pinned CPython, which provides every reference checksum; it records
+the implementation, version and binary hash of each interpreter (`--pypy`
+defaults to `pypy3` on `PATH`). It also records the path and hash of the
+`json.py` that the compiler resolves, following the compiler's own search:
+`PYSTACHY_PATH` (relative entries from the repository root, the compiler's
+working directory), then `lib/` of `PYSTACHY_HOME` or of the compiler's checkout.
+To compare parser revisions with one compiler binary, put a directory holding
+the other `json.py` on `PYSTACHY_PATH`.
 
 ## Inputs and phases
 
@@ -56,8 +61,8 @@ The `all` phase times parsing, processing an already parsed document, and
 parsing plus processing, separately. A `predecoded` run decodes once outside the
 timed region and then times processing alone, without parser allocations or
 garbage in the heap: the part of the workload that type specialization would
-change. It also times `rebuild()`, which copies the decoded lists and dicts
-around the same scalars and strings. Any decoder that produces these native
+change. It also times `rebuild()`, which copies the decoded lists and dicts,
+iterating their items, around the same scalars and strings. Any decoder that produces these native
 values, including one for a binary format, at least allocates and fills those
 containers, so the parse time minus the rebuild time bounds what a faster input
 format could save. That bound holds for compiled code; on CPython, `rebuild()`

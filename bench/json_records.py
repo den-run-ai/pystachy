@@ -78,8 +78,8 @@ def rebuild(value: json.JSONValue) -> json.JSONValue:
         return items
     if isinstance(value, dict):
         fields: dict[str, json.JSONValue] = {}
-        for key in value:
-            fields[key] = rebuild(value[key])
+        for key, item in value.items():
+            fields[key] = rebuild(item)
         return fields
     return value
 

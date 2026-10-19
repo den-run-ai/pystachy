@@ -139,18 +139,40 @@ def interpreter(path, implementation, env, timeout):
             "sha256": digest(resolved) if resolved.is_file() else None}
 
 
-def compiled_json_module(env):
-    """The json.py that Pystachy compiles for bench/json_records.py.
+def compiler_home(compiler, env):
+    """The resource directory the compiler reads lib/ from, as driver.compiler_home() finds it.
 
-    The compiler searches the program's directory, PYSTACHY_PATH, then lib/ of
-    PYSTACHY_HOME (this checkout by default), as before/after runs rely on.
+    The compiler runs with ROOT as its working directory: a relative PYSTACHY_HOME, a hosted
+    compiler (python -m pystachy) and a compiler found on PATH all resolve from there.
     """
-    home = Path(env["PYSTACHY_HOME"]) if env.get("PYSTACHY_HOME") else ROOT
-    dirs = [SOURCE.parent] + [Path(d) for d in env.get("PYSTACHY_PATH", "").split(":") if d] + [home / "lib"]
-    for directory in dirs:
+    if env.get("PYSTACHY_HOME"):
+        return (ROOT / env["PYSTACHY_HOME"]).resolve()
+    if "-m" in compiler or "/" not in compiler[0]:
+        home = ROOT
+    else:
+        home = (ROOT / compiler[0]).resolve().parent
+    return home if (home / "runtime.c").exists() else home.parent
+
+
+def compiled_json_module(env, compiler):
+    """The json.py that the compiler compiles for bench/json_records.py.
+
+    It searches the program's directory, PYSTACHY_PATH (relative entries from its working
+    directory, ROOT), then lib/ of its home, as before/after runs rely on.
+    """
+    dirs = [SOURCE.parent] + [ROOT / d for d in env.get("PYSTACHY_PATH", "").split(":") if d]
+    for directory in dirs + [compiler_home(compiler, env) / "lib"]:
         if (directory / "json.py").is_file():
             return (directory / "json.py").resolve()
     raise ValueError("no json.py on Pystachy's module path")
+
+
+def imported_json(python, env, timeout):
+    """The json module that python imports for bench/json_records.py: its directory comes
+    first on the module path, as it does for the measured runs."""
+    code = "import sys; sys.path[0] = sys.argv[1]; import json; print(json.__file__)"
+    found = execute([python, "-c", code, str(SOURCE.parent)], env, timeout)["stdout"].strip()
+    return Path(found).resolve()
 
 
 def library_module(directory, module, pypy):
@@ -205,7 +227,7 @@ def main(argv=None):
     env = dict(os.environ, PYTHONHASHSEED="0")
     plain = {key: value for key, value in env.items() if key != "PYTHONPATH"}
     native = "jit" in args.modes or "aot" in args.modes
-    module = compiled_json_module(env)
+    module = compiled_json_module(env, compiler)
     report = {
         "schema_version": 2, "status": "running", "cases": [],
         "scope": "native JSON baseline and source-written guarded control; no compiler specialization",
@@ -235,15 +257,21 @@ def main(argv=None):
             executable = directory / "json_records"
             prefixes = {"cpython": ([sys.executable, str(SOURCE)], plain), "jit": (compiler + ["run", str(SOURCE)], env),
                         "aot": ([str(executable)], env), "pypy": ([str(args.pypy), str(SOURCE)], plain)}
-            for mode in ("cpython-lib", "pypy-lib"):
-                if mode in args.modes:
-                    target = library_module(directory, module, mode == "pypy-lib")
-                    python = sys.executable if mode == "cpython-lib" else str(args.pypy)
-                    lib_env = dict(plain, PYTHONPATH=str(target))
-                    found = execute([python, "-c", "import json; print(json.__file__)"], lib_env, args.timeout)["stdout"].strip()
-                    if Path(found).resolve() != (target / "json.py").resolve():
-                        raise ValueError(f"{mode} imports {found}, not Pystachy's json.py")
-                    prefixes[mode] = ([python, str(SOURCE)], lib_env)
+            imports = {}
+            for mode in ("cpython", "pypy", "cpython-lib", "pypy-lib"):
+                if mode not in args.modes:
+                    continue
+                python = sys.executable if mode.startswith("cpython") else str(args.pypy)
+                target = library_module(directory, module, mode == "pypy-lib") if mode.endswith("-lib") else None
+                run_env = dict(plain, PYTHONPATH=str(target)) if target else plain
+                found = imported_json(python, run_env, args.timeout)
+                if target and found != (target / "json.py").resolve():
+                    raise ValueError(f"{mode} imports {found}, not Pystachy's json.py")
+                if not target and (ROOT in found.parents or found.parent.name != "json"):
+                    raise ValueError(f"{mode} imports {found}, not its standard library's json")
+                imports[mode] = str(found)
+                prefixes[mode] = ([python, str(SOURCE)], run_env)
+            report["metadata"]["json_imports"] = imports
             if native:
                 report["metadata"]["llvm"] = {
                     tool: tool_version(tool, env, args.timeout)
