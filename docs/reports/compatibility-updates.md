@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `4a1a29aac08a35f13c2ecbf933d507db083802d5`.
+**Latest evaluated main:** `e33c560e801af86879727fd5f99f5981b84d5046`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2515,3 +2515,105 @@ dated baseline reports and JSON remain unchanged. Existing trackers
 [#703](https://github.com/den-run-ai/pystachy/issues/703) and
 [#704](https://github.com/den-run-ai/pystachy/issues/704) cover this work;
 no new issue is warranted by these measurements.
+
+## 2026-10-19: empty-string exception representations and binding diagnostics
+
+Evaluated source: `e33c560e801af86879727fd5f99f5981b84d5046`, after
+`4a1a29aac08a35f13c2ecbf933d507db083802d5`. Evaluation completed before advancing
+the latest-evaluated marker; the previous audit is now merged as #669.
+
+Fresh PR metadata and ancestry checks identify the intervening merges:
+
+- [#729](https://github.com/den-run-ai/pystachy/pull/729),
+  `d34a2260e109750068b0468669b6b938b2337c56`: preserve the empty string argument
+  in builtin exception `repr`, distinguishing `ValueError('')` from `ValueError()`.
+- [#726](https://github.com/den-run-ai/pystachy/pull/726),
+  `e33c560e801af86879727fd5f99f5981b84d5046`: locate binding-conflict diagnostics
+  at the assignment, including a nested function's declared-global assignment.
+- #734 (`b040f45e`) changes only three CI setup workflows. #669 (`b83c4e73`)
+  merges the previous audit reports. Neither adds compiler/runtime/library behavior;
+  the audit's own documentation merge is not treated as another implementation gain.
+
+The #491/#616 coordination comments and both implementation PR discussions were
+read. In particular, #726's earlier nested-global review finding is fixed in its
+merged `fe96a14` head. This audit changes no implementation branch and merges no PR.
+
+### Measured behavior
+
+Fresh CPython **3.13.16** / LLVM **18.1.3** rebuild reaches compiler/runtime
+three-stage fixed points at **635,430 / 18,851 IR lines**. Compiler SHA-256:
+`348ae135b80e951892be480572a8b6e8c45700fb9d4d4803d3e80160aad9b413`.
+The previous binary was built from `4a1a29aa`; the current binary was built from
+the exact evaluated source above. Library/runtime sources are unchanged by these
+two implementation merges.
+
+- **1,170 output cases across 65 builtin exception names match CPython** in each
+  JIT/AOT mode with program GC stress. The old compiler differs on **192 cases in
+  each mode**; the new one differs on zero. Cases include constant/dynamic empty
+  strings, no arguments, nonempty strings, quotes, a backslash, newline, NUL,
+  Unicode, and raising/catching each exception. This is a bounded API comparison,
+  not CPython's upstream exception suite; aliases are counted as separate names.
+- **185 focused checks** pass over 105 fixtures: 80 executed JIT/AOT programs
+  and 25 expected rejections. **2 contextlib API checks**, **12 adapted-port
+  checks** over six ordered-set/sortedcontainers/jdcal programs, and **8 CPython
+  recordings** pass. These validation views must not be added into a count of
+  supported libraries or treated as whole-package support.
+- The new exception fixture passes **2/2** with GC stress and **2/2** with all
+  optimizations disabled. The CPython-hosted compiler passes **27 checks**: the
+  fixture in JIT/AOT plus the 25 binding rejections. These are hosted-compiler
+  checks, not unmodified upstream suites.
+- The previous compiler fails both executions of the new exception fixture and
+  all five exact-location regressions. New diagnostics point to lines **7, 7,
+  11, 13 and 15**, instead of **6, 5, 12, 17 and 20**. Rejection policy is not
+  relaxed: monkey-patching module functions and conflicting global bindings
+  remain unsupported.
+- Runtime declaration/effect checks agree for **451 entries / 70 exception
+  classes**. No new runtime function or allocation is introduced by #729.
+- The internal IR checker and LLVM assembler accept **1,435 programs**. Across
+  **3,122 corpus programs**, old/new compiler exit statuses are identical; only
+  the five intended diagnostic locations differ. **2,906** programs are identical
+  in IR, messages and exit status; **211** have changed IR. The evidence retains
+  hashes for changed IR and selected 35-line excerpts, not an exhaustive semantic proof.
+  The compiler's own program and runtime IR are identical between old/new compilers
+  when both compile the current sources.
+- All six benchmarks whose IR changes pass small CPython/JIT/AOT correctness
+  controls: `chaos`, `hexiom`, `regex_dna`, `regex_effbot`, `regex_v8`, and
+  `json_records` (exact checksum **256384**). The first five are adapted workloads;
+  these are not unmodified upstream suites. Recorded smoke timings overlap other
+  checks and are not used for a performance comparison.
+
+Isolated `--metadata` sweeps retain **144/470 native imports** and **146/470
+stub-assisted imports**, using the same 522-file CPython inventory and 52 overlay
+exclusions. Both result maps are unchanged, including first errors: no lost
+successes or timeouts. Throwing stubs remain diagnostic aids, not native modules.
+
+### Scope and replay
+
+Both historical implementation PR heads have **31 successful jobs across four
+workflows**, including the verification gate:
+[#729 CI](https://github.com/den-run-ai/pystachy/actions/runs/39296976013) and
+[#726 CI](https://github.com/den-run-ai/pystachy/actions/runs/39306456185).
+These heads predate later main changes; neither is the combined evaluated tree.
+Fresh local selected checks complement, but do not replace, a full current-tree
+verification matrix.
+
+No full local `make verify`, unmodified CPython regrtest, broad PyPI census or
+dedicated performance/memory comparison was run. Existing minor/major adaptation and
+first-error limitations remain. The initial audit-driver selector encountered
+a deliberately non-UTF8 fixture before starting any build/test; searching bytes
+fixed the selector, and the restarted run is the measured run. That setup failure
+is retained separately from implementation results.
+
+[Machine-readable evidence](compatibility-2026-10-19-exception-diagnostics.json)
+retains source/compiler identities, fixtures, commands, outputs, comparisons and
+replay scripts. Extract `audit-729.py` and `audit-729-assemble.py`, relocate their
+explicit paths, then run the driver modes `build`, `references`, `checks`,
+`differential`, `old-control`, `rtcheck`, `sweeps`, `oracle`, `ir`, `benchmarks`
+and `json-smoke` with pinned Python. `old-control` intentionally returns 1 and
+demonstrates the prior bug.
+Restore the historical `implementation_ci` object to
+`build/audit-729/implementation-ci.json` before aggregation, or retrieve fresh CI
+when making a current-state claim. All dated baseline reports/JSON are preserved.
+Repeated differential stdout is stored once in `stdout_blobs`, keyed by SHA-256;
+each command names its output hash. The oracle input-inventory digest can be
+reconstructed by the retained driver on the exact source revision.
