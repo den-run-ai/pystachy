@@ -22,18 +22,31 @@ does not make upstream `importlib` or Python bytecode execution available.
 ## `_ast` prototype
 
 The [prototype contract](../docs/prototypes/ast.md) covers constructing, inspecting
-and mutating typed expression trees: `Expression`, `Constant`, `Name`, `BinOp`,
-`UnaryOp`, their operator and context tags, and CPython's `_fields`, `_attributes`
-and `__match_args__`. There is no parser, `compile()` bridge, statement node or
-source location.
+and mutating typed expression nodes: constants, names, operators, boolean
+operations, comparisons, calls and keywords, attributes, subscripts and slices,
+starred values, list, tuple, set and dict displays, conditional and assignment
+expressions, `await` and `yield`, with CPython 3.13's `_fields`, `_attributes`,
+`__match_args__` and constructor defaults. Their module is `ast`, as CPython's
+types name it. There is no parser (`ast.parse()`), `compile()` of trees,
+statement node, comprehension, lambda, f-string node or location attribute.
+`keyword` takes its `arg` explicitly, and a list field takes a list, not `None`.
 
 ## `_weakref` prototype
 
-The [prototype contract](../docs/prototypes/weakref.md) covers `ref(obj)` to
-ordinary class instances: calling it returns the target, or `None` once the
-collector has reclaimed it. Callbacks, proxies, equality, hashing and
-`import weakref` are unsupported. `type(r).__name__` is `ref` rather than
-`ReferenceType`, and the private `_handle` field is readable.
+The [prototype contract](../docs/prototypes/weakref.md) covers `ref` and
+`ReferenceType`, one class, to ordinary class instances: calling a reference
+returns its referent, or `None` once the collector has reclaimed it. While both
+referents live, `==`, `!=` and `hash()` are the referents'; a dead reference
+equals only itself and keeps a hash computed before. Referents die when the
+collector finds them unreachable, not when CPython's last counted reference
+goes, so a reference to a temporary still compares by its referent until a
+collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPython
+adds for a referent whose class defines `__name__`. A reference has no attributes
+of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
+which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
+unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
+`getweakrefs()`, weak containers and the reuse of one reference per referent
+(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
 
 ## Operator
 
