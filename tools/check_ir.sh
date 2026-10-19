@@ -10,8 +10,10 @@
 # the ones NAME.fx lists. One with a NAME.calls must call the runtime functions it lists: for each
 # function its IR defines, the pys_ functions it calls or invokes, in the order of its text. One
 # with a NAME.attrs must define each function with the attributes it lists: those after its
-# parameters, but for a personality. All three are compiled with every optimization on (an empty
-# PYSTACHY_OPT), whose rewrites they pin. The
+# parameters, but for a personality. One with a NAME.tbaa must tag the loads and stores it lists
+# with TBAA: for each function its IR defines, those it tags, in the order of its text, as load or
+# store, the struct type its access tag names and the offset there (fieldtbaa). All four are
+# compiled with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The
 # programs run from the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit
 # status 0 only if every program compiled and passed its checks.
 # usage: tools/check_ir.sh [COMPILER [FILE...]]   (default: ./pystachy and the corpus; make check-ir,
@@ -47,20 +49,35 @@ attrs() {
       a = $0; sub(/^[^(]*\([^)]*\)/, "", a); sub(/ *\{$/, "", a); sub(/ personality .*/, "", a)
       print f ":" a }' "$1"
 }
+# tbaa IR: each function IR defines, and the loads and stores it tags with TBAA, in the order of its
+# text: load or store, then the name of the struct type that the access tag names and its offset
+# there (lower_module's tbaa_nodes: tag !{!struct, !scalar, i64 offset}, struct !{!"name", ...})
+tbaa() {
+  awk 'NR == FNR {
+      if ($0 ~ /^![0-9]+ = !\{!"/) { s = $0; sub(/^[^"]*"/, "", s); sub(/".*/, "", s); name[$1] = s }
+      else if ($0 ~ /^![0-9]+ = !\{![0-9]+, ![0-9]+, i64 [0-9]+\}$/) { s = $0; sub(/^[^{]*\{/, "", s); sub(/\}$/, "", s)
+        split(s, p, ", "); base[$1] = p[1]; sub(/^i64 /, "", p[3]); off[$1] = p[3] }
+      next }
+    /^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f); c = "" }
+    /^  .*, !tbaa !/ { t = $0; sub(/.*, !tbaa /, "", t); sub(/[^!0-9].*/, "", t)
+      w = "load"; if ($0 ~ /^  store /) w = "store"; c = c " " w ":" name[base[t]] "+" off[t] }
+    /^}/ && f != "" { print f ":" c; f = "" }' "$1" "$1"
+}
 # check FILE DIR: DIR/result is ok, skip (does not compile), internal (an internal error, such as the
 # IR check's), fx (other effect summaries than FILE's .fx lists), calls (other runtime calls than its
-# .calls lists), attrs (other attributes than its .attrs lists) or bad (llvm-as rejects the IR);
-# DIR/msg says why
+# .calls lists), attrs (other attributes than its .attrs lists), tbaa (other TBAA tags than its .tbaa
+# lists) or bad (llvm-as rejects the IR); DIR/msg says why
 check() {
   mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
   fx=; [ -f "${1%.py}.fx" ] && fx=1
   how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
-  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] && opt=
+  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] || [ -f "${1%.py}.tbaa" ] && opt=
   if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS $how "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
   elif [ -f "${1%.py}.calls" ] && ! calls "$2/ir.ll" | diff "${1%.py}.calls" - > "$2/calls" 2>&1; then r=calls; mv "$2/calls" "$2/msg"
   elif [ -f "${1%.py}.attrs" ] && ! attrs "$2/ir.ll" | diff "${1%.py}.attrs" - > "$2/attrs" 2>&1; then r=attrs; mv "$2/attrs" "$2/msg"
+  elif [ -f "${1%.py}.tbaa" ] && ! tbaa "$2/ir.ll" | diff "${1%.py}.tbaa" - > "$2/tbaa" 2>&1; then r=tbaa; mv "$2/tbaa" "$2/msg"
   elif "${LLVM}llvm-as" -o /dev/null < "$2/ir.ll" > "$2/msg" 2>&1; then r=ok
   else r=bad; fi
   rm -f "$2/ir.ll"
@@ -91,6 +108,7 @@ for f; do
     fx) bad=$((bad + 1)); echo "OTHER EFFECTS $f (than ${f%.py}.fx lists)"; head -10 "$T/$n/msg" ;;
     calls) bad=$((bad + 1)); echo "OTHER CALLS $f (than ${f%.py}.calls lists)"; head -10 "$T/$n/msg" ;;
     attrs) bad=$((bad + 1)); echo "OTHER ATTRIBUTES $f (than ${f%.py}.attrs lists)"; head -10 "$T/$n/msg" ;;
+    tbaa) bad=$((bad + 1)); echo "OTHER TBAA TAGS $f (than ${f%.py}.tbaa lists)"; head -10 "$T/$n/msg" ;;
     bad) bad=$((bad + 1)); echo "REJECTED $f (by llvm-as)"; head -5 "$T/$n/msg" ;;
     *) bad=$((bad + 1)); echo "FAIL $f: no result (its worker died)" ;;
   esac

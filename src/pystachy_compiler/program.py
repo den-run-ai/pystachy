@@ -1152,6 +1152,8 @@ def gen_program(self, mods: list[Mod]) -> str:
     if dump:
         for fn in self.fns:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
+    if "tupleret" in on:
+        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
     for fn in self.fns:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
