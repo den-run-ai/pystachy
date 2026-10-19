@@ -249,16 +249,16 @@ compiled for its arguments), or take `*args`:
 
 | Parameter | Annotation | Value |
 |---|---|---|
-| The exception's class | `type[BaseException] \| None` | `None`, or the class: `__name__`, `issubclass()`, `str()` and `repr()` (`<class 'KeyError'>`) |
+| The exception's class | `type[BaseException] \| None` | `None`, or the class's [class object](#exception-classes-as-values) |
 | The exception | `BaseException \| None` | `None`, or the exception: `str()`, `repr()`, `isinstance()`, `is`, `raise` |
 | The traceback | `TracebackType \| None` (`from types import TracebackType`) | `None`, or an object with none of a traceback's attributes |
 
-`type(e)` of an exception is such a class value, and `sys.exception()` the exception being
+`type(e)` of an exception is such a class object, and `sys.exception()` the exception being
 handled (or `None`). `e.__cause__` is the cause that `raise ... from c` gave, or the
 `StopIteration` that PEP 479's `RuntimeError` replaced.
 
 `lib/contextlib` provides `contextmanager` (also as a decorator, `@cm()`), `closing`,
-`nullcontext`, `suppress` (as a `with` statement's item, with exception classes named) and
+`nullcontext`, `suppress` (as a `with` statement's item, or kept as a value) and
 `AbstractContextManager`; `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `_thread`'s locks are context managers too
 ([library](../../lib/compatibility.md#contextlib)).
 
@@ -345,7 +345,8 @@ time knows (#487), names that need per-object storage (#489), or a class object 
 expression, `type(a) is C`, `type(a) == type(b)`, their negations and `x.__class__ is C` compare
 the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` and `repr()` of a
 reference union print each object as its own class prints it. `type(x)` as a value (a class
-object) is unsupported.
+object) is unsupported, but for an exception ([exception classes as
+values](#exception-classes-as-values)).
 
 ### Attribute names the compiler knows
 
@@ -473,7 +474,8 @@ with `isinstance()` or `type(e).__name__`. An annotation such as `Exception` nam
 builtin exception value type; it does not accept arbitrary user exception objects.
 `BaseException | None` (any exception class with `| None`) is an exception that may be
 `None`, which `raise` raises as CPython does (`TypeError` for `None`), and
-`type[BaseException]` the class of an exception ([context managers](#context-managers)).
+`type[BaseException]` an exception class's class object ([exception classes as
+values](#exception-classes-as-values)).
 
 `OSError(errno, strerror[, filename])` selects the subclass associated with the errno.
 `UnicodeDecodeError(encoding, object, start, end, reason)` (of a bytes object) and
@@ -530,6 +532,41 @@ subclass exits using its code. Exception values keep identity when raised.
 
 Additional inheritance, constructor and attribute restrictions are in
 [exception restrictions](compatibility.md#exceptions-and-exception-classes).
+
+<a id="exception-classes-as-values"></a>
+
+### Exception classes as values
+
+An exception class, builtin or of the program, is a value: `k = KeyError`, a default
+(`category=UserWarning`), an argument, a field, an item of a list, tuple or set, a dict's key
+or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it.
+Each class has one class object, so `is`, `==` and `hash()` compare and hash it by identity
+(`IOError is OSError`). `type(e)` of an exception, and the class an `__exit__` takes, are its
+class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, which is
+`type(None)`; raising it raises CPython's `TypeError`, and calling it raises `TypeError` too
+([deviation](compatibility.md#exceptions-and-exception-classes)).
+
+- `str()`, `repr()` and formatting give CPython's text (`<class 'KeyError'>`,
+  `<class '__main__.E'>`); `__name__`, `__qualname__` and `__module__` are its names (`builtins`,
+  `io`, or the module of a class of the program). Ordering raises CPython's `TypeError`.
+- `issubclass(c, b)` and `isinstance(x, b)` take as `b` a class object (also one that an
+  expression gives: `type(e)`, `kinds[0]`, a call, a conditional expression), a tuple of them
+  (nested ones too) or classes named. A tuple's classes are tested in turn, as CPython tests them: the first that matches
+  stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is true, and
+  `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is false, but
+  `None` is an instance of `NoneType`'s class object, which derives from no exception class
+  (`BaseException` included). `type(c).__name__` is `type`.
+- A class object is callable (`callable(c)` is true). A call of it makes an object of its class
+  from none or one positional argument, as CPython's call does (a `KeyError`'s `str()` is its
+  argument's `repr()`, a `SystemExit`'s status its `int`); `raise c` raises `c()`, as
+  `raise X from c` takes `c()` as the cause (none where `c` is `None`, as `from None`). A class
+  of the program runs its `__init__`, which raises CPython's `TypeError` where it takes another
+  number of arguments; one that takes another type than the argument's raises `TypeError`
+  instead ([deviation](compatibility.md#exceptions-and-exception-classes)).
+- `contextlib.suppress()` given class objects (`suppress(type(e))`), or kept as a value, tests
+  its classes as CPython's does.
+
+An `except` clause names its classes; one that takes class objects is not supported.
 
 ## Syntax errors
 

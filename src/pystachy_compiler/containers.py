@@ -596,10 +596,11 @@ def gen_key_class(self, t: str) -> bool:
 
 def gen_key_items(self, t: str) -> bool:
     # are the items of tuple t a key's: int, bool, str, objects (key_class), str or an object
-    # that may be None, and such tuples (utils.key_items, objects too)
+    # that may be None, class objects of exception classes, and such tuples (utils.key_items,
+    # objects too)
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
             return False
     return True
 
@@ -934,7 +935,7 @@ def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a tuple of such items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or self.key_class(u):
+    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
         return True
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 

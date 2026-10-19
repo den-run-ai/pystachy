@@ -1,0 +1,4 @@
+ValueError x
+TypeError a call of class object Coded with an argument of this type is not supported (its __init__ takes another type)
+Coded('code 5')
+[exit 0]
