@@ -150,17 +150,20 @@ that may be `None` but is not a range, `type(r)` as a value, and the reflection 
 `object()` makes a new object of the builtins' `object` type at each call, as a sentinel is made
 (`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
 class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
-program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities, `hash()`, dict
-keys and set elements use the identity, `bool()` is true, `repr()` and `str()` give
-`<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
-`type(x).__module__` is `builtins`, and `isinstance(x, object)` is true. The compiler rejects
-`object()` with arguments (CPython's `TypeError`), assigning an attribute of such an object, and a
+program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities (a value of a
+builtin type, such as an int, a str or a list, is never equal to one), `hash()`, dict keys and set
+elements use the identity, `bool()` is true, `repr()` and `str()` give `<object object at 0x...>`
+with Pystachy's address, `type(x).__name__` is `object` and `type(x).__module__` is `builtins`, and
+`isinstance(x, object)` and `type(x) is object` are true. The compiler rejects `object()` with
+arguments (CPython's `TypeError`), assigning an attribute of such an object, `==` and `!=` between
+such an object and an object of a class or an exception (whose `__eq__` CPython may call), and a
 variable, return value or `dict.get()` default that would hold either such an object or a value of
 another type, as no union holds one yet
 ([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class for a program one of
-whose modules calls the name `object`, so it also rejects a call by another name (`builtins.object()`,
-or an alias that an import or an assignment binds, `obj = object`) in a program none of whose
-modules calls `object()`; in any other program such a call makes a sentinel too.
+whose modules calls the name `object`, so in a program none of whose modules calls `object()` it
+also rejects a call by another name (`builtins.object()`, or an alias that an import or an
+assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
+sentinel too.
 
 ## Iterators
 
