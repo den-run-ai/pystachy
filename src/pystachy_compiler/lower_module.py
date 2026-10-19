@@ -5,11 +5,55 @@ object dispatch and process/extension entry points. They do not create IR operat
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import Data, FnInfo
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
+
+
+def struct_types(ci: ClassInfo) -> list[str]:
+    # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
+    # assigned" flags
+    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)]
+
+
+def gen_tbaa_nodes(self) -> list[str]:
+    # fieldtbaa's metadata, for the access tags that lowering numbered (Gen.field_tag): a root of
+    # its own, a scalar type of each LLVM type of the members of the structs tagged, and the struct
+    # type of each class that lays out a field tagged, with all of its struct's members at their
+    # offsets (each aligned to its size, as the targets' data layouts do), after the tags
+    if len(self.tbaa) == 0:
+        return []
+    root = TBAA_FIELDS + len(self.tbaa)
+    md = [f'!{root} = !{{!"pystachy fields"}}']
+    scalar: dict[str, int] = {}  # LLVM type -> its node
+    node: dict[str, int] = {}  # class -> its struct's node, numbered after the scalar types
+    tys: dict[str, list[str]] = {}  # and its members' types
+    offs: dict[str, list[int]] = {}  # and offsets
+    for key in self.tbaa:
+        c = key[: key.rfind(" ")]
+        if c not in node:
+            node[c] = len(node)
+            tys[c] = struct_types(self.classes[c])
+            offs[c] = []
+            at = 0
+            for t in tys[c]:
+                if t not in scalar:
+                    scalar[t] = root + 1 + len(scalar)
+                    md.append(f'!{scalar[t]} = !{{!"{TBAA_NAMES[t]}", !{root}, i64 0}}')
+                at = (at + TBAA_SIZES[t] - 1) // TBAA_SIZES[t] * TBAA_SIZES[t]
+                offs[c].append(at)
+                at += TBAA_SIZES[t]
+    first = root + 1 + len(scalar)
+    for c in node:
+        ms = ", ".join([f"!{scalar[tys[c][j]]}, i64 {offs[c][j]}" for j in range(len(tys[c]))])
+        md.append(f'!{first + node[c]} = !{{!"{c}", {ms}}}')
+    for key in self.tbaa:
+        c = key[: key.rfind(" ")]
+        k = int(key[key.rfind(" ") + 1 :])
+        md.append(f"!{self.tbaa[key]} = !{{!{first + node[c]}, !{scalar[tys[c][k]]}, i64 {offs[c][k]}}}")
+    return md
 
 
 def gen_extern_decl(self, f: FnInfo) -> None:
@@ -333,10 +377,7 @@ def gen_lower_module(self) -> str:
             continue  # (a class template's objects are its specializations')
         if ci.name == RANGEC and not self.rangeused:
             continue  # (lib's class of range objects, which a program that may make one loads: of no code here)
-        ts = [lt(ci.ftypes[x]) for x in ci.fields]
-        for _ in range(ci.nflag):
-            ts.append("i1")
-        hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
+        hdr.append(f"%C.{ci.name} = type {{{', '.join(struct_types(ci))}}}")
     for g in self.globs:
         hdr.append(f"{g.v} = internal global {lt(g.t)} zeroinitializer")
     roots = ", ".join([f"ptr {g}" for g in self.gcroots])
@@ -345,6 +386,7 @@ def gen_lower_module(self) -> str:
     for d in self.consts:
         hdr.append(lower_data(d))
     hdr.extend(self.out)
+    hdr.extend(self.tbaa_nodes())  # (what the functions' loads and stores of fields name)
     for k in self.rtfns:
         if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
             hdr.append(runtime_decl(k))  # (runtime mode: what runtime.py defines is not declared)

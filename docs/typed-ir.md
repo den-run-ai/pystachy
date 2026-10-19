@@ -339,9 +339,18 @@ passes; the others select frontend or lowering choices.
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
+| `fieldtbaa` | Give every load and store of an object field a struct-path TBAA tag, so that LLVM knows that two fields at different offsets of one class, or fields of classes neither of which lays out the other, are never the same memory; it keeps such fields in registers across each other's stores ([#701](https://github.com/den-run-ai/pystachy/issues/701)) |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
+begins with its base's, flags included, so an inherited field has its base's tag whichever class
+a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
+tags hang from a root of their own, so LLVM never sets them apart from the accesses of
+`runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
+told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
+no tag. `tests/field_alias.py` checks the orders that a wrong tag would change, and
+`tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.
 Unpacking a list (`a, b = xs`, `a, *b, c = xs`) reads its items with `list.load` whatever
