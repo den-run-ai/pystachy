@@ -38,6 +38,7 @@ import json
 import os
 import runpy
 import sys
+import traceback
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEPTH = 1000  # the group repeats a match may nest (each a native call) before the interpreter takes it
@@ -799,15 +800,37 @@ def record(argv, out):
         # (python PROGRAM imports from the program's directory: in place of this tool's)
         sys.path[0] = os.path.dirname(os.path.realpath(argv[0]))
     status = 0
+    error = None
+    interrupt = None
     try:
         runpy.run_path(argv[0], run_name="__main__")
     except SystemExit as e:
-        status = e.code if isinstance(e.code, int) else 0 if e.code is None else 1
+        # (as python PROGRAM exits: with 0 for None, an int's status, else 1 once the value is printed)
+        if e.code is None or isinstance(e.code, int):
+            status = 0 if e.code is None else e.code
+        else:
+            error = e
+            status = 1
+    except Exception as e:
+        # (as python PROGRAM ends on an uncaught exception; the calls made until then are still written)
+        error = e
+        status = 1
+    except BaseException as e:
+        # (KeyboardInterrupt: the calls made until then are written, then it is raised again)
+        interrupt = e
     finally:
         mon.set_events(tool, 0)
         mon.register_callback(tool, mon.events.CALL, None)
         mon.free_tool_id(tool)
         sys.argv, sys.path[:] = saved
+    # (printed once calls are no longer counted: traceback's own patterns are not the program's)
+    if isinstance(error, SystemExit):
+        print(error.code, file=sys.stderr)
+    elif error is not None:
+        tb = error.__traceback__
+        while tb is not None and tb.tb_frame.f_code.co_filename != argv[0]:
+            tb = tb.tb_next  # (from the program's own frames, as python PROGRAM shows it)
+        traceback.print_exception(type(error), error, tb or error.__traceback__)
     profile = {"format": FORMAT, "program": argv[0],
                "patterns": [{"pattern": p, "flags": f, "calls": n}
                             for (p, f), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]}
@@ -815,6 +838,8 @@ def record(argv, out):
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(profile, fh, indent=1, ensure_ascii=True)
         fh.write("\n")
+    if interrupt is not None:
+        raise interrupt
     return status
 
 

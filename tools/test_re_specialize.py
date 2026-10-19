@@ -473,6 +473,28 @@ class TestGenerated(unittest.TestCase):
             calls = {(e["pattern"], e["flags"]): e["calls"] for e in profile["patterns"]}
             self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1, ("c+", re.U): 1})
 
+    def test_record_exit(self):
+        # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
+        # message prints it, an uncaught exception its traceback, each with status 1, and an uncaught
+        # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames)
+        ends = ["sys.exit('bye')", "raise ValueError('boom')", "sys.exit(3)", "raise KeyboardInterrupt"]
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            for i, end in enumerate(ends):
+                prog = os.path.join(tmp, "prog%d.py" % i)
+                with open(prog, "w") as f:
+                    f.write("import re\nimport sys\nre.compile('d+').match('dd')\n%s\n" % end)
+                out = os.path.join(tmp, "profile%d.json" % i)
+                run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o",
+                                      out, prog], capture_output=True, text=True)
+                plain = subprocess.run([sys.executable, prog], capture_output=True, text=True)
+                self.assertEqual(run.returncode, plain.returncode)
+                if "KeyboardInterrupt" in end:
+                    self.assertEqual(run.stderr.splitlines()[-1], plain.stderr.splitlines()[-1])
+                else:
+                    self.assertEqual(run.stderr, plain.stderr)
+                with open(out) as f:
+                    self.assertEqual(json.load(f)["patterns"], [{"pattern": "d+", "flags": int(re.U), "calls": 1}])
+
     def test_checked_in(self):
         # tests/re_specialize_matchers/ holds the matchers of tests/re_specialize.py's patterns, as the
         # tool writes them from a profile of the test under CPython
