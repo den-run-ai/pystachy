@@ -1,0 +1,18 @@
+a\.b|
+|x\.y\Z
+|
+True branch a\.b
+True from_import a\+b
+True other_branch c\.d
+True before UnboundLocalError: cannot access local variable 'os' where it is not associated with a value
+True in_loop ['(?s:.*\\.py)\\Z', '(?s:.*\\.py)\\Z']
+True after_loop (?s:.*\.txt)\Z
+False branch UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+False from_import UnboundLocalError: cannot access local variable 'escape' where it is not associated with a value
+False other_branch UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+mods: init mods
+mods.shapes: init mods.shapes
+False before /
+False in_loop []
+False after_loop UnboundLocalError: cannot access local variable 'fnmatch' where it is not associated with a value
+[exit 0]

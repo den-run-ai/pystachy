@@ -1,0 +1,16 @@
+b
+a\.b
+42
+2
+4
+y
+6
+default: cannot access local variable 'posixpath' where it is not associated with a value
+shadowed: cannot access local variable 're' where it is not associated with a value
+deco_call: cannot access local variable 'functools' where it is not associated with a value
+deco_dotted: cannot access local variable 'functools' where it is not associated with a value
+from_deco: cannot access local variable 'cache' where it is not associated with a value
+from_default: cannot access local variable 'basename' where it is not associated with a value
+deco_arg: cannot access local variable 'posixpath' where it is not associated with a value
+/a x\.y
+[exit 0]
