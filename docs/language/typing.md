@@ -410,8 +410,8 @@ returns an `int | float`. The members are `int`, `float`, `bool` and `str`, with
 their items' types, and tuples of one length join item by item: the display
 `[1, 2.5]` makes a `list[int | float]`, and `[("a", 1), ("b", 2.5)]` a
 `list[tuple[str, int | float]]`. A list made by a call of a function without a return
-annotation, assigned where a list of joined items is kept, makes that function return
-the joined list type, as a fresh result.
+annotation, assigned where a list of joined items is kept or returned by a function that
+returns one, makes that function return the joined list type, as a fresh result.
 
 The compiler finds a join where a value does not fit the type a location has so far, and
 then compiles the program again with the union as that location's annotation, up to eight

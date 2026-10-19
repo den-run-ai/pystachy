@@ -771,7 +771,10 @@ def gen_stmt(self, n: Node) -> None:
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 was = self.join_at("return", f"{self.fnkey(self.curfn)}|return", self.ret)
+                src = self.joinsrc
+                self.joinsrc = n.kids[0]  # (a call's fresh result: see join_hint)
                 joined = self.join_hint(self.ret, v.t)  # (it returns both: their union, see join_hint)
+                self.joinsrc = src
                 self.join_at(was[0], was[1], was[2])
                 if not joined:
                     self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
