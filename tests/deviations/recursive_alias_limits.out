@@ -1,0 +1,9 @@
+repr depth guarded
+equality depth guarded
+[[[1]]] True
+repr depth guarded
+equality depth guarded
+[[[1]]] True
+cycle equality guarded
+[[...]] True
+[exit 0]
