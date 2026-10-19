@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `552d7301eee771a61759b601867d5bc9b40eef28`.
+**Latest evaluated main:** `b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2801,3 +2801,122 @@ and full upstream suites were not repeated. No new compatibility or performance
 gain is inferred from this CI-only change; #741's reported hosted timing comparison
 is separate evidence and was not independently remeasured here. All historical
 reports/JSON and adaptation/first-error limitations remain unchanged.
+
+## 2026-10-19: native opcode metadata and stack effects (#686)
+
+Evaluated [main `b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1`](https://github.com/den-run-ai/pystachy/commit/b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1),
+the sole first-parent merge after `552d7301eee771a61759b601867d5bc9b40eef28`.
+Fresh metadata and git ancestry confirm [#686](https://github.com/den-run-ai/pystachy/pull/686)
+merged. Read its completed review and #491/#616 coordination before measuring.
+The 21 changed paths add `_opcode`'s native stand-in, generated CPython tables,
+`opcode`/`_opcode_metadata`, six fixtures, verification tools and documentation;
+the only compiler change registers the stand-in. No implementation branch was edited.
+
+Rebuilt with **CPython 3.13.16 / LLVM 18.1.3**, reaching compiler/runtime fixed
+points **644,960 / 18,851 IR lines**. Compiler source is the evaluated main SHA;
+executable SHA-256 is
+`12288231f46f77db1034d1afd59647fabe13e61452fd230577bbc6223897ff84`.
+The comparison executable remains built from `3609a5f0830f7997f8b2f6e6463313e3aea9e091`,
+SHA-256 `945034c7c3f8d7d2780eb578005076a1bcc687596f11647876d9d180f7891d72`;
+its compiler/runtime/lib/port sources are byte-identical at the preceding #741
+checkpoint. Compiler identity and checkout revision are not conflated.
+
+### Executed behavior and adaptation
+
+| Measurement layer | Observed result |
+|---|---|
+| Six retained opcode fixtures | **9/9 checks pass** in each of native JIT/AOT, program GC stress, optimization-off and CPython-hosted compiler modes. Each group includes two positive API/adapted-upstream programs, one documented-deviation program and three expected compile-time rejections. |
+| CPython reference executions | Both positive fixture outputs match their retained recordings exactly. The library test exercises **20,400** stack-effect combinations plus opcode predicates, exported tables, overflow boundaries, list freshness and executor errors. |
+| Independent native differential | **29,890 output lines** match CPython exactly in each GC-stressed JIT/AOT and optimization-off JIT/AOT run. Covers 610 opcode integers, 16 signed-64-bit/boundary operands, three jump settings, flags and exact error text. |
+| Port implementation under CPython | `tools/opcode_check.py`: **1,431,973 checks, zero differences** against CPython's C `_opcode`. This runs the port as Python, not native code. |
+| Table regeneration | `tools/opcode_tables.py`: **2,708,100 checks** against the installed pinned CPython headers; generated database is byte-identical to the committed file. Header/database hashes are retained. This is separate from native API execution. |
+| Retained corpus comparison | **3,154 programs, 3,148 identical** in normalized IR/messages/exit status. Only the six new opcode fixtures differ: two positive programs and one explicit deviation move from rejection to acceptance; three rejection fixtures advance to intended argument-type errors. No accepted-to-rejected transitions. |
+
+All **31 adapted port probes** and **32 benchmark sources** in that comparison
+retain identical IR/results; no affected port/benchmark execution was selected
+beyond the new opcode workload. This is an IR/control-flow selection result, not
+a fresh performance measurement or a complete semantic proof for arbitrary callers.
+
+`_opcode_metadata.py` remains an unmodified CPython file. `opcode.py` needs the
+minor `hasjabs: list[int] = []` annotation; the `_opcode` stand-in itself is a
+native reimplementation, not unmodified extension support. The upstream-derived
+fixture replaces unittest's runner/assertions and `dis` dependencies, rewrites
+one filter/lambda and omits specified bool-type/Py_STATS assertions. It is an
+**adapted upstream test**, not an unmodified CPython suite or working `unittest`.
+
+The APIs describe **CPython 3.13 bytecode metadata**, not Pystachy bytecode.
+`ENABLE_SPECIALIZATION = 0` remains an explicit deviation. No code-object/executor
+support is claimed; representable non-code executor arguments raise errors.
+Float operands and integer `jump` values reach documented compile-time rejections.
+The documented bool-as-int and function-type boundaries remain outside the
+positive scope; they were not newly expanded by this audit.
+
+### Import accounting and remaining blockers
+
+Fresh isolated sweeps use `--metadata`, two workers, the same overlay policy and
+all **522 unchanged CPython source hashes**. `opcode` and `_opcode_metadata` now
+come from `lib/`, increasing exclusions **52 → 54** and reducing the included
+denominator **470 → 468**. `_opcode_metadata` was previously an `OK` source import;
+its removal from the sweep explains the one lower raw success count. `opcode`
+was previously rejected and is now directly executed by the checks above.
+Neither transition is a lost working module. `_opcode`, a C-module name outside
+the 522-source inventory, is measured separately by those API programs.
+
+Native sweep: **143/468**, previously **144/470**, with **zero timeouts** and no
+previous success becoming an error. There are **25 map changes**: the two overlay
+exclusions plus **23 advanced first errors**. `dis` now stops at `types.MethodType`;
+the other 22, including `inspect`, `unittest` and its submodules, `doctest`,
+`pdb` and `modulefinder`, stop at `_io`. These remain blocked libraries, not
+23 new compatible modules. Exact per-module native/stub deltas and provenance
+are in the evidence; throwing C-module stubs are not native implementations.
+
+Stub-assisted sweep: **145/468**, previously **146/470**, with **zero timeouts**.
+Its four map changes are the two exclusions plus `dis` and `modulefinder`
+advancing from opcode-table inference to `types.MethodType`. The extra two
+stub-assisted successes are unchanged; no new success is credited to a throwing
+stub. The same underlying source inventory and two newly supplied overlay modules
+explain both sweeps' denominator changes.
+
+### Reproduction and scope
+
+`make check-recordings PY=/workspace/scratch/cca24c0adfdd/devtools/bin/python`
+passes: **1,312 recordings, 83 deviations, 10 pinned lib files, zero failures**;
+the six pinned AskMe files also verify. This dev interpreter is the same
+**CPython 3.13.16**, with **typing_extensions 4.16.0** (hash retained).
+Three initial attempts each report eight checks failing across four unrelated
+typing-extensions fixtures: the base interpreter lacks the dependency, the
+recording script clears inherited PYTHONPATH, and the Makefile derives PYTHON
+from PY. Selecting the dev interpreter via **PY** resolves the setup failures.
+All failed command outputs remain explicit in the evidence; no fixture was
+rewritten to hide them.
+
+From the clean evaluated checkout, with the explicit toolchain paths in the
+embedded driver:
+
+```sh
+make PY=/root/.local/bin/python3.13
+tests/run.sh ./pystachy 'jit aot' tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+PYSTACHY_OPT=-all tests/run.sh ./pystachy 'jit aot' tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+tests/run.sh '/root/.local/bin/python3.13 -m pystachy' 'jit aot' tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+/root/.local/bin/python3.13 -I tools/opcode_check.py
+```
+
+[Evidence and replay scripts](compatibility-2026-10-19-opcode.json) retain exact
+commands, environments, source/fixture/header hashes, regenerated-table identity,
+the independent matrix, previous/new oracle results and both import metadata/maps'
+deltas. Extract `audit-686.py` and `audit-686-assemble.py`, relocate explicit paths,
+run `build`, `references`, `checks`, `port-check`, `tables`, `matrix`, `oracle`,
+`sweeps` and `recordings-final`, then aggregate. The historical failed recording
+attempts and implementation-CI snapshot must also be retained. Long stdout is
+stored once as gzip+base64 in `stdout_blobs`, keyed by SHA-256 of decoded UTF-8
+bytes. The oracle inventory digest is reconstructed from the exact revision.
+
+Historical implementation-head `7269102b055abbea578dd82ad0aa5232d2f92ded` has four
+successful workflows ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39202974370),
+Lint, Packages and Installation), freshly read. That is not the combined main or
+audit head. No full local `make verify`, unmodified CPython regrtest, broad PyPI or
+NumPy census, or dedicated memory/performance experiment was run. Shared-host
+timings overlap other checks and establish no speedup/regression. No new uncovered
+bug was confirmed; no duplicate issue was filed. Dated baseline reports and JSON
+are unchanged.
