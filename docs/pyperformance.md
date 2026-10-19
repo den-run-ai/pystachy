@@ -264,8 +264,13 @@ same positions as before):
 - **States without throwaway lists.** A State takes its pattern's tables, and a match leaves its
   empty data stack to the next. V8's steady-state blocks run 26.3M instructions instead of 35.0M.
 
-The warmed repeat microbenchmark (`tools/re_repeat_bench.py 1000 --cpu`) is level with main: every
-case's old and new samples overlap, and their medians differ by less than the samples' spread.
+The warmed repeat microbenchmark (`tools/re_repeat_bench.py 1000 --cpu`) is mostly level with main.
+In 29 of its 32 comparisons (16 cases, AOT and JIT), the old and new samples overlap, and their
+medians differ by less than the samples' spread. The other three:
+- **Faster.** ASCII ignore-case dense under the JIT (47.1 → 38.0 ms median) and ASCII ignore-case
+  sparse AOT (3.39 → 2.62 ms) were faster in every sample.
+- **Slower.** ASCII ignore-case greedy under the JIT was slower in every sample, by a small margin:
+  3.03 → 3.13 ms median, against CPython's 11.6 ms.
 
 Remaining costs:
 - V8's time is now mostly the matcher itself (`sre_match`, 45% of its steady-state instructions)
