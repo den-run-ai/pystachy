@@ -548,8 +548,10 @@ class's class object (`NoneType`'s for `None`).
   `<class '__main__.E'>`); `__name__`, `__qualname__` and `__module__` are its names (`builtins`,
   `io`, or the module of a class of the program). Ordering raises CPython's `TypeError`.
 - `issubclass(c, b)` and `isinstance(x, b)` take as `b` a class object, a tuple of them (nested
-  ones too) or classes named; `isinstance(c, type)` is true, and `isinstance(x, b)` of a value
-  that is no exception (a `str`, a class object) is false. `type(c).__name__` is `type`.
+  ones too) or classes named. A tuple's classes are tested in turn, as CPython tests them: the
+  first that matches stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is
+  true, and `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is
+  false. `type(c).__name__` is `type`.
 - A call of a class object makes an object of its class from none or one positional argument, as
   CPython's call does (a `KeyError`'s `str()` is its argument's `repr()`, a `SystemExit`'s status
   its `int`); `raise c` raises `c()`, as `raise X from c` takes `c()` as the cause. A class of the

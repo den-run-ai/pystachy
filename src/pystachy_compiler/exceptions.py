@@ -1171,55 +1171,82 @@ def gen_exc_test(self, v: Val, t: Node, what: str) -> Val:
     # (exc_dynamic): a class object, or a tuple of them, of which v's class is one or derives
     # from one, v being an exception (or an object of an exception class of the program; None and
     # a value of another type are no instance). t is evaluated first, as CPython builds its
-    # arguments before it tests them
-    bs: list[Val] = []
-    for b in [self.expr(x, "") for x in t.kids] if t.kind == "tuple" else [self.expr(t, "")]:
-        bs += self.exc_flat(b, what)
+    # arguments before it tests them, then its classes in turn (exc_any)
+    bs = [self.expr(x, "") for x in t.kids] if t.kind == "tuple" else [self.expr(t, "")]
     for b in bs:
-        if unopt(b.t) != "exctype" and what == "isinstance":
-            self.err("isinstance() is only supported with the builtin types and classes as its second argument")
-        if unopt(b.t) != "exctype":
-            self.err(f"issubclass() of a class object takes exception classes, or tuples of them, not {typestr(b.t)}")
-    bs = [self.unwrap(b, f"TypeError: {what}() arg 2 must be a type, a tuple of types, or a union") for b in bs]
+        self.exc_flat(b.t, what)
     if what == "issubclass":
-        return self.exc_any(self.unwrap(v, "TypeError: issubclass() arg 1 must be a class"), bs)
+        return self.exc_any(v, bs, what)
     u = unopt(v.t)
     if u != "exc" and (u not in self.classes or self.classes[u].exc == ""):
-        return Val("false", "bool")  # (a class object, None, or a value of another type: no instance)
+        return self.exc_any(Val("null", "None"), bs, what)  # (a class object, None, or a value of another type: no instance)
     if not is_opt(v.t) and (v.t == "exc" or v.v in self.nn):
-        return self.exc_any(v if v.t == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs)
-    e0 = self.cur
+        return self.exc_any(v if v.t == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs, what)
     l1 = self.label()
     l2 = self.label()
+    l3 = self.label()
     self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
     self.place(l1)
-    r = self.exc_any(Val(v.v, "exc") if u == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs)
+    r = self.exc_any(Val(v.v, "exc") if u == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs, what)
     e1 = self.cur
-    self.br(l2)
+    self.br(l3)
     self.place(l2)
+    self.exc_any(Val("null", "None"), bs, what)  # (None is no instance, but its classes are tested still)
+    e2 = self.cur
+    self.br(l3)
+    self.place(l3)
     ph = Ins("phi", "bool", "")
-    self.incoming(ph, "false", e0)
     self.incoming(ph, r.v, e1)
+    self.incoming(ph, "false", e2)
     return Val(self.phi(ph), "bool")
 
-def gen_exc_flat(self, b: Val, what: str) -> list[Val]:
-    # the classes value b gives isinstance() or issubclass() (what): itself, or a tuple's items,
-    # tuples among them too
-    if not is_tuple(unopt(b.t)):
-        return [b]
-    b = self.unwrap(b, f"TypeError: {what}() arg 2 must be a type, a tuple of types, or a union")
-    out: list[Val] = []
-    for i in range(len(targs(b.t))):
-        out += self.exc_flat(self.tget(b, i), what)
-    return out
+def gen_exc_flat(self, t: str, what: str) -> None:
+    # are the classes that a value of type t gives isinstance() or issubclass() (what) class
+    # objects (or None, which raises TypeError where it is tested): a class object's type, or a
+    # tuple's of such items, tuples among them too
+    u = unopt(t)
+    if is_tuple(u):
+        for x in targs(u):
+            self.exc_flat(x, what)
+    elif u != "exctype" and what == "isinstance":
+        self.err("isinstance() is only supported with the builtin types and classes as its second argument")
+    elif u != "exctype":
+        self.err(f"issubclass() of a class object takes exception classes, or tuples of them, not {typestr(t)}")
 
-def gen_exc_any(self, v: Val, bs: list[Val]) -> Val:
-    # does v's class derive from one of class objects bs, tested in turn: the first that it does stops
-    r = Val("false", "bool")
+def gen_exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
+    # does v's class derive from one of the classes bs give isinstance() or issubclass() (what):
+    # class objects and tuples of them, tested in turn as CPython tests a tuple's items, where the
+    # first that it does stops and None raises TypeError where it is reached. v None (no instance):
+    # only that
+    if v.t == "None":
+        self.exc_each(v, bs, what, "", Ins("phi", "bool", ""))
+        return Val("false", "bool")
+    done = self.label()
+    ph = Ins("phi", "bool", "")
+    self.exc_each(v, bs, what, done, ph)
+    self.incoming(ph, "false", self.cur)
+    self.br(done)
+    self.place(done)
+    return Val(self.phi(ph), "bool")
+
+def gen_exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
+    # exc_any's tests of v against bs in turn, a match branching to done (true, to phi ph); what
+    # it returns is v as issubclass() has checked it (arg 1), before the first class it tests
     for b in bs:
-        x = self.exc_sub(v, b)
-        r = x if r.v == "false" else Val(self.scalar('or', [r, x]), "bool")
-    return r
+        if what == "issubclass" and (is_opt(b.t) or not is_tuple(b.t)):
+            v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+        if what == "isinstance":
+            b = self.unwrap(b, "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")
+        else:
+            b = self.unwrap(b, "TypeError: issubclass() arg 2 must be a class, a tuple of classes, or a union")
+        if is_tuple(b.t):
+            v = self.exc_each(v, [self.tget(b, i) for i in range(len(targs(b.t)))], what, done, ph)
+        elif v.t != "None":
+            nxt = self.label()
+            self.incoming(ph, "true", self.cur)
+            self.cbr(self.exc_sub(v, b).v, done, nxt)
+            self.place(nxt)
+    return v
 
 def gen_exc_call(self, c: Val, args: list[Node]) -> Val:
     # c(args) of class object c (an exception class's: exctype), the class evaluated first, then

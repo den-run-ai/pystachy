@@ -732,6 +732,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
+            self.class_ready(n.kids[0])
+            q = shown(c)
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -778,7 +783,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's class object: its name, qualified name and module)
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
-            fn = "pys_exc_name" if n.s == "__name__" else "pys_exc_qualname" if n.s == "__qualname__" else "pys_exc_module"
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
