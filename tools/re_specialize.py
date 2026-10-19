@@ -777,8 +777,9 @@ def _bytes(data):
 
 
 def record(argv, out):
-    """Run the program argv[0] with argv under CPython, counting the matching calls made on each
-    compiled pattern (through sys.monitoring: the calls of Pattern's methods, wherever made)."""
+    """Run the program argv[0] with argv under CPython, as python PROGRAM does (with runpy.run_path:
+    __file__ is the path as given), counting the matching calls made on each compiled pattern
+    (through sys.monitoring: the calls of Pattern's methods, wherever made)."""
     import re
     out = os.path.abspath(out)  # (the program may change the working directory)
     counts = {}
@@ -848,8 +849,9 @@ def record(argv, out):
         while tb is not None and (tb.tb_frame.f_code.co_filename == record.__code__.co_filename or
                                   tb.tb_frame.f_globals.get("__name__") in RUNNERS):
             tb = tb.tb_next
-        if tb is None and isinstance(error, OSError) and error.filename == argv[0]:
-            print("%s: can't open file %r: [Errno %d] %s" % (sys.orig_argv[0], argv[0], error.errno, error.strerror),
+        if tb is None and isinstance(error, OSError) and error.filename in (argv[0], os.path.abspath(argv[0])):
+            print("%s: can't open file %r: [Errno %d] %s" % (sys.orig_argv[0], os.path.abspath(argv[0]), error.errno,
+                                                             error.strerror),
                   file=sys.stderr)
             return 2  # (as python PROGRAM; no profile, of a program that did not run)
         if tb is None and isinstance(error, ImportError):

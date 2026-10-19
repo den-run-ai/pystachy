@@ -512,9 +512,11 @@ class TestGenerated(unittest.TestCase):
                     with open(os.path.join(prog, "__main__.py") if kind == "dir" else prog, "w") as f:
                         f.write("import re\nimport sys\nre.compile('d+').match('dd')\n%s\n" % end)
                 out = os.path.join(tmp, "profile%d.json" % i)
+                if end is None and kind == "file":
+                    prog = os.path.basename(prog)  # (python shows a missing program's absolute path)
                 run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o",
-                                      out, prog], capture_output=True, text=True)
-                plain = subprocess.run([sys.executable, prog], capture_output=True, text=True)
+                                      out, prog], capture_output=True, text=True, cwd=tmp)
+                plain = subprocess.run([sys.executable, prog], capture_output=True, text=True, cwd=tmp)
                 self.assertEqual(run.returncode, plain.returncode)
                 self.assertEqual(run.stdout, plain.stdout)
                 if end == "raise KeyboardInterrupt":
