@@ -619,7 +619,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # (an iterator object's or a generator's items, added as they come)
         item = made_var("__item", self.line)
         return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])]), self.vnode(vals[1])], vals[1].t)
-    if name == "sum" and is_list(vals[0].t) and self.num_union(elem(vals[0].t)) and (len(vals) == 1 or vals[1].t == "int" or vals[1].t == "float"):
+    if name == "sum" and len(vals) > 0 and is_list(vals[0].t) and self.num_union(elem(vals[0].t)) and (len(vals) == 1 or vals[1].t == "int" or vals[1].t == "float"):
         # (a list of a union's numbers: added as they come, see sum_union_item)
         item = made_var("__item", self.line)
         return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])])] + [self.vnode(v) for v in vals[1:]], vals[1].t if len(vals) == 2 else "")
