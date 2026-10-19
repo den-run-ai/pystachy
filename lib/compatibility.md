@@ -19,6 +19,22 @@ frozen modules. Runtime builtin queries and module loading raise explicitly;
 compiler builtin namespaces are not a runtime importer registry. The prototype
 does not make upstream `importlib` or Python bytecode execution available.
 
+## `_ast` prototype
+
+The [prototype contract](../docs/prototypes/ast.md) covers constructing, inspecting
+and mutating typed expression trees: `Expression`, `Constant`, `Name`, `BinOp`,
+`UnaryOp`, their operator and context tags, and CPython's `_fields`, `_attributes`
+and `__match_args__`. There is no parser, `compile()` bridge, statement node or
+source location.
+
+## `_weakref` prototype
+
+The [prototype contract](../docs/prototypes/weakref.md) covers `ref(obj)` to
+ordinary class instances: calling it returns the target, or `None` once the
+collector has reclaimed it. Callbacks, proxies, equality, hashing and
+`import weakref` are unsupported. `type(r).__name__` is `ref` rather than
+`ReferenceType`, and the private `_handle` field is readable.
+
 ## Operator
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
@@ -489,8 +505,8 @@ unsupported: class decorators are not compiled.
 options, mutable wrapper options and overridable class attributes. Regex work
 uses `lib/re`.
 
-Widths and long-word splitting count Unicode code points. Tab expansion still
-counts UTF-8 bytes before a tab. `unicode_whitespace_trans` must map ints to ints,
+Widths, long-word splitting and tab expansion count Unicode code points.
+`unicode_whitespace_trans` must map ints to ints,
 with no string or `None` replacements; custom tables are looked up by code point. Mutated and
 custom tables retain their semantics when whitespace fast paths do not apply.
 `TextWrapper` subclasses are unsupported.
