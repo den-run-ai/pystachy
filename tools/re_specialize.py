@@ -786,7 +786,11 @@ def record(argv, out):
     counts = {}
     methods = {"match", "fullmatch", "search", "findall", "finditer", "split", "sub", "subn", "scanner"}
     mon = sys.monitoring
-    tool = 4  # (an id of no predefined tool: a program's own debugger, coverage or profiler keeps its id)
+    # (a tool id that nothing holds, of no predefined tool first: a program's own debugger, coverage or
+    # profiler keeps its id; a program that takes this one fails, as with any other tool on that id)
+    tool = next((i for i in (4, 3, 5, 2, 1, 0) if mon.get_tool(i) is None), -1)
+    if tool < 0:
+        raise SystemExit("record: every sys.monitoring tool id is in use")
     mon.use_tool_id(tool, "re_specialize")
 
     # (p.search(s) calls Pattern.search with p first; m = p.match; m(s) calls the bound method: C types,
@@ -808,7 +812,7 @@ def record(argv, out):
 
     mon.register_callback(tool, mon.events.CALL, call)
     mon.set_events(tool, mon.events.CALL)
-    saved = sys.argv, sys.path[:]
+    saved = sys.argv, sys.path, sys.path[:]  # (the list itself too: the program may bind sys.path anew)
     sys.argv = list(argv)
     if not sys.flags.safe_path:
         # (python PROGRAM imports from the program's directory, in place of this tool's; from PROGRAM
@@ -837,10 +841,12 @@ def record(argv, out):
         # (KeyboardInterrupt: the calls made until then are written, then it is raised again)
         interrupt = e
     finally:
-        mon.set_events(tool, 0)
-        mon.register_callback(tool, mon.events.CALL, None)
-        mon.free_tool_id(tool)
-        sys.argv, sys.path[:] = saved
+        if mon.get_tool(tool) == "re_specialize":  # (unless the program freed it)
+            mon.set_events(tool, 0)
+            mon.register_callback(tool, mon.events.CALL, None)
+            mon.free_tool_id(tool)
+        sys.argv, sys.path = saved[0], saved[1]
+        sys.path[:] = saved[2]
     # (printed once calls are no longer counted: traceback's own patterns are not the program's)
     if isinstance(error, SystemExit):
         print(error.code, file=sys.stderr)

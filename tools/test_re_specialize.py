@@ -475,7 +475,8 @@ class TestGenerated(unittest.TestCase):
 
     def test_record_transparent(self):
         # counting reads nothing of the program's own callables: a proxy's __getattr__ never runs; and
-        # the program may use sys.monitoring's predefined tool ids itself
+        # the program may use sys.monitoring's predefined tool ids itself, free every id (record's too)
+        # and bind sys.path to a tuple
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             prog = os.path.join(tmp, "prog.py")
             with open(prog, "w") as f:
@@ -485,7 +486,8 @@ class TestGenerated(unittest.TestCase):
                         "class Proxy:\n    seen = []\n    def __getattr__(self, name):\n"
                         "        Proxy.seen.append(name)\n        raise KeyError(name)\n    def __call__(self):\n"
                         "        return 1\nProxy()()\nm = re.compile('a').match\nm('a')\nre.compile('b').findall('b')\n"
-                        "print(Proxy.seen)\n")
+                        "print(Proxy.seen)\nfor t in range(6):\n    if sys.monitoring.get_tool(t) is not None:\n"
+                        "        sys.monitoring.free_tool_id(t)\nsys.path = ()\n")
             out = os.path.join(tmp, "profile.json")
             run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
                                   prog], check=True, capture_output=True, text=True)
@@ -493,6 +495,23 @@ class TestGenerated(unittest.TestCase):
             with open(out) as f:
                 calls = {(e["pattern"], e["flags"]): e["calls"] for e in json.load(f)["patterns"]}
             self.assertEqual(calls, {("a", re.U): 1, ("b", re.U): 1})
+
+    def test_record_tool_id(self):
+        # record takes a sys.monitoring tool id that nothing holds: here 4 and 3 are held as it starts
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            prog = os.path.join(tmp, "prog.py")
+            with open(prog, "w") as f:
+                f.write("import re\nre.compile('c').match('c')\n")
+            out = os.path.join(tmp, "profile.json")
+            for t in (4, 3):
+                sys.monitoring.use_tool_id(t, "held")
+            try:
+                self.assertEqual(re_specialize.record([prog], out), 0)
+            finally:
+                for t in (4, 3):
+                    sys.monitoring.free_tool_id(t)
+            with open(out) as f:
+                self.assertEqual(json.load(f)["patterns"], [{"pattern": "c", "flags": int(re.U), "calls": 1}])
 
     def test_record_exit(self):
         # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
