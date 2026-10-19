@@ -645,10 +645,24 @@ Str *pys_bytes_slice_step(Str *s, I lo, I hi, I st) { return pys_str_slice_step(
    contracts. chars1 caches the logical length; equality with len + 1 gives the byte fast
    path. UTF-8 surrogates are individual code points, as in Python strings. Invalid raw
    bytes retain u8char's one-byte fallback until the separate decoding-boundary work. */
+static I ascii_end(const char *p, I i, I n) {   /* the first index from i of a byte >= 128 in p[:n], or n */
+  for (; i + 32 <= n; i += 32) {                 /* (32 bytes at a time, which compilers vectorize) */
+    uint64_t w[4];
+    memcpy(w, p + i, 32);
+    if ((w[0] | w[1] | w[2] | w[3]) & 0x8080808080808080ULL) break;
+  }
+  while (i < n && (unsigned char)p[i] < 128) i++;
+  return i;
+}
 I pys_text_len(Str *s) {
   if (!s->chars1) {
-    I n = 0, cp;
-    for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);
+    I n = 0, cp, i = 0;
+    while (i < s->len) {              /* an ASCII run is a code point per byte, as u8char reads it */
+      I j = ascii_end(s->s, i, s->len);
+      n += j - i;
+      i = j;
+      if (i < s->len) { i += u8char(s->s + i, s->len - i, &cp); n++; }
+    }
     s->chars1 = n + 1;
   }
   return s->chars1 - 1;
@@ -2617,9 +2631,12 @@ List *pys_text_list(Str *s) {
   return l;
 }
 List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
-  List *l = pys_list_new_atomic(s->len);
-  for (I i = 0; i < s->len; i++) l->a[i] = (unsigned char)s->s[i];
-  l->len = s->len; return l;
+  I n = s->len;
+  List *l = pys_list_new_atomic(n);
+  I *a = l->a;                   /* (locals, so that the stores need not be assumed to change n, a or */
+  const unsigned char *b = (const unsigned char *)s->s;   /* s's bytes: the loop vectorizes) */
+  for (I i = 0; i < n; i++) a[i] = b[i];
+  l->len = n; return l;
 }
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */

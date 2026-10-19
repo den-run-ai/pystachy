@@ -500,6 +500,7 @@ from src.pystachy_compiler.expressions import (
     gen_keep_stack as expressions_keep_stack,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
+    gen_bytes_read as expressions_bytes_read,
     gen_listcomp as expressions_listcomp,
     gen_lookup_key as expressions_lookup_key,
     gen_narrow_by as expressions_narrow_by,
@@ -2867,6 +2868,9 @@ class Gen:
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
+
+    def bytes_read(self, o: Val, i: Val) -> Val:
+        return expressions_bytes_read(self, o, i)
 
     def argtype(self, t: str, m: str, j: int, missing: str) -> str:
         return expressions_argtype(self, t, m, j, missing)

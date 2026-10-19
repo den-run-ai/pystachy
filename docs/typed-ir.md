@@ -332,10 +332,10 @@ passes; the others select frontend or lowering choices.
 
 | Option | Implemented behavior |
 |---|---|
-| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list |
+| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
-| `listfast` | Inline a checked fast path for arbitrary `list[int]` reads, retaining the runtime fallback for negative or out-of-range indices |
+| `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with

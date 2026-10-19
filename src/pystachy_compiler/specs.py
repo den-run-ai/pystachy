@@ -610,7 +610,9 @@ GENCLOSEC = 2
 GENTHROWC = 3
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1) and
 # tupleiter and listfast, choices of lowering (a tuple's slots in Gen.iterable, and checked
-# list[int] reads in Gen.list_read), which PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+# list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
+# byte reads of a loop over a bytes, in gen_seq_item), which PYSTACHY_OPT turns off: "-name",
+# comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that

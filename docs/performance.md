@@ -100,8 +100,8 @@ measures these paths separately, along with object dispatch and allocation.
 | Optimization | Effect | Comparison control |
 |---|---|---|
 | `dictfuse` | Reuses a proven lookup of the same key | `PYSTACHY_OPT=-dictfuse` |
-| `listget` | Removes bounds checks from proven sequence-loop reads | `PYSTACHY_OPT=-listget` |
-| `listfast` | Inlines checked `list[int]` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
+| `listget` | Removes bounds checks from proven sequence-loop reads, of lists and `bytes` | `PYSTACHY_OPT=-listget` |
+| `listfast` | Inlines checked `list[int]` and `bytes` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
 | Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied | [#308](https://github.com/den-run-ai/pystachy/pull/308) |
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
