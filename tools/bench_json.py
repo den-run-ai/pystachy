@@ -4,6 +4,7 @@ No downloads or performance thresholds. The source-written guarded mode is a
 control, not a claim of automatic profile-guided or online specialization.
 """
 import argparse
+import importlib.util
 import json
 import math
 import os
@@ -71,8 +72,8 @@ def parse_output(output, samples, expected=None, phase="all", encoded=None):
     """Warmup and sample rows of one run, every checksum compared with CPython's.
 
     expected is the reference [documents, processed, parsed and processed]; a
-    predecoded run reports only its processed sum and the length of its dumps()
-    text, so it needs the reference and that of CPython's text (encoded).
+    predecoded run reports only its processed sum and the length and digest of its
+    dumps() text, so it needs the reference and those of CPython's text (encoded).
     """
     lines = [line.split() for line in output.splitlines()]
     if not lines or len(lines[0]) != 3 or lines[0][0] != "JSON_WARMUP":
@@ -87,7 +88,7 @@ def parse_output(output, samples, expected=None, phase="all", encoded=None):
     elif expected is None or encoded is None:
         raise ValueError("a predecoded run needs the reference checksum and encoded length")
     else:
-        tag, width, names = "JSON_PREDECODED", 7, ("process", "rebuild", "encode")
+        tag, width, names = "JSON_PREDECODED", 8, ("process", "rebuild", "encode")
     timings = {name: [] for name in names}
     for index, row in enumerate(lines[1:]):
         if len(row) != width or row[0] != tag or int(row[1]) != index:
@@ -100,8 +101,8 @@ def parse_output(output, samples, expected=None, phase="all", encoded=None):
                 raise ValueError(f"checksum {checksum} != reference {expected}")
         elif int(row[2]) != expected[1]:
             raise ValueError(f"checksum {row[2]} != reference {expected[1]}")
-        elif int(row[3]) != encoded:
-            raise ValueError(f"encoded length {row[3]} != reference {encoded}")
+        elif [int(value) for value in row[3:5]] != encoded:
+            raise ValueError(f"encoded length and digest {row[3:5]} != reference {encoded}")
         elapsed = [int(value) for value in row[width - len(names):]]
         if any(value < 0 for value in elapsed):
             raise ValueError("negative timing")
@@ -140,6 +141,15 @@ def interpreter(path, implementation, env, timeout):
     resolved = Path(shutil.which(path) or path)
     return {"path": str(path), "implementation": lines[0], "version": lines[1],
             "sha256": digest(resolved) if resolved.is_file() else None}
+
+
+def encoding(text):
+    """The length and bench/json_records.py's digest of CPython's dumps() text of a document."""
+    spec = importlib.util.spec_from_file_location("json_records", SOURCE)
+    records = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(records)
+    encoded = json.dumps(json.loads(text))
+    return [len(encoded), records.digest(encoded)]
 
 
 def compiler_home(compiler, env):
@@ -294,11 +304,10 @@ def main(argv=None):
                     oracle = execute([sys.executable, str(SOURCE), str(path), "generic", *common[:2], "0", "all"],
                                      plain, args.timeout)
                     expected = parse_output(oracle["stdout"], args.samples)["checksum"]
-                    # (the length of CPython's json.dumps() text of the decoded document)
-                    encoded = len(json.dumps(json.loads(path.read_text(encoding="utf-8"))))
+                    encoded = encoding(path.read_text(encoding="utf-8"))
                     case = {"profile": profile, "text": text, "input_sha256": digest(path),
                             "input_bytes": path.stat().st_size, "oracle": oracle, "checksum": expected,
-                            "encoded_chars": encoded, "runs": [], "summary": {}}
+                            "encoded_chars": encoded[0], "encoded_digest": encoded[1], "runs": [], "summary": {}}
                     report["cases"].append(case)
                     order = [(mode, algorithm, phase) for mode in args.modes
                              for algorithm in ("generic", "handguarded") for phase in args.phases]

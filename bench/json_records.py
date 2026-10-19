@@ -84,6 +84,15 @@ def rebuild(value: json.JSONValue) -> json.JSONValue:
     return value
 
 
+def digest(text: str) -> int:
+    # An order-sensitive digest of text's UTF-8 bytes, the same in every runtime: the controller
+    # compares that of the dumps() text with that of CPython's.
+    h = 0
+    for b in text.encode():
+        h = (h * 131 + b) % 1000000007
+    return h
+
+
 def warm(source: str, value: json.JSONValue, handguarded: bool, predecoded: bool,
          expected: int, warmup_ns: int) -> None:
     # Run the measured operations for warmup_ns (at least once) before sampling,
@@ -126,8 +135,8 @@ def run_predecoded(value: json.JSONValue, handguarded: bool, iterations: int, sa
             raise ValueError("processing result changed")
         if process(json.loads(text), False) != expected:
             raise ValueError("encoding result changed")
-        # (the controller checks the text's length against CPython's)
-        print("JSON_PREDECODED", sample, processed, len(text), process_ns, rebuild_ns, encode_ns)
+        # (the controller checks the text's length and digest against CPython's)
+        print("JSON_PREDECODED", sample, processed, len(text), digest(text), process_ns, rebuild_ns, encode_ns)
 
 
 def run(path: str, handguarded: bool, iterations: int, samples: int, warmup_ns: int,

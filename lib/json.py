@@ -24,22 +24,27 @@ class JSONDecodeError(ValueError):
         super().__init__(f"{msg}: line {self.lineno} column {self.colno} (char {pos})")
 
 
-def _u8len(data: bytes, i: int) -> int:
-    # The bytes of the character at data[i] as Pystachy's str counts characters: a UTF-8
-    # sequence (surrogates included), else the one byte.
+def _u8char(data: bytes, i: int) -> int:
+    # The character at data[i] as Pystachy's str counts characters: a UTF-8 sequence (surrogates
+    # included), else the one byte, the character of its value; as its bytes << 21 | its code point.
     c = data[i]
     k = 1 if c < 0xC2 or c > 0xF4 else 2 if c < 0xE0 else 3 if c < 0xF0 else 4
     if k == 1 or i + k > len(data):
-        return 1
+        return 1 << 21 | c
     value = c & (0x7F >> k)
     for j in range(i + 1, i + k):
         d = data[j]
         if (d & 0xC0) != 0x80:
-            return 1
+            return 1 << 21 | c
         value = (value << 6) | (d & 0x3F)
     if value < (0x80 if k == 2 else 0x800 if k == 3 else 0x10000) or value > 0x10FFFF:
-        return 1
-    return k
+        return 1 << 21 | c
+    return k << 21 | value
+
+
+def _u8len(data: bytes, i: int) -> int:
+    # The bytes of the character at data[i] (_u8char).
+    return _u8char(data, i) >> 21
 
 
 _NO_KEY_BYTES: list[bytes] = []  # (never filled: key() replaces them)
@@ -426,13 +431,15 @@ def _quote(out: list[str], s: str, ensure_ascii: bool) -> None:
     except UnicodeEncodeError:
         _escape_chars(out, s, ensure_ascii)
         return
+    i = 0
     for b in data:
         if b < 32 or b == 34 or b == 92 or (ensure_ascii and b >= 127):
             if ensure_ascii:
-                _escape_bytes(out, data)
+                _escape_bytes(out, data, i)
             else:
                 _escape_chars(out, s, False)
             return
+        i += 1
     out.append('"')
     out.append(s)
     out.append('"')
@@ -453,15 +460,14 @@ def _escape(out: list[str], cp: int) -> None:
     out.append(_HEX2[cp & 255])
 
 
-def _escape_bytes(out: list[str], data: bytes) -> None:
-    # The ensure_ascii form of the text of UTF-8 bytes data: a run of printable ASCII but '"' and
-    # '\\' is one slice, and each other character an escape. A byte that starts no UTF-8
-    # sequence (in text Pystachy read without checking it) is the character of its value, as str
-    # counts it (_u8len).
+def _escape_bytes(out: list[str], data: bytes, i: int) -> None:
+    # The ensure_ascii form of the text of UTF-8 bytes data, whose first i bytes are printable
+    # ASCII but '"' and '\\': a run of those is one slice, and each other character an escape. A
+    # byte that starts no UTF-8 sequence (in text Pystachy read without checking it) is the
+    # character of its value, as str counts it (_u8char).
     out.append('"')
     n = len(data)
     start = 0
-    i = 0
     while i < n:
         b = data[i]
         if b >= 32 and b < 127 and b != 34 and b != 92:
@@ -469,12 +475,9 @@ def _escape_bytes(out: list[str], data: bytes) -> None:
             continue
         if start < i:
             out.append(data[start:i].decode())
-        k = _u8len(data, i)
-        cp = b if k == 1 else b & (0x7F >> k)
-        for j in range(i + 1, i + k):
-            cp = (cp << 6) | (data[j] & 0x3F)
-        _escape(out, cp)
-        i += k
+        c = _u8char(data, i)
+        _escape(out, c & 0x1FFFFF)
+        i += c >> 21
         start = i
     if start < n:
         out.append(data[start:n].decode())

@@ -145,7 +145,7 @@ byte that starts no UTF-8 sequence is escaped as the character `str` counts it
 as.
 
 In AOT and the JIT, this makes `dumps()` of the benchmark's 5,000-record
-documents 3.7–5.3 times faster, at 1.2–1.6 times the time of CPython's C encoder;
+documents 3.6–6.3 times faster, at 1.1–1.6 times the time of CPython's C encoder;
 non-ASCII text that `ensure_ascii=True` escapes stays the slowest case
 ([report](reports/native-json-encoder-2026-10-19.md)).
 

@@ -21,17 +21,26 @@ class EvidenceTests(unittest.TestCase):
                 bench.parse_output(valid.replace("100 200 200", field, 1), 2, [100, 200, 200])
 
     def test_predecoded_samples_are_checked_against_cpython(self):
-        valid = WARMUP + "JSON_PREDECODED 0 200 50 7 8 6\nJSON_PREDECODED 1 200 50 9 10 5\n"
-        result = bench.parse_output(valid, 2, [100, 200, 200], "predecoded", 50)
+        valid = WARMUP + "JSON_PREDECODED 0 200 50 99 7 8 6\nJSON_PREDECODED 1 200 50 99 9 10 5\n"
+        result = bench.parse_output(valid, 2, [100, 200, 200], "predecoded", [50, 99])
         self.assertEqual(result["timings_s"], {"process": [7e-9, 9e-9], "rebuild": [8e-9, 10e-9],
                                                "encode": [6e-9, 5e-9]})
         with self.assertRaisesRegex(ValueError, "checksum"):
-            bench.parse_output(valid.replace("0 200 50", "0 201 50"), 2, [100, 200, 200], "predecoded", 50)
-        with self.assertRaisesRegex(ValueError, "encoded length"):
-            bench.parse_output(valid.replace("1 200 50", "1 200 51"), 2, [100, 200, 200], "predecoded", 50)
-        for expected, encoded in (([100, 200, 200], None), (None, 50)):
+            bench.parse_output(valid.replace("0 200 50", "0 201 50"), 2, [100, 200, 200], "predecoded", [50, 99])
+        for row in ("1 200 51 99", "1 200 50 98"):
+            with self.subTest(row=row), self.assertRaisesRegex(ValueError, "encoded length and digest"):
+                bench.parse_output(valid.replace("1 200 50 99", row), 2, [100, 200, 200], "predecoded", [50, 99])
+        for expected, encoded in (([100, 200, 200], None), (None, [50, 99])):
             with self.subTest(expected=expected, encoded=encoded), self.assertRaisesRegex(ValueError, "reference"):
                 bench.parse_output(valid, 2, expected, "predecoded", encoded)
+
+    def test_encoding_digest_is_order_sensitive(self):
+        # Same length, same decoded string lengths: only the digest tells these texts apart.
+        text = '[{"a": "x\u00e9", "b": 1}]'
+        self.assertEqual(bench.encoding(text)[0], len(json.dumps(json.loads(text))))
+        for other in ('[{"b": 1, "a": "x\u00e9"}]', '[{"a": "\u00e9x", "b": 1}]'):
+            self.assertEqual(len(json.dumps(json.loads(other))), bench.encoding(text)[0])
+            self.assertNotEqual(bench.encoding(other)[1], bench.encoding(text)[1])
 
     def test_missing_extra_and_malformed_evidence_rejected(self):
         valid = WARMUP + "JSON_SAMPLE 0 100 200 200 1 2 3\n"

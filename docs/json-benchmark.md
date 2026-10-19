@@ -69,7 +69,7 @@ format could save. That bound holds for compiled code; on CPython, `rebuild()`
 runs in the interpreter and does not bound its C decoder. The run also times
 `json.dumps()` of the decoded document with the default options (`encode`); it
 checks that the text decodes to the same checksum, and the controller that the
-text has the length of CPython's.
+text has the length and the order-sensitive digest of CPython's.
 
 Each process first runs its measured operations for `--warmup-ms` (default
 2000 ms, and at least once); samples exclude that time, and the report keeps the
