@@ -375,7 +375,9 @@ never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_
 `_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
 that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
 `TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
-`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). `FileIO`, the `Buffered*` classes and
+`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). Its classes are `io`'s, and their module
+is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
+`repr()` name `_io` ([test](../tests/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
 `open_code()` need binary files, which `open()` does not make
 ([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
 `io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
