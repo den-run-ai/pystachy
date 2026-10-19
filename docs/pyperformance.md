@@ -262,8 +262,9 @@ same positions as before):
 - **Alternatives by a bit-parallel filter.** DNA's nine variants step one word of their
   alternatives' partial matches through the subject (Shift-And). They test the full leading items
   only where one of them could begin, which removes the 5.3 million `_branch_starts()` calls a loop.
-  A character from U+0080 that no leading item may match has no bits, untested; the others come
-  from a memo of 64 slots by their low bits.
+  A character from U+0080 that no leading item may match has no bits, untested. For the others,
+  the alternatives they begin come from a memo of 64 slots by their low bits, and only the next
+  items of the matches under way are tested.
 - **States without throwaway lists.** A State takes its pattern's tables, and a match leaves its
   empty data stack to the next. V8's steady-state blocks run 26.3M instructions instead of 35.0M.
 
