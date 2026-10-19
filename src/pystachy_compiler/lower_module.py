@@ -29,14 +29,16 @@ def gen_tbaa_nodes(self) -> list[str]:
     md = [f'!{root} = !{{!"pystachy fields"}}']
     scalar: dict[str, int] = {}  # LLVM type -> its node
     node: dict[str, int] = {}  # class -> its struct's node, numbered after the scalar types
-    offs: dict[str, list[int]] = {}  # and its members' offsets
+    tys: dict[str, list[str]] = {}  # and its members' types
+    offs: dict[str, list[int]] = {}  # and offsets
     for key in self.tbaa:
         c = key[: key.rfind(" ")]
         if c not in node:
             node[c] = len(node)
+            tys[c] = struct_types(self.classes[c])
             offs[c] = []
             at = 0
-            for t in struct_types(self.classes[c]):
+            for t in tys[c]:
                 if t not in scalar:
                     scalar[t] = root + 1 + len(scalar)
                     md.append(f'!{scalar[t]} = !{{!"{TBAA_NAMES[t]}", !{root}, i64 0}}')
@@ -45,13 +47,12 @@ def gen_tbaa_nodes(self) -> list[str]:
                 at += TBAA_SIZES[t]
     first = root + 1 + len(scalar)
     for c in node:
-        ts = struct_types(self.classes[c])
-        ms = ", ".join([f"!{scalar[ts[j]]}, i64 {offs[c][j]}" for j in range(len(ts))])
+        ms = ", ".join([f"!{scalar[tys[c][j]]}, i64 {offs[c][j]}" for j in range(len(tys[c]))])
         md.append(f'!{first + node[c]} = !{{!"{c}", {ms}}}')
     for key in self.tbaa:
         c = key[: key.rfind(" ")]
         k = int(key[key.rfind(" ") + 1 :])
-        md.append(f"!{self.tbaa[key]} = !{{!{first + node[c]}, !{scalar[struct_types(self.classes[c])[k]]}, i64 {offs[c][k]}}}")
+        md.append(f"!{self.tbaa[key]} = !{{!{first + node[c]}, !{scalar[tys[c][k]]}, i64 {offs[c][k]}}}")
     return md
 
 
