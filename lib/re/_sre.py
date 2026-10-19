@@ -281,8 +281,10 @@ class Repeat:
 
 class State(Generic[_S]):
     # SRE_STATE over the code points s: start and end bound the match (pos and endpos), ptr is
-    # where the last match ended, and mark the group bounds (-1 for none) up to lastmark
-    def __init__(self, s: _S, start: int, end: int, groups: int) -> None:
+    # where the last match ended, and mark the group bounds (-1 for none) up to lastmark. offs and
+    # the tables are re's (see __init__.py's _state)
+    def __init__(self, s: _S, start: int, end: int, groups: int, offs: list[int], charset_offsets: list[int],
+                 charset_ascii: list[int], prefilter: list[int]) -> None:
         self.s = s
         self.start = start
         self.end = end
@@ -296,24 +298,24 @@ class State(Generic[_S]):
         self.match_all = False
         self.must_advance = False
         self.data: list[int] = []  # the data stack: saved marks and last_ptr values
-        self.offs: list[int] = []  # (re's: the index in the str of each of s's code points, [] if they are theirs)
+        self.offs = offs  # (re's: the index in the str of each of s's code points, [] if they are theirs)
         # (not _sre's: the contexts of the matches of this state, kept for reuse: those below top are
         # in use, by sre_match() and the calls nested in it through sre_count(), the others free)
         self.ctxs: list[Ctx] = []
         self.top = 0
-        # Pattern's lazily built class tables, shared by its states (see _charset_table). Empty
-        # until _state attaches them; direct engine callers retain charset()'s bytecode evaluation.
-        self.charset_offsets: list[int] = []
-        self.charset_ascii: list[int] = []
+        # Pattern's lazily built class tables, shared by its states (see _charset_table)
+        self.charset_offsets = charset_offsets
+        self.charset_ascii = charset_ascii
         # (not _sre's) the Pattern's lazily found filter of the general search case: see _prefilter
-        self.prefilter: list[int] = []
+        self.prefilter = prefilter
 
     def reset(self) -> None:
-        # state_reset
+        # state_reset (a data stack that the last match left empty is kept, not made again)
         self.lastmark = -1
         self.lastindex = -1
         self.repeat = None
-        self.data = []
+        if len(self.data) != 0:
+            self.data = []
 
 
 # What a set's table says of the code points from 128 (its entry at 128): HIGH_IN, those from
