@@ -66,8 +66,9 @@ not establish working upstream unittest, pytest, pyperf or CPython regrtest.
   `select.error`, other polling backends, selectors and subprocess remain outside
   the supported scope.
 - No standard-library weakref consumer is unblocked yet. `import weakref` fails,
-  `_weakrefset.WeakSet()` fails compilation, and callbacks, hashing, weak mappings
-  and finalization remain unsupported.
+  `_weakrefset.WeakSet()` fails compilation, and callbacks, weak mappings and
+  finalization remain unsupported. (Reference equality and hashing were added after
+  this integration; see the [weakref contract](weakref.md).)
 
 See the individual prototype documents for exact contracts and pinned CPython,
 PyPy and GraalPy references. Import-only progress is not evidence that a consumer's

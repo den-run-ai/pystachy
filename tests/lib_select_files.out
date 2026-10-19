@@ -1,0 +1,9 @@
+0 1 2
+([0], [], [])
+True True
+True True
+True
+ready
+ValueError I/O operation on closed file
+ValueError I/O operation on closed file
+[exit 0]
