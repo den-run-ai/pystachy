@@ -24,9 +24,10 @@ produce byte-identical LLVM IR.
   autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
   faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
 - **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
-  108K-parameter model with OpenBLAS, AOT inference is **166× faster** than the same model in
-  pure Python on CPython and about 1.5× PyTorch's CPU latency; results match PyTorch within
-  1.4e-14 ([example](examples/nanogpt/README.md)).
+  108K-parameter float64 model with OpenBLAS on one thread, AOT inference is **faster than
+  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
+  the same model in pure Python on CPython; results match PyTorch within 1.4e-14
+  ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
 - **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
@@ -120,11 +121,12 @@ CPython as a second baseline.
 Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
 snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
 one optimized-away workload has no meaningful AOT ratio. The regex workloads have improved
-since: after the [repeat-matcher](docs/pyperformance.md#regex-repeat-rerun) and
-[class-loop and prefilter](docs/pyperformance.md#regex-class-loop-and-prefilter-rerun) changes,
-their timed loops took **0.61×** (`regex_effbot`), **1.39×** (`regex_dna`) and **1.38×**
-(`regex_v8`) CPython's time AOT, and 0.71×, 1.37× and 1.39× JIT, in a paired rerun on
-2026-10-18. These are workload-specific measurements on adapted sources, not official
+since: after the [repeat-matcher](docs/pyperformance.md#regex-repeat-rerun),
+[class-loop and prefilter](docs/pyperformance.md#regex-class-loop-and-prefilter-rerun) and
+[in-place subject](docs/pyperformance.md#regex-in-place-subject-rerun) changes, their timed
+loops took **0.32×** (`regex_dna`), **0.44×** (`regex_effbot`) and **0.82×** (`regex_v8`)
+CPython's time AOT, and 0.33×, 0.55× and 0.99× JIT, in a paired rerun on 2026-10-19.
+These are workload-specific measurements on adapted sources, not official
 pyperformance scores or a general Python speedup.
 JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
 memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.

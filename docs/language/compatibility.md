@@ -24,6 +24,12 @@ In these cases a program can compile but behave differently from CPython.
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
 
+- The native JSON prototype also rejects integer tokens outside signed 64-bit
+  range with `OverflowError`. Its decoder and encoder allow at most 256 nested
+  containers, then raise `RecursionError`, independently of CPython's recursion
+  limit ([deviation](../../tests/deviations/json_limits.py),
+  [API scope](../../lib/compatibility.md#json)).
+
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
   tuples holding the same NaN object compare, and sort, as if they held different ones.
   Scalar union boxes retain this rule; a shared box does not give its NaN payload identity. The
@@ -693,7 +699,8 @@ supported alternatives.
 - typing's names in a function's local variable annotations that are not imported (CPython never
   evaluates those)
 - a type alias used other than by annotations (`print(Row)`, `Row()`, `del Row`, `Row.__value__`,
-  `isinstance(x, Num)`), but an alias of `int`, `float`, `str` or `bool`; a recursive type alias;
+  `isinstance(x, Num)`), but an alias of `int`, `float`, `str` or `bool`; a recursive type alias
+  outside the [bounded value-union form](typing.md#recursive-value-aliases-prototype);
   a `type` statement other than at a module's top level, or for a name that another statement
   binds too; a generic `type` statement's alias named without its type arguments, and type
   arguments for a type alias with a `TypeVarTuple` or `ParamSpec` parameter; in an assigned

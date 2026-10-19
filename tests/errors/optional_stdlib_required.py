@@ -1,6 +1,6 @@
-# error: module 'json' is not supported: it is not a builtin module and there is no json.py on the module path
+# error: module 'sqlite3' is not supported: it is not a builtin module and there is no sqlite3.py on the module path
 try:
-    import json
+    import sqlite3
 except ImportError:
-    print("json is required")
+    print("sqlite3 is required")
     raise SystemExit(1)

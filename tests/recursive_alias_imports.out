@@ -1,0 +1,4 @@
+mods: init mods
+mods.shapes: init mods.shapes
+{'a': [1, 'text', {'b': []}]} [{'a': [1, 'text', {'b': []}]}, 'end'] True
+[exit 0]

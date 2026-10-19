@@ -12,7 +12,9 @@ def gen_lower(self, fn: IFn) -> None:
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
-    o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    # (a function that only raises is an error path: cold, and kept out of its callers, so that
+    # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
+    o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
     if fn.coro:
         o.append(f"  %coro.promise = alloca [{GENSLOTSX if self.gproto else GENSLOTS} x i64], align 8")
@@ -48,6 +50,24 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("coro.unreach:")
         o.append("  unreachable")
     o.append("}")
+
+def raises_only(fn: IFn) -> bool:
+    # whether no call of fn returns: it has no ret, and no branch back to a block before it (a
+    # loop, which might run until the program ends), so that every path raises or exits. Not a
+    # generator, nor a module's code, which runs once even where it ends raising (sys.exit())
+    if fn.coro or fn.f.name == "<module>":
+        return False
+    at: dict[str, int] = {}
+    for j in range(len(fn.blocks)):
+        at[fn.blocks[j].label] = j
+    for j in range(len(fn.blocks)):
+        for i in fn.blocks[j].code:
+            if i.op == "ret" or i.op == "ret.none":
+                return False
+            for lb in i.b:
+                if lb in at and at[lb] <= j:
+                    return False
+    return True
 
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
