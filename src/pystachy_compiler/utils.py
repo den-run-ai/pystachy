@@ -175,8 +175,9 @@ class RtFn:
         self.sym = rtsym(k)  # its LLVM symbol
         self.sig: list[str] = rtsig(k)  # its result and parameter types, as RUNTIME spells them
         self.ll: list[str] = [rtll(p) for p in self.sig]  # and as LLVM types
-        self.fx = fxmask(fx.replace("U?", ""))  # its effects (FX bits), but U?
+        self.fx = fxmask(fx.replace("U?", "").replace("R?", ""))  # its effects (FX bits), but U? and R?
         self.q = "U?" in fx  # whether it has U? (U when the descriptor of its # parameter holds a class)
+        self.rq = "R?" in fx  # and R? (R when it holds a recursive alias's edge)
 
 
 def tname(t: str) -> str:
@@ -189,7 +190,7 @@ def tname(t: str) -> str:
         return "tuple"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
-    if is_union(t):
+    if is_union(t) or t.startswith("rec["):
         return typestr(t)
     if t == "exc":
         return "BaseException"
@@ -510,11 +511,7 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
-    t = t.replace("[?,?]", "").replace("[?]", "")
-    while "rec[" in t:
-        a = t.find("rec[")
-        b = t.find("]", a)
-        t = t[:a] + short(t[a + 4:b]) + t[b + 1:]
+    t = recnames(t.replace("[?,?]", "").replace("[?]", ""))
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7
@@ -854,6 +851,27 @@ def is_union(t: str) -> bool:
 def umembers(t: str) -> list[str]:
     # the member types of union t, in their (sorted) order
     return targs(t)
+
+def recnames(t: str) -> str:
+    # t (a type, or a message that names types) with each rec[A], recursive alias A's named edge,
+    # written A (not where rec ends a longer name: a message may quote one)
+    out: list[str] = []
+    i = 0
+    a = t.find("rec[")
+    while a >= 0:
+        b = t.find("]", a)
+        if b < 0:
+            break
+        if a > 0 and (t[a - 1].isalnum() or t[a - 1] == "_"):
+            out.append(t[i : a + 4])
+            i = a + 4
+        else:
+            out.append(t[i:a] + short(t[a + 4 : b]))
+            i = b + 1
+        a = t.find("rec[", i)
+    out.append(t[i:])
+    return "".join(out)
+
 
 def unionnames(t: str) -> str:
     # t (a type, or a message that names types) with each union[A,B] written A | B

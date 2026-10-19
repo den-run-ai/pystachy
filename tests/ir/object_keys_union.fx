@@ -1,8 +1,8 @@
 @main.init: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.hashed_or: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.hashed_pairs: R A U I rL wL rD wD rO wO rG wG rF wF
-@f.node_or: R A rL rD wD rO
-@f.node_pairs: R A rL rD wD rO
+@f.node_or: A rL rD wD rO
+@f.node_pairs: A rL rD wD rO
 @m.Node.__init__:
 @m.Hashed.__init__: wO
 @m.Hashed.__eq__: R rO
