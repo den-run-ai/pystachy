@@ -4,9 +4,9 @@
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
 computes, on random inputs, with no compilation. Strs are ASCII here (where Pystachy behaves exactly
-as CPython) plus UTF-8 text for the width methods, which count characters; a Pystachy str is
-given as its bytes, one character per byte. 64-bit overflow is not tested here (CPython's ints
-grow): the differential tests compile the same code and check it.
+as CPython) plus UTF-8 text for the width methods and replace("", x), which count characters; a
+Pystachy str is given as its bytes, one character per byte. 64-bit overflow is not tested here
+(CPython's ints grow): the differential tests compile the same code and check it.
 
 The format functions get runtime.c's pys_fmt_float (float digits by snprintf, or by Ryu as repr's
 without a type or precision) from CPython's own float formatting, which it reproduces.

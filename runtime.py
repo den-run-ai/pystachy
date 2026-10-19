@@ -478,7 +478,7 @@ def interleaved(s: str, b: str, count: int) -> str:
     if count == 0:
         return s
     if count < 0 or count > n:
-        count = n + 1  # (more than the places b can go)
+        count = n + 1  # (at least the places b can go)
     k = 0  # b goes before each of the k characters of s[:end], then once more at end
     end = 0
     while end < n and k < count - 1:
@@ -1532,8 +1532,9 @@ def pys_format_float(x: float, spec: str) -> str:
 # ---------- bytes ----------
 # A bytes object is a Str, its bytes a str's (see bytes in runtime.c), so its parameters here are
 # strs. These are its operations: under names of their own where a str's does the same to the
-# bytes (searches, replace, a split at a separator), and apart where a bytes differs: its items
-# are ints, its whitespace, case and digits are ASCII's, and its widths count bytes
+# bytes (searches, replace of a non-empty old, a split at a separator), and apart where a bytes
+# differs: its items are ints, its whitespace, case and digits are ASCII's, its widths count
+# bytes, and replace() of an empty old puts new between bytes
 def ascii_ws(c: int) -> bool:
     # a bytes's whitespace: space, \t, \n, \v, \f and \r
     return c == 32 or (c >= 9 and c <= 13)

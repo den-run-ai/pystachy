@@ -41,9 +41,9 @@ In these cases a program can compile but behave differently from CPython.
 - `str` stores UTF-8, but `len`, indexing, slicing (including negative steps), iteration,
   `list`/`tuple` conversion, search offsets and bounds (`find`, `rfind`, `index`, `rindex`,
   `count`, `startswith`, `endswith`) and the gaps that `replace("", s)` fills count Unicode
-  code points, as CPython does. `chr()`
-  produces the code point's UTF-8 at every value, including U+0080–U+00FF. Combining marks
-  count separately: these are code points, not displayed characters or grapheme clusters.
+  code points, as CPython does. `chr()` produces the code point's UTF-8 at every value,
+  including U+0080–U+00FF. Combining marks count separately: these are code points, not
+  displayed characters or grapheme clusters.
   A lazy character-count cache preserves the ASCII fast path; non-ASCII random indexing
   scans from the start, while ordinary forward iteration uses a byte cursor. No per-string
   index table is retained yet.
