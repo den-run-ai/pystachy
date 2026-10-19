@@ -2582,6 +2582,8 @@ class Loader:
             if m.name == "" and s in PYBUILTINS:
                 return "__main__$" + s  # (other modules' code still sees the builtin)
             return m.q + s
+        if k.startswith("a:") and k[2:] in PYBUILTINS:
+            return "__main__$" + k[2:]  # (an alias of the main program's def or class that has a builtin's name, L = len)
         if k.startswith("a:") or k.startswith("t:"):
             return k[2:]
         if k == "" and m.name != "" and s not in PYBUILTINS and not s.startswith("__"):

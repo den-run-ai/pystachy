@@ -4233,7 +4233,7 @@ void pys_exc_setcause(Exc *e, Exc *c) { e->cause = c; }
 Exc *pys_exc_cause(Exc *e) { return e->cause; }
 Str *pys_exc_type(Exc *e) {            /* str(type(e)): "<class 'KeyError'>", "<class '__main__.C'>" */
   Buf b = {0}; put(&b, "<class '", 8);
-  if (e->obj && !memchr(XCLS(e)->kind->s, '$', XCLS(e)->kind->len)) put(&b, "__main__.", 9);
+  if (e->obj && !memchr(XCLS(e)->disp->s, '.', XCLS(e)->disp->len)) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
   Str *d = e->obj ? XCLS(e)->disp : e->kind;
   put(&b, d->s, d->len); put(&b, "'>", 2); return done(&b);
 }
@@ -4282,15 +4282,12 @@ I pys_exc_sub(Exc *a, Exc *b, Str *tree) {    /* a's class (a's, an exception's 
     }
   return pys_str_eq(k, b->kind);
 }
-Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's */
-  Str *k = e->obj ? XCLS(e)->kind : e->kind;
-  const char *d = memchr(k->s, e->obj ? '$' : '.', k->len);
-  return d ? pys_str(k->s, d - k->s) : cstr(e->obj ? "__main__" : "builtins");
-}
-Str *pys_exc_qualname(Exc *e) {         /* C.__qualname__: a class of the program's within its module */
-  if (!e->obj) return pys_exc_name(e);
-  Str *k = XCLS(e)->kind; const char *d = memchr(k->s, '$', k->len);
-  return d ? pys_str(d + 1, k->s + k->len - d - 1) : k;
+Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's
+                                           (its displayed name but the last part: mods.errs.Missing's mods.errs) */
+  if (!e->obj) { const char *d = memchr(e->kind->s, '.', e->kind->len); return d ? pys_str(e->kind->s, d - e->kind->s) : cstr("builtins"); }
+  Str *k = XCLS(e)->disp; I n = k->len;
+  while (n > 0 && k->s[n - 1] != '.') n--;
+  return n ? pys_str(k->s, n - 1) : cstr("__main__");
 }
 void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
                                               pairs ended by NULL, or NULL */

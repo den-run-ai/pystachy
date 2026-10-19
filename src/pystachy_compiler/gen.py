@@ -418,6 +418,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_class as exceptions_exc_class,
     gen_exc_classes as exceptions_exc_classes,
     gen_exc_any as exceptions_exc_any,
+    gen_exc_each as exceptions_exc_each,
     gen_exc_call as exceptions_exc_call,
     gen_exc_class_value as exceptions_exc_class_value,
     gen_exc_ctor_arity as exceptions_exc_ctor_arity,
@@ -2620,8 +2621,8 @@ class Gen:
     def exc_test(self, v: Val, t: Node, what: str) -> Val:
         return exceptions_exc_test(self, v, t, what)
 
-    def exc_flat(self, b: Val, what: str) -> list[Val]:
-        return exceptions_exc_flat(self, b, what)
+    def exc_flat(self, t: str, what: str) -> None:
+        return exceptions_exc_flat(self, t, what)
 
     def exc_held(self, t: Node) -> bool:
         return exceptions_exc_held(self, t)
@@ -2629,8 +2630,11 @@ class Gen:
     def exc_holds(self, t: str) -> bool:
         return exceptions_exc_holds(self, t)
 
-    def exc_any(self, v: Val, bs: list[Val]) -> Val:
-        return exceptions_exc_any(self, v, bs)
+    def exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
+        return exceptions_exc_any(self, v, bs, what)
+
+    def exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
+        return exceptions_exc_each(self, v, bs, what, done, ph)
 
     def exc_call(self, c: Val, args: list[Node]) -> Val:
         return exceptions_exc_call(self, c, args)
