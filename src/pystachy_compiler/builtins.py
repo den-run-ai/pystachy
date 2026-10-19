@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     GLUE,
     IMPLEMENTATION,
     ITERS,
+    TEXTVIEW,
     METHODS,
     MODATTRS,
     MODFUNCS,
@@ -160,11 +161,17 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name.startswith("__pys_text_"):
         # The builtin string iterator keeps a byte cursor, just like for_seq. These are
         # internal primitives, so ordinary code cannot confuse byte and character offsets.
-        if (self.curfn.mod != ITERS and not (name == "__pys_text_size" and self.curfn.mod in GLUE)) or len(args) == 0:
+        # re's engine (TEXTVIEW) reads the size too, and a str whose every byte is a code point
+        # in place, as the bytes of its UTF-8 (__pys_text_bytes)
+        view = self.curfn.mod == TEXTVIEW and name in ["__pys_text_size", "__pys_text_bytes"]
+        if (self.curfn.mod != ITERS and not (name == "__pys_text_size" and self.curfn.mod in GLUE) and not view) or len(args) == 0:
             self.err(f"name '{name}' is not defined")
         s = self.expr(args[0], "str")
         if name == "__pys_text_size" and len(args) == 1:
             return Val(self.mload('int', s.v), "int")
+        if name == "__pys_text_bytes" and len(args) == 1 and view:
+            # the same object: a str and a bytes share their layout and neither changes in place
+            return Val(s.v, "bytes")
         if name in ["__pys_text_at", "__pys_text_next"] and len(args) == 2:
             at = self.as_int(self.expr(args[1], "int"))
             t = "str" if name.endswith("_at") else "int"

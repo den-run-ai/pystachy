@@ -1,4 +1,5 @@
-# lib/re additionally caches the last subject's decoded input. purge() releases those
+# lib/re additionally caches the last subject's decoded input (of a subject with a character of
+# several bytes). purge() releases those
 # references, leaving existing states intact and the cumulative decoding counter unchanged.
 import re
 
@@ -26,5 +27,13 @@ def check(subject: str) -> None:
     print("idempotent", re._last == "", len(re._last_codes), len(re._last_offs), re._decoded == decoded)
 
 
-check("abcd" * 100)
+check("abcd" * 100 + "é")
 check("éΩ" * 100)
+
+# A subject whose bytes are its code points is read in place: it is neither decoded nor cached.
+flat = "abcd" * 100
+re.purge()
+decoded = re._decoded
+re.compile(".").match(flat)
+re.compile("d").search(flat)
+print("in place", re._decoded == decoded, re._last == "", len(re._last_codes))

@@ -30,6 +30,7 @@ CPython's own re, for information only.
 
 usage: python3 tools/re_probe.py [--time PYSTACHY]   (make re-probe; a step of make verify)
 """
+import builtins
 import importlib.util
 import os
 import random
@@ -44,6 +45,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import re_bench  # noqa: E402  (the patterns and the inputs)
 
+# lib/re's private primitives, which Pystachy compiles for re alone: a str's UTF-8 size, and the
+# bytes of a str whose every character is a byte (an ASCII str, on CPython)
+builtins.__pys_text_size = lambda s: len(s.encode("utf-8", "surrogatepass"))
+builtins.__pys_text_bytes = lambda s: s.encode("latin-1")
 _spec = importlib.util.spec_from_file_location("pys_re", os.path.join(ROOT, "lib", "re", "__init__.py"),
                                                submodule_search_locations=[os.path.join(ROOT, "lib", "re")])
 port = importlib.util.module_from_spec(_spec)
