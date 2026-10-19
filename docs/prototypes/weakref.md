@@ -124,11 +124,13 @@ callback's own type, which names the wrapper's class: the specialization that
 an annotation `ref[T]` makes and the one a call makes would then differ. Where
 `weakrefs_sweep` clears a target, it appends the handle's fire function, if it
 has one and the function is itself marked (so the wrapper lives), to a queue
-that is a collector root, and forgets it. Sweeping runs no callback, allocation
-of the collected heap or Python code; the queue grows with `realloc`.
-`_weakref` takes each queued function once (`pys_weakref_fired`, oldest first,
-which is a referent's newest reference first, as the registry lists newest
-handles first) and calls it before it makes or calls a reference.
+that is a collector root, and forgets it. A marked handle whose fire function is
+not marked (the wrapper died while a stale word kept the handle) forgets the
+function in that collection, before its slot can be reused. Sweeping runs no
+callback, allocation of the collected heap or Python code; the queue grows with
+`realloc`. `_weakref` takes each queued function once (`pys_weakref_fired`,
+oldest first, which is a referent's newest reference first, as the registry
+lists newest handles first) and calls it before it makes or calls a reference.
 
 Lookup has an `I` effect in typed IR. `Gen.canon` only reuses runtime expressions
 whose effects are at most `R`, and function summaries preserve `I` through the
@@ -212,10 +214,12 @@ exactly once while its weak references are cleared. A handle with a fire
 function must not queue it while its target lives, must queue it exactly once
 once the target dies, and the queue alone must keep it through later collections
 until it is taken. A handle that is still marked whose fire function (and so its
-reference) is dead must queue nothing. Without the queue's root, or without the
-fire function's mark check, the probe fails. It clears its carrier list before
-dropping the list root, so a stale conservative address of that carrier cannot
-invalidate the test.
+reference) is dead must queue nothing. One whose fire function dies while its
+target lives must forget the function in that collection, and must not queue the
+live object that later takes the function's slot when the target dies. Without
+the queue's root, the fire function's mark check, or that forgetting, the probe
+fails. It clears its carrier list before dropping the list root, so a stale
+conservative address of that carrier cannot invalidate the test.
 The same probe belongs to `make verify` and the CI `contracts` group.
 
 Promotion requires full-suite validation and review of the GC change.
