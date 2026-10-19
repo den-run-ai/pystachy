@@ -67,11 +67,12 @@ def fixture(records, profile, text="utf8"):
     return json.dumps(result, ensure_ascii=text != "utf8", separators=(",", ":"))
 
 
-def parse_output(output, samples, expected=None, phase="all"):
+def parse_output(output, samples, expected=None, phase="all", encoded=None):
     """Warmup and sample rows of one run, every checksum compared with CPython's.
 
     expected is the reference [documents, processed, parsed and processed]; a
-    predecoded run reports only its processed sum, so it needs the reference.
+    predecoded run reports only its processed sum and the length of its dumps()
+    text, so it needs the reference and that of CPython's text (encoded).
     """
     lines = [line.split() for line in output.splitlines()]
     if not lines or len(lines[0]) != 3 or lines[0][0] != "JSON_WARMUP":
@@ -83,10 +84,10 @@ def parse_output(output, samples, expected=None, phase="all"):
         raise ValueError("missing or extra JSON sample rows")
     if phase == "all":
         tag, width, names = "JSON_SAMPLE", 8, ("parse", "process", "end_to_end")
-    elif expected is None:
-        raise ValueError("a predecoded run needs the reference checksum")
+    elif expected is None or encoded is None:
+        raise ValueError("a predecoded run needs the reference checksum and encoded length")
     else:
-        tag, width, names = "JSON_PREDECODED", 5, ("process", "rebuild")
+        tag, width, names = "JSON_PREDECODED", 7, ("process", "rebuild", "encode")
     timings = {name: [] for name in names}
     for index, row in enumerate(lines[1:]):
         if len(row) != width or row[0] != tag or int(row[1]) != index:
@@ -99,6 +100,8 @@ def parse_output(output, samples, expected=None, phase="all"):
                 raise ValueError(f"checksum {checksum} != reference {expected}")
         elif int(row[2]) != expected[1]:
             raise ValueError(f"checksum {row[2]} != reference {expected[1]}")
+        elif int(row[3]) != encoded:
+            raise ValueError(f"encoded length {row[3]} != reference {encoded}")
         elapsed = [int(value) for value in row[width - len(names):]]
         if any(value < 0 for value in elapsed):
             raise ValueError("negative timing")
@@ -229,7 +232,7 @@ def main(argv=None):
     native = "jit" in args.modes or "aot" in args.modes
     module = compiled_json_module(env, compiler)
     report = {
-        "schema_version": 2, "status": "running", "cases": [],
+        "schema_version": 3, "status": "running", "cases": [],
         "scope": "native JSON baseline and source-written guarded control; no compiler specialization",
         "settings": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
         "metadata": {"created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -291,9 +294,11 @@ def main(argv=None):
                     oracle = execute([sys.executable, str(SOURCE), str(path), "generic", *common[:2], "0", "all"],
                                      plain, args.timeout)
                     expected = parse_output(oracle["stdout"], args.samples)["checksum"]
+                    # (the length of CPython's json.dumps() text of the decoded document)
+                    encoded = len(json.dumps(json.loads(path.read_text(encoding="utf-8"))))
                     case = {"profile": profile, "text": text, "input_sha256": digest(path),
                             "input_bytes": path.stat().st_size, "oracle": oracle, "checksum": expected,
-                            "runs": [], "summary": {}}
+                            "encoded_chars": encoded, "runs": [], "summary": {}}
                     report["cases"].append(case)
                     order = [(mode, algorithm, phase) for mode in args.modes
                              for algorithm in ("generic", "handguarded") for phase in args.phases]
@@ -302,7 +307,7 @@ def main(argv=None):
                         for mode, algorithm, phase in rotated:
                             prefix, run_env = prefixes[mode]
                             result = measured(prefix + [str(path), algorithm, *common, phase], run_env, args.timeout, directory)
-                            result.update(parse_output(result["stdout"], args.samples, expected, phase))
+                            result.update(parse_output(result["stdout"], args.samples, expected, phase, encoded))
                             result.update(mode=mode, algorithm=algorithm, phase=phase, repeat=repeat)
                             case["runs"].append(result)
                     for mode, algorithm, phase in order:

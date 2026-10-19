@@ -131,6 +131,24 @@ document. Records of one shape then share their key objects, as CPython's
 decoder memo makes them do, and dictionary insertion reuses those keys' cached
 hashes. The cache lives for one `loads()` call.
 
+## Encoder
+
+`dumps()` appends each piece of its output to one list and joins it once. A
+string's UTF-8 bytes are scanned once: a string with no control character, quote
+or backslash, and with `ensure_ascii=True` no byte from 127 on, goes between its
+quotes whole. Otherwise, with `ensure_ascii=True`, it is escaped from those
+bytes: each run of printable ASCII is copied as one slice, and each `\uXXXX`
+appended as three pieces that need no new string. Text that `encode()` rejects
+(lone surrogates), and text that needs escapes with `ensure_ascii=False`, is
+escaped character by character, again copying the runs between escapes whole. A
+byte that starts no UTF-8 sequence is escaped as the character `str` counts it
+as.
+
+In AOT and the JIT, this makes `dumps()` of the benchmark's 5,000-record
+documents 3.7–5.3 times faster, at 1.2–1.6 times the time of CPython's C encoder;
+non-ASCII text that `ensure_ascii=True` escapes stays the slowest case
+([report](reports/native-json-encoder-2026-10-19.md)).
+
 ## Consumer example
 
 ```python

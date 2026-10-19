@@ -403,33 +403,101 @@ def _parse(parser: _Parser) -> JSONValue:
     return value
 
 
-def _quote(s: str, ensure_ascii: bool) -> str:
-    out: list[str] = ['"']
+_HEX = "0123456789abcdef"
+_HEX2: list[str] = [_HEX[i >> 4] + _HEX[i & 15] for i in range(256)]  # (a byte's two hex digits)
+# The escapes of the ASCII characters that need one: control characters, '"', '\\' and, with
+# ensure_ascii, DEL; the others' entries are unused.
+_ESCAPES: list[str] = ["\\u00" + _HEX2[c] for c in range(128)]
+_ESCAPES[8] = "\\b"
+_ESCAPES[9] = "\\t"
+_ESCAPES[10] = "\\n"
+_ESCAPES[12] = "\\f"
+_ESCAPES[13] = "\\r"
+_ESCAPES[34] = "\\\""
+_ESCAPES[92] = "\\\\"
+
+
+def _quote(out: list[str], s: str, ensure_ascii: bool) -> None:
+    # Appends s as a JSON string. One scan of its UTF-8 bytes finds whether a character needs an
+    # escape; most strings need none, and go between the quotes whole (encode() returns a str's
+    # own storage unless it holds a character from U+D000 to U+DFFF, and rejects lone surrogates).
+    try:
+        data = s.encode()
+    except UnicodeEncodeError:
+        _escape_chars(out, s, ensure_ascii)
+        return
+    for b in data:
+        if b < 32 or b == 34 or b == 92 or (ensure_ascii and b >= 127):
+            if ensure_ascii:
+                _escape_bytes(out, data)
+            else:
+                _escape_chars(out, s, False)
+            return
+    out.append('"')
+    out.append(s)
+    out.append('"')
+
+
+def _escape(out: list[str], cp: int) -> None:
+    # Appends the escape of code point cp: one past U+FFFF is its UTF-16 surrogate pair, and
+    # each \uXXXX goes in three pieces that need no new string
+    if cp < 128:
+        out.append(_ESCAPES[cp])
+        return
+    if cp > 0xFFFF:
+        cp -= 0x10000
+        _escape(out, 0xD800 + (cp >> 10))
+        cp = 0xDC00 + (cp & 1023)
+    out.append("\\u")
+    out.append(_HEX2[cp >> 8])
+    out.append(_HEX2[cp & 255])
+
+
+def _escape_bytes(out: list[str], data: bytes) -> None:
+    # The ensure_ascii form of the text of UTF-8 bytes data: a run of printable ASCII but '"' and
+    # '\\' is one slice, and each other character an escape. A byte that starts no UTF-8
+    # sequence (in text Pystachy read without checking it) is the character of its value, as str
+    # counts it (_u8len).
+    out.append('"')
+    n = len(data)
+    start = 0
+    i = 0
+    while i < n:
+        b = data[i]
+        if b >= 32 and b < 127 and b != 34 and b != 92:
+            i += 1
+            continue
+        if start < i:
+            out.append(data[start:i].decode())
+        k = _u8len(data, i)
+        cp = b if k == 1 else b & (0x7F >> k)
+        for j in range(i + 1, i + k):
+            cp = (cp << 6) | (data[j] & 0x3F)
+        _escape(out, cp)
+        i += k
+        start = i
+    if start < n:
+        out.append(data[start:n].decode())
+    out.append('"')
+
+
+def _escape_chars(out: list[str], s: str, ensure_ascii: bool) -> None:
+    # s character by character, without ensure_ascii or where it holds lone surrogates: a run of
+    # characters that need no escape is one slice
+    out.append('"')
+    start = 0
+    i = 0
     for c in s:
         cp = ord(c)
-        if c == '"' or c == "\\":
-            out.append("\\" + c)
-        elif c == "\b":
-            out.append("\\b")
-        elif c == "\f":
-            out.append("\\f")
-        elif c == "\n":
-            out.append("\\n")
-        elif c == "\r":
-            out.append("\\r")
-        elif c == "\t":
-            out.append("\\t")
-        elif cp < 32 or (ensure_ascii and cp >= 127):
-            if cp <= 0xFFFF:
-                out.append("\\u" + format(cp, "04x"))
-            else:
-                cp -= 0x10000
-                out.append("\\u" + format(0xD800 + (cp >> 10), "04x"))
-                out.append("\\u" + format(0xDC00 + (cp & 1023), "04x"))
-        else:
-            out.append(c)
+        if cp < 32 or cp == 34 or cp == 92 or (ensure_ascii and cp >= 127):
+            if start < i:
+                out.append(s[start:i])
+            _escape(out, cp)
+            start = i + 1
+        i += 1
+    if start < i:
+        out.append(s[start:i])
     out.append('"')
-    return "".join(out)
 
 
 class _Encoder:
@@ -459,7 +527,7 @@ class _Encoder:
             else:
                 self.out.append(repr(value))
         elif isinstance(value, str):
-            self.out.append(_quote(value, self.ascii))
+            _quote(self.out, value, self.ascii)
         elif isinstance(value, list):
             for list_parent in self.lists:
                 if value is list_parent:
@@ -490,7 +558,7 @@ class _Encoder:
                 if not first:
                     self.out.append(self.item_separator)
                 first = False
-                self.out.append(_quote(key, self.ascii))
+                _quote(self.out, key, self.ascii)
                 self.out.append(self.key_separator)
                 self.write(value[key], depth + 1)
             self.out.append("}")

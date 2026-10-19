@@ -5,7 +5,7 @@ Input generation and file I/O are outside the in-process measurements. A
 predecoded run decodes once, outside the timed region, so processing is timed
 without parser allocation or garbage; it also times rebuild(), which copies the
 decoded containers: a floor for any decoder (binary formats included) that
-builds the same values.
+builds the same values, and json.dumps() of the decoded value.
 """
 from __future__ import annotations
 
@@ -92,7 +92,8 @@ def warm(source: str, value: json.JSONValue, handguarded: bool, predecoded: bool
     rounds = 0
     while rounds == 0 or perf_counter_ns() - start < warmup_ns:
         if predecoded:
-            ok = process(value, handguarded) == expected and process(rebuild(value), False) == expected
+            ok = (process(value, handguarded) == expected and process(rebuild(value), False) == expected
+                  and process(json.loads(json.dumps(value)), False) == expected)
         else:
             ok = process(json.loads(source), handguarded) == expected
         if not ok:
@@ -115,9 +116,18 @@ def run_predecoded(value: json.JSONValue, handguarded: bool, iterations: int, sa
         for iteration in range(iterations):
             copy = rebuild(value)
         rebuild_ns = perf_counter_ns() - start
+
+        start = perf_counter_ns()
+        text = ""
+        for iteration in range(iterations):
+            text = json.dumps(value)
+        encode_ns = perf_counter_ns() - start
         if processed != expected * iterations or process(copy, False) != expected:
             raise ValueError("processing result changed")
-        print("JSON_PREDECODED", sample, processed, process_ns, rebuild_ns)
+        if process(json.loads(text), False) != expected:
+            raise ValueError("encoding result changed")
+        # (the controller checks the text's length against CPython's)
+        print("JSON_PREDECODED", sample, processed, len(text), process_ns, rebuild_ns, encode_ns)
 
 
 def run(path: str, handguarded: bool, iterations: int, samples: int, warmup_ns: int,
