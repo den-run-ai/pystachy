@@ -40,15 +40,15 @@ In these cases a program can compile but behave differently from CPython.
 
 - `str` stores UTF-8, but `len`, indexing, slicing (including negative steps), iteration,
   `list`/`tuple` conversion, search offsets and bounds (`find`, `rfind`, `index`, `rindex`,
-  `count`, `startswith`, `endswith`) count Unicode code points, as CPython does. `chr()`
-  produces the code point's UTF-8 at every value, including U+0080–U+00FF. Combining marks
-  count separately: these are code points, not displayed characters or grapheme clusters.
+  `count`, `startswith`, `endswith`) and the gaps that `replace("", s)` fills count Unicode
+  code points, as CPython does. `chr()` produces the code point's UTF-8 at every value,
+  including U+0080–U+00FF. Combining marks count separately: these are code points, not
+  displayed characters or grapheme clusters.
   A lazy character-count cache preserves the ASCII fast path; non-ASCII random indexing
   scans from the start, while ordinary forward iteration uses a byte cursor. No per-string
   index table is retained yet.
-  Case mapping and the `is*()` tests but `isspace()` and `isascii()` still know only ASCII;
-  `replace("", s)`'s gaps still count bytes. These remain
-  follow-ups to [#120](https://github.com/den-run-ai/pystachy/issues/120).
+  Case mapping and the `is*()` tests but `isspace()` and `isascii()` still know only ASCII,
+  a follow-up to [#120](https://github.com/den-run-ai/pystachy/issues/120).
   Escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
   `ord()` count characters, as `strip()` (also of given characters), `split()`,
@@ -78,18 +78,18 @@ In these cases a program can compile but behave differently from CPython.
 To find byte-oriented operations while porting, compile with
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py` or
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app`. The generated code raises
-`NotImplementedError: Unicode audit: ...` when a non-ASCII string reaches replacement,
-case mapping, ASCII character tests, or `expandtabs`. Code-point length, indexing,
-iteration, slicing, searches and `chr()` remain usable with auditing enabled.
+`NotImplementedError: Unicode audit: ...` when a non-ASCII string reaches case mapping,
+ASCII character tests, or `expandtabs`. Code-point length, indexing, iteration, slicing,
+searches, replacement and `chr()` remain usable with auditing enabled.
 Checks apply to imported Python library code too. A built executable
 keeps its checks; setting the variable only when running an existing executable does
 not add or remove checks. The shared runtime cache is independent of this setting.
 
-This remains a conservative porting aid: even a nonempty replacement that preserves
-UTF-8 may be flagged. Printing, equality, concatenation and character-aware runtime
-operations such as whitespace splitting remain usable. File write counts, invalid
-UTF-8 input and other unlisted boundaries are not audited. Each remaining audit check
-scans the string until the first non-ASCII byte; default builds omit those checks.
+This remains a conservative porting aid: a listed operation is flagged for any non-ASCII
+string, even where its result matches CPython's. Printing, equality, concatenation and
+character-aware runtime operations such as whitespace splitting remain usable. File write
+counts, invalid UTF-8 input and other unlisted boundaries are not audited. Each remaining
+audit check scans the string until the first non-ASCII byte; default builds omit those checks.
 Strict invalid-byte decoding remains a separate follow-up; the code-point guarantees
 above apply to well-formed text (with the surrogate exception described above).
 
