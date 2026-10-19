@@ -1,0 +1,42 @@
+always 7 [('AppWarning', 'noisy 1'), ('AppWarning', 'noisy 2'), ('UserWarning', 'plain'), ('DeprecationWarning', 'old'), ('FutureWarning', 'an object'), ('AppWarning', 'of the program'), ('OtherWarning', 'other')]
+True True True None
+True True True None
+True True True None
+True True False None
+True True False None
+True True True None
+True True False None
+AppWarning AppWarning('noisy 1') True
+default 2 [('AppWarning', 'noisy 7'), ('RuntimeWarning', 'loop')]
+once 2 [('AppWarning', 'noisy 8'), ('RuntimeWarning', 'other once')]
+module 1 [('AppWarning', 'noisy 9')]
+raised RuntimeWarning('bad') True
+filtered 2 [('AppWarning', 'noisy 2'), ('ImportWarning', 'import')]
+1
+True
+error action noisy 4
+error action AppWarning('noisy 5')
+outer 2 [('UserWarning', 'kept'), ('UserWarning', 'outer')]
+inner 1 [('UserWarning', 'inner')]
+file.py:12: UserWarning: msg
+file.py:12: AppWarning: msg
+  x = 1
+f.py:1: AppWarning: w
+f.py:3: RuntimeWarning: shown
+f.py:4: RuntimeWarning: shown with line
+  y = 2
+[('mod.py', 5, 'explicit'), ('mod.py', 7, 'explicit'), ('mod.py', 5, 'again'), ('x.py', 1, 'no registry'), ('x.py', 1, 'no registry')] 4
+True False True
+deprecated 3 [('DeprecationWarning', "'thing' is deprecated and slated for removal in Python 3.15"), ('DeprecationWarning', "'other' goes in 3.16"), ('DeprecationWarning', "third {braces}  '4.0'")]
+RuntimeError 'old' was slated for removal after Python 3.12 alpha
+catch_warnings() catch_warnings(record=True)
+RuntimeError Cannot enter catch_warnings() twice
+RuntimeError Cannot exit catch_warnings() without entering first
+ValueError invalid action: 'bogus'
+ValueError invalid action: 'Error'
+ValueError lineno must be an int >= 0
+TypeError category must be a Warning subclass, not 'int'
+TypeError warn() argument 'skip_file_prefixes' must be tuple, not list
+0
+ignore Warning 1
+[exit 0]

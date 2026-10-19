@@ -1,6 +1,12 @@
 """Python part of the warnings subsystem."""
 
 import sys
+# Pystachy port: re is imported with the module, which the default filters' module patterns need
+# as it is imported: a function's import of a module that the program's module-level code does
+# not import is not supported
+import re
+# Pystachy port: _deprecated() formats its message with string.Formatter (see there)
+from string import Formatter as _Formatter
 
 
 __all__ = ["warn", "warn_explicit", "showwarning",
@@ -9,25 +15,46 @@ __all__ = ["warn", "warn_explicit", "showwarning",
 
 def showwarning(message, category, filename, lineno, file=None, line=None):
     """Hook to write a warning to a file; replace if you like."""
-    msg = WarningMessage(message, category, filename, lineno, file, line)
-    _showwarnmsg_impl(msg)
+    # Pystachy port: a message keeps no file (see WarningMessage): it is passed on; a message
+    # that is no warning is made one of its category
+    msg = WarningMessage(_as_warning(message, category), category, filename, lineno, line=line)
+    _showwarnmsg_impl(msg, file)
 
 def formatwarning(message, category, filename, lineno, line=None):
     """Function to format a warning the standard way."""
-    msg = WarningMessage(message, category, filename, lineno, None, line)
+    # Pystachy port: (as showwarning)
+    msg = WarningMessage(_as_warning(message, category), category, filename, lineno, line=line)
     return _formatwarnmsg_impl(msg)
 
-def _showwarnmsg_impl(msg):
-    file = msg.file
+# Pystachy port: a message's warning: the message, or one of its category made of it (a field holds
+# a warning, not a str)
+def _as_warning(message, category):
+    if isinstance(message, Warning):
+        return _as_exc(message)
+    return category(message)
+
+# Pystachy port: a warning as an exception of a builtin class's type, as a variable has one type:
+# an object of a class of the program is one where it is caught, as here
+def _as_exc(message) -> Warning:
+    try:
+        raise message
+    except Warning as e:
+        return e
+
+# Pystachy port: the file is an argument (a message keeps none, see showwarning), and a recording
+# catch_warnings() appends the message to its log, where CPython replaces this function by the
+# log's append; sys.stderr is never None
+def _showwarnmsg_impl(msg, file=None):
+    if _record_log is not None:
+        _record_log.append(msg)
+        return
     if file is None:
-        file = sys.stderr
-        if file is None:
-            # sys.stderr is None when run with pythonw.exe:
-            # warnings get lost
-            return
+        out = sys.stderr
+    else:
+        out = file
     text = _formatwarnmsg(msg)
     try:
-        file.write(text)
+        out.write(text)
     except OSError:
         # the file (probably stderr) is invalid - this warning gets lost.
         pass
@@ -36,59 +63,22 @@ def _formatwarnmsg_impl(msg):
     category = msg.category.__name__
     s =  f"{msg.filename}:{msg.lineno}: {category}: {msg.message}\n"
 
+    # Pystachy port: no linecache: the file of a warning that warn() makes is "<sys>", which has
+    # no lines, and the line of a file that a call of warn_explicit() names is not shown (but
+    # msg.line)
     if msg.line is None:
-        try:
-            import linecache
-            line = linecache.getline(msg.filename, msg.lineno)
-        except Exception:
-            # When a warning is logged during Python shutdown, linecache
-            # and the import machinery don't work anymore
-            line = None
-            linecache = None
+        line = None
     else:
         line = msg.line
     if line:
         line = line.strip()
         s += "  %s\n" % line
 
-    if msg.source is not None:
-        try:
-            import tracemalloc
-        # Logging a warning should not raise a new exception:
-        # catch Exception, not only ImportError and RecursionError.
-        except Exception:
-            # don't suggest to enable tracemalloc if it's not available
-            suggest_tracemalloc = False
-            tb = None
-        else:
-            try:
-                suggest_tracemalloc = not tracemalloc.is_tracing()
-                tb = tracemalloc.get_object_traceback(msg.source)
-            except Exception:
-                # When a warning is logged during Python shutdown, tracemalloc
-                # and the import machinery don't work anymore
-                suggest_tracemalloc = False
-                tb = None
-
-        if tb is not None:
-            s += 'Object allocated at (most recent call last):\n'
-            for frame in tb:
-                s += ('  File "%s", lineno %s\n'
-                      % (frame.filename, frame.lineno))
-
-                try:
-                    if linecache is not None:
-                        line = linecache.getline(frame.filename, frame.lineno)
-                    else:
-                        line = None
-                except Exception:
-                    line = None
-                if line:
-                    line = line.strip()
-                    s += '    %s\n' % line
-        elif suggest_tracemalloc:
-            s += (f'{category}: Enable tracemalloc to get the object '
-                  f'allocation traceback\n')
+    # Pystachy port: no tracemalloc, which never traces here: of a warning that has a source,
+    # CPython then suggests enabling it
+    if msg._has_source:
+        s += (f'{category}: Enable tracemalloc to get the object '
+              f'allocation traceback\n')
     return s
 
 # Keep a reference to check if the function was replaced
@@ -96,20 +86,8 @@ _showwarning_orig = showwarning
 
 def _showwarnmsg(msg):
     """Hook to write a warning to a file; replace if you like."""
-    try:
-        sw = showwarning
-    except NameError:
-        pass
-    else:
-        if sw is not _showwarning_orig:
-            # warnings.showwarning() was replaced
-            if not callable(sw):
-                raise TypeError("warnings.showwarning() must be set to a "
-                                "function or method")
-
-            sw(msg.message, msg.category, msg.filename, msg.lineno,
-               msg.file, msg.line)
-            return
+    # Pystachy port: showwarning() is not replaced (a module's function is bound once), so this
+    # calls no replacement
     _showwarnmsg_impl(msg)
 
 # Keep a reference to check if the function was replaced
@@ -117,15 +95,8 @@ _formatwarning_orig = formatwarning
 
 def _formatwarnmsg(msg):
     """Function to format a warning the standard way."""
-    try:
-        fw = formatwarning
-    except NameError:
-        pass
-    else:
-        if fw is not _formatwarning_orig:
-            # warnings.formatwarning() was replaced
-            return fw(msg.message, msg.category,
-                      msg.filename, msg.lineno, msg.line)
+    # Pystachy port: formatwarning() is not replaced (a module's function is bound once), so
+    # this calls no replacement
     return _formatwarnmsg_impl(msg)
 
 def filterwarnings(action, message="", category=Warning, module="", lineno=0,
@@ -153,19 +124,18 @@ def filterwarnings(action, message="", category=Warning, module="", lineno=0,
     if lineno < 0:
         raise ValueError("lineno must be an int >= 0")
 
-    if message or module:
-        import re
-
+    # Pystachy port: (re is imported with the module) the patterns are names of their own (a
+    # variable has one type)
     if message:
-        message = re.compile(message, re.I)
+        msg = re.compile(message, re.I)
     else:
-        message = None
+        msg = None
     if module:
-        module = re.compile(module)
+        mod = re.compile(module)
     else:
-        module = None
+        mod = None
 
-    _add_filter(action, message, category, module, lineno, append=append)
+    _add_filter(action, msg, category, mod, lineno, append=append)
 
 def simplefilter(action, category=Warning, lineno=0, append=False):
     """Insert a simple entry into the list of warnings filters (at the front).
@@ -226,23 +196,25 @@ def _setoption(arg):
     action, message, category, module, lineno = [s.strip()
                                                  for s in parts]
     action = _getaction(action)
-    category = _getcategory(category)
-    if message or module:
-        import re
+    # Pystachy port: the category's class and the line number are names of their own (a variable
+    # has one type)
+    cat = _getcategory(category)
+    # Pystachy port: (re is imported with the module)
     if message:
         message = re.escape(message)
     if module:
         module = re.escape(module) + r'\Z'
     if lineno:
+        # Pystachy port: (ln, an int, is the one a negative line number's message shows)
         try:
-            lineno = int(lineno)
-            if lineno < 0:
-                raise ValueError
+            ln = int(lineno)
         except (ValueError, OverflowError):
             raise _OptionError("invalid lineno %r" % (lineno,)) from None
+        if ln < 0:
+            raise _OptionError("invalid lineno %r" % (ln,))
     else:
-        lineno = 0
-    filterwarnings(action, message, category, module, lineno)
+        ln = 0
+    filterwarnings(action, message, cat, module, ln)
 
 # Helper for _setoption()
 def _getaction(action):
@@ -255,25 +227,28 @@ def _getaction(action):
     raise _OptionError("invalid action: %r" % (action,))
 
 # Helper for _setoption()
+# Pystachy port: the builtin warning categories, which _getcategory() looks up by name
+_CATEGORIES = (Warning, UserWarning, DeprecationWarning, PendingDeprecationWarning,
+               SyntaxWarning, RuntimeWarning, FutureWarning, ImportWarning, UnicodeWarning,
+               BytesWarning, ResourceWarning, EncodingWarning)
+
+
 def _getcategory(category):
     if not category:
         return Warning
+    # Pystachy port: a builtin warning category, by its name (also builtins.NAME); no module is
+    # imported by name (__import__) for another dotted one, which is an invalid module name, and
+    # no other builtin is read by name (getattr(builtins, ...)), which is an unknown category
     if '.' not in category:
-        import builtins as m
         klass = category
     else:
         module, _, klass = category.rpartition('.')
-        try:
-            m = __import__(module, None, None, [klass])
-        except ImportError:
-            raise _OptionError("invalid module name: %r" % (module,)) from None
-    try:
-        cat = getattr(m, klass)
-    except AttributeError:
-        raise _OptionError("unknown warning category: %r" % (category,)) from None
-    if not issubclass(cat, Warning):
-        raise _OptionError("invalid warning category: %r" % (category,))
-    return cat
+        if module != "builtins":
+            raise _OptionError("invalid module name: %r" % (module,))
+    for cat in _CATEGORIES:
+        if cat.__name__ == klass:
+            return cat
+    raise _OptionError("unknown warning category: %r" % (category,))
 
 
 def _is_internal_filename(filename):
@@ -300,121 +275,142 @@ def _next_external_frame(frame, skip_file_prefixes):
 
 
 # Code typically replaced by _warnings
-def warn(message, category=None, stacklevel=1, source=None,
+# Pystachy port: the arguments are checked as CPython's C warn() checks them, which CPython runs
+# (Python/_warnings.c): stacklevel is an int (annotated), and skip_file_prefixes a tuple, which
+# is tested first
+def warn(message, category=None, stacklevel: int = 1, source=None,
          *, skip_file_prefixes=()):
     """Issue a warning, or maybe ignore it or raise an exception."""
+    if not isinstance(skip_file_prefixes, tuple):
+        raise TypeError("warn() argument 'skip_file_prefixes' must be tuple, not " +
+                        ("None" if skip_file_prefixes is None else type(skip_file_prefixes).__name__))
+    # Pystachy port: the category is a name of its own, cat (a variable has one type)
     # Check if message is already a Warning object
     if isinstance(message, Warning):
-        category = message.__class__
+        cat = type(message)
     # Check category argument
-    if category is None:
-        category = UserWarning
-    if not (isinstance(category, type) and issubclass(category, Warning)):
+    elif category is None:
+        cat = UserWarning
+    else:
+        cat = category
+    if not (isinstance(cat, type) and issubclass(cat, Warning)):
         raise TypeError("category must be a Warning subclass, "
-                        "not '{:s}'".format(type(category).__name__))
-    if not isinstance(skip_file_prefixes, tuple):
-        # The C version demands a tuple for implementation performance.
-        raise TypeError('skip_file_prefixes must be a tuple of strs.')
+                        "not '{:s}'".format(type(cat).__name__))
+    # Pystachy port: (skip_file_prefixes is tested above)
     if skip_file_prefixes:
         stacklevel = max(2, stacklevel)
     # Get context information
-    try:
-        if stacklevel <= 1 or _is_internal_frame(sys._getframe(1)):
-            # If frame is too small to care or if the warning originated in
-            # internal code, then do not try to hide any frames.
-            frame = sys._getframe(stacklevel)
-        else:
-            frame = sys._getframe(1)
-            # Look for one frame less since the above line starts us off.
-            for x in range(stacklevel-1):
-                frame = _next_external_frame(frame, skip_file_prefixes)
-                if frame is None:
-                    raise ValueError
-    except ValueError:
-        globals = sys.__dict__
-        filename = "<sys>"
-        lineno = 0
-    else:
-        globals = frame.f_globals
-        filename = frame.f_code.co_filename
-        lineno = frame.f_lineno
-    if '__name__' in globals:
-        module = globals['__name__']
-    else:
-        module = "<string>"
-    registry = globals.setdefault("__warningregistry__", {})
-    warn_explicit(message, category, filename, lineno, module, registry,
-                  globals, source)
+    # Pystachy port: no frames (sys._getframe()): the warning's location is the one CPython gives
+    # where the stack is shallower than stacklevel ("<sys>", line 0), but its module is the main
+    # program's, from which the code that warns is called, so that the default filters show a
+    # DeprecationWarning as CPython shows one that the main program's code causes; the registry
+    # is the main program's (its __warningregistry__), for every warning
+    filename = "<sys>"
+    lineno = 0
+    module = "__main__"
+    registry = _main_registry
+    warn_explicit(message, cat, filename, lineno, module, registry,
+                  None, source)
 
-def warn_explicit(message, category, filename, lineno,
+# Pystachy port: filename and lineno are annotated, as CPython's C warn_explicit() takes a str
+# and a C int, whose range it checks
+def warn_explicit(message, category, filename: str, lineno: int,
                   module=None, registry=None, module_globals=None,
                   source=None):
     lineno = int(lineno)
+    if not -2**31 <= lineno < 2**31:
+        raise OverflowError("Python int too large to convert to C int")
+    # Pystachy port: the module, the registry, the warning object and its category are names of
+    # their own (a variable has one type): mod_name, reg, w and wcat
     if module is None:
-        module = filename or "<unknown>"
-        if module[-3:].lower() == ".py":
-            module = module[:-3] # XXX What about leading pathname?
+        mod_name = filename or "<unknown>"
+        if mod_name[-3:].lower() == ".py":
+            mod_name = mod_name[:-3] # XXX What about leading pathname?
+    else:
+        mod_name = module
     if registry is None:
-        registry = {}
-    if registry.get('version', 0) != _filters_version:
-        registry.clear()
-        registry['version'] = _filters_version
+        reg: dict[tuple[str, type[Warning], int], int] = {}
+    else:
+        reg = registry
     if isinstance(message, Warning):
         text = str(message)
-        category = message.__class__
+        wcat = type(message)
+        w = _as_exc(message)  # Pystachy port: (see _as_exc)
     else:
-        text = message
-        message = category(message)
-    key = (text, category, lineno)
+        # Pystachy port: the text is a str (a variable has one type): a message that is neither
+        # a str nor a warning, whose text CPython keys and matches as the object itself, raises
+        # TypeError (_text)
+        text = message if isinstance(message, str) else _text(message)
+        wcat = category
+        w = category(message)
+    key = (text, wcat, lineno)
+    # Pystachy port: the registries are those of CPython's C module, which CPython runs
+    # (Python/_warnings.c): a registry, the once registry too, is cleared where its filters
+    # version is not the current one (_already_warned), and the once and module actions record
+    # (text, category) in the registry given, as (text, category, _NO_LINE), the once action in
+    # the once registry where none is given
     # Quick test for common case
-    if registry.get(key):
+    if _already_warned(reg, key, False):
         return
     # Search the filters
+    # Pystachy port: the item of the default action is None, as in the C module (deflt)
+    deflt = False
     for item in filters:
         action, msg, cat, mod, ln = item
         if ((msg is None or msg.match(text)) and
-            issubclass(category, cat) and
-            (mod is None or mod.match(module)) and
+            issubclass(wcat, cat) and
+            (mod is None or mod.match(mod_name)) and
             (ln == 0 or lineno == ln)):
             break
     else:
         action = defaultaction
+        deflt = True
     # Early exit actions
     if action == "ignore":
         return
 
-    # Prime the linecache for formatting, in case the
-    # "file" is actually in a zipfile or something.
-    import linecache
-    linecache.getlines(filename, module_globals)
+    # Pystachy port: no linecache to prime (see _formatwarnmsg_impl)
 
     if action == "error":
-        raise message
+        raise w
     # Other actions
-    if action == "once":
-        registry[key] = 1
-        oncekey = (text, category)
-        if onceregistry.get(oncekey):
-            return
-        onceregistry[oncekey] = 1
-    elif action == "always":
-        pass
-    elif action == "module":
-        registry[key] = 1
-        altkey = (text, category, 0)
-        if registry.get(altkey):
-            return
-        registry[altkey] = 1
-    elif action == "default":
-        registry[key] = 1
-    else:
-        # Unrecognized actions are errors
-        raise RuntimeError(
-              "Unrecognized action (%r) in warnings.filters:\n %s" %
-              (action, item))
+    # Pystachy port: (the C module's registries, above)
+    if action != "always":
+        reg[key] = 1
+        if action == "once":
+            if _already_warned(onceregistry if registry is None else reg,
+                               (text, wcat, _NO_LINE), True):
+                return
+        elif action == "module":
+            if _already_warned(reg, (text, wcat, _NO_LINE), True):
+                return
+        elif action != "default":
+            # Unrecognized actions are errors
+            raise RuntimeError(
+                  "Unrecognized action (%r) in warnings.filters:\n %s" %
+                  (action, None if deflt else item))
     # Print message and context
-    msg = WarningMessage(message, category, filename, lineno, source=source)
+    # Pystachy port: (a message keeps whether there is a source, see WarningMessage)
+    msg = WarningMessage(w, wcat, filename, lineno, has_source=source is not None)
     _showwarnmsg(msg)
+
+
+# Pystachy port: CPython's C already_warned() (Python/_warnings.c), which its registries follow
+def _already_warned(registry, key, should_set):
+    if registry.get(_VERSION, -1) != _filters_version:
+        registry.clear()
+        registry[_VERSION] = _filters_version
+    elif registry.get(key):
+        return True
+    if should_set:
+        registry[key] = 1
+    return False
+
+
+# Pystachy port: the text of a message that is neither a str nor a warning: not supported (see
+# warn_explicit)
+def _text(message) -> str:
+    raise TypeError("a warning's message that is neither a str nor a Warning is not supported")
 
 
 class WarningMessage(object):
@@ -422,21 +418,28 @@ class WarningMessage(object):
     _WARNING_DETAILS = ("message", "category", "filename", "lineno", "file",
                         "line", "source")
 
-    def __init__(self, message, category, filename, lineno, file=None,
-                 line=None, source=None):
+    # Pystachy port: the parameters are annotated, so that a log of messages has a type, and the
+    # message is a warning (see showwarning). A message keeps no file and no source, but whether
+    # there is one (see _formatwarnmsg_impl): no field holds an object of any type, or None. So
+    # line and has_source are keyword arguments, and file and source are none
+    def __init__(self, message: Warning, category: type[Warning], filename: str, lineno: int,
+                 *, line: str | None = None, has_source: bool = False):
         self.message = message
         self.category = category
         self.filename = filename
         self.lineno = lineno
-        self.file = file
         self.line = line
-        self.source = source
-        self._category_name = category.__name__ if category else None
+        self._has_source = has_source
+        self._category_name: str | None = category.__name__ if category else None  # Pystachy port: (annotated)
 
     def __str__(self):
         return ("{message : %r, category : %r, filename : %r, lineno : %s, "
                     "line : %r}" % (self.message, self._category_name,
                                     self.filename, self.lineno, self.line))
+
+
+# Pystachy port: the log of the recording catch_warnings() (see _showwarnmsg_impl), or None
+_record_log: list[WarningMessage] | None = None
 
 
 class catch_warnings(object):
@@ -459,7 +462,9 @@ class catch_warnings(object):
     context.
     """
 
-    def __init__(self, *, record=False, module=None,
+    # Pystachy port: no module argument (a module is not a value): the filters and the hook
+    # saved and restored are this module's
+    def __init__(self, *, record=False,
                  action=None, category=Warning, lineno=0, append=False):
         """Specify whether to record warnings and if an alternative module
         should be used other than sys.modules['warnings'].
@@ -469,8 +474,13 @@ class catch_warnings(object):
 
         """
         self._record = record
-        self._module = sys.modules['warnings'] if module is None else module
         self._entered = False
+        # Pystachy port: the fields that __enter__ saves are assigned here too (a class's fields
+        # are those __init__ assigns)
+        self._filters: list[tuple[str, re.Pattern | None, type[Warning], re.Pattern | None, int]] = filters
+        self._record_log: list[WarningMessage] | None = _record_log
+        # Pystachy port: (the filter's type is annotated: it may be None)
+        self._filter: tuple[str, type[Warning], int, bool] | None
         if action is None:
             self._filter = None
         else:
@@ -480,39 +490,38 @@ class catch_warnings(object):
         args = []
         if self._record:
             args.append("record=True")
-        if self._module is not sys.modules['warnings']:
-            args.append("module=%r" % self._module)
+        # Pystachy port: (no module argument)
         name = type(self).__name__
         return "%s(%s)" % (name, ", ".join(args))
 
+    # Pystachy port: the module's globals are this module's (no module argument), and the
+    # function _showwarnmsg_impl() is not replaced but the log it appends to, _record_log
+    # (a module's function is bound once); showwarning() is never replaced
     def __enter__(self):
+        global filters, _record_log
         if self._entered:
             raise RuntimeError("Cannot enter %r twice" % self)
         self._entered = True
-        self._filters = self._module.filters
-        self._module.filters = self._filters[:]
-        self._module._filters_mutated()
-        self._showwarning = self._module.showwarning
-        self._showwarnmsg_impl = self._module._showwarnmsg_impl
+        self._filters = filters
+        filters = self._filters[:]
+        _filters_mutated()
+        self._record_log = _record_log
         if self._filter is not None:
             simplefilter(*self._filter)
         if self._record:
-            log = []
-            self._module._showwarnmsg_impl = log.append
-            # Reset showwarning() to the default implementation to make sure
-            # that _showwarnmsg() calls _showwarnmsg_impl()
-            self._module.showwarning = self._module._showwarning_orig
+            log: list[WarningMessage] = []
+            _record_log = log
             return log
         else:
             return None
 
     def __exit__(self, *exc_info):
+        global filters, _record_log
         if not self._entered:
             raise RuntimeError("Cannot exit %r without entering first" % self)
-        self._module.filters = self._filters
-        self._module._filters_mutated()
-        self._module.showwarning = self._showwarning
-        self._module._showwarnmsg_impl = self._showwarnmsg_impl
+        filters = self._filters
+        _filters_mutated()
+        _record_log = self._record_log
 
 
 class deprecated:
@@ -665,7 +674,9 @@ def _deprecated(name, message=_DEPRECATED_MSG, *, remove, _version=sys.version_i
         msg = f"{name!r} was slated for removal after Python {remove_formatted} alpha"
         raise RuntimeError(msg)
     else:
-        msg = message.format(name=name, remove=remove_formatted)
+        # Pystachy port: string.Formatter formats the message, as str.format() of a format string
+        # computed at run time is not supported
+        msg = _Formatter().format(message, name=name, remove=remove_formatted)
         warn(msg, DeprecationWarning, stacklevel=3)
 
 
@@ -707,9 +718,10 @@ try:
     onceregistry = _onceregistry
     _warnings_defaults = True
 except ImportError:
-    filters = []
+    # Pystachy port: the types of the filters and the registries, which start empty (see _VERSION)
+    filters: list[tuple[str, re.Pattern | None, type[Warning], re.Pattern | None, int]] = []
     defaultaction = "default"
-    onceregistry = {}
+    onceregistry: dict[tuple[str, type[Warning], int], int] = {}
 
     _filters_version = 1
 
@@ -720,11 +732,22 @@ except ImportError:
     _warnings_defaults = False
 
 
+# Pystachy port: a registry's keys are (text, category, lineno) tuples, as a dict's keys have one
+# type: a key (text, category) is (text, category, _NO_LINE), and the registry's filters version
+# is under _VERSION, as no C int is either line (see warn_explicit)
+_NO_LINE = -2**62
+_VERSION = ("version", Warning, _NO_LINE - 1)
+# Pystachy port: the main program's registry of the warnings it has shown, which warn() gives
+# warn_explicit() (frames' globals)
+_main_registry: dict[tuple[str, type[Warning], int], int] = {}
+
 # Module initialization
 _processoptions(sys.warnoptions)
 if not _warnings_defaults:
     # Several warning categories are ignored by default in regular builds
-    if not hasattr(sys, 'gettotalrefcount'):
+    # Pystachy port: sys has no gettotalrefcount (a debug build's), which hasattr() of a module
+    # does not test
+    if True:
         filterwarnings("default", category=DeprecationWarning,
                        module="__main__", append=1)
         simplefilter("ignore", category=DeprecationWarning, append=1)

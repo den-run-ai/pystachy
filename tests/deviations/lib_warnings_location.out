@@ -1,0 +1,7 @@
+<sys>:0: UserWarning: shown
+<sys>:0: DeprecationWarning: old() is deprecated
+<sys>:0: UserWarning: twice
+f.py:3: UserWarning: explicit
+tuple 1
+('default', None, <class 'DeprecationWarning'>, re.compile('__main__'), 0)
+[exit 0]
