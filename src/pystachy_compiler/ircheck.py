@@ -368,10 +368,12 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
     if i.op == "rt":
         # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run;
         # a key hashed by its class, H, runs __hash__ and __eq__, and one hashed by identity, P,
-        # its __repr__ where a KeyError names it)
+        # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
+        # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        u = "O" in i.x or "H" in i.x or ("P" in i.x and f.fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
-        return FXALL if f.q and u else f.fx
+        fx = f.fx | (FXBIT["R"] if f.rq and "R" in i.x else 0)
+        u = "O" in i.x or "H" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
+        return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
         st = i.op == "mem.store" or i.op == "mach.store"
         a = i.a[0].v
