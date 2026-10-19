@@ -1,0 +1,5 @@
+NoneType builtins False True True
+KeyError builtins True False True
+OSError builtins False False True OSError('again')
+none ValueError('again')
+[exit 0]

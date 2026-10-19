@@ -1,0 +1,2668 @@
+{
+  "schema": 1,
+  "date_utc": "2026-10-18",
+  "previous_evaluated_source": "0e6392b22217cc84baf5ece6d51203cfdfe6f71c",
+  "evaluated_source": "6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6",
+  "merged_prs": [
+    647
+  ],
+  "compiler_source": "0e6392b22217cc84baf5ece6d51203cfdfe6f71c",
+  "compiler_sha256": "8ad34ce1b632dfaa0d5e251dfed4eda6c5f3bff018366e83191306cb31eaadd8",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin\n",
+  "numpy": "2.3.5",
+  "scipy": "1.16.3",
+  "host_numeric_configuration": "{\n  \"Compilers\": {\n    \"c\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"cc\"\n    },\n    \"cython\": {\n      \"name\": \"cython\",\n      \"linker\": \"cython\",\n      \"version\": \"3.2.1\",\n      \"commands\": \"cython\"\n    },\n    \"c++\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"c++\"\n    }\n  },\n  \"Machine Information\": {\n    \"host\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"build\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    }\n  },\n  \"Build Dependencies\": {\n    \"blas\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.30\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.13.8/lib/python3.13/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.13.8/lib/python3.13/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    },\n    \"lapack\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.30\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.13.8/lib/python3.13/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.13.8/lib/python3.13/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    }\n  },\n  \"Python Information\": {\n    \"path\": \"/tmp/build-env-w_be3r90/bin/python\",\n    \"version\": \"3.13\"\n  },\n  \"SIMD Extensions\": {\n    \"baseline\": [\n      \"SSE\",\n      \"SSE2\",\n      \"SSE3\"\n    ],\n    \"found\": [\n      \"SSSE3\",\n      \"SSE41\",\n      \"POPCNT\",\n      \"SSE42\",\n      \"AVX\",\n      \"F16C\",\n      \"FMA3\",\n      \"AVX2\",\n      \"AVX512F\",\n      \"AVX512CD\",\n      \"AVX512_SKX\",\n      \"AVX512_CLX\",\n      \"AVX512_CNL\",\n      \"AVX512_ICL\"\n    ],\n    \"not found\": [\n      \"AVX512_KNL\",\n      \"AVX512_KNM\",\n      \"AVX512_SPR\"\n    ]\n  }\n}\n{\n  \"Compilers\": {\n    \"c\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"10.2.1\",\n      \"commands\": \"cc\"\n    },\n    \"cython\": {\n      \"name\": \"cython\",\n      \"linker\": \"cython\",\n      \"version\": \"3.1.6\",\n      \"commands\": \"cython\"\n    },\n    \"c++\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"10.2.1\",\n      \"commands\": \"c++\"\n    },\n    \"fortran\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"10.2.1\",\n      \"commands\": \"gfortran\"\n    },\n    \"pythran\": {\n      \"version\": \"0.18.0\",\n      \"include directory\": \"../../tmp/build-env-06it4un2/lib/python3.13/site-packages/pythran\"\n    }\n  },\n  \"Machine Information\": {\n    \"host\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"build\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"cross-compiled\": false\n  },\n  \"Build Dependencies\": {\n    \"blas\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.29.dev\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas32/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas32/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project\"\n    },\n    \"lapack\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.29.dev\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas32/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas32/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project\"\n    },\n    \"pybind11\": {\n      \"name\": \"pybind11\",\n      \"version\": \"3.0.1\",\n      \"detection method\": \"config-tool\",\n      \"include directory\": \"unknown\"\n    }\n  },\n  \"Python Information\": {\n    \"path\": \"/tmp/build-env-06it4un2/bin/python\",\n    \"version\": \"3.13\"\n  }\n}\n",
+  "native_blas": {
+    "path": "/usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0",
+    "sha256": "e748efcae5753fe4a652877fccdb5895ac6f7605668a2db878b19c914e78e3a8",
+    "package_version": "libblas3:amd64 3.12.0-3build1.1",
+    "abi": "LP64"
+  },
+  "source_hashes": {
+    ".github/workflows/ci.yml": "f84b84e87425c27d30960172c3dfb5b7aa988d72ea3f0a09b7fb5cabc5f7d05e",
+    ".github/workflows/lint.yml": "9faa3454acac3e37186faeca472f23a44b1e0a39d17c7b7303ff15c8adfa3966",
+    "Makefile": "67c25651015e5286a899ef01588ce673bcf6f55cd42abcd564a311b6c06b4e73",
+    "docs/testing.md": "84aed5c446450af6e67bce32ea3877f7d8ae50a88846de547ebf104c88b37e6e",
+    "examples/nanogpt/README.md": "1c80f3ad5b5ec9af2eec8a2f786fdcd536a50b42df2a521d1996229fec2ed728",
+    "examples/nanogpt/blas_parity.py": "1346feb0a22cc2350820b6543ee7e063845f970f3807d72d7d0aa821d3d1d02a",
+    "examples/nanogpt/driver.py": "8ec9f3dc2d267e90523199d30c43a2610a45797dba04ec01dff9e9321f274f28",
+    "examples/nanogpt/model.py": "3dddd99ebc5218fd7ae90c8c985fe2d16bece9a3c5f9c3e473b72f2b764ac125",
+    "examples/nanogpt/results/blas-providers.json": "473d33a3953961276a3b31e235a40e387e357352b504207ef53101daf1ab67c4",
+    "examples/nanogpt/results/folded-bias-paired.json": "b4283cb5f2cd61b806470f0ef9cb41eb12ca2de6f839a36067e6c3a357cec646",
+    "examples/nanogpt/run_blas.py": "7204fd35acc59589e4a235adcd3c1468e477fdbfa44d404e6545f1aebb0413da",
+    "examples/nanogpt/training.py": "de24f2c761a90f0f02301d4e3f99bf11d5c0c3914fd2378408320ce2da51594f",
+    "examples/ndarray/README.md": "b5b248549dc0712ef0a725a2ea1ce93923413091afaaca0379cc80a315939e4d",
+    "examples/ndarray/blas_cases.py": "f3a3eb658b1883a5f6682d1b6b795f2783c4a5211cd2125b18804a8732c50c67",
+    "examples/ndarray/check_blas.py": "8bbcc827458da88c15e53f4cfd2b49c0275a2ea20f5a8112d7be941f77cca722",
+    "examples/ndarray/ndarray_blas.py": "a7574d6c10ec1b3b8b5a92008fa985a294314fd026fd3908af501dd20aaa1333",
+    "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141",
+    "tools/nanogpt_numpy_baseline.py": "972f94a2c3e1a2936a3feeba2a2e3d5ff54ba0e6d72d6143ce2624cc000acb5f",
+    "tools/setup.sh": "f0242e5f7c09d5a954876f2d212e76e71cc3192ba3afd564f8e040ce727daed3",
+    "tools/test_check_nanogpt.py": "1d2d0356c81a02873db65192eb7412c71005bcbaa10defe5ce7c466277177184"
+  },
+  "fixture_hashes": {
+    "batched_bias.json": "d170112a96b7af66afbe8515415419fa6b00ed682c2093ad3963f7182d78c33e",
+    "batched_bias.weights": "b30df641c22dff042216871a3263d338b00a87449f7636a1ef85314d64703a3c",
+    "one_token.json": "b6637009fa0d562405c95c5752a61044c288c0ca1266cf3cf5276dfa55d09e8a",
+    "batched_no_bias.weights": "8e0c4f30eaad45398c1f76308437d42bf721832a70e4e34a24cbb6ec36fba4c3",
+    "batched_no_bias.input": "8f25b0b3d6f2d3ffa62748c36ddb8c2a745e9211fcf4081df405261ff71c5e1e",
+    "batched_no_bias.json": "ca27c2fafa8fe0038d5613678692ff9b5f5de498e2a3a663f700a3e4cc628c8c",
+    "one_token.weights": "176c96b340800b3396f0d0dc20da6d71d444eb00732de2dd8e4150c81f89809e",
+    "one_token.input": "4f88cb9eef76028053c8ef8dd373d5239b8a16c8175b9c7e961d3a71076b15c6",
+    "manifest.json": "865fcf347ebd69e37debc2eecd39f27166fdab7cc805caaa81bcec56f993e870",
+    "batched_bias.input": "47df2f6d27a6087911ea736a15e86d4852eb357a9e79c7b67841e8d0701fc647"
+  },
+  "test_driver": "import concurrent.futures\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport time\n\nROOT = Path.cwd()\nOUT = ROOT / 'build/audit-blas'\nPY = str(OUT / 'env/bin/python')\nCOMPILER = str(ROOT.parent / 'pystachy-audit-gc-budget/pystachy')\nLLVM = str(ROOT.parent / 'llvm18-recovered/usr/lib/llvm-18/bin')\nFIXTURES = ROOT.parent / 'pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures'\nENV = {k:v for k,v in os.environ.items() if not k.startswith('PYSTACHY_')}\nENV.update(PATH=LLVM+':'+ENV['PATH'], PYSTACHY_LLVM=LLVM, PYSTACHY_HOME=str(ROOT), PYSTACHY_JOBS='2', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1')\n\ndef run(job):\n    name, argv, extra = job\n    start = time.monotonic()\n    try:\n        p = subprocess.run(argv, cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=900)\n        result = dict(command=argv, environment=extra, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr)\n    except subprocess.TimeoutExpired as e:\n        result = dict(command=argv, environment=extra, timeout=900, stdout=str(e.stdout), stderr=str(e.stderr))\n    result['wall_seconds'] = time.monotonic()-start\n    (OUT/(name+'-command.json')).write_text(json.dumps(result, indent=2)+'\\n')\n    print(name, result.get('returncode'), result['stdout'][-700:], result['stderr'][-500:], flush=True)\n    return result\n\nparity = [PY,'tools/check_nanogpt.py','--fixtures',str(FIXTURES),'--python',PY,'--blas-library','/lib/x86_64-linux-gnu/libblas.so.3','--warmups','1','--repeats','3']\njobs = [\n ('blas',[PY,'examples/ndarray/check_blas.py','--compiler',COMPILER,'--stress','1','--json',str(OUT/'blas.json')],{}),\n ('make-blas',['make','blas-check','PY='+PY,'BENCH_COMPILER='+COMPILER],{}),\n ('tool-tests',[PY,'-m','unittest','discover','-s','tools','-p','test_check_nanogpt.py'],{}),\n ('nano',parity+['--compiler',COMPILER,'--json',str(OUT/'nano.json')],{}),\n ('nano-gc',parity+['--compiler','env PYSTACHY_GC_STRESS=1000 '+COMPILER,'--json',str(OUT/'nano-gc.json')],{'PYSTACHY_GC_STRESS':'1','PYSTACHY_GC_STRESS_PROGRAM':'1'}),\n]\nfor case in ['one_token','batched_bias','batched_no_bias']:\n    jobs.append(('numpy-'+case,[PY,'tools/nanogpt_numpy_baseline.py','--fixtures',str(FIXTURES),'--case',case,'--warmups','1','--repeats','3','--json',str(OUT/('numpy-'+case+'.json'))],{}))\nwith concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n    results = list(pool.map(run,jobs))\nassert all(r.get('returncode') == 0 for r in results)\n",
+  "commands": {
+    "nano-gc-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "tools/check_nanogpt.py",
+        "--fixtures",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures",
+        "--python",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "--blas-library",
+        "/lib/x86_64-linux-gnu/libblas.so.3",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--compiler",
+        "env PYSTACHY_GC_STRESS=1000 /workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/nano-gc.json"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "one_token scalar_aot: verified 9343 values, full=0.001995s last=0.002003s\none_token scalar_jit: verified 9343 values, full=0.001966s last=0.001941s\none_token scalar_cpython: verified 9343 values, full=0.000358s last=0.000278s\none_token blas_aot: verified 9343 values, full=0.001031s last=0.000996s\none_token blas_jit: verified 9343 values, full=0.001197s last=0.001060s\nbatched_bias scalar_jit: verified 37331 values, full=0.016732s last=0.015486s\nbatched_bias scalar_cpython: verified 37331 values, full=0.004058s last=0.003606s\nbatched_bias blas_aot: verified 37331 values, full=0.014436s last=0.007634s\nbatched_bias blas_jit: verified 37331 values, full=0.007825s last=0.006859s\nbatched_bias scalar_aot: verified 37331 values, full=0.016259s last=0.015472s\nbatched_no_bias scalar_cpython: verified 34363 values, full=0.002745s last=0.002454s\nbatched_no_bias blas_aot: verified 34363 values, full=0.007029s last=0.006304s\nbatched_no_bias blas_jit: verified 34363 values, full=0.006446s last=0.009843s\nbatched_no_bias scalar_aot: verified 34363 values, full=0.014066s last=0.015651s\nbatched_no_bias scalar_jit: verified 34363 values, full=0.012107s last=0.014319s\n",
+      "stderr": "",
+      "wall_seconds": 25.226806975999352
+    },
+    "tool-tests-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_check_nanogpt.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.015s\n\nOK\n",
+      "wall_seconds": 0.09614342499844497
+    },
+    "make-blas-command": {
+      "command": [
+        "make",
+        "blas-check",
+        "PY=/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "BENCH_COMPILER=/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python examples/ndarray/check_blas.py --compiler \"/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy\" --stress 1\ncpython: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\njit: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\naot: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\njit_gc: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\naot_gc: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\nlibblas.so.3 resolved to: /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0\nLP64 CBLAS verification passed; no performance claim is made by this check.\nmkdir -p build\nPYTHONPATH=\"/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/tools/rt_cpython:/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/nanogpt:/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/ndarray\" /workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python examples/nanogpt/blas_parity.py\nnanoGPT BLAS parity passed: 4022 values; largest difference 0.0\nPYSTACHY_PATH=\"/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/nanogpt:/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/ndarray\" /workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy run examples/nanogpt/blas_parity.py\nnanoGPT BLAS parity passed: 4022 values; largest difference 0.0\nPYSTACHY_PATH=\"/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/nanogpt:/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/ndarray\" PYSTACHY_GC_STRESS_PROGRAM=1 /workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy run examples/nanogpt/blas_parity.py\nnanoGPT BLAS parity passed: 4022 values; largest difference 0.0\nPYSTACHY_PATH=\"/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/nanogpt:/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/examples/ndarray\" /workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy build examples/nanogpt/blas_parity.py -o build/blas_parity\nbuild/blas_parity\nnanoGPT BLAS parity passed: 4022 values; largest difference 0.0\nPYSTACHY_GC_STRESS=1 build/blas_parity\nnanoGPT BLAS parity passed: 4022 values; largest difference 0.0\n",
+      "stderr": "",
+      "wall_seconds": 19.650246018998587
+    },
+    "numpy-batched_no_bias-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "tools/nanogpt_numpy_baseline.py",
+        "--fixtures",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures",
+        "--case",
+        "batched_no_bias",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/numpy-batched_no_bias.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "numpy 2.3.5: full 0.300 ms, last 0.140 ms (medians of 3); max |error| vs reference 5.55e-17\n",
+      "stderr": "",
+      "wall_seconds": 0.3636130270024296
+    },
+    "blas-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "examples/ndarray/check_blas.py",
+        "--compiler",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+        "--stress",
+        "1",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/blas.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "cpython: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\njit: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\naot: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\njit_gc: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\naot_gc: 24 matrix cases, 15 linear cases and 32 invalid inputs passed\nlibblas.so.3 resolved to: /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0\nLP64 CBLAS verification passed; no performance claim is made by this check.\n",
+      "stderr": "",
+      "wall_seconds": 14.143724610999925
+    },
+    "numpy-batched_bias-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "tools/nanogpt_numpy_baseline.py",
+        "--fixtures",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures",
+        "--case",
+        "batched_bias",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/numpy-batched_bias.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "numpy 2.3.5: full 0.197 ms, last 0.159 ms (medians of 3); max |error| vs reference 4.44e-16\n",
+      "stderr": "",
+      "wall_seconds": 0.36159701900032815
+    },
+    "numpy-one_token-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "tools/nanogpt_numpy_baseline.py",
+        "--fixtures",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures",
+        "--case",
+        "one_token",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/numpy-one_token.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "numpy 2.3.5: full 0.308 ms, last 0.076 ms (medians of 3); max |error| vs reference 1.39e-17\n",
+      "stderr": "",
+      "wall_seconds": 0.9101289169993834
+    },
+    "nano-command": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "tools/check_nanogpt.py",
+        "--fixtures",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures",
+        "--python",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+        "--blas-library",
+        "/lib/x86_64-linux-gnu/libblas.so.3",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--compiler",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+        "--json",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/nano.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "one_token scalar_aot: verified 9343 values, full=0.000030s last=0.000049s\none_token scalar_jit: verified 9343 values, full=0.000034s last=0.000031s\none_token scalar_cpython: verified 9343 values, full=0.000370s last=0.000313s\none_token blas_aot: verified 9343 values, full=0.000009s last=0.000010s\none_token blas_jit: verified 9343 values, full=0.000010s last=0.000010s\nbatched_bias scalar_jit: verified 37331 values, full=0.000412s last=0.000483s\nbatched_bias scalar_cpython: verified 37331 values, full=0.003805s last=0.003599s\nbatched_bias blas_aot: verified 37331 values, full=0.000101s last=0.000092s\nbatched_bias blas_jit: verified 37331 values, full=0.000118s last=0.000120s\nbatched_bias scalar_aot: verified 37331 values, full=0.000391s last=0.000227s\nbatched_no_bias scalar_cpython: verified 34363 values, full=0.003111s last=0.002394s\nbatched_no_bias blas_aot: verified 34363 values, full=0.000075s last=0.000073s\nbatched_no_bias blas_jit: verified 34363 values, full=0.000106s last=0.000084s\nbatched_no_bias scalar_aot: verified 34363 values, full=0.000188s last=0.000174s\nbatched_no_bias scalar_jit: verified 34363 values, full=0.000307s last=0.000310s\n",
+      "stderr": "",
+      "wall_seconds": 11.66693949600085
+    }
+  },
+  "blas": {
+    "binding": "libblas.so.3:cblas_dgemm",
+    "abi": "explicit LP64: 32-bit int, 64-bit double",
+    "loaded_blas_paths": [
+      "/usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0"
+    ],
+    "numpy": "2.3.5",
+    "source_sha256": "a7574d6c10ec1b3b8b5a92008fa985a294314fd026fd3908af501dd20aaa1333",
+    "cases": 24,
+    "linear_cases": 15,
+    "invalid_inputs": 32,
+    "runs": {
+      "cpython": {
+        "max_abs_error_vs_numpy": 3.552713678800501e-15,
+        "gc_allocation_interval": {}
+      },
+      "jit": {
+        "max_abs_error_vs_numpy": 3.552713678800501e-15,
+        "gc_allocation_interval": {}
+      },
+      "aot": {
+        "max_abs_error_vs_numpy": 3.552713678800501e-15,
+        "gc_allocation_interval": {}
+      },
+      "jit_gc": {
+        "max_abs_error_vs_numpy": 3.552713678800501e-15,
+        "gc_allocation_interval": {
+          "PYSTACHY_GC_STRESS_PROGRAM": "1"
+        }
+      },
+      "aot_gc": {
+        "max_abs_error_vs_numpy": 3.552713678800501e-15,
+        "gc_allocation_interval": {
+          "PYSTACHY_GC_STRESS": "1"
+        }
+      }
+    }
+  },
+  "nanogpt": {
+    "nano": {
+      "schema": 1,
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "controller_python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "GOTO_NUM_THREADS": "1"
+      },
+      "runtime_environment": {
+        "PYSTACHY_LLVM": "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin"
+      },
+      "git_revision": "6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6",
+      "git_status": [],
+      "source_hashes": {
+        "examples/nanogpt/blas_parity.py": "1346feb0a22cc2350820b6543ee7e063845f970f3807d72d7d0aa821d3d1d02a",
+        "examples/nanogpt/driver.py": "8ec9f3dc2d267e90523199d30c43a2610a45797dba04ec01dff9e9321f274f28",
+        "examples/nanogpt/model.py": "3dddd99ebc5218fd7ae90c8c985fe2d16bece9a3c5f9c3e473b72f2b764ac125",
+        "examples/nanogpt/run.py": "765c801e52cef432bcaa034e63d8330f07cdb6b3922dd646461f89038023058a",
+        "examples/nanogpt/run_blas.py": "7204fd35acc59589e4a235adcd3c1468e477fdbfa44d404e6545f1aebb0413da",
+        "examples/nanogpt/training.py": "de24f2c761a90f0f02301d4e3f99bf11d5c0c3914fd2378408320ce2da51594f",
+        "examples/ndarray/bench.py": "baf709a2f2521bb38a53c2841e100bfb3850e0a96bdad3b989998ff063348761",
+        "examples/ndarray/blas_cases.py": "f3a3eb658b1883a5f6682d1b6b795f2783c4a5211cd2125b18804a8732c50c67",
+        "examples/ndarray/check_blas.py": "8bbcc827458da88c15e53f4cfd2b49c0275a2ea20f5a8112d7be941f77cca722",
+        "examples/ndarray/check_numpy.py": "3455bb428531b83b391770d3643c780615153587655db9d55c4ba4a0025e4aef",
+        "examples/ndarray/check_upstream.py": "849355e739fc40ab4c8d01072840be19e618e6e2de600b55a6264af3b2f82c6e",
+        "examples/ndarray/demo.py": "fa946f7e673dfb88464bcb6bc8a34a875fab5ce1bf78b08e5bf0c425fc71965d",
+        "examples/ndarray/lazy.py": "511fd14877da5e8ca35b02212fb23a9c40d14985da0b9559c4f7c44207e76aac",
+        "examples/ndarray/ndarray.py": "5ef5a1b878ad8d648aaf67747661420ea538a0dc4976f7fa71bb2c4762dbe626",
+        "examples/ndarray/ndarray_blas.py": "a7574d6c10ec1b3b8b5a92008fa985a294314fd026fd3908af501dd20aaa1333",
+        "examples/ndarray/workloads.py": "64d6b61d4ad2ca9d4551c7762ab6af0d14bac4cb42712d807b58131bcea13ec7",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "9a38cb05fa9a8e86694af5a257648d268bd66141e7950b0081ce85ff553c0903",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "e599b589484f49ec6774b0528b5c3d19425bca87c2a27b58003738920ff73f51",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "7095a0d22ef0210d230f80c288541a461c7c9bd39780ab93f33041a21f61bf84",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "90d9527f87cc2d3e4dce4a15d1e064811645ae74ae15f9f2d4dbeede80c61563",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "5c14a0b3134e2bed8a67a4603f590a82f8f09bcb201b0d9ab3ab28e8423fc885",
+        "lib/random.py": "8b9a5510c1c459803ff93ceeaa8613ca57a4edc89fe500efe2adde82dd4bd685",
+        "lib/re/__init__.py": "ebebbad3eba1cca2e6b6349985ca1abe4cbaf21123609760ce728c0020b2e7d7",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "5d7e9c2eee26a8b68d4fdb12b63536a7eadee1fa8b1b5e55ed54c7fb591100dd",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "bb7c5905da24171d7fecda953500a10078a70aac5d0048ef89cd62bab6970cae",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/types.py": "9168a28e7770815f266a8719ad4c6d2895734e5cbfa3cbf034e76890bab0f967",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "pystachy.py": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917",
+        "runtime.c": "806113f60731299f36be0300a97d68c9b4c017859fad601105bf22bac04cc5e2",
+        "runtime.py": "6352429cb103c332118c1d4eba17d28cba808289d3cce6050894c7d0c3919784",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "7e649ef8546e958c71707370e572c2b66d7857927946c8f3008fd63dc9275d42",
+        "src/pystachy_compiler/builtins.py": "869a8e4414fcad84259cc74f106f4ebc110d420a6198a0e82aaf9b91886fc839",
+        "src/pystachy_compiler/calls.py": "8102ad4ea2b8e1c49f25e19b113f44a7644f890539ae9f5b5fa2a4de9c36948a",
+        "src/pystachy_compiler/containers.py": "ef3065d5831a60b979388cbac17fb030c8e4ac14c30d6ce0510b8aa59a0a3791",
+        "src/pystachy_compiler/conversions.py": "0111f1ea4426f521b18e6d20ec684657a02bf509e7efa503e18b3edd601f388d",
+        "src/pystachy_compiler/declarations.py": "c017b298300607b0155b285830f7b2134ffb068fb88e4d4789963df3cf6e09b2",
+        "src/pystachy_compiler/diagnostics.py": "0079e692ac5222582534d808ca1d357230a8ae17bbe6c58101caaed43f3e4e72",
+        "src/pystachy_compiler/driver.py": "67638b2134ad2aba8e41de76af6c2398cbb560c5998471d3837302641ce065fd",
+        "src/pystachy_compiler/emission.py": "6a05ce2b8f281e812922719052a03669813eb3dcf46367d1751dfa385cd73956",
+        "src/pystachy_compiler/exceptions.py": "a7d42ba5c7b1004726b2fada0bfa65dc135df8ff9abd3b230abfabec543988ff",
+        "src/pystachy_compiler/expressions.py": "08be58bf32ce25d92ae56bb79f09d6c66bd69678b5968b6623936f47460f92f1",
+        "src/pystachy_compiler/flow.py": "70c917a69a6842c472514c471a1d7a48a29df95f59818651e4ae791a7bcea3b0",
+        "src/pystachy_compiler/functions.py": "54e649972292e6f07661723f7a474912b671a44eb6f59f051a1b666675a75df3",
+        "src/pystachy_compiler/gen.py": "74638ae12ba9064840b352b46b6b88d81e051a07d82c7331bc0bb1d8544be14a",
+        "src/pystachy_compiler/generators.py": "ff38bdf383d5df13e30dc0f714177da2f5ed38f7a00e16d6993c58da21cabf21",
+        "src/pystachy_compiler/ir.py": "f839adb46a827a5bf1f5f65cfaa127f0e2333c6ed973b29b34bc6ce4f09a9d9b",
+        "src/pystachy_compiler/ircheck.py": "46edb9c5d35936649b3766b8127b89668f61278a7df4cfadc9c8cf0b692df2b8",
+        "src/pystachy_compiler/lexer.py": "5692eb6602849a6e0128288db30b026f2be4464e69cbe83553f0a30bf917b155",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "230baea6d9d77fcedab2a8898e1447930250610a82086c50ee631d96bab95320",
+        "src/pystachy_compiler/local_versions.py": "8dfe1dd0c5caf7a0da8cd74024ac8adb7d8892099827f8abf42dc0b63e37c80f",
+        "src/pystachy_compiler/lower_module.py": "e277d89052456400c8ecdc07631bc7d4fb20e787387b86974762832276661db7",
+        "src/pystachy_compiler/lowering.py": "2aa2ceb49a41b304dff735dfe5c227e1cb30a96e6380023588f347400baf0a5c",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "666eb8f2d91572468ba6fae06096c1fa39849c9063918142aa67589a2c722a8a",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "c441b55dc0a2691c18307604c8ab6e7ce07f56b8005159edebe60d34028de1b4",
+        "src/pystachy_compiler/parser.py": "b38c958c2bdba930490588760faedfb838ad2114117b952e4a2b7fc95ad75508",
+        "src/pystachy_compiler/program.py": "590291d57ff06ca337c6606b888908406bd6f4b5d4d75bf16afa2690d1a6f9c4",
+        "src/pystachy_compiler/reflection.py": "efe41c60e70fc01cd35ac66e50147392663a60ac847585afc14300f9683352e7",
+        "src/pystachy_compiler/scalar_ir.py": "8e44332fd31080e4cf89a312c61dc2c573cbdd880551ba1f7069560594abeabe",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "8ee5caec73ed6035131dd0a6c40d00cefbefacfe0690885814a28c8b2b4b8e36",
+        "src/pystachy_compiler/statements.py": "dd49374e9bf32373732bec6d96267c103986f7ebf6495a935f0810f21c147060",
+        "src/pystachy_compiler/structs.py": "28059d45e787161fb565cb03e2b855c8d358d4c0a19ad7db64c599b29f576280",
+        "src/pystachy_compiler/syntax.py": "e663514041c2e6e85453d6d5ff67058dac51fc3e2a9e39eea51d0e85c5a895a6",
+        "src/pystachy_compiler/templates.py": "8e621f07e521a457f40cb7093075b5b7076604ac129f4d927949a90494c0ee7d",
+        "src/pystachy_compiler/union_arithmetic.py": "6854f37211a0dad72821d662edbb05561d8febb233f74134fb4d1ea6c2ffd980",
+        "src/pystachy_compiler/unions.py": "f0cf433fe8ef2b6045544ac0983d2b621ef55ecfa85a3958f14ea9ca45f4edab",
+        "src/pystachy_compiler/utils.py": "ac506f590aa40ce3fa7ab9cbc573789e82bf8efe7886f5b10abb8b73d39f431e",
+        "src/pystachy_compiler/variables.py": "736a72ce015960c131a43b41a9787b2a86c3982a03f6435c6c5028407016e979",
+        "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141"
+      },
+      "builds": {
+        "scalar": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+            "build",
+            "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+            "-o",
+            "/tmp/pystachy-nanogpt-6kfft376/runner_scalar"
+          ],
+          "returncode": 0,
+          "timed_out": false,
+          "stderr": "",
+          "wall_seconds": 2.917595390998031,
+          "runner_sha256": "05dc293f57f1874e5f4738a5cd4f5b6e3997c2ead3d02946cce9948e8afbee32",
+          "binary_sha256": "49441e34e63a18bfb3ade69f56163d599251335579afd7f86ac799ad2201e089"
+        },
+        "blas": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+            "build",
+            "/tmp/pystachy-nanogpt-6kfft376/runner_blas.py",
+            "-o",
+            "/tmp/pystachy-nanogpt-6kfft376/runner_blas"
+          ],
+          "returncode": 0,
+          "timed_out": false,
+          "stderr": "",
+          "wall_seconds": 2.9615381940020598,
+          "runner_sha256": "7c4c5a53d01e371a494545e1cbfe104c8acad44a27df6c72812ec6b0e1eeb30d",
+          "binary_sha256": "bf4a57703989e7251d518e52777f2bf97423a1884d710c9295b8a22d9fff410b"
+        }
+      },
+      "cases": {
+        "one_token": {
+          "reference": {
+            "case": {
+              "name": "one_token",
+              "n_layer": 1,
+              "n_head": 1,
+              "n_embd": 8,
+              "block_size": 5,
+              "vocab_size": 13,
+              "bias": true,
+              "batch": 1,
+              "length": 1
+            },
+            "inputs": {
+              "batch": 1,
+              "length": 1,
+              "tokens": [
+                3
+              ],
+              "targets": [
+                5
+              ]
+            },
+            "weight_sha256": "176c96b340800b3396f0d0dc20da6d71d444eb00732de2dd8e4150c81f89809e",
+            "input_sha256": "4f88cb9eef76028053c8ef8dd373d5239b8a16c8175b9c7e961d3a71076b15c6",
+            "timings": {
+              "full_time": [
+                0.00023807900106476154,
+                0.00012561699986690655,
+                0.00011233599980187137
+              ],
+              "last_time": [
+                0.0001498359997640364,
+                0.00012246400001458824,
+                0.00010803399891301524
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0008509580002282746,
+                  "optimizer_seconds": 0.0014587859986932017
+                },
+                {
+                  "forward_backward_seconds": 0.0010278739991917973,
+                  "optimizer_seconds": 0.0007775700014462927
+                }
+              ]
+            },
+            "parameter_count": 1032
+          },
+          "tiers": {
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.008343781999428757,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0010825470017152838,
+                "full_time": [
+                  3.0470997444353998e-05,
+                  3.2609001209493726e-05,
+                  2.3494998458772898e-05
+                ],
+                "last_time": [
+                  4.8833000619197264e-05,
+                  0.00033447399982833304,
+                  3.4814998798538e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.00010108800051966682,
+                    "optimizer_seconds": 1.9200997485313565e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.00015677300325478427,
+                    "optimizer_seconds": 1.2372001947369426e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 3.0470997444353998e-05,
+              "median_last_seconds": 4.8833000619197264e-05,
+              "verified": true
+            },
+            "scalar_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.5669935789992451,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0008686760011187289,
+                "full_time": [
+                  2.592799864942208e-05,
+                  3.4248998417751864e-05,
+                  5.2561998018063605e-05
+                ],
+                "last_time": [
+                  3.1185001716949046e-05,
+                  9.293900075135753e-05,
+                  2.6703000912675634e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.00013230300100985914,
+                    "optimizer_seconds": 3.9288999687414616e-05
+                  },
+                  {
+                    "forward_backward_seconds": 9.610200140741654e-05,
+                    "optimizer_seconds": 2.9588001780211926e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 3.4248998417751864e-05,
+              "median_last_seconds": 3.1185001716949046e-05,
+              "verified": true
+            },
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.057307974002469564,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0008315120030601975,
+                "full_time": [
+                  0.0002951459973701276,
+                  0.0003890150001097936,
+                  0.0003699349981616251
+                ],
+                "last_time": [
+                  0.0003132559977530036,
+                  0.0003359420006745495,
+                  0.0002793660023598932
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0007347419996222015,
+                    "optimizer_seconds": 0.00046419700083788484
+                  },
+                  {
+                    "forward_backward_seconds": 0.000684962000377709,
+                    "optimizer_seconds": 0.0006951020004635211
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0003699349981616251,
+              "median_last_seconds": 0.0003132559977530036,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.005497228001331678,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0007380089991784189,
+                "full_time": [
+                  7.783000910421833e-06,
+                  8.799001079751179e-06,
+                  1.055500251823105e-05
+                ],
+                "last_time": [
+                  8.300001354655251e-06,
+                  1.0219999239780009e-05,
+                  1.2297998182475567e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 3.7841997254872695e-05,
+                    "optimizer_seconds": 1.2903001334052533e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.00010923399895546027,
+                    "optimizer_seconds": 1.044499731506221e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 8.799001079751179e-06,
+              "median_last_seconds": 1.0219999239780009e-05,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.5734503620005853,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0005489860013767611,
+                "full_time": [
+                  8.498998795403168e-06,
+                  9.915998816723004e-06,
+                  9.678002243163064e-06
+                ],
+                "last_time": [
+                  9.097999281948432e-06,
+                  1.0039999324362725e-05,
+                  1.7631002265261486e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 4.2111998482141644e-05,
+                    "optimizer_seconds": 3.456999911577441e-05
+                  },
+                  {
+                    "forward_backward_seconds": 8.52939992910251e-05,
+                    "optimizer_seconds": 0.00012250500003574416
+                  }
+                ]
+              },
+              "median_full_seconds": 9.678002243163064e-06,
+              "median_last_seconds": 1.0039999324362725e-05,
+              "verified": true
+            }
+          }
+        },
+        "batched_bias": {
+          "reference": {
+            "case": {
+              "name": "batched_bias",
+              "n_layer": 2,
+              "n_head": 2,
+              "n_embd": 12,
+              "block_size": 5,
+              "vocab_size": 19,
+              "bias": true,
+              "batch": 2,
+              "length": 5
+            },
+            "inputs": {
+              "batch": 2,
+              "length": 5,
+              "tokens": [
+                3,
+                10,
+                17,
+                5,
+                12,
+                0,
+                7,
+                14,
+                2,
+                9
+              ],
+              "targets": [
+                5,
+                16,
+                8,
+                0,
+                11,
+                3,
+                14,
+                6,
+                17,
+                -1
+              ]
+            },
+            "weight_sha256": "b30df641c22dff042216871a3263d338b00a87449f7636a1ef85314d64703a3c",
+            "input_sha256": "47df2f6d27a6087911ea736a15e86d4852eb357a9e79c7b67841e8d0701fc647",
+            "timings": {
+              "full_time": [
+                0.00020310000036261044,
+                0.00019955700008722488,
+                0.0005127960012032418
+              ],
+              "last_time": [
+                0.00024213899996539112,
+                0.00021100199955981225,
+                0.0001954729996214155
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0011093700013589114,
+                  "optimizer_seconds": 0.0009439269997528754
+                },
+                {
+                  "forward_backward_seconds": 0.0011316159998386865,
+                  "optimizer_seconds": 0.0008238319987867726
+                }
+              ]
+            },
+            "parameter_count": 4080
+          },
+          "tiers": {
+            "scalar_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.5342808409986901,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0020068650010216516,
+                "full_time": [
+                  0.000382594000257086,
+                  0.0004116439995414112,
+                  0.0004563980000966694
+                ],
+                "last_time": [
+                  0.0004829600002267398,
+                  0.0005101399983686861,
+                  0.00035439899875200354
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0012555120010802057,
+                    "optimizer_seconds": 0.00015192000137176365
+                  },
+                  {
+                    "forward_backward_seconds": 0.0014407820017368067,
+                    "optimizer_seconds": 0.00010066499817185104
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0004116439995414112,
+              "median_last_seconds": 0.0004829600002267398,
+              "verified": true
+            },
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.1276247779969708,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0015412960019602906,
+                "full_time": [
+                  0.0038050250004744157,
+                  0.004138161999435397,
+                  0.0037394210012280382
+                ],
+                "last_time": [
+                  0.0035514360024535563,
+                  0.003599035000661388,
+                  0.003979447999881813
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.010794108999107266,
+                    "optimizer_seconds": 0.0016729749986552633
+                  },
+                  {
+                    "forward_backward_seconds": 0.013718625999899814,
+                    "optimizer_seconds": 0.0016010660001484212
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0038050250004744157,
+              "median_last_seconds": 0.003599035000661388,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.018494799001928186,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.00371780800196575,
+                "full_time": [
+                  0.00010158999793929979,
+                  0.00010132899842574261,
+                  9.678900096332654e-05
+                ],
+                "last_time": [
+                  9.114600106840953e-05,
+                  0.00011682799959089607,
+                  9.239499922841787e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.00033405499925720505,
+                    "optimizer_seconds": 5.403300019679591e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.0003633699998317752,
+                    "optimizer_seconds": 3.515199932735413e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00010132899842574261,
+              "median_last_seconds": 9.239499922841787e-05,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.6801847399983671,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0072577329992782325,
+                "full_time": [
+                  0.00011761999849113636,
+                  0.00011494799764477648,
+                  0.00013424200005829334
+                ],
+                "last_time": [
+                  0.00011958799950662069,
+                  0.00012970200259587727,
+                  0.00010696300159906968
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0018154220015276223,
+                    "optimizer_seconds": 0.00013370099986786954
+                  },
+                  {
+                    "forward_backward_seconds": 0.000947489999816753,
+                    "optimizer_seconds": 0.00011007899956894107
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00011761999849113636,
+              "median_last_seconds": 0.00011958799950662069,
+              "verified": true
+            },
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.01886611700319918,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0022721440000168514,
+                "full_time": [
+                  0.0004937820012855809,
+                  0.00039097700209822506,
+                  0.00030917600088287145
+                ],
+                "last_time": [
+                  0.0002268129974254407,
+                  0.00019926000095438212,
+                  0.0002473839995218441
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0007225319968711119,
+                    "optimizer_seconds": 5.57630010007415e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.0007593729969812557,
+                    "optimizer_seconds": 3.704999835463241e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00039097700209822506,
+              "median_last_seconds": 0.0002268129974254407,
+              "verified": true
+            }
+          }
+        },
+        "batched_no_bias": {
+          "reference": {
+            "case": {
+              "name": "batched_no_bias",
+              "n_layer": 2,
+              "n_head": 3,
+              "n_embd": 12,
+              "block_size": 5,
+              "vocab_size": 17,
+              "bias": false,
+              "batch": 2,
+              "length": 3
+            },
+            "inputs": {
+              "batch": 2,
+              "length": 3,
+              "tokens": [
+                3,
+                10,
+                0,
+                7,
+                14,
+                4
+              ],
+              "targets": [
+                5,
+                16,
+                10,
+                4,
+                15,
+                -1
+              ]
+            },
+            "weight_sha256": "8e0c4f30eaad45398c1f76308437d42bf721832a70e4e34a24cbb6ec36fba4c3",
+            "input_sha256": "8f25b0b3d6f2d3ffa62748c36ddb8c2a745e9211fcf4081df405261ff71c5e1e",
+            "timings": {
+              "full_time": [
+                0.000364732999514672,
+                0.0003484349999780534,
+                0.0002437330003886018
+              ],
+              "last_time": [
+                0.00018101100067724474,
+                0.0001784959986252943,
+                0.00021463300072355196
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0014778710010432405,
+                  "optimizer_seconds": 0.0005203050004638499
+                },
+                {
+                  "forward_backward_seconds": 0.0014393359997484367,
+                  "optimizer_seconds": 0.00041927799975383095
+                }
+              ]
+            },
+            "parameter_count": 3780
+          },
+          "tiers": {
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.0982306490004703,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.001698765998298768,
+                "full_time": [
+                  0.0031109960000321735,
+                  0.0027932679986406583,
+                  0.004920701001537964
+                ],
+                "last_time": [
+                  0.0027899699998670258,
+                  0.0023936630022944883,
+                  0.002236118001746945
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.006708174998493632,
+                    "optimizer_seconds": 0.0014829239989921916
+                  },
+                  {
+                    "forward_backward_seconds": 0.0075372589999460615,
+                    "optimizer_seconds": 0.001513256000180263
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0031109960000321735,
+              "median_last_seconds": 0.0023936630022944883,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.01582599600078538,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.002417322000837885,
+                "full_time": [
+                  7.99389999883715e-05,
+                  7.375200220849365e-05,
+                  7.513599848607555e-05
+                ],
+                "last_time": [
+                  7.320300210267305e-05,
+                  9.52099981077481e-05,
+                  6.700700032524765e-05
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.00033961499866563827,
+                    "optimizer_seconds": 4.939199789077975e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.0002656920005392749,
+                    "optimizer_seconds": 0.00011308800094411708
+                  }
+                ]
+              },
+              "median_full_seconds": 7.513599848607555e-05,
+              "median_last_seconds": 7.320300210267305e-05,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.5758286960008263,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0021612500022456516,
+                "full_time": [
+                  8.323300062329508e-05,
+                  0.00010625499999150634,
+                  0.0001449209994461853
+                ],
+                "last_time": [
+                  8.381199950235896e-05,
+                  8.392000017920509e-05,
+                  0.0001762430001690518
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0005518640027730726,
+                    "optimizer_seconds": 0.00011678499868139625
+                  },
+                  {
+                    "forward_backward_seconds": 0.00036599899976863526,
+                    "optimizer_seconds": 0.00010507200204301625
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00010625499999150634,
+              "median_last_seconds": 8.392000017920509e-05,
+              "verified": true
+            },
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.016983462999633048,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.002004671998292906,
+                "full_time": [
+                  0.00025351200019940734,
+                  0.00018769800226436928,
+                  0.0001576370013935957
+                ],
+                "last_time": [
+                  0.00017375199968228117,
+                  0.00016158899961737916,
+                  0.0001966439995157998
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.000634477000858169,
+                    "optimizer_seconds": 5.037300070398487e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.0005627099999401253,
+                    "optimizer_seconds": 3.343899879837409e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00018769800226436928,
+              "median_last_seconds": 0.00017375199968228117,
+              "verified": true
+            },
+            "scalar_jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-6kfft376/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.5542137379998167,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0018498120007279795,
+                "full_time": [
+                  0.001038805999996839,
+                  0.00030709699785802513,
+                  0.00028328600092208944
+                ],
+                "last_time": [
+                  0.0003215710021322593,
+                  0.00029223599995020777,
+                  0.00031021299946587533
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0009555220021866262,
+                    "optimizer_seconds": 0.00011992999861831777
+                  },
+                  {
+                    "forward_backward_seconds": 0.0008876380015863106,
+                    "optimizer_seconds": 9.716400018078275e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.00030709699785802513,
+              "median_last_seconds": 0.00031021299946587533,
+              "verified": true
+            }
+          }
+        }
+      },
+      "errors": [],
+      "all_verified": true,
+      "reference_exported_in_this_run": false,
+      "blas": {
+        "library": "/lib/x86_64-linux-gnu/libblas.so.3",
+        "symbol": "cblas_dgemm",
+        "library_sha256": "e748efcae5753fe4a652877fccdb5895ac6f7605668a2db878b19c914e78e3a8",
+        "overlay_sha256": "7d7b6f1c0aaee3849ba1513c39ff8bcd15ec9bea8b41e3754b9f67aeb97ca942",
+        "integer_abi": "LP64 (32-bit C int)"
+      },
+      "reference_manifest": {
+        "upstream_commit": "3adf61e154c3fe3fca428ad6bc3818b27a3b8291",
+        "upstream_sha256": "7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c",
+        "torch_version": "2.14.1+cpu",
+        "torch_config": "PyTorch built with:\n  - GCC 13.3\n  - C++ Version: 202002\n  - Intel(R) oneAPI Math Kernel Library Version 2024.2-Product Build 20240605 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.12.0 (Git Hash 80afa71049cd69a3df32adcccb623b12cd7baa22)\n  - OpenMP 201511 (a.k.a. OpenMP 4.5)\n  - LAPACK is enabled (usually provided by MKL)\n  - NNPACK is enabled\n  - CPU capability usage: AVX512\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=5c4886908584029761b579af026dcfb627c84070, CUDA_FLAGS= -DLIBCUDACXX_ENABLE_SIMPLIFIED_COMPLEX_OPERATIONS -Xfatbin -compress-all  -Wno-deprecated-gpu-targets --expt-extended-lambda -DCUB_WRAPPED_NAMESPACE=at_cuda_detail -DDISABLE_CUSPARSE_DEPRECATED -DCUDA_HAS_FP16=1 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -DC10_NODEPRECATED, CXX_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/c++, CXX_FLAGS= -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_PYTORCH_QNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -O2 -fPIC -DC10_NODEPRECATED -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=range-loop-construct -Werror=bool-operation -Wnarrowing -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-unused-parameter -Wno-strict-overflow -Wno-strict-aliasing -Wno-stringop-overflow -Wsuggest-override -Wno-psabi -Wno-error=old-style-cast -faligned-new -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-dangling-reference -Wno-error=dangling-reference -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.14.1, USE_CUDA=0, USE_CUDNN=OFF, USE_CUSPARSELT=OFF, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_HIPSPARSELT=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, USE_XCCL=OFF, USE_XPU=OFF, \n",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "torch_num_threads": 1,
+        "dtype": "float64",
+        "dropout": 0.0,
+        "warmups": 1,
+        "repeats": 3,
+        "training_steps": 2,
+        "created_unix": 1792296458.2472203,
+        "cases": [
+          {
+            "name": "one_token",
+            "reference_sha256": "b6637009fa0d562405c95c5752a61044c288c0ca1266cf3cf5276dfa55d09e8a"
+          },
+          {
+            "name": "batched_bias",
+            "reference_sha256": "d170112a96b7af66afbe8515415419fa6b00ed682c2093ad3963f7182d78c33e"
+          },
+          {
+            "name": "batched_no_bias",
+            "reference_sha256": "ca27c2fafa8fe0038d5613678692ff9b5f5de498e2a3a663f700a3e4cc628c8c"
+          }
+        ]
+      }
+    },
+    "nano-gc": {
+      "schema": 1,
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "controller_python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "GOTO_NUM_THREADS": "1"
+      },
+      "runtime_environment": {
+        "PYSTACHY_LLVM": "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin",
+        "PYSTACHY_GC_STRESS": "1",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "git_revision": "6d4ed3d1171ad76c1f3a0377654c30deaa1b79d6",
+      "git_status": [],
+      "source_hashes": {
+        "examples/nanogpt/blas_parity.py": "1346feb0a22cc2350820b6543ee7e063845f970f3807d72d7d0aa821d3d1d02a",
+        "examples/nanogpt/driver.py": "8ec9f3dc2d267e90523199d30c43a2610a45797dba04ec01dff9e9321f274f28",
+        "examples/nanogpt/model.py": "3dddd99ebc5218fd7ae90c8c985fe2d16bece9a3c5f9c3e473b72f2b764ac125",
+        "examples/nanogpt/run.py": "765c801e52cef432bcaa034e63d8330f07cdb6b3922dd646461f89038023058a",
+        "examples/nanogpt/run_blas.py": "7204fd35acc59589e4a235adcd3c1468e477fdbfa44d404e6545f1aebb0413da",
+        "examples/nanogpt/training.py": "de24f2c761a90f0f02301d4e3f99bf11d5c0c3914fd2378408320ce2da51594f",
+        "examples/ndarray/bench.py": "baf709a2f2521bb38a53c2841e100bfb3850e0a96bdad3b989998ff063348761",
+        "examples/ndarray/blas_cases.py": "f3a3eb658b1883a5f6682d1b6b795f2783c4a5211cd2125b18804a8732c50c67",
+        "examples/ndarray/check_blas.py": "8bbcc827458da88c15e53f4cfd2b49c0275a2ea20f5a8112d7be941f77cca722",
+        "examples/ndarray/check_numpy.py": "3455bb428531b83b391770d3643c780615153587655db9d55c4ba4a0025e4aef",
+        "examples/ndarray/check_upstream.py": "849355e739fc40ab4c8d01072840be19e618e6e2de600b55a6264af3b2f82c6e",
+        "examples/ndarray/demo.py": "fa946f7e673dfb88464bcb6bc8a34a875fab5ce1bf78b08e5bf0c425fc71965d",
+        "examples/ndarray/lazy.py": "511fd14877da5e8ca35b02212fb23a9c40d14985da0b9559c4f7c44207e76aac",
+        "examples/ndarray/ndarray.py": "5ef5a1b878ad8d648aaf67747661420ea538a0dc4976f7fa71bb2c4762dbe626",
+        "examples/ndarray/ndarray_blas.py": "a7574d6c10ec1b3b8b5a92008fa985a294314fd026fd3908af501dd20aaa1333",
+        "examples/ndarray/workloads.py": "64d6b61d4ad2ca9d4551c7762ab6af0d14bac4cb42712d807b58131bcea13ec7",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "9a38cb05fa9a8e86694af5a257648d268bd66141e7950b0081ce85ff553c0903",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "e599b589484f49ec6774b0528b5c3d19425bca87c2a27b58003738920ff73f51",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "7095a0d22ef0210d230f80c288541a461c7c9bd39780ab93f33041a21f61bf84",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "90d9527f87cc2d3e4dce4a15d1e064811645ae74ae15f9f2d4dbeede80c61563",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "5c14a0b3134e2bed8a67a4603f590a82f8f09bcb201b0d9ab3ab28e8423fc885",
+        "lib/random.py": "8b9a5510c1c459803ff93ceeaa8613ca57a4edc89fe500efe2adde82dd4bd685",
+        "lib/re/__init__.py": "ebebbad3eba1cca2e6b6349985ca1abe4cbaf21123609760ce728c0020b2e7d7",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "5d7e9c2eee26a8b68d4fdb12b63536a7eadee1fa8b1b5e55ed54c7fb591100dd",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "bb7c5905da24171d7fecda953500a10078a70aac5d0048ef89cd62bab6970cae",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/types.py": "9168a28e7770815f266a8719ad4c6d2895734e5cbfa3cbf034e76890bab0f967",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "pystachy.py": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917",
+        "runtime.c": "806113f60731299f36be0300a97d68c9b4c017859fad601105bf22bac04cc5e2",
+        "runtime.py": "6352429cb103c332118c1d4eba17d28cba808289d3cce6050894c7d0c3919784",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "7e649ef8546e958c71707370e572c2b66d7857927946c8f3008fd63dc9275d42",
+        "src/pystachy_compiler/builtins.py": "869a8e4414fcad84259cc74f106f4ebc110d420a6198a0e82aaf9b91886fc839",
+        "src/pystachy_compiler/calls.py": "8102ad4ea2b8e1c49f25e19b113f44a7644f890539ae9f5b5fa2a4de9c36948a",
+        "src/pystachy_compiler/containers.py": "ef3065d5831a60b979388cbac17fb030c8e4ac14c30d6ce0510b8aa59a0a3791",
+        "src/pystachy_compiler/conversions.py": "0111f1ea4426f521b18e6d20ec684657a02bf509e7efa503e18b3edd601f388d",
+        "src/pystachy_compiler/declarations.py": "c017b298300607b0155b285830f7b2134ffb068fb88e4d4789963df3cf6e09b2",
+        "src/pystachy_compiler/diagnostics.py": "0079e692ac5222582534d808ca1d357230a8ae17bbe6c58101caaed43f3e4e72",
+        "src/pystachy_compiler/driver.py": "67638b2134ad2aba8e41de76af6c2398cbb560c5998471d3837302641ce065fd",
+        "src/pystachy_compiler/emission.py": "6a05ce2b8f281e812922719052a03669813eb3dcf46367d1751dfa385cd73956",
+        "src/pystachy_compiler/exceptions.py": "a7d42ba5c7b1004726b2fada0bfa65dc135df8ff9abd3b230abfabec543988ff",
+        "src/pystachy_compiler/expressions.py": "08be58bf32ce25d92ae56bb79f09d6c66bd69678b5968b6623936f47460f92f1",
+        "src/pystachy_compiler/flow.py": "70c917a69a6842c472514c471a1d7a48a29df95f59818651e4ae791a7bcea3b0",
+        "src/pystachy_compiler/functions.py": "54e649972292e6f07661723f7a474912b671a44eb6f59f051a1b666675a75df3",
+        "src/pystachy_compiler/gen.py": "74638ae12ba9064840b352b46b6b88d81e051a07d82c7331bc0bb1d8544be14a",
+        "src/pystachy_compiler/generators.py": "ff38bdf383d5df13e30dc0f714177da2f5ed38f7a00e16d6993c58da21cabf21",
+        "src/pystachy_compiler/ir.py": "f839adb46a827a5bf1f5f65cfaa127f0e2333c6ed973b29b34bc6ce4f09a9d9b",
+        "src/pystachy_compiler/ircheck.py": "46edb9c5d35936649b3766b8127b89668f61278a7df4cfadc9c8cf0b692df2b8",
+        "src/pystachy_compiler/lexer.py": "5692eb6602849a6e0128288db30b026f2be4464e69cbe83553f0a30bf917b155",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "230baea6d9d77fcedab2a8898e1447930250610a82086c50ee631d96bab95320",
+        "src/pystachy_compiler/local_versions.py": "8dfe1dd0c5caf7a0da8cd74024ac8adb7d8892099827f8abf42dc0b63e37c80f",
+        "src/pystachy_compiler/lower_module.py": "e277d89052456400c8ecdc07631bc7d4fb20e787387b86974762832276661db7",
+        "src/pystachy_compiler/lowering.py": "2aa2ceb49a41b304dff735dfe5c227e1cb30a96e6380023588f347400baf0a5c",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "666eb8f2d91572468ba6fae06096c1fa39849c9063918142aa67589a2c722a8a",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "c441b55dc0a2691c18307604c8ab6e7ce07f56b8005159edebe60d34028de1b4",
+        "src/pystachy_compiler/parser.py": "b38c958c2bdba930490588760faedfb838ad2114117b952e4a2b7fc95ad75508",
+        "src/pystachy_compiler/program.py": "590291d57ff06ca337c6606b888908406bd6f4b5d4d75bf16afa2690d1a6f9c4",
+        "src/pystachy_compiler/reflection.py": "efe41c60e70fc01cd35ac66e50147392663a60ac847585afc14300f9683352e7",
+        "src/pystachy_compiler/scalar_ir.py": "8e44332fd31080e4cf89a312c61dc2c573cbdd880551ba1f7069560594abeabe",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "8ee5caec73ed6035131dd0a6c40d00cefbefacfe0690885814a28c8b2b4b8e36",
+        "src/pystachy_compiler/statements.py": "dd49374e9bf32373732bec6d96267c103986f7ebf6495a935f0810f21c147060",
+        "src/pystachy_compiler/structs.py": "28059d45e787161fb565cb03e2b855c8d358d4c0a19ad7db64c599b29f576280",
+        "src/pystachy_compiler/syntax.py": "e663514041c2e6e85453d6d5ff67058dac51fc3e2a9e39eea51d0e85c5a895a6",
+        "src/pystachy_compiler/templates.py": "8e621f07e521a457f40cb7093075b5b7076604ac129f4d927949a90494c0ee7d",
+        "src/pystachy_compiler/union_arithmetic.py": "6854f37211a0dad72821d662edbb05561d8febb233f74134fb4d1ea6c2ffd980",
+        "src/pystachy_compiler/unions.py": "f0cf433fe8ef2b6045544ac0983d2b621ef55ecfa85a3958f14ea9ca45f4edab",
+        "src/pystachy_compiler/utils.py": "ac506f590aa40ce3fa7ab9cbc573789e82bf8efe7886f5b10abb8b73d39f431e",
+        "src/pystachy_compiler/variables.py": "736a72ce015960c131a43b41a9787b2a86c3982a03f6435c6c5028407016e979",
+        "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141"
+      },
+      "builds": {
+        "scalar": {
+          "command": [
+            "env",
+            "PYSTACHY_GC_STRESS=1000",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+            "build",
+            "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+            "-o",
+            "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar"
+          ],
+          "returncode": 0,
+          "timed_out": false,
+          "stderr": "",
+          "wall_seconds": 3.5874111900011485,
+          "runner_sha256": "05dc293f57f1874e5f4738a5cd4f5b6e3997c2ead3d02946cce9948e8afbee32",
+          "binary_sha256": "49441e34e63a18bfb3ade69f56163d599251335579afd7f86ac799ad2201e089"
+        },
+        "blas": {
+          "command": [
+            "env",
+            "PYSTACHY_GC_STRESS=1000",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+            "build",
+            "/tmp/pystachy-nanogpt-kvvoj903/runner_blas.py",
+            "-o",
+            "/tmp/pystachy-nanogpt-kvvoj903/runner_blas"
+          ],
+          "returncode": 0,
+          "timed_out": false,
+          "stderr": "",
+          "wall_seconds": 3.935916594000446,
+          "runner_sha256": "7c4c5a53d01e371a494545e1cbfe104c8acad44a27df6c72812ec6b0e1eeb30d",
+          "binary_sha256": "bf4a57703989e7251d518e52777f2bf97423a1884d710c9295b8a22d9fff410b"
+        }
+      },
+      "cases": {
+        "one_token": {
+          "reference": {
+            "case": {
+              "name": "one_token",
+              "n_layer": 1,
+              "n_head": 1,
+              "n_embd": 8,
+              "block_size": 5,
+              "vocab_size": 13,
+              "bias": true,
+              "batch": 1,
+              "length": 1
+            },
+            "inputs": {
+              "batch": 1,
+              "length": 1,
+              "tokens": [
+                3
+              ],
+              "targets": [
+                5
+              ]
+            },
+            "weight_sha256": "176c96b340800b3396f0d0dc20da6d71d444eb00732de2dd8e4150c81f89809e",
+            "input_sha256": "4f88cb9eef76028053c8ef8dd373d5239b8a16c8175b9c7e961d3a71076b15c6",
+            "timings": {
+              "full_time": [
+                0.00023807900106476154,
+                0.00012561699986690655,
+                0.00011233599980187137
+              ],
+              "last_time": [
+                0.0001498359997640364,
+                0.00012246400001458824,
+                0.00010803399891301524
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0008509580002282746,
+                  "optimizer_seconds": 0.0014587859986932017
+                },
+                {
+                  "forward_backward_seconds": 0.0010278739991917973,
+                  "optimizer_seconds": 0.0007775700014462927
+                }
+              ]
+            },
+            "parameter_count": 1032
+          },
+          "tiers": {
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.15018206099921372,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.006329337997158291,
+                "full_time": [
+                  0.001994537000427954,
+                  0.0021566799987340346,
+                  0.0019478899994282983
+                ],
+                "last_time": [
+                  0.002002769000682747,
+                  0.0018688670024857856,
+                  0.0020909929990011733
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.013959920001070714,
+                    "optimizer_seconds": 2.247399970656261e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.0221604770013073,
+                    "optimizer_seconds": 1.1039999662898481e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.001994537000427954,
+              "median_last_seconds": 0.002002769000682747,
+              "verified": true
+            },
+            "scalar_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 1.2759393269989232,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.006422600999940187,
+                "full_time": [
+                  0.0019922649989894126,
+                  0.0019664040009956807,
+                  0.0018896190013037995
+                ],
+                "last_time": [
+                  0.001912128002004465,
+                  0.0019600720006565098,
+                  0.0019406079991313163
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.013917223001044476,
+                    "optimizer_seconds": 4.3694999476429075e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.019846663002681453,
+                    "optimizer_seconds": 3.145200025755912e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0019664040009956807,
+              "median_last_seconds": 0.0019406079991313163,
+              "verified": true
+            },
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.040409901997918496,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0005390779988374561,
+                "full_time": [
+                  0.0004185960024187807,
+                  0.0002862050023395568,
+                  0.0003578239993657917
+                ],
+                "last_time": [
+                  0.00028200599990668707,
+                  0.0002675119976629503,
+                  0.0002775630018732045
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0007763229987176601,
+                    "optimizer_seconds": 0.0007028780019027181
+                  },
+                  {
+                    "forward_backward_seconds": 0.0007568290020572022,
+                    "optimizer_seconds": 0.0004585599999700207
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0003578239993657917,
+              "median_last_seconds": 0.0002775630018732045,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.12607664600000135,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.007370728999376297,
+                "full_time": [
+                  0.001308497001446085,
+                  0.0010308499986422248,
+                  0.0010089829993376043
+                ],
+                "last_time": [
+                  0.0009958859991456848,
+                  0.0010196389994234778,
+                  0.0009324090024165343
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.009994405001634732,
+                    "optimizer_seconds": 2.336400211788714e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.01198154400117346,
+                    "optimizer_seconds": 1.095100014936179e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0010308499986422248,
+              "median_last_seconds": 0.0009958859991456848,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/one_token.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 1.4727389639992907,
+              "comparison": {
+                "numeric_values": 9343,
+                "max_absolute_error": 3.738329090730019e-15,
+                "max_tolerance_fraction": 3.287443855364556e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0065542320007807575,
+                "full_time": [
+                  0.001197238998429384,
+                  0.0014210890003596433,
+                  0.0010509949970582966
+                ],
+                "last_time": [
+                  0.001060471997334389,
+                  0.0010569010009930935,
+                  0.0011079159994551446
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.009334726997622056,
+                    "optimizer_seconds": 4.546000127447769e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.012186036001367029,
+                    "optimizer_seconds": 5.821599916089326e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.001197238998429384,
+              "median_last_seconds": 0.001060471997334389,
+              "verified": true
+            }
+          }
+        },
+        "batched_bias": {
+          "reference": {
+            "case": {
+              "name": "batched_bias",
+              "n_layer": 2,
+              "n_head": 2,
+              "n_embd": 12,
+              "block_size": 5,
+              "vocab_size": 19,
+              "bias": true,
+              "batch": 2,
+              "length": 5
+            },
+            "inputs": {
+              "batch": 2,
+              "length": 5,
+              "tokens": [
+                3,
+                10,
+                17,
+                5,
+                12,
+                0,
+                7,
+                14,
+                2,
+                9
+              ],
+              "targets": [
+                5,
+                16,
+                8,
+                0,
+                11,
+                3,
+                14,
+                6,
+                17,
+                -1
+              ]
+            },
+            "weight_sha256": "b30df641c22dff042216871a3263d338b00a87449f7636a1ef85314d64703a3c",
+            "input_sha256": "47df2f6d27a6087911ea736a15e86d4852eb357a9e79c7b67841e8d0701fc647",
+            "timings": {
+              "full_time": [
+                0.00020310000036261044,
+                0.00019955700008722488,
+                0.0005127960012032418
+              ],
+              "last_time": [
+                0.00024213899996539112,
+                0.00021100199955981225,
+                0.0001954729996214155
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0011093700013589114,
+                  "optimizer_seconds": 0.0009439269997528754
+                },
+                {
+                  "forward_backward_seconds": 0.0011316159998386865,
+                  "optimizer_seconds": 0.0008238319987867726
+                }
+              ]
+            },
+            "parameter_count": 4080
+          },
+          "tiers": {
+            "scalar_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 2.643457228998159,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.04834137299985741,
+                "full_time": [
+                  0.024250066999229603,
+                  0.016602034000243293,
+                  0.016732309999497375
+                ],
+                "last_time": [
+                  0.017593864002265036,
+                  0.015486240001337137,
+                  0.014656434002972674
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.1409203039984277,
+                    "optimizer_seconds": 0.00013042700084042735
+                  },
+                  {
+                    "forward_backward_seconds": 0.17578286200296134,
+                    "optimizer_seconds": 0.00013879499965696596
+                  }
+                ]
+              },
+              "median_full_seconds": 0.016732309999497375,
+              "median_last_seconds": 0.015486240001337137,
+              "verified": true
+            },
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.12337053699957323,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.001574196998262778,
+                "full_time": [
+                  0.004155757000262383,
+                  0.0038750430030631833,
+                  0.004057952999573899
+                ],
+                "last_time": [
+                  0.0037628989994118456,
+                  0.0034667879990593065,
+                  0.003606286998547148
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.011087913997471333,
+                    "optimizer_seconds": 0.0017942209997272585
+                  },
+                  {
+                    "forward_backward_seconds": 0.010161232999962522,
+                    "optimizer_seconds": 0.0031117500002437737
+                  }
+                ]
+              },
+              "median_full_seconds": 0.004057952999573899,
+              "median_last_seconds": 0.003606286998547148,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.7580357039987575,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.039781461000529816,
+                "full_time": [
+                  0.007994183000846533,
+                  0.014826646998699289,
+                  0.014436007000767859
+                ],
+                "last_time": [
+                  0.007633868000993971,
+                  0.010544183001911733,
+                  0.0069840719988860656
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.05908038500274415,
+                    "optimizer_seconds": 7.321500015677884e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.06738475999736693,
+                    "optimizer_seconds": 3.620200004661456e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.014436007000767859,
+              "median_last_seconds": 0.007633868000993971,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 2.1028417919987987,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0323698569991393,
+                "full_time": [
+                  0.007070290001138346,
+                  0.008709597001143266,
+                  0.007824684002116555
+                ],
+                "last_time": [
+                  0.006152735000796383,
+                  0.00685882800098625,
+                  0.0071542430014233105
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0588602180032467,
+                    "optimizer_seconds": 0.00013496300016413443
+                  },
+                  {
+                    "forward_backward_seconds": 0.07603249599924311,
+                    "optimizer_seconds": 0.0001336700006504543
+                  }
+                ]
+              },
+              "median_full_seconds": 0.007824684002116555,
+              "median_last_seconds": 0.00685882800098625,
+              "verified": true
+            },
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 1.0222952320000331,
+              "comparison": {
+                "numeric_values": 37331,
+                "max_absolute_error": 1.41655115257776e-15,
+                "max_tolerance_fraction": 1.4165511525777593e-05,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.039029437000863254,
+                "full_time": [
+                  0.022359983002388617,
+                  0.015837738999834983,
+                  0.01625892400261364
+                ],
+                "last_time": [
+                  0.015029547997983173,
+                  0.018129492997104535,
+                  0.01547218500127201
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.12836044700088678,
+                    "optimizer_seconds": 5.491599949891679e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.1676921600010246,
+                    "optimizer_seconds": 3.8037000194890425e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.01625892400261364,
+              "median_last_seconds": 0.01547218500127201,
+              "verified": true
+            }
+          }
+        },
+        "batched_no_bias": {
+          "reference": {
+            "case": {
+              "name": "batched_no_bias",
+              "n_layer": 2,
+              "n_head": 3,
+              "n_embd": 12,
+              "block_size": 5,
+              "vocab_size": 17,
+              "bias": false,
+              "batch": 2,
+              "length": 3
+            },
+            "inputs": {
+              "batch": 2,
+              "length": 3,
+              "tokens": [
+                3,
+                10,
+                0,
+                7,
+                14,
+                4
+              ],
+              "targets": [
+                5,
+                16,
+                10,
+                4,
+                15,
+                -1
+              ]
+            },
+            "weight_sha256": "8e0c4f30eaad45398c1f76308437d42bf721832a70e4e34a24cbb6ec36fba4c3",
+            "input_sha256": "8f25b0b3d6f2d3ffa62748c36ddb8c2a745e9211fcf4081df405261ff71c5e1e",
+            "timings": {
+              "full_time": [
+                0.000364732999514672,
+                0.0003484349999780534,
+                0.0002437330003886018
+              ],
+              "last_time": [
+                0.00018101100067724474,
+                0.0001784959986252943,
+                0.00021463300072355196
+              ],
+              "training": [
+                {
+                  "forward_backward_seconds": 0.0014778710010432405,
+                  "optimizer_seconds": 0.0005203050004638499
+                },
+                {
+                  "forward_backward_seconds": 0.0014393359997484367,
+                  "optimizer_seconds": 0.00041927799975383095
+                }
+              ]
+            },
+            "parameter_count": 3780
+          },
+          "tiers": {
+            "scalar_cpython": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-blas-fold/build/audit-blas/env/bin/python",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.18450378000125056,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.0017628259993216489,
+                "full_time": [
+                  0.0027447550019132905,
+                  0.004616493999492377,
+                  0.0027250330022070557
+                ],
+                "last_time": [
+                  0.0024535980010114145,
+                  0.0024340370000572875,
+                  0.0025198980001732707
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.017604822998691816,
+                    "optimizer_seconds": 0.00245922099929885
+                  },
+                  {
+                    "forward_backward_seconds": 0.04354768299890566,
+                    "optimizer_seconds": 0.0043870869994862005
+                  }
+                ]
+              },
+              "median_full_seconds": 0.0027447550019132905,
+              "median_last_seconds": 0.0024535980010114145,
+              "verified": true
+            },
+            "blas_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.49119516700011445,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.025993070998083567,
+                "full_time": [
+                  0.006381803999829572,
+                  0.007029108001006534,
+                  0.007172311001340859
+                ],
+                "last_time": [
+                  0.005971810998744331,
+                  0.006303780999587616,
+                  0.006471584998507751
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.040857550000509946,
+                    "optimizer_seconds": 5.493400021805428e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.056066665001708316,
+                    "optimizer_seconds": 4.910800271318294e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.007029108001006534,
+              "median_last_seconds": 0.006303780999587616,
+              "verified": true
+            },
+            "blas_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_blas.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 2.890736637000373,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.05401599099786836,
+                "full_time": [
+                  0.006446370000048773,
+                  0.007672529001865769,
+                  0.005822905000968603
+                ],
+                "last_time": [
+                  0.00607055199725437,
+                  0.009843193001870532,
+                  0.012895222000224749
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.046750953999435296,
+                    "optimizer_seconds": 0.0002184309996664524
+                  },
+                  {
+                    "forward_backward_seconds": 0.05759470599878114,
+                    "optimizer_seconds": 0.00010688299880712293
+                  }
+                ]
+              },
+              "median_full_seconds": 0.006446370000048773,
+              "median_last_seconds": 0.009843193001870532,
+              "verified": true
+            },
+            "scalar_aot": {
+              "command": [
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 0.7598037169991585,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.026905909999186406,
+                "full_time": [
+                  0.014337095999508165,
+                  0.013261727002827683,
+                  0.014065769999433542
+                ],
+                "last_time": [
+                  0.01565072200173745,
+                  0.017940173998795217,
+                  0.013199716002418427
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.09807404300227063,
+                    "optimizer_seconds": 5.864899867447093e-05
+                  },
+                  {
+                    "forward_backward_seconds": 0.12022605199672398,
+                    "optimizer_seconds": 3.33480020344723e-05
+                  }
+                ]
+              },
+              "median_full_seconds": 0.014065769999433542,
+              "median_last_seconds": 0.01565072200173745,
+              "verified": true
+            },
+            "scalar_jit": {
+              "command": [
+                "env",
+                "PYSTACHY_GC_STRESS=1000",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-gc-budget/pystachy",
+                "run",
+                "/tmp/pystachy-nanogpt-kvvoj903/runner_scalar.py",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.weights",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-nanogpt-training/build/audit-nanogpt/fixtures/batched_no_bias.input",
+                "1",
+                "3"
+              ],
+              "returncode": 0,
+              "timed_out": false,
+              "stderr": "",
+              "wall_seconds": 1.8470242869989306,
+              "comparison": {
+                "numeric_values": 34363,
+                "max_absolute_error": 4.440892098500626e-16,
+                "max_tolerance_fraction": 9.63788709394064e-07,
+                "rtol": 1e-09,
+                "atol": 1e-10
+              },
+              "timings": {
+                "load_time": 0.029708347999985563,
+                "full_time": [
+                  0.011358789997757412,
+                  0.012106955997296609,
+                  0.012864750999142416
+                ],
+                "last_time": [
+                  0.014319447000161745,
+                  0.014672111999971094,
+                  0.011195011000381783
+                ],
+                "training": [
+                  {
+                    "forward_backward_seconds": 0.0890963380006724,
+                    "optimizer_seconds": 0.0001209719994221814
+                  },
+                  {
+                    "forward_backward_seconds": 0.11556451100113918,
+                    "optimizer_seconds": 0.00010571500024525449
+                  }
+                ]
+              },
+              "median_full_seconds": 0.012106955997296609,
+              "median_last_seconds": 0.014319447000161745,
+              "verified": true
+            }
+          }
+        }
+      },
+      "errors": [],
+      "all_verified": true,
+      "reference_exported_in_this_run": false,
+      "blas": {
+        "library": "/lib/x86_64-linux-gnu/libblas.so.3",
+        "symbol": "cblas_dgemm",
+        "library_sha256": "e748efcae5753fe4a652877fccdb5895ac6f7605668a2db878b19c914e78e3a8",
+        "overlay_sha256": "7d7b6f1c0aaee3849ba1513c39ff8bcd15ec9bea8b41e3754b9f67aeb97ca942",
+        "integer_abi": "LP64 (32-bit C int)"
+      },
+      "reference_manifest": {
+        "upstream_commit": "3adf61e154c3fe3fca428ad6bc3818b27a3b8291",
+        "upstream_sha256": "7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c",
+        "torch_version": "2.14.1+cpu",
+        "torch_config": "PyTorch built with:\n  - GCC 13.3\n  - C++ Version: 202002\n  - Intel(R) oneAPI Math Kernel Library Version 2024.2-Product Build 20240605 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.12.0 (Git Hash 80afa71049cd69a3df32adcccb623b12cd7baa22)\n  - OpenMP 201511 (a.k.a. OpenMP 4.5)\n  - LAPACK is enabled (usually provided by MKL)\n  - NNPACK is enabled\n  - CPU capability usage: AVX512\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=5c4886908584029761b579af026dcfb627c84070, CUDA_FLAGS= -DLIBCUDACXX_ENABLE_SIMPLIFIED_COMPLEX_OPERATIONS -Xfatbin -compress-all  -Wno-deprecated-gpu-targets --expt-extended-lambda -DCUB_WRAPPED_NAMESPACE=at_cuda_detail -DDISABLE_CUSPARSE_DEPRECATED -DCUDA_HAS_FP16=1 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -DC10_NODEPRECATED, CXX_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/c++, CXX_FLAGS= -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_PYTORCH_QNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -O2 -fPIC -DC10_NODEPRECATED -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=range-loop-construct -Werror=bool-operation -Wnarrowing -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-unused-parameter -Wno-strict-overflow -Wno-strict-aliasing -Wno-stringop-overflow -Wsuggest-override -Wno-psabi -Wno-error=old-style-cast -faligned-new -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-dangling-reference -Wno-error=dangling-reference -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.14.1, USE_CUDA=0, USE_CUDNN=OFF, USE_CUSPARSELT=OFF, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_HIPSPARSELT=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, USE_XCCL=OFF, USE_XPU=OFF, \n",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "torch_num_threads": 1,
+        "dtype": "float64",
+        "dropout": 0.0,
+        "warmups": 1,
+        "repeats": 3,
+        "training_steps": 2,
+        "created_unix": 1792296458.2472203,
+        "cases": [
+          {
+            "name": "one_token",
+            "reference_sha256": "b6637009fa0d562405c95c5752a61044c288c0ca1266cf3cf5276dfa55d09e8a"
+          },
+          {
+            "name": "batched_bias",
+            "reference_sha256": "d170112a96b7af66afbe8515415419fa6b00ed682c2093ad3963f7182d78c33e"
+          },
+          {
+            "name": "batched_no_bias",
+            "reference_sha256": "ca27c2fafa8fe0038d5613678692ff9b5f5de498e2a3a663f700a3e4cc628c8c"
+          }
+        ]
+      }
+    }
+  },
+  "numpy_baselines": {
+    "one_token": {
+      "case": {
+        "name": "one_token",
+        "n_layer": 1,
+        "n_head": 1,
+        "n_embd": 8,
+        "block_size": 5,
+        "vocab_size": 13,
+        "bias": true,
+        "batch": 1,
+        "length": 1
+      },
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+      "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "GOTO_NUM_THREADS": "1"
+      },
+      "warmups": 1,
+      "repeats": 3,
+      "numpy": {
+        "version": "2.3.5",
+        "load_seconds": 0.0008085959998425096,
+        "comparison": {
+          "numeric_values": 27,
+          "max_absolute_error": 1.3877787807814457e-17,
+          "max_tolerance_fraction": 8.341313647871757e-08,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        },
+        "full_seconds": [
+          0.00026698199872043915,
+          0.00030787500145379454,
+          0.0010537359994486906
+        ],
+        "last_seconds": [
+          7.851999907870777e-05,
+          7.623499914188869e-05,
+          7.454200022039004e-05
+        ],
+        "full": {
+          "median_ms": 0.30787500145379454,
+          "p10_ms": 0.26698199872043915,
+          "p90_ms": 1.0537359994486906
+        },
+        "last": {
+          "median_ms": 0.07623499914188869,
+          "p10_ms": 0.07454200022039004,
+          "p90_ms": 0.07851999907870777
+        }
+      }
+    },
+    "batched_bias": {
+      "case": {
+        "name": "batched_bias",
+        "n_layer": 2,
+        "n_head": 2,
+        "n_embd": 12,
+        "block_size": 5,
+        "vocab_size": 19,
+        "bias": true,
+        "batch": 2,
+        "length": 5
+      },
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+      "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "GOTO_NUM_THREADS": "1"
+      },
+      "warmups": 1,
+      "repeats": 3,
+      "numpy": {
+        "version": "2.3.5",
+        "load_seconds": 0.002338924001378473,
+        "comparison": {
+          "numeric_values": 229,
+          "max_absolute_error": 4.440892098500626e-16,
+          "max_tolerance_fraction": 2.949713870417964e-07,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        },
+        "full_seconds": [
+          0.0002869710006052628,
+          0.0001969620025192853,
+          0.00018816500232787803
+        ],
+        "last_seconds": [
+          0.0001589820021763444,
+          0.00014889099838910624,
+          0.0001897549991554115
+        ],
+        "full": {
+          "median_ms": 0.1969620025192853,
+          "p10_ms": 0.18816500232787803,
+          "p90_ms": 0.2869710006052628
+        },
+        "last": {
+          "median_ms": 0.1589820021763444,
+          "p10_ms": 0.14889099838910624,
+          "p90_ms": 0.1897549991554115
+        }
+      }
+    },
+    "batched_no_bias": {
+      "case": {
+        "name": "batched_no_bias",
+        "n_layer": 2,
+        "n_head": 3,
+        "n_embd": 12,
+        "block_size": 5,
+        "vocab_size": 17,
+        "bias": false,
+        "batch": 2,
+        "length": 3
+      },
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+      "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "GOTO_NUM_THREADS": "1"
+      },
+      "warmups": 1,
+      "repeats": 3,
+      "numpy": {
+        "version": "2.3.5",
+        "load_seconds": 0.0027627639974525664,
+        "comparison": {
+          "numeric_values": 137,
+          "max_absolute_error": 5.551115123125783e-17,
+          "max_tolerance_fraction": 2.5845375943316504e-07,
+          "rtol": 1e-09,
+          "atol": 1e-10
+        },
+        "full_seconds": [
+          0.00032242899760603905,
+          0.00029960699976072647,
+          0.00018557200019131415
+        ],
+        "last_seconds": [
+          0.0001404430004185997,
+          0.00017048900190275162,
+          0.00013759500143351033
+        ],
+        "full": {
+          "median_ms": 0.29960699976072647,
+          "p10_ms": 0.18557200019131415,
+          "p90_ms": 0.32242899760603905
+        },
+        "last": {
+          "median_ms": 0.1404430004185997,
+          "p10_ms": 0.13759500143351033,
+          "p90_ms": 0.17048900190275162
+        }
+      }
+    }
+  },
+  "limitations": [
+    "No fresh import sweep: compiler/runtime/lib/ports unchanged.",
+    "NumPy/SciPy baseline executes under CPython; not native package compatibility.",
+    "Native BLAS provider measured locally is reference BLAS only, not OpenBLAS.",
+    "Retained PyTorch fixtures reused and all hashes/contents checked; no fresh upstream export.",
+    "One warmup/three repeats on shared host, two concurrent correctness jobs; timings are not performance comparisons.",
+    "No full CPython regrtest, PyPI suite, local make verify, RSS or paired performance measurement."
+  ],
+  "setup_attempts": [
+    "Pinned global Python had no NumPy; isolated uv venv installed NumPy 2.3.5 / SciPy 1.16.3 successfully.",
+    "Existing torch venv has no pip module; no changes made to that environment."
+  ]
+}

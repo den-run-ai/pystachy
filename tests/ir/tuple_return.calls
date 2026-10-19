@@ -1,0 +1,10 @@
+@main.init: pys_alloc pys_list_new pys_list_append pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@v.f.step: pys_mod pys_raise
+@f.step: pys_alloc
+@f.run:
+@f.pair: pys_alloc
+@f.kept: pys_alloc
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
