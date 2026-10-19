@@ -53,6 +53,7 @@ except Exception as e:
     print(isinstance(e, k), isinstance(e, base), isinstance(e, AppError), isinstance(e, group))
     t = type(e)
     print(t is KeyError, t is k, t, t.__name__, t in seen)
+    print(isinstance(t, type), isinstance(type(e), type), isinstance(type(e), KeyError))
 try:
     raise NotFound("nf")
 except AppError as e:

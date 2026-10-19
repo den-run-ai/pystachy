@@ -17,6 +17,7 @@ True False True
 True True False False
 True True False False
 True True <class 'KeyError'> KeyError True
+True True False
 True False True True
 KeyError('missing') 'missing'
 ValueError() ValueError('') ValueError('x') ValueError(3) 'None'
