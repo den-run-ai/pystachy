@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
+from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
@@ -2006,8 +2006,8 @@ def gen_stack_key(self, t: str, ms: list[str]) -> bool:
 def gen_key_read(self, f: FnInfo) -> bool:
     # whether f, a method that o[k] calls with k, takes a tuple k as it is (stack_keyed) and only
     # reads it, its items, its length or its type, and the locals assigned it (key_reads): it can
-    # keep none of them, nor return it, nor let a closure or a generator's frame hold it
-    # (stack_kept)
+    # keep none of them, nor return it, nor let a closure, a generator expression or a generator's
+    # frame hold it (stack_kept)
     if f.keyread < 0:
         f.keyread = 0
         if stack_keyed(f) and f.node.kind == "def" and not f.export and not f.pyexport:
@@ -2019,14 +2019,17 @@ def gen_key_read(self, f: FnInfo) -> bool:
                 for st in body:
                     if stack_aliases(st, names):
                         added = True
-            locs: dict[str, bool] = {}
-            local_names(body, locs)
+            bound: dict[str, bool] = {}
+            local_names(body, bound)
+            for st in body:
+                comp_vars(st, bound)  # (len in [len(k) for len in fs] is not the builtin)
             builtins: dict[str, bool] = {}
             for b in ["len", "isinstance", "int", "float", "str", "bool"]:
-                if b not in locs and b not in f.params and b not in self.funcs and b not in self.classes and b not in self.mvars:
+                if b not in bound and b not in f.params and b not in self.funcs and b not in self.classes and b not in self.mvars:
                     builtins[b] = True  # (another module's own len is named m$len where it calls it)
+            key = f.params[1] if f.params[1] not in bound else ""
             ns = list(names)
-            if len([st for st in body if stack_kept(st, ns) or not key_reads(st, names, builtins)]) == 0:
+            if len([st for st in body if stack_kept(st, ns) or not key_reads(st, names, builtins, key)]) == 0:
                 f.keyread = 1
     return f.keyread == 1
 

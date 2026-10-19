@@ -1,9 +1,13 @@
 # o[i, j], o[i, j] = v and o[i, j] op= v make the key tuple in the caller's frame where each
 # __getitem__ and __setitem__ that the index may call (an override too) only reads the key: its
 # items, its length or its type (Gen.stack_key). A method that keeps the key in any way, returns
-# it, passes it on or lets a closure take it gets a heap tuple, as before: equal to the key, the
-# same tuple wherever one call kept it, and one tuple for both calls of o[i, j] op= v. Str items
-# of a key in the frame stay alive while __getitem__ allocates
+# it, passes it on or lets a closure or a generator expression take it gets a heap tuple, as
+# before: equal to the key, the same tuple wherever one call kept it, and one tuple for both calls
+# of o[i, j] op= v. So does one that keeps it where isinstance() tests another value (an alias,
+# which may hold one, or the key once assigned one), or through a len that is not the builtin.
+# Str items of a key in the frame stay alive while __getitem__ allocates
+from typing import Callable, Iterator
+
 saved: list[tuple[int, int]] = []
 
 
@@ -134,6 +138,46 @@ class Named:
         return joined + "|" + key[1] + key[0]
 
 
+class Aliased:
+    # isinstance(x, int) is true where x is not the key: the block keeps it
+    def __init__(self) -> None:
+        self.keys: list[tuple[int, int]] = []
+
+    def __setitem__(self, key: tuple[int, int], value: object) -> None:
+        if isinstance(value, int):
+            self.keys.append(key)
+        else:
+            value = key  # (value: an alias of key, which holds another value above)
+
+    def __getitem__(self, key):
+        k = key
+        key = 5
+        if isinstance(key, int):
+            self.keys.append(k)
+        return 0
+
+
+measured: list[tuple[int, int]] = []
+
+
+def measure(t: tuple[int, int]) -> int:
+    measured.append(t)
+    return 2
+
+
+measures: list[Callable[[tuple[int, int]], int]] = [measure]
+
+
+class Measured:
+    def __getitem__(self, key: tuple[int, int]) -> int:
+        return [len(key) for len in measures][0] + key[0]  # (len: the comprehension's measure)
+
+
+class Lazy:
+    def __getitem__(self, key: tuple[int, int]) -> Iterator[int]:
+        return (key[n] * 100 for n in range(2))  # (it reads the key as it is iterated)
+
+
 class Shape:
     def __getitem__(self, key: tuple[int, int]) -> int:
         return key[0] * key[1]
@@ -201,3 +245,10 @@ nm = Named()
 print([nm[str(i) * 4, "y" * i] for i in range(5)])
 shapes: list[Shape] = [Shape(), Square()]
 print([s[n, n + 1] for s in shapes for n in range(3)])
+al = Aliased()
+for i in range(3):
+    al[i, i + 1] = i
+print([al[i, -i] for i in range(3)], al.keys)
+print([Measured()[i, i + 1] for i in range(3)], measured)
+lazies = [Lazy()[i, i + 1] for i in range(3)]
+print([list(x) for x in lazies])

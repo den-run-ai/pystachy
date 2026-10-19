@@ -1293,60 +1293,74 @@ def stack_kept(n: Node, names: list[str]) -> bool:
     return False
 
 
-def key_reads(n: Node, names: dict[str, bool], builtins: dict[str, bool]) -> bool:
+def key_reads(n: Node, names: dict[str, bool], builtins: dict[str, bool], key: str) -> bool:
     # whether code n uses what a name of names holds, a tuple, only to read it: its items (x[i],
     # for v in x, f(*x), a, b = x), its length or its type (len(x), isinstance(x, C), of builtins:
     # those that the code and its module do not bind); and to assign it to another name of names
     # (y = x: stack_aliases). Such code cannot keep the tuple, nor return it (Gen.stack_key); a
-    # def or lambda that names it, which could, stack_kept rejects
+    # def, lambda or generator expression that names it, which could, stack_kept rejects. key is
+    # the parameter that holds the tuple where no statement assigns it ("" if one does)
     k = n.kind
     if k == "name":
         return n.s not in names
     if k == "if" and n.kids[0].kind == "call" and len(n.kids[0].kids) == 3 and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == "isinstance" and "isinstance" in builtins:
         x = n.kids[0].kids[1]
         c = n.kids[0].kids[2]
-        if x.kind == "name" and x.s in names and c.kind == "name" and c.s in builtins and (c.s == "int" or c.s == "float" or c.s == "str" or c.s == "bool"):
-            # (if isinstance(x, int): its block runs where x is no tuple, as a template's other
-            # specializations take it, and its else block where x is one)
-            return key_reads(n.kids[2], names, builtins)
+        if x.kind == "name" and x.s == key and c.kind == "name" and c.s in builtins and (c.s == "int" or c.s == "float" or c.s == "str" or c.s == "bool"):
+            # (if isinstance(key, int): its block runs where key is no tuple, as a template's other
+            # specializations take it, and its else block where key is one. Not an alias's: the
+            # local may hold another value there)
+            return key_reads(n.kids[2], names, builtins, key)
     if k == "call" and len(n.kids) >= 2 and n.kids[0].kind == "name" and n.kids[0].s in builtins and n.kids[1].kind == "name" and n.kids[1].s in names:
         if n.kids[0].s == "len" and len(n.kids) == 2:
             return True
         if n.kids[0].s == "isinstance" and len(n.kids) == 3:
-            return key_reads(n.kids[2], names, builtins)
+            return key_reads(n.kids[2], names, builtins, key)
     if (k == "index" or k == "starred") and n.kids[0].kind == "name" and n.kids[0].s in names:
-        return len([x for x in n.kids[1:] if not key_reads(x, names, builtins)]) == 0
+        return len([x for x in n.kids[1:] if not key_reads(x, names, builtins, key)]) == 0
     if k == "for":
-        return key_target(n.kids[0], names, builtins) and (n.kids[1].kind == "name" and n.kids[1].s in names or key_reads(n.kids[1], names, builtins)) and len([x for x in n.kids[2:] if not key_reads(x, names, builtins)]) == 0
+        return key_target(n.kids[0], names, builtins, key) and (n.kids[1].kind == "name" and n.kids[1].s in names or key_reads(n.kids[1], names, builtins, key)) and len([x for x in n.kids[2:] if not key_reads(x, names, builtins, key)]) == 0
     if k == "assign":
         ts = n.kids[:-1]
         v = n.kids[-1]
         if v.kind == "name" and v.s in names:
             # (y = x, y one of names, or a, b = x)
-            return len([t for t in ts if not (t.kind == "name" and t.s in names) and not ((t.kind == "tuple" or t.kind == "list") and key_target(t, names, builtins))]) == 0
-        return len([t for t in ts if not key_target(t, names, builtins)]) == 0 and key_reads(v, names, builtins)
+            return len([t for t in ts if not (t.kind == "name" and t.s in names) and not ((t.kind == "tuple" or t.kind == "list") and key_target(t, names, builtins, key))]) == 0
+        return len([t for t in ts if not key_target(t, names, builtins, key)]) == 0 and key_reads(v, names, builtins, key)
     if k == "augassign" or k == "annassign" or k == "del":
         for i in range(len(n.kids)):
             if i == 0 or k == "del":
-                if n.kids[i].kind == "name" and n.kids[i].s in names or not key_target(n.kids[i], names, builtins):
+                if n.kids[i].kind == "name" and n.kids[i].s in names or not key_target(n.kids[i], names, builtins, key):
                     return False  # (x += t reads x first)
-            elif not key_reads(n.kids[i], names, builtins):
+            elif not key_reads(n.kids[i], names, builtins, key):
                 return False
         return True
     for c in n.kids:
-        if not key_reads(c, names, builtins):
+        if not key_reads(c, names, builtins, key):
             return False
     return True
 
 
-def key_target(t: Node, names: dict[str, bool], builtins: dict[str, bool]) -> bool:
+def key_target(t: Node, names: dict[str, bool], builtins: dict[str, bool], key: str) -> bool:
     # key_reads of an assignment's target: a name is assigned, not read; the object and the key
     # of an attribute or item assigned are read (d[x] = v keeps x)
     if t.kind == "name":
         return True
     if t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
-        return len([c for c in t.kids if not key_target(c, names, builtins)]) == 0
-    return key_reads(t, names, builtins)
+        return len([c for c in t.kids if not key_target(c, names, builtins, key)]) == 0
+    return key_reads(t, names, builtins, key)
+
+
+def comp_vars(n: Node, out: dict[str, bool]) -> None:
+    # the names that the comprehensions in code n bind, their own variables (comp_names), which a
+    # function's locals (local_names) leave out
+    if n.kind == "listcomp" or n.kind == "asynccomp":
+        names: list[str] = []
+        comp_names(n, names)
+        for nm in names:
+            out[nm] = True
+    for c in n.kids:
+        comp_vars(c, out)
 
 
 def chk_names(n: Node, out: dict[str, bool]) -> None:
