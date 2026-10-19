@@ -1,8 +1,8 @@
 @main.init: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.hashed_comp: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.hashed_merge: R A U I rL wL rD wD rO wO rG wG rF wF
-@f.node_comp: R A rL rD wD rO
-@f.node_merge: R A rL rD wD rO
+@f.node_comp: A rL rD wD rO
+@f.node_merge: A rL rD wD rO
 @m.Node.__init__:
 @m.Hashed.__init__: wO
 @m.Hashed.__eq__: R rO

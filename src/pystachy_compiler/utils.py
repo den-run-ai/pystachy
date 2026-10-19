@@ -175,8 +175,9 @@ class RtFn:
         self.sym = rtsym(k)  # its LLVM symbol
         self.sig: list[str] = rtsig(k)  # its result and parameter types, as RUNTIME spells them
         self.ll: list[str] = [rtll(p) for p in self.sig]  # and as LLVM types
-        self.fx = fxmask(fx.replace("U?", ""))  # its effects (FX bits), but U?
+        self.fx = fxmask(fx.replace("U?", "").replace("R?", ""))  # its effects (FX bits), but U? and R?
         self.q = "U?" in fx  # whether it has U? (U when the descriptor of its # parameter holds a class)
+        self.rq = "R?" in fx  # and R? (R when it holds a recursive alias's edge)
 
 
 def tname(t: str) -> str:

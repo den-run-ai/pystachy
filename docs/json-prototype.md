@@ -45,11 +45,11 @@ Recursive values support the existing truth, representation and builtin-value
 equality paths, including numeric cross-type comparison. Comparisons retain
 separate descriptors for both operands. Shared container identity is recognized;
 distinct cyclic structures eventually raise `RecursionError`. `repr()` uses
-cycle markers. Runtime representation follows at most 512 recursive alias edges,
-and comparison descends at most 512 containers, before raising `RecursionError`;
-both are counted independently of the JSON codec's 256-container budget, and
-other reprs (a class's own `__repr__`, say) remain limited only by the native
-stack. Ordering requires narrowing, and so does `==` on a union that holds a
+cycle markers. Runtime representation and comparison follow at most 512
+recursive alias edges before raising `RecursionError`; the edges are counted
+independently of the JSON codec's 256-container budget, and other reprs (a
+class's own `__repr__`, say) remain limited only by the native stack. Ordering
+requires narrowing, and so does `==` on a union that holds a
 recursive alias beside members holding objects or sets. These are bounded
 builtin-value operations, not general user-defined dynamic dispatch.
 
@@ -60,14 +60,12 @@ value (`list(d.items())` for `d: dict[str, JSONValue]`) can also spell its type
 differently from an annotation; both are rejected at compile time, not
 miscompiled.
 
-The shared comparison and representation helpers conservatively gain raising
-effects in typed IR because their depth guards can fail. This also affects
-nonrecursive callers; the existing key-effect model can expand those effects
-further for keys with a custom representation. Three object-key effect snapshots
-record that intentional overapproximation. Across the compiler's corpus, the
-only resulting code change in programs without recursive values is that such
-runtime calls inside `try` blocks become `invoke`s; narrowing effects by
-descriptor is follow-up work.
+Only a recursive alias's edge lets a value nest without bound, so only a
+descriptor that holds one can reach those depth guards. The runtime operations
+that compare or print by descriptor declare this as the conditional effect `R?`
+([typed IR](typed-ir.md#effects)): they may raise where their descriptor holds
+such an edge, and programs without recursive values compile as they did before
+recursive aliases.
 
 The inherited unboxed-float identity rule also applies: separately decoded
 `[NaN]` lists compare unequal here, while CPython's cached decoder NaN can make
