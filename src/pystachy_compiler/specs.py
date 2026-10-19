@@ -555,9 +555,9 @@ TEXT_OPS: dict[str, str] = {
     "pys_str_endswith": "pys_text_endswith",
 }
 # Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
-# These are conservative: even a byte-correct delimiter search is a porting audit hit.
-UNICODE_AUDIT: list[str] = ("replace replace_count "
-                            "upper lower swapcase capitalize title casefold isdigit isalpha isalnum "
+# These are conservative: a call on any non-ASCII str is a porting audit hit, even where its
+# result is right.
+UNICODE_AUDIT: list[str] = ("upper lower swapcase capitalize title casefold isdigit isalpha isalnum "
                             "isupper islower istitle isdecimal isnumeric expandtabs").split()
 
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles

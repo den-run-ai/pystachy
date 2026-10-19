@@ -462,11 +462,44 @@ def pys_str_endswith(s: str, p: str, st: int, en: int) -> int:
 
 
 def pys_str_replace(s: str, a: str, b: str) -> str:
-    return replaced(s, a, b, -1)
+    return replaced(s, a, b, -1) if len(a) > 0 else interleaved(s, b, -1)
 
 
 def pys_str_replace_count(s: str, a: str, b: str, count: int) -> str:
-    return replaced(s, a, b, count)
+    return replaced(s, a, b, count) if len(a) > 0 else interleaved(s, b, count)
+
+
+def interleaved(s: str, b: str, count: int) -> str:
+    # s.replace("", b, count), as CPython makes it: b before each of the first count characters,
+    # and after the last one too where count is negative or more than their number. A character
+    # is what uchar reads (bytes.replace() puts b between bytes: replaced())
+    n = len(s)
+    if count == 0:
+        return s
+    if count < 0 or count > n:
+        count = n + 1  # (more than the places b can go)
+    k = 0  # b goes before each of the k characters of s[:end], then once more at end
+    end = 0
+    while end < n and k < count - 1:
+        end += 1 if _rt.byte(s, end) < 128 else uchar(s, end, n) & 7
+        k += 1
+    r = _rt.str_new(n + (k + 1) * len(b))
+    at = 0
+    i = 0
+    while i < end:
+        _rt.copy(r, at, b, 0, len(b))
+        at += len(b)
+        c = _rt.byte(s, i)
+        m = 1 if c < 128 else uchar(s, i, n) & 7
+        if m == 1:
+            _rt.str_put(r, at, c)
+        else:
+            _rt.copy(r, at, s, i, m)
+        at += m
+        i += m
+    _rt.copy(r, at, b, 0, len(b))
+    _rt.copy(r, at + len(b), s, end, n - end)
+    return _rt.str_done(r)
 
 
 def tally(h: str, n: str, st: int, most: int) -> int:
@@ -509,7 +542,7 @@ def tally(h: str, n: str, st: int, most: int) -> int:
 
 def replaced(s: str, a: str, b: str, count: int) -> str:
     # the first count occurrences of a replaced (all of them for a negative count), as CPython's
-    # replace() makes them
+    # replace() makes them; an empty a as bytes.replace() puts it, between bytes
     n = len(s)
     if count == 0:
         return s
@@ -1547,11 +1580,11 @@ def pys_bytes_endswith(h: str, n: str, st: int, en: int) -> int:
 
 
 def pys_bytes_replace(s: str, a: str, b: str) -> str:
-    return pys_str_replace(s, a, b)
+    return replaced(s, a, b, -1)
 
 
 def pys_bytes_replace_count(s: str, a: str, b: str, n: int) -> str:
-    return pys_str_replace_count(s, a, b, n)
+    return replaced(s, a, b, n)
 
 
 def pys_bytes_partition(s: str, sep: str) -> tuple[str, str, str]:

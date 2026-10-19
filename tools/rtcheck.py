@@ -122,6 +122,11 @@ def fuzz_str():
             same(name, outcome(getattr(rt, "pys_str_" + name), b(w), width, b(fill) if fill is not None else None), ref, (w, width, fill))
         z = R.choice(["", "+", "-"]) + text("12é", 4)
         same("zfill", outcome(rt.pys_str_zfill, b(z), width), ("ok", b(z.zfill(width))), (z, width))
+        # and replace("", x) puts x between characters
+        x = text(WIDE, 2)
+        k = R.choice([-1, 0, 1, 2, 5, 9])
+        same("replace", outcome(rt.pys_str_replace, b(w), "", b(x)), ("ok", b(w.replace("", x))), (w, x))
+        same("replace_count", outcome(rt.pys_str_replace_count, b(w), "", b(x), k), ("ok", b(w.replace("", x, k))), (w, x, k))
 
 
 BYTES = b"ab AB-+0\t\n\r\x0b\x0c\x1c\x85_.,lL\x80\xa0\xc3\xa9\xe2\x82\xac\xed\xa0\xf0\xff"
