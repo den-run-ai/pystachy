@@ -1,7 +1,7 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import Rejoin, fail
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
@@ -18,6 +18,8 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_err(self, msg: str) -> None:
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):

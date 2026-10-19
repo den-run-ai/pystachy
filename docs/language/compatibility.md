@@ -476,9 +476,15 @@ supported alternatives.
 - an empty list or dict that a template's function returns empty, used where the `list[int]` /
   `dict[int, int]` guess does not fit and the context gives no type (`xs: list[str] = collect()`
   gives one)
-- a template whose returns have different types (or `None` and an empty `[]` or `{}` that it does
-  not fill), or that calls itself before a return statement decides its type (or, after a return of
-  a `T`, before a return of `None` makes it return `T | None`)
+- a template whose returns have different types that do not
+  [join](typing.md#inferred-unions) (or `None` and an empty `[]` or `{}` that it does not fill),
+  or that calls itself before a return statement decides its type (or, after a return of a `T`,
+  before a return of `None` makes it return `T | None`)
+- a variable, field or return given values of types that do not [join](typing.md#inferred-unions)
+  (a list and a `str`, objects of two classes, a `list[str]` variable stored where a
+  `list[int]` is kept), a joined value used where its union is not accepted (an `int | str`
+  returned by a function annotated `-> int`, as CPython would for some inputs), and a program
+  whose joins need more than eight compilation passes
 - in a template's function, a use of a parameter whose argument is `None` as a value (`s.upper()`,
   `xs[0]`; `len()`, `int()`, `float()` and `ord()` of it raise CPython's error when they run), also
   in a branch that does not run for that call, and in a `try` whose clause would catch CPython's

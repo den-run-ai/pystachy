@@ -852,7 +852,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             hint = items[0].t
             for v in items[1:]:
                 hint = self.list_hint_type(hint, v.t) if hint != "" else ""
-            for v in items if hint != "" else items[:0]:
+            if hint != "" and not self.term and len([v for v in items if not self.widens(v.t, et) and not self.converts(v.t, et)]) > 0:
+                et = hint  # (items of mixed scalar types: of their union, as if annotated)
+            for v in items if hint != "" and et != hint else items[:0]:
                 if not (self.term and v.v == "undef") and not self.widens(v.t, et) and not self.converts(v.t, et):
                     self.line = n.line
                     advice = typestr(hint).replace("float | int", "int | float")
@@ -895,6 +897,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     kv[1] = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and jt == "-" and not self.term:
+            vh = vs[0].t
+            for b in vs[1:]:
+                vh = self.list_hint_type(vh, b.t) if vh != "" else ""
+            if vh != "":
+                kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
         ks = [self.store_key(x, kv[0]) for x in ks]
@@ -3393,6 +3401,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
+        if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
+            return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
         if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):

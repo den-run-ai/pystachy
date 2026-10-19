@@ -5,14 +5,18 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import diagnostics
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, fail
+from src.pystachy_compiler.diagnostics import FILES, MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS
+from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations
 
+
+JOINS = 8  # the passes after the first that a program's joins may take (see compile_program)
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
@@ -63,12 +67,39 @@ COMPILER_SOURCES: list[str] = [
 
 
 def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
-    g = Gen()
-    g.ext = ext
-    g.libdir = dirs[-1] if len(dirs) > 0 else ""
-    ld = Loader(dirs)
-    ld.ext = ext
-    return g.program(ld.program(path, src))
+    # the program's IR: where a join finds a location's inferred type too narrow for a value the
+    # program stores to it (Gen.join_hint), the program is compiled again with the union of both
+    # types, as if annotated, until no join widens one (at most JOINS passes after the first)
+    hints: dict[str, str] = {}
+    files = len(FILES)
+    lambdas = LAMBDAS[0]
+    libs = len(LIBS)
+    linkdl = len(LINKDL)
+    passes = 0
+    while True:
+        g = Gen()
+        g.ext = ext
+        g.libdir = dirs[-1] if len(dirs) > 0 else ""
+        g.hints = hints
+        g.final = passes >= JOINS
+        ld = Loader(dirs)
+        ld.ext = ext
+        try:
+            return g.program(ld.program(path, src))
+        except Rejoin:
+            for k in g.newhints:
+                hints[k] = g.newhints[k]
+            passes += 1
+            # (as the loader and lowering found them: the next pass numbers files and lambdas,
+            # and lists C libraries, as the first did)
+            while len(FILES) > files:
+                FILES.pop()
+            LAMBDAS[0] = lambdas
+            RENAMED.clear()
+            while len(LIBS) > libs:
+                LIBS.pop()
+            while len(LINKDL) > linkdl:
+                LINKDL.pop()
 
 
 def runtime_ir(path: str, src: str, cache: bool) -> str:

@@ -613,11 +613,14 @@ def gen_stmt(self, n: Node) -> None:
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
                 v = self.expr(val, self.target_type(t0))
+            src = self.joinsrc
+            self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
             if n.s == "local-retype":
                 self.store_name(t0.s, v, True)
             else:
                 for i in range(len(n.kids) - 1):
                     self.assign(n.kids[i], v)
+            self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
         # an annotation that names a class template types nothing: x: Box = v is x = v
@@ -767,7 +770,12 @@ def gen_stmt(self, n: Node) -> None:
             if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
-                self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                was = self.join_at("return", f"{self.fnkey(self.curfn)}|return", self.ret)
+                joined = self.join_hint(self.ret, v.t)  # (it returns both: their union, see join_hint)
+                self.join_at(was[0], was[1], was[2])
+                if not joined:
+                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                v = Val("undef", self.ret)
             v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.syntax import mk
-from src.pystachy_compiler.utils import is_opt, is_union, tname, umembers, unopt
+from src.pystachy_compiler.utils import is_opt, is_union, tname, typestr, umembers, unopt
 
 def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
     if op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"]):
@@ -67,3 +67,72 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     for i in range(len(results)):
         self.incoming(ph, self.convert_at(results[i], result_type, edges[i]).v, edges[i])
     return Val(self.phi(ph), result_type)
+
+def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
+    # name(..., u, ...) of builtin name, which takes no value of union u (vals[i]): name of each
+    # member's value, chosen by its tag (union splitting), compiled as the native call it is,
+    # and the union of their results (int | float: abs(), math's results are floats)
+    u = vals[i]
+    members = umembers(u.t)
+    end = self.label()
+    results: list[Val] = []
+    edges: list[str] = []
+    for j in range(len(members)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(u, [members[j]], False), hit, miss)
+        self.place(hit)
+        args = [self.vnode(v) for v in vals]
+        args[i] = self.vnode(self.uget(u, members[j]))
+        r = self.builtin(name, args, want)
+        if not self.term:
+            results.append(r)
+            edges.append(self.cur)
+            self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    if len(results) == 0:
+        self.unreachable()
+        return Val("null", "None")
+    result_type = self.union_type([r.t for r in results])
+    if result_type.startswith("!"):
+        self.err(f"unsupported call {name}() of {typestr(u.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union")
+    ph = Ins("phi", result_type, "")
+    for j in range(len(results)):
+        self.incoming(ph, self.convert_at(results[j], result_type, edges[j]).v, edges[j])
+    return Val(self.phi(ph), result_type)
+
+def gen_uorders(self, a: str, b: str) -> bool:
+    # can a value of type a be ordered (<, <=, >, >=) with one of type b, one of them a union, by
+    # each member's native ordering (ucmp): numbers with numbers, strs with strs
+    ms = (umembers(a) if is_union(a) else [a]) + (umembers(b) if is_union(b) else [b])
+    return all([m in ["int", "float", "bool"] for m in ms]) or all([m == "str" for m in ms])
+
+def gen_ucmp(self, op: str, a: Val, b: Val) -> Val:
+    # a op b, an ordering where a or b is of a union (uorders): each member's ordering, chosen by
+    # its tag (union splitting), compiled as the native comparison it is
+    left = is_union(a.t)
+    v = a if left else b
+    members = umembers(v.t)
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    for j in range(len(members)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(v, [members[j]], False), hit, miss)
+        self.place(hit)
+        x = self.uget(v, members[j])
+        r = self.cmp2(op, x if left else a, b if left else x)  # (the other operand's union, in turn)
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return Val(self.phi(ph), "bool")

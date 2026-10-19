@@ -578,8 +578,8 @@ override them. `lib/_pystachy_string.py` implements the parsers of CPython's
 raises before its first field is looked up. Automatic and manual numbering,
 conversions, nested format specs and recursion limits follow CPython.
 Positional arguments may have different types (as may keyword ones): a field's
-value has their union type, which formats as its value does. When a call has
-both, their types must agree, so `format("{0} {x}", 1, x="s")` is rejected.
+value has their union type, which formats as its value does, also where a call has
+both: `format("{0} {x}", 1, x="s")` gives `'1 s'`.
 `vformat` takes a tuple and a dict, or a `**kwargs` record; type an empty dict.
 
 Field names with attributes or indexes (`{0.x}`, `{0[1]}`) raise `ValueError`, but
@@ -600,9 +600,11 @@ Supported APIs are `fmean` (including weights), `geometric_mean`, `median`,
 floats. Weighted `fmean` uses the port of CPython's
 `math.sumprod` algorithm; unsupported iterators are materialized first.
 
-- `median` and `quantiles` require floats: integer/bool inputs can produce
-  different return types in CPython. `median_low` and `median_high` retain the
-  item type. `median` of strings is unsupported.
+- `median` of ints or bools returns their union with `float`, as CPython returns the middle
+  item of an odd number of them and the mean of the two middle ones otherwise. `quantiles`
+  requires floats: of ints CPython returns `n - 1` copies of a single data point, ints, and
+  floats otherwise ([error test](../tests/errors/lib_statistics_quantiles_int.py)).
+  `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
 - Integer products in weighted `fmean` can raise `OverflowError` beyond 64 bits;
   CPython's integers continue growing.
@@ -648,8 +650,9 @@ as Pystachy's `math` has none.
 - Of the module functions, only `random` and `getrandbits` convert to a typed
   `Callable`; the others are unannotated upstream methods, which unannotated
   parameters or a lambda can take.
-- `randrange` and `randint` take ints or bools, and `triangular` floats: with int
-  bounds, its `low == high` case would return an int.
+- `randrange` and `randint` take ints or bools. `triangular` of int bounds returns an
+  `int | float`: its low bound where the mode's fraction of the range divides by zero, as in
+  CPython, and a float otherwise.
 
 Seeds of `str`, `bytes` or `bytearray` (SHA-512 into a long integer), `randbytes`,
 `SystemRandom` (absent from `__all__`), subclasses of `Random` (its
@@ -1021,14 +1024,13 @@ functions are templates: each call's argument types make its code
 - The iterators are generators (`Generator[T]`), which yield items of one type: `chain()` of
   iterables of different item types ([error test](../tests/errors/lib_itertools_chain_mixed.py)),
   an `accumulate()` function that returns another type than the items'
-  ([error test](../tests/errors/lib_itertools_accumulate_type.py)) and a `zip_longest()`
-  `fillvalue` of another type than an iterable's items
-  ([error test](../tests/errors/lib_itertools_zip_longest_fillvalue.py)) are compile-time
+  ([error test](../tests/errors/lib_itertools_accumulate_type.py)) are compile-time
   errors, as is an `accumulate()` `initial` of another type than its sums, such as `initial=0`
   of floats, where CPython yields the int `0` and then floats (`initial=0.0` is not an error)
   ([error test](../tests/errors/lib_itertools_accumulate_initial.py)). `accumulate()` of bools
   gives a bool and then ints, as in CPython, and `zip_longest()` without `fillvalue` gives
-  optional items.
+  optional items. A `zip_longest()` `fillvalue` of another scalar type than an iterable's items
+  gives items of their union ([test](../tests/lib_itertools_zip_longest_fillvalue.py)).
 - `batched()`, `permutations()`, `combinations()`, `combinations_with_replacement()` and
   `product(..., repeat=n)` yield tuples whose length the program knows only as it runs, whose
   items must be ints, floats, bools, strs or their optional types

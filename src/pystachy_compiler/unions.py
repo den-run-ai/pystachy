@@ -1,9 +1,11 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.analysis import ann_target
+from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
+from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -188,11 +190,15 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
     src = unopt(v.t)
     if is_union(src) and len([m for m in umembers(src) if m not in ms]) == 0:
         if is_opt(v.t) and not none_ok:
+            if self.join_hint(t, v.t):
+                return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
         return Val(v.v, t)
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
+            if self.join_hint(t, v.t):
+                return Val("undef", t)  # (see join_hint)
             hint = f" (perhaps because {self.guessed[self.curfn.ll]})" if self.curfn.ll in self.guessed else ""
             self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
         src = bases[0]
@@ -200,6 +206,8 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
     if not is_opt(v.t):
         return Val(self.ubox(v, src), t)
     if not none_ok:
+        if self.join_hint(t, v.t):
+            return Val("undef", t)  # (see join_hint)
         self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
     # an optional value: None stays null, any other value is boxed (with no branch, so that
     # convert_in can make it at the end of a block); an int | None's value is in its box
@@ -382,3 +390,117 @@ def gen_holds(self, t: str, vt: str) -> str:
     if is_opt(t) and not is_opt(vt) and vt != "None":
         return unopt(t)
     return ""
+
+
+def gen_stable(self, s: str) -> str:
+    # type (or key of types) s for joins' keys, the same in every pass: a class template's
+    # specialization in it is named by the types of the call that made it, not by the order
+    # that numbered it (Box-2), as each specialization or instance has joins of its own
+    out = ""
+    w = ""
+    for ch in s + " ":
+        if ch in "[](),| ;=~>*?":
+            out += self.stable(self.classes[w].speckey) if w in self.classes and self.classes[w].speckey != "" else w
+            out += ch
+            w = ""
+        else:
+            w += ch
+    return out[: len(out) - 1]
+
+
+def gen_fnkey(self, f: FnInfo) -> str:
+    # function f's key for joins: its module, its def's line, its class and name and, for a
+    # template's instance, its argument types (see stable)
+    k = f"{f.mod}:{f.node.line}:{self.stable(f.cls)}.{f.name}"
+    return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
+
+
+def gen_field_key(self, ci: ClassInfo, name: str) -> str:
+    # the key for joins of field name of class ci: of the class that declares it (see stable)
+    return f"field:{self.stable(self.field_root(ci, name).name)}.{name}"
+
+
+def gen_local_hint(self, name: str) -> str:
+    # the type a join of an earlier pass gave local name of the function being compiled, or ""
+    return self.hints.get(f"{self.fnkey(self.curfn)}|{name}", "") if len(self.hints) > 0 else ""
+
+
+def gen_join_at(self, kind: str, name: str, t: str) -> list[str]:
+    # the location a value of type t is being stored to (joinkind, joinname, jointype: see
+    # join_hint), set from here, as it was before (to restore after the store)
+    was = [self.joinkind, self.joinname, self.jointype]
+    self.joinkind = kind
+    self.joinname = name
+    self.jointype = t
+    return was
+
+
+def gen_join_hint(self, t: str, vt: str) -> bool:
+    # a value of type vt that the location being stored to, whose type t was inferred (as
+    # join_at set it), does not take: unless this is the last pass, a join gives the location
+    # the union of both types, as if annotated (Gen.newhints, which the next pass compiles it
+    # with: see Rejoin), and the store is dropped; False where the location is annotated or
+    # another kind's, or the union is no type a join gives
+    if self.final or self.joinkind == "" or t != self.jointype or self.drying > 0 or self.rtmode:
+        return False
+    key = ""
+    if self.joinkind == "local":
+        body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        if self.joinname in self.curfn.params or self.joinname in self.compvars or ann_target(body, self.joinname):
+            return False
+        key = f"{self.fnkey(self.curfn)}|{self.joinname}"
+    elif self.joinkind == "global":
+        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname):
+            return False
+        key = f"global:{self.joinname}"
+    elif self.joinkind == "field" or self.joinkind == "return":
+        key = self.joinname
+    j = self.join_type(self.newhints.get(key, t), vt)
+    if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
+        # a list or dict of another item type, which the location's cannot be as it is: where a
+        # call of a function without a return annotation made it, the function returns the
+        # location's type, as if annotated, and makes a fresh result of it (see retval)
+        e = self.joinsrc
+        if e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s in self.funcs and self.funcs[e.kids[0].s].node.kind == "def" and self.funcs[e.kids[0].s].node.kids[1].kind == "noann":
+            tf = self.funcs[e.kids[0].s]
+            rk = f"{self.fnkey(tf.insts[tf.lastikey] if tf.lastikey in tf.insts else tf)}|return"  # (the call's instance)
+            if self.hints.get(rk, "") != t and self.newhints.get(rk, "") != t:
+                self.newhints[rk] = t
+                return True
+    if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
+        return False
+    self.newhints[key] = j
+    return True
+
+
+def gen_join_type(self, a: str, b: str) -> str:
+    # the type of a location that holds values of types a and b, as a join gives it (join_hint):
+    # their union (see joinable); for lists, dicts of one key type and tuples of one length, the
+    # one of their items' joins (a display assigned to it is made of that); "" if there is none
+    if is_list(a) and is_list(b) and "?" not in a and "?" not in b:
+        e = self.join_type(elem(a), elem(b))
+        return self.ctype("list", [e]) if e != "" else ""
+    if is_dict(a) and is_dict(b) and targs(a)[0] == targs(b)[0] and "?" not in a and "?" not in b:
+        e = self.join_type(targs(a)[1], targs(b)[1])
+        return self.ctype("dict", [targs(a)[0], e]) if e != "" else ""
+    if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+        ts: list[str] = []
+        for i in range(len(targs(a))):
+            x = targs(a)[i] if targs(a)[i] == targs(b)[i] else self.join_type(targs(a)[i], targs(b)[i])
+            if x == "":
+                return ""
+            ts.append(x)
+        return self.ctype("tuple", ts)
+    if a == b:
+        return a
+    j = self.union_type([a, b])
+    return j if not j.startswith("!") and self.joinable(j) else ""
+
+
+def gen_joinable(self, t: str) -> bool:
+    # can a join give a location type t: T | None, or a union of int, float, bool and str (that
+    # may be None), whose operations select the member's by the tag (see unumeric)
+    u = unopt(t)
+    if not is_union(u):
+        return is_opt(t)
+    return all([m in ["int", "float", "bool", "str"] for m in umembers(u)])

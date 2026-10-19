@@ -10,8 +10,11 @@ from src.pystachy_compiler.scalar_ir import (
     gen_verify_scalar as scalar_ir_verify_scalar,
 )
 from src.pystachy_compiler.union_arithmetic import (
+    gen_ucmp as union_arithmetic_ucmp,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
+    gen_uorders as union_arithmetic_uorders,
+    gen_usplit as union_arithmetic_usplit,
 )
 from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
@@ -19,6 +22,14 @@ from src.pystachy_compiler.memory_ir import (
     gen_maddr as memory_ir_maddr,
 )
 from src.pystachy_compiler.unions import (
+    gen_field_key as unions_field_key,
+    gen_fnkey as unions_fnkey,
+    gen_join_at as unions_join_at,
+    gen_join_hint as unions_join_hint,
+    gen_join_type as unions_join_type,
+    gen_joinable as unions_joinable,
+    gen_local_hint as unions_local_hint,
+    gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
     gen_value_union as unions_value_union,
@@ -1014,6 +1025,17 @@ class Gen:
         self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
         self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
         self.attrown: dict[str, list[Node]] = {}  # and the class statement whose method stores each to its self (or nokey)
+        # joins (see join_hint): the types an earlier pass found for locations whose inferred type
+        # took no value stored to them, which this pass compiles them with, as if annotated; the
+        # ones this pass finds; whether a value a location does not take is an error (the last
+        # pass, as for every compilation but driver.compile_program's earlier ones)
+        self.hints: dict[str, str] = {}
+        self.newhints: dict[str, str] = {}
+        self.final = True
+        self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
+        self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
+        self.jointype = ""  # (and its type)
+        self.joinsrc = self.nokey  # the value being assigned (see join_hint)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -1927,6 +1949,39 @@ class Gen:
 
     def none_container(self, e: Node) -> Val:
         return containers_none_container(self, e)
+
+    def usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
+        return union_arithmetic_usplit(self, name, vals, i, want)
+
+    def uorders(self, a: str, b: str) -> bool:
+        return union_arithmetic_uorders(self, a, b)
+
+    def ucmp(self, op: str, a: Val, b: Val) -> Val:
+        return union_arithmetic_ucmp(self, op, a, b)
+
+    def join_hint(self, t: str, vt: str) -> bool:
+        return unions_join_hint(self, t, vt)
+
+    def joinable(self, t: str) -> bool:
+        return unions_joinable(self, t)
+
+    def join_type(self, a: str, b: str) -> str:
+        return unions_join_type(self, a, b)
+
+    def stable(self, s: str) -> str:
+        return unions_stable(self, s)
+
+    def fnkey(self, f: FnInfo) -> str:
+        return unions_fnkey(self, f)
+
+    def field_key(self, ci: ClassInfo, name: str) -> str:
+        return unions_field_key(self, ci, name)
+
+    def local_hint(self, name: str) -> str:
+        return unions_local_hint(self, name)
+
+    def join_at(self, kind: str, name: str, t: str) -> list[str]:
+        return unions_join_at(self, kind, name, t)
 
     def none_global(self, name: str) -> str:
         return variables_none_global(self, name)
