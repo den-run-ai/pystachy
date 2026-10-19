@@ -22,4 +22,4 @@ Identify adapted sources/licenses and substantive AI assistance/tools, or state 
 - [ ] I reviewed and can explain the complete change.
 - [ ] I added regression coverage, or explained why it is not applicable.
 - [ ] I have the right to contribute this work and preserved applicable license notices.
-- [ ] I added my DCO sign-offs where required by the contributor guide.
+- [ ] For a PR from a fork: my account is in `.github/dco-signers.txt`, or this PR adds my line.

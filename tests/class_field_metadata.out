@@ -1,0 +1,7 @@
+() ()
+{'left': 2} {'left': 2}
+('left', 'right') ('left', 'right')
+{'left': 2} {'left': 2}
+{'left': 7} {'left': 7}
+{'left': 7} {'left': 7}
+[exit 0]

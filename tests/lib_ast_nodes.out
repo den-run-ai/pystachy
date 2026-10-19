@@ -1,0 +1,53 @@
+1024 4096 8192 33792
+() () ()
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 42 None
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 1.25 None
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') word u
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') True None
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') None None
+('body',) () True False
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('left', 'op', 'right') True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('id', 'ctx') x True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('op', 'operand') True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 2 None
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('left', 'op', 'right') True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('id', 'ctx') renamed False
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('op', 'operand') True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 2 None
+True True True
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+True True () ()
+() True
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 7 None
+True True ('lineno', 'col_offset', 'end_lineno', 'end_col_offset')
+('value', 'kind') 7 None
+[exit 0]

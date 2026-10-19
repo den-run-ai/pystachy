@@ -11,6 +11,14 @@ code points. Unicode case mapping, most character tests and some byte-oriented r
 operations remain incomplete; individual modules may have additional restrictions.
 See [language compatibility](../docs/language/compatibility.md).
 
+## `_imp` prototype
+
+The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
+lock bookkeeping and capability queries reporting no Python extensions or
+frozen modules. Runtime builtin queries and module loading raise explicitly;
+compiler builtin namespaces are not a runtime importer registry. The prototype
+does not make upstream `importlib` or Python bytecode execution available.
+
 ## Operator
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
