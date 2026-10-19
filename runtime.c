@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
@@ -304,6 +305,8 @@ static I nfiles;                       /* open files (see I/O): closed by the co
 static void files_sweep(void);
 static I ntrk;                         /* Python references Pystachy objects own (ffi.track, see I/O) */
 static void trk_sweep(void);
+static int gc_marked(const void *p);
+static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
   memset(text_hints, 0, sizeof text_hints);
@@ -316,6 +319,7 @@ __attribute__((noinline)) static void collect(void) {
     else msp -= 2;
     scan(p, p + n / 8);
   }
+  weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
   sweep(); gc_n++;
@@ -392,6 +396,28 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
+   the target nor the next registry entry is a strong edge. The registry itself is NOT a
+   collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused. */
+typedef struct WeakRef WeakRef;
+struct WeakRef { WeakRef *next; void *target; };
+static WeakRef *weakrefs;
+void *pys_weakref_new(void *target) {
+  WeakRef *ref = pys_alloc_atomic(sizeof *ref);
+  ref->target = target;
+  ref->next = weakrefs;
+  weakrefs = ref;
+  return ref;
+}
+void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+__attribute__((noinline)) static void weakrefs_sweep(void) {
+  for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
+    if (!gc_marked(ref)) { *link = ref->next; continue; }
+    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    link = &ref->next;
+  }
+}
 static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
                                           its size less the byte of slack, as for the n that cls(n) took */
   uintptr_t a = (uintptr_t)p;
@@ -619,10 +645,24 @@ Str *pys_bytes_slice_step(Str *s, I lo, I hi, I st) { return pys_str_slice_step(
    contracts. chars1 caches the logical length; equality with len + 1 gives the byte fast
    path. UTF-8 surrogates are individual code points, as in Python strings. Invalid raw
    bytes retain u8char's one-byte fallback until the separate decoding-boundary work. */
+static I ascii_end(const char *p, I i, I n) {   /* the first index from i of a byte >= 128 in p[:n], or n */
+  for (; i + 32 <= n; i += 32) {                 /* (32 bytes at a time, which compilers vectorize) */
+    uint64_t w[4];
+    memcpy(w, p + i, 32);
+    if ((w[0] | w[1] | w[2] | w[3]) & 0x8080808080808080ULL) break;
+  }
+  while (i < n && (unsigned char)p[i] < 128) i++;
+  return i;
+}
 I pys_text_len(Str *s) {
   if (!s->chars1) {
-    I n = 0, cp;
-    for (I i = 0; i < s->len; n++) i += u8char(s->s + i, s->len - i, &cp);
+    I n = 0, cp, i = 0;
+    while (i < s->len) {              /* an ASCII run is a code point per byte, as u8char reads it */
+      I j = ascii_end(s->s, i, s->len);
+      n += j - i;
+      i = j;
+      if (i < s->len) { i += u8char(s->s + i, s->len - i, &cp); n++; }
+    }
     s->chars1 = n + 1;
   }
   return s->chars1 - 1;
@@ -1610,7 +1650,9 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
    has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
-   U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors.
+   U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
+   R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor.
+   skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
    __hash__, so that they hash and compare by identity alone, else H, hashed by the program's
@@ -1655,11 +1697,16 @@ static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-
 }
 static const char *skip(const char *d) {
   char c = *d++;
+  if (c == 'R') { unum(&d); return d; }
   if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
   if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
   if (c == 'U') for (I n = unum(&d); n > 0; n--) { unum(&d); d = skip(d); }
+  return d;
+}
+static const char *recdesc(const char *d) {
+  while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
   return d;
 }
 static const char *utype(I tag, const char *d) {
@@ -1732,9 +1779,18 @@ static const char *kdesc(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
 /* is entry e no hole: a hole has hash 0 and no key (an H kind's key, an object or a tuple, may hash
    to 0; another's hash is never 0) */
 static int dlive(Dict *d, I e) { return d->hs[e] || d->keys[e]; }
-static const char *repr(Buf *b, I v, const char *d) {
+/* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
+   so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
+   reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
+   argument survives native unwinding without mutable state. */
+static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   switch (*d++) {
-  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr(b, v, member); return end; }
+  case 'R': {
+    const char *ref = d - 1;
+    if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
+    repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
+  }
+  case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
@@ -1744,7 +1800,7 @@ static const char *repr(Buf *b, I v, const char *d) {
     List *l = (List *)v;
     if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
     put(b, "[", 1);
-    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr(b, l->a[i], d); }
+    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, l->a[i], d, depth); }
     put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
@@ -1755,7 +1811,7 @@ static const char *repr(Buf *b, I v, const char *d) {
       if (!dlive(m, e)) continue;
       if (k++) put(b, ", ", 2);
       I key = m->keys[e], val = m->vals[e];         /* (a key's __repr__ may empty the dict) */
-      repr(b, key, d); put(b, ": ", 2); repr(b, val, dv);
+      repr_depth(b, key, d, depth); put(b, ": ", 2); repr_depth(b, val, dv, depth);
     }
     put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
@@ -1763,13 +1819,13 @@ static const char *repr(Buf *b, I v, const char *d) {
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
-    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) { if (n++) put(b, ", ", 2); repr(b, s->keys[i], d); }
+    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) { if (n++) put(b, ", ", 2); repr_depth(b, s->keys[i], d, depth); }
     put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
     int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
-    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr(b, t[i], d); }
+    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, t[i], d, depth); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'V': {
@@ -1777,16 +1833,17 @@ static const char *repr(Buf *b, I v, const char *d) {
     VTuple *t = (VTuple *)v;
     if (!pys_repr_enter(t)) { put(b, "(...)", 5); return skip(d); }
     put(b, "(", 1);
-    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr(b, t->a[i], d); }
+    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, t->a[i], d, depth); }
     put(b, t->len == 1 ? ",)" : ")", t->len == 1 ? 2 : 1);
     pys_repr_leave(t); return skip(d);
   }
   case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
-  case '?': if (v) return repr(b, unbox(v, d), d); put(b, "None", 4); return skip(d);
+  case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
   case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
   }
   return d;
 }
+static const char *repr(Buf *b, I v, const char *d) { return repr_depth(b, v, d, 0); }
 Str *pys_repr(I v, Str *d) { Buf b = {0}; repr(&b, v, d->s); return done(&b); }
 /* A class's reflection record (the compiler's reflection.py; lowered by lower_module.py): an
    internal constant per class that reaches a reflective site, whose address is the class's
@@ -1832,6 +1889,7 @@ static int eqpair(I a, I b, const char *x, const char *y);
    separate from direct comparison: equal unboxed float bits need not compare equal,
    and an optional scalar's box does not give that scalar Python object identity. */
 static int eqitem(I a, I b, const char *d) {
+  d = recdesc(d);
   char c = d[*d == '?'];
   if (c == 'U') return eqpair(a, b, d, d);
   return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
@@ -1840,6 +1898,7 @@ static int eqitem(I a, I b, const char *d) {
 #define EQ_PROBE()
 #endif
 static int eqv(I a, I b, const char *d) {
+  d = recdesc(d);
   EQ_PROBE();
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
@@ -1890,7 +1949,8 @@ typedef struct { I value; const char *desc; } EqValue;
 static EqValue eqresolve(I v, const char *d) {
   /* Each operand has its own layout: an optional number is a one-slot box,
      a union is a tag/payload box, and a concrete container is its original pointer. */
-  while (*d == '?' || *d == 'U') {
+  while (*d == '?' || *d == 'U' || *d == 'R') {
+    if (*d == 'R') { d = recdesc(d); continue; }
     if (*d == '?') { if (!v) return (EqValue){0, "n"}; v = unbox(v, ++d); }
     else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
   }
@@ -1900,7 +1960,7 @@ static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
   return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
 }
-static int eqpair(I a, I b, const char *x, const char *y) {
+static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   /* Only closed builtin value trees reach this path (the compiler rejects user
      callbacks). Never decode b with x: equal Python types may have different
      native element layouts, including nested unions and boxed optionals. */
@@ -1918,12 +1978,16 @@ static int eqpair(I a, I b, const char *x, const char *y) {
      matching Python, this keeps a shared DAG from expanding into its logical tree.
      Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
   if (a == b && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     A local depth argument survives native unwinding without mutable state. */
+  if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded in comparison");
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair(p->a[i], q->a[i], x + 1, y + 1)) return 0;
+    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth + 1)) return 0;
     return 1;
   }
   if (*x == 'D') {
@@ -1935,8 +1999,8 @@ static int eqpair(I a, I b, const char *x, const char *y) {
       if (!dlive(p, i)) continue;
       I j = -1;
       if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair(p->keys[i], q->keys[k], kx, ky)) { j = k; break; }
-      if (j < 0 || !eqpair(p->vals[i], q->vals[j], vx, vy)) return 0;
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth + 1)) { j = k; break; }
+      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth + 1)) return 0;
     }
     return 1;
   }
@@ -1947,7 +2011,7 @@ static int eqpair(I a, I b, const char *x, const char *y) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair(p[i], q[i], ex, ey)) return 0;
+      if (!eqpair_depth(p[i], q[i], ex, ey, depth + 1)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -1955,6 +2019,7 @@ static int eqpair(I a, I b, const char *x, const char *y) {
   }
   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
 }
+static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
 I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
 I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
@@ -2590,7 +2655,14 @@ List *pys_text_list(Str *s) {
   }
   return l;
 }
-List *pys_bytes_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (unsigned char)s->s[i]); return l; }
+List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
+  I n = s->len;
+  List *l = pys_list_new_atomic(n);
+  I *a = l->a;                   /* (locals, so that the stores need not be assumed to change n, a or */
+  const unsigned char *b = (const unsigned char *)s->s;   /* s's bytes: the loop vectorizes) */
+  for (I i = 0; i < n; i++) a[i] = b[i];
+  l->len = n; return l;
+}
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */
 /* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a
@@ -3908,6 +3980,10 @@ void pys_file_drop(File *f) {          /* the compiler's close of a file used in
   io_in(); int e = shut(f); if (e) report(f, e); io_out();
 }
 I pys_file_closed(File *f) { return f->closed; }
+I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raises FileIO's error, without the "." */
+  if (f->closed) pys_fail("ValueError: I/O operation on closed file");
+  return fileno(f->f);
+}
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
 /* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's
@@ -4399,6 +4475,80 @@ void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PE
   while (nanosleep(&t, &r) != 0 && errno == EINTR) { if (io_intr) kbint_exit(); t = r; }
 }
 void pys_sleep_int(I s) { pys_sleep((double)s); }
+
+/* ---------- select: a POSIX integer-descriptor subset ---------- */
+static int select_fds(List *fds, fd_set *set, int maxfd) {
+  FD_ZERO(set);
+  for (I i = 0; i < fds->len; i++) {
+    I fd = fds->a[i];
+    if (fd < INT32_MIN || fd > INT32_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+    if (fd < 0) failf("ValueError: file descriptor cannot be a negative integer (%lld)", (long long)fd);
+    if (fd >= FD_SETSIZE) pys_fail("ValueError: filedescriptor out of range in select()");
+    /* CPython converts and validates the first excess item before its count
+       error; items beyond that one must not replace the earlier error. */
+    if (i >= FD_SETSIZE) pys_fail("ValueError: too many file descriptors in select()");
+    FD_SET((int)fd, set);  /* checked before the macro indexes its fixed-size bitmap */
+    if (fd > maxfd) maxfd = (int)fd;
+  }
+  return maxfd;
+}
+void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  if (!blocking) {
+    if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
+    if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
+      pys_fail("OverflowError: timestamp out of range for C PyTime_t");
+    if (timeout < 0) pys_fail("ValueError: timeout must be non-negative");
+  }
+  fd_set original[3], ready[3];
+  int maxfd = select_fds(r, &original[0], -1);
+  maxfd = select_fds(w, &original[1], maxfd);
+  maxfd = select_fds(x, &original[2], maxfd);
+  double deadline = blocking ? 0 : pys_monotonic() + timeout;
+  double remaining = timeout;
+  for (;;) {
+    ready[0] = original[0]; ready[1] = original[1]; ready[2] = original[2];
+    struct timespec tv = {0, 0};
+    if (!blocking) {
+      tv.tv_sec = (time_t)remaining;
+      tv.tv_nsec = (long)ceil((remaining - (double)tv.tv_sec) * 1e9);
+      if (tv.tv_nsec >= 1000000000) { tv.tv_sec++; tv.tv_nsec -= 1000000000; }
+    }
+    /* Block SIGINT until the kernel starts waiting: if it arrived after io_in
+       but before select, the handler would merely note it and select could wait
+       forever. pselect atomically restores the caller's mask for the wait. */
+    sigset_t blocked, previous;
+    sigemptyset(&blocked); sigaddset(&blocked, SIGINT);
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous)) ioerr(errno);
+    if (io_intr) {
+      if (sigprocmask(SIG_SETMASK, &previous, NULL)) ioerr(errno);
+      kbint_exit();
+    }
+    io_in();
+    int n = pselect(maxfd + 1, &ready[0], &ready[1], &ready[2], blocking ? NULL : &tv, &previous);
+    int e = errno;
+    int mask_error = sigprocmask(SIG_SETMASK, &previous, NULL) ? errno : 0;
+    io_out();  /* a pending SIGINT retains the runtime's KeyboardInterrupt behavior */
+    if (mask_error) ioerr(mask_error);
+    if (n >= 0) break;
+    if (e != EINTR) ioerr(e);
+    if (!blocking) {
+      remaining = deadline - pys_monotonic();
+      if (remaining <= 0) {
+        FD_ZERO(&ready[0]); FD_ZERO(&ready[1]); FD_ZERO(&ready[2]);
+        break;
+      }
+    }
+  }
+  List *inputs[3] = {r, w, x};
+  void **out = pys_alloc(24);  /* a scanned fixed tuple keeps each result list alive */
+  for (int k = 0; k < 3; k++) {
+    List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
+    out[k] = dst;
+    for (I i = 0; i < src->len; i++)
+      if (FD_ISSET((int)src->a[i], &ready[k])) pys_list_append(dst, src->a[i]);
+  }
+  return out;
+}
 
 /* ---------- the errno module: the platform's error numbers ---------- */
 static const struct { const char *name; int value; } errnos[] = {
@@ -4942,6 +5092,12 @@ I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), un
   return v;
 }
 void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
+void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  if (k < 0 || k > l->len) {
+    char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
+  }
+  return l->a + k;
+}
 /* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries

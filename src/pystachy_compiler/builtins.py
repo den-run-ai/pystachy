@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     GLUE,
     IMPLEMENTATION,
     ITERS,
+    TEXTVIEW,
     METHODS,
     MODATTRS,
     MODFUNCS,
@@ -149,6 +150,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     want = "" if want == "?" else want
     if name.startswith(TYPESMOD + "."):
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
+    if name == "ffi.at":
+        self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -160,11 +163,17 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name.startswith("__pys_text_"):
         # The builtin string iterator keeps a byte cursor, just like for_seq. These are
         # internal primitives, so ordinary code cannot confuse byte and character offsets.
-        if (self.curfn.mod != ITERS and not (name == "__pys_text_size" and self.curfn.mod in GLUE)) or len(args) == 0:
+        # re's engine (TEXTVIEW) reads the size too, and a str whose every byte is a code point
+        # in place, as the bytes of its UTF-8 (__pys_text_bytes)
+        view = self.curfn.mod == TEXTVIEW and name in ["__pys_text_size", "__pys_text_bytes"]
+        if (self.curfn.mod != ITERS and not (name == "__pys_text_size" and self.curfn.mod in GLUE) and not view) or len(args) == 0:
             self.err(f"name '{name}' is not defined")
         s = self.expr(args[0], "str")
         if name == "__pys_text_size" and len(args) == 1:
             return Val(self.mload('int', s.v), "int")
+        if name == "__pys_text_bytes" and len(args) == 1 and view:
+            # the same object: a str and a bytes share their layout and neither changes in place
+            return Val(s.v, "bytes")
         if name in ["__pys_text_at", "__pys_text_next"] and len(args) == 2:
             at = self.as_int(self.expr(args[1], "int"))
             t = "str" if name.endswith("_at") else "int"
@@ -172,6 +181,29 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr":
+        # Private library primitives; a handle's opaque type preserves its referent type
+        # without storing a strong reference or permitting ordinary field access to it.
+        if self.curfn.mod != "_weakref" or len(args) != 1 or args[0].kind in ["kw", "starred", "dstar"]:
+            self.err(f"name '{name}' is not defined")
+        o = self.expr(args[0], "")
+        if name == "__pys_weakref_addr":
+            # (an object's address, which CPython's repr of a reference shows; a specialization for
+            # another referent is rejected as __pys_weakref_new rejects it, in whichever compiles first)
+            if o.t not in self.classes:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            return Val(self.scalar_cast('ptrtoint', Val(o.v, '%ptr'), 'int'), "int")
+        if name == "__pys_weakref_new":
+            if o.t not in self.classes or o.t in self.nts:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            if self.classes[o.t].exc != "" or self.classes[o.t].slotlimit:
+                self.err("_weakref.ref() prototype does not support exception or slotted instances")
+            if self.classes[o.t].mod == "_weakref":
+                self.err("cannot create weak reference to a weakref.ReferenceType object")
+            return Val(self.rt("pys_weakref_new", "ptr", [f"ptr {o.v}"]), "weakhandle[" + o.t + "]")
+        if not o.t.startswith("weakhandle["):
+            self.err("_weakref.ref() prototype requires an internal weak handle")
+        return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":
@@ -262,6 +294,21 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.iter_(args)
     if name == "open":
         return self.open_(args)
+    if name == "select.select":
+        if len(args) < 3 or len(args) > 4 or len([a for a in args if a.kind == "kw"]) != 0:
+            self.err("select.select() expects three list[int] arguments and an optional positional timeout")
+        fds: list[Val] = []
+        for i in range(3):
+            fds.append(self.coerce(self.expr(args[i], "list[int]"), "list[int]", f"argument {i + 1} of select.select()"))
+        timeout = self.expr(args[3], "") if len(args) == 4 else Val("null", "None")
+        blocking = "1" if timeout.t == "None" else "0"
+        if timeout.t == "None":
+            timeout = Val(fbits("0.0"), "float")
+        elif timeout.t == "int" or timeout.t == "bool" or timeout.t == "float":
+            timeout = self.as_float(timeout)
+        else:
+            self.err("select.select() timeout must be int, float or None; narrow optional values before the call")
+        return self.rres(self.rt("pys_select", "ptr", [self.rarg(v) for v in fds] + [self.rarg(timeout), "i64 " + blocking]), "tuple[list[int],list[int],list[int]]")
     if name == "set" or name == "frozenset":
         return self.set_new(name, args, want, resultsoft)
     if name == "map" or name == "filter":
@@ -1946,13 +1993,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             if key == "dict.get" and i == 0 and self.lookup_key(args[0]):
                 self.stkkey = args[0]  # (memo.get((i, j), -1))
             want_arg = pt
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
                 # A search needle is not stored in the list. Infer a fresh display's
                 # own layout before comparing it, rather than forcing list[float]
                 # into a list[int] member. Empty/None-only displays still need context.
                 pending = [args[i]]
                 contextual = False
-                nested_union = any(["union[" in member for member in umembers(unopt(T))])
+                nested_union = any(["union[" in member or "rec[" in member for member in umembers(unopt(self.rec_type(T)))])
                 while len(pending) > 0:
                     query = pending.pop()
                     if query.kind in ["list", "dict"] and only_nones(query):
@@ -2020,7 +2067,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 nk = self.numkey(v, unopt(T))
                 v = Val(nk[0], unopt(T))
                 numok = nk[1]
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
                 pt = self.union_type([T, v.t])
                 dt = pt
             if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":

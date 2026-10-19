@@ -1,7 +1,7 @@
 # lib/re's matcher keeps its contexts for reuse, the state's for all its matches: a context taken
-# again must start as a new one, a match nested in a repeat's count (an IGNORECASE class, counted
-# by a match of its own per character) must take the contexts above its caller's, and a regular
-# expression run inside a replacement function keeps its own. Against CPython's re: matches of
+# again must start as a new one, a match nested in a repeat's count must take the contexts above
+# its caller's, and a regular expression run inside a replacement function keeps its own.
+# Against CPython's re: matches of
 # varied depth one after another, with groups, backreferences, conditionals, lookarounds, lazy,
 # atomic and possessive repeats.
 import re

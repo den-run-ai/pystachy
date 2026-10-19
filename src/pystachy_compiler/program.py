@@ -790,6 +790,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.line = self.taliases[q].line
             self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
     if len(self.taliases) > 0:
+        self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
         for m in mods:
             self.unalias_all(m.body)

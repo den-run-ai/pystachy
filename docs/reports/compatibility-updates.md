@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `a355c83ff7b60b64e3264867593064c3da9611a5`.
+**Latest evaluated main:** `5db1e4b5e14e4da6d8bfa5e0952cd191fbc08959`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -14,6 +14,8 @@ Do not replace a result merely because a PR description predicts an improvement.
 |---|---|---|
 | 2026-10-17 initial audit | `d3fbfc6f`; includes #598, #599 and #603 | 141/476 import programs compile; 46 upstream files excluded by overlay. 501 selected stdlib checks and 62 port checks pass; all 18 adapted benchmark programs match. Detailed evidence is linked from the baseline. |
 | 2026-10-17 follow-up | Same `d3fbfc6f`; no additional merges | Existing results still describe current main. No unchanged full suites were rerun. #600–#602, #604–#609, #622–#624, #629–#634, #583 and #170 remain open at this checkpoint; proposed support is not counted as shipped. |
+| 2026-10-19 builtin-module prototypes | `2359de69`; #644, #645, #646 and #648 after `a355c83f`, plus CI-only #677 | **144/475** native imports, up from 142, with none lost; **146/475** stub-assisted. All 27 package probes keep their first errors, and the pyperformance census stays at 6/52. Adds three compiled upstream test files. [Report](compatibility-2026-10-19-prototypes.md). |
+| 2026-10-19 merge catch-up | `5db1e4b5`; #678 integration, #670 native JSON, regex/compiler/array changes through #699, and #723 recorded benchmarks | **144/470** native, **146/470** stub-assisted; five JSON files move into the overlay, no successful imports lost. Native JSON passes 14,444 cases in each JIT/AOT mode with GC stress. Focused checks, affected ports, FFI and BLAS parity pass. [Evidence](compatibility-2026-10-19-catchup.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -1390,6 +1392,52 @@ This was a focused audit, **not** another full local `make verify`.
 The four implementation-head workflows were independently observed successful
 at `e712e091`; follow-up audit PR checks are a separate publication gate.
 
+## 2026-10-19 — #644/#645/#646/#648: builtin-module prototypes
+
+Evaluated [main `2359de69`](https://github.com/den-run-ai/pystachy/commit/2359de695e2668a6b9d72519d195680ee0661c38).
+Its first-parent merges after [`a355c83f`](https://github.com/den-run-ai/pystachy/commit/a355c83ff7b60b64e3264867593064c3da9611a5)
+are [#644](https://github.com/den-run-ai/pystachy/pull/644) (`_imp`),
+[#645](https://github.com/den-run-ai/pystachy/pull/645) (`_ast`),
+[#646](https://github.com/den-run-ai/pystachy/pull/646) (`select`),
+[#648](https://github.com/den-run-ai/pystachy/pull/648) (`_weakref`) and the CI-only
+[#677](https://github.com/den-run-ai/pystachy/pull/677). Both import sweeps were rerun
+at `a355c83f` with the same input, so each change is attributed to the four merges.
+[#678](https://github.com/den-run-ai/pystachy/pull/678)'s head `8eda0b87` gives the
+same result as main in every check. Main has since moved to `83b5835c`, adding the
+docs-only [#675](https://github.com/den-run-ai/pystachy/pull/675). The [report](compatibility-2026-10-19-prototypes.md)
+has the tables, blockers and caveats. The [evidence](compatibility-2026-10-19-prototypes.json)
+has the commands, hashes, per-module results and scripts. Toolchain: CPython 3.13.16,
+LLVM 18.1.3, Linux x86-64.
+
+| Check | Result |
+|---|---|
+| Native imports | **144/475**, up from 142 at `3f6f42c7` and `a355c83f`. `_py_abc` and `_weakrefset` are new; none lost. 165 first errors move. The inventory is 522 files with 47 exclusions; 521 sources are byte-identical to the previous sweep's, and `ssl.py` is upstream's. |
+| Stub-assisted imports | **146/475**, 2 needing stubs (was 4). 99 now stop at `weakref.py:12`, where six `_weakref` names are missing. A diagnostic stubbing those names unlocks no import. |
+| 27 package probes | Every first error is as on 2026-10-17. With the CPython stdlib overlay, a new configuration, 14 probes then stop in the stdlib or a C extension, and sortedcontainers in its own Python 2 branch. |
+| Harness probes | pyperf now stops at `_contextvars`, the pyperformance CLI at `_io`, and pytest, unittest and unmodified `test_fnmatch.py` at `_opcode`. |
+| pyperformance | The census stays at **6/52**. With the stdlib overlay, `weakref.py:12` stops 6 benchmarks. |
+| Compiled upstream tests | `tests/upstream_{weakref,select,ast}.py`: 15 CPython test methods, 6 of them complete. They pass in JIT and AOT, with GC stress and with optimizations off. |
+
+Native blockers now:
+
+| First error | Modules |
+|---|---:|
+| `weakref.py:12` | 54 |
+| `_io` | 34 |
+| `_signal` | 26 |
+| `_opcode` | 24 |
+| `email/charset.py:99`, a dict of `None` values | 16 |
+
+With the C modules stubbed, subset patterns lead:
+
+| First error | Modules |
+|---|---:|
+| `socket.py:53` ([#611](https://github.com/den-run-ai/pystachy/issues/611)) | 68 |
+| `inspect.py:1725` ([#256](https://github.com/den-run-ai/pystachy/issues/256)) | 42 |
+| `enum.py:1412` ([#610](https://github.com/den-run-ai/pystachy/issues/610)) | 13 |
+
+Not run: full `make verify` on the audit head, CPython regrtest and timings.
+
 ## Checks to run when the pending work lands
 
 These are impact targets, not assertions that the PR will make the whole module
@@ -1635,3 +1683,154 @@ That is separate from this audit PR's checks. Local full `make verify`, full
 CPython regrtest, unrelated inference/recursion blockers and other package suites
 were not rerun. Historical global suite counts remain historical, not newly
 measured totals. The audit PR remains draft pending contributor DCO sign-off.
+
+## 2026-10-19 — native JSON, regex and array catch-up through #723
+
+Evaluated exact [main `5db1e4b5`](https://github.com/den-run-ai/pystachy/commit/5db1e4b5e14e4da6d8bfa5e0952cd191fbc08959),
+after the latest completed main checkpoint `2359de69`. The triggering
+[#723](https://github.com/den-run-ai/pystachy/pull/723) merged at
+2026-10-19 17:05:10 UTC and is documentation/recorded-results only. Its merge is
+in main's history; implementation remains that of #699 (`d97a60c4`). This audit
+also covers the intervening implementation changes, not just the wake-up PR:
+
+| Merges | Selected evidence |
+|---|---|
+| #678 | AST constructors, reference equality/hash, file-descriptor select, three compiled upstream-derived files and rejection cases; native C probes |
+| #676, #680, #682, #683, #685 | Regex branch/repeat/class/Unicode/raw-subject and ownership checks; bytes reads and string length; four affected ports; three adapted regex benchmarks; operation-count controls |
+| #670 | Recursive aliases and native JSON, accepted/rejected/deviation cases; differential corpus; JSON records benchmark; two affected upstream benchmark sources |
+| #681, #684, #695 | Stack index keys, cold/noreturn lowering and varargs/generator ownership; focused normal/GC checks, runtime contracts, IR validation and bootstrap |
+| #687, #688, #691, #693, #698, #699 | Array indexing/elementwise/matmul, nanoGPT reads, BLAS packing/view offsets and `ffi.at`; array/nanoGPT fixtures, FFI and LP64 BLAS parity |
+| #675, #673, #679, #723 | Instructions/install docs, README, docs-only CI routing and recorded benchmarks; no new compatibility numerator assigned |
+
+The [machine-readable evidence](compatibility-2026-10-19-catchup.json) retains
+every intervening first-parent merge and changed-file list, selections, fixture
+and tool hashes, exact commands, output, compiler provenance and reproduction
+drivers. It preserves the other session's merged prototype audit and this PR's
+earlier GC/BLAS/Unicode measurements; no implementation branch was changed.
+
+### Fresh results and input controls
+
+Rebuilt from the evaluated SHA with **CPython 3.13.16 / LLVM 18.1.3**. Compiler
+and runtime reach three-way fixed points at **630,644 / 18,388 IR lines**;
+executable SHA-256 is
+`33f66f7e745cd8581d1f743cc3085381173b6b613b63ba695de83f4dbaf59f75`.
+Source revision and executable hash are recorded separately. CPython was restored
+from its pinned uv distribution after the earlier executable disappeared.
+
+| Evidence category | Fresh outcome |
+|---|---|
+| Isolated native imports, with metadata | **144/470**, 52 exclusions from the same 522-module inventory; zero timeouts and no successful import lost |
+| Throwing C-module stand-ins, with metadata | **146/470**; diagnostic IR compilation, not implemented APIs |
+| Selected stdlib/compiler/array fixtures | **112/112**: 74 positive JIT/AOT checks, 14 recorded-deviation checks and 24 expected compiler rejections, across 68 files |
+| Per-allocation program GC | **46/46** selected positive JIT/AOT checks (23 files); compiler stress interval 1000 |
+| Adapted ports | **18/18** JIT/AOT checks over nine pylev, wcwidth, pyfiglet and Snowball programs |
+| CPython fixture controls | **46/46** recordings match, including stdout, exit and final exception where present |
+| Native JSON differential corpus | **14,444 cases in each JIT and AOT run**, both with GC every allocation; **22,449** hosted differential/limit checks, seed 391 |
+| FFI | **138/138** native harness checks |
+| LP64 BLAS | **24 matrix + 15 linear + 32 invalid-input cases per tier**, passing CPython FFI twin, JIT, AOT and both native GC tiers; reference BLAS 3.12.0, NumPy 2.3.5 |
+| Adapted nanoGPT BLAS parity | **4,022 values per tier**, all five tiers pass with exact agreement for these fixtures |
+| Structural/runtime controls | **451 runtime entries / 70 exception classes** agree; **1,418** programs pass IR validation and llvm-as; weakref/select C probes pass normally and under GC stress |
+| Adapted benchmarks | Three regex smoke workloads match CPython; JSON records smoke passes skewed/mixed/changing UTF-8 profiles, generic and hand-guarded paths, parse/end-to-end and predecoded phases |
+
+The import numerator deliberately excludes shipped replacements. Adding `lib/json`
+removes upstream `json`, `json.decoder`, `json.encoder`, `json.scanner` and
+`json.tool` from the swept denominator, **475 → 470**. This is one new bounded
+native library surface, not five new successful upstream imports or five
+regressions. Every shared normalized result is unchanged except `turtle`'s
+environment-dependent first error: this CPython distribution includes tkinter,
+so it reaches missing `_tkinter` instead of missing `tkinter`. **521/522 stdlib
+file hashes match** the prototype checkpoint; only distribution `ssl.py` differs,
+and its `_ssl` first error is unchanged. Both differences are recorded rather
+than attributed to compiler changes.
+
+### Useful JSON support, but not general dynamic Python
+
+Native `json.loads`/`dumps` now execute recursive mixed null/bool/int/float/string,
+list and string-keyed dict values; retained tests exercise mutation, identity,
+Unicode/surrogates and error positions. This materially improves the previous
+blanket recursive-JSON blocker. It does **not** make `Any` arbitrary dynamic
+storage: this is a bounded nominal recursive union with explicit narrowing.
+
+The documented limits remain significant: signed 64-bit integers, 256-container
+JSON depth, string input only, and no `load`/`dump`, encoder/decoder classes,
+hooks/default conversion, indentation, tuple serialization or arbitrary objects.
+Unsupported types/APIs can be compile-time errors instead of CPython runtime
+exceptions. See [the contract](../json-prototype.md). Selecting a supported
+call and giving a concrete type can be a minor adaptation; replacing a dynamic
+framework/object model remains major work.
+
+Fresh runner-replaced **pyperformance 1.14.0** checks cover only the five affected
+JSON/regex sources, with the pinned sdist and source hashes verified:
+
+| Source | Fresh native compilation |
+|---|---|
+| `json_dumps` | Now reaches empty-dict inference at line 7, instead of missing `json` |
+| `json_loads` | Now reaches `expected int, got str` at line 50, instead of missing `json` |
+| `regex_dna` | Still rejects `bytearray()` |
+| `regex_effbot` | Still rejects the function's `.data` attribute |
+| `regex_v8` | Still compiles |
+
+Only **1/5** of this affected subset compiles unchanged apart from runner
+replacement. The earlier **6/52** full census and 27 package-probe outcomes were
+not rerun and remain dated, not new totals. Nor does a compiled adapted array or
+BLAS program establish native NumPy/PyTorch import or upstream-suite support.
+The three upstream-derived AST/select/weakref files pass inside the selected
+suite, with their documented exclusions; CPython regrtest was not run.
+
+Fresh imports still expose `_opcode` for inspect/unittest, `_io` for importlib,
+and missing `getweakrefcount` for upstream weakref. `_py_abc` and `_weakrefset`
+retain their import gains, but that is not proof their complete APIs work.
+General runners, reflection and dynamic object/storage work remain substantial
+blockers. Existing #491/#616/#9/#487 and the API-specific trackers own these
+boundaries; this pass found no confirmed uncovered correctness bug requiring a
+new issue. Unrelated cache, numeric-union, recursion and codec probes were not
+rerun, so their historical failures are not relabeled as fresh findings.
+
+### Performance evidence and limitations
+
+Fresh regex operation counters pass their bounds (including zero temporary
+charset bit lists over 787,450 calls and no warm Unicode charset/mapping work).
+These are hosted structural controls, not a new native timing or RSS study.
+Concurrent correctness-run timings are retained for provenance only.
+
+For #723, independently recomputed **30 nanoGPT statistics**, **135 ndarray
+rounded summary values** and **seven after-source hashes**, all matching its
+committed records. The recorded #699 head and merge have the same Git tree.
+This validates artifact arithmetic/provenance, **not an independent rerun** of
+its benchmark. Its ten rotated/interleaved rounds on one pinned CPU of a shared
+2.1 GHz host report full-logits/loss BLAS AOT **1.227 → 0.564 ms**, JIT
+**1.676 → 0.730 ms**, scalar AOT **5.200 → 2.492 ms**, scalar JIT
+**15.852 → 4.288 ms**. The 108,288-parameter float64 model uses batch 2, length
+16; 20 warmups/300 repeats, single-threaded SciPy OpenBLAS. NumPy 2.5.4/SciPy
+1.18.1/PyTorch 2.14.1+cpu and mixed CPython 3.12.3/3.13.16 reference roles are
+part of that experiment, not this audit's reference-BLAS/NumPy 2.3.5 environment.
+The constructed before tree reverts #657 from #642's merge. BLAS output changes
+in last bits are disclosed with maximum difference 3.3e-16; scalar outputs are
+byte-identical. Do not turn these workload-specific results into general package
+speed claims. [nanoGPT record](../../examples/nanogpt/results/ndarray-work-paired.json)
+and [ndarray record](../../examples/ndarray/results/bench-2026-10-19.json).
+
+### Reproduction and report maintenance
+
+Use the evidence's bootstrap command, then `audit-current-driver.py` (first with
+`references`, then default), `audit-aux.py`, and `audit-artifacts.py`, with pinned
+CPython and relocated ROOT/LLVM/NumPy paths. The primary driver intentionally
+retains the original failed benchmark invocation: `json_dumps/json_loads` were
+mistakenly requested as delivered adaptations, and CLI validation rejected them
+before execution. The corrected three-regex smoke run and separate native JSON
+smoke/affected-census runs pass. This is an explicit audit invocation error, not
+a compiler failure; the primary driver's aggregate exit 1 is explained by it.
+The affected census changes only the controller's in-memory source selection,
+not repository files or upstream programs beyond its existing runner replacement.
+
+No full local `make verify`, full upstream package suite, new PyTorch training
+fixture export, or independent paired speed/RSS experiment is claimed. Optional
+broad testing stopped after these concrete affected risks were checked. The
+older DCO draft notes above describe the policy at those checkpoints: current
+[contribution policy](../../CONTRIBUTING.md#rights-and-sign-off) exempts this
+same-repository branch from the fork DCO check. No sign-off was fabricated.
+Applicable checks and maintainer review remain required before merge.
+The report-only diff passes `git diff --cached origin/main --check`. Checking
+the integration against the old audit head also reports nine trailing blank
+lines in already-merged JSON/recursive-alias test fixtures; those inherited
+implementation files are unchanged by this audit.

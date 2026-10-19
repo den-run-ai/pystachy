@@ -1,0 +1,55 @@
+null
+null
+true
+true
+false
+false
+0
+0
+0
+0
+9223372036854775807
+9223372036854775807
+-9223372036854775808
+-9223372036854775808
+1.25
+1.25
+-0.0
+-0.0
+1e-20
+1e-20
+1e+20
+1e+20
+Infinity
+Infinity
+-Infinity
+-Infinity
+NaN
+NaN
+Infinity
+Infinity
+-Infinity
+-Infinity
+[]
+[]
+{}
+{}
+[1, "two", true, false, null, 2.5, [], {}]
+[1,"two",true,false,null,2.5,[],{}]
+{"rows": [{"id": 1, "amount": 2.5, "tags": ["x", null]}, {"id": 2, "amount": null}], "ok": true}
+{"ok":true,"rows":[{"amount":2.5,"id":1,"tags":["x",null]},{"amount":null,"id":2}]}
+{"b": {"last": true}, "a": [2]}
+{"a":[2],"b":{"last":true}}
+[0, 1, 2]
+[0,1,2]
+True True False False False False False
+False True False False False False False
+False False True False False False False
+False False False False False False True
+False False False True False False False
+False False False False True False False
+False False False False False True False
+Out of range float values are not JSON compliant: nan
+Out of range float values are not JSON compliant: inf
+Out of range float values are not JSON compliant: -inf
+[exit 0]

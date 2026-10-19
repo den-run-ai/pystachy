@@ -34,11 +34,22 @@ mismatches, without imposing timing thresholds.
 The [pyperformance results](pyperformance.md) compare CPython, JIT and AOT on 18 benchmarks
 adapted from pyperformance 1.14.0. In that advisory snapshot, taken on a loaded machine, AOT ran
 14 of 17 comparable benchmarks 1.5× to 84× faster and the three regex benchmarks 2.5–2.7× slower
-than CPython. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
+than CPython. Later paired regex reruns ([repeat matcher](pyperformance.md#regex-repeat-rerun),
+[class loops and prefilters](pyperformance.md#regex-class-loop-and-prefilter-rerun),
+[in-place subjects](pyperformance.md#regex-in-place-subject-rerun)) measure the
+regex timed loops at 0.32–0.82× CPython's time AOT. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
 [port notes](../bench/pyperformance/README.md#blocked) distinguish delivered ports from
 upstream sources that compile after replacing only the runner. Of the 33 nondeferred
 sources without a delivered port, 32 still reject and `generators` compiles.
 Deltablue is separately deferred for a licence provenance decision.
+
+Array code is measured with its examples. In the nanoGPT example's
+[paired measurement](../examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work),
+AOT inference with OpenBLAS on one thread took 0.52 times CPython + NumPy's latency and 0.80
+times PyTorch's for the full logits and loss, about half its time before the October array, BLAS
+and compiler changes, which also halved the scalar AOT path's time and cut the scalar JIT's to a
+quarter. The [ndarray example](../examples/ndarray/README.md#recorded-benchmark) times elementwise,
+reduction and matrix workloads against NumPy.
 
 ## Caching workloads
 
@@ -98,9 +109,9 @@ measures these paths separately, along with object dispatch and allocation.
 | Optimization | Effect | Comparison control |
 |---|---|---|
 | `dictfuse` | Reuses a proven lookup of the same key | `PYSTACHY_OPT=-dictfuse` |
-| `listget` | Removes bounds checks from proven sequence-loop reads | `PYSTACHY_OPT=-listget` |
-| `listfast` | Inlines checked `list[int]` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
-| Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied | [#308](https://github.com/den-run-ai/pystachy/pull/308) |
+| `listget` | Removes bounds checks from proven sequence-loop reads, of lists and `bytes` | `PYSTACHY_OPT=-listget` |
+| `listfast` | Inlines checked `list[int]` and `bytes` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
+| Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied. `o[i, j]` of a class whose `__getitem__` and `__setitem__` only read the key makes the key in the caller's frame | [#308](https://github.com/den-run-ai/pystachy/pull/308), [#660](https://github.com/den-run-ai/pystachy/issues/660) |
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
 | JIT helper inlining | Inlines program functions up to 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |

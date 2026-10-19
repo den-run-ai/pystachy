@@ -98,4 +98,10 @@ ValueError 'lazy() takes a 1-D array, not a 2-D one'
 ValueError 'lazy() takes a whole array, not a view of part of one: use lazy(a.copy())'
 ValueError 'operands could not be broadcast together with shapes (3,) (1,) '
 TypeError 'len() of unsized object'
+w[-1, -1] = 60, w[0, 1] = 20: [1.0, 20.0, 3.0, 4.0, 5.0, 60.0] 20.0 4.0
+IndexError 'index 2 is out of bounds for axis 0 with size 2'
+IndexError 'index -4 is out of bounds for axis 1 with size 3'
+IndexError 'too many indices for array: array is 1-dimensional, but 2 were indexed'
+IndexError 'indexing 2 of the 3 axes makes a view: use a.row(i)'
+[1.0, 20.0, 3.0, 4.0, 5.0, 60.0] [1.0, 20.0, 30.0] -18.531517265364528 -18.531517265364528
 [exit 0]

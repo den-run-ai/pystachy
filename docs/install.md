@@ -185,7 +185,7 @@ system Python. CI's Python version is pinned in `.python-version`:
 uv venv --python "$(cat .python-version)"
 uv pip install --python .venv/bin/python -r tools/requirements-dev.txt
 tools/setup.sh --verify      # Ubuntu: also install the UBSan runtime for make verify
-make lint PY="$PWD/.venv/bin/python"
+PATH="$PWD/.venv/bin:$PATH" make lint   # ruff and shellcheck come from PATH
 make verify PY="$PWD/.venv/bin/python"
 ```
 

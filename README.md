@@ -23,6 +23,11 @@ produce byte-identical LLVM IR.
 - **Native machine learning:** an adapted microGPT trains and generates text with scalar
   autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
   faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
+- **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
+  108K-parameter float64 model with OpenBLAS on one thread, AOT inference is **faster than
+  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
+  the same model in pure Python on CPython; results match PyTorch within 1.4e-14
+  ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
 - **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
@@ -55,8 +60,9 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 ## Quick start
 
-Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
-Release packages require LLVM; the image includes it. For a source build:
+Use a [native release package or Docker image](docs/install.md) to skip bootstrapping
+(releases lag behind `main`). Release packages require LLVM; the image includes it.
+For a source build:
 
 Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
@@ -114,8 +120,14 @@ CPython as a second baseline.
 
 Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
 snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
-one optimized-away workload has no meaningful AOT ratio. These are workload-specific
-measurements on adapted sources, not official pyperformance scores or a general Python speedup.
+one optimized-away workload has no meaningful AOT ratio. The regex workloads have improved
+since: after the [repeat-matcher](docs/pyperformance.md#regex-repeat-rerun),
+[class-loop and prefilter](docs/pyperformance.md#regex-class-loop-and-prefilter-rerun) and
+[in-place subject](docs/pyperformance.md#regex-in-place-subject-rerun) changes, their timed
+loops took **0.32×** (`regex_dna`), **0.44×** (`regex_effbot`) and **0.82×** (`regex_v8`)
+CPython's time AOT, and 0.33×, 0.55× and 0.99× JIT, in a paired rerun on 2026-10-19.
+These are workload-specific measurements on adapted sources, not official
+pyperformance scores or a general Python speedup.
 JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
 memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.
 
@@ -151,7 +163,7 @@ for locked installs, the ports wheel and standalone executables.
 Pystachy is experimental and supports a subset of Python. It is a good fit for typed,
 algorithmic code; broad compatibility with arbitrary PyPI packages is still limited.
 
-- Ordinary single inheritance is supported; multiple inheritance, `async`,
+- Ordinary single inheritance is supported; multiple inheritance, `async`, `match`,
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
 - Integers are checked 64-bit values; overflow raises `OverflowError`.
