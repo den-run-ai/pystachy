@@ -54,7 +54,9 @@ In these cases a program can compile but behave differently from CPython.
   `ord()` count characters, as `strip()` (also of given characters), `split()`,
   `rsplit()`, `splitlines()` and `isspace()` read them (CPython's Unicode whitespace and
   line breaks). A UTF-8 file holds a str's bytes, read and written without checking them
-  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A native
+  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A byte of it
+  that begins no character is one character, in `len()` and in widths, padding, precision
+  and `expandtabs()` alike, as CPython counts a byte that `surrogateescape` decodes. A native
   UTF-8 file's `write()` result still counts bytes; a Latin-1 file's counts characters.
   A Latin-1 file's bytes are its characters, as in CPython: the str read holds each as
   UTF-8, and a write gives each character as its byte and returns

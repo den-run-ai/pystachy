@@ -16,6 +16,7 @@ usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
 import math
 import os
 import random
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -474,6 +475,56 @@ def fuzz_replace():
         check(h, n, r, k)
 
 
+# Pieces of raw text: ASCII, whole UTF-8 characters, and bytes that begin no character as
+# runtime.c's u8char reads them (a lone continuation, an overlong lead, a cut sequence, an
+# overlong form, one above U+10FFFF), which Pystachy reads unchecked from files and stdin. CPython
+# decodes such bytes with surrogateescape to one lone surrogate each, as its stdin does in UTF-8
+# mode. No encoded surrogate (ED A0..BF): Pystachy reads those as one character, CPython as three
+PIECES = [b"a", b"Z", b" ", b"\t", b"0", "é".encode(), "€".encode(), "𝄞".encode(), b"\x80", b"\xbf", b"\xc1\xbf",
+          b"\xc0\xaf", b"\xe2\x82", b"\xf0\x9f\x98", b"\xe0\x80\xaf", b"\xf4\x90\x80\x80", b"\xf5", b"\xff", "퟿".encode()]
+
+
+def raw(n=8):
+    return b"".join(R.choice(PIECES) for _ in range(R.randrange(n + 1)))
+
+
+def esc(r):
+    # CPython's str of raw bytes r
+    return r.decode("utf-8", "surrogateescape")
+
+
+def ref_raw(f):
+    # CPython's outcome, with the text of its result or message as the bytes it writes. A byte
+    # that begins no character is its own code point in Pystachy (ord() of it), U+DC00 + it in
+    # CPython: an unknown presentation type's message shows that code point
+    r = outcome(f)
+    if not isinstance(r[1], str):
+        return r
+    return (r[0], re.sub(r"code '\\xdc([89a-f][0-9a-f])'", r"code '\\x\1'", r[1]).encode("utf-8", "surrogateescape").decode("latin-1"))
+
+
+def fuzz_malformed():
+    # widths, precision, fill characters, zfill, expandtabs and presentation types count
+    # characters as len() does (#29)
+    for _ in range(N):
+        r = raw()
+        s = r.decode("latin-1")
+        c = esc(r)
+        width = R.randrange(-2, 12)
+        f = R.choice([None, b"*", "é".encode(), b"\x80", b"\xc1", b"\xe2\x82", b"ab"])
+        for name in "ljust rjust center".split():
+            same(name, outcome(getattr(rt, "pys_str_" + name), s, width, f.decode("latin-1") if f is not None else None),
+                 ref_raw(lambda: getattr(c, name)(width, esc(f) if f is not None else " ")), (r, width, f))
+        same("zfill", outcome(rt.pys_str_zfill, s, width), ref_raw(lambda: c.zfill(width)), (r, width))
+        ts = R.choice([0, 1, 4, 8])
+        same("expandtabs", outcome(rt.pys_str_expandtabs, s, ts), ref_raw(lambda: c.expandtabs(ts)), (r, ts))
+        sp = spec()
+        same("format_str", outcome(rt.pys_format_str, s, b(sp)), ref_raw(lambda: format(c, sp)), (r, sp))
+        rs = raw(3)  # a spec of raw bytes: a fill, a type, or neither
+        same("format_int", outcome(lambda: rt.pys_format_int(5, 0, rs.decode("latin-1"))), ref_raw(lambda: format(5, esc(rs))), (rs,))
+        same("format_str", outcome(rt.pys_format_str, s, rs.decode("latin-1")), ref_raw(lambda: format(c, esc(rs))), (r, rs))
+
+
 fuzz_str()
 fuzz_replace()
 fuzz_bytes()
@@ -481,5 +532,6 @@ fuzz_search()
 fuzz_math()
 fuzz_hash()
 fuzz_format()
+fuzz_malformed()
 print(f"{cases} cases, {fails} failed")
 sys.exit(1 if fails else 0)

@@ -928,11 +928,20 @@ def pys_str_istitle(s: str) -> int:
 
 
 def ulen(s: str) -> int:
-    # the length in characters: the bytes that do not continue a UTF-8 sequence
+    # the length in characters, as uchar reads them (runtime.c's u8char, which len() counts by):
+    # the bytes where none is above 127 (counted in a loop that LLVM vectorizes), else each
+    # character read in turn
+    n = len(s)
+    hi = 0
+    for i in range(n):
+        hi += _rt.byte(s, i) >> 7
+    if hi == 0:
+        return n
     k = 0
-    for i in range(len(s)):
-        if _rt.byte(s, i) & 192 != 128:
-            k += 1
+    i = 0
+    while i < n:
+        i += 1 if _rt.byte(s, i) < 128 else uchar(s, i, n) & 7
+        k += 1
     return k
 
 
@@ -1047,6 +1056,7 @@ def pys_str_expandtabs(s: str, size: int) -> str:
     for k in range(2):
         col = 0
         at = 0
+        more = 0  # the bytes left of a character of several, as uchar reads it (one column)
         for i in range(len(s)):
             c = _rt.byte(s, i)
             if c == 9:
@@ -1063,8 +1073,12 @@ def pys_str_expandtabs(s: str, size: int) -> str:
                 at += 1
                 if c == 10 or c == 13:
                     col = 0
-                elif c & 192 != 128:
+                elif more > 0:
+                    more -= 1
+                else:
                     col += 1
+                    if c > 127:
+                        more = (uchar(s, i, len(s)) & 7) - 1
         if k == 0:
             r = _rt.str_new(at)
     return _rt.str_done(r)
@@ -1264,12 +1278,11 @@ def pys_fmt_float(m: float, ty: int, prec: int, alt: int) -> str: ...
 
 
 def uoff(s: str, k: int) -> int:
-    # the byte offset of code point k
+    # the byte offset of character k, as uchar reads characters
+    n = len(s)
     i = 0
-    while i < len(s) and k > 0:
-        i += 1
-        while i < len(s) and _rt.byte(s, i) & 192 == 128:
-            i += 1
+    while i < n and k > 0:
+        i += 1 if _rt.byte(s, i) < 128 else uchar(s, i, n) & 7
         k -= 1
     return i
 
@@ -1292,16 +1305,9 @@ def among(c: int, cs: str) -> bool:
 
 
 def ucode(s: str, i: int) -> int:
-    # the code point that starts at byte i (a lone or truncated sequence gives what it has)
-    c = _rt.byte(s, i)
-    if c < 192:
-        return c
-    n = 1 if c < 224 else 2 if c < 240 else 3
-    v = c & (63 >> n)
-    for k in range(1, n + 1):
-        if i + k < len(s):
-            v = (v << 6) | (_rt.byte(s, i + k) & 63)
-    return v
+    # the code point of the character at byte i, as uchar reads it (a byte that begins none is
+    # the character chr() makes of it)
+    return uchar(s, i, len(s)) >> 3
 
 
 def tych(c: int) -> str:
