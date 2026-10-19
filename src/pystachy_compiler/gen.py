@@ -1052,6 +1052,7 @@ class Gen:
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
+        self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
         self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once

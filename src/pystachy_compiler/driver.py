@@ -67,6 +67,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     g = Gen()
     g.ext = ext
     g.libdir = dirs[-1] if len(dirs) > 0 else ""
+    g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
     ld = Loader(dirs)
     ld.ext = ext
     return g.program(ld.program(path, src))
