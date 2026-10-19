@@ -671,9 +671,11 @@ from src.pystachy_compiler.ircheck import (
 )
 from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
+    gen_field_tag as lowering_field_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
+    gen_tuple_rets as lowering_tuple_rets,
 )
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
@@ -682,6 +684,7 @@ from src.pystachy_compiler.lower_module import (
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
     gen_pyext as lower_module_pyext,
+    gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.optimizations import (
@@ -1094,6 +1097,22 @@ class Gen:
         self.mcall: Node | None = None  # the call o.m(...) whose method Gen.method is compiling (close())
         self.coros = False  # a generator function was lowered: the module declares LLVM's coroutine intrinsics
         self.lowblk = ""  # the label of the block being lowered (gen.start's phi names it)
+        # fieldtbaa: the field addresses of the function being lowered, each with the TBAA access
+        # tag of its loads and stores, and the program's tags, by "<class> <index>" of the class
+        # that lays the field out: their numbers, from TBAA_FIELDS (Gen.field_tag); and the classes
+        # whose structs the tags can describe (each member of a known size)
+        self.ftags: dict[str, str] = {}
+        self.tbaa: dict[str, int] = {}
+        self.tbaacls: dict[str, bool] = {}
+        # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
+        # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
+        # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
+        # give them (by "%tN k") and the results of its calls that take slots (their LLVM type)
+        self.vrets: dict[str, int] = {}
+        self.vcalls: dict[str, bool] = {}
+        self.vtuples: dict[str, bool] = {}
+        self.vslots: dict[str, str] = {}
+        self.vaggs: dict[str, str] = {}
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
@@ -2283,6 +2302,15 @@ class Gen:
 
     def lower_ins(self, fn: IFn, i: Ins) -> None:
         return lowering_lower_ins(self, fn, i)
+
+    def field_tag(self, c: str, k: int) -> str:
+        return lowering_field_tag(self, c, k)
+
+    def tbaa_nodes(self) -> list[str]:
+        return lower_module_tbaa_nodes(self)
+
+    def tuple_rets(self) -> None:
+        return lowering_tuple_rets(self)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)
