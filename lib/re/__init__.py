@@ -236,8 +236,12 @@ def _codes(string: str, limit: int) -> list[int]:
     codes: list[int] = []
     offs: list[int] = []
     if not _UTF8:
-        for c in source:
-            codes.append(ord(c))
+        if source.isascii():
+            # (an ASCII str's encoding is its code points: list() makes them in one call, not
+            # an ord() of each character, which is most of a scan's cost on a long subject)
+            codes = list(source.encode("ascii"))
+        else:
+            codes = [ord(c) for c in source]
     else:
         bs = [ord(c) for c in source]
         ascii = True
@@ -1935,6 +1939,7 @@ class Pattern:
         # the flattened tables keep the warm lookup on the compiler's inline list[int] reads.
         self._charset_offsets = [-1] * len(code)
         self._charset_ascii: list[int] = []
+        self._prefilter: list[int] = []  # (the search's, found on its first use: see _sre._prefilter)
         self._indexgroup: list[str | None] = [None] * (groups + 1)
         for k in groupindex:
             self._indexgroup[groupindex[k]] = k
@@ -1951,6 +1956,7 @@ class Pattern:
         st = _sre.State(codes, _to_char(offs, pos), _to_char_floor(offs, endpos), self.groups)
         st.charset_offsets = self._charset_offsets
         st.charset_ascii = self._charset_ascii
+        st.prefilter = self._prefilter
         st.offs = offs
         st.pos = pos
         st.endpos = endpos
