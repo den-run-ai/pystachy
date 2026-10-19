@@ -1,0 +1,114 @@
+# Report-only coverage of the compiler's own source (make coverage; docs/testing.md#compiler-coverage):
+# the CPython-hosted compiler runs the whole differential, rejection and deviation suite, JIT and AOT,
+# under coverage.py. The HTML report is an artifact and the table of modules the job summary; a failed
+# test, or a compiler process that left no data, fails the run, and no percentage does. Daily and on
+# demand, and on the pull requests and pushes to main that change its setup or tests/run.sh, whose
+# report and one compiler process per check tools/coverage.sh relies on. Each run on main also
+# commits its result to the badges branch, which the README's badge reads: coverage.json (a shields.io
+# endpoint) and coverage.md (the summary), from a job of its own, which may write and runs no test.
+name: Coverage
+
+on:
+  schedule:
+    - cron: '41 5 * * *'   # daily, 05:41 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .coveragerc
+      - .github/workflows/coverage.yml
+      - tests/run.sh
+      - tools/coverage.sh
+      - tools/requirements-dev.txt
+  pull_request:
+    paths:
+      - .coveragerc
+      - .github/workflows/coverage.yml
+      - tests/run.sh
+      - tools/coverage.sh
+      - tools/requirements-dev.txt
+
+concurrency:
+  group: coverage-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: hosted compiler coverage (JIT and AOT)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false   # the tests run arbitrary programs: no token for them to read
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: LLVM 18 toolchain
+        run: tools/setup.sh --minimal
+
+      - run: python3 -m pip install -r tools/requirements-dev.txt
+
+      - name: tools/coverage.sh (make coverage)
+        env:
+          PY: python3
+        run: tools/coverage.sh
+
+      - name: Job summary
+        if: always()
+        run: if [ -f build/coverage/summary.md ]; then cat build/coverage/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: coverage
+          path: |
+            build/coverage/html
+            build/coverage/coverage.json
+            build/coverage/summary.md
+            build/coverage/badge.json
+            build/coverage/tests.log
+          if-no-files-found: error
+          retention-days: 14
+
+  badge:
+    name: publish main's coverage to the badges branch
+    needs: coverage
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: coverage-badge
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: coverage
+          path: report
+
+      - name: Commit coverage.json and coverage.md to the badges branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remote="https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          git init -q badges
+          cd badges
+          # (the first run finds no badges branch: its commit starts the branch)
+          if git fetch -q --depth=1 "$remote" badges; then git checkout -q FETCH_HEAD; fi
+          cp ../report/badge.json coverage.json
+          cp ../report/summary.md coverage.md
+          git add coverage.json coverage.md
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Hosted compiler coverage of $GITHUB_SHA"
+          git push -q "$remote" HEAD:refs/heads/badges

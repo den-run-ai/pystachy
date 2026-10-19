@@ -312,7 +312,9 @@ Effects describe observable behavior for optimization, not an ownership or alias
 `U?` applies only when a static descriptor can contain user classes or custom exceptions;
 a dict or set operation carries its keys' descriptor in `Ins.x` for this, where an object
 hashed by its class (`H<id>`) runs `__hash__` and `__eq__`, and one hashed by identity
-(`P<id>`) runs only the `__repr__` of a `KeyError`.
+(`P<id>`) runs only the `__repr__` of a `KeyError`. `R?` is `R` only when the descriptor
+holds a recursive alias's edge (`R<n>:`): the runtime's descriptor walks count those edges
+and raise `RecursionError` past 512 of them, and no other descriptor nests without bound.
 Allocation-triggered collection can close unreachable files; that unspecified cleanup timing
 is represented by `A`, rather than adding file or I/O effects to every allocation.
 
