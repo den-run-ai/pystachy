@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed`.
+**Latest evaluated main:** `633cdf1aeceae65cb9fa94d420ae50562e6c1b7a`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2970,3 +2970,106 @@ are carried forward by implementation identity, **not rerun**. Unrelated API,
 port and benchmark suites, full `make verify` and unmodified upstream suites were
 not repeated. Dated reports/JSON, adaptation assessments and first-error limits
 remain unchanged; no new issue was needed.
+
+## 2026-10-19: compile-time sys installation prefixes (#719)
+
+Evaluated [main `633cdf1aeceae65cb9fa94d420ae50562e6c1b7a`](https://github.com/den-run-ai/pystachy/commit/633cdf1aeceae65cb9fa94d420ae50562e6c1b7a),
+the only first-parent merge after `837843bc`. Fresh metadata and ancestry confirm
+[#719](https://github.com/den-run-ai/pystachy/pull/719) merged. Four compiler files
+add the prefix attributes and canonicalize the compiler's home; the other changes
+are the compatibility explanation and one test/recording pair. Runtime, library,
+port and benchmark sources are unchanged. Read #491/#616 and #719's review and
+comments before measuring; no implementation branch was edited.
+
+Rebuilt clean source with **CPython 3.13.16 / LLVM 18.1.3**: compiler/runtime IR
+fixed points are **645,062 / 18,851 lines**, byte-identical across all three stages.
+Native compiler SHA-256:
+`18382171c96a1ce0ee6048d868439b4a823b9abfa36138d941c1e890d07e2154`.
+The comparison compiler is separately identified as built from `b7e869f8`, hash
+`12288231f46f77db1034d1afd59647fabe13e61452fd230577bbc6223897ff84`;
+its implementation equals preceding evaluated main `837843bc` (#747 was tests only).
+
+### Executed APIs and bounded regression checks
+
+- **76/76 retained checks pass:** five `sys_*` programs plus six opcode
+  positive/deviation/rejection fixtures, **19 checks in each** of native JIT/AOT,
+  GC-stress, optimization-off and CPython-hosted compiler configurations.
+- The new recording agrees with **base CPython 3.13.16**. A separate raw-path
+  program prints all four attributes and checks their from-import aliases. All
+  **six native JIT/AOT executions** (normal, GC-stress and optimization-off) return
+  the canonical compile-time Pystachy home. Changing `PYSTACHY_HOME` at AOT run
+  time does not change the embedded strings; a symlinked compiler home with an
+  extra import path resolves to the same canonical directory. The old compiler
+  rejects the new import. These are native API executions, not an upstream suite.
+- **3,157-program old/new compilation comparison:** **3,156 identical** normalized
+  IR/message/status results; only `tests/sys_prefix.py` changes, from rejection to
+  acceptance. No accepted-to-rejected transition, changed benchmark IR or changed
+  retained adapted-port IR. This bounds the selection; unrelated port/benchmark
+  execution and timing experiments were not repeated.
+- The compiler IR checker and LLVM assembler accept **10 selected programs**,
+  including compiler/runtime sources. Runtime checks pass: **457 RUNTIME entries,
+  70 exception classes and 171 functions**.
+
+The four strings deliberately describe **Pystachy's compile-time home**, not a
+CPython installation or a virtual environment. Independent raw-path outputs are
+checked against that documented native contract, not falsely reported as exact
+CPython path parity. Joining `share/locale` produces a path but supplies no catalog.
+
+### Import first errors, not newly importable libraries
+
+Both isolated sweeps were rerun with `--metadata`, two workers, the same
+**522 CPython source hashes** and **54 overlay exclusions**. Native imports remain
+**143/468**; the separate CPython-hosted throwing-stub diagnostic remains
+**145/468**, with **zero timeouts** in either. There are no lost successes and no
+denominator changes. Both maps advance the same four first errors:
+
+| Module | Previous first error | Newly exposed first error |
+|---|---|---|
+| `gettext`, `argparse`, `optparse` | `gettext.py:62`: unsupported `sys.base_prefix` | `gettext.py:114`: cannot iterate over a tuple whose tuple items have different types |
+| `site` | `site.py:81`: unsupported `sys.prefix` | `site.py:715`: unsupported `sys.flags.no_site` |
+
+None of these four imports succeeds yet. The first-error limit still applies;
+removing these next errors would not by itself establish full library support.
+
+### Existing recording limitation and reproduction
+
+Freshly reproduced the already-reported
+[venv recording problem](https://github.com/den-run-ai/pystachy/pull/719#issuecomment-6278932791):
+the fixture assumes `prefix == base_prefix == exec_prefix == base_exec_prefix`.
+Base CPython prints `True`; the existing **CPython 3.13.16 development venv** prints
+`False` on the first line (both remaining lines agree). Thus the merged recording
+is not portable to that documented development setup. This is a known test-harness
+limitation, not a new native runtime failure. No fixture was rewritten and no
+duplicate issue was filed; full recording validation was not claimed.
+
+From the clean evaluated checkout, using the explicit toolchain environment in
+the [evidence and replay scripts](compatibility-2026-10-19-sys-prefix.json):
+
+```sh
+make PY=/root/.local/bin/python3.13
+tests/run.sh ./pystachy 'jit aot' tests/sys_*.py tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/sys_*.py tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+PYSTACHY_OPT=-all tests/run.sh ./pystachy 'jit aot' tests/sys_*.py tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+tests/run.sh '/root/.local/bin/python3.13 -m pystachy' 'jit aot' tests/sys_*.py tests/lib_opcode.py tests/upstream_opcode.py tests/deviations/lib_opcode_specialization.py tests/errors/lib_opcode_*.py
+make check-runtime PY=/root/.local/bin/python3.13
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-719/imports-metadata.json ./pystachy "$STDLIB" build/audit-719/imports.json
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-719/stubs-metadata.json --stubs "$STDLIB" build/audit-719/stubs.json
+```
+
+`STDLIB` is the pinned interpreter's stdlib directory, recorded in the JSON.
+Extract and relocate `audit-719.py` and `audit-719-assemble.py`, run driver modes
+`build`, `references`, `checks`, `probes`, `oracle`, `sweeps`, `verify`, then aggregate.
+The evidence retains the initial failed sweep invocation (exit 2: options placed
+after a variadic positional argument); no module was tested by that attempt.
+The corrected invocations above completed both full sweeps. Exact commands,
+outputs, source/fixture/tool hashes, input inventory digest, import deltas and
+independent probe source are retained. Historical failed-attempt and implementation-CI
+snapshots must be retained separately when replaying the assembler.
+
+Freshly read historical implementation head `3bd4fd4db85e9df28333f30a9b3e2eb860e13a83`:
+four workflows succeeded ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39338142015),
+Lint, Packages and Installation). They are not combined-main or audit-head CI.
+No full local `make verify`, unmodified CPython regrtest, broad PyPI/NumPy census or
+performance/memory experiment was run. Shared-host timings are command durations,
+not speedup/regression evidence. Dated baseline reports/JSON and adaptation
+assessments are preserved unchanged.
