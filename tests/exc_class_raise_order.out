@@ -1,0 +1,28 @@
+cause()
+E()
+E KeyError('k')
+bad()
+ValueError bad
+E()
+F()
+E F('f')
+cause()
+E()
+E KeyError('k')
+bad()
+ValueError bad
+E()
+E None
+cause()
+E()
+named KeyError('k')
+bad()
+named ValueError bad
+E()
+F()
+named F('f')
+cause()
+TypeError exceptions must derive from BaseException
+cause()
+KeyError KeyError('k')
+[exit 0]

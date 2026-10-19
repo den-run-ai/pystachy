@@ -268,7 +268,8 @@ class Loader:
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
         self.fsure: dict[str, bool] = {}
-        self.unsure: dict[str, dict[str, bool]] = {}  # what each def reads before an import of it surely ran (import_reads())
+        self.unsure: dict[str, dict[str, bool]] = {}  # what the defs and generator expressions in each def read before an import of it surely ran (import_reads())
+        self.checked: dict[str, dict[str, bool]] = {}  # what each def itself reads so: its imports set a flag, which its reads check
         self.lazyann = False  # the module deftime() walks imports annotations from __future__
         self.tpnames: dict[str, bool] = {}  # the type parameters (def f[T], class C[T]) around what it reads
         self.called = 0  # and its code may have called a function by now (1), or imported a module (2)
@@ -1339,11 +1340,19 @@ class Loader:
         d.kids[2].kids = [pre[len(pre) - 1 - i] for i in range(len(pre))] + d.kids[2].kids
         early: dict[str, bool] = {}
         user: dict[str, bool] = {}
-        import_reads(d.kids[2], {}, early, user)
+        closed: dict[str, bool] = {}
+        import_reads(d.kids[2], {}, early, user, closed)
         self.unsure[str(d.line)] = {}
-        for nm in early:
+        self.checked[str(d.line)] = {}
+        for nm in closed:
             if nm in user:
                 self.unsure[str(d.line)][nm] = True
+        for nm in early:
+            if nm in user and nm not in closed:
+                # (an import that may not have run before the read: as for one in a try, the import
+                # sets a flag, and where it is not set the read raises CPython's UnboundLocalError, a
+                # lambda's its NameError)
+                self.checked[str(d.line)][nm] = True
 
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
         # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
@@ -2364,14 +2373,15 @@ class Loader:
     def import_binds(self, m: Mod, name: str, infn: bool) -> str:
         # Module imports bind only where they run: an earlier read, a skipped branch or a call
         # during another module's initialization may find the name unbound. Every module binding
-        # gets a flag. A function's imports need one where a try may skip or fail the import;
-        # other early local reads are rejected by import_reads().
+        # gets a flag. A function's imports need one where a try may skip or fail the import, or
+        # where the function reads the name where the import may not have run (checked: one in a
+        # branch, a loop); a closure's early reads are rejected (import_reads(), unsure).
         if self.rtmode and not infn:
             return ""  # runtime mode accepts only unconditional module imports
         key = f"{m.name} {self.curdef if infn else ''} {name}"
         if not infn:
             self.fragile[key] = m.q + name
-        elif self.intry == 0:
+        elif self.intry == 0 and name not in self.checked.get(self.curdef, {}):
             self.solid[key] = True
         elif key not in self.solid:
             self.fragile[key] = name if infn else m.q + name
@@ -2586,6 +2596,8 @@ class Loader:
             if m.name == "" and s in PYBUILTINS:
                 return "__main__$" + s  # (other modules' code still sees the builtin)
             return m.q + s
+        if k.startswith("a:") and k[2:] in PYBUILTINS:
+            return "__main__$" + k[2:]  # (an alias of the main program's def or class that has a builtin's name, L = len)
         if k.startswith("a:") or k.startswith("t:"):
             return k[2:]
         if k == "" and m.name != "" and s not in PYBUILTINS and not s.startswith("__"):

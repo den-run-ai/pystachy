@@ -227,6 +227,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
     if t == "exc":
         return "E"  # (repr: pys_exc_repr; equality: identity)
+    if t == "exctype":
+        return "C"  # (an exception class's class object: repr pys_exc_type; equality and hash: identity)
     if t in self.classes:
         # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
         # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
