@@ -1388,11 +1388,11 @@ def local_names(body: list[Node], out: dict[str, bool]) -> None:
             out[nm] = True
 
 
-def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dict[str, bool]) -> None:
+def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dict[str, bool], closed: dict[str, bool]) -> None:
     # the names that code n of a function reads where no import in it has surely bound them yet
     # (sure: those an import before n has bound, to which n adds those it surely binds: in both
-    # branches of an if, in a with block, not in a loop), and those its imports of Python modules
-    # bind (user)
+    # branches of an if, in a with block, not in a loop), those that the defs and generator
+    # expressions in it read there (closed), and those its imports of Python modules bind (user)
     if n.kind == "global":
         return  # (it names them, but reads none)
     if n.kind == "name" and n.s not in sure:
@@ -1405,16 +1405,45 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
         closure_free(n, free)
         for nm in free:
             if nm not in sure:
+                closed[nm] = True
+        for p in n.kids[0].kids:
+            import_reads(p.kids[1], sure, out, user, closed)  # (its defaults run where it is)
+        for d in n.kids[3:]:
+            # (and its decorators: a dotted name, or a call of one)
+            root = d.s[: d.s.find(".")] if "." in d.s else d.s
+            if d.s != "async" and root not in sure:
+                out[root] = True
+            import_reads(d, sure, out, user, closed)
+    if n.kind == "lambda":
+        # A lambda reads the names around it where it runs, checking the binding flags of the
+        # imports that bind them (Gen.lambda_flags): one that no import has surely bound where it
+        # is defined is the function's early read (as is one its defaults read)
+        for p in n.kids[0].kids:
+            import_reads(p.kids[1], sure, out, user, closed)
+        lfree: dict[str, bool] = {}
+        closure_free(lambda_def(n), lfree)
+        for nm in lfree:
+            if nm not in sure:
                 out[nm] = True
+        return
+    if n.kind == "listcomp" and n.s == "gen":
+        # A generator expression checks no binding flag where it runs: what it reads where an
+        # import may not have run yet is rejected, as for a def
+        gnames: dict[str, bool] = {}
+        read_names(n, gnames)
+        for nm in gnames:
+            if nm not in sure:
+                closed[nm] = True
+        return
     for a in n.kids if n.kind == "import" else n.kids[:0]:
         sure[a.s] = True
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             user[a.s] = True
     if n.kind == "if":
-        import_reads(n.kids[0], sure, out, user)
+        import_reads(n.kids[0], sure, out, user, closed)
         then = dict(sure)
-        import_reads(n.kids[1], then, out, user)
-        import_reads(n.kids[2], sure, out, user)
+        import_reads(n.kids[1], then, out, user, closed)
+        import_reads(n.kids[2], sure, out, user, closed)
         gone: list[str] = []
         for nm in sure:
             if nm not in then:
@@ -1426,7 +1455,7 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
                 sure[nm] = True
         return
     for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
-        import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user)
+        import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user, closed)
     first = n.kids[0].kids[0] if n.kind == "try" and len(n.kids[0].kids) > 0 else n
     for a in first.kids if first.kind == "import" else first.kids[:0]:
         # try: import m as x / ... (or from m import x): after the statement, x is bound unless the

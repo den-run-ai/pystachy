@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `946ce035c2b7f720bd53f3789bcabf5b040929af`.
+**Latest evaluated main:** `53c17bad9cd30120b8e0a3831797f3b22e9a9e87`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -28,6 +28,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-19 coverage tooling | `5dcb4859`; #733 README badges and #731 hosted coverage | 9 selected checks pass with all 10 compiler processes captured; a missing-JIT-data control correctly fails. No compiler/runtime/lib/port/test source changes and no new library-support claim. [Evidence](compatibility-2026-10-19-coverage-tooling.json). |
 | 2026-10-19 module bindings | `681bdd17`; #690 | Silent wrong function/exception bindings corrected; local module calls and same-named type parameters now work. 404 focused, 28 API and 8 port checks pass; imports remain 144/470 native, 146/470 stub-assisted. Only four corrected fixtures differ in the 3,109-program IR oracle. [Evidence](compatibility-2026-10-19-module-bindings.json). |
 | 2026-10-19 Unicode empty replacement | `946ce035`; #728 | Empty-pattern string replacement no longer splits UTF-8 bytes: all 1,328 supplementary cases match CPython (532 differed before). 215 focused, 58 API and 16 port checks pass; 4,560 Unicode audit controls pass. Imports and first errors stay unchanged. [Evidence](compatibility-2026-10-19-unicode-replace.json). |
+| 2026-10-19 conditional imports / power | `53c17bad`; #692, #735 and incorporated #665 | Conditional-import wrong results fixed; 450,000 power values match CPython (185 old AOT differences). Five import first errors advance, totals remain 144/470 native and 146/470 stub-assisted. 210 focused, 36 API and 12 port checks pass. [Evidence](compatibility-2026-10-19-imports-power.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -2254,3 +2255,136 @@ No full local `make verify`, CPython regrtest, broad PyPI/package sweep, full
 upstream benchmark census, paired timing or memory-regression conclusion is
 claimed. First-error limitations and minor/major adaptation assessments from the
 dated baseline remain applicable. Historical reports and JSON are unchanged.
+
+## 2026-10-19 — #692 conditional imports and #735/#665 AOT power rounding
+
+Evaluated [main `53c17bad9cd30120b8e0a3831797f3b22e9a9e87`](https://github.com/den-run-ai/pystachy/commit/53c17bad9cd30120b8e0a3831797f3b22e9a9e87).
+Since the previous checkpoint `946ce035`, the first-parent merges are
+[#692](https://github.com/den-run-ai/pystachy/pull/692) at `07951c99` and
+[#735](https://github.com/den-run-ai/pystachy/pull/735) at `53c17bad`.
+[#665](https://github.com/den-run-ai/pystachy/pull/665)'s test commit
+`7bb4e7fce0ca83803bd06cb96fd97943b3b5191f` is an ancestor through #735,
+not a third independent implementation merge. All three PRs were re-fetched as
+merged and their history membership checked. #659's broad compiler flag did not land.
+
+Changed-file selection covers function-import analysis/loading, closure/default/
+decorator bindings, float power runtime behavior and affected math/API/port probes.
+A build at `07951c99` completed before the power merge was incorporated; its log
+is retained separately. The final **exact-`53c17bad` rebuild** again reaches
+compiler/runtime fixed points: **630,274 / 18,851 IR lines**, CPython **3.13.16**,
+LLVM **18.1.3**, Linux x86-64. Final native compiler SHA-256:
+`f937af1d9089d961ee5bcc1abf99e777194333d17c9f578ab5e5c4c3d5a787d1`.
+The old control is exact `946ce035`, binary SHA-256
+`762659eac68d8f8462a53469ce1cba3c77e88f9f9150d0571bf8befb4549ccd7`.
+Compiler identity and source identity are recorded separately.
+
+### Measured correctness gains
+
+| Probe | Previous main | Evaluated main / CPython |
+|---|---|---|
+| Conditional or not-yet-run imports in a function, including dotted imports | Compile-time rejection | Executes bound paths and raises the correct unbound-local error on unbound paths |
+| Lambda reading a skipped conditional `import re` | Silently calls `re.escape` anyway | Raises CPython's free-variable `NameError` |
+| Nested-function defaults and decorators reading a skipped import | Silently use the imported object | Raise CPython's `UnboundLocalError` |
+| 50,000 seeded inputs × nine float-power expressions | AOT differs on 185 of 450,000 values; JIT matches | Both JIT and AOT match all 450,000 values exactly |
+
+The four new import fixtures match their CPython recordings in both native modes.
+Three were rejected by the old compiler; the nested-default/decorator fixture
+compiled but silently produced incorrect results. A separate minimal lambda
+program isolates the previously silent wrong result that the combined closure
+fixture's earlier rejection would otherwise hide.
+
+The power scan reuses [#656](https://github.com/den-run-ai/pystachy/issues/656)'s
+deterministic seed 7 and exact nine-expression program. Old AOT differences by
+expression are **38** for `x ** 2`, **44** for `x ** -1.0`, **65** for
+`2.0 ** y`, and **38** for `math.pow(x, 2.0)`; the five other columns match.
+New AOT and both JIT controls have zero differing values. Output shape is checked
+before comparison; command, full source, output hashes and first differences are
+retained. The runtime-input regression additionally checks built-in `pow`, signed
+zero, infinities, NaN and the distinct zero-to-negative-power errors.
+
+This is CPython parity, not a claim that libm returns the mathematically best
+rounded answer. #735 keeps libm calls in only the two power helpers. Its author's
+instruction-count result (55.0 M versus 9.6 M in a constant-power loop, with
+unchanged counts on nine other benchmarks) is **PR evidence, not remeasured here**.
+This audit makes no new speed-ratio claim: restoring libm rounding can cost work
+in power-heavy loops.
+
+### Retained validation and residual boundaries
+
+- **210 focused checks over 170 cases**, **36 API checks over 18 programs**, and
+  **12 adapted port checks over six programs** pass in the selected JIT/AOT
+  and expected-rejection modes.
+- Five import/power fixtures pass **10/10 each** with per-allocation program GC,
+  optimizations disabled, and the CPython-hosted compiler.
+- All **28 selected CPython recordings match**. The supplementary lambda,
+  generator-expression, builtin-import and annotation programs and power scan
+  have their own CPython references.
+- Adapted pyperformance **1.14.0** `float`, `spectral_norm` and `nbody`
+  smoke workloads match CPython in JIT and AOT. Small single-run timings on a
+  shared host alongside other checks are correctness diagnostics, not comparable
+  steady-state performance measurements.
+- Runtime signature/effect check: **451 entries / 70 exception classes** agree.
+- The compiler oracle compares **3,114 programs**; **only the four new import
+  regressions differ**. Its raw exit status 1 is expected and retained, not
+  reported as an all-identical pass. The stock tool displays the first three
+  differences; old/new executions independently cover all four.
+
+Fresh old/new JIT and AOT controls confirm remaining limits:
+
+| Residual case | CPython | Both old and new native behavior |
+|---|---|---|
+| `list(x for x in re.findall(".", text))` after a conditional import | Outer iterable evaluated eagerly; bound path works | Compile-time rejection |
+| Nested-def annotation `pmod.Thing` after a skipped import | Unbound-local error when the def executes | Annotation not runtime-evaluated; function returns normally |
+| Conditional builtin `import math`, then `math.sqrt` | Unbound-local error on skipped path | Builtin binding is program-global, a documented deviation |
+
+The generator-expression case is the existing [P2 review finding](https://github.com/den-run-ai/pystachy/pull/692#discussion_r4318716373),
+acknowledged as pre-existing and deferred in the [maintainer response](https://github.com/den-run-ai/pystachy/pull/692#discussion_r4318726083).
+The annotation limitation is already identified in #692. These are not new
+regressions, and no duplicate issue or implementation change was made.
+
+### Why the library count remains flat
+
+Fresh isolated sweeps with `--metadata` retain **144/470 native imports** and
+**146/470 stub-assisted imports**, **52 overlay exclusions**, the same **522
+CPython source hashes**, no timeouts and no lost successes.
+
+Five native first errors advance: `code`, `traceback`, `sre_constants`,
+`wsgiref.validate` and `_pyrepl._threading_handler` no longer stop at
+`warnings.py:220`'s conditional `re` import. They now stop at
+`warnings.py:262`: `m` is bound both by an import and as a variable in
+`_getcategory`. This is a removed blocker, not five newly working libraries.
+The precise per-module deltas, including the separate stub-assisted sweep,
+are retained in the evidence. Throwing stubs are not native implementations.
+
+### Evidence and replay
+
+[Machine-readable evidence](compatibility-2026-10-19-imports-power.json) includes
+all selected fixture/source hashes, commands, output, old/new controls, sweep
+metadata/deltas, the 450,000-value comparison, benchmark configuration and the
+complete drivers. The full baseline result maps are referenced from the preserved
+`compatibility-2026-10-19-json-followup.json`; only the five changed native
+results need replacing when reconstructing that map.
+
+Both implementation PR heads have **31 successful jobs across four workflows**:
+[#692 CI](https://github.com/den-run-ai/pystachy/actions/runs/39314545384) at
+`6cf83634`, and [#735 CI](https://github.com/den-run-ai/pystachy/actions/runs/39313591361)
+at `edf06492`. Neither head equals the combined evaluated tree. These are
+historical implementation CI results plus fresh combined-main selected checks,
+not a new full local verification matrix or the audit PR's own checks.
+
+For replay, extract `audit-692.py`, `audit-692-pow.py` and the assembler into
+one parent directory and relocate their explicit checkout/toolchain paths.
+The main driver creates `build/audit-692`. Run its `build`, `references`,
+`controls`, `extra`, `checks`, `sweeps`, `oracle`, `benchmarks` and
+`rtcheck` modes with pinned Python; run the power driver separately.
+For re-aggregation, extract `implementation_ci` into
+`build/audit-692/implementation-ci.json`, and the retained
+`completed_pre_power_rebuild.command` into `build-before-power-merge.json`
+in that directory. These two are historical records, not newly regenerated
+measurement results. Refresh CI through GitHub for any new current-state claim.
+
+No full local `make verify`, unmodified CPython regrtest, general PyPI sweep,
+full upstream benchmark census or paired performance/memory comparison was run.
+Compiled upstream-derived math cases, adapted ports, import compilation and hosted
+compiler checks remain distinct. Existing minor/major adaptation assessments and
+first-error limitations remain applicable. Dated reports and JSON are unchanged.
