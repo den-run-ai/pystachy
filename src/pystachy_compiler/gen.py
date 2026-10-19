@@ -2636,11 +2636,11 @@ class Gen:
     def exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
         return exceptions_exc_each(self, v, bs, what, done, ph)
 
-    def exc_call(self, c: Val, args: list[Node]) -> Val:
-        return exceptions_exc_call(self, c, args)
+    def exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
+        return exceptions_exc_call(self, c, args, how)
 
-    def exc_make(self, c: Val, vals: list[Val]) -> Val:
-        return exceptions_exc_make(self, c, vals)
+    def exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
+        return exceptions_exc_make(self, c, vals, how)
 
     def exc_ctors(self) -> int:
         return exceptions_exc_ctors(self)

@@ -542,7 +542,9 @@ An exception class, builtin or of the program, is a value: `k = KeyError`, a def
 or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it.
 Each class has one class object, so `is`, `==` and `hash()` compare and hash it by identity
 (`IOError is OSError`). `type(e)` of an exception, and the class an `__exit__` takes, are its
-class's class object (`NoneType`'s for `None`).
+class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, which is
+`type(None)`; raising it raises CPython's `TypeError`, and calling it raises `TypeError` too
+([deviation](compatibility.md#exceptions-and-exception-classes)).
 
 - `str()`, `repr()` and formatting give CPython's text (`<class 'KeyError'>`,
   `<class '__main__.E'>`); `__name__`, `__qualname__` and `__module__` are its names (`builtins`,

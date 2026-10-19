@@ -234,8 +234,11 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     v = self.expr(x, "")
     known = self.knownobj(x)
     if v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != ""):
-        if what != "__name__" and what != "__qualname__":
-            self.err(f"type(e).{what} of an exception is not supported; type(e).__name__ is")
+        if what == "__module__":
+            # (its class's, which pys_exc_module reads in an exception as in a class object;
+            # NoneType's, builtins, for None)
+            e = v if v.t == "exc" else self.exc_type_of(v)
+            return Val(self.rt("pys_exc_module", "ptr", [f"ptr {e.v}"]), "str")
         if v.t == "exc":
             return Val(self.rt("pys_exc_name", "ptr", [f"ptr {v.v}"]), "str")
         return Val(self.rt("pys_exc_cls", "ptr", [f"ptr {v.v}"]), "str")
@@ -247,19 +250,17 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
         return tn
     if v.t == "opt[exc]":
         # (an exception or None, as __exit__ and __cause__ give it: NoneType for None)
-        if what != "__name__" and what != "__qualname__":
-            self.err(f"type(e).{what} of an exception is not supported; type(e).__name__ is")
         e0 = self.cur
         l1 = self.label()
         l2 = self.label()
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
         self.place(l1)
-        nv = self.rt("pys_exc_name", "ptr", [f"ptr {v.v}"])
+        nv = self.rt("pys_exc_module" if what == "__module__" else "pys_exc_name", "ptr", [f"ptr {v.v}"])
         e1 = self.cur
         self.br(l2)
         self.place(l2)
         ph = Ins("phi", "str", "")
-        self.incoming(ph, self.sconst("NoneType"), e0)
+        self.incoming(ph, self.sconst("builtins" if what == "__module__" else "NoneType"), e0)
         self.incoming(ph, nv, e1)
         return Val(self.phi(ph), "str")
     cs = self.refl_type_of(v, what, known)
@@ -321,7 +322,16 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
             sides.append(v)
     neg = n.s == "is not" or n.s == "!="
     if (unopt(sides[0].t) == "exctype") != (unopt(sides[1].t) == "exctype"):
-        return Val("true" if neg else "false", "bool")  # (an exception class is no other type)
+        # (an exception class is no other type, but type() gives an exception that is None
+        # NoneType's class object, which is type(None))
+        cobj = sides[0] if unopt(sides[0].t) == "exctype" else sides[1]
+        rec = sides[1] if unopt(sides[0].t) == "exctype" else sides[0]
+        nrec = self.refl_record("None")
+        if rec.v.startswith("@") and rec.v != nrec:
+            return Val("true" if neg else "false", "bool")
+        nt = Val(self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"]), "exctype")
+        both = Val(self.scalar('and', [self.ptr_cmp('==', cobj, nt), Val(self.scalar_cmp('eq', rec, Val(nrec, '%ptr')), 'bool')]), "bool")
+        return Val(self.scalar('xor', [both, Val('true', 'bool')]), "bool") if neg else both
     if unopt(sides[0].t) == "exctype":
         return self.ptr_cmp('!=' if neg else '==', sides[0], sides[1])
     if sides[0].v.startswith("@") and sides[1].v.startswith("@"):

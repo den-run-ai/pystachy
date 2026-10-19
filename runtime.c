@@ -4295,12 +4295,16 @@ void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for cla
   return 0;
 }
 /* an object of the builtin class of class object c, called with n (0 or 1) arguments: one whose
-   str() is s and repr() r, flags 2 true, 4 an int, bool or None, the status code (a SystemExit's).
+   str() is s and repr() r, flags 2 true, 4 an int, bool or None, the status code (a SystemExit's);
+   flags 8 and 16 for raise c and raise ... from c, where c is NoneType's class object.
    A class of the program that has no function in pys_exc_ctor's table (one whose __init__ takes
    another type) raises TypeError, as do the builtin classes whose __new__ takes more arguments */
 Exc *pys_exc_make(Exc *c, I n, Str *s, Str *r, I flags, I code) {
   Str *k = c->kind; int m; const char *nm = exc_name(c, &m);
   if (c->obj) failf("TypeError: a call of class object %.*s with an argument of this type is not supported (its __init__ takes another type)", m, nm);
+  if (!strcmp(k->s, "NoneType"))   /* type() of an exception that is None; flags 8 raise c, 16 raise ... from c */
+    failf("%s", flags & 8 ? "TypeError: exceptions must derive from BaseException" : flags & 16 ? "TypeError: exception causes must derive from BaseException"
+                : "TypeError: a call of class object NoneType is not supported (CPython's returns None)");
   if (!strcmp(k->s, "SystemExit")) return !n ? pys_exc_exit(0, cstr(""), cstr("")) : flags & 4 ? pys_exc_exit(code, s, s) : exc_new(k, s, r);
   if (!strcmp(k->s, "UnicodeDecodeError") || !strcmp(k->s, "UnicodeEncodeError") || !strcmp(k->s, "UnicodeTranslateError"))
     failf("TypeError: function takes exactly %d arguments (%lld given)", k->s[7] == 'T' ? 4 : 5, (long long)n);

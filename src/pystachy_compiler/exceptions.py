@@ -555,7 +555,7 @@ def gen_cause(self, c: Node) -> Val:
         if unopt(v.t) == "exctype":
             if is_opt(v.t):
                 self.err("raise ... from a class object that may be None is not supported")
-            v = self.exc_call(v, [])  # (from C of a class object C: an object of its class, C())
+            v = self.exc_call(v, [], 16)  # (from C of a class object C: an object of its class, C())
         if v.t != "exc" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
             self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
             self.place(self.label())  # (what follows, the raise itself, is never reached)
@@ -613,7 +613,7 @@ def gen_raise_stmt(self, n: Node) -> None:
             if is_opt(v.t):
                 self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, "TypeError: exceptions must derive from BaseException")
                 v = Val(v.v, "exctype")
-            v = self.exc_call(v, [])
+            v = self.exc_call(v, [], 8)
         if v.t in self.classes and self.classes[v.t].exc != "":
             v = self.exc_of(v)
         if v.t == "opt[exc]":
@@ -1248,12 +1248,13 @@ def gen_exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> 
             self.place(nxt)
     return v
 
-def gen_exc_call(self, c: Val, args: list[Node]) -> Val:
+def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     # c(args) of class object c (an exception class's: exctype), the class evaluated first, then
     # the arguments (one positional argument at most): an object of its class. The function that
     # makes one of a class of the program from the arguments of this call's types is in the table
     # of those types (exc_ctors), which runtime.c's pys_exc_ctor looks c's class up in; a
-    # builtin class's object is pys_exc_make's (exc_make)
+    # builtin class's object is pys_exc_make's (exc_make). how is 8 for raise c and 16 for raise ...
+    # from c: what NoneType's class object (type() of an exception that is None) raises there
     for a in args:
         if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
             self.err("a call of an exception class held as a value is supported with positional arguments only")
@@ -1276,7 +1277,7 @@ def gen_exc_call(self, c: Val, args: list[Node]) -> Val:
     e1 = self.cur
     self.br(l3)
     self.place(l2)
-    r2 = self.exc_make(c, vals)
+    r2 = self.exc_make(c, vals, how)
     e2 = self.cur
     self.br(l3)
     self.place(l3)
@@ -1287,14 +1288,14 @@ def gen_exc_call(self, c: Val, args: list[Node]) -> Val:
     self.nn[r] = True
     return Val(r, "exc")
 
-def gen_exc_make(self, c: Val, vals: list[Val]) -> Val:
+def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
     # an object of the builtin class of class object c, of the arguments vals (none or one):
     # runtime.c's pys_exc_make, given the argument's str() and repr(), whether it is true (a
     # SyntaxError's traceback line) and its status where it is an int, a bool or None (a
     # SystemExit's code)
     if len(vals) == 0:
         e = self.sconst("")
-        return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 0", f"ptr {e}", f"ptr {e}", "i64 0", "i64 0"]), "exc")
+        return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 0", f"ptr {e}", f"ptr {e}", f"i64 {how}", "i64 0"]), "exc")
     v = vals[0]
     s = self.to_str(v).v
     r = self.repr(v).v
@@ -1306,6 +1307,8 @@ def gen_exc_make(self, c: Val, vals: list[Val]) -> Val:
     elif is_sopt(v.t) and (unopt(v.t) == "int" or unopt(v.t) == "bool"):
         flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])
         code = self.optint(v, "0")
+    if how != 0:
+        flags = self.scalar('or', [Val(flags, "int"), Val(str(how), "int")])
     return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 1", f"ptr {s}", f"ptr {r}", f"i64 {flags}", f"i64 {code}"]), "exc")
 
 def gen_exc_ctors(self) -> int:
