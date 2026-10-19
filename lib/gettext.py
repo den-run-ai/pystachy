@@ -103,15 +103,10 @@ def _error(value):
         return ValueError('unexpected end of plural form')
 
 
-_binary_ops = (
-    ('||',),
-    ('&&',),
-    ('==', '!='),
-    ('<', '>', '<=', '>='),
-    ('+', '-'),
-    ('*', '/', '%'),
-)
-_binary_ops = {op: i for i, ops in enumerate(_binary_ops, 1) for op in ops}
+# Pystachy port: the dict that CPython makes of a tuple of the operators by precedence, which it
+# binds to the same name first: here a module global has one type
+_binary_ops = {'||': 1, '&&': 2, '==': 3, '!=': 3, '<': 4, '>': 4, '<=': 4, '>=': 4,
+               '+': 5, '-': 5, '*': 6, '/': 6, '%': 6}
 _c2py_ops = {'||': 'or', '&&': 'and', '/': '//'}
 
 
@@ -275,27 +270,29 @@ def _expand_lang(loc):
 
 class NullTranslations:
     def __init__(self, fp=None):
-        self._info = {}
-        self._charset = None
-        self._fallback = None
+        # Pystachy port: the fields' types, as NullTranslations itself fills none of them
+        self._info: dict[str, str] = {}
+        self._charset: str | None = None
+        self._fallback: NullTranslations | None = None
         if fp is not None:
             self._parse(fp)
 
     def _parse(self, fp):
         pass
 
-    def add_fallback(self, fallback):
+    def add_fallback(self, fallback) -> None:  # Pystachy port: (it calls itself, see below)
         if self._fallback:
             self._fallback.add_fallback(fallback)
         else:
             self._fallback = fallback
 
-    def gettext(self, message):
+    # Pystachy port: the return types of the methods that a fallback's own call answers (-> str)
+    def gettext(self, message) -> str:
         if self._fallback:
             return self._fallback.gettext(message)
         return message
 
-    def ngettext(self, msgid1, msgid2, n):
+    def ngettext(self, msgid1, msgid2, n) -> str:
         if self._fallback:
             return self._fallback.ngettext(msgid1, msgid2, n)
         n = _as_int2(n)
@@ -304,12 +301,12 @@ class NullTranslations:
         else:
             return msgid2
 
-    def pgettext(self, context, message):
+    def pgettext(self, context, message) -> str:
         if self._fallback:
             return self._fallback.pgettext(context, message)
         return message
 
-    def npgettext(self, context, msgid1, msgid2, n):
+    def npgettext(self, context, msgid1, msgid2, n) -> str:
         if self._fallback:
             return self._fallback.npgettext(context, msgid1, msgid2, n)
         n = _as_int2(n)

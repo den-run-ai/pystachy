@@ -22,6 +22,7 @@ Imports search builtin modules first, then the program's directory,
 | `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | Byte columns; ASCII name case conversion; see [probe](../docs/html-parser-probe.md) |
 | `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `get_close_matches`, junk predicates and `Match` | String items; `unified_diff()` and `context_diff()` still need `type(x).__name__` and `str.format()`, `ndiff()` a `Differ` with `None` junk functions |
 | `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
+| `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain`; the module imports, so `argparse` can | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); see [limits](compatibility.md#gettext) |
 | `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
 | `keyword` | Adapted CPython | Keyword lists, `iskeyword`, `issoftkeyword` | Compiled predicates accept strings and `None` |
 | `token` | Adapted CPython | Token constants, `tok_name`, `EXACT_TOKEN_TYPES`, `ISTERMINAL`, `ISNONTERMINAL`, `ISEOF` | `__all__` and `tok_name` written out, with CPython's values and order |
