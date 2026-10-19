@@ -1,8 +1,9 @@
-# lib/re reads a str whose every byte is a code point (ASCII, or the raw bytes Pystachy's chr()
-# makes of 128 to 255) in place, as a bytes, and decodes another into a list of code points: the
-# engine is compiled for both. Each pattern runs over subjects of both kinds in turn (sharing its
-# class tables and search strategy), with bounds, anchors, lookbehind at the start, case folding,
-# backreferences, empty matches and callbacks that match a subject of the other kind.
+# lib/re reads a str whose every byte is a code point (ASCII here; lib_re_raw_subject reads bytes
+# that are not UTF-8) in place, as a bytes, and decodes another into a list of code points: the
+# engine is compiled for both. chr() of 128 to 255 makes characters of two bytes, which it decodes.
+# Each pattern runs over subjects of both kinds in turn (sharing its class tables and search
+# strategy), with bounds, anchors, lookbehind at the start, case folding, backreferences, empty
+# matches and callbacks that match a subject of the other kind.
 import re
 
 subjects = ["", "abc abd", "abc\nabd\n", "x" * 40 + "abc", chr(0xE9) + "abc" + chr(0xC9), chr(0x80) + chr(0xFF) + "ab",

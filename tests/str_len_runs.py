@@ -1,6 +1,7 @@
 # len() of strs whose code-point count is not yet known (made by join): the runtime counts ASCII
 # runs a block of bytes at a time and decodes each other character. Characters of one to four
-# bytes, and raw bytes, sit at offsets around the block size; indexing and slicing then use the count.
+# bytes (chr(0x80) and chr(0xff) are two) sit at offsets around the block size; indexing and
+# slicing then use the count. lib_re_raw_subject counts bytes that are not UTF-8.
 chars = ["a", "\x7f", "é", "€", "\U0001d504", chr(0x80), chr(0xff)]
 for n in [0, 1, 31, 32, 33, 63, 64, 65, 100]:
     for c in chars:
