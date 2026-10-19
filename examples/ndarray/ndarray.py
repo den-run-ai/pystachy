@@ -546,8 +546,11 @@ def dot(a: NDArray, b: NDArray) -> float:
 
 
 def matmul(a: NDArray, b: NDArray) -> NDArray:
-    # a @ b of 2-D arrays: rows of a times b, accumulated row by row (BLAS adds in blocks, so the
-    # results can differ from NumPy's in rounding)
+    # a @ b of 2-D arrays: each item the sum of a row of a times a column of b, from 0.0 and in order
+    # along the shared axis (BLAS adds in blocks, so the results can differ from NumPy's in
+    # rounding). The rows and columns are taken as lists, slices where they are contiguous (the
+    # columns of x @ w.T are w's rows), which zip() steps through without a bounds check per item;
+    # four columns at a time make four sums at once, each still in order
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError("matmul takes 2-D arrays here")
     if a.shape[1] != b.shape[0]:
@@ -558,22 +561,40 @@ def matmul(a: NDArray, b: NDArray) -> NDArray:
     m = a.shape[0]
     k = a.shape[1]
     n = b.shape[1]
-    ac = ascontiguous(a)
-    bc = ascontiguous(b)
-    A = ac.data
-    B = bc.data
-    rows = [B[bc.offset + p * n : bc.offset + (p + 1) * n] for p in range(k)]
-    C: list[float] = []
+    rows = [_line(a.data, a.offset + i * a.strides[0], a.strides[1], k) for i in range(m)]
+    cols = [_line(b.data, b.offset + j * b.strides[1], b.strides[0], k) for j in range(n)]
+    C = [0.0] * (m * n)
     for i in range(m):
-        crow = [0.0] * n
-        base = ac.offset + i * k
-        for p in range(k):
-            aip = A[base + p]
-            brow = rows[p]
-            for j in range(n):
-                crow[j] += aip * brow[j]
-        C.extend(crow)
+        r = rows[i]
+        c = i * n
+        for j in range(0, n - 3, 4):
+            s0 = 0.0
+            s1 = 0.0
+            s2 = 0.0
+            s3 = 0.0
+            for x, y0, y1, y2, y3 in zip(r, cols[j], cols[j + 1], cols[j + 2], cols[j + 3]):
+                s0 += x * y0
+                s1 += x * y1
+                s2 += x * y2
+                s3 += x * y3
+            C[c + j] = s0
+            C[c + j + 1] = s1
+            C[c + j + 2] = s2
+            C[c + j + 3] = s3
+        for j in range(n - n % 4, n):
+            s = 0.0
+            for x, y in zip(r, cols[j]):
+                s += x * y
+            C[c + j] = s
     return NDArray(C, [m, n], [n, 1], 0)
+
+
+def _line(d: list[float], start: int, step: int, n: int) -> list[float]:
+    # the n items d[start], d[start + step], ...: a slice where they lie next to each other in d,
+    # otherwise read one by one (an index outside d raises, as reading the view does)
+    if step == 1 and start >= 0 and start <= len(d) - n:
+        return d[start : start + n]
+    return [d[start + p * step] for p in range(n)]
 
 
 def greater(a: NDArray, x: float) -> list[bool]:

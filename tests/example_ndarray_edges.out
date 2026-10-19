@@ -1,4 +1,5 @@
 reversed slow axes preserve summation order
 strided singleton axes preserve pairwise summation
 empty reshape checks byte extents after inference
+175 products of matmul in five layouts of each operand equal the triple loop
 [exit 0]
