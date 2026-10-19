@@ -245,8 +245,8 @@ class and the exception (`excinfo` nodes, which read the clause's exception) and
 unless the call returns a true value, and its else block calls `__exit__(None, None, None)`, as
 an exit pushed for the block (like a finally block's) does for a `break`, `continue` or
 `return`. The items after the first such manager, and the block, are its body (they nest). The
-exception's class is the exception itself under another type (`exctype`); an exception that may
-be `None` is `opt[exc]`, both null for `None`. `__enter__` and `__exit__` are method templates
+exception's class is its class object (`exctype`, below); an exception that may be `None` is
+`opt[exc]`, both null for `None`. `__enter__` and `__exit__` are method templates
 (`utils.template_ok`), so an unannotated `__exit__` is compiled once for the exception's
 arguments and once for three `None`s. A program with such a class lets flow analysis end a
 `with` block anywhere (`Gen.cm_exits`), unless each of its items is a call of the builtin
@@ -260,6 +260,20 @@ is a base of it) and of `_pys_cm_NAME` bound to `self` taken as an object of the
 first defines `NAME` so (`loader.cm_root`): `NAME` returns one type for every subclass. A program that reads `__cause__`
 (`Gen.causeread`) records it, `pys_exc_setcause`, for `raise ... from c` and PEP 479's
 `RuntimeError`.
+
+An exception class as a value is its class object (`exctype`): runtime.c's one `Exc` per class
+(`pys_exc_proto`, kept in a table the collector scans), never raised, whose kind (and, for a class
+of the program, an `obj` word holding its `ExcClass`) is read as an exception's is, so names,
+`str()` and `repr()` need nothing new; `type(e)` is `pys_exc_canon(e)`. `is`, `==`, `hash()` and
+container keys (descriptor `C`) take its address. `issubclass()` and `isinstance()` against a
+class object pass `pys_exc_sub` the program's classes with their bases, one string
+(`exceptions.exc_tree`). A call of a class object looks its class up in the table of functions
+for the call's argument type (`@x.mk.N`: `exceptions.exc_call`, `pys_exc_ctor`) and calls the one
+found, which makes an object of a class of the program as a call of the class does; it finds none
+for a builtin class, which `pys_exc_make` makes. The program's last pass compiles a function for
+each class used as a value, or whose objects are made where `type()` of an exception that may be
+one became a class object, and each form of call (`exceptions.exc_ctors`), until no more come;
+then it writes the tables (`exc_tables`).
 
 Iterator objects are ordinary class objects. A loop, `in`, unpacking or `next(it, default)`
 over one calls its `__next__` in a block whose landing pad catches only `StopIteration`
@@ -346,8 +360,17 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, then ORC JIT runs with the cached runtime
-object. A module that holds generators (coroutines, which `lli` cannot run before they are
+program's own functions, performs SSA cleanup, then ORC JIT runs with the cached runtime.
+On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
+from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
+run (`-extra-object`), which cost about 35 ms a run
+([#704](https://github.com/den-run-ai/pystachy/issues/704)). The runtime calls back into the
+program for objects' `==`, ordering and `repr` (`pys_obj_eq`, `pys_obj_cmp`, `pys_obj_repr`),
+which no shared library can name: the library holds stand-ins that call through pointers, which a
+constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
+Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
+system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
+A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`; other modules keep the same `opt` command. The default inlining threshold is 20,000 lines of generated IR; larger programs skip

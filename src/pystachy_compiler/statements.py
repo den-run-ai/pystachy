@@ -24,6 +24,7 @@ from src.pystachy_compiler.specs import (
     IOMOD,
     TYPING,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
@@ -279,9 +280,9 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes:
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "":
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
-    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower():
+    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"
     if t == "" and (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0:
         return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
@@ -497,12 +498,15 @@ def gen_cm_exits(self) -> bool:
 
 def gen_suppress_item(self, e: Node) -> bool:
     # is e, a with statement's item, a call of contextlib.suppress (lib/contextlib.py) with
-    # exception classes, which the statement compiles as an except clause that catches them
+    # exception classes named, which the statement compiles as an except clause that catches
+    # them (with other arguments, class objects, it is lib's class, as elsewhere)
     if e.kind != "call" or e.kids[0].kind != "name" or e.kids[0].s != "contextlib$suppress":
         return False
     for a in e.kids[1:]:
-        if a.kind == "kw" or a.kind == "starred" or not self.exc_classes(a):
-            self.err("contextlib.suppress() is supported with exception classes, named, as a with statement's item")
+        if a.kind != "kw" and (a.kind == "starred" or self.exc_dynamic(a)):
+            return False
+        if a.kind == "kw" or not self.exc_classes(a):
+            self.err("contextlib.suppress() is supported with exception classes, as a with statement's item")
     return True
 
 def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
@@ -510,7 +514,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     # x, then body runs as the body of a try statement whose except clause takes every exception
     # e to __exit__(type(e), e, tb), which suppresses it if it returns a true value (else e goes
     # on); its else block, and a break, continue or return out of body (an exit like a finally
-    # block's), call __exit__(None, None, None) instead. type(e) is e itself, as an exctype; tb is
+    # block's), call __exit__(None, None, None) instead. type(e) is its class's class object; tb is
     # None, or an object of TracebackType (lib/_pystachy_types.py) where __exit__ declares that type
     c = m.t
     ms = self.classes[c].methods
@@ -1173,8 +1177,13 @@ def gen_augassign(self, n: Node) -> None:
             r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable"))
+            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
+            # display k in the frame where both only read it: stack_key)
+            keyt = self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__getitem__", "__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
             self.notnone(o, sub)
             cur = self.protocol(o, "__getitem__", [ik])
