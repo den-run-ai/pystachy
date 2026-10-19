@@ -111,8 +111,8 @@ class _GeneratorContextManager:
                     self.gen.close()
         elif value is not None:
             # Pystachy port: (value is None: CPython makes the exception, typ(), to tell it
-            # apart as it comes back) a with statement passes the exception, and a class is
-            # no value of the subset that a call could pass without one
+            # apart as it comes back) a with statement passes the exception, which is all
+            # that this __exit__ takes
             try:
                 self.gen.throw(value)
             except StopIteration as exc:

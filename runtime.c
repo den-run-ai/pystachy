@@ -182,6 +182,8 @@ static Thrower *xthrow;                /* where the funnels send what they raise
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
+static Exc **protos;                   /* exception classes' class objects, malloc'd: roots (see exceptions) */
+static I nprotos, cprotos;
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
@@ -229,6 +231,7 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
   scan((const W *)&warnopts, (const W *)(&warnopts + 1));
+  if (nprotos) scan((const W *)protos, (const W *)(protos + nprotos));
   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
     scan((const W *)&xr, (const W *)(&xr + 1));
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
@@ -474,6 +477,7 @@ static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
 static const char *exc_name(Exc *e, int *n);
 Str *pys_exc_repr(Exc *e);
+Str *pys_exc_type(Exc *e);
 void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
@@ -1851,6 +1855,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
   case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
   case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
+  case 'C': { Str *s = pys_exc_type((Exc *)v); put(b, s->s, s->len); return d; }   /* an exception class (its class object) */
   }
   return d;
 }
@@ -1950,7 +1955,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': return a == b;
+  case 'P': case 'C': return a == b;
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
@@ -2075,6 +2080,7 @@ static int opv(I a, I b, const char *d, I op) {
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
+  case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
     failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
@@ -3093,7 +3099,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
-  case 'P': return hptr(k);
+  case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
   }
   return hint(k);
@@ -3381,7 +3387,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : "object";
+  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -4245,7 +4251,7 @@ void pys_exc_setcause(Exc *e, Exc *c) { e->cause = c; }
 Exc *pys_exc_cause(Exc *e) { return e->cause; }
 Str *pys_exc_type(Exc *e) {            /* str(type(e)): "<class 'KeyError'>", "<class '__main__.C'>" */
   Buf b = {0}; put(&b, "<class '", 8);
-  if (e->obj && !memchr(XCLS(e)->kind->s, '$', XCLS(e)->kind->len)) put(&b, "__main__.", 9);
+  if (e->obj && !memchr(XCLS(e)->disp->s, '.', XCLS(e)->disp->len)) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
   Str *d = e->obj ? XCLS(e)->disp : e->kind;
   put(&b, d->s, d->len); put(&b, "'>", 2); return done(&b);
 }
@@ -4257,16 +4263,76 @@ Str *pys_exc_brepr(void *obj, Str *args) {   /* BaseException.__repr__ of one: i
   Buf b = {0}; int n; const char *k = short_name((*(ExcClass **)obj)->disp, &n);
   put(&b, k, n); put(&b, "(", 1); put(&b, args->s, args->len); put(&b, ")", 1); return done(&b);
 }
-I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1B\1" */
-  Str *k = e->kind;
-  for (const char *p = names->s, *end = p + names->len; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
+static int name_in(const char *p, const char *end, Str *k) {   /* k is one of the names in [p, end): "\1A\1B\1" */
+  for (; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
     if (!memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) return 1;
   return 0;
 }
+I pys_exc_in(Exc *e, Str *names) { return name_in(names->s, names->s + names->len, e->kind); }   /* e's kind is one of names */
 void *pys_exc_obj(Exc *e) { return e->obj; }
 void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
 Exc *pys_exc_handled(void) { return xr.handled; }
 void pys_exc_restore(Exc *e) { xr.handled = e; }
+/* Exception classes as values. A class object is its class's one Exc (protos), which nothing
+   raises: its kind, an empty msg and, for a class of the program, an obj that is one word holding
+   the class's ExcClass, so that what reads an exception's class reads a class object alike
+   (pys_exc_name, pys_exc_type). is, ==, hash() and dict keys take its address, as each class has
+   one, and pys_exc_canon gives an exception's (type(e)). The compiler gives a test of a class
+   against one it does not name (issubclass(a, b), isinstance(e, b)) its classes, each with those it
+   is or derives from (tree, "\2K\1K\1A\1B\1\2K2..."), and makes an object of a class of the
+   program from a class object by the function its table (pys_exc_ctor) holds for the class; a
+   builtin class's is pys_exc_make's */
+Exc *pys_exc_proto(Str *kind, void *xcls) {   /* the class object of builtin class kind, or of ExcClass xcls */
+  for (I i = 0; i < nprotos; i++)
+    if (xcls ? protos[i]->obj && XCLS(protos[i]) == xcls : !protos[i]->obj && pys_str_eq(protos[i]->kind, kind)) return protos[i];
+  Exc *e = exc_new(xcls ? ((ExcClass *)xcls)->kind : kind, cstr(""), 0);
+  if (xcls) { void **o = pys_alloc(sizeof *o); *o = xcls; e->obj = o; }
+  if (nprotos == cprotos && !(protos = realloc(protos, (cprotos = 2 * cprotos + 16) * sizeof *protos))) oom();
+  return protos[nprotos++] = e;
+}
+Exc *pys_exc_canon(Exc *e) { return e->obj ? pys_exc_proto(0, XCLS(e)) : pys_exc_proto(e->kind, 0); }   /* type(e) */
+I pys_exc_sub(Exc *a, Exc *b, Str *tree) {    /* a's class (a's, an exception's or a class object's) is b's or derives from it */
+  Str *k = a->kind;
+  for (const char *p = tree->s, *end = p + tree->len; (p = memchr(p, 2, end - p)); p++)
+    if (end - p > k->len + 1 && !memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) {
+      const char *q = memchr(p + 1, 2, end - p - 1);
+      return name_in(p + k->len + 1, q ? q : end, b->kind);
+    }
+  return pys_str_eq(k, b->kind);
+}
+Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's
+                                           (its displayed name but the last part: mods.errs.Missing's mods.errs) */
+  if (!e->obj) { const char *d = memchr(e->kind->s, '.', e->kind->len); return d ? pys_str(e->kind->s, d - e->kind->s) : cstr("builtins"); }
+  Str *k = XCLS(e)->disp; I n = k->len;
+  while (n > 0 && k->s[n - 1] != '.') n--;
+  return n ? pys_str(k->s, n - 1) : cstr("__main__");
+}
+void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
+                                              pairs ended by NULL, or NULL */
+  if (c->obj) for (; *table; table += 2) if (*table == XCLS(c)) return table[1];
+  return 0;
+}
+/* an object of the builtin class of class object c, called with n (0 or 1) arguments: one whose
+   str() is s and repr() r, flags 2 true, 4 an int, bool or None, the status code (a SystemExit's);
+   flags 8 and 16 for raise c and raise ... from c, where c is NoneType's class object.
+   A class of the program that has no function in pys_exc_ctor's table (one whose __init__ takes
+   another type) raises TypeError, as do the builtin classes whose __new__ takes more arguments */
+Exc *pys_exc_make(Exc *c, I n, Str *s, Str *r, I flags, I code) {
+  Str *k = c->kind; int m; const char *nm = exc_name(c, &m);
+  if (c->obj) failf("TypeError: a call of class object %.*s with an argument of this type is not supported (its __init__ takes another type)", m, nm);
+  if (!strcmp(k->s, "NoneType"))   /* type() of an exception that is None; flags 8 raise c, 16 raise ... from c */
+    failf("%s", flags & 8 ? "TypeError: exceptions must derive from BaseException" : flags & 16 ? "TypeError: exception causes must derive from BaseException"
+                : "TypeError: a call of class object NoneType is not supported (CPython's returns None)");
+  if (!strcmp(k->s, "SystemExit")) return !n ? pys_exc_exit(0, cstr(""), cstr("")) : flags & 4 ? pys_exc_exit(code, s, s) : exc_new(k, s, r);
+  if (!strcmp(k->s, "UnicodeDecodeError") || !strcmp(k->s, "UnicodeEncodeError") || !strcmp(k->s, "UnicodeTranslateError"))
+    failf("TypeError: function takes exactly %d arguments (%lld given)", k->s[7] == 'T' ? 4 : 5, (long long)n);
+  if (!strcmp(k->s, "BaseExceptionGroup") || !strcmp(k->s, "ExceptionGroup"))
+    failf("TypeError: BaseExceptionGroup.__new__() takes exactly 2 arguments (%lld given)", (long long)n);
+  if (!strcmp(k->s, "SyntaxError") || !strcmp(k->s, "IndentationError") || !strcmp(k->s, "TabError"))
+    return pys_exc_detail(!n ? exc_new(k, cstr("None"), cstr("")) : exc_new(k, s, r), n && flags & 2 ? s : cstr("<no detail available>"));
+  if (!n) return exc_new(k, cstr(""), 0);
+  return !strcmp(k->s, "KeyError") ? exc_new(k, r, 0) : exc_new(k, s, r);
+}
 static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
   if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
   unw[nunw++] = (Unwind){fn, arg};

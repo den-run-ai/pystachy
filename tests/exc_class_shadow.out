@@ -1,0 +1,6 @@
+True ValueError __main__ ValueError
+the program's ValueError x
+True <class '__main__.ValueError'>
+42 42 1
+<class '__main__.ValueError'> True
+[exit 0]
