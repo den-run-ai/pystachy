@@ -150,6 +150,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     want = "" if want == "?" else want
     if name.startswith(TYPESMOD + "."):
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
+    if name == "ffi.at":
+        self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -346,9 +348,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err("delattr() is not supported: deleting an attribute needs an unbound state for each field (#489)")
     if name == "type" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         tv = self.expr(args[0], "")
-        if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != "" and tv.v in self.nn):
-            # (type(e) of an exception, as a value: its class, an exctype, which is the exception)
-            return Val(tv.v if tv.t == "exc" else self.exc_of(tv).v, "exctype")
+        if tv.t == "exc" or tv.t == "opt[exc]" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
+            return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
@@ -421,13 +422,23 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if hy < 0:
             return self.ptr_cmp('!=', hv, Val('null', 'None'))
         return Val("true" if hy == 1 else "false", "bool")
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
+        # issubclass(t, c) of an exception class's class object t, c a value holding them
+        v = self.expr(args[0], "")
+        if unopt(v.t) != "exctype":
+            self.err(f"issubclass() is supported for exception classes (type[BaseException]), not {typestr(v.t)}")
+        return self.exc_test(v, args[1], "issubclass")
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and self.exc_classes(args[1]):
-        # issubclass(t, C) of the class of an exception (exctype: the exception itself)
+        # issubclass(t, C) of an exception class's class object t
         v = self.expr(args[0], "")
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
         self.isinst_reads(args[1])
         v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+        if self.catch_set(args[1]) == "":
+            # (BaseException, which every exception class derives from, but not NoneType, whose
+            # class object type() gives of an exception that is None)
+            return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
@@ -461,6 +472,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if known < 0:
             if v.t in self.classes and self.classes[v.t].tag > 0:
                 return self.obj_isinst(v, args[1])
+            if self.exc_dynamic(args[1]):
+                return self.exc_test(v, args[1], "isinstance")  # (exception classes held as values)
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
@@ -877,9 +890,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
 def gen_callable_type(self, t: str) -> int:
     # callable(x) for x of static type t: 1 (a function or Callable), 0, or -2 (an object whose
     # class defines __call__: callable unless it is None)
-    if is_fn(t) or is_callable(t):
-        return 1
-    if is_opt(t) and is_callable(unopt(t)):
+    if is_fn(t) or is_callable(t) or t == "exctype":
+        return 1  # (a class object too: a call makes an object of its class)
+    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
         return -2
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
     calls = [c for c in cs if c in self.classes and "__call__" in self.classes[c].methods]
@@ -1991,13 +2004,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             if key == "dict.get" and i == 0 and self.lookup_key(args[0]):
                 self.stkkey = args[0]  # (memo.get((i, j), -1))
             want_arg = pt
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and m in ["index", "count", "remove"] and args[i].kind in ["list", "dict", "listcomp"]:
                 # A search needle is not stored in the list. Infer a fresh display's
                 # own layout before comparing it, rather than forcing list[float]
                 # into a list[int] member. Empty/None-only displays still need context.
                 pending = [args[i]]
                 contextual = False
-                nested_union = any(["union[" in member for member in umembers(unopt(T))])
+                nested_union = any(["union[" in member or "rec[" in member for member in umembers(unopt(self.rec_type(T)))])
                 while len(pending) > 0:
                     query = pending.pop()
                     if query.kind in ["list", "dict"] and only_nones(query):
@@ -2065,7 +2078,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 nk = self.numkey(v, unopt(T))
                 v = Val(nk[0], unopt(T))
                 numok = nk[1]
-            if base == "list" and p == "*T" and is_union(unopt(T)) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
+            if base == "list" and p == "*T" and is_union(unopt(self.rec_type(T))) and self.ueq_type(T) and (m == "index" or m == "count" or m == "remove"):
                 pt = self.union_type([T, v.t])
                 dt = pt
             if is_opt(v.t) and unopt(v.t) == pt and dflt == "null":

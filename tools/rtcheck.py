@@ -4,9 +4,9 @@
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
 computes, on random inputs, with no compilation. Strs are ASCII here (where Pystachy behaves exactly
-as CPython) plus UTF-8 text for the width methods, which count characters; a Pystachy str is
-given as its bytes, one character per byte. 64-bit overflow is not tested here (CPython's ints
-grow): the differential tests compile the same code and check it.
+as CPython) plus UTF-8 text for the width methods and replace("", x), which count characters; a
+Pystachy str is given as its bytes, one character per byte. 64-bit overflow is not tested here
+(CPython's ints grow): the differential tests compile the same code and check it.
 
 The format functions get runtime.c's pys_fmt_float (float digits by snprintf, or by Ryu as repr's
 without a type or precision) from CPython's own float formatting, which it reproduces.
@@ -122,6 +122,11 @@ def fuzz_str():
             same(name, outcome(getattr(rt, "pys_str_" + name), b(w), width, b(fill) if fill is not None else None), ref, (w, width, fill))
         z = R.choice(["", "+", "-"]) + text("12é", 4)
         same("zfill", outcome(rt.pys_str_zfill, b(z), width), ("ok", b(z.zfill(width))), (z, width))
+        # and replace("", x) puts x between characters
+        x = text(WIDE, 2)
+        k = R.choice([-1, 0, 1, 2, 5, 9])
+        same("replace", outcome(rt.pys_str_replace, b(w), "", b(x)), ("ok", b(w.replace("", x))), (w, x))
+        same("replace_count", outcome(rt.pys_str_replace_count, b(w), "", b(x), k), ("ok", b(w.replace("", x, k))), (w, x, k))
 
 
 BYTES = b"ab AB-+0\t\n\r\x0b\x0c\x1c\x85_.,lL\x80\xa0\xc3\xa9\xe2\x82\xac\xed\xa0\xf0\xff"

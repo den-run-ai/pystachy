@@ -30,6 +30,7 @@ FIXED = [
 for name, args in [
     ("find", "'b'"), ("rfind", "'b'"), ("index", "'b'"), ("rindex", "'b'"),
     ("count", "''"), ("startswith", "'a', 0, 2"), ("endswith", "'b', 0, 3"),
+    ("replace", "'', 'x'"), ("replace", "'', 'x', 2"),
 ]:
     FIXED.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
 OPS = [
@@ -38,13 +39,12 @@ OPS = [
     ("str.upper", "print(repr(audit_module.upper(s)))"),
 ]
 for name, args in [
-    ("replace", "'', 'x'"), ("upper", ""), ("lower", ""), ("swapcase", ""),
+    ("upper", ""), ("lower", ""), ("swapcase", ""),
     ("capitalize", ""), ("title", ""), ("casefold", ""), ("isdigit", ""),
     ("isalpha", ""), ("isalnum", ""), ("isupper", ""), ("islower", ""),
     ("istitle", ""), ("isdecimal", ""), ("isnumeric", ""), ("expandtabs", "4"),
 ]:
     OPS.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
-OPS.append(("str.replace_count", "print(repr(s.replace('', 'x', 2)))"))
 SAFE = "\n".join(body for _, body in FIXED) + "\n" + """print(repr(s), bool(s), s == s, s in s, repr(s + s))
 print(s.split(), repr(s.strip()), repr(s.center(8)), s.isascii(), s.isspace())
 print(s.partition('b'))

@@ -72,6 +72,12 @@ from src.pystachy_compiler.utils import (
 def gen_ctype(self, base: str, ts: list[str]) -> str:
     # A composite type, checking its serialized size before join copies any children.
     # In a recursive template, a two-item tuple may double this on every instance.
+    # Recursive value aliases have finite self edges in mutable storage. Only
+    # fold the exact element/value type; never widen an existing container.
+    if base == "list" and len(ts) == 1:
+        ts = [self.rec_fold(ts[0])]
+    elif base == "dict" and len(ts) == 2:
+        ts = [ts[0], self.rec_fold(ts[1])]
     size = len(base) + 2 + (len(ts) - 1 if len(ts) > 0 else 0)
     for t in ts:
         size += len(t)
@@ -580,6 +586,48 @@ def gen_alias_kept(self, name: str) -> bool:
         return self.alias_kept(v.s)
     return v.kind == "name" and v.s in ["int", "float", "str", "bool"]
 
+def gen_rec_type(self, t: str) -> str:
+    # Unfold one named edge only. The result still contains finite rec[...] edges.
+    if t.startswith("rec[") and t.endswith("]"):
+        return self.recursive.get(t[4:-1], t)
+    return t
+
+def gen_rec_fold(self, t: str) -> str:
+    # Mutable storage uses the named edge, while values expose its outer shape.
+    for name in self.recursive:
+        if self.recursive[name] == t:
+            return "rec[" + name + "]"
+    return t
+
+def gen_recursive_aliases(self) -> None:
+    # Nongeneric PEP 695 aliases of scalar/None members, list[Self] and
+    # dict[str, Self]. Self edges occur only behind containers. Other recursive
+    # forms keep alias_ann's diagnostic; no alias cycles or depth expansion.
+    for name in self.taliases:
+        st = self.taliases[name]
+        if st.kind != "typealias" or st.kids[0].s != "":
+            continue
+        members: list[str] = []
+        recursive = False
+        valid = True
+        for n in self.union_members(self.alias_value(name), []):
+            if n.kind == "None":
+                members.append("None")
+            elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
+                members.append(n.s)
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and n.kids[1].kind == "name" and n.kids[1].s == name:
+                members.append("list[rec[" + name + "]]")
+                recursive = True
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and n.kids[1].kids[1].kind == "name" and n.kids[1].kids[1].s == name:
+                members.append("dict[str,rec[" + name + "]]")
+                recursive = True
+            else:
+                valid = False
+        if valid and recursive:
+            t = self.union_type(members)
+            if is_union(unopt(t)):
+                self.recursive[name] = t
+
 def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     # annotation a with each type alias that it names replaced by the alias's value, where a
     # generic alias's type arguments replace its type parameters; what cannot be replaced (a
@@ -588,6 +636,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     k = a.kind
     if k == "noann":
         return a  # (a generic def's, which types nothing)
+    if k == "name" and a.s in self.recursive:
+        return a  # preserve the named graph, never expand its self edge
     self.unaliased += 1  # (the nodes it has made of the annotation, which aliases of aliases can double)
     if self.unaliased > TYPE_SIZE:
         self.err(f"the type aliases this annotation names expand to more than {TYPE_SIZE} nodes (not supported: simplify them)")
@@ -618,6 +668,8 @@ def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
 def gen_alias_ann(self, n: Node) -> str:
     # the type that annotation n, type alias X or X[...], denotes, or "!" and why not
     name = n.s if n.kind == "name" else n.kids[0].s
+    if n.kind == "name" and name in self.recursive:
+        return self.recursive[name]
     tps = self.alias_params(name)
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
@@ -789,6 +841,8 @@ def gen_opt(self, t: str, x: Node) -> str:
 
 def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none
+    if self.rec_type(t) != t:
+        return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
         return t
     if is_union(t):
@@ -841,8 +895,8 @@ def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be
     # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
     # containers made of both; "" if there is none (an int is no int | None as it is: that is a box)
-    if a == b:
-        return a
+    if self.rec_type(a) == self.rec_type(b):
+        return b
     if a in self.classes and b in self.classes:
         return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
@@ -921,6 +975,8 @@ def gen_widens(self, a: str, b: str) -> bool:
     # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
     # type), an object of an exception class as one of a base class (whose layout its own
     # extends), and a tuple item by item (tuples cannot change, so their items can widen)
+    a = self.rec_type(a)
+    b = self.rec_type(b)
     if a == b:
         return True
     if is_opt(b):
@@ -2054,6 +2110,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return f"fn[f:{e.s}]" if e.s in self.funcs else f"fn[b:{e.s}]"
+    if k == "name" and ((e.s in self.classes and self.classes[e.s].exc != "") or (is_excname(e.s) and e.s not in self.funcs and e.s not in self.classes and e.s not in self.mvars)):
+        # an exception class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "exctype"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the

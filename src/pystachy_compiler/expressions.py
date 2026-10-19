@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, deleted, only_none, stack_aliases, stack_kept, walrus_names
+from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNARY,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.utils import (
@@ -64,6 +65,7 @@ from src.pystachy_compiler.utils import (
     same_kind,
     selem,
     slice_items,
+    stack_keyed,
     takes_self,
     targs,
     tname,
@@ -407,6 +409,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
+    if c.s == "type" and t == "exctype":
+        return 1  # (an exception class's class object is a type)
+    if is_excname(c.s) and t != "exc" and not (t in self.classes and self.classes[t].exc != ""):
+        return 0  # (a value that is no exception, such as a class object, is no instance of one)
     if c.s == "type" and t.startswith("fn[b:"):
         # a builtin's value: one of CPython's builtin classes (int, list, ...) is a type
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
@@ -605,6 +611,7 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
+    want = self.rec_type(want)
     k = n.kind
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:
@@ -614,8 +621,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "excinfo":
-        # (with_cm's except clause: the exception it handles, and its class as an exctype)
-        return Val(self.excs[-1].v, "exctype" if n.s == "type" else "exc")
+        # (with_cm's except clause: the exception it handles, and its class's class object)
+        if n.s == "type":
+            return self.exc_type_of(Val(self.excs[-1].v, "exc"))
+        return Val(self.excs[-1].v, "exc")
+    if k == "excobj":
+        # (exc_ctors: an object of exception class n.s, made of the arguments n.kids)
+        return self.exc_of(self.exc_object(n.s, n.kids))
     if k == "int":
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
@@ -720,6 +732,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
+            self.class_ready(n.kids[0])
+            q = shown(c)
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -763,10 +780,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "exc" and n.s == "__cause__" and self.causeread:
             # (raise ... from c's c, or the StopIteration of PEP 479's RuntimeError; else None)
             return Val(self.rt("pys_exc_cause", "ptr", [f"ptr {o.v}"]), "opt[exc]")
-        if unopt(o.t) == "exctype" and n.s == "__name__":
-            # (the class of an exception, as __exit__ takes it: the exception itself)
-            o = self.unwrap(o, "AttributeError: 'NoneType' object has no attribute '__name__'")
-            return Val(self.rt("pys_exc_name", "ptr", [f"ptr {o.v}"]), "str")
+        if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's class object: its name, qualified name and module)
+            o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
+            return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
@@ -1992,6 +2010,49 @@ def gen_stack_ok(self, f: FnInfo) -> bool:
                 f.stknames = names
     return f.stk == 1
 
+def gen_stack_key(self, t: str, ms: list[str]) -> bool:
+    # whether o[k] of an object of class t, which calls its methods ms with k (__getitem__,
+    # __setitem__, or both for o[k] op= v), may make a tuple display k in its own frame, where it
+    # is gone once they return: every method that it may call (a subclass's override too) only
+    # reads the key (key_read), so no copy is needed
+    ci = self.classes[t]
+    cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, t)] if ci.tag > 0 else [ci]
+    for c in cs:
+        for m in ms:
+            if m not in c.methods or not self.key_read(c.methods[m]):
+                return False
+    return True
+
+def gen_key_read(self, f: FnInfo) -> bool:
+    # whether f, a method that o[k] calls with k, takes a tuple k as it is (stack_keyed) and only
+    # reads it, its items, its length or its type, and the locals assigned it (key_reads): it can
+    # keep none of them, nor return it, nor let a closure, a generator expression or a generator's
+    # frame hold it (stack_kept)
+    if f.keyread < 0:
+        f.keyread = 0
+        if stack_keyed(f) and f.node.kind == "def" and not f.export and not f.pyexport:
+            names: dict[str, bool] = {f.params[1]: True}
+            body = f.node.kids[2].kids
+            added = True
+            while added:
+                added = False
+                for st in body:
+                    if stack_aliases(st, names):
+                        added = True
+            bound: dict[str, bool] = {}
+            local_names(body, bound)
+            for st in body:
+                comp_vars(st, bound)  # (len in [len(k) for len in fs] is not the builtin)
+            builtins: dict[str, bool] = {}
+            for b in ["len", "isinstance", "int", "float", "str", "bool"]:
+                if b not in bound and b not in f.params and b not in self.funcs and b not in self.classes and b not in self.mvars:
+                    builtins[b] = True  # (another module's own len is named m$len where it calls it)
+            key = f.params[1] if f.params[1] not in bound else ""
+            ns = list(names)
+            if len([st for st in body if stack_kept(st, ns) or not key_reads(st, names, builtins, key)]) == 0:
+                f.keyread = 1
+    return f.keyread == 1
+
 def gen_keep_stack(self, n: Node) -> None:
     # before statement n of a function whose *args tuple may be in its caller's frame
     # (stack_ok): each local that may hold the tuple and that n uses other than to look it up
@@ -2240,8 +2301,13 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             return self.getfield(o, self.field(o, ts[j]), ts[j])
         return self.tget(self.unwrap(o, sub), j)
     if t in self.classes:
-        # o[k]: o.__getitem__(k), once k is evaluated
-        ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
+        # o[k]: o.__getitem__(k), once k is evaluated; a tuple display k in the frame where
+        # __getitem__ only reads it (o[i, j]: stack_key)
+        keyt = self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable")
+        if self.lookup_key(n.kids[1]) and self.stack_key(t, ["__getitem__"]):
+            self.stkkey = n.kids[1]
+        ik = self.expr(n.kids[1], keyt)
+        self.stkkey = self.nokey
         self.notnone(o, sub)
         return self.protocol(o, "__getitem__", [ik])
     self.err(f"'{tname(t) if is_gen(t) else t}' object is not subscriptable")
@@ -3338,7 +3404,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t))))):
+        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -3412,6 +3478,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
             self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
         return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
+    if (op == "==" or op == "!=") and (unopt(a.t) == "exctype" or unopt(b.t) == "exctype"):
+        # class objects of exception classes: by identity (each class has one), and never equal
+        # to a value of another type (but None, which a class object that may be None is)
+        o = b.t if unopt(a.t) == "exctype" else a.t
+        if unopt(o) == "exctype" or o == "None":
+            return self.ptr_cmp(op, a, b)
+        if o in self.classes or is_union(unopt(o)):
+            self.err(f"comparing an exception class with {typestr(o)} is not supported")
+        return Val("false" if op == "==" else "true", "bool")
     if op == "is" or op == "is not":
         if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
             # a number or bool is never None
@@ -3499,7 +3574,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 a = Val(nk[0], unopt(elem(b.t)))
                 ok = nk[1]
             et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
-            if is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t)):
+            if is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t)):
                 et = self.union_type([elem(b.t), a.t])
             if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                 et = self.optional(elem(b.t))
@@ -3659,6 +3734,8 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
 def gen_numeric_comparable(self, t: str, u: str) -> bool:
     # Matching builtin container trees may differ at numeric leaves. Keep
     # optional/union widening and user comparison callbacks out of this path.
+    if ("rec[" in t or "rec[" in u) and self.ueq_type(t) and self.ueq_type(u):
+        return True  # paired descriptors preserve each recursive/native layout
     if t == u:
         return self.ueq_type(t)
     if self.isnum(t) and self.isnum(u):

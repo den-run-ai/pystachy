@@ -55,9 +55,15 @@ An imported module cannot bind `__name__`.
 A module sees its own names and the builtins. Names in the main program do not change
 another module's bindings: defining `len` in the program does not change `bisect`'s `len`.
 An import of a Python module inside a function binds its names in that function only.
-Nested functions resolve enclosing Python-module imports and from-imported functions or
-classes. The import must have surely run before the nested `def`; enclosing imports that
-may remain unbound are rejected. Builtin import aliases are not supported as closure values.
+Where the function reads such a name and the import may not have run (it is in a branch or a
+loop, or comes after the read), the read checks whether it has: if not, it raises CPython's
+`UnboundLocalError`, and a lambda's read, which checks when the lambda runs, its `NameError`
+for a free variable. A nested `def`'s defaults and decorators are read where the `def` runs,
+so they check it there; its annotations do not. Nested functions resolve enclosing
+Python-module imports and from-imported functions or classes. An import that a nested `def`'s
+body reads must have surely run before the `def`; enclosing imports that may remain unbound
+are rejected, also where a generator expression reads them. Builtin import aliases are not
+supported as closure values.
 Builtin-module imports have a [documented scope deviation](../language.md#deviations-from-cpython).
 
 | Import or binding | Behavior |

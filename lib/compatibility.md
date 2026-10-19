@@ -11,6 +11,40 @@ code points. Unicode case mapping, most character tests and some byte-oriented r
 operations remain incomplete; individual modules may have additional restrictions.
 See [language compatibility](../docs/language/compatibility.md).
 
+## JSON
+
+The native prototype implements `loads(s: str) -> JSONValue` and
+`dumps(obj: JSONValue, *, ensure_ascii=True, allow_nan=True, sort_keys=False,
+separators=None) -> str`. `JSONValue` is the closed recursive union of `None`,
+bool, int, float, str, lists of itself and string-keyed dicts of itself.
+`separators` is a two-string tuple when supplied. This is native recursive
+storage, not general runtime `Any` or a CPython bridge.
+
+The codec supports mixed nested values, Unicode escapes and surrogate pairs,
+lone surrogates, last-key-wins duplicate keys and CPython's default nonfinite
+float forms (`NaN`, `Infinity`, `-Infinity`). `allow_nan=False` rejects those
+values when encoding. `JSONDecodeError` derives from `ValueError` and exposes
+`msg`, `doc`, `pos`, `lineno` and `colno`; positions count Unicode characters.
+Narrowing parsed lists/dicts preserves identity and shared mutation. Encoding
+checks active ancestors for cycles and raises `ValueError` for them; repeated
+references without a cycle serialize normally.
+The existing unboxed-NaN identity deviation also applies: separately decoded
+`[NaN]` lists compare unequal, whereas CPython's cached NaN can make them equal.
+
+Integer tokens outside signed 64-bit range raise `OverflowError`. The codec's
+maximum nesting is 256 containers, beyond which it raises `RecursionError`;
+CPython uses different limits ([deviation](../tests/deviations/json_limits.py)).
+Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
+are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
+each byte that starts no UTF-8 sequence as one character, as `str` does, in values
+and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
+Bytes input, numeric/non-string object keys, tuples, file APIs, decoder/encoder
+classes, hooks, `default`, `skipkeys`, `check_circular`, `strict` and indentation
+are unsupported. Existing typed containers are not implicitly converted to
+recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
+characters unchanged; writing that string follows the runtime's text-encoding
+rules. See the [prototype design and validation](../docs/json-prototype.md).
+
 ## `_imp` prototype
 
 The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
@@ -954,15 +988,17 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   manager that `super().NAME()` makes and that decorates a function makes its generator for each
   call with the method of the object's class; an override of a method of a class of another module is
   rejected as the program compiles (the managers' types differ).
-- `suppress()` takes exception classes, named, as a `with` statement's item, which is compiled
-  as an `except` clause that catches them (exception classes are no values of the subset);
-  `with suppress(...) as x`, and a `suppress` object elsewhere, are compile-time errors.
+- `suppress()` as a `with` statement's item, with exception classes named, is compiled as an
+  `except` clause that catches them; one kept as a value, or given exception classes held as
+  values, is CPython's (its `__exit__` tests them with `issubclass()`). `with suppress(...) as x`
+  is a compile-time error.
 - `nullcontext(enter_result)` takes it positionally, and not `None` alone (`nullcontext(None)`
   is `nullcontext()`); `nullcontext` is a function that makes one of two classes' objects, and
   the managers are no subclasses of `AbstractContextManager` (class templates have no bases).
 - `__doc__`, `__name__` (no `functools.wraps()`) and `gen` of a `_GeneratorContextManager` are
   not available, and its `__exit__` called with a class but no exception returns `False` (CPython
-  makes the exception, `typ()`; a class is no value).
+  makes the exception, `typ()`, which the port leaves out: a `with` statement passes the
+  exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
 - `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers

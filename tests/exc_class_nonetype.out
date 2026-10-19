@@ -1,0 +1,12 @@
+True True False False
+True True NoneType builtins builtins
+False False True True
+False False E __main__ __main__
+TypeError: exceptions must derive from BaseException
+TypeError: exception causes must derive from BaseException
+E E()
+ValueError v E()
+__main__ builtins builtins
+__main__ E
+builtins KeyError
+[exit 0]

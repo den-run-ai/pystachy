@@ -7,8 +7,8 @@ import os
 import tempfile
 
 from driver import read_input
-from model import GPT, GPTConfig, cross_entropy, forward, load_weights, parameter_shapes
-from ndarray import NDArray, zeros
+from model import GPT, GPTConfig, cross_entropy, forward, forward_with_backend, load_weights, parameter_shapes
+from ndarray import NDArray, matmul, zeros
 
 
 def make_model(bias: bool) -> GPT:
@@ -152,3 +152,18 @@ for kind in range(5):
         assert False
     except ValueError as error:
         print("model rejected:", error)
+
+
+def short_rows(a: NDArray, b: NDArray) -> NDArray:
+    # a backend whose square products, attention's scores, lose their last row
+    product = matmul(a, b)
+    if product.shape[0] == product.shape[1]:
+        return NDArray(product.data, [product.shape[0] - 1, product.shape[1]], product.strides, product.offset)
+    return product
+
+
+try:
+    forward_with_backend(make_model(True), tokens, 2, 3, short_rows)
+    assert False
+except ValueError as error:
+    print("backend rejected:", error)

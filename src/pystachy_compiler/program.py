@@ -790,6 +790,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.line = self.taliases[q].line
             self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
     if len(self.taliases) > 0:
+        self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
         for m in mods:
             self.unalias_all(m.body)
@@ -1076,7 +1077,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1097,6 +1098,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in xmade:
                 xmade[c] = True
                 self.exc_helpers(c)
+        self.exc_ctors()  # (calls of class objects: the functions that make objects of the program's classes)
         at = -1
         later: list[int] = []
         while len(self.wake) > 0:
@@ -1110,8 +1112,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) == before:
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors) == before:
             break
+    self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
@@ -1149,6 +1152,8 @@ def gen_program(self, mods: list[Mod]) -> str:
     if dump:
         for fn in self.fns:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
+    if "tupleret" in on:
+        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
     for fn in self.fns:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)

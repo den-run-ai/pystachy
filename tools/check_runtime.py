@@ -13,10 +13,13 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
     with the same bases; every builtin exception class of this Python is one of them, and so is
     every class a raise statement accepts (EXCEPTIONS);
-  - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
+  - effects: every letter is one of the compiler's FX, U? or R?; an entry has R if the function's
     C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
-    is A), A if it reaches the allocator's slow path (gc_slow) other than on the way out of a
-    raise (through a raise funnel, or the exception it builds, EXC_MAKERS: R stands for that),
+    is A) other than through rec_deep (DEEP: a descriptor walk past a recursive alias's 512th
+    edge, which those walks alone may call, DEEP_WALKS), and R or R? if it reaches rec_deep (R? is
+    R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
+    path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
+    it builds, EXC_MAKERS: R stands for that),
     U or U? if it reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it
     has a # parameter and reaches eqv, opv or repr (which walk a value of any type by its
     descriptor: the lists and dicts in it), and N if the C function is noreturn;
@@ -75,11 +78,17 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
-# functions whose call graph reaches user code only through comparing elements, which they never do:
-# set.copy merges into a new set, whose table has none yet (the dict and set operations that hash
-# or compare keys have U?, which an object's key descriptor makes U: Gen.opfx)
+# functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
+# they never do: set.copy merges into a new set, whose table has none yet (the dict and set
+# operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
+# key descriptor makes U or R: Gen.opfx)
 NO_USER = {"set.copy"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
+# the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
+# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?
+DEEP = {"rec_deep"}
+# and those walks, its only callers: R? stands for nothing else
+DEEP_WALKS = {"repr_depth", "eqpair_depth"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
 # so these do not make an entry A
@@ -756,6 +765,10 @@ def main():
                 note.append(f"{k}: {x}, which runtime.py's code does not show")
     # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
     # call included (with the letters derived above)
+    callers = sorted(n for n, v in fns.items() if v[4] == "define" and DEEP & v[3])
+    if callers != sorted(DEEP_WALKS):
+        bad.append(f"rec_deep has the callers {', '.join(callers) or 'none'}, but R? stands for the depth guards of "
+                   f"{' and '.join(sorted(DEEP_WALKS))} alone")
     pyr = {f for f in letters if "R" in letters[f]}
     pya = {f for f in letters if "A" in letters[f]}
     pyu = {f for f in letters if "U" in letters[f]}
@@ -766,11 +779,13 @@ def main():
         e = rt[k]
         have = e[e.find("|") + 1 : e.rfind("|")].split()
         for x in have:
-            if x not in pys.FX and x != "U?":
+            if x not in pys.FX and x != "U?" and x != "R?":
                 bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
-        if reaches(fns, sym, RAISES | pyr, COLLECTS):
+        if reaches(fns, sym, RAISES | pyr, COLLECTS | DEEP):
             derived.append("R")
+        elif reaches(fns, sym, DEEP, COLLECTS) and k not in NO_USER:
+            derived.append("R?")
         if fns[sym][2]:
             derived.append("N")
         if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES):
@@ -786,9 +801,9 @@ def main():
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 derived.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in derived:
-            if x not in have and "U" not in have and not (x == "U" and "U?" in have):
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have) and not (x == "R?" and "R" in have):
                 bad.append(f"{k}: {sym} has effect {x} in runtime.c, which RUNTIME leaves out")
-        for x in ("R", "N", "A", "I", "rL", "wL", "rD", "wD", "rF", "wF"):
+        for x in ("R", "R?", "N", "A", "I", "rL", "wL", "rD", "wD", "rF", "wF"):
             if x in have and x not in derived:
                 note.append(f"{k}: {x}, which runtime.c does not show")
     # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so

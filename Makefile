@@ -30,6 +30,12 @@ test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
+# the lines and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, or FILES,
+# runs, measured in the CPython-hosted compiler as test-py runs it (tools/coverage.sh, .coveragerc):
+# report only, in build/coverage/; $(PY) needs coverage.py (tools/requirements-dev.txt)
+coverage:
+	PY="$(PY)" tools/coverage.sh $(FILES)
+
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
 # with the native compiler, then the CPython-hosted one ($(PY) loads the extension modules)
 test-cache: pystachy
@@ -277,4 +283,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install

@@ -175,8 +175,9 @@ class RtFn:
         self.sym = rtsym(k)  # its LLVM symbol
         self.sig: list[str] = rtsig(k)  # its result and parameter types, as RUNTIME spells them
         self.ll: list[str] = [rtll(p) for p in self.sig]  # and as LLVM types
-        self.fx = fxmask(fx.replace("U?", ""))  # its effects (FX bits), but U?
+        self.fx = fxmask(fx.replace("U?", "").replace("R?", ""))  # its effects (FX bits), but U? and R?
         self.q = "U?" in fx  # whether it has U? (U when the descriptor of its # parameter holds a class)
+        self.rq = "R?" in fx  # and R? (R when it holds a recursive alias's edge)
 
 
 def tname(t: str) -> str:
@@ -189,7 +190,7 @@ def tname(t: str) -> str:
         return "tuple"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
-    if is_union(t):
+    if is_union(t) or t.startswith("rec["):
         return typestr(t)
     if t == "exc":
         return "BaseException"
@@ -510,7 +511,7 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
-    t = t.replace("[?,?]", "").replace("[?]", "")
+    t = recnames(t.replace("[?,?]", "").replace("[?]", ""))
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7
@@ -621,8 +622,8 @@ def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
     # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor), and
     # objects, also as such items (Gen.key_problem)
-    if t == "int" or t == "str" or t == "bytes" or (is_tuple(t) and key_items(t)):
-        return ""
+    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
+        return ""  # (an exception class's class object is hashed and compared by identity)
     if is_opt(t):
         return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
     return f"dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not {typestr(t)}"
@@ -665,7 +666,7 @@ def bool_for_int(a: str, b: str) -> bool:
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and not (is_tuple(u) and key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not (is_tuple(u) and key_items(u)):
             return False
     return True
 
@@ -807,6 +808,13 @@ def takes_self(f: FnInfo) -> bool:
     return f.cls != "" and f.deco == ""
 
 
+def stack_keyed(f: FnInfo) -> bool:
+    # whether f is a method that o[k] calls with k (__getitem__; __setitem__ for o[k] = v, and both
+    # for o[k] op= v) and that a tuple k reaches as it is: a parameter that is unannotated (a
+    # template's, which takes the tuple's own type) or a tuple, not a union that would box it
+    return (f.name == "__getitem__" or f.name == "__setitem__") and takes_self(f) and len(f.params) >= 2 and f.vararg != 1 and f.kwarg != 1 and (f.ptypes[1] == "" or is_tuple(f.ptypes[1]))
+
+
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
     c = Node(n.kind, n.s, n.line)
@@ -843,6 +851,27 @@ def is_union(t: str) -> bool:
 def umembers(t: str) -> list[str]:
     # the member types of union t, in their (sorted) order
     return targs(t)
+
+def recnames(t: str) -> str:
+    # t (a type, or a message that names types) with each rec[A], recursive alias A's named edge,
+    # written A (not where rec ends a longer name: a message may quote one)
+    out: list[str] = []
+    i = 0
+    a = t.find("rec[")
+    while a >= 0:
+        b = t.find("]", a)
+        if b < 0:
+            break
+        if a > 0 and (t[a - 1].isalnum() or t[a - 1] == "_"):
+            out.append(t[i : a + 4])
+            i = a + 4
+        else:
+            out.append(t[i:a] + short(t[a + 4 : b]))
+            i = b + 1
+        a = t.find("rec[", i)
+    out.append(t[i:])
+    return "".join(out)
+
 
 def unionnames(t: str) -> str:
     # t (a type, or a message that names types) with each union[A,B] written A | B
