@@ -5,8 +5,16 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `5dcb4859d363267bb2c8ce851a4476a2b75a2c36`.
+**Latest evaluated main:** `681bdd1712799e1b4af24a8b64219bd0adf723a7`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
+
+**Historical replay prerequisite (corrected 2026-10-19):** before running any
+embedded GC-budget, BLAS-fold or Unicode driver from its evaluated checkout, run
+`mkdir -p build/audit-gc build/audit-blas build/audit-unicode`. Their historical
+scripts assume those directories already exist; bootstrap alone does not create
+them. Continue to relocate the explicit toolchain/compiler/fixture paths as each
+report describes. The dated JSON is preserved unchanged. The #690 checkpoint
+below records four clean-directory controls for this correction.
 
 ## Checkpoints
 
@@ -18,6 +26,7 @@ Do not replace a result merely because a PR description predicts an improvement.
 | 2026-10-19 merge catch-up | `5db1e4b5`; #678 integration, #670 native JSON, regex/compiler/array changes through #699, and #723 recorded benchmarks | **144/470** native, **146/470** stub-assisted; five JSON files move into the overlay, no successful imports lost. Native JSON passes 14,444 cases in each JIT/AOT mode with GC stress. Focused checks, affected ports, FFI and BLAS parity pass. [Evidence](compatibility-2026-10-19-catchup.json). |
 | 2026-10-19 JSON/effect follow-up | `898d0b95`; #722 | Imports and first errors unchanged; JSON differentials, 64 focused checks, 52 GC-stressed checks and 8 adapted port checks pass. Corrected recursive equality depth boundary and alias diagnostics. Independent paired encoder medians improve **3.47–4.82x** on two bounded inputs, not whole-library coverage. [Evidence](compatibility-2026-10-19-json-followup.json). |
 | 2026-10-19 coverage tooling | `5dcb4859`; #733 README badges and #731 hosted coverage | 9 selected checks pass with all 10 compiler processes captured; a missing-JIT-data control correctly fails. No compiler/runtime/lib/port/test source changes and no new library-support claim. [Evidence](compatibility-2026-10-19-coverage-tooling.json). |
+| 2026-10-19 module bindings | `681bdd17`; #690 | Silent wrong function/exception bindings corrected; local module calls and same-named type parameters now work. 404 focused, 28 API and 8 port checks pass; imports remain 144/470 native, 146/470 stub-assisted. Only four corrected fixtures differ in the 3,109-program IR oracle. [Evidence](compatibility-2026-10-19-module-bindings.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -2016,3 +2025,110 @@ not fresh sweeps. No implementation changes require repeating import/API/port/
 package/benchmark suites for this merge; no additional library support, performance
 or memory improvement is inferred. Full local corpus coverage and CPython regrtest
 were not run. The dated baseline and all previous evidence remain unchanged.
+
+## 2026-10-19 — #690: module attributes retain their own bindings
+
+Evaluated [main `681bdd1712799e1b4af24a8b64219bd0adf723a7`](https://github.com/den-run-ai/pystachy/commit/681bdd1712799e1b4af24a8b64219bd0adf723a7),
+the only first-parent merge after evaluated `5dcb4859`. Re-fetched
+[#690](https://github.com/den-run-ai/pystachy/pull/690), verified its 2026-10-19
+19:30:00 UTC merge and ancestry in main, and read #491/#616 coordination and the
+implementation's review comments. The diff changes only `loader.py` and adds four
+differential fixtures/recordings. No other session's branch was modified.
+
+### Correctness and acceptance changes
+
+Rebuilt a clean exact-main checkout with **CPython 3.13.16 / LLVM 18.1.3**.
+Compiler and runtime IR fixed points pass at **629,802 / 18,388 lines**. Native
+executable SHA-256 is
+`858844616e4ad8954e15d86929a4934f9c56601b07b469824b664fb3b02cfa98`;
+both its build source and evaluated source are `681bdd17`. The old-control binary
+is the separately verified `898d0b95` build
+`db27087b4f26a178852401e2b2ef266b72f6757a7ef0710c5b88b42d84abe52e`.
+Its compiler/runtime/lib/port/test sources equal previous checkpoint `5dcb4859`;
+the intervening changes were coverage tooling and documentation.
+
+Fresh CPython versus old/new native JIT and AOT controls confirm:
+
+| Probe | Old native behavior | Current native behavior / CPython |
+|---|---|---|
+| Local `dirname as basename`, then `posixpath.basename(p)` | Wrong function called: `/a/b /a/b` | `/a/b c.txt` |
+| `_thread.error` with a shadowing program class or local import named `RuntimeError` | Caught as the program's class or `re.error` | Builtin `RuntimeError` |
+| Function-local `fnmatch.fnmatch` and `bisect.bisect` | Rejected at the first call | `True False`, then `2` |
+| `token.OP` / `token.NL` with same-named type parameters | TypeVar-as-value rejection | Module constants and ordinary values preserved |
+| Additional probe: own `RuntimeError` raised under `except _thread.error` | Wrong builtin handler catches it | Not caught by builtin handler |
+| Additional probe: local `datetime.datetime(...).isoformat()` | Rejected as undefined `datetime` | `2026-10-19T12:30:00` |
+
+The first two fixtures and the additional exception-handler probe correct silent
+wrong answers; the other controls remove unnecessary rejection/porting edits.
+These are general module-binding fixes, not new replacement libraries. One known
+boundary from #690's discussion remains: a local **variable** named `RuntimeError`
+still makes `except _thread.error` fail with "an except clause needs exception
+classes" in both old and new native compilers; CPython prints `caught 1`. The
+retained reproduction records that remaining limitation without calling it a new
+regression or opening a duplicate issue.
+
+### Focused verification
+
+- **404 checks over 295 selected import/module/typeparam/exception cases pass**.
+- **28 checks over 14 affected stdlib/API programs pass**, including bisect,
+  datetime, fnmatch, token and the retained compiled upstream-derived
+  fnmatch/datetime programs. This is not an unmodified full upstream test suite.
+- **8 checks over four adapted ordered-set/sortedcontainers programs pass**.
+- The four new fixtures pass **8/8 each** with program GC every allocation,
+  optimizations disabled, and the CPython-hosted compiler.
+- **22 CPython recordings match** for the new fixtures, affected APIs and ports;
+  three additional independent CPython controls are recorded separately.
+
+Commands include `make PY=/root/.local/bin/python3.13`, selected
+`tests/run.sh ./pystachy "jit aot"`, `PYSTACHY_GC_STRESS_PROGRAM=1`,
+`PYSTACHY_OPT=-all`, hosted `python3.13 -m pystachy`, and isolated old/new
+`run` / `build` plus AOT execution. The evidence retains exact selectors,
+fixture hashes, programs, outputs and sanitized compiler-option settings.
+
+### Import census, IR comparison and limits
+
+Fresh isolated `tools/import_sweep.py --metadata` runs, native and `--stubs`, retain
+**144/470 native imports** and **146/470 stub-assisted imports**. All 522 CPython
+input hashes and 52 overlay exclusions match the preceding measurements. The full
+per-module results and first errors are unchanged; no timeout, lost success or
+newly exposed import blocker. Stubs remain throwing diagnostic stand-ins, not
+implementations. The evidence references the unchanged prior result maps and
+stores fresh metadata, raw-result hashes, normalization and empty delta maps.
+
+`tools/irsame.sh OLD NEW` compares the full **3,109-program** current corpus using
+the same current `PYSTACHY_HOME` for both binaries: **3,105 identical**, **four
+different**, exactly this merge's new fixtures. The stock tool's exit **1** is
+expected here, not suppressed or relabeled as zero differences. Its first three
+detailed differences show the corrected call/exception binding and removed local
+import rejection; the fourth type-parameter case is independently covered by
+the old/new JIT/AOT controls above. No other corpus IR, diagnostics or exit status
+differs. This is a compile-time comparison, not execution of every corpus program.
+
+All **31 jobs across four implementation PR workflows** at `e207149c` were read
+fresh and succeeded, including [the complete verification summary](https://github.com/den-run-ai/pystachy/actions/runs/39303785336).
+That head's compiler/runtime/lib/port/test sources equal evaluated main; only
+the later #731/#733 tooling/documentation files differ. This remote evidence is
+separate from local focused checks and from this report PR's own checks.
+
+Full commands, inputs, controls, source/binary identities and reproduction scripts
+are in [the measured evidence](compatibility-2026-10-19-module-bindings.json).
+Initial aggregation hit a syntax error and then a baseline-path normalization
+mismatch; both bookkeeping problems were corrected before publication, without
+changing or rerunning the successful test outputs. Raw old/new import maps were
+already identical. No full local `make verify`, CPython regrtest, broad PyPI sweep,
+full upstream pyperformance census, performance or memory comparison is claimed.
+Prior minor/major adaptation assessments and first-error limitations remain;
+this removes specific import-placement workarounds, not general dynamic typing.
+
+### Historical reproduction correction
+
+[Review comment on #669](https://github.com/den-run-ai/pystachy/pull/669#discussion_r4316745001)
+correctly identified that the embedded historical GC, BLAS and Unicode drivers
+assume their output directories already exist. Preserved those dated JSON files
+and added the mandatory `mkdir -p` prelude at the top of this rolling record,
+before all historical replay instructions. Four isolated temporary-directory
+checks (GC evaluator, GC budget probe, BLAS driver, Unicode driver) reproduce
+`FileNotFoundError` without the prelude and pass their initial file write with it.
+These validate directory setup only; the historical suites were not rerun.
+The control code/results are included in the new evidence, and all new audit
+drivers already create their own output directories before saving results.
