@@ -87,8 +87,9 @@ correctly shaped zeros without calling BLAS. Zero-offset row-major arrays and
 their transposes, including padded rows, borrow their existing data. Thus
 `matmul(x, weight.T)` needs no transposed-weight copy. Other views, including
 nonzero offsets, reversed axes and broadcast strides, are packed in logical
-row-major order; that copying is part of a call's cost. Inputs are read afresh
-on every call, so weight updates need no cache invalidation.
+row-major order, a slice per row where the rows have unit stride; that copying
+is part of a call's cost. Inputs are read afresh on every call, so weight
+updates need no cache invalidation.
 
 `linear(x, weight, bias)` computes PyTorch's `Linear`, `x @ weight.T + bias`,
 with one `cblas_dgemm` call. Its result starts as the bias repeated for every
