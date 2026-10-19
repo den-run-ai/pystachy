@@ -1,0 +1,15 @@
+@main.init:
+@f.out_of_range: cold noinline
+@f.wrong: cold noinline
+@f.checked:
+@f.maybe:
+@f.spin:
+@f.gen.1: presplitcoroutine
+@f.run:
+@m.Box.__init__:
+@m.Box.fail: cold noinline
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@pys.gen.drop:
+@main:

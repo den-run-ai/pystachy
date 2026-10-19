@@ -25,9 +25,11 @@ end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports a
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
 `_imp` loads `lib/_pystachy_imp.py`, a [capability and one-thread lock
 prototype](../prototypes/imp.md) that does not add runtime module loading.
-`_ast` loads `lib/_pystachy_ast.py`, an [expression-node prototype](../prototypes/ast.md)
-without a parser, and `_weakref` loads `lib/_pystachy_weakref.py`, a [weak-reference
-prototype](../prototypes/weakref.md) that does not make `import weakref` work.
+`_ast` loads `lib/_pystachy_ast.py`, typed [expression nodes](../prototypes/ast.md) to build,
+inspect and rewrite, without a parser. `_weakref` loads `lib/_pystachy_weakref.py`,
+[collector-backed references](../prototypes/weakref.md) to ordinary class instances; as in
+CPython, a reference has no attributes of its own, so its class's fields are the module's.
+Neither prototype makes `import ast` or `import weakref` work.
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
@@ -273,13 +275,14 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |
+| `select` | `select()` of three lists of integer descriptors and an optional timeout, a [POSIX prototype](../prototypes/select.md); a file's `fileno()` is its descriptor. |
 | `math` | Functions and constants with CPython's domain and range errors; restrictions below. |
 | `select` | `select()` of `list[int]` file descriptors and an optional positional timeout, with CPython's results and errors; no `poll`, `epoll`, `fileno()` objects or keyword arguments ([prototype](../prototypes/select.md)). |
 | Type and compiler support | `typing`, `collections.abc` (also `_collections_abc`), `dataclasses`, `builtins`, `__future__`; [FFI](../ffi.md) provides `@ffi.extern` and `@ffi.export`. |
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`
 modes. Files provide `read`, `readline`, `readlines`, `write`, `writelines`, `flush`, `close`,
-iteration, and `closed`, `name` and `mode`. Encoding, buffering and automatic closure differences
+`fileno`, iteration, and `closed`, `name` and `mode`. Encoding, buffering and automatic closure differences
 are documented in [CPython deviations](../language.md#deviations-from-cpython).
 
 `math.fsum()`, `math.prod()` (including `start=`) and `math.dist()` follow CPython's algorithms.

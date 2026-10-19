@@ -4,7 +4,8 @@
 # tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
 # *.rej, *.orig or core file lies in the tree. A minute or two, beside CI's make verify, on the same
-# events: pull requests (forks too), pushes to main, and on demand.
+# events: pull requests (forks too, and documentation-only ones, which skip CI), pushes to main,
+# and on demand.
 name: Lint
 
 on:
@@ -63,6 +64,9 @@ jobs:
 
       - name: Typed IR tests
         run: python3 -m unittest discover -s tools -p 'test_typed*.py'
+
+      - name: JSON benchmark evidence tests
+        run: python3 -m unittest discover -s tools -p test_bench_json.py
 
       - name: DCO certification check tests
         run: python3 -m unittest discover -s tools -p test_dco_check.py

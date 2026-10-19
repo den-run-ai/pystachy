@@ -165,10 +165,34 @@ arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
 `Row.__value__`, `isinstance(x, Num)`) is rejected.
-Recursive aliases (`type Json = int | list[Json]`) and `type` statements outside a module's
+Recursive aliases outside the bounded form below and `type` statements outside a module's
 top level, or for a name that another statement also binds, are unsupported, as is an
 annotation whose aliases expand to more than 65,536 nodes (aliases that each name the one
 before twice).
+
+### Recursive value aliases (prototype)
+
+A nongeneric module-level PEP 695 alias may define a closed recursive union:
+
+```python
+type Value = None | bool | int | float | str | list[Value] | dict[str, Value]
+```
+
+Members may be `None`, `bool`, `int`, `float`, `str`, `list[Self]` and
+`dict[str, Self]`, with at least two distinct non-`None` alternatives and one
+recursive container member. `type Tree = int | list[Tree]` is also supported.
+Bare `list[Self]`, `None | list[Self]`, mutual recursion, generic recursive aliases
+and other recursive shapes remain unsupported. Qualified imports and ordinary
+aliases of an accepted alias retain the same named graph.
+
+Recursive container slots hold existing tagged union boxes. `isinstance()` narrows
+locals and parameters to the original list/dict pointer, preserving shared mutation;
+existing mutable containers remain invariant. The type graph is finite and does
+not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
+native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
+alias is nominal: another alias with the same members is a different type. See the
+[JSON prototype](../json-prototype.md) for representation, operations and API scope.
+`Any` remains inference-only; this adds no runtime compilation.
 
 ## Variables and empty containers
 
@@ -330,8 +354,9 @@ formatter after evaluating the value and specification once. Numeric and string
 members retain their supported formats; `None` accepts only an empty specification.
 
 Narrow before other arithmetic, ordering and member methods. No union is inferred from unrelated assignments or
-return values; annotate it explicitly. Arbitrary `Any`, recursive
-JSON types, runtime compilation and speculative type assumptions are out of scope.
+return values; annotate it explicitly. Recursive JSON-shaped types use the
+[bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
+runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
 claim.
 
@@ -366,10 +391,11 @@ remain invariant: `list[int]` cannot become `list[int | str]`, even through a un
 containing both retains both members after that test and cannot be used as either
 concrete list type.
 
-This supports explicitly typed, finite-depth JSON-shaped data. Recursive aliases
-such as `type Value = None | int | str | list[Value] | dict[str, Value]` remain
-unsupported; this is not yet arbitrary-depth JSON or `Any`. Native class/file
-members retain the separate reference-union restrictions below.
+These ordinary unions describe finite-depth JSON-shaped data. The
+[recursive alias prototype](#recursive-value-aliases-prototype) additionally supports
+`type Value = None | int | str | list[Value] | dict[str, Value]` with data depth
+chosen at runtime. General `Any` remains unsupported. Native class/file members
+retain the separate reference-union restrictions below.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing and f-strings support these mixed
 unions without narrowing, including nested containers and different list/dict

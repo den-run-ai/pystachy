@@ -11,6 +11,40 @@ code points. Unicode case mapping, most character tests and some byte-oriented r
 operations remain incomplete; individual modules may have additional restrictions.
 See [language compatibility](../docs/language/compatibility.md).
 
+## JSON
+
+The native prototype implements `loads(s: str) -> JSONValue` and
+`dumps(obj: JSONValue, *, ensure_ascii=True, allow_nan=True, sort_keys=False,
+separators=None) -> str`. `JSONValue` is the closed recursive union of `None`,
+bool, int, float, str, lists of itself and string-keyed dicts of itself.
+`separators` is a two-string tuple when supplied. This is native recursive
+storage, not general runtime `Any` or a CPython bridge.
+
+The codec supports mixed nested values, Unicode escapes and surrogate pairs,
+lone surrogates, last-key-wins duplicate keys and CPython's default nonfinite
+float forms (`NaN`, `Infinity`, `-Infinity`). `allow_nan=False` rejects those
+values when encoding. `JSONDecodeError` derives from `ValueError` and exposes
+`msg`, `doc`, `pos`, `lineno` and `colno`; positions count Unicode characters.
+Narrowing parsed lists/dicts preserves identity and shared mutation. Encoding
+checks active ancestors for cycles and raises `ValueError` for them; repeated
+references without a cycle serialize normally.
+The existing unboxed-NaN identity deviation also applies: separately decoded
+`[NaN]` lists compare unequal, whereas CPython's cached NaN can make them equal.
+
+Integer tokens outside signed 64-bit range raise `OverflowError`. The codec's
+maximum nesting is 256 containers, beyond which it raises `RecursionError`;
+CPython uses different limits ([deviation](../tests/deviations/json_limits.py)).
+Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
+are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
+each byte that starts no UTF-8 sequence as one character, as `str` does, in values
+and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
+Bytes input, numeric/non-string object keys, tuples, file APIs, decoder/encoder
+classes, hooks, `default`, `skipkeys`, `check_circular`, `strict` and indentation
+are unsupported. Existing typed containers are not implicitly converted to
+recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
+characters unchanged; writing that string follows the runtime's text-encoding
+rules. See the [prototype design and validation](../docs/json-prototype.md).
+
 ## `_imp` prototype
 
 The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
@@ -22,18 +56,31 @@ does not make upstream `importlib` or Python bytecode execution available.
 ## `_ast` prototype
 
 The [prototype contract](../docs/prototypes/ast.md) covers constructing, inspecting
-and mutating typed expression trees: `Expression`, `Constant`, `Name`, `BinOp`,
-`UnaryOp`, their operator and context tags, and CPython's `_fields`, `_attributes`
-and `__match_args__`. There is no parser, `compile()` bridge, statement node or
-source location.
+and mutating typed expression nodes: constants, names, operators, boolean
+operations, comparisons, calls and keywords, attributes, subscripts and slices,
+starred values, list, tuple, set and dict displays, conditional and assignment
+expressions, `await` and `yield`, with CPython 3.13's `_fields`, `_attributes`,
+`__match_args__` and constructor defaults. Their module is `ast`, as CPython's
+types name it. There is no parser (`ast.parse()`), `compile()` of trees,
+statement node, comprehension, lambda, f-string node or location attribute.
+`keyword` takes its `arg` explicitly, and a list field takes a list, not `None`.
 
 ## `_weakref` prototype
 
-The [prototype contract](../docs/prototypes/weakref.md) covers `ref(obj)` to
-ordinary class instances: calling it returns the target, or `None` once the
-collector has reclaimed it. Callbacks, proxies, equality, hashing and
-`import weakref` are unsupported. `type(r).__name__` is `ref` rather than
-`ReferenceType`, and the private `_handle` field is readable.
+The [prototype contract](../docs/prototypes/weakref.md) covers `ref` and
+`ReferenceType`, one class, to ordinary class instances: calling a reference
+returns its referent, or `None` once the collector has reclaimed it. While both
+referents live, `==`, `!=` and `hash()` are the referents'; a dead reference
+equals only itself and keeps a hash computed before. Referents die when the
+collector finds them unreachable, not when CPython's last counted reference
+goes, so a reference to a temporary still compares by its referent until a
+collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPython
+adds for a referent whose class defines `__name__`. A reference has no attributes
+of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
+which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
+unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
+`getweakrefs()`, weak containers and the reuse of one reference per referent
+(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
 
 ## Operator
 
@@ -408,7 +455,9 @@ dictionaries, positions, spans and expansion.
   group numbers are unavailable.
 
 `purge` clears pattern, replacement-template and last-input decoding caches.
-The last input's decoded code points stay cached for the next call on it, but
+An input whose every byte is a code point (ASCII, or raw bytes) is read in place, as
+CPython's `_sre` reads a 1-byte string: it is not decoded or cached. Another input's
+decoded code points stay cached for the next call on it, but
 `findall`, `finditer`, `split`, `sub` and `subn` drop a decoding they made of an
 input longer than 1,048,576 code points once they return. Bounded `findall` and `finditer` calls
 whose `endpos` precedes the input's end keep it, as do caches that `match` or
