@@ -115,7 +115,7 @@ def lower_data(d: Data) -> str:
     return ""
 
 
-def gen_cextern(self, f: FnInfo) -> None:
+def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
     # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
     # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
     # ValueError for a NUL in it) and a list[float] or list[c_int64] as its items (double *,
@@ -124,7 +124,10 @@ def gen_cextern(self, f: FnInfo) -> None:
     # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
     # the C function through @ffi.fp.<f.ll>, which the def statement set as ctypes.CDLL would find it, in
     # the library's own handle (pys_c_bind: see stmt's defaults); only a GLUE module (lib/pyobj.py)
-    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("")
+    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("").
+    # With at, @f.<name>.at, which a call that passes a list as ffi.at(xs, k) calls (Gen.call_fn):
+    # after the arguments, an index for each list, checked as the call starts (pys_c_at), from which
+    # C gets the list's items
     self.line = f.node.line
     sym = f.csym[1:]
     direct = f.mod in GLUE
@@ -137,6 +140,7 @@ def gen_cextern(self, f: FnInfo) -> None:
     args: list[str] = []
     code: list[str] = []
     cts: list[str] = []
+    offs: list[str] = []
     for j in range(len(f.ptypes)):
         t = f.ptypes[j]
         ps.append(f"{lt(t)} %a{j}")
@@ -146,6 +150,11 @@ def gen_cextern(self, f: FnInfo) -> None:
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
             code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 24")  # (bytes after Str's byte length, hash and character-count cache)
+            cts.append("ptr")
+        elif (c == "list[float]" or c == "list[c_int64]") and at:
+            self.runtime("pys_c_at")
+            code.append(f"  %p{j} = call ptr @pys_c_at(ptr %a{j}, i64 %o{j})")
+            offs.append(f"i64 %o{j}")
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
@@ -190,6 +199,9 @@ def gen_cextern(self, f: FnInfo) -> None:
             self.runtime("pys_c_check")
             code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
         code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
+    if at:
+        self.externs[f.ll + ".at"] = f"define internal {lt(f.ret)} {f.ll}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
+        return  # (the C function's declaration and address are the stub's: see below)
     decl = f"declare {rr} {f.csym}({', '.join(cts)})"
     tys = [r.split(" ")[0]] + [x.split(" ")[0] for x in cts]
     if sym in RTSYM:
