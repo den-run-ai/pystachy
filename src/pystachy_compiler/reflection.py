@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OPAQUE, RANGEC, TYPEMODS
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OPAQUE, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -299,12 +299,25 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         if x is not None:
             v = self.expr(x, "")
             if v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != ""):
-                self.err(f"unsupported call type({v.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-            sides.append(self.refl_class_of(v, self.knownobj(x)))
-        else:
+                sides.append(self.exc_type_of(v))  # (an exception's class: its class object)
+            else:
+                sides.append(self.refl_class_of(v, self.knownobj(x)))
+        elif k.kind == "name" and ((k.s in self.classes and k.s not in self.ltype and self.classes[k.s].exc != "") or (is_excname(k.s) and not self.bound(k.s))):
+            sides.append(self.expr(k, ""))  # (an exception class: its class object)
+        elif (k.kind == "name" and k.s not in self.ltype and k.s not in self.gtypes) or (k.kind == "call" and len(k.kids) == 2 and k.kids[1].kind == "None"):
             c = self.refl_type_operand(k)
             sides.append(Val(self.refl_record(c), "%ptr"))
+        else:
+            # (a value: an exception class's class object, or else not supported)
+            v = self.expr(k, "")
+            if unopt(v.t) != "exctype":
+                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
+            sides.append(v)
     neg = n.s == "is not" or n.s == "!="
+    if (unopt(sides[0].t) == "exctype") != (unopt(sides[1].t) == "exctype"):
+        return Val("true" if neg else "false", "bool")  # (an exception class is no other type)
+    if unopt(sides[0].t) == "exctype":
+        return self.ptr_cmp('!=' if neg else '==', sides[0], sides[1])
     if sides[0].v.startswith("@") and sides[1].v.startswith("@"):
         same = sides[0].v == sides[1].v
         return Val("true" if same != neg else "false", "bool")

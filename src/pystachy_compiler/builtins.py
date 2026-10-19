@@ -346,9 +346,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err("delattr() is not supported: deleting an attribute needs an unbound state for each field (#489)")
     if name == "type" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         tv = self.expr(args[0], "")
-        if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != "" and tv.v in self.nn):
-            # (type(e) of an exception, as a value: its class, an exctype, which is the exception)
-            return Val(tv.v if tv.t == "exc" else self.exc_of(tv).v, "exctype")
+        if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
+            return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
@@ -421,8 +420,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if hy < 0:
             return self.ptr_cmp('!=', hv, Val('null', 'None'))
         return Val("true" if hy == 1 else "false", "bool")
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
+        # issubclass(t, c) of an exception class's class object t, c a value holding them
+        v = self.expr(args[0], "")
+        if unopt(v.t) != "exctype":
+            self.err(f"issubclass() is supported for exception classes (type[BaseException]), not {typestr(v.t)}")
+        return self.exc_test(v, args[1], "issubclass")
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and self.exc_classes(args[1]):
-        # issubclass(t, C) of the class of an exception (exctype: the exception itself)
+        # issubclass(t, C) of an exception class's class object t
         v = self.expr(args[0], "")
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
@@ -461,6 +466,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if known < 0:
             if v.t in self.classes and self.classes[v.t].tag > 0:
                 return self.obj_isinst(v, args[1])
+            if self.exc_dynamic(args[1]):
+                return self.exc_test(v, args[1], "isinstance")  # (exception classes held as values)
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):

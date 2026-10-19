@@ -1,0 +1,45 @@
+<class 'KeyError'>
+<class 'ValueError'> <class '__main__.AppError'> <class '__main__.NotFound'>
+True False True False False
+True True
+KeyError KeyError builtins AppError AppError __main__ NotFound NotFound __main__
+[<class 'KeyError'>, <class 'ValueError'>, <class '__main__.AppError'>]
+True False 2
+k - 2
+True
+True False
+{<class 'KeyError'>: 2, <class 'ValueError'>: 1, <class '__main__.NotFound'>: 1}
+True False
+True True False
+True True False
+True False
+True False True
+True True False False
+True True False False
+True True <class 'KeyError'> KeyError True
+True False True True
+KeyError('missing') 'missing'
+ValueError() ValueError('') ValueError('x') ValueError(3) 'None'
+KeyError() KeyError('') KeyError('x') KeyError(3) 'None'
+SystemExit() SystemExit('') SystemExit('x') SystemExit(3) 'None'
+OSError() OSError('') OSError('x') OSError(3) 'None'
+SyntaxError() SyntaxError('') SyntaxError('x') SyntaxError(3) 'None'
+StopIteration() StopIteration('') StopIteration('x') StopIteration(3) 'None'
+SystemExit(True) SystemExit(None) None SystemExit(2) bye
+other ValueError('boom')
+lookup KeyError('boom')
+app AppError boom AppError('boom')
+app NotFound boom NotFound('boom')
+app Coded boom Coded('boom')
+bare ValueError() True
+bare NotFound() True
+1
+1
+ValueError negative: -1
+AppError negative: -1
+default negative: -2
+UserWarning: a True True
+DeprecationWarning: b True True
+TypeError: '<' not supported between instances of 'type' and 'type'
+RuntimeError('outer') KeyError()
+[exit 0]

@@ -28,11 +28,13 @@ from src.pystachy_compiler.utils import (
     is_opt,
     is_sopt,
     is_tuple,
+    is_union,
     meet,
     pure_arg,
     targs,
     tname,
     typestr,
+    umembers,
     unopt,
 )
 
@@ -550,6 +552,10 @@ def gen_cause(self, c: Node) -> Val:
     k = self.exc_class(c)
     if k == "" or k in self.classes:
         v = self.exc_value_of(c, k)
+        if unopt(v.t) == "exctype":
+            if is_opt(v.t):
+                self.err("raise ... from a class object that may be None is not supported")
+            v = self.exc_call(v, [])  # (from C of a class object C: an object of its class, C())
         if v.t != "exc" and v.t != "None" and not (v.t in self.classes and self.classes[v.t].exc != ""):
             self.raise_("TypeError", self.sconst("exception causes must derive from BaseException"))
             self.place(self.label())  # (what follows, the raise itself, is never reached)
@@ -602,6 +608,12 @@ def gen_raise_stmt(self, n: Node) -> None:
         return
     if k == "" or k in self.classes:
         v = self.exc_value_of(e, k)
+        if unopt(v.t) == "exctype":
+            # raise C of a class object C: an object of its class, C()
+            if is_opt(v.t):
+                self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, "TypeError: exceptions must derive from BaseException")
+                v = Val(v.v, "exctype")
+            v = self.exc_call(v, [])
         if v.t in self.classes and self.classes[v.t].exc != "":
             v = self.exc_of(v)
         if v.t == "opt[exc]":
@@ -1063,3 +1075,295 @@ def gen_raise_(self, name: str, msg: str, kind: str = "") -> None:
     self.runtime("pys_raise")
     self.add(i)
     self.term = True
+
+def gen_exc_class_value(self, c: str) -> Val:
+    # exception class c as a value: its class object (runtime.c's exceptions), a builtin class's
+    # (OSError's other names are OSError) or one of the program's, whose ExcClass it holds and
+    # whose objects a call of a class object makes (exc_call: the program's classes used as
+    # values, xvals)
+    if c in self.classes:
+        if self.classes[c].hook != "":
+            self.err(self.classes[c].hook)
+        self.xcls[c] = True
+        self.xvals[c] = True
+        r = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst(c)}", f"ptr @x.{c}"])
+    else:
+        k = "OSError" if c == "IOError" or c == "EnvironmentError" else c
+        r = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst(k)}", "ptr null"])
+    self.nn[r] = True
+    return Val(r, "exctype")
+
+def gen_exc_type_of(self, v: Val) -> Val:
+    # type(v) of an exception, or of an object of an exception class of the program, which may be
+    # None: NoneType then, a class object of that name too (no exception class's). A call of the
+    # class object may make an object of v's class (exc_ctors: the classes deriving from v's)
+    self.xtypes[v.t] = True
+    if v.t == "exc" or v.v in self.nn:
+        r = self.rt("pys_exc_canon", "ptr", [f"ptr {v.v if v.t == 'exc' else self.exc_of(v).v}"])
+        self.nn[r] = True
+        return Val(r, "exctype")
+    e0 = self.cur
+    l1 = self.label()
+    l2 = self.label()
+    nt = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"])
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
+    self.place(l1)
+    r = self.rt("pys_exc_canon", "ptr", [f"ptr {self.rt('pys_exc_user', 'ptr', [f'ptr {v.v}'])}"])
+    e1 = self.cur
+    self.br(l2)
+    self.place(l2)
+    ph = Ins("phi", "exctype", "")
+    self.incoming(ph, nt, e0)
+    self.incoming(ph, r, e1)
+    r = self.phi(ph)
+    self.nn[r] = True
+    return Val(r, "exctype")
+
+def gen_exc_tree(self) -> str:
+    # the exception classes, builtin and of the program, each with those it is or derives from,
+    # itself first ("\2K\1K\1A\1B\1..."): what tells runtime.c's pys_exc_sub whether a class
+    # derives from one that a value gives
+    if self.exctree == "":
+        out: list[str] = []
+        for k in EXCBASES:
+            out.append("\x02" + k + "\x01" + "\x01".join([b for b in EXCBASES if exc_derives(k, b)]) + "\x01")
+        xs = [c for c in self.classes if self.classes[c].exc != ""]
+        for c in xs:
+            bs = [c] + [x for x in xs if x != c and self.derives(c, x)] + [b for b in EXCBASES if self.derives(c, b)]
+            out.append("\x02" + c + "\x01" + "\x01".join(bs) + "\x01")
+        self.exctree = self.sconst("".join(out))
+    return self.exctree
+
+def gen_exc_sub(self, a: Val, b: Val) -> Val:
+    # is a's class (an exception's, or class object a's) class object b's, or derived from it
+    r = self.rt("pys_exc_sub", "i64", [f"ptr {a.v}", f"ptr {b.v}", f"ptr {self.exc_tree()}"])
+    return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
+
+def gen_exc_dynamic(self, t: Node) -> bool:
+    # is t, isinstance's or issubclass's second argument, a value that holds exception classes
+    # (exc_held), or a tuple display of such values and classes named, rather than names alone
+    # (exc_classes)
+    if t.kind == "tuple":
+        held = [x for x in t.kids if x.kind != "starred" and self.exc_held(x)]
+        return len(held) > 0 and len(held) + len([x for x in t.kids if self.exc_classes(x)]) == len(t.kids)
+    return self.exc_held(t)
+
+def gen_exc_held(self, t: Node) -> bool:
+    # does t, a variable or a field of an object a variable holds, hold exception classes (a class
+    # object, which may be None, or a tuple of them), as their types say without compiling t
+    v = ""
+    if t.kind == "name":
+        v = self.static_type(t)
+    elif t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":
+        o = unopt(self.static_type(t.kids[0]))
+        v = self.classes[o].ftypes.get(t.s, "") if o in self.classes and t.s not in self.classes[o].methods else ""
+    return self.exc_holds(v)
+
+def gen_exc_holds(self, t: str) -> bool:
+    # is t a class object's type (which may be None), or a tuple's of such items
+    u = unopt(t)
+    if is_tuple(u):
+        return len(targs(u)) > 0 and len([x for x in targs(u) if not self.exc_holds(x)]) == 0
+    return u == "exctype"
+
+def gen_exc_test(self, v: Val, t: Node, what: str) -> Val:
+    # issubclass(v, t) (what: "issubclass") of a class object v, or isinstance(v, t), t a value
+    # (exc_dynamic): a class object, or a tuple of them, of which v's class is one or derives
+    # from one, v being an exception (or an object of an exception class of the program; None and
+    # a value of another type are no instance). t is evaluated first, as CPython builds its
+    # arguments before it tests them
+    bs: list[Val] = []
+    for b in [self.expr(x, "") for x in t.kids] if t.kind == "tuple" else [self.expr(t, "")]:
+        bs += self.exc_flat(b, what)
+    for b in bs:
+        if unopt(b.t) != "exctype" and what == "isinstance":
+            self.err("isinstance() is only supported with the builtin types and classes as its second argument")
+        if unopt(b.t) != "exctype":
+            self.err(f"issubclass() of a class object takes exception classes, or tuples of them, not {typestr(b.t)}")
+    bs = [self.unwrap(b, f"TypeError: {what}() arg 2 must be a type, a tuple of types, or a union") for b in bs]
+    if what == "issubclass":
+        return self.exc_any(self.unwrap(v, "TypeError: issubclass() arg 1 must be a class"), bs)
+    u = unopt(v.t)
+    if u != "exc" and (u not in self.classes or self.classes[u].exc == ""):
+        return Val("false", "bool")  # (a class object, None, or a value of another type: no instance)
+    if not is_opt(v.t) and (v.t == "exc" or v.v in self.nn):
+        return self.exc_any(v if v.t == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs)
+    e0 = self.cur
+    l1 = self.label()
+    l2 = self.label()
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
+    self.place(l1)
+    r = self.exc_any(Val(v.v, "exc") if u == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs)
+    e1 = self.cur
+    self.br(l2)
+    self.place(l2)
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", e0)
+    self.incoming(ph, r.v, e1)
+    return Val(self.phi(ph), "bool")
+
+def gen_exc_flat(self, b: Val, what: str) -> list[Val]:
+    # the classes value b gives isinstance() or issubclass() (what): itself, or a tuple's items,
+    # tuples among them too
+    if not is_tuple(unopt(b.t)):
+        return [b]
+    b = self.unwrap(b, f"TypeError: {what}() arg 2 must be a type, a tuple of types, or a union")
+    out: list[Val] = []
+    for i in range(len(targs(b.t))):
+        out += self.exc_flat(self.tget(b, i), what)
+    return out
+
+def gen_exc_any(self, v: Val, bs: list[Val]) -> Val:
+    # does v's class derive from one of class objects bs, tested in turn: the first that it does stops
+    r = Val("false", "bool")
+    for b in bs:
+        x = self.exc_sub(v, b)
+        r = x if r.v == "false" else Val(self.scalar('or', [r, x]), "bool")
+    return r
+
+def gen_exc_call(self, c: Val, args: list[Node]) -> Val:
+    # c(args) of class object c (an exception class's: exctype), the class evaluated first, then
+    # the arguments (one positional argument at most): an object of its class. The function that
+    # makes one of a class of the program from the arguments of this call's types is in the table
+    # of those types (exc_ctors), which runtime.c's pys_exc_ctor looks c's class up in; a
+    # builtin class's object is pys_exc_make's (exc_make)
+    for a in args:
+        if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
+            self.err("a call of an exception class held as a value is supported with positional arguments only")
+    if len(args) > 1:
+        self.err("a call of an exception class held as a value is supported with one argument at most")
+    vals = [self.expr(a, "") for a in args]
+    c = self.unwrap(c, "TypeError: 'NoneType' object is not callable")
+    sig = vals[0].t if len(vals) > 0 else ""
+    if sig not in self.xsigs:
+        self.xsigs[sig] = len(self.xsigs)
+    fp = self.rt("pys_exc_ctor", "ptr", [f"ptr {c.v}", f"ptr @x.mk.{self.xsigs[sig]}"])
+    l1 = self.label()
+    l2 = self.label()
+    l3 = self.label()
+    self.cbr(self.scalar_cmp('eq', Val(fp, '%ptr'), Val('null', '%ptr')), l2, l1)
+    self.place(l1)
+    i = Ins("icall", "exc", "")
+    i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    self.put(i, 1)
+    e1 = self.cur
+    self.br(l3)
+    self.place(l2)
+    r2 = self.exc_make(c, vals)
+    e2 = self.cur
+    self.br(l3)
+    self.place(l3)
+    ph = Ins("phi", "exc", "")
+    self.incoming(ph, f"%t{i.r[0]}", e1)
+    self.incoming(ph, r2.v, e2)
+    r = self.phi(ph)
+    self.nn[r] = True
+    return Val(r, "exc")
+
+def gen_exc_make(self, c: Val, vals: list[Val]) -> Val:
+    # an object of the builtin class of class object c, of the arguments vals (none or one):
+    # runtime.c's pys_exc_make, given the argument's str() and repr(), whether it is true (a
+    # SyntaxError's traceback line) and its status where it is an int, a bool or None (a
+    # SystemExit's code)
+    if len(vals) == 0:
+        e = self.sconst("")
+        return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 0", f"ptr {e}", f"ptr {e}", "i64 0", "i64 0"]), "exc")
+    v = vals[0]
+    s = self.to_str(v).v
+    r = self.repr(v).v
+    flags = self.select(self.truth(v), Val("2", "int"), Val("0", "int"))
+    code = "0"
+    if v.t == "int" or v.t == "bool" or v.t == "None":
+        flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])
+        code = self.as_int(v).v if v.t != "None" else "0"
+    elif is_sopt(v.t) and (unopt(v.t) == "int" or unopt(v.t) == "bool"):
+        flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])
+        code = self.optint(v, "0")
+    return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 1", f"ptr {s}", f"ptr {r}", f"i64 {flags}", f"i64 {code}"]), "exc")
+
+def gen_exc_ctors(self) -> int:
+    # the functions that make an object of each class of the program used as a value (xvals) from
+    # the arguments of a call of a class object (none, or one of the type that each form of call,
+    # xsigs, has: exc_call), compiled as the program's other functions are, until no more come:
+    # a class whose __init__ takes another number of arguments raises CPython's TypeError
+    # instead, and one whose __init__ takes another type has none (pys_exc_make raises). A class
+    # whose objects are made is one where type() of an exception it may be became a class object
+    # (xtypes). How many forms and classes have been seen
+    for sig in [x for x in self.xsigs]:
+        for c in self.exc_ctor_classes():
+            key = f"{self.xsigs[sig]}.{c}"
+            if key in self.xctors:
+                continue
+            ci = self.classes[c]
+            init = ci.methods["__init__"] if "__init__" in ci.methods else None
+            if ci.bad != "" or (sig != "" and init is not None and len(init.ptypes) > 1 and init.vararg != 1 and not self.exc_ctor_takes(sig, init.ptypes[1])):
+                self.xctors[key] = False  # (a class Pystachy cannot make, or whose __init__'s first argument has another type)
+                continue
+            line = ci.node.line
+            noann = mk("noann", "", line, [])
+            f = FnInfo(short(c), f"@x.mk.{key}", mk("def", short(c), line, [noann, noann, mk("block", "", line, [])]), "")
+            f.params = ["a"] if sig != "" else []
+            f.ptypes = [sig] if sig != "" else []
+            f.defaults = [noann] if sig != "" else []
+            f.dglob = [""] if sig != "" else []
+            f.ret = "exc"
+            bad = self.exc_ctor_arity(c, 1 if sig != "" else 0)
+            self.xctors[key] = True
+            if bad != "":
+                body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "TypeError", line, []), mk("str", bad, line, [])])])]
+            else:
+                body = [mk("return", "", line, [mk("excobj", c, line, [mk("name", "a", line, [])] if sig != "" else [])])]
+            f.node.kids[2].kids = body
+            self.function(f, body)
+    return len(self.xctors)
+
+def gen_exc_ctor_classes(self) -> list[str]:
+    # the classes of the program that a class object called may be of: those used as values, and
+    # those whose objects are made that derive from a class whose objects' type() became one
+    out = [x for x in self.xvals]
+    for c in self.xcls:
+        if c not in self.xvals and ("exc" in self.xtypes or len([t for t in self.xtypes if self.derives(c, t)]) > 0):
+            out.append(c)
+    return out
+
+def gen_exc_ctor_takes(self, t: str, p: str) -> bool:
+    # can an argument of type t be passed for a parameter of type p ("": a template's)
+    u = unopt(p)
+    if p == "" or t == p or self.widens(t, p) or (is_opt(p) and (t == "None" or t == u or self.widens(t, u))):
+        return True
+    return (u in self.classes and t == "None") or (is_union(u) and t in umembers(u))
+
+def gen_exc_ctor_arity(self, c: str, n: int) -> str:
+    # CPython's TypeError where class c's __init__ cannot take n positional arguments, or ""
+    init = self.classes[c].methods["__init__"] if "__init__" in self.classes[c].methods else None
+    if init is None:
+        return ""  # (BaseException's: any)
+    q = f"{short(init.cls)}.__init__()"
+    npos = len(init.params) if init.npos < 0 else init.npos
+    if n + 1 > npos and init.vararg < 0:
+        return f"{q} takes {npos} positional argument{'s' if npos != 1 else ''} but {n + 1} were given"
+    for kw in [False, True]:
+        # (the positional parameters that no argument fills and that have no default, then the
+        # keyword-only ones)
+        miss = [init.params[j] for j in range(n + 1, len(init.params)) if j < len(init.defaults) and init.defaults[j].kind == "noann" and j != init.vararg and j != init.kwarg and (init.npos >= 0 and j >= init.npos) == kw]
+        what = "keyword-only" if kw else "positional"
+        if len(miss) == 1:
+            return f"{q} missing 1 required {what} argument: '{miss[0]}'"
+        if len(miss) > 1:
+            names = ", ".join([f"'{x}'" for x in miss[:-1]]) + f" and '{miss[-1]}'"
+            return f"{q} missing {len(miss)} required {what} arguments: {names}"
+    return ""
+
+def gen_exc_tables(self) -> None:
+    # each form of call of a class object's table of the functions exc_ctors compiled, for
+    # runtime.c's pys_exc_ctor: {ExcClass, function} pairs, ended by NULL
+    for sig in self.xsigs:
+        d = Data("callable", f"@x.mk.{self.xsigs[sig]}")
+        for c in self.exc_ctor_classes():
+            key = f"{self.xsigs[sig]}.{c}"
+            if key in self.xctors and self.xctors[key]:
+                d.refs.append(f"@x.{c}")
+                d.refs.append(f"@x.mk.{key}")
+        d.refs.append("null")
+        d.refs.append("null")
+        self.consts.append(d)

@@ -415,7 +415,24 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_brepr as exceptions_exc_brepr,
     gen_exc_class as exceptions_exc_class,
     gen_exc_classes as exceptions_exc_classes,
+    gen_exc_any as exceptions_exc_any,
+    gen_exc_call as exceptions_exc_call,
+    gen_exc_class_value as exceptions_exc_class_value,
+    gen_exc_ctor_arity as exceptions_exc_ctor_arity,
+    gen_exc_ctor_classes as exceptions_exc_ctor_classes,
+    gen_exc_ctor_takes as exceptions_exc_ctor_takes,
+    gen_exc_ctors as exceptions_exc_ctors,
+    gen_exc_dynamic as exceptions_exc_dynamic,
+    gen_exc_flat as exceptions_exc_flat,
+    gen_exc_held as exceptions_exc_held,
+    gen_exc_holds as exceptions_exc_holds,
     gen_exc_helpers as exceptions_exc_helpers,
+    gen_exc_make as exceptions_exc_make,
+    gen_exc_sub as exceptions_exc_sub,
+    gen_exc_tables as exceptions_exc_tables,
+    gen_exc_test as exceptions_exc_test,
+    gen_exc_tree as exceptions_exc_tree,
+    gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
@@ -934,6 +951,11 @@ class Gen:
         # type than the name has outside): [name, its type outside ("": a global), register, flag]
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
+        self.xvals: dict[str, bool] = {}  # exception classes of the program used as values: calls of class objects make them (exc_ctors)
+        self.xsigs: dict[str, int] = {}  # each argument type of calls of class objects ("": none): its table's number
+        self.xctors: dict[str, bool] = {}  # the functions exc_ctors compiled ("<table>.<class>"): does the class's __init__ take it
+        self.xtypes: dict[str, bool] = {}  # the static types of exceptions whose type() became a class object ("exc": any)
+        self.exctree = ""  # the str constant of the exception classes with their bases (exc_tree), once made
         self.eh = False  # the program has try or with (closed world): exceptions are on (pys_eh_on)
         self.opts: dict[str, bool] = {}  # the optimizations on (optimizations()), once program() starts
         self.lcs: list[str] = []
@@ -2577,6 +2599,57 @@ class Gen:
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
+
+    def exc_class_value(self, c: str) -> Val:
+        return exceptions_exc_class_value(self, c)
+
+    def exc_tree(self) -> str:
+        return exceptions_exc_tree(self)
+
+    def exc_type_of(self, v: Val) -> Val:
+        return exceptions_exc_type_of(self, v)
+
+    def exc_sub(self, a: Val, b: Val) -> Val:
+        return exceptions_exc_sub(self, a, b)
+
+    def exc_dynamic(self, t: Node) -> bool:
+        return exceptions_exc_dynamic(self, t)
+
+    def exc_test(self, v: Val, t: Node, what: str) -> Val:
+        return exceptions_exc_test(self, v, t, what)
+
+    def exc_flat(self, b: Val, what: str) -> list[Val]:
+        return exceptions_exc_flat(self, b, what)
+
+    def exc_held(self, t: Node) -> bool:
+        return exceptions_exc_held(self, t)
+
+    def exc_holds(self, t: str) -> bool:
+        return exceptions_exc_holds(self, t)
+
+    def exc_any(self, v: Val, bs: list[Val]) -> Val:
+        return exceptions_exc_any(self, v, bs)
+
+    def exc_call(self, c: Val, args: list[Node]) -> Val:
+        return exceptions_exc_call(self, c, args)
+
+    def exc_make(self, c: Val, vals: list[Val]) -> Val:
+        return exceptions_exc_make(self, c, vals)
+
+    def exc_ctors(self) -> int:
+        return exceptions_exc_ctors(self)
+
+    def exc_ctor_arity(self, c: str, n: int) -> str:
+        return exceptions_exc_ctor_arity(self, c, n)
+
+    def exc_ctor_takes(self, t: str, p: str) -> bool:
+        return exceptions_exc_ctor_takes(self, t, p)
+
+    def exc_ctor_classes(self) -> list[str]:
+        return exceptions_exc_ctor_classes(self)
+
+    def exc_tables(self) -> None:
+        return exceptions_exc_tables(self)
 
     def throw(self, e: Val) -> None:
         return exceptions_throw(self, e)

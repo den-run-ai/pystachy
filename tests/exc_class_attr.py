@@ -1,4 +1,4 @@
-# error: the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.__qualname__)
+# The class an __exit__ takes has CPython's __qualname__; the exception goes on, as nothing suppresses it
 from types import TracebackType
 
 

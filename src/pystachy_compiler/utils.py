@@ -625,8 +625,8 @@ def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
     # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor), and
     # objects, also as such items (Gen.key_problem)
-    if t == "int" or t == "str" or t == "bytes" or (is_tuple(t) and key_items(t)):
-        return ""
+    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
+        return ""  # (an exception class's class object is hashed and compared by identity)
     if is_opt(t):
         return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
     return f"dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not {typestr(t)}"
@@ -669,7 +669,7 @@ def bool_for_int(a: str, b: str) -> bool:
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and not (is_tuple(u) and key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not (is_tuple(u) and key_items(u)):
             return False
     return True
 

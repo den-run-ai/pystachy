@@ -352,13 +352,9 @@ supported alternatives.
 
 - a `with` item whose value is neither a file nor an object of a class of the program that
   defines `__enter__` and `__exit__` (a union of such classes, a class without `__exit__`: CPython's
-  `TypeError` message), and `with suppress(...) as x` or `suppress()` with something other than
-  exception classes named (`contextlib.suppress` is compiled as an except clause) or used outside
-  a `with` statement's item
-- an exception class as a value (`cm.__exit__(KeyError, None, None)`, `issubclass(t, cls)` of a
-  variable `cls`), `type(e)` of an exception object that may be `None` (but for
-  `type(e).__name__`, which is `NoneType` for `None`), attributes of an exception's class other
-  than `__name__`, and a `nullcontext(None)` that is not `nullcontext()`
+  `TypeError` message), and `with suppress(...) as x`
+- attributes of an exception class's class object other than `__name__`, `__qualname__` and
+  `__module__`, and a `nullcontext(None)` that is not `nullcontext()`
 - `contextlib`'s `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
   `asynccontextmanager` and `AsyncExitStack` (not ported: `lib/compatibility.md`)
 
@@ -711,8 +707,14 @@ supported alternatives.
 
 ### Exceptions and exception classes
 
-- `raise` of anything but an exception
-- an `except` clause that names something other than exception classes (a variable), and `except*`
+- `raise` of anything but an exception or an exception class
+- an `except` clause that names something other than exception classes (a variable, also one
+  holding a class object), and `except*`
+- a call of an exception class's class object (`c(...)`, `type(e)(...)`) with more than one
+  argument or with keyword arguments, and `==` between a class object and an object of a class
+  of the program (whose `__eq__` CPython would call). A call of one of a class of the program
+  whose `__init__` takes another type than the argument's raises `TypeError` where CPython makes
+  the object ([deviation test](../../tests/deviations/exc_class_call_init_type.py))
 - `except ... as x` in a function where `x` is a global (the end of the clause deletes it, as `del`
   would), and at a module's top level where `x` is a global of another type that a function reads
   (the function would not see the exception)
@@ -807,8 +809,9 @@ supported alternatives.
 
 The [reflection rules](semantics.md#reflection) list what is supported; these are rejected:
 
-- `type(x)` as a value (a class object, #7), `type(e)` of an exception other than
-  `type(e).__name__`, and `type(x).__name__` of a function, file or callable
+- `type(x)` as a value (a class object, #7) but of an exception ([exception classes as
+  values](semantics.md#exception-classes-as-values)), and `type(x).__name__` of a function, file
+  or callable
 - `getattr()` of a name only the run time knows whose value is used (kept, passed on, called,
   compared, a sort key: `attrgetter(input())`), its text with a format spec, and its text for a
   dataclass, a generic class, a class with annotated class attributes or a builtin value (#487,
