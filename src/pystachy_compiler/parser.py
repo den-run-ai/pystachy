@@ -1006,7 +1006,7 @@ class Parser:
         self.expect("import")
         paren = self.eat("(")
         while True:
-            x = "*" if self.eat("*") else self.expect("id").text
+            x = "*" if not paren and len(n.kids) == 0 and self.eat("*") else self.expect("id").text  # (a * alone, unparenthesized)
             name = x
             if x != "*" and self.eat("as"):
                 name = self.expect("id").text
