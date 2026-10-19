@@ -5,8 +5,9 @@
 # prints a message of runtime.py and one of runtime.c, which show what its runtime was built from.
 #   - The cache is used again while nothing it is built from changes, also through another path to
 #     the same tools, and by the AOT tier.
-#   - On Linux, the JIT tier's shared library is cached beside the .o, made again from the .o where it
-#     is missing (no runtime is built then), and replaced with its entry.
+#   - On Linux, the JIT tier's shared library is cached beside the .o, which lli loads, made again from
+#     the .o where it is missing (no runtime is built then), and replaced with its entry; a run that
+#     may not execute it (its file system mounted noexec since: here its mode) links the .o instead.
 #   - It is built again, and the new entry replaces the old, when runtime.py changes by an edit of the
 #     same size whose mtime is set back, when runtime.c changes, when a file it includes from ryu/
 #     changes (the home's: the runs start in a directory whose ryu/d2s.c does not compile), when they
@@ -59,9 +60,11 @@ printf 'try:\n    print(b"abc".index(b"z"))\nexcept ValueError as e:\n    print(
 P0="subsection not found"; P1="subsection NOT found"
 C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() with base 10: 'x'"
 : > "$T/built"
+: > "$T/loaded"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)
 # when it links the runtime (not a program: --only-needed); opt kills the compiler once it has written
-# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it
+# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it; lli
+# notes how it takes the runtime, as a library (so) or as machine code it links (o)
 for t in clang llvm-as llvm-link opt lli; do
   real=$(command -v "${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}$t") || { echo "tests/cache.sh: cannot find $t"; exit 1; }
   case $t in
@@ -69,6 +72,7 @@ for t in clang llvm-as llvm-link opt lli; do
     llvm-link) hook="if [ \"\$1\" != --only-needed ]; then [ -z \"\$CACHE_FAIL\" ] || exit 1; [ -z \"\$CACHE_EDIT\" ] || sh '$T/edit.sh'; fi" ;;
     opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
   case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi" ;;
+    lli) hook="case \" \$* \" in *\" -dlopen=/dev/fd/8 \"*) echo so ;; *) echo o ;; esac >> '$T/loaded'" ;;
     clang) hook=:; realdir=$(dirname "$real") ;;
     *) hook=: ;;
   esac
@@ -129,9 +133,16 @@ clean "no partial or temporary file is left"
 # (RTSO in the driver); a run that finds the .o without its library makes the library again
 if [ "$(uname)" = Linux ]; then
   if [ "$(libs)" = 1 ]; then ok "the shared library is cached beside the .o"; else bad "$(libs) shared libraries in the cache, not 1"; fi
+  if [ "$(tail -n 1 "$T/loaded")" = so ]; then ok "and lli loads it"; else bad "lli did not load the shared library"; fi
   rm -f "$B"/runtime-py-*-????????????????.so
   check "a run that finds no shared library makes it from the .o, and builds no runtime" "$out" 0
   if [ "$(libs)" = 1 ]; then ok "and caches it"; else bad "$(libs) shared libraries in the cache after it, not 1"; fi
+  # a library that the run may not execute, as on a file system mounted noexec since it was cached,
+  # from which lli could map nothing: Linux's access(X_OK) fails there as it does for this mode
+  chmod a-x "$B"/runtime-py-*-????????????????.so
+  check "a run that may not execute the cached library builds no runtime" "$out" 0
+  if [ "$(tail -n 1 "$T/loaded")" = o ]; then ok "and lli links the .o instead"; else bad "lli loaded the library that the run may not execute"; fi
+  chmod a+x "$B"/runtime-py-*-????????????????.so
 fi
 E=$(entries)
 check "nothing changed: the cache is used" "$out" 0

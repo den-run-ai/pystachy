@@ -354,6 +354,8 @@ run (`-extra-object`), which cost about 35 ms a run
 program for objects' `==`, ordering and `repr` (`pys_obj_eq`, `pys_obj_cmp`, `pys_obj_repr`),
 which no shared library can name: the library holds stand-ins that call through pointers, which a
 constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
+Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
+system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
 A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each

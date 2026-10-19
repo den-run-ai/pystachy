@@ -541,7 +541,8 @@ def main() -> None:
         # C library functions runtime.c calls, and pys_obj_hooks is all the program calls of RTSO. A
         # cache that cannot be written, or whose file system runs nothing (mounted noexec: lli could
         # map no library from it, which a script there shows first), gets none, nor does a link that
-        # fails: lli links the .o then, as elsewhere
+        # fails, and a run that may not execute the library it finds uses none (see opt's shell
+        # below): lli links the .o then, as elsewhere
         useso = rts
         if useo == parto or not os.path.exists(rts):
             f = open(rso, "w", encoding=RAW)
@@ -713,7 +714,17 @@ def main() -> None:
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
             fast = f"{llvm}opt -passes='coro-early,globaldce,{split},coro-cleanup,globaldce'"
         if code == 0:
-            code = sh(f"{fast} {q(ll)} -o {q(bc)}")
+            # the cache's library may lie on a file system mounted noexec since it was made (or copied
+            # there), from which lli could map nothing: the shell that runs opt first asks whether this
+            # run may execute it (Linux's access(X_OK) fails on such a mount), and exits 3 if not, when
+            # the program is written again without the callbacks' constructor, for lli to link the .o
+            code = sh((f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
+            if code == 3 and useso != "":
+                useso = ""
+                f = open(ll, "w", encoding=RAW)
+                f.write(layout + ir)
+                f.close()
+                code = sh(f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
             # then this process becomes lli, through a shell that opens the bitcode and the runtime
             # for it (the cache's, or this run's own: the shared library, or else the machine code that
