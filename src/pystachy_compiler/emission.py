@@ -1,6 +1,6 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, unionnames
+from src.pystachy_compiler.utils import is_union, recnames, unionnames
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
@@ -23,7 +23,9 @@ def gen_err(self, msg: str) -> None:
         for i in range(len(self.making) - 1, -1, -1):
             msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
         msg += ")"
-    fail(optnames(unionnames(msg)) if "opt[" in msg or "union[" in msg else msg, self.line)
+    if "opt[" in msg or "union[" in msg:
+        msg = optnames(unionnames(msg))
+    fail(recnames(msg) if "rec[" in msg else msg, self.line)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
