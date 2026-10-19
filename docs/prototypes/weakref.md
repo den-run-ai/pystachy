@@ -131,6 +131,9 @@ callback, allocation of the collected heap or Python code; the queue grows with
 `realloc`. `_weakref` takes each queued function once (`pys_weakref_fired`,
 oldest first, which is a referent's newest reference first, as the registry
 lists newest handles first) and calls it before it makes or calls a reference.
+A reference that a callback makes or calls leaves the queue to the call already
+taking from it, so a callback ends before the next starts, as CPython calls a
+referent's callbacks one after another.
 
 Lookup has an `I` effect in typed IR. `Gen.canon` only reuses runtime expressions
 whose effects are at most `R`, and function summaries preserve `I` through the
@@ -196,9 +199,10 @@ each reference that reads `None` has called back exactly once and each live one
 not; its callbacks allocate nothing, so no collection runs between the queue and
 the reads. `tests/lib_weakref_callback_order.py` checks newest-first order for a
 referent's two references, with callbacks that make and call references;
-`tests/lib_weakref_callback_dead_ref.py` that references dropped before their
-referents do not call back; `tests/lib_weakref_callback_raise.py` the report of
-an exception a callback raises. Those that allocate in callbacks hold the live
+`tests/lib_weakref_callback_nested.py` that such a callback ends before the next
+starts; `tests/lib_weakref_callback_dead_ref.py` that references dropped before
+their referents do not call back; `tests/lib_weakref_callback_raise.py` the
+report of an exception a callback raises. Those that allocate in callbacks hold the live
 referents while they read, so a collection a callback starts cannot clear one
 that was read live. Error cases cover unsupported target kinds, a callback that
 is not a function, a keyword callback, a third argument, private primitive
