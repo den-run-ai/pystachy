@@ -43,6 +43,14 @@ upstream sources that compile after replacing only the runner. Of the 33 nondefe
 sources without a delivered port, 32 still reject and `generators` compiles.
 Deltablue is separately deferred for a licence provenance decision.
 
+Array code is measured with its examples. In the nanoGPT example's
+[paired measurement](../examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work),
+AOT inference with OpenBLAS on one thread took 0.52 times CPython + NumPy's latency and 0.80
+times PyTorch's for the full logits and loss, about half its time before the October array, BLAS
+and compiler changes, which also halved the scalar AOT path's time and cut the scalar JIT's to a
+quarter. The [ndarray example](../examples/ndarray/README.md#recorded-benchmark) times elementwise,
+reduction and matrix workloads against NumPy.
+
 ## Caching workloads
 
 Caching event classifications skips matching entirely on repeated names. Both implementations
