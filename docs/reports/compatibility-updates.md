@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `3609a5f0830f7997f8b2f6e6463313e3aea9e091`.
+**Latest evaluated main:** `552d7301eee771a61759b601867d5bc9b40eef28`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2754,3 +2754,50 @@ and implementation-CI snapshot before aggregation. Reconstruct previous sweep ma
 from the linked #729/#697 evidence or replay those checkpoints. Repeated stdout
 is stored once in `stdout_blobs`, keyed by SHA-256; the oracle inventory digest is
 reconstructed from the exact revision. No dated baseline report/JSON was changed.
+
+## 2026-10-19: shared CI bootstrap harness (#741)
+
+Evaluated `552d7301eee771a61759b601867d5bc9b40eef28`, the sole first-parent merge
+after `3609a5f0830f7997f8b2f6e6463313e3aea9e091`. Fresh metadata and git ancestry
+confirm [#741](https://github.com/den-run-ai/pystachy/pull/741) merged. Its seven
+changed paths are CI workflow, verification harness/bundle/gate tools and tests,
+and testing documentation. Compiler, runtime, Makefile, library and port sources
+are byte-identical to the previous evaluated revision. Read the PR review and
+#491/#616 coordination; the CI implementation branch remains untouched.
+
+Affected retained checks on a clean detached checkout, CPython **3.13.16**:
+
+```sh
+/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_*verif*.py' -v
+sh -n tests/verify.sh
+tests/verify.sh --list
+git diff --exit-code 3609a5f0830f7997f8b2f6e6463313e3aea9e091 HEAD -- src runtime.c runtime.py pystachy.py Makefile lib ports
+```
+
+Results: **47 tests passed, 0 failures** (`Ran 47 tests in 36.819s`, `OK`);
+shell syntax and source-equality checks exit 0. The plan retains all **23 consumer
+groups** and adds a bootstrap-only producer. Tests cover complete suite counts,
+GC/UBSan modes, failed/missing reports, bundle provenance, source/toolchain/run
+identity, corrupt payloads, fixed-point evidence, symlinks and executable modes.
+These are harness unit/contract tests, not 47 newly compatible Python programs.
+
+Replay inputs are pinned by the exact source revision above. Key SHA-256 hashes:
+
+| Input | SHA-256 |
+|---|---|
+| `tools/verification_bootstrap.py` | `2df4b2d28d19331abd5ddaba95584c3bcfb7ecd8521086fd26cd65605030a8b5` |
+| `tools/test_verification_bootstrap.py` | `f2b1dcab2a92e3de275944cc79d2dbbfe096352a7950f6e995f965582674f2a3` |
+| `tools/merge_verification.py` | `387d49151a87c1c4b4acbaa7f09d2491d23bddd2d9ee4c2f64dba77065df0f44` |
+| `tools/test_merge_verification.py` | `b4b688d2ee208c7a808b6f0d9313fbf3834120934bdae55bfaaeec43dd5d492c` |
+| `tests/verify.sh` | `ba478075afae4096c3330385dc5cdd41193812eaa65633a1dccc2d151ab1a24a` |
+
+No compiler was rebuilt or executed for this tooling-only checkpoint; LLVM was not
+needed by these mocked harness tests. The last measured compiler remains built
+from **3609a5f0**, SHA-256
+`945034c7c3f8d7d2780eb578005076a1bcc687596f11647876d9d180f7891d72`, using LLVM **18.1.3**.
+The previous **144/470 native / 146/470 stub-assisted** import counts are carried
+forward by source identity, **not freshly rerun**. APIs, adapted ports, benchmarks
+and full upstream suites were not repeated. No new compatibility or performance
+gain is inferred from this CI-only change; #741's reported hosted timing comparison
+is separate evidence and was not independently remeasured here. All historical
+reports/JSON and adaptation/first-error limitations remain unchanged.

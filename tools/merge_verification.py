@@ -43,6 +43,8 @@ def parse_groups(text):
         groups[name] = steps
     if not groups or next(iter(groups)) != "all" or len(groups) < 2:
         raise ValueError("--list must begin with all, followed by the CI groups")
+    if "bootstrap" in groups and groups["bootstrap"] != ["bootstrap"]:
+        raise ValueError("the bootstrap producer must run only bootstrap")
     covered = Counter(step for name, steps in groups.items() if name != "all"
                       for step in steps if step != "bootstrap")
     if covered != Counter(groups["all"][1:]):
@@ -167,6 +169,23 @@ def merge_reports(directory, groups, expected_commit=None):
     wanted = [name for name in groups if name != "all"]
     if set(reports) != set(wanted):
         raise ValueError(f"missing report groups: {sorted(set(wanted) - set(reports))}")
+    shared_bootstrap = "bootstrap" in groups
+    if shared_bootstrap:
+        # Retain the producer's actual fixed-point proof and duration in the combined report,
+        # regardless of the order in --list. Consumers report only their restore/validation work.
+        wanted = ["bootstrap", *(name for name in wanted if name != "bootstrap")]
+        producer = reports["bootstrap"]["steps"][0]
+        bundle_id = producer.get("bootstrap_bundle_id")
+        if not isinstance(bundle_id, str) or not re.fullmatch(r"[0-9a-f]{64}", bundle_id):
+            raise ValueError("bootstrap: missing or invalid bootstrap bundle identity")
+        if producer.get("bootstrap_reused", False) is not False:
+            raise ValueError("bootstrap: producer must perform the fixed-point bootstrap")
+        for group in wanted[1:]:
+            bootstrap = reports[group]["steps"][0]
+            if bootstrap.get("bootstrap_bundle_id") != bundle_id:
+                raise ValueError(f"{group}: bootstrap bundle identity differs from producer")
+            if bootstrap.get("bootstrap_reused") is not True:
+                raise ValueError(f"{group}: must validate and reuse the producer's bootstrap")
     # Shards together must make as many checks as an unsharded suite of the same modes (each
     # group's suite is its last step, whose count validate_report checked). The shards of a JIT and
     # AOT suite make as many as tests/verify.sh counts in the whole corpus (sources.suite_checks, the
@@ -234,12 +253,20 @@ def merge_reports(directory, groups, expected_commit=None):
     result["group"] = "all"
     result["steps"] = [steps[name] for name in groups["all"]]
     maximum = round(max(timing["seconds"] for timing in timings), 3)
+    critical_path = maximum
+    if shared_bootstrap:
+        critical_path = round(reports["bootstrap"]["summary"]["seconds"] +
+                              max((timing["seconds"] for timing in timings if timing["group"] != "bootstrap"),
+                                  default=0), 3)
     result["summary"] = {"steps": len(result["steps"]), "passed": len(result["steps"]),
-                         "failed": 0, "seconds": maximum}
+                         "failed": 0, "seconds": critical_path}
     result["timestamp_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     result["ci"] = {"groups": timings, "max_group_seconds": maximum,
+                    "critical_path_seconds": critical_path,
                     "runner_seconds": round(sum(timing["seconds"] for timing in timings), 3),
-                    "timing_scope": "verification only; excludes queue, setup and artifact transfer"}
+                    "timing_scope": ("verification only; bootstrap then parallel groups; " if shared_bootstrap
+                                     else "verification only; parallel groups; ") +
+                                    "excludes queue, setup and artifact transfer"}
     return result
 
 
