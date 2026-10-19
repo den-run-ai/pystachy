@@ -85,8 +85,24 @@ referent's callbacks newest reference first, none of a reference that is itself
 dead, and an exception one raises reported as CPython reports one it ignores. A
 callback must be a function or `None`. `__callback__`, proxies,
 `getweakrefcount()`, `getweakrefs()`, weak containers and the reuse of one
-reference per referent (`ref(x) is ref(x)`) are absent, so the `weakref` module
-does not import.
+reference per referent (`ref(x) is ref(x)`) are absent.
+
+`weakref` is CPython's module, adapted ([test](../tests/lib_weakref_module.py)): its `ref`
+and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
+`_weakrefset` is CPython's file, unchanged.
+
+- `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` keep
+  CPython's code, which is a compile-time error where a program uses them: `WeakSet`
+  binds a method under another name (`__sub__ = difference`), the dictionaries derive
+  from `_collections_abc.MutableMapping`, and `WeakMethod` from the generic
+  `ReferenceType` ([error tests](../tests/errors/lib_weakref_weakset.py)).
+- `proxy`, `ProxyType`, `CallableProxyType`, `ProxyTypes`, `getweakrefcount()`,
+  `getweakrefs()` and `finalize` are absent, and `__all__` leaves them out
+  ([deviation](../tests/deviations/lib_weakref_all.py)); `getweakrefcount()` would need
+  CPython's one reference per referent, and `finalize` takes `*args` and `**kwargs`.
+- `WeakSet` is not registered as a `MutableSet`: a class is not a value here
+  ([#7](https://github.com/den-run-ai/pystachy/issues/7)).
+- `_remove_dead_weakref()`, `_weakref`'s in CPython, is `weakref`'s own here.
 
 ## Operator
 

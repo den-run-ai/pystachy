@@ -30,7 +30,8 @@ inspect and rewrite, without a parser. `_weakref` loads `lib/_pystachy_weakref.p
 [collector-backed references](../prototypes/weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
 has no attributes of its own, so its class's fields are the module's.
-Neither prototype makes `import ast` or `import weakref` work.
+`import ast` does not work; `import weakref` loads an adapted `lib/weakref.py`, whose `ref` is
+this one ([weakref](../../lib/compatibility.md#_weakref-prototype)).
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
