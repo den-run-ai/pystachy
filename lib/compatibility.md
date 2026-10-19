@@ -1024,3 +1024,42 @@ functions are templates: each call's argument types make its code
   function cannot take one ([error test](../tests/errors/lib_itertools_zip_argument.py)); it can
   take a generator expression over them. Ints are 64-bit: `count()` past `2**63 - 1` raises
   `OverflowError`, where CPython's ints grow.
+
+## Opcode
+
+`opcode` is CPython 3.13.16's `Lib/opcode.py`, with one annotation, on its `Lib/_opcode_metadata.py`,
+unchanged, and on `_pystachy_opcode`, a port of the C module `_opcode` (`Modules/_opcode.c`) that
+Pystachy loads for `import _opcode`. The port's tables are CPython's: `tools/opcode_tables.py`
+writes `_pystachy_opcode_db.py` from the headers that CPython makes from its `Python/bytecodes.c`,
+`Include/opcode_ids.h` and `Include/internal/pycore_opcode_metadata.h`, once the port on them
+gives what CPython's module gives. The names of `opcode` (`opmap`, `opname`, `cmp_op`, `hasarg`,
+`hasconst`, `hasname`, `hasjump`, `hasjrel`, `hasjabs`, `hasfree`, `haslocal`, `hasexc`,
+`hascompare`, `HAVE_ARGUMENT`, `EXTENDED_ARG` and `stack_effect`) and its private tables
+(`_specializations`, `_specialized_opmap`, `_cache_format`, `_inline_cache_entries`, `_nb_ops` and
+the intrinsics' names) are CPython's. `_opcode`'s functions work as the C module's do, with its
+errors and messages: `stack_effect()` of every opcode, with or without its oparg, of which it
+keeps the low 32 bits as CPython does, and with `jump=` true, false or omitted; `is_valid()`,
+`has_arg()`, `has_const()`, `has_name()`, `has_jump()`, `has_free()`, `has_local()` and
+`has_exc()`, also of numbers no opcode has, and `OverflowError` beyond a C int;
+`get_nb_ops()`, `get_intrinsic1_descs()` and `get_intrinsic2_descs()`, a new list at each call;
+and `get_specialization_stats()`, which gives `None`, as it does in CPython's default build
+([tests](../tests/lib_opcode.py), [upstream](../tests/upstream_opcode.py)).
+
+The tables describe CPython 3.13.16's bytecode, as `opcode`'s do: a program can look up the
+opcodes of CPython's code objects and the stack effects of its instructions. Pystachy compiles a
+program to native code; it has no bytecode, code objects or specializing interpreter of its own.
+
+- `ENABLE_SPECIALIZATION` is 0, where CPython's default build has 1
+  ([deviation](../tests/deviations/lib_opcode_specialization.py)).
+- `get_executor()` raises CPython's `TypeError: expected a code object, not '...'`, as no value
+  of a Pystachy program is a code object.
+- An argument of a type the C function would not convert is a compile-time error: a `float`
+  opcode or oparg ([error test](../tests/errors/lib_opcode_float.py),
+  [another](../tests/errors/lib_opcode_oparg.py)), and an `int` for `jump=`, for which CPython
+  raises `ValueError` ([error test](../tests/errors/lib_opcode_jump.py)). A `bool`, which CPython
+  takes as an int, is one too, as the subset does not convert a `bool` to an `int`.
+- The functions are Python functions, not builtins: their type's name is `function`.
+- `hasjabs`, an empty list that nothing fills in CPython 3.13, is annotated `list[int]`, as nothing
+  else gives its items a type.
+- `dis` does not compile: `dis.py:27` builds a tuple of classes, `types.MethodType` among them,
+  and Pystachy's `types` has only `GenericAlias`.

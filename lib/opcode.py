@@ -28,7 +28,9 @@ hasconst = [op for op in opmap.values() if _opcode.has_const(op)]
 hasname = [op for op in opmap.values() if _opcode.has_name(op)]
 hasjump = [op for op in opmap.values() if _opcode.has_jump(op)]
 hasjrel = hasjump  # for backward compatibility
-hasjabs = []
+# Pystachy port: annotated, since nothing gives the empty list its items' type (CPython 3.13 has no
+# absolute jumps)
+hasjabs: list[int] = []
 hasfree = [op for op in opmap.values() if _opcode.has_free(op)]
 haslocal = [op for op in opmap.values() if _opcode.has_local(op)]
 hasexc = [op for op in opmap.values() if _opcode.has_exc(op)]
