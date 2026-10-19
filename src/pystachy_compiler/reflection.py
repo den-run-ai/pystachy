@@ -239,6 +239,12 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
         if v.t == "exc":
             return Val(self.rt("pys_exc_name", "ptr", [f"ptr {v.v}"]), "str")
         return Val(self.rt("pys_exc_cls", "ptr", [f"ptr {v.v}"]), "str")
+    if unopt(v.t) == "exctype":
+        # (an exception class's class object: its type is type, builtins', or NoneType for None)
+        tn = Val(self.sconst("builtins" if what == "__module__" else "type"), "str")
+        if is_opt(v.t) and what != "__module__":
+            return Val(self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val(self.sconst("NoneType"), "str"), tn), "str")
+        return tn
     if v.t == "opt[exc]":
         # (an exception or None, as __exit__ and __cause__ give it: NoneType for None)
         if what != "__name__" and what != "__qualname__":

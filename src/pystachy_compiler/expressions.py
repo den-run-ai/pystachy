@@ -411,8 +411,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if t.startswith(c.s + "[") else 0
     if c.s == "type" and t == "exctype":
         return 1  # (an exception class's class object is a type)
-    if t == "exctype" and is_excname(c.s):
-        return 0  # (and no exception)
+    if is_excname(c.s) and t != "exc" and not (t in self.classes and self.classes[t].exc != ""):
+        return 0  # (a value that is no exception, such as a class object, is no instance of one)
     if c.s == "type" and t.startswith("fn[b:"):
         # a builtin's value: one of CPython's builtin classes (int, list, ...) is a type
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
