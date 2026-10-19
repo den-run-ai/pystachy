@@ -1406,6 +1406,14 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
         for nm in free:
             if nm not in sure:
                 closed[nm] = True
+        for p in n.kids[0].kids:
+            import_reads(p.kids[1], sure, out, user, closed)  # (its defaults run where it is)
+        for d in n.kids[3:]:
+            # (and its decorators: a dotted name, or a call of one)
+            root = d.s[: d.s.find(".")] if "." in d.s else d.s
+            if d.s != "async" and root not in sure:
+                out[root] = True
+            import_reads(d, sure, out, user, closed)
     if n.kind == "lambda":
         # A lambda reads the names around it where it runs, checking the binding flags of the
         # imports that bind them (Gen.lambda_flags): one that no import has surely bound where it
