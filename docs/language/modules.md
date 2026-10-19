@@ -31,6 +31,8 @@ inspect and rewrite, without a parser. `_weakref` loads `lib/_pystachy_weakref.p
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
 has no attributes of its own, so its class's fields are the module's.
 Neither prototype makes `import ast` or `import weakref` work.
+`_opcode` loads `lib/_pystachy_opcode.py`, a port of CPython's C module on CPython 3.13.16's
+opcode tables, under the shipped `opcode` ([opcode](../../lib/compatibility.md#opcode)).
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
