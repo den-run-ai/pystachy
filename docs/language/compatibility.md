@@ -395,8 +395,9 @@ supported alternatives.
 
 ### Modules and imports
 
-- a read in a function of a name that its import of a Python module binds, where Pystachy cannot
-  tell that the import has run (after a loop that imports it, say)
+- a read in a nested `def` or a generator expression of a name that the enclosing function's
+  import of a Python module binds, where Pystachy cannot tell that the import has run before
+  (after a branch or a loop that imports it, say)
 - a read of a global that only a template's function assigns, compiled before a call compiles
   that function (declare it at module level: `x: T`)
 - `from m import x` of a global that only m's functions assign (read it as `m.x`, or declare it
