@@ -355,6 +355,34 @@ CPython.
 - Where a buffer class has `read1()`, its `read()` must take a size. A subclass's `read1()`,
   `write()` or `tell()` must also be its base class's.
 
+`IncrementalNewlineDecoder` is the C type's universal-newline decoder (`Modules/_io/textio.c`),
+for `decoder=None`: `decode()` takes `str` input, holds a final `\r` back until the next call or a
+final one, records the kinds of newline it decodes and, with `translate` true, makes `\r\n` and
+`\r` `\n`. `getstate()`, `setstate()`, `reset()`, `newlines` and the truth tests of `translate`
+and `final` are CPython's ([test](../tests/lib_io_newline_decoder.py)). `text_encoding()` gives its
+argument, or for `None` `"utf-8"` in UTF-8 mode, which the runtime's rule above turns on in the C
+and POSIX locales, and `"locale"` otherwise; Pystachy reads no `PYTHONWARNDEFAULTENCODING`, so it
+never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_SIZE` is 8192.
+
+- A decoder object, which CPython's decodes `bytes` input with first, raises
+  `NotImplementedError` ([deviation](../tests/deviations/lib_io_newline_decoder_object.py)), and
+  `bytes` input, for which CPython raises `TypeError`, is a compile-time error
+  ([error test](../tests/errors/lib_io_newline_decoder_bytes.py)).
+- `newlines` raises `NotImplementedError` once more than one kind of newline has been decoded,
+  where CPython's is a tuple of them, as `TextIOWrapper`'s does
+  ([deviation](../tests/deviations/lib_io_newline_decoder_tuple.py)).
+
+`_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
+that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
+`TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
+`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). `FileIO`, the `Buffered*` classes and
+`open_code()` need binary files, which `open()` does not make
+([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
+`io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
+compile-time error ([error test](../tests/errors/lib_io_open_code.py),
+[another](../tests/errors/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
+`_warnings`, and then needs `marshal` and CPython's runtime import machinery.
+
 ## Csv
 
 The module provides `reader`, `writer`, `DictReader`, `DictWriter`, `Dialect`,

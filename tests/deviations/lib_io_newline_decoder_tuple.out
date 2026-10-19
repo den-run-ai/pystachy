@@ -1,0 +1,3 @@
+'a\nb\n'
+NotImplementedError: IncrementalNewlineDecoder.newlines is a tuple once more than one kind of newline has been decoded, which is not supported
+[exit 0]
