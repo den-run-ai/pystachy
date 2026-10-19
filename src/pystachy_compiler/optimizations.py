@@ -266,10 +266,11 @@ def gen_unionslots(self, fn: IFn) -> int:
     # union.tag and union.payload read of the box where it is made); a load reads them, and the
     # union.tag and union.payload of what it loaded become them. A load whose value goes
     # elsewhere too (a call, a return, a phi: it leaves the local) makes the box there, so a
-    # slot is split only where no such load is on a loop (on_loop): a box at each pass there
-    # may be one more than the stores made. A ubox, slot.pack, union read or union phi that
-    # nothing uses any more goes: a loop that adds floats to an int | float local allocates
-    # nothing. A generator's locals stay (its frame keeps them). How many slots it split
+    # slot is split only where each such load follows a store of a box that goes (upaid): no
+    # more boxes than before, also where a store's box was made elsewhere (a call's, a
+    # parameter's), which a load that leaves would box again. A ubox, slot.pack, union read or
+    # union phi that nothing uses any more goes: a loop that adds floats to an int | float local
+    # allocates nothing. A generator's locals stay (its frame keeps them). How many slots it split
     if fn.coro:
         return 0
     defs: dict[str, list[int]] = {}  # a value -> the block and position of the op that makes it
@@ -303,17 +304,12 @@ def gen_unionslots(self, fn: IFn) -> int:
             split[addr] = s
     gone = 1
     while gone > 0:
-        # (a load on a loop whose value leaves: no split; a copy to a slot that splits stays)
+        # (a copy to a slot that splits does not leave, until that slot does not split)
         gone = 0
         for addr in [a for a in split]:
-            for u in uses[addr]:
-                i = fn.blocks[u[0]].code[u[1]]
-                for w in uses.get(f"%t{i.r[0]}", []) if i.op == "mem.load" else []:
-                    o = fn.blocks[w[0]].code[w[1]]
-                    stays = o.op == "union.tag" or o.op == "union.payload" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)
-                    if not stays and addr in split and self.on_loop(fn, u[0]):
-                        del split[addr]
-                        gone += 1
+            if not self.upaid(fn, defs, uses, addr, split):
+                del split[addr]
+                gone += 1
     if len(split) == 0:
         return 0
     halves: dict[str, list[str]] = {}  # a split slot's address -> its tag's and payload's slots
@@ -346,7 +342,6 @@ def gen_unionslots(self, fn: IFn) -> int:
                 ld.r = [fn.n]
                 ops.append(ld)
             parts[v] = [f"%t{ops[0].r[0]}", f"%t{ops[1].r[0]}"]
-            leaves = False
             for w in uses.get(v, []):
                 o = fn.blocks[w[0]].code[w[1]]
                 if o.op == "union.tag" or self.tag_read(o):
@@ -357,9 +352,7 @@ def gen_unionslots(self, fn: IFn) -> int:
                     p.a = [Val(parts[v][1], "int")]
                     p.r = [o.r[1]]
                     repl[f"{w[0]}:{w[1]}"] = [p]
-                elif not (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split):
-                    leaves = True  # (a copy to a slot that splits stores the parts)
-            if leaves:
+            if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
                 # (the box that leaves, as the value it replaces)
                 box = Ins("rt", "%ptr", "ubox")
                 box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
@@ -488,22 +481,68 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     at[key].extend([tg, pl])
     return parts[v]
 
-def gen_on_loop(self, fn: IFn, j: int) -> bool:
-    # is block j of fn on a loop: does it reach itself, by its branches (and to a landing block)
+def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+    # does the value of load i of a slot that unionslots splits leave the local: go to an op other
+    # than its union.tag, its union.payload, a tag read and a store to a slot that splits too
+    for w in uses.get(f"%t{i.r[0]}", []):
+        o = fn.blocks[w[0]].code[w[1]]
+        if not (o.op == "union.tag" or o.op == "union.payload" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)):
+            return True
+    return False
+
+def gen_ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+    # is union value v a box made for its one use alone (unionslots): a ubox's, or a phi's of such
+    # boxes, which goes once the store that uses it is split
+    if v in seen or v not in defs or len(uses.get(v, [])) != 1:
+        return False
+    seen[v] = True
+    i = fn.blocks[defs[v][0]].code[defs[v][1]]
+    if i.op == "phi":
+        for a in i.a:
+            if not self.ufresh(fn, defs, uses, a.v, seen):
+                return False
+        return True
+    return i.op == "rt" and i.s == "ubox"
+
+def gen_upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+    # may unionslots split the slot at addr: does each of its loads that leave, which makes a
+    # box, follow on every path a store of a box that goes (ufresh), with no other such load
+    # between them, so that it makes no more boxes than before. A loop's load that leaves needs
+    # such a store in the loop; a store of a call's or a parameter's box pays for none
     at: dict[str, int] = {}
     for k in range(len(fn.blocks)):
         at[fn.blocks[k].label] = k
-    seen: dict[int, bool] = {}
-    todo = [j]
-    while len(todo) > 0:
-        b = fn.blocks[todo.pop()]
-        for l in b.code[len(b.code) - 1].b + ([b.handler] if b.handler != "" else []):
-            if l in at and at[l] == j:
-                return True
-            if l in at and at[l] not in seen:
-                seen[at[l]] = True
-                todo.append(at[l])
-    return False
+    ops: dict[str, int] = {}  # "j:x" -> 1 for a store of a box that goes, 2 for a load that leaves
+    for u in uses[addr]:
+        i = fn.blocks[u[0]].code[u[1]]
+        if i.op == "mem.store" and self.ufresh(fn, defs, uses, i.a[1].v, {}):
+            ops[f"{u[0]}:{u[1]}"] = 1
+        elif i.op == "mem.load" and self.uleaves(fn, uses, i, split):
+            ops[f"{u[0]}:{u[1]}"] = 2
+    paid: list[bool] = []  # block j -> is a box paid for as it begins (none at the entry; else
+    for j in range(len(fn.blocks)):  # until a path into it shows otherwise)
+        paid.append(j != 0)
+    more = True
+    while more:
+        more = False
+        for j in range(len(fn.blocks)):
+            b = fn.blocks[j]
+            now = paid[j]
+            low = now  # (what a raise in the block finds at its handler)
+            for x in range(len(b.code)):
+                k = ops.get(f"{j}:{x}", 0)
+                if k == 2 and not now:
+                    return False
+                now = k == 1 or (now and k == 0)
+                low = low and now
+            for l in b.code[len(b.code) - 1].b:
+                if l in at and paid[at[l]] and not now:
+                    paid[at[l]] = False
+                    more = True
+            if b.handler in at and paid[at[b.handler]] and not low:
+                paid[at[b.handler]] = False
+                more = True
+    return True
 
 def gen_canon(self, vs: Values, v: str) -> str:
     # the canonical value of value v (Values): ops with the same canonical value compute

@@ -339,9 +339,10 @@ its box. A concrete equality/search operand may allocate a temporary box. The bo
 do not create Python numeric object identity: the existing [NaN identity
 deviation](compatibility.md#deviations-from-cpython) also applies to union payloads.
 A local of a union of numbers keeps its tag and payload in two slots instead of a box
-where no loop passes its value elsewhere (the `unionslots` [IR pass](../typed-ir.md#optimizations)):
+where that makes no more boxes (the `unionslots` [IR pass](../typed-ir.md#optimizations)):
 a loop that updates such a total allocates nothing, and the box is made where the value
-leaves, at a call or a return.
+leaves, at a call or a return. A local whose values all come boxed, from a call, a parameter or
+a list, keeps those boxes.
 
 Numeric unions of `int`, `float` and `bool`, optionally including `None`, support
 `+`, `-`, `*`, `/`, `//`, `%` and unary `+` or `-` without narrowing. Tag dispatch

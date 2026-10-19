@@ -1,6 +1,7 @@
 # Locals of a union of numbers that unionslots (docs/typed-ir.md 7.1) keeps in tag and payload slots:
-# totals of mixed sums, values printed in a loop, calls' boxes stored and copied, bools, an
-# exception handler in the loop and a conditional expression. Run with PYSTACHY_OPT=-unionslots too.
+# totals of mixed sums, values printed in a loop, values boxed in a loop to go into a list, calls'
+# boxes stored and copied, bools, an exception handler in the loop and a conditional expression.
+# Run with PYSTACHY_OPT=-unionslots too.
 def mixed(xs: list[int | float]) -> int | float:
     t: int | float = 0
     for x in xs:
@@ -14,6 +15,15 @@ def shown(xs: list[float]) -> int | float:
         t += x
         print(t)
     return t
+
+
+def running(xs: list[int | float]) -> list[int | float]:
+    out: list[int | float] = []
+    t: int | float = 0
+    for x in xs:
+        out.append(t)
+        t = t + x
+    return out
 
 
 def half(n: int) -> int | float:
@@ -60,6 +70,7 @@ def never(n: int) -> int | float:
 
 print(mixed([1, 2.5, 3]), mixed([]), mixed([1, 2]))
 print(shown([0.5, 1.0]))
+print(running([1, 2.5, 3]), running([]))
 print(calls(5), calls(0), calls(4))
 print(flags([True, 0, 2]), flags([]))
 print(caught([1.5, -1.0, 2.0]), caught([]))
