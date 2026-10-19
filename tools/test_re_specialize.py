@@ -378,17 +378,23 @@ class TestGenerated(unittest.TestCase):
             self.assertEqual(declined, [])
 
     def test_not_generated(self):
-        # the module's docstring lists them, long ones cut between characters, not inside an escape
+        # the module's docstring lists them as they read: long ones cut between characters, not inside an
+        # escape, with their reasons and the profiles' names escaped
         long = ["(a)?(?(1)b|c)" + "x" * j + "é" * 20 for j in range(6)] + ["(a)?(?(1)b|c)" + "\\\\" * 40,
                                                                                 "(a)?(?(1)b|c)" + "\x01" * 30]
+        odd = ['(a)?(?(1)"""|c)', "(?P<é!>a)", "\\x", '(?P<"""!>a)']
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            profile = os.path.join(tmp, 'pr"""é.json')
+            with open(profile, "w") as f:
+                json.dump({"format": re_specialize.FORMAT, "program": "p.py", "patterns": []}, f)
             out = os.path.join(tmp, "_pystachy_re_specialized.py")
-            module = re_specialize.generate([], [("(a)?(?(1)b|c)", 0), ("[", 0)] + [(p, 0) for p in long], 1, out)
+            module = re_specialize.generate([profile], [("(a)?(?(1)b|c)", 0), ("[", 0)] + [(p, 0) for p in long + odd],
+                                            1, out)
             self.assertEqual(module.patterns, [])
             reasons = [reason for _, _, reason in module.skipped]
             self.assertEqual(reasons[0], "GROUPREF_EXISTS")
             self.assertIn("unterminated character set", reasons[1])
-            with open(out) as f:
+            with open(out, encoding="ascii") as f:
                 source = f.read()
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
@@ -397,6 +403,10 @@ class TestGenerated(unittest.TestCase):
             self.assertEqual(port.compile("(a)?(?(1)b|c)")._fast, -1)
             doc = sys.modules["_pystachy_re_specialized"].__doc__
             self.assertEqual(doc.count("..., flags 32: GROUPREF_EXISTS"), len(long))
+            self.assertIn("From: %s, --pattern." % os.path.basename(profile), doc)
+            self.assertIn("  %r, flags 32: GROUPREF_EXISTS\n" % odd[0], doc)
+            for reason in reasons:
+                self.assertIn(": %s\n" % reason, doc)
 
     def test_generate_patterns(self):
         # generate --pattern P [--flags F]: a matcher for each P, keyed as its Pattern.flags gives them,

@@ -36,7 +36,9 @@ The module's docstring lists the patterns it could not generate, with the reason
 
 Imports find the generated module before `lib/_pystachy_re_specialized.py`, which has no matchers.
 That holds when the module is on `PYSTACHY_PATH` or in the program's own directory, which comes
-first. A stale profile is harmless: a pattern it lacks keeps the interpreter.
+first. A stale profile is harmless: a pattern it lacks keeps the interpreter. The name is reserved
+for this module: `lib/re` imports whichever `_pystachy_re_specialized.py` comes first, so a
+program's own module of that name must be one the tool wrote.
 
 ## How a matcher is used
 

@@ -750,15 +750,20 @@ def _quote(s):
 
 
 def _shown(s):
-    # _quote(s) for a line of the module's docstring: if longer than 80 characters, the quoted start
-    # of s, cut between characters (not inside an escape), and "..."
+    # _quote(s) for a line of the module's docstring, its double quotes escaped: if longer than 80
+    # characters, the quoted start of s, cut between characters (not inside an escape), and "..."
     q = _quote(s)
-    if len(q) <= 80:
-        return q
-    s = s[:75]
-    while len(_quote(s)) > 77:
-        s = s[:-1]
-    return _quote(s) + "..."
+    if len(q) > 80:
+        s = s[:75]
+        while len(_quote(s)) > 77:
+            s = s[:-1]
+        q = _quote(s) + "..."
+    return q.replace('"', '\\"')
+
+
+def _text(s):
+    # s for the module's docstring, where it reads as s: ASCII, its backslashes and double quotes escaped
+    return _quote(s)[1:-1].replace('"', '\\"')
 
 
 def _bytes(data):
@@ -841,11 +846,11 @@ def generate(profiles, patterns, min_calls, out):
         if (pattern, flags) not in seen:
             seen.add((pattern, flags))
             module.add(pattern, flags)
-    header = ["", "From: %s." % (", ".join(sources + (["--pattern"] if patterns else [])) or "nothing")]
+    header = ["", "From: %s." % _text(", ".join(sources + (["--pattern"] if patterns else [])) or "nothing")]
     if module.skipped:
         header += ["", "Not generated (lib/re's interpreter runs them):"]
         for pattern, flags, reason in module.skipped:
-            header.append("  %s, flags %d: %s" % (_shown(pattern).replace('"""', "'''"), flags, reason))
+            header.append("  %s, flags %d: %s" % (_shown(pattern), flags, _text(reason)))
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="ascii") as fh:
         fh.write(module.source(header))
