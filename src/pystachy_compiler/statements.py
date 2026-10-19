@@ -1093,7 +1093,7 @@ def gen_augassign(self, n: Node) -> None:
         if nones:
             self.none_extend(t.s)
         self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {v.v}"])
-        self.store_name(t.s, Val(cur.v, v.t))  # (the right operand may have rebound the name)
+        self.store_name(t.s, Val(cur.v, self.qtype(t.s)))  # (the right operand may have rebound the name; a list of None's items are optional)
     elif t.kind == "name" and op == "|" and is_set(self.rtype(t.s)) and "?" in self.qtype(t.s):
         # s |= t on an empty set without a type
         self.allowq = True
