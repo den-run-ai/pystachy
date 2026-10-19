@@ -1,0 +1,5 @@
+[[1, None]] {'a': [[1, None]], 'b': 's'}
+3 3
+True
+True True
+[exit 0]

@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, OPAQUE, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -641,6 +641,19 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             x = a.kids[0] if a.kind == "kw" else a
             if not pure_arg(x):
                 self.expr(x, "")
+        return Val("null", "None")
+    if o.t in self.classes and self.classes[o.t].mod in OPAQUE and m == "__init__":
+        # r.__init__(obj) of a weak reference: CPython's __new__ made it, and its __init__ checks
+        # the arguments (an object, and a callback) and leaves the reference as it was
+        if len([a for a in args if a.kind == "kw"]) > 0:
+            self.err("ref() takes no keyword arguments")
+        if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+            self.err("star arguments of __init__() of a weak reference are not supported")
+        if len(args) == 0 or len(args) > 2:
+            self.err(f"__init__ expected {'at least 1 argument' if len(args) == 0 else 'at most 2 arguments'}, got {len(args)}")
+        for a in args:
+            if not pure_arg(a):
+                self.expr(a, "")
         return Val("null", "None")
     if (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")) and (m == "__str__" or m == "__repr__") and len(args) == 0 and not self.curfn.ll.startswith("@x."):
         # e.__str__() is str(e): that of the class of e's object, which may derive from o.t's

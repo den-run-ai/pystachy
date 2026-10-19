@@ -7,10 +7,13 @@
 import re
 
 re._KEEP = 64
-short = "ab1 cd22 ef333"
-edge = "ab1 cd22 ef333 " * 4 + "ghij"  # (exactly re._KEEP code points: kept)
-long = "ab1 cd22 ef333 " * 10
+# (each with a character of several bytes, which is decoded: a subject whose bytes are its code
+# points is read in place, with no cache, flat below)
+short = "ab1 cd22 éf333"
+edge = "ab1 cd22 ef333 " * 4 + "ghéj"  # (exactly re._KEEP code points: kept)
+long = "ab1 cd22 éf333 " * 10
 wide = "é1 Ω22 𝔄333 " * 10  # (non-ASCII subjects use code-point positions too)
+flat = "ab1 cd22 ef333 " * 10
 word = re.compile(r"[^\W\d]+")
 num = re.compile(r"(\d)\d*")
 
@@ -33,7 +36,7 @@ def run(k: int, s: str) -> str:
     return str(num.subn("<\\1>", s)[1])
 
 
-for name, s in [("short", short), ("edge", edge), ("long", long), ("wide", wide)]:
+for name, s in [("short", short), ("edge", edge), ("long", long), ("wide", wide), ("flat", flat)]:
     for k in range(5):
         re.purge()
         first = run(k, s)
