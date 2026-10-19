@@ -6,6 +6,7 @@ from src.pystachy_compiler.analysis import (
     collect,
     deleted,
     global_assigns,
+    global_line,
     globals_in,
     lambda_def,
     local_names,
@@ -214,7 +215,7 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
                 if ln < 0 and not f.pending:
                     global_assigns(f.node.kids[2].kids, ga)
                 if nm in ga:
-                    ln = bind_line(f.node.kids[2].kids, nm)
+                    ln = global_line(f.node.kids[2].kids, nm)
                     ln = f.node.line if ln < 0 else ln
             for st in top:
                 if ln < 0 and st.kind == "def" and st.s == nm:

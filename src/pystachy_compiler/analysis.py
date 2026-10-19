@@ -1504,6 +1504,25 @@ def global_assigns(body: list[Node], out: dict[str, bool], imports: bool = False
             global_assigns(d.kids[2].kids, out, imports)
 
 
+def global_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement that assigns nm as a global in a function's body, or else in
+    # a def inside it that declares nm global itself (each a scope of its own, as global_assigns
+    # finds them), or -1
+    decl: dict[str, bool] = {}
+    globals_in(body, decl)
+    ln = bind_line(body, nm) if nm in decl else -1
+    if ln >= 0:
+        return ln
+    inner: list[Node] = []
+    for st in body:
+        nested_defs(st, inner)
+    for d in inner:
+        ln = global_line(d.kids[2].kids, nm) if d.kind == "def" else -1
+        if ln >= 0:
+            return ln
+    return -1
+
+
 def fn_globals(n: Node, out: dict[str, bool]) -> None:
     # the names of the module that the functions code n defines anywhere (in its blocks, classes
     # and functions too) assign, also by an import, declared global (global_assigns())
