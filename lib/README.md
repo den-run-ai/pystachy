@@ -54,6 +54,7 @@ Imports search builtin modules first, then the program's directory,
 | `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
 | `_ast` | Experimental typed subset (`_pystachy_ast`) | `Expression` and the expression nodes but comprehensions, lambdas and f-strings (`Constant`, `Name`, `BinOp`, `UnaryOp`, `BoolOp`, `Compare`, `Call`, `keyword`, `Attribute`, `Subscript`, `Slice`, `List`, `Tuple`, `Dict`, ...), operator/context tags and their metadata | Constructor/field-access prototype only; no source parsing, AST compilation, statements or locations; see [scope and tests](../docs/prototypes/ast.md) |
 | `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()` and `repr()` as CPython's, though referents die at collection rather than at the last reference | No callbacks, proxies, reference counts or weak containers; the `weakref` module does not import; see [contract](../docs/prototypes/weakref.md) |
+| `opcode` | Adapted CPython (one annotation), on `_opcode_metadata`, unchanged, and a port of the C module `_opcode` (`_pystachy_opcode`) on CPython's tables | `opmap`, `opname`, the `has*` lists, `stack_effect()` and the other functions of `_opcode`, with CPython's values and errors | The tables describe CPython 3.13.16's bytecode: Pystachy has no code objects, `ENABLE_SPECIALIZATION` is 0, and `dis` does not compile |
 
 The [compatibility reference](compatibility.md) defines each module's accepted
 inputs, unsupported APIs and observable differences from CPython. The
@@ -97,18 +98,20 @@ to the compiled paths listed here and in the compatibility reference.
 | `curses.ascii` | `Lib/curses/ascii.py` | `780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6` | ASCII character predicates and conversions. |
 | `urllib` | `Lib/urllib/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | Empty package; `urllib.parse` is adapted separately. |
 | `struct` | `Lib/struct.py` | `9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856` | Its names, on `_pystachy_struct`; see [limits](compatibility.md#struct). |
+| `_opcode_metadata` | `Lib/_opcode_metadata.py` | `9a27d5830732442110b5945ddac1668db17abb51c44882ba9d4a8536bcc0ea1c` | The opcode tables of `opcode`; see [limits](compatibility.md#opcode). |
 
 `curses/__init__.py` is a Pystachy stand-in for the package that normally imports
 `_curses`; it does not provide terminal control.
 
 `_pystachy_binascii.py` is `binascii`, `_pystachy_codecs.py` is `_codecs`, `_pystachy_atexit.py` is
 `atexit`, `_pystachy_struct.py` is `_struct`, `_pystachy_thread.py` is `_thread`,
-`_pystachy_unicodedata.py` is `unicodedata` and `_pystachy_itertools.py` is `itertools`, modules
-CPython builds into its interpreter: Pystachy loads those files for `import binascii`, `import _codecs`,
-`import atexit`, `import _struct`, `import _thread`, `import unicodedata` and `import itertools`,
-where CPython imports its C modules.
+`_pystachy_unicodedata.py` is `unicodedata`, `_pystachy_itertools.py` is `itertools` and
+`_pystachy_opcode.py` is `_opcode`, modules CPython builds into its interpreter: Pystachy loads those
+files for `import binascii`, `import _codecs`, `import atexit`, `import _struct`, `import _thread`,
+`import unicodedata`, `import itertools` and `import _opcode`, where CPython imports its C modules.
 `tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py` and
-`_pystachy_unicodedata_names.py`, from CPython's own module.
+`_pystachy_unicodedata_names.py`, from CPython's own module; `tools/opcode_tables.py` writes those of
+`_opcode`, `_pystachy_opcode_db.py`, from CPython's opcode headers.
 `_pystachy_abc.py` is `abc`, which CPython imports as it starts, so that a program's own `abc.py`
 is never imported there. `types.py` binds `TracebackType` from `_pystachy_types.py` and CPython's
 other names of `types` from `_pystachy_typenames`, the compiler's, which only it may import. `_collections_abc` has no file here: it is the compiler's builtin
