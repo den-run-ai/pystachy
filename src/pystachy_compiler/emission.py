@@ -1,7 +1,8 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, recnames, unionnames
+from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
@@ -25,7 +26,11 @@ def gen_err(self, msg: str) -> None:
         msg += ")"
     if "opt[" in msg or "union[" in msg:
         msg = optnames(unionnames(msg))
-    fail(recnames(msg) if "rec[" in msg else msg, self.line)
+    for name in self.recursive:
+        # (a recursive alias's edge is the alias, as typestr writes it; the message may quote the
+        # program's text, getattr(o, "rec[1]"), which only an alias's own name could match)
+        msg = msg.replace("rec[" + name + "]", short(name))
+    fail(msg, self.line)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
