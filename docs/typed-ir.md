@@ -339,9 +339,28 @@ passes; the others select frontend or lowering choices.
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
+| `fieldtbaa` | Give every load and store of an object field a struct-path TBAA tag, so that LLVM knows that two fields at different offsets of one class, or fields of classes neither of which lays out the other, are never the same memory; it keeps such fields in registers across each other's stores ([#701](https://github.com/den-run-ai/pystachy/issues/701)) |
+| `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+`tupleret` applies to a function whose every `return` returns a tuple display that the return's
+own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
+tuple, which CPython makes too and no code could hold. A call of it whose result only
+`tuple.load`s read takes the slots from the function's by-value body, `@v.<symbol>`, which
+returns `{i64, ...}`; the function's own symbol becomes a wrapper that makes the tuple from them,
+for every other call and use. A function that returns another tuple on some path (`return t`),
+a generator, and a function no such call reaches are lowered as before, which keeps the identity
+of a tuple a function returns again. `tests/tuple_return_values.py` checks behavior, and
+`tests/ir/tuple_return.calls` pins which calls allocate.
+A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
+begins with its base's, flags included, so an inherited field has its base's tag whichever class
+a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
+tags hang from a root of their own, so LLVM never sets them apart from the accesses of
+`runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
+told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
+no tag. `tests/field_alias.py` checks the orders that a wrong tag would change, and
+`tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.
 Unpacking a list (`a, b = xs`, `a, *b, c = xs`) reads its items with `list.load` whatever

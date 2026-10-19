@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `53c17bad9cd30120b8e0a3831797f3b22e9a9e87`.
+**Latest evaluated main:** `4a1a29aac08a35f13c2ecbf933d507db083802d5`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2388,3 +2388,130 @@ full upstream benchmark census or paired performance/memory comparison was run.
 Compiled upstream-derived math cases, adapted ports, import compilation and hosted
 compiler checks remain distinct. Existing minor/major adaptation assessments and
 first-error limitations remain applicable. Dated reports and JSON are unchanged.
+
+## 2026-10-19: field alias metadata, tuple returns and shared JIT runtime
+
+Evaluated source: `4a1a29aac08a35f13c2ecbf933d507db083802d5`, following
+`53c17bad9cd30120b8e0a3831797f3b22e9a9e87`. Fresh PR metadata and first-parent
+history verify all three merges in this interval:
+
+- [#724](https://github.com/den-run-ai/pystachy/pull/724), merge
+  `eea79f3d0085d37b40cdda6f263227c9733f6e62`: declaring-class field alias metadata.
+- [#727](https://github.com/den-run-ai/pystachy/pull/727), merge
+  `547d502027888e5c7392e18a499844ce1bf017c1`: fresh fixed-tuple return values
+  passed as aggregates where callers only read their slots; escaping calls stay boxed.
+- [#730](https://github.com/den-run-ai/pystachy/pull/730), merge
+  `4a1a29aac08a35f13c2ecbf933d507db083802d5`: Linux JIT loads a cached shared
+  runtime, with object-callback registration and object-file fallback.
+
+These are execution/compiler improvements, not new native library implementations.
+Changed compiler, driver, cache and IR-contract files selected field/inheritance,
+tuple/unpack, property, exception/callback, collections/operator and affected port
+probes. The #491/#616 coordination comments and all three PR review discussions
+were read. No implementation branch was edited or PR merged by this audit.
+
+### Correctness and code-generation boundaries
+
+Fresh CPython **3.13.16** / LLVM **18.1.3** rebuild reaches compiler/runtime fixed
+points at **634,597 / 18,851 IR lines**. Compiler SHA-256:
+`d4f9951fa0387182db43d529fc9ab5d9c7ee294fb97208dc610bbdb1077d2f3c`.
+The previous-main control binary remains separately identified in the evidence.
+
+- **283 focused checks** pass: 89 executed cases in JIT/AOT and 105 expected
+  rejections. This is not 283 newly supported APIs.
+- **38 API checks** over 19 programs and **12 adapted-port checks** over six
+  ordered-set/sortedcontainers/jdcal programs pass. **34 CPython recordings** match.
+- The field-alias, tuple-return and callback regressions pass **6/6 each** with
+  program GC stress, all optimizations disabled, only field TBAA disabled, only
+  tuple returns disabled, and the CPython-hosted compiler. Explicit MCJIT passes
+  **3/3**; the separate native/hosted JIT-boundary probe checks ORC and MCJIT,
+  callback unwinding, argument handling, collection and signal status.
+- The six recently merged Unicode-replacement, conditional-import and power
+  fixtures pass **12/12 JIT/AOT checks with GC stress** on the combined tree.
+- **138 FFI/embedding/extension checks** pass. This exercises the new shared
+  runtime beside libpython, but is explicit CPython embedding, not native NumPy
+  or general PyPI compatibility.
+- **1,434 IR programs** pass the internal checker and LLVM assembler, including
+  the new field-tag and tuple-allocation contracts. With
+  `PYSTACHY_OPT=-fieldtbaa,-tupleret` on the new compiler only, **all 3,118 corpus
+  programs** have identical IR, diagnostics and exit status to the previous
+  compiler. This off-control isolates the new optimizations; it does not claim
+  that enabled optimized IR is unchanged.
+- Runtime declarations/effects agree: **451 entries / 70 exception classes**.
+- Four adapted benchmark smoke programs (`float`, `nbody`, `chaos`, `regex_dna`)
+  match CPython in JIT/AOT. Their smoke timings overlap other checks and are not
+  used as speedup evidence.
+
+No new correctness regression was found in these selected checks. Existing
+first-error and minor/major adaptation limits are not reclassified by passing
+compiler optimizations.
+
+### Cache behavior and measured performance
+
+`make test-cache` passes **65 native + 67 hosted checks**, including `.so`
+publication, recreation from an existing `.o`, invalidation, failed/killed builds,
+and fallback to the object when the cached library has no execute bits. The latter
+rechecks the condition identified in #730's review. This audit did **not** remount
+a filesystem `noexec`; that separate experiment remains attributed to the author.
+
+After all other owned checks finished, timings used CPU 0 on a shared AMD EPYC
+9V74 host (9 visible CPUs, cgroup quota 8 CPU equivalents), LLVM 18.1.3, alternating
+paired order. Load averages were 2.89/3.92/2.40 before and 2.97/3.91/2.41 after.
+Outputs match pinned CPython exactly, including both JIT and AOT variants.
+
+| Workload / comparison | Rounds | Control median | Enabled/current median | Interpretation |
+|---|---:|---:|---:|---|
+| `bench/nbody.py`, 500,000 steps, AOT; same compiler with `-fieldtbaa` vs default | 9 | 46.35 ms | 39.94 ms | 13.8% lower median; samples overlap and two paired rounds reverse, so magnitude remains advisory |
+| Adapted `barnes_hut.py 1 10 500`, AOT; same compiler with `-tupleret` vs default | 9 | 22.70 ms | 13.94 ms | 38.6% lower median; every paired sample improves |
+| `print(1)`, warmed JIT; prior `53c17bad` compiler vs current combined main | 15 | 58.56 ms | 37.29 ms | 36.3% lower median; every paired sample improves |
+
+AOT measurements include executable startup but exclude compilation. The JIT row
+includes process startup, program compilation and execution, with runtime caches
+warmed twice; it is not steady-state Python execution. It compares the complete
+three-merge batch, although the tiny program has no object fields or tuple-return
+optimization sites. The benchmark smoke timings above are excluded from this table.
+These are bounded results, not general compiler or library speed claims.
+
+Separate `PYSTACHY_GC=stats` runs report **Barnes-Hut managed-heap peak 21.1 →
+2.0 MiB**, about **90.5% lower**, when tuple-return optimization is enabled.
+Both perform zero collections for this input. N-body remains **1.0 MiB / zero
+collections** with field metadata on or off. These are rounded managed-heap
+statistics, not process RSS or a general memory-saving guarantee. Raw stderr,
+all timing samples, flags, commands and source hashes are retained.
+
+### Import accounting, CI and replay
+
+Isolated native and stub-assisted sweeps with `--metadata` retain **144/470** and
+**146/470**, respectively: same **522 CPython source hashes**, **52 exclusions**,
+zero timeouts, zero lost successes and **zero changed first errors** against
+`53c17bad`. The five first-error advances in the previous checkpoint remain in
+place. Reconstruct prior result maps by applying the deltas in
+`compatibility-2026-10-19-imports-power.json` to the full maps in
+`compatibility-2026-10-19-json-followup.json`; this checkpoint adds no deltas.
+Throwing C-module stubs are diagnostic aids, not working native modules.
+
+All three implementation PR heads have **31 successful jobs across four
+workflows**, including the verification gate:
+[#724 CI](https://github.com/den-run-ai/pystachy/actions/runs/39315556899),
+[#727 CI](https://github.com/den-run-ai/pystachy/actions/runs/39315562155), and
+[#730 CI](https://github.com/den-run-ai/pystachy/actions/runs/39315568585).
+Heads `8776f71b`, `00e60738` and `7ab0cefd` predate the subsequent Unicode,
+binding and power changes, so **none equals the combined evaluated tree**.
+Local combined-main checks complement this historical CI; no new full local
+`make verify`, unmodified CPython regrtest or broad PyPI sweep was run.
+
+[Machine-readable evidence](compatibility-2026-10-19-field-tuples.json) includes
+selection/fixture hashes, toolchain and compiler identities, full command outputs,
+import metadata, CI jobs, benchmark records and complete reproduction drivers.
+To replay, extract the three `audit-724*.py` scripts, relocate explicit paths to
+the evaluated/previous checkouts and toolchain, and use pinned Python. The main
+driver creates `build/audit-724`; run `build`, `references`, `checks`, `integration`,
+`sweeps`, `ir`, `oracle`, `cache`, `jitprobe`, `ffi`, `benchmarks` and `rtcheck`.
+Run the performance driver only after other jobs finish. For aggregation, restore
+the retained `implementation_ci` object to `build/audit-724/implementation-ci.json`
+or fetch fresh GitHub results; the stored object is historical evidence. All
+dated baseline reports and JSON remain unchanged. Existing trackers
+[#701](https://github.com/den-run-ai/pystachy/issues/701),
+[#703](https://github.com/den-run-ai/pystachy/issues/703) and
+[#704](https://github.com/den-run-ai/pystachy/issues/704) cover this work;
+no new issue is warranted by these measurements.
