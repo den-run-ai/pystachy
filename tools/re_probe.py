@@ -400,46 +400,59 @@ def check_unicode_memos() -> int:
 
 def check_branch_memos() -> int:
     # The bit-parallel filter of alternatives over text from U+0080: a character that none of their
-    # leading literals and classes may match has no bits, untested, and once warm, one that some may
-    # match answers from the filter's memo. _branch_bits(), which tests every item, is not called.
+    # leading literals and classes may match has no bits, untested. Another, once warm, answers
+    # from the filter's memo which alternatives it begins, and tests only the next items of the
+    # matches under way, never every item (_branch_bits(), which does, is not called). The items
+    # _branch_test() tests are counted.
     failed = total = 0
-    original = sre._branch_bits
-    counted = {"bits": 0}
+    original = (sre._branch_test, sre._branch_bits)
+    counted = {"tests": 0, "bits": 0}
+
+    def counted_test(state, code, pf, cand, ch):
+        counted["tests"] += bin(cand).count("1")
+        return original[0](state, code, pf, cand, ch)
 
     def counted_bits(state, code, b, n, ch):
         counted["bits"] += 1
-        return original(state, code, b, n, ch)
+        return original[1](state, code, b, n, ch)
 
     cyr = "абвгдежзийклмнопрстуфхцчшщъыьэюя"
     words = ["привет", "мир", "ошибка", "сообщение", "журнал", "error", "запись"]
     russian = " ".join([words[(i * 5 + i // 3) % 7] for i in range(2000)])
     letters = "".join([cyr[(i * 7) % 32] for i in range(3000)])
+    # (3,000 characters from U+4E00, more than the memo holds, and two phrases of 31 of them)
+    cjk = "".join([chr(0x4E00 + ((i * 7919) % 3000 if i % 3 else (i * 31) % 200)) for i in range(3000)])
+    phrases = "".join([chr(0x4E00 + (i * 37) % 3000) for i in range(31)]) + "|" + \
+        "".join([chr(0x4E00 + (i * 41 + 5) % 3000) for i in range(31)])
     cases = [
-        (r"(?:error|warning)", russian),
-        (r"agggtaaa|tttaccct", letters),
-        (r"[cgt]gggtaaa|tttaccc[acg]", russian),
-        (r"(?:прив|мир)", russian),
-        (r"(?:" + cyr[:31] + "|" + cyr[1:32] + ")", letters),
-        (r"(?:[а-я][б-я]x|[в-я][г-я]y)", letters),
+        (r"(?:error|warning)", russian, 0),
+        (r"agggtaaa|tttaccct", letters, 0),
+        (r"[cgt]gggtaaa|tttaccc[acg]", russian, 0),
+        (r"(?:прив|мир)", russian, 1429),
+        (r"(?:" + cyr[:31] + "|" + cyr[1:32] + ")", letters, 187),
+        (r"(?:[а-я][б-я]x|[в-я][г-я]y)", letters, 5811),
+        (r"(?:" + phrases + ")", cjk, 5919),
     ]
-    sre._branch_bits = counted_bits
+    sre._branch_test, sre._branch_bits = counted_test, counted_bits
     try:
-        for pattern, text in cases:
+        for pattern, text, limit in cases:
             mine = port.compile(pattern)
             theirs = re.compile(pattern)
             mine.findall(text)  # (builds the filter and warms its memo)
-            counted["bits"] = 0
+            counted["tests"] = counted["bits"] = 0
             if mine.findall(text) != theirs.findall(text):
-                print(f'branch memo differs: {pattern!r}')
+                print(f'branch memo differs: {pattern[:40]!r}')
                 failed += 1
-            n = counted["bits"]
+            n = counted["tests"]
             total += n
-            if n > 0:
-                print(f'branch memos: {pattern!r}: {n} _branch_bits() calls (limit 0)')
+            if n > limit or counted["bits"] > 0:
+                print(f'branch memos: {pattern[:40]!r}: {n} items tested (limit {limit}), '
+                      f'{counted["bits"]} _branch_bits() calls (limit 0)')
                 failed += 1
     finally:
-        sre._branch_bits = original
-    print(f'branch memos: {total} _branch_bits() calls over {len(cases)} warm cases (limit 0)')
+        sre._branch_test, sre._branch_bits = original
+    print(f'branch memos: {total} items tested over {len(cases)} warm cases of {sum([len(c[1]) for c in cases])} '
+          f'characters, no _branch_bits() call')
     return failed
 
 

@@ -23,13 +23,16 @@ for p in ["agggtaaa|tttaccct", "[cgt]gggtaaa|tttaccc[acg]", "a[act]ggtaaa|tttacc
     print(p, len(re.findall(p, dna)), len(re.findall(p, dna + "é")), re.compile(p).search(dna, 4990) is not None)
 
 # Characters from U+0080: where no alternative's leading item may match one, its bits are 0 untested;
-# else they come from a memo of 64 slots by its low bits, where \u0410, \u0450, \xd0 and \U0001d510
-# share one. Literals, ASCII classes, ranges from U+0080, Unicode categories and negated classes.
+# else the alternatives it begins come from a memo of 64 slots by its low bits, where \u0410, \u0450,
+# \xd0 and \U0001d510 share one, and only the next items of the matches under way are tested.
+# Literals, ASCII classes, ranges from U+0080, Unicode categories, negated classes, and CJK
+# alternatives over text of more characters than the memo holds, with matches under way.
 cyr = "абвгдежзийклмнопрстуфхцчшщъыьэюя"
 wide = ["(?:error|warning)", "[a-c]x|[d-f]y", "(?:Аб|ѐв|Ðг)", "[А-Я]б|[ѐ-ё]в", r"\wb|x\d", "[^a-z]x|qq",
-        "(?:" + cyr[:31] + "|" + cyr[1:32] + ")"]
+        "(?:" + cyr[:31] + "|" + cyr[1:32] + ")", "(?:中国人|中文字|日本)", "[一-龥]x|y[一-龥]"]
 texts = ["привет error мир warning ошибка", "ax éy dy ёx", "Аб ѐв Ðг Аб\U0001d510в ѐб Аг", "éb яb x٣ x5 Яx ax qq",
-         "".join([cyr[(i * 7) % 32] for i in range(300)]) + cyr + " " + cyr[1:] + cyr[0]]
+         "".join([cyr[(i * 7) % 32] for i in range(300)]) + cyr + " " + cyr[1:] + cyr[0],
+         "".join([chr(0x4E00 + (i * 7919) % 3000) for i in range(200)]) + "中国中文日本中国人中文字日日本 中x y中 x中 yx"]
 for wi in range(len(wide)):
     rx = re.compile(wide[wi])
     for ti in range(len(texts)):

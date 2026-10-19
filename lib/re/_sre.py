@@ -1783,8 +1783,9 @@ def _branch_masks(state: State[_S], code: list[int], b: int, found: list[int]) -
     # word stand for the first n items of alternative k (at most 62 bits). found[5 + c] has the
     # bits of the items that each ASCII character c matches, found[3] the first item of each
     # alternative and found[4] the last. found[5 + 128] has the items that may match a character
-    # from 128 (_branch_wide): where there are some, HIGH_MEMO slots of such a character and its
-    # bits follow, which _branch_high fills. found[2] stays 0 where there is no filter
+    # from 128 (_branch_wide). Where there are some, HIGH_MEMO slots of such a character and the
+    # alternatives' first items it matches follow (_branch_high), then where each item is in code
+    # (_branch_test). found[2] stays 0 where there is no filter
     k = 0
     n = 62
     alt = b + 1
@@ -1811,12 +1812,18 @@ def _branch_masks(state: State[_S], code: list[int], b: int, found: list[int]) -
     found[4] = starts << (n - 1)
     for c in range(128):
         found.append(_branch_bits(state, code, b, n, c))
-    wide = _branch_wide(code, b, n)
+    items = _branch_positions(code, b, n)
+    wide = 0
+    for i in range(len(items)):
+        if _branch_wide(code, items[i]):
+            wide |= 1 << i
     found.append(wide)
     if wide != 0:
         for _ in range(HIGH_MEMO):
             found.append(-1)
             found.append(0)
+        for q in items:
+            found.append(q)
 
 
 def _branch_bits(state: State[_S], code: list[int], b: int, n: int, ch: int) -> int:
@@ -1841,37 +1848,58 @@ def _branch_bits(state: State[_S], code: list[int], b: int, n: int, ch: int) -> 
     return bits
 
 
-def _branch_wide(code: list[int], b: int, n: int) -> int:
-    # the bits of the first n items of the alternatives of the BRANCH at code[b] that may match a
-    # character from 128: a literal from 128, or a class with members there (see _charset_high)
-    bits = 0
-    bit = 1
+def _branch_positions(code: list[int], b: int, n: int) -> list[int]:
+    # where the first n items of each alternative of the BRANCH at code[b] are, in the order of
+    # their bits (see _branch_masks)
+    items: list[int] = []
     alt = b + 1
     while code[alt] != 0:
         q = alt + 1
         for _ in range(n):
-            if code[q] == LITERAL:
-                if code[q + 1] >= 128:
-                    bits |= bit
-                q += 2
-            else:
-                high = _charset_high(code, q + 2)
-                if high[0] != HIGH_IN or high[1] <= high[2]:
-                    bits |= bit
-                q += code[q + 1] + 1
-            bit <<= 1
+            items.append(q)
+            q += 2 if code[q] == LITERAL else code[q + 1] + 1
         alt += code[alt]
-    return bits
+    return items
 
 
-def _branch_high(state: State[_S], code: list[int], pf: list[int], ch: int) -> int:
-    # _branch_bits of a character from 128, where some item may match one, through the HIGH_MEMO
-    # slots of pf's memo by its low bits (see _branch_masks), as _charset_memo answers a set's
+def _branch_wide(code: list[int], q: int) -> bool:
+    # whether the literal or class at code[q] may match a character from 128: a literal from 128,
+    # or a class with members there (see _charset_high)
+    if code[q] == LITERAL:
+        return code[q + 1] >= 128
+    high = _charset_high(code, q + 2)
+    return high[0] != HIGH_IN or high[1] <= high[2]
+
+
+def _branch_high(state: State[_S], code: list[int], pf: list[int], rest: int, ch: int) -> int:
+    # the bits of ch, a character from 128, where some item may match one (see _branch_masks): the
+    # alternatives' first items it matches, from HIGH_MEMO slots by its low bits, and those of
+    # rest, the next items of the matches under way. A character costs the first items where the
+    # memo misses and the next items of its matches, never every item
     slot = 5 + 129 + (ch & (HIGH_MEMO - 1)) * 2
     if pf[slot] != ch:
-        pf[slot + 1] = _branch_bits(state, code, pf[1], pf[2], ch)
+        pf[slot + 1] = _branch_test(state, code, pf, pf[3] & pf[5 + 128], ch)
         pf[slot] = ch
-    return pf[slot + 1]
+    if rest == 0:
+        return pf[slot + 1]
+    return pf[slot + 1] | _branch_test(state, code, pf, rest, ch)
+
+
+def _branch_test(state: State[_S], code: list[int], pf: list[int], cand: int, ch: int) -> int:
+    # the items of cand (bits of the filter) that ch matches, each tested as _branch_starts tests
+    # it, where pf says it is (see _branch_masks)
+    bits = 0
+    at = 5 + 129 + 2 * HIGH_MEMO - 1
+    while cand != 0:
+        low = cand & -cand
+        cand ^= low
+        q = pf[at + low.bit_length()]
+        if code[q] == LITERAL:
+            if code[q + 1] == ch:
+                bits |= low
+        elif _charset(state, code, q + 2, ch):
+            bits |= low
+    return bits
 
 
 def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int], ptr: int, end: int, charset: bool) -> int:
@@ -1881,7 +1909,7 @@ def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int
     # items match from j - n + 1. Only those positions can satisfy _branch_starts; the matcher is
     # entered at each that does, below end, as the charset search (charset) or PF_BRANCH's loop
     # enters it, with their bounds, flags and resets. A character from 128 that no item may match
-    # has no bits
+    # has no bits; for the others, see _branch_high
     s = state.s
     stop = state.end
     b = pf[1]
@@ -1889,6 +1917,7 @@ def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int
     starts = pf[3]
     ends = pf[4]
     wide = pf[5 + 128]
+    later = wide & ~starts  # (the items after the first that may match a character from 128)
     first = ptr
     if charset:
         state.must_advance = False
@@ -1896,7 +1925,12 @@ def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int
     j = ptr
     while j < stop:
         c = s[j]
-        d = ((d << 1) | starts) & (pf[5 + c] if c < 128 else (_branch_high(state, code, pf, c) if wide != 0 else 0))
+        if c < 128:
+            d = ((d << 1) | starts) & pf[5 + c]
+        elif wide == 0:
+            d = 0
+        else:
+            d = _branch_high(state, code, pf, (d << 1) & later, c)
         if d & ends != 0:
             at = j - n + 1
             if at >= end:
