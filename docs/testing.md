@@ -119,8 +119,9 @@ The oracle compares emitted IR byte for byte, and rejection messages and exit st
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
-`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries or
-runtime calls recorded for `tests/ir/*.py`. These probes compile without running;
+`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
+runtime calls or function attributes recorded for `tests/ir/*.py` (`NAME.fx`, `NAME.calls`,
+`NAME.attrs`). These probes compile without running;
 `tests/ir/pending/` holds probes for open bugs.
 
 ## Syntax errors against CPython
