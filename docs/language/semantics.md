@@ -98,7 +98,8 @@ template parameter specialized to `None` cannot be rebound by a conditional assi
 expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
-Booleans use their two fixed values, so `flag is True` behaves as equality.
+Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
+never an object of a class, so `x is obj` is `False` for one (`is not` `True`), as in CPython.
 Comparisons with `None` are supported where the static types permit them.
 
 ## Iterator-like expressions
@@ -143,6 +144,20 @@ reject at run time (ordering comparisons, assigning an attribute), `in` of other
 bool, `r[i]`, `index()` and `count()` of other than an int (also of a bool), `==` with a value
 that may be `None` but is not a range, `type(r)` as a value, and the reflection of `dir()` and
 `vars()`.
+
+## Sentinels
+
+`object()` makes a new object of the builtins' `object` type at each call, as a sentinel is made
+(`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
+class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
+program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities, `hash()`, dict
+keys and set elements use the identity, `bool()` is true, `repr()` and `str()` give
+`<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
+`type(x).__module__` is `builtins`, and `isinstance(x, object)` is true. The compiler rejects
+`object()` with arguments (CPython's `TypeError`), assigning an attribute of such an object, and a
+variable, return value or `dict.get()` default that would hold either such an object or a value of
+another type, as no union holds one yet
+([#251](https://github.com/den-run-ai/pystachy/issues/251)).
 
 ## Iterators
 

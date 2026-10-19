@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OPAQUE, RANGEC, TYPEMODS
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OBJECTC, OPAQUE, RANGEC, TYPEMODS
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -160,7 +160,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
             return "builtins" if what == "__module__" else short(c)
         mod = q[: q.rfind(".")] if "." in q else "__main__"
         mod = TYPEMODS.get(mod, mod)  # (_weakref's ReferenceType is CPython's weakref.ReferenceType)

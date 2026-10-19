@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONEVAR, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import ITERS, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -37,7 +37,7 @@ def repr_name(c: str) -> str:
     # the name object.__repr__ shows for an object of class c: <__main__.Name object at 0x...>,
     # <module.Name object at 0x...>, of the module CPython's type names (<ast.Constant ...>), and
     # <list_iterator object at 0x...> of a builtin type's, whose module is builtins
-    if c.startswith(ITERS + "$"):
+    if c.startswith(ITERS + "$") or c == OBJECTC:
         return short(c)
     q = shown(c) if "$" in c and not c.startswith("__main__$") else "__main__." + short(c)
     m = q[: q.rfind(".")]

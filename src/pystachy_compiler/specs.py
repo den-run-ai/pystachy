@@ -292,6 +292,8 @@ ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() mak
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
+OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
+OBJECTC = "_pystachy_object$object"  # (that class)
 # the calls whose positional argument range(...) is no range object (analysis.range_values): the
 # consumers that take the numbers at once (1: the first, 2: the first that is the only one, 3:
 # each), of the builtins (fsum and prod also of math, as imported) and of methods (str.join(),

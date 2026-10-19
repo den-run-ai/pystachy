@@ -122,6 +122,10 @@ it for a program that may use one, a read of the builtin `range` other than a `r
 loop or a consumer steps through (its methods are compiled where a program calls them); programs
 do not import it. See [range objects](../docs/language/semantics.md#range-objects).
 
+`_pystachy_object.py` holds the class of the objects that `object()` makes, sentinels. The compiler
+loads it for a program that may call `object()`; programs do not import it. See
+[sentinels](../docs/language/semantics.md#sentinels).
+
 ## Examples and measurements
 
 | Example | Library use |

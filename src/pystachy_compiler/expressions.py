@@ -3420,6 +3420,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if a.t == "bool" and b.t == "bool":
             # (x is True: a bool is one of CPython's two objects True and False)
             return Val(self.scalar_cmp('eq' if op == 'is' else 'ne', Val(a.v, 'bool'), Val(b.v, 'bool')), "bool")
+        if (a.t in self.classes and b.t != "None" and not self.isref(b.t)) or (b.t in self.classes and a.t != "None" and not self.isref(a.t)):
+            # a number or bool (or one that may be None) is never an object of a class: x is
+            # _MISSING, a sentinel default's test, where x was given an int
+            return Val("false" if op == "is" else "true", "bool")
         if not self.isref(a.t) or not self.isref(b.t) or (is_sopt(a.t) and b.t != "None") or (is_sopt(b.t) and a.t != "None"):
             self.err("'is' is only supported for objects and None")
         return self.ptr_cmp('==' if op == 'is' else '!=', a, b)
