@@ -61,8 +61,16 @@ weakref user is supported. Equality and hashing are implemented (below).
   has gone away`, and an unhashable referent's raises `unhashable type`.
   References compare only with references to the same type; another operand
   is a compile-time type error where CPython's comparison returns `False`.
+  Collection timing (below) shows here too. CPython frees a temporary referent as
+  soon as `ref()` returns. So where `c == Point(1, 2)`, `ref(c) == ref(Point(1, 2))`
+  is false there, a dead reference being compared by identity; here it is true
+  until a collection clears the second reference. Called directly,
+  `r.__eq__(None)` and `r.__ne__(None)` return `False` and `True`; CPython's
+  return `NotImplemented`, which is not a value here.
 * `repr()` is CPython's: `<weakref at 0x...; to 'Item' at 0x...>` with the referent's
   type by its fully qualified name (without `__main__`), or `<weakref at 0x...; dead>`.
+  CPython also appends ` (NAME)` when the referent's class defines `__name__`;
+  this prototype does not.
 * As in CPython, a reference has no attributes of its own. The wrapper's fields
   (the handle and the kept hash) belong to `_weakref`: a program cannot read or
   assign them, `hasattr()` reports them, `__dict__` and `__weakref__` absent, and
@@ -71,7 +79,10 @@ weakref user is supported. Equality and hashing are implemented (below).
   CPython's do and leave the reference to its first referent.
 * Each call makes a separate reference. CPython and PyPy may reuse an existing
   no-callback reference; this prototype does not preserve that reference-cache
-  identity. `is` still compares the actual reference objects.
+  identity. `is` still compares the actual reference objects. Two references made
+  separately to one object are therefore unequal here once it dies, where CPython's
+  one reused reference equals itself (an implementation detail, CPython issue
+  #16453).
 * Proxies, `getweakrefs`, `getweakrefcount`, `_remove_dead_weakref`, weak mappings,
   weak sets, `finalize`, callback introspection (`__callback__`) and reference
   subclassing are outside the prototype contract. `getweakrefcount()` would also

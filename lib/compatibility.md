@@ -36,13 +36,16 @@ list field takes a list, not `None`.
 The [prototype contract](../docs/prototypes/weakref.md) covers `ref` and
 `ReferenceType`, one class whose objects the collector clears, to ordinary class
 instances. While both referents live, `==`, `!=` and `hash()` are the referents';
-a dead reference equals only itself and keeps a hash computed before, and
-`repr()` is CPython's. A reference has no attributes of its own: reading,
-assigning, reflecting over or `hasattr()` of its fields, which are the module's,
-is rejected or false, and `r.__init__(obj)` leaves it unchanged. Callbacks,
-`__callback__`, proxies, `getweakrefcount()`, `getweakrefs()`, weak containers
-and the reuse of one reference per referent (`ref(x) is ref(x)`) are absent, so
-the `weakref` module does not import.
+a dead reference equals only itself and keeps a hash computed before. Referents
+die when the collector finds them unreachable, not when CPython's last counted
+reference goes, so a reference to a temporary still compares by its referent
+until a collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix
+CPython adds for a referent whose class defines `__name__`. A reference has no
+attributes of its own: reading, assigning, reflecting over or `hasattr()` of its
+fields, which are the module's, is rejected or false, and `r.__init__(obj)` leaves
+it unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
+`getweakrefs()`, weak containers and the reuse of one reference per referent
+(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
 
 ## Operator
 
