@@ -650,7 +650,9 @@ TEMPLATE_RETAINED = 16777216
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
-# when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class); I
+# when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
+# R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
+# at most 512 before raising RecursionError, in rec_deep); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
 # are immutable, slots are never address-taken, dict keys are ints, strs, objects, or tuples of
@@ -675,10 +677,7 @@ for _j in range(len(FX)):
 # the entries against runtime.c and runtime.py (their LLVM types, and the effects their call
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
-# result too long in join and replace, where CPython raises OverflowError too.
-# Descriptor-driven comparison and repr can follow recursive alias edges and
-# hit their depth guards. Their callers conservatively retain R even where a
-# particular nonrecursive descriptor would prove the guard unreachable.
+# result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
     "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
@@ -686,7 +685,7 @@ RUNTIME: dict[str, str] = {
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",
     "vtuple.slice": "%ptr:%ptr,int,int,int|R A|",
-    "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R rL rD U?|",
+    "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
@@ -694,9 +693,9 @@ RUNTIME: dict[str, str] = {
     "list.slice_step": "S:S,int,int,int|R A rL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
     "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
-    "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R rL rD U?|",
+    "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
-    "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
+    "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
     "list.sort_r": "None:S,#,bool|R A I rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
     "list.take": "S:S|A I rL wL|", "list.keyed": "%ptr:S,%ptr,bool|A rL wL|", "list.unkey": "None:S,%ptr|rL wL|",
     "list.give": "None:S|R I rL wL|",
@@ -708,31 +707,31 @@ RUNTIME: dict[str, str] = {
     # KeyError's message) without user code but an object's: U? holds where the op's Ins.x, the key
     # descriptor (Gen.key_fx), has H<id> (__hash__, __eq__), or P<id> and the op has R (the
     # KeyError's repr). That repr is runtime.c's, which can reach pys_repr_enter: I
-    "dict.new": "dict[K,V]:int,int|A|", "dict.new_atomic": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|R rD U?|", "dict.getitem": "*V:S,*K|R A I rD U?|",
-    "dict.get": "*V:S,*K,*V|R rD U?|", "dict.set": "None:S,*K,*V|R A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
+    "dict.new": "dict[K,V]:int,int|A|", "dict.new_atomic": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|R? rD U?|", "dict.getitem": "*V:S,*K|R A I rD U?|",
+    "dict.get": "*V:S,*K,*V|R? rD U?|", "dict.set": "None:S,*K,*V|R? A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
     "dict.del": "*V:S,*K|R A I rD wD U?|", "dict.pop_default": "*V:S,*K,*V|R A I rD wD U?|", "dict.popitem": "tuple[K,V]:S|R A rD wD|",
-    "dict.setdefault": "*V:S,*K,*V|R A rD wD U?|", "dict.clear": "None:S|wD|",
-    "dict.getbox": "*V:S,*K,*V|R A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
-    "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
+    "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
+    "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
+    "dict.copy": "S:S|R? A rD U?|", "dict.from": "S:S|R? A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
-    "dict.find": "int:S,*K|R rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
-    "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R A rL rD wD U?|",
-    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R A rD U?|",
+    "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    "dict.update": "None:S,S|R? A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
+    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
     # keys, which hash, compare and print without user code but an object's (U?, as a dict's). A
     # set's memory counts as a dict's (rD wD: what changes a set may change a dict); what an
     # operation makes, it alone has seen
-    "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R A rD wD U?|", "set.has": "bool:S,*T|R rD U?|", "set.discard": "None:S,*T|R rD wD U?|",
-    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|R A rD|",
-    "set.update": "None:S,S|R A rD wD U?|", "set.update_list": "None:S,list[T]|R A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R A rD wD U?|",
-    "set.union_more": "None:S,S,S|R A rD wD U?|", "set.or": "S:S,S|R A rD U?|", "set.and": "S:S,S|R A rD U?|", "set.and_list": "S:S,list[T]|R A rL rD U?|",
-    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R A rD wD U?|", "set.isub_list": "None:S,list[T]|R A rL rD wD U?|",
-    "set.sub": "S:S,S|R A rD U?|", "set.sub_list": "S:S,list[T]|R A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R A rD U?|",
-    "set.xor": "S:S,S|R A rD U?|", "set.xor_list": "S:S,list[T]|R A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R A rD U?|",
-    "set.ixor": "None:S,S|R A rD wD U?|", "set.ixor_list": "None:S,list[T]|R A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R A rD wD U?|",
-    "set.cmp": "int:S,S,int|R rD U?|", "set.le_list": "bool:S,list[T]|R A rL rD U?|", "set.ge_list": "bool:S,list[T]|R rL rD U?|",
-    "set.isdisjoint": "bool:S,S|R rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R rL rD U?|", "set.next": "int:S,int,int|R rD|",
+    "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
+    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|",
+    "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
+    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
+    "set.sub": "S:S,S|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.xor": "S:S,S|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.ixor": "None:S,S|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
+    "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
     # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
     "text.len": "int:str||", "text.chr": "str:int|R A|",
@@ -810,10 +809,10 @@ RUNTIME: dict[str, str] = {
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor
-    "eq": "bool:*T,*T,#|R rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R A I rL rD U?|",
+    "eq": "bool:*T,*T,#|R? rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
     "eq.pair": "bool:*T,*T,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
     "hash": "int:*T,#|U?|", "hash.id": "int:%ptr||",
-    "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|R I|",
+    "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
