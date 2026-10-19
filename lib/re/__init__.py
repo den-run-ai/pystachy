@@ -115,8 +115,12 @@ This module also defines exception 'PatternError', aliased to 'error' for
 backward compatibility.
 
 """
+from typing import TypeVar
+
 from . import _sre
 from ._constants import *
+
+_S = TypeVar("_S")  # (a State's subject: bytes or list[int], see _sre.State)
 
 __all__ = ["match", "fullmatch", "search", "sub", "subn", "split", "findall", "finditer", "compile", "purge",
            "escape", "error", "Pattern", "Match", "A", "I", "L", "M", "S", "X", "U", "ASCII", "IGNORECASE",
@@ -285,6 +289,18 @@ def _codes(string: str, limit: int) -> list[int]:
     _last_limit = limit
     _decoded += len(codes)
     return codes
+
+
+def _flat(string: str) -> bool:
+    # whether each byte of string is one of its code points (ASCII, or Pystachy's raw bytes, whose
+    # code point is the byte): the engine then reads those bytes in place (_view), without decoding
+    # them or touching the cache above, as sre.c reads a string of 1-byte characters
+    return not _UTF8 and __pys_text_size(string) == len(string)
+
+
+def _view(string: str) -> bytes:
+    # a _flat string's bytes: the str itself, read as a bytes (no copy)
+    return __pys_text_bytes(string)
 
 
 def _to_char(offs: list[int], pos: int) -> int:
@@ -1944,7 +1960,7 @@ class Pattern:
         for k in groupindex:
             self._indexgroup[groupindex[k]] = k
 
-    def _state(self, string: str, pos: int, endpos: int) -> _sre.State:
+    def _state(self, string: str, pos: int, endpos: int) -> "_sre.State[list[int]]":
         # state_init: pos and endpos clamped to the string, then made code point indices; where one
         # is inside a character's bytes, the match starts after that character, or ends before it.
         # The state's pos and endpos keep them as the caller gave them, for the match objects
@@ -1962,7 +1978,20 @@ class Pattern:
         st.endpos = endpos
         return st
 
-    def _new_match(self, string: str, st: _sre.State) -> "Match":
+    def _view_state(self, string: str, pos: int, endpos: int) -> "_sre.State[bytes]":
+        # _state of a _flat string: its bytes, whose indices are its own (offs is [])
+        n = len(string)
+        pos = 0 if pos < 0 else n if pos > n else pos
+        endpos = 0 if endpos < 0 else n if endpos > n else endpos
+        st = _sre.State(_view(string), pos, endpos, self.groups)
+        st.charset_offsets = self._charset_offsets
+        st.charset_ascii = self._charset_ascii
+        st.prefilter = self._prefilter
+        st.pos = pos
+        st.endpos = endpos
+        return st
+
+    def _new_match(self, string: str, st: "_sre.State[_S]") -> "Match":
         # pattern_new_match: the match's bounds and its groups', as indices into the str
         offs = st.offs
         mark = [_to_index(offs, st.start), _to_index(offs, st.ptr)]
@@ -1977,19 +2006,24 @@ class Pattern:
             j += 2
         return Match(self, string, mark, st.pos, st.endpos, st.lastindex)
 
+    # Each operation runs over a State of the string's bytes where it is _flat, else of its decoded
+    # code points: the methods below with a State parameter are compiled for both.
+
     def match(self, string: str, pos: int = 0, endpos: int = _MAXSIZE) -> "Match | None":
         """Matches zero or more characters at the beginning of the string."""
-        st = self._state(string, pos, endpos)
-        st.ptr = st.start
-        if _sre.sre_match(st, self._code, 0, True) == 0:
-            return None
-        return self._new_match(string, st)
+        if _flat(string):
+            return self._match(string, self._view_state(string, pos, endpos), False)
+        return self._match(string, self._state(string, pos, endpos), False)
 
     def fullmatch(self, string: str, pos: int = 0, endpos: int = _MAXSIZE) -> "Match | None":
         """Matches against all of the string."""
-        st = self._state(string, pos, endpos)
+        if _flat(string):
+            return self._match(string, self._view_state(string, pos, endpos), True)
+        return self._match(string, self._state(string, pos, endpos), True)
+
+    def _match(self, string: str, st: "_sre.State[_S]", whole: bool) -> "Match | None":
         st.ptr = st.start
-        st.match_all = True
+        st.match_all = whole
         if _sre.sre_match(st, self._code, 0, True) == 0:
             return None
         return self._new_match(string, st)
@@ -1998,7 +2032,11 @@ class Pattern:
         """Scan through string looking for a match, and return a corresponding match object instance.
 
         Return None if no position in the string matches."""
-        st = self._state(string, pos, endpos)
+        if _flat(string):
+            return self._search(string, self._view_state(string, pos, endpos))
+        return self._search(string, self._state(string, pos, endpos))
+
+    def _search(self, string: str, st: "_sre.State[_S]") -> "Match | None":
         if _sre.sre_search(st, self._code) == 0:
             return None
         return self._new_match(string, st)
@@ -2009,8 +2047,13 @@ class Pattern:
             # (the list of tuples CPython gives has no type Pystachy can give it: their length is
             # the pattern's group count)
             raise NotImplementedError("re.findall() of a pattern with %d groups returns tuples of that many items, which Pystachy does not have: use finditer() and m.group(1, 2, ...)" % self.groups)
+        if _flat(string):
+            return self._findall(string, self._view_state(string, pos, endpos), True)
         cached = string is _last
-        st = self._state(string, pos, endpos)
+        return self._findall(string, self._state(string, pos, endpos), cached)
+
+    def _findall(self, string: str, st: "_sre.State[_S]", cached: bool) -> list[str]:
+        # (cached: whether the decoding cache held string before; a _flat one has none to release)
         offs = st.offs
         out: list[str] = []
         while st.start <= st.end:
@@ -2037,8 +2080,12 @@ class Pattern:
 
         For each match, the iterator returns a match object."""
         # (a list of them: Pystachy has no iterator of matches made as the loop asks)
+        if _flat(string):
+            return self._finditer(string, self._view_state(string, pos, endpos), True)
         cached = string is _last
-        st = self._state(string, pos, endpos)
+        return self._finditer(string, self._state(string, pos, endpos), cached)
+
+    def _finditer(self, string: str, st: "_sre.State[_S]", cached: bool) -> "list[Match]":
         out: list[Match] = []
         while True:
             st.reset()
@@ -2054,8 +2101,12 @@ class Pattern:
 
     def split(self, string: str, maxsplit: int = 0) -> list[str]:
         """Split string by the occurrences of pattern."""
+        if _flat(string):
+            return self._split(string, maxsplit, self._view_state(string, 0, _MAXSIZE), True)
         cached = string is _last
-        st = self._state(string, 0, _MAXSIZE)
+        return self._split(string, maxsplit, self._state(string, 0, _MAXSIZE), cached)
+
+    def _split(self, string: str, maxsplit: int, st: "_sre.State[_S]", cached: bool) -> list[str]:
         offs = st.offs
         out: list[str] = []
         n = 0
@@ -2103,8 +2154,12 @@ class Pattern:
                 if len(template.groups) == 0:
                     literal = template.literals[0]
                     template = Template()
+        if _flat(string):
+            return self._subst(repl, literal, template, string, count, self._view_state(string, 0, _MAXSIZE), True)
         cached = string is _last
-        st = self._state(string, 0, _MAXSIZE)
+        return self._subst(repl, literal, template, string, count, self._state(string, 0, _MAXSIZE), cached)
+
+    def _subst(self, repl, literal: str, template: "Template", string: str, count: int, st: "_sre.State[_S]", cached: bool) -> tuple[str, int]:
         offs = st.offs
         out: list[str] = []
         n = 0
