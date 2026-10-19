@@ -156,7 +156,9 @@ the suite runs. `FILES="..."` selects cases, as for `make test-py`. The results 
 
 The percentage is **hosted compiler coverage**: the compiler's own source, as CPython runs it.
 It does not measure `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as
-native code. [`.coveragerc`](../.coveragerc) holds the settings. Each compiler process writes
+native code. `make test-ffi` and `make test-cache` are not part of the run either, so code that
+only they reach, such as C calls, extension modules and the driver's search of `PATH` for LLVM,
+counts as missed. [`.coveragerc`](../.coveragerc) holds the settings. Each compiler process writes
 its own data file. `pystachy run` replaces its process with `lli` through `os.execv`, so
 coverage.py saves the data first (`patch = execv`); without that, JIT runs record nothing.
 Every run starts with an empty runtime cache, so the runtime's build is measured too.
