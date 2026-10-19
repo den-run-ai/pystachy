@@ -5,15 +5,16 @@ needed. The library must export the LP64 cblas_dgemm ABI (32-bit C int dimension
 64-bit double elements). ILP64 libraries require a different explicit binding.
 Importing this module requires that library; ndarray.matmul stays independent.
 
-Both operands are two-dimensional. Zero-offset row-major matrices and their
-transposes (including padded rows) lend their lists directly; other views are
-packed in logical row-major order. Every result has fresh storage, including
-products of operands which share their data. There is no stale weight cache.
+Both operands are two-dimensional. Row-major matrices and their transposes
+(including padded rows, and views at an offset) lend their lists directly, from
+the view's first item (ffi.at); other views are packed in logical row-major
+order. Every result has fresh storage, including products of operands which
+share their data. There is no stale weight cache.
 linear() computes PyTorch's Linear, x @ weight.T + bias, in one call by
 accumulating the product into the bias.
 """
 
-from ffi import c_int, extern
+from ffi import at, c_int, extern
 
 from ndarray import NDArray, _new_shape, zeros
 
@@ -71,22 +72,23 @@ def _check_storage(a: NDArray) -> None:
                 low += steps * stride
 
 
-def _operand(a: NDArray) -> tuple[list[float], int, int]:
-    # Called only for nonempty, checked matrices. CblasNoTrans=111 and
-    # CblasTrans=112 interpret the logical matrix using a physical row stride.
-    if a.offset == 0:
-        if a.contiguous():
-            return a.data, 111, a.shape[1]
-        if a.strides[1] == 1 and a.shape[1] <= a.strides[0] <= 2147483647:
-            return a.data, 111, a.strides[0]
-        if a.strides[0] == 1 and a.shape[0] <= a.strides[1] <= 2147483647:
-            return a.data, 112, a.strides[1]
+def _operand(a: NDArray) -> tuple[list[float], int, int, int]:
+    # Called only for nonempty, checked matrices: the list, the index of the
+    # view's first item in it, from which C reads the matrix (ffi.at), and how:
+    # CblasNoTrans=111 or CblasTrans=112, with a physical row stride. Lent views
+    # reach no item outside the ones _check_storage has checked.
+    if a.contiguous():
+        return a.data, a.offset, 111, a.shape[1]
+    if a.strides[1] == 1 and a.shape[1] <= a.strides[0] <= 2147483647:
+        return a.data, a.offset, 111, a.strides[0]
+    if a.strides[0] == 1 and a.shape[0] <= a.strides[1] <= 2147483647:
+        return a.data, a.offset, 112, a.strides[1]
     result: list[float] = []
     for row in range(a.shape[0]):
         base = a.offset + row * a.strides[0]
         for column in range(a.shape[1]):
             result.append(a.data[base + column * a.strides[1]])
-    return result, 111, a.shape[1]
+    return result, 0, 111, a.shape[1]
 
 
 def matmul(a: NDArray, b: NDArray) -> NDArray:
@@ -103,11 +105,11 @@ def matmul(a: NDArray, b: NDArray) -> NDArray:
     # zero matrix. Nonempty leading dimensions below are always at least one.
     if rows == 0 or columns == 0 or inner == 0:
         return result
-    left, transa, lda = _operand(a)
-    right, transb, ldb = _operand(b)
+    left, lo, transa, lda = _operand(a)
+    right, ro, transb, ldb = _operand(b)
     # CblasRowMajor=101. Result storage cannot alias either input.
-    _dgemm(101, transa, transb, rows, columns, inner, 1.0, left, lda,
-           right, ldb, 0.0, result.data, columns)
+    _dgemm(101, transa, transb, rows, columns, inner, 1.0, at(left, lo), lda,
+           at(right, ro), ldb, 0.0, result.data, columns)
     return result
 
 
@@ -146,8 +148,8 @@ def linear(x: NDArray, weight: NDArray, bias: NDArray | None) -> NDArray:
     # An empty product contributes nothing (K=0 leaves the bias); call no BLAS.
     if rows == 0 or columns == 0 or inner == 0:
         return result
-    left, transa, lda = _operand(x)
-    weights, transb, ldb = _operand(right)
-    _dgemm(101, transa, transb, rows, columns, inner, 1.0, left, lda,
-           weights, ldb, 1.0, result.data, columns)
+    left, lo, transa, lda = _operand(x)
+    weights, wo, transb, ldb = _operand(right)
+    _dgemm(101, transa, transb, rows, columns, inner, 1.0, at(left, lo), lda,
+           at(weights, wo), ldb, 1.0, result.data, columns)
     return result
