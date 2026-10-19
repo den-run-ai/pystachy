@@ -32,6 +32,8 @@ CPython, a reference has no attributes of its own, so its class's fields are the
 Neither prototype makes `import ast` or `import weakref` work.
 `_io` loads `lib/_pystachy__io.py`, which gives `io`'s classes and functions under the C module's
 names ([io](../../lib/compatibility.md#io)); `FileIO` and the other binary-file classes are not there.
+`_opcode` loads `lib/_pystachy_opcode.py`, a port of CPython's C module on CPython 3.13.16's
+opcode tables, under the shipped `opcode` ([opcode](../../lib/compatibility.md#opcode)).
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
