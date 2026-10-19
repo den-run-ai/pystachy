@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1`.
+**Latest evaluated main:** `837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2920,3 +2920,53 @@ NumPy census, or dedicated memory/performance experiment was run. Shared-host
 timings overlap other checks and establish no speedup/regression. No new uncovered
 bug was confirmed; no duplicate issue was filed. Dated baseline reports and JSON
 are unchanged.
+
+## 2026-10-19: tuple-return regression coverage (#747)
+
+Evaluated [main `837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed`](https://github.com/den-run-ai/pystachy/commit/837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed),
+the only first-parent merge after `b7e869f8`. Fresh metadata and ancestry confirm
+[#747](https://github.com/den-run-ai/pystachy/pull/747) merged. Its four added files
+are the tuple-return closure/starred-target/generator differential test, recording,
+IR probe and allocation-call contract. Compiler, runtime, library, ports, tools,
+Makefile and test harness are byte-identical to the preceding evaluated revision.
+
+The verified **b7e869f8** compiler was reused, SHA-256
+`12288231f46f77db1034d1afd59647fabe13e61452fd230577bbc6223897ff84`, with
+**CPython 3.13.16 / LLVM 18.1.3** and `PYSTACHY_HOME` set to the clean **837843bc**
+checkout. No rebuild is needed for this tests-only merge. Read #491/#616 and the
+PR review: its P2 finding noted that differential output alone cannot prove
+by-value lowering; `4310685` added the IR contract. The checks below independently
+validate that response, not a new completed bot review.
+
+Affected retained validation:
+
+| Check | Result |
+|---|---|
+| New `tuple_return_closures.py` plus retained `tuple_return_values.py` | **4/4 checks pass** in each of native JIT/AOT, GC stress, optimization-off, tuple-return optimization disabled, and hosted compiler modes: **20 checks total**. |
+| CPython reference executions | **2/2 outputs** exactly match retained recordings with arguments `a1 a2`. |
+| New and existing tuple-return IR contracts | **2/2 programs** pass the compiler IR checker, exact runtime-call contracts and LLVM assembler. By-value bodies have no tuple allocation; wrappers retain allocation. |
+| Negative contract control | A scratch copy omitting `@v.f.three` is correctly rejected, exit 1: `OTHER CALLS`, extra `@v.f.three: pys_raise`. No tracked fixture was modified. |
+| Optimization-disabled IR control | Compiles successfully with `PYSTACHY_OPT=-tupleret` and contains no `@v.` bodies, while the differential execution still matches CPython. |
+
+Commands use `COMPILER=/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy`
+and the explicit environment in the evidence. Run from the evaluated checkout:
+
+```sh
+tests/run.sh "$COMPILER" 'jit aot' tests/tuple_return_closures.py tests/tuple_return_values.py
+PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$COMPILER" 'jit aot' tests/tuple_return_closures.py tests/tuple_return_values.py
+PYSTACHY_OPT=-all tests/run.sh "$COMPILER" 'jit aot' tests/tuple_return_closures.py tests/tuple_return_values.py
+PYSTACHY_OPT=-tupleret tests/run.sh "$COMPILER" 'jit aot' tests/tuple_return_closures.py tests/tuple_return_values.py
+tests/run.sh '/root/.local/bin/python3.13 -m pystachy' 'jit aot' tests/tuple_return_closures.py tests/tuple_return_values.py
+tools/check_ir.sh "$COMPILER" tests/ir/tuple_return_closures.py tests/ir/tuple_return.py
+```
+
+[Exact evidence and replay scripts](compatibility-2026-10-19-tuple-return-coverage.json)
+retain command outputs, fixture hashes, compiler/source identities and the positive
+and negative controls. Extract and relocate the two `audit-747*.py` scripts, run
+the driver, then aggregate. No new implementation behavior, library coverage,
+speedup or heap-size measurement is claimed. The preceding **143/468 native /
+145/468 stub-assisted** import results, **522-source inventory / 54 exclusions**,
+are carried forward by implementation identity, **not rerun**. Unrelated API,
+port and benchmark suites, full `make verify` and unmodified upstream suites were
+not repeated. Dated reports/JSON, adaptation assessments and first-error limits
+remain unchanged; no new issue was needed.
