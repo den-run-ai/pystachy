@@ -150,6 +150,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     want = "" if want == "?" else want
     if name.startswith(TYPESMOD + "."):
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
+    if name == "ffi.at":
+        self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":

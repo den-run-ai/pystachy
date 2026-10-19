@@ -6,7 +6,8 @@ None, or a ValueError for -> str); C integers are range-checked (OverflowError),
 checks them. A list[float] or list[c_int64] goes in as a C array of its items (double *,
 int64_t *), copied back into the list when the call returns, since Pystachy passes the list's own
 items, which C may write: one array for each distinct list, so that a list passed for two
-parameters is one array to C, as it is one in Pystachy."""
+parameters is one array to C, as it is one in Pystachy. at(xs, k) passes the list from its index
+k: a pointer to item k of that array, checked as the call starts."""
 import ast as _ast
 import ctypes
 import functools as _functools
@@ -62,6 +63,18 @@ _LISTS = {list[float]: ctypes.c_double, list[c_int64]: ctypes.c_int64, list[c_ss
           typing.List[float]: ctypes.c_double, typing.List[c_int64]: ctypes.c_int64, typing.List[c_ssize_t]: ctypes.c_int64}
 
 
+class _At:
+    """at(xs, k): the list xs, from its index k, for a list parameter of an @extern call"""
+
+    def __init__(self, xs, k):
+        self.xs = xs
+        self.k = k
+
+
+def at(xs, k):
+    return _At(xs, k)  # (k is checked against len(xs) as the call starts, after the other arguments)
+
+
 def _check(t, v):
     if t is str:
         if "\0" in v:
@@ -111,10 +124,18 @@ def extern(lib, symbol=""):
             for t, p in zip(ts, sig.parameters):
                 v = b.arguments[p]
                 if t in _LISTS:
+                    k = 0
+                    if isinstance(v, _At):
+                        v, k = v.xs, _operator.index(v.k)  # (True is 1)
+                        if k < 0 or k > len(v):
+                            raise IndexError(f"ffi.at() index {k} is out of range for a list of {len(v)} items")
                     if id(v) not in arrays:
                         items = [float(x) for x in v] if _LISTS[t] is ctypes.c_double else [_check(c_int64, x) for x in v]
                         arrays[id(v)] = (v, (_LISTS[t] * len(v))(*items))
-                    cargs.append(arrays[id(v)][1])
+                    a = arrays[id(v)][1]
+                    cargs.append(ctypes.cast(ctypes.addressof(a) + k * ctypes.sizeof(_LISTS[t]), ctypes.POINTER(_LISTS[t])) if k != 0 else a)
+                elif isinstance(v, _At):
+                    raise TypeError(f"ffi.at() passes a list from an index, but parameter '{p}' of {f.__name__}() takes no list")
                 else:
                     cargs.append(_check(t, v))
             r = cf(*cargs)

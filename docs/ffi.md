@@ -54,6 +54,18 @@ ys = [10.0, 20.0]
 cblas_daxpy(len(xs), 2.0, xs, 1, ys, 1)   # ys is now [12.0, 24.0]
 ```
 
+`ffi.at(xs, k)` passes a list from its index `k`: C gets a pointer to item `k` of the list's
+own items, and may use the `len(xs) - k` items from there. It is only an argument of an
+`@extern` call, for a list parameter. `k` is checked as the call starts, once the other
+arguments are evaluated: outside `0 <= k <= len(xs)` it raises `IndexError`.
+
+```python
+from ffi import at
+
+zs = [1.0, 2.0, 3.0, 4.0]
+cblas_daxpy(2, 1.0, zs, 1, at(zs, 2), 1)  # zs is now [1.0, 2.0, 4.0, 6.0]
+```
+
 Structs, varargs and callbacks require a C shim with scalar arguments. The
 [ABI reference](reference/ffi.md#c-types-and-conversions) defines ranges, null
 handling, buffers and ownership.
