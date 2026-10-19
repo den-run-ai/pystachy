@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     ITERS,
     METHODS,
     MODFUNCS,
+    OPAQUE,
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
@@ -28,6 +29,7 @@ from src.pystachy_compiler.specs import (
     STANDINS,
     STUB,
     TYPEARGS,
+    TYPEMODS,
     TYPEVAR,
     TYPE_SIZE,
     TYPING,
@@ -2162,6 +2164,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "str"  # (a str path is its own file system path, and its own posixpath normcase())
     if k == "call" and e.kids[0].kind == "name":
         c = e.kids[0].s
+        if c == "__pys_weakref_new" and f.mod == "_weakref" and len(e.kids) == 2:
+            t = self.guess(e.kids[1], f)
+            return "weakhandle[" + t + "]" if t != "" and not t.startswith("!") else t
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)
@@ -2365,10 +2370,13 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
 
 def gen_glue_field(self, o: Val, name: str) -> None:
-    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others
+    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others;
+    # one of OPAQUE's (weakref.ReferenceType) too, as CPython's object has no such attribute
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
+    if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+        self.err(f"'{TYPEMODS.get(ci.mod, ci.mod)}.{short(ci.name)}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body

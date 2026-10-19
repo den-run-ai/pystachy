@@ -172,6 +172,29 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr":
+        # Private library primitives; a handle's opaque type preserves its referent type
+        # without storing a strong reference or permitting ordinary field access to it.
+        if self.curfn.mod != "_weakref" or len(args) != 1 or args[0].kind in ["kw", "starred", "dstar"]:
+            self.err(f"name '{name}' is not defined")
+        o = self.expr(args[0], "")
+        if name == "__pys_weakref_addr":
+            # (an object's address, which CPython's repr of a reference shows; a specialization for
+            # another referent is rejected as __pys_weakref_new rejects it, in whichever compiles first)
+            if o.t not in self.classes:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            return Val(self.scalar_cast('ptrtoint', Val(o.v, '%ptr'), 'int'), "int")
+        if name == "__pys_weakref_new":
+            if o.t not in self.classes or o.t in self.nts:
+                self.err("_weakref.ref() prototype requires an ordinary class instance")
+            if self.classes[o.t].exc != "" or self.classes[o.t].slotlimit:
+                self.err("_weakref.ref() prototype does not support exception or slotted instances")
+            if self.classes[o.t].mod == "_weakref":
+                self.err("cannot create weak reference to a weakref.ReferenceType object")
+            return Val(self.rt("pys_weakref_new", "ptr", [f"ptr {o.v}"]), "weakhandle[" + o.t + "]")
+        if not o.t.startswith("weakhandle["):
+            self.err("_weakref.ref() prototype requires an internal weak handle")
+        return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":
@@ -262,6 +285,21 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.iter_(args)
     if name == "open":
         return self.open_(args)
+    if name == "select.select":
+        if len(args) < 3 or len(args) > 4 or len([a for a in args if a.kind == "kw"]) != 0:
+            self.err("select.select() expects three list[int] arguments and an optional positional timeout")
+        fds: list[Val] = []
+        for i in range(3):
+            fds.append(self.coerce(self.expr(args[i], "list[int]"), "list[int]", f"argument {i + 1} of select.select()"))
+        timeout = self.expr(args[3], "") if len(args) == 4 else Val("null", "None")
+        blocking = "1" if timeout.t == "None" else "0"
+        if timeout.t == "None":
+            timeout = Val(fbits("0.0"), "float")
+        elif timeout.t == "int" or timeout.t == "bool" or timeout.t == "float":
+            timeout = self.as_float(timeout)
+        else:
+            self.err("select.select() timeout must be int, float or None; narrow optional values before the call")
+        return self.rres(self.rt("pys_select", "ptr", [self.rarg(v) for v in fds] + [self.rarg(timeout), "i64 " + blocking]), "tuple[list[int],list[int],list[int]]")
     if name == "set" or name == "frozenset":
         return self.set_new(name, args, want, resultsoft)
     if name == "map" or name == "filter":

@@ -1,0 +1,6 @@
+# Developer Certificate of Origin 1.1 (https://developercertificate.org/), certified once per
+# GitHub account (CONTRIBUTING.md). A line certifies the DCO for each contribution its account
+# submits to this repository, including work that account's coding agents prepare. Add only
+# your own line, in your first pull request from a fork:
+#   @github-login Full Name <email>
+#   @github-login Full Name <email> for COMPANY   (when you contribute for your employer)

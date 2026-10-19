@@ -1,0 +1,6 @@
+read/write readiness, duplicates, order and independent lists
+True
+True
+0 0
+OSError [Errno 9] Bad file descriptor
+[exit 0]

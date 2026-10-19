@@ -27,7 +27,7 @@ supports matching strings and lists of strings, including `get_grouped_opcodes()
 its other diff APIs still have reflection, formatting or callback-type blockers.
 `textwrap` supports its public operations with code-point widths; tab expansion still counts UTF-8 bytes.
 
-Selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile` are compiler builtins.
+Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
 compiler support; this does not provide
 the full dynamic `collections` package; its shipped subset provides `deque`, `defaultdict`,

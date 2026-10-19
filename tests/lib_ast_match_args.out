@@ -1,0 +1,19 @@
+() () ()
+() () ()
+('body',) ('value', 'kind') ('id', 'ctx')
+('left', 'op', 'right') ('op', 'operand')
+('body',) True
+('left', 'op', 'right') True
+('value', 'kind') True
+('id', 'ctx') True
+('op', 'operand') True
+() True
+() True
+() True
+() True
+() True
+() True
+('id', 'ctx')
+('id', 'ctx') True
+True
+[exit 0]

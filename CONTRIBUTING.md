@@ -48,16 +48,22 @@ Submit only work you have the right to contribute under the applicable project l
 [MIT](LICENSE) for original project code; preserve third-party licenses, attribution and
 [notices](THIRD_PARTY_NOTICES) for adapted material. Identify upstream sources and changes.
 
-New PRs opened after this guide is merged require each contributor's own
-[Developer Certificate of Origin 1.1](https://developercertificate.org/) sign-off on
-each new non-merge commit they author in the PR. After reading the DCO, use `git commit -s` to add
-`Signed-off-by: Your Name <your-email>` with your own identity. Never add someone else's
-sign-off on their behalf. Sign-offs remain in public history; they are provenance
-attestations, not cryptographic signatures or security verification.
+Contributors certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/)
+once per GitHub account. After reading it, add your own line to
+[`.github/dco-signers.txt`](.github/dco-signers.txt) in your first PR from a fork:
 
-Maintainers check sign-offs manually until automated enforcement is configured.
-Already-open PRs follow the existing process; do not rewrite merged history to add
-sign-offs. No separate CLA is required.
+```text
+@your-login Your Name <your-email>
+```
+
+Append ` for COMPANY` if you contribute for your employer. The line certifies the DCO for
+each contribution you submit from that account, including work your coding agents prepare,
+so commits need no `Signed-off-by`. Add only your own line. Lines are public provenance
+attestations, not cryptographic signatures.
+
+The [DCO workflow](.github/workflows/dco.yml) checks that a fork PR's author is listed, on
+`main` or in the PR. PRs from this repository's own branches, which only the owner and
+collaborators can push, skip it. No separate CLA is required.
 
 ## AI assistance and review
 

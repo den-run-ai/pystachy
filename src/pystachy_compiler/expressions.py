@@ -18,6 +18,7 @@ from src.pystachy_compiler.specs import (
     IRT,
     MODATTRS,
     NONEVAR,
+    OPAQUE,
     ORDOP,
     PYBUILTINS,
     RANGEC,
@@ -268,6 +269,8 @@ def gen_has(self, t: str, a: str) -> int:
             return 0  # (no attribute name: a key of a property's setter, x.setter, or a default_factory's)
         if a in ci.methods and ci.methods[a].prop:
             self.err(f"hasattr() of property '{a}' is not supported: read it in a try/except AttributeError block")
+        if ci.mod in OPAQUE and self.curfn.mod != ci.mod and a not in ci.methods and (a in ci.ftypes or a in HASATTR["obj"].split() or a in ["__orig_bases__", "__parameters__", "__type_params__"]):
+            return 0  # (the module's own fields: CPython's object has none, nor a __dict__ or the attributes of a Python class)
         if a in ci.fflag and t + "." + a not in self.cvars:
             return -2
         if a in ci.methods or a in ci.ftypes:
@@ -942,9 +945,9 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
     # (instances read it until they assign the field; C.a = v is not supported)
     ci = self.class_ready(cn)
-    if a == "_fields":
+    if ci.name in self.nts and a == "_fields":
         return self.tuple_([Val(self.sconst(x), "str") for x in self.nt_fields(ci.name)])
-    if a == "_field_defaults":
+    if ci.name in self.nts and a == "_field_defaults":
         return self.nt_defaults(ci.name)
     t = ci.ftypes[a]
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:

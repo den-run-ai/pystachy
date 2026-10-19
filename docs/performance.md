@@ -34,7 +34,9 @@ mismatches, without imposing timing thresholds.
 The [pyperformance results](pyperformance.md) compare CPython, JIT and AOT on 18 benchmarks
 adapted from pyperformance 1.14.0. In that advisory snapshot, taken on a loaded machine, AOT ran
 14 of 17 comparable benchmarks 1.5× to 84× faster and the three regex benchmarks 2.5–2.7× slower
-than CPython. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
+than CPython. Later paired regex reruns ([repeat matcher](pyperformance.md#regex-repeat-rerun),
+[class loops and prefilters](pyperformance.md#regex-class-loop-and-prefilter-rerun)) measure the
+regex timed loops at 0.61–1.39× CPython's time AOT. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
 [port notes](../bench/pyperformance/README.md#blocked) distinguish delivered ports from
 upstream sources that compile after replacing only the runner. Of the 33 nondeferred
 sources without a delivered port, 32 still reject and `generators` compiles.

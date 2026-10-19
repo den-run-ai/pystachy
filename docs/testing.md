@@ -141,6 +141,8 @@ counts and syntax-survey results are retained as [historical snapshots](archive/
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
+A pull request that changes only Markdown files or `docs/` skips the CI, Installation and
+Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 Twenty-three groups run in parallel, each with its own fixed-point bootstrap. The target is under
@@ -199,3 +201,9 @@ The final report job allows ten minutes for artifact downloads and validation.
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
+
+The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
+fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
+the repository's own branches skip it. It runs main's copy of the workflow and of
+`tools/dco_check.py`, so a change to either takes effect once merged. The
+[contributor guide](../CONTRIBUTING.md#rights-and-sign-off) states the rule.
