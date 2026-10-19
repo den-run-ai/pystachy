@@ -1,0 +1,2367 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "ca7688dd75b5385dea42a0054566a2033e417505",
+  "previous_evaluated_main": "e33c560e801af86879727fd5f99f5981b84d5046",
+  "compiler_build_source": "ca7688dd75b5385dea42a0054566a2033e417505",
+  "compiler_sha256": "e1be7b6de032c77ffd82b7e9d11de299dbef06e6f34f1d07b0e99c359b76e9ee",
+  "source_dirty": false,
+  "merges": {
+    "implementation_prs": [
+      697
+    ],
+    "history": [
+      "ca7688dd75b5385dea42a0054566a2033e417505 Merge pull request #697 from den-run-ai/claude/generic-annotation-unsupported-class"
+    ],
+    "changed_files": [
+      "src/pystachy_compiler/templates.py",
+      "tests/errors/emods/badgeneric.py",
+      "tests/errors/generic_ann_unsupported_class.py"
+    ]
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/bin/python3.13",
+    "python_sha256": "44db706d51fb08f679c5aeb5ba81f50646eec5bea7bb4b0f7d3e20ffaf48b9ca",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "workers_per_group": 2,
+    "options": "Remove inherited PYSTACHY_/COVERAGE_ options, then use explicit recorded options; shared host, no performance inference.",
+    "cpython_reference_extra": {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "path": "/workspace/scratch/cca24c0adfdd/devtools/lib/python3.13/site-packages/typing_extensions.py",
+      "sha256": "4040ca1a1ecbee00d1385c12a93084d1c5bd46f0b774f07e5ae7e91c4f55e696"
+    }
+  },
+  "bootstrap": {
+    "compiler_ir_lines": 635461,
+    "runtime_ir_lines": 18851,
+    "ir_sha256": {
+      "stage1.ll": "6520274ca9b5d5b5cee39c1cb1c4be1b489ee66b20c095be9d5f47f6df4d3d64",
+      "stage2.ll": "6520274ca9b5d5b5cee39c1cb1c4be1b489ee66b20c095be9d5f47f6df4d3d64",
+      "stage3.ll": "6520274ca9b5d5b5cee39c1cb1c4be1b489ee66b20c095be9d5f47f6df4d3d64",
+      "rt1.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt2.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt3.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d"
+    }
+  },
+  "selection": {
+    "positive": [
+      "tests/any_annotated.py",
+      "tests/any_init_annotated.py",
+      "tests/any_variables_annotated.py",
+      "tests/dataclass_generic_field.py",
+      "tests/deftime_generic_later.py",
+      "tests/dict_object_keys_generic.py",
+      "tests/generic_annotations.py",
+      "tests/generic_annotations_hints.py",
+      "tests/generic_callable_field.py",
+      "tests/generic_classes.py",
+      "tests/generic_constructor_forms.py",
+      "tests/generic_dataclass_fields.py",
+      "tests/generic_def_param_scope.py",
+      "tests/generic_def_paramspec.py",
+      "tests/generic_inferred_unions.py",
+      "tests/generic_mod_default.py",
+      "tests/generic_pep695_classes.py",
+      "tests/generic_union_arguments.py",
+      "tests/generic_union_result_annotation.py",
+      "tests/generic_wider_destinations.py",
+      "tests/generic_without_init.py",
+      "tests/iter_annotations.py",
+      "tests/mixed_list_annotation.py",
+      "tests/property_generic.py",
+      "tests/property_setter_generic.py",
+      "tests/reflect_dir_generic.py",
+      "tests/return_annotated_parameters.py",
+      "tests/return_special_unannotated.py",
+      "tests/syntax_annotations_uncompiled.py",
+      "tests/syntax_blocks_generic.py",
+      "tests/type_alias_annotations.py",
+      "tests/type_alias_generic.py",
+      "tests/types_generic_alias.py",
+      "tests/typevar_templates.py",
+      "tests/typevar_twice.py"
+    ],
+    "errors": [
+      "tests/errors/generic_ann_arity.py",
+      "tests/errors/generic_ann_bool_int.py",
+      "tests/errors/generic_ann_custom.py",
+      "tests/errors/generic_ann_custom_call.py",
+      "tests/errors/generic_ann_forward.py",
+      "tests/errors/generic_ann_mismatch.py",
+      "tests/errors/generic_ann_tvtuple.py",
+      "tests/errors/generic_ann_unbound.py",
+      "tests/errors/generic_ann_unsupported_class.py",
+      "tests/errors/generic_ann_untyped.py",
+      "tests/errors/generic_annotation_call.py",
+      "tests/errors/generic_base_unstarred.py",
+      "tests/errors/generic_builtin.py",
+      "tests/errors/generic_callable_unbound.py",
+      "tests/errors/generic_class_param.py",
+      "tests/errors/generic_conflict.py",
+      "tests/errors/generic_def_param_body.py",
+      "tests/errors/generic_def_param_enclosing.py",
+      "tests/errors/generic_def_param_method.py",
+      "tests/errors/generic_explicit_hint_concrete.py",
+      "tests/errors/generic_fallback_original_default.py",
+      "tests/errors/generic_fallback_original_destination.py",
+      "tests/errors/generic_fallback_original_direct.py",
+      "tests/errors/generic_fallback_original_keyword.py",
+      "tests/errors/generic_inferred_union_nested.py",
+      "tests/errors/generic_noinit_base.py",
+      "tests/errors/generic_noinit_field.py",
+      "tests/errors/generic_pep695_base.py",
+      "tests/errors/generic_pep695_param_call.py",
+      "tests/errors/generic_pep695_paramspec.py",
+      "tests/errors/generic_pep695_tvtuples.py",
+      "tests/errors/generic_return_untyped.py",
+      "tests/errors/generic_star_arity.py",
+      "tests/errors/generic_typevartuple_bare.py",
+      "tests/errors/generic_unbound.py",
+      "tests/errors/generic_union_argument.py",
+      "tests/errors/generic_union_mutable_argument.py",
+      "tests/errors/generic_union_result_contract.py",
+      "tests/errors/generic_wider_destination_alias.py",
+      "tests/errors/generic_wider_destination_member.py",
+      "tests/errors/import_annotation.py",
+      "tests/errors/import_annotation_attribute.py",
+      "tests/errors/import_annotation_call.py",
+      "tests/errors/import_annotation_class_subscript.py",
+      "tests/errors/import_annotation_later_class.py",
+      "tests/errors/import_annotation_literal.py",
+      "tests/errors/import_annotation_module_attr.py",
+      "tests/errors/import_annotation_operator.py",
+      "tests/errors/import_annotation_subscript.py",
+      "tests/errors/import_annotation_undefined.py",
+      "tests/errors/import_annotation_used.py",
+      "tests/errors/import_class_decorator.py",
+      "tests/errors/import_decorator_alias.py",
+      "tests/errors/import_decorator_unbound.py",
+      "tests/errors/import_method_decorator.py",
+      "tests/errors/syntax_async_comp_typevar.py",
+      "tests/errors/syntax_blocks_typevar_bound.py",
+      "tests/errors/syntax_typevar_bound_walrus.py",
+      "tests/errors/type_alias_typevar_args.py",
+      "tests/errors/type_alias_typevar_value.py",
+      "tests/errors/typevar_constraints.py",
+      "tests/errors/typevar_import_cycle.py",
+      "tests/errors/typevar_method.py",
+      "tests/errors/typevar_method_import.py",
+      "tests/errors/typevar_rebound.py",
+      "tests/errors/typevar_value.py",
+      "tests/errors/typevar_variable.py"
+    ],
+    "apis": [
+      "tests/lib_functools.py",
+      "tests/lib_functools_cache_object.py",
+      "tests/lib_functools_calls.py",
+      "tests/lib_functools_cmp_to_key.py",
+      "tests/lib_functools_mod.py",
+      "tests/lib_functools_partial.py",
+      "tests/lib_functools_reduce.py",
+      "tests/lib_functools_wraps.py"
+    ],
+    "ports": [
+      "tests/port_ordered_set_api.py",
+      "tests/port_ordered_set_edges.py",
+      "tests/port_sortedcontainers_api.py",
+      "tests/port_sortedcontainers_index.py"
+    ]
+  },
+  "fixture_sha256": {
+    "tests/any_annotated.py": "01b489a4b4427a298df5cc07e59e1069474d79f0431b3d25366a435ecabfe56f",
+    "tests/any_annotated.out": "03dbfbfe5a19f08bd45fb657ea9e3afe3e6267b66942c56fac93210bfc53e1f5",
+    "tests/any_init_annotated.py": "632685ceec425ccc2d19c635972199d42bdfadb12f230a13642c93ea17ccfca9",
+    "tests/any_init_annotated.out": "f779012097cfc3ab88ba1e6fab72af40b48eef849b743136a0591b17f50a553a",
+    "tests/any_variables_annotated.py": "4c94ccfa24cf953521def1d7b3d26cf646bbc8f74e5410d27a3574a69480fc16",
+    "tests/any_variables_annotated.out": "ec2c0ac300f8b631c7a67ab3d1300bccb07d1efb00017b107401266e93fcfcf2",
+    "tests/dataclass_generic_field.py": "c122a4865a17b7a781a8ae959818cd0ed29da6d6a2daf822e5911a26d42a5e18",
+    "tests/dataclass_generic_field.out": "a3b07633a300a43f9ee52bf429d3a10d6c283fb88c545705288a78b205bc0ff9",
+    "tests/deftime_generic_later.py": "26ec9f414a1ec1a64c688a93ca539f04ebf3080e4d24a78121d8edc92bc49c58",
+    "tests/deftime_generic_later.out": "416778b5aef46d3abbf5fb707187191d0fb415d2a09f926415ccf4a1167ddc94",
+    "tests/deftime_generic_later.err": "16dc1d63cfe9a84e7a74614b57798a0fba72c338739bf76cbe26dd656eba7d86",
+    "tests/dict_object_keys_generic.py": "e72da25a048dc0891a02ec39268657cf0b3792ee3eff741a30be53cd209cdbec",
+    "tests/dict_object_keys_generic.out": "1a67651cb92f7e1f176fa3399308df564a10a3bbe96d3f33b50900493544e66b",
+    "tests/errors/emods/badgeneric.py": "7044049d651a828abbeb46d35221d8900fe08627c996eef20aef791dddd1b57c",
+    "tests/errors/generic_ann_arity.py": "cf93c7e7816fa0d34863437f8da594a0df809364c33517fdf5586e01d626c077",
+    "tests/errors/generic_ann_bool_int.py": "b237f4acecb44574356a43071c25fea4a466f64a8da61aed6882b039b1ff8c26",
+    "tests/errors/generic_ann_custom.py": "46fdb34439b382504117431ecdb2481ed759576c4de6bad937c7e04d63c87b27",
+    "tests/errors/generic_ann_custom_call.py": "9ffda72cf76f126064f41a7c30cdaf20b2e77c5093cdb497b63eca76ff0587d1",
+    "tests/errors/generic_ann_forward.py": "c24da54b9ffdf09a55d6adaf520384ae53c776f556a539f7bde011058dedb711",
+    "tests/errors/generic_ann_mismatch.py": "7bcfab4df9bc12883951bba5329d68326ede9403fb81524f90b303b39194553a",
+    "tests/errors/generic_ann_tvtuple.py": "356bdbcd5dbc8ac6fe8ed5613c005a38b7ea482e8a2789e332f15563c03fc30d",
+    "tests/errors/generic_ann_unbound.py": "82e504d7cfe2dffabad00ddd037f38caff73df5aedf4fd72f7b17d611572ddc2",
+    "tests/errors/generic_ann_unsupported_class.py": "cb568654dd8afbbdb1d10e36852a65fd16fe9a112e263a03feb284b298bd4ba7",
+    "tests/errors/generic_ann_untyped.py": "07c689f6d126846d629e1e7eb862053a9392f49f3e36a7e1af79735ab30e18d1",
+    "tests/errors/generic_annotation_call.py": "542b00c4321b5fcd8dbb1f2712d0d97390eb0bc71acbb416fba2582053be715e",
+    "tests/errors/generic_base_unstarred.py": "21cb887b9fe253a379335a7e6b98aede949b8586d8fb8b8200cb1521b0d63b2c",
+    "tests/errors/generic_builtin.py": "7f394a242ad7cb78aee88521cd53d5f5b70aad0fb387ce839732b6018b6e0e85",
+    "tests/errors/generic_callable_unbound.py": "e6f54aca4d879191c53316651acee5e8d9da95b1d5331e18d3fea3f50f1d9aa4",
+    "tests/errors/generic_class_param.py": "6e2348c64d35498aad5f2835916addae016a6870723d2ce31bb394e24132a350",
+    "tests/errors/generic_conflict.py": "295fb4893c80846ea30054c620f6357f235b8e578f3330a98dc9e9cecc766b1d",
+    "tests/errors/generic_def_param_body.py": "f7f8e63522b6e14b6f216269b7ae47fff80f501d3d422dfe198b4f2f934d2897",
+    "tests/errors/generic_def_param_enclosing.py": "91be5bfc00ab555d7c9af0ccdd2ca65c818351252b77c4c18327c0687ce46a18",
+    "tests/errors/generic_def_param_method.py": "d102df49f9fceeb9c15e06d89d388fd733153538cb68b57e272cc3026cd5d0ba",
+    "tests/errors/generic_explicit_hint_concrete.py": "34977e41013b42a0e524d3b38ebc2e3173821e57715865663abc9a34f50da362",
+    "tests/errors/generic_fallback_original_default.py": "32addfdd22f35be66ffab25f82700d6d8a1f0d0b3d304601168dab311a5023f9",
+    "tests/errors/generic_fallback_original_destination.py": "cbdb998774ac1fff7399652e1cef4c6887c586130dac76cb2f17b6fd145cb89a",
+    "tests/errors/generic_fallback_original_direct.py": "2535b8c5e005ab46254f49416097716a69e67eb77142378db33f1760bc6676e5",
+    "tests/errors/generic_fallback_original_keyword.py": "6b27b942700b7f8248d69be21fba3ba7c86ba1c251718cf5f711ac40495c761a",
+    "tests/errors/generic_inferred_union_nested.py": "31dba20383165f16b6c328f7811c6fb9bdf66340edb726165c7ff32c8b2f15f0",
+    "tests/errors/generic_noinit_base.py": "b3af22cfb59cd35d41fd77daa5c54071bb4f83bea95cb2cb2b69350da6827dfe",
+    "tests/errors/generic_noinit_field.py": "aa4f9eaa34254341bbecb76d7efd33b109d1eada637ddd9c47d107f6aca56f7e",
+    "tests/errors/generic_pep695_base.py": "bae2ed7e6b6b602e517ae83287cd8950bbebadb37bd7766b4c0e89517e096365",
+    "tests/errors/generic_pep695_param_call.py": "c4bf82f4469f2e03ffd080e1570d484bb9170a038b827031c5d8cf52c7a61dbe",
+    "tests/errors/generic_pep695_paramspec.py": "8829b256a7a1a0016ac1bbee1c710f6536bd3093266679d9a5cc78be3e6625cb",
+    "tests/errors/generic_pep695_tvtuples.py": "3060bffded4cef766e580b2fb63ef3e482150a591d72186c020cb289fa25aca7",
+    "tests/errors/generic_return_untyped.py": "4378829fe40ce399c4eb63d1fb3d2b323a9c1dc9005994e0e760994b052b7666",
+    "tests/errors/generic_star_arity.py": "2b753f43d571bfccf75800158d7af3c4f01f16042925e19bb54ea523453ba9d2",
+    "tests/errors/generic_typevartuple_bare.py": "e71197a6caddf849c525318a7506c3bdc3f70db63f8d4feff2a7653dfd31f672",
+    "tests/errors/generic_unbound.py": "c1e5a1d1d8e5210bd956e3460c338e5bdb6a76980622a295164ad2280b2c426f",
+    "tests/errors/generic_union_argument.py": "a8277615fc498e701907df904156aaa62056f6e4f64a10c154a23c72644a9bd2",
+    "tests/errors/generic_union_mutable_argument.py": "2d8d755641b510175c8714ce04216410d0f8fa8487faa136caffc943bd9baf59",
+    "tests/errors/generic_union_result_contract.py": "13fba01f53a755f54438c02e7de1e608a36ec67f665f4462a990055cd1a46cf2",
+    "tests/errors/generic_wider_destination_alias.py": "3dc6bafbc667342c750c5b54752c7d89fe2ea0672ce93a0b47c7ae6b5d3394d8",
+    "tests/errors/generic_wider_destination_member.py": "52a56a13753e37a4a2e3e879d8678d0c56d37f3315b9d6b463370e599ee0d635",
+    "tests/errors/import_annotation.py": "2819558eaae8a4888a53603db9fee836d045bcb44a100e524358f81ccb757e84",
+    "tests/errors/import_annotation_attribute.py": "3ea7547c588d581e33942fc7d79181b931d2b6b4c62d30358c5be1b07d2abbca",
+    "tests/errors/import_annotation_call.py": "e5d6c40b019b776ebe0ff279c393375f9e56a80ae626b7429eba39b41f12e133",
+    "tests/errors/import_annotation_class_subscript.py": "4fb16ecfd8bdabfa52b6bc407dacf990339bfa675a62171267c42d5724f19b1d",
+    "tests/errors/import_annotation_later_class.py": "101bcd1dc6b2457141c2f90fb70f84954ef1cea716fc62275b85227e5c3f4bed",
+    "tests/errors/import_annotation_literal.py": "74383cf95ff006268682cdce196d169a773f85b3ff25c7d661ed0e922adaa30c",
+    "tests/errors/import_annotation_module_attr.py": "a396bef0fda7bab8e25de5c0edd3bca4add55c9f63b70d9278855652f7257909",
+    "tests/errors/import_annotation_operator.py": "a9555d4a1155f49e04e5dc48ff1082d3ab1e412c252caa90176ed05e42a8571f",
+    "tests/errors/import_annotation_subscript.py": "4b19fa8bebc816d910e2dc1483fa8302a5b1a0faedfcf22be9c84007532fc9a5",
+    "tests/errors/import_annotation_undefined.py": "79eed144028fac740eb7dc51eb0c1884a96419be83a7dbed7d63721c589d51d7",
+    "tests/errors/import_annotation_used.py": "7e3fc295672e327ed3e01c301b68e320c704e748a26c0753376f467c33b29a56",
+    "tests/errors/import_class_decorator.py": "5a8154d7cc2d9d8d306195ac2e43eef70595be011676ed06b84d8be776747f41",
+    "tests/errors/import_decorator_alias.py": "37786c49f12c33f7eed4b7841d5d39112135192f88e25159808f0396ba972425",
+    "tests/errors/import_decorator_unbound.py": "5f2a0f3aafa903733f703f1b223061ddf01f8800c96c1fa2db8e48b008b2122a",
+    "tests/errors/import_method_decorator.py": "c548f5a382640a1540f70122b5c61eb07010c996ad01be76e63a7abd3136d2cd",
+    "tests/errors/syntax_async_comp_typevar.py": "6bdd766becd2bbe335ffa7e07393a77752bf1e39154ffa17a2e30a2a92e30f64",
+    "tests/errors/syntax_blocks_typevar_bound.py": "5c4f4fa9d27f95329e4ced7f185848578f3dcaf1acd6b2bfe26c588d1928f041",
+    "tests/errors/syntax_typevar_bound_walrus.py": "1ca7a80f9a11af3ae01e8e592ed76314c0c2cc77436d5508217b2d7e65b4f312",
+    "tests/errors/type_alias_typevar_args.py": "8840599078d7d40aef8557632d66f139fbfa5f41b747d927a8daf065577e4cfb",
+    "tests/errors/type_alias_typevar_value.py": "19e03d844f9a5d10e2040c766c65a442b10031569612c49b604a55d9522a39bb",
+    "tests/errors/typevar_constraints.py": "df892942ca6b4c248d6e606b90e2f92cb4eb51157addb2e7aa598d8c087c1e9c",
+    "tests/errors/typevar_import_cycle.py": "860c23d384c3549a0919940cb2e8c1e6248c0de7749beb1901183b51360b68fb",
+    "tests/errors/typevar_method.py": "ef8f01796dfd5b94e46d4a5853421e6d9692d017a7f0dd0a257a70f522370e8f",
+    "tests/errors/typevar_method_import.py": "2076cdb60076547619ab3266a282160cd84fdaf705ead092bbbc10b696bc3ac6",
+    "tests/errors/typevar_rebound.py": "4922abcc8f622a31074acd5226292a2c1a6cd49751e27ed98d01d4f97398b469",
+    "tests/errors/typevar_value.py": "a14eb0d803c513fa29210a439e6d9bfe302e46cd73ffc8aec17213a8f07e99d2",
+    "tests/errors/typevar_variable.py": "8cab6fd04a11a5fd592c62c6971f652edf27082a09fc4124c77025920cd39176",
+    "tests/generic_annotations.py": "0ac04d678cb72ed56654cfabc9caf9d9e6942ffdd9c9dd035b8c876615c7c533",
+    "tests/generic_annotations.out": "0cc9ec3a6e47697f77ae6520b69bbcf4d990c00984a30e27a3fd6c2d02d9c22e",
+    "tests/generic_annotations_hints.py": "91896602ec7da6692ac1fa0b133871cc57975fbb953ab9344990d0c2add79360",
+    "tests/generic_annotations_hints.out": "a036918cfced557320f183f3f88e834836c297ca1c90917c9bd70f4c54f2522f",
+    "tests/generic_callable_field.py": "22c79d85ca30093e99c6b20e5778e36ba808ec94f9bc2ab341876773cd3aed77",
+    "tests/generic_callable_field.out": "763a12e488e0820b4c919e5b7f23fd103a3059b583fa11507caf11f2185b7a74",
+    "tests/generic_classes.py": "1a6b5735caaf960ce67ca862265d61ce9bfa9bc5e784156f166d2fa0f568132f",
+    "tests/generic_classes.out": "a92a8337b6b3504a4b968967d3b0487fc08dbb28fd3afe27191e2b8225e1b6ba",
+    "tests/generic_constructor_forms.py": "faa9a18ada1f81af97dd663e7a436f0359bcbf3b3e467b7ac9a3c0a69332ba83",
+    "tests/generic_constructor_forms.out": "8174a3a2e30483aab4beb76b8d5c80efeb76b96e3e0b7c0d63ef8dff100549bc",
+    "tests/generic_dataclass_fields.py": "0c70320472c2113b3a2417366213e50a64c2eb82d6c3e0f5cd72c46cbe9c7053",
+    "tests/generic_dataclass_fields.out": "9f32aa725fe78217dbb8046af4e6abc23ccd43b5117a6466d28289991cfdb112",
+    "tests/generic_def_param_scope.py": "3c3c58f600d05d5ee8d351993d861eca6054e662ff8b9bc6cfec67a08abe9e64",
+    "tests/generic_def_param_scope.out": "ef9f237b3551c77d224f6f55953dad24c43924ae82f48b120c5b3227ae5b4f5e",
+    "tests/generic_def_paramspec.py": "4a5875d9f25db4660c36904e0ce55f9f0dc9dd02abc5485a18b75f13a8dba093",
+    "tests/generic_def_paramspec.out": "ae4c209fed70140e03c47aad8847df79c911267f72f559fdfb52bc0a783cb934",
+    "tests/generic_inferred_unions.py": "ab0596686ddea986e45dbc5eddeca7055884f3c633fa94aebd199f534b3648f3",
+    "tests/generic_inferred_unions.out": "eae4eddd9d983baa1dd6df4794704b53466e3a9af612007cbc2cb51d011594e2",
+    "tests/generic_mod_default.py": "79c2b0e3b59a105cfa82d42f9c47d0f0c7d0adcfb086a449035a54d6692c5872",
+    "tests/generic_mod_default.out": "2b7cf3116579f873a5b6337d89b57637a1d0d1ac3be0adad1b2346cc369627a1",
+    "tests/generic_pep695_classes.py": "9c96fd57581819eaa69f1f747f675483275fc51215086ee9604f09dc39d77552",
+    "tests/generic_pep695_classes.out": "b8a8cda77fd6804b1b790bafe5e16b9e6892760d1433003e5bd91a890ab63c79",
+    "tests/generic_union_arguments.py": "0cb9512e35179847ecfce5579f03d30eeeac966daf8d2810422d0045c75050f8",
+    "tests/generic_union_arguments.out": "e7e8b1c0a7f6fc0e2b2e4cdc8b19cef51f92e3e1f6c3b4fc4c9d0f1d15645f6e",
+    "tests/generic_union_result_annotation.py": "3e1d7d94ff8cbec75cfdaf6685b096b1df9858b87b62bf9101b5cc9a48ee82d9",
+    "tests/generic_union_result_annotation.out": "c740f4e3bc8961f6596784f8ac941ab823ebee780ade24181d946796065ad2dc",
+    "tests/generic_wider_destinations.py": "381050f4e5c641b042609f3fe0d5d1dfb041b0bcee7415f67443658e02d5b194",
+    "tests/generic_wider_destinations.out": "14d238b0b661e12c6b0c2465fac34be9f3174277024905e71694eeca19b7bc2c",
+    "tests/generic_without_init.py": "61fc90fd37308ae5ffba74b8afd50a2eb857aac01cb5a1d7934d890deacbf54c",
+    "tests/generic_without_init.out": "13f31a544617368f3a2ce89ce8a8a343777ba769640386979a900c02f6e83dd6",
+    "tests/iter_annotations.py": "161d233b03f4f13b93d265245a604f633727f67be398c101bfa6a8577a804c85",
+    "tests/iter_annotations.out": "99d0d26b0cf4eb91a1b410339f557d632824650f6ad852ce4676b544b06634ed",
+    "tests/lib_functools.py": "d89f6dedc1ddb40fc1da83110e29cbb61b4bc637584aa0cdf31cf2dcd3ecaa6b",
+    "tests/lib_functools.out": "b46b364eb00a355e29ba1ad10b57b5629b1b6ce1130f2e9c0a643b091818b0d7",
+    "tests/lib_functools_cache_object.py": "a7460e03c1f7dbad41538ce594115d8956999ba8144902267feb5eedd4f3bda3",
+    "tests/lib_functools_cache_object.out": "c3d9786149c070687e84c87e127502f5625c9eb50bdfdcde3d80c5bd6e6018d7",
+    "tests/lib_functools_calls.py": "f6c7ca9fe051a5625d8f42a4050b616c3c2833ce81d3d6f7884f23227b1254c7",
+    "tests/lib_functools_calls.out": "4f2855e6fe5ffecbb214da3154ee00e594ea2d60cc3fe9d9e375d5cbfe03afb2",
+    "tests/lib_functools_cmp_to_key.py": "5dc6d674ee8454ae8ed0916f966f3dc05322ae1d7dc3031c0ac0b5da55f1e044",
+    "tests/lib_functools_cmp_to_key.out": "2390d0cec21ffeca093b539902462552d62ad15b53de1a64877e0db381626012",
+    "tests/lib_functools_mod.py": "bf46fef334b18993b9f39310203bee0cfd366e410488b12f3e36fbcae9ddd408",
+    "tests/lib_functools_mod.out": "4a1c560f5e5c0e9b0569ca2146c4f8f27f61d240bf48a93c97f3b595cea2f28a",
+    "tests/lib_functools_partial.py": "872c054d9e82d6575653c72c68ae30475080fe91d27b6ba49c2666889bcc1e22",
+    "tests/lib_functools_partial.out": "2ca9b5fe469230090b74812d1822f5fc87bea0eeb7d10d10e17642e1b39d5e5b",
+    "tests/lib_functools_reduce.py": "dbd7a8f4889987da41122583fd06aeb771f907e3ab815f15b619a218e1e8ce90",
+    "tests/lib_functools_reduce.out": "2e1765e67bd5e277cd567f254127d624a21a623ec5cd316ec6de3c1ac47910a0",
+    "tests/lib_functools_wraps.py": "2625a4e6b29446b10702638a2632ddaae97c3622cf2eb37aa4e9b5d27716bc9d",
+    "tests/lib_functools_wraps.out": "c10d35b34abf2c9cb92828824c1426ca0ff6cbc9e90e2aba8698c9f4d7aa7143",
+    "tests/mixed_list_annotation.py": "900ac019636f67cf70a265a3d40cf3188eba1372d69724de7086ee2201c31901",
+    "tests/mixed_list_annotation.out": "7a7c22a84115ca6d166a9fe059fccb8afda4f270b831b7d6da01d8ef332b624b",
+    "tests/port_ordered_set_api.py": "2ac8b25a1d2b554863ba7bfe226c603e0537ba6647a11ac5d09dcacdf18578b7",
+    "tests/port_ordered_set_api.out": "119a0db5cfa6d6a8611babcde840033bb35baa4d1d7e169319809c86b194194c",
+    "tests/port_ordered_set_api.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_ordered_set_edges.py": "00e592ab03a427fdbaa0291049df048a6b68569c2e63c37683b27247e8148db9",
+    "tests/port_ordered_set_edges.out": "b63d9c59e940c2d3ab6488e3f5bfb6fac481a1af00a3749f53fb33c93676ecf6",
+    "tests/port_ordered_set_edges.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_sortedcontainers_api.py": "d868387cab0c55ff90414f387d19af1cca44788a29201f3802c21577f008fc04",
+    "tests/port_sortedcontainers_api.out": "9864a5f45f75ce8b15801510edfa61210f2c576178ddb78a5014b8b5ee752899",
+    "tests/port_sortedcontainers_api.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_sortedcontainers_index.py": "26d7ef003acbc4ecb4490ef226117dbc70f1f7a0f5a9dbecb95067fcedf3f569",
+    "tests/port_sortedcontainers_index.out": "87917693921edcb418cf79caeb6683ab4fa4b45ec308a6b906e98207d9b7ae05",
+    "tests/port_sortedcontainers_index.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/property_generic.py": "5cc856721102c65710fc6032cc06a14f466fda35f535d935b2aa81291dea30e7",
+    "tests/property_generic.out": "c472249ed5116fd0ee877709cc939fd66e5524f441f4b2a28160ff74fa35e563",
+    "tests/property_setter_generic.py": "e49cf714dac9c8b0189d9b999dcefbe195ce3149a836e1b89fed05616af2b240",
+    "tests/property_setter_generic.out": "e78d3ba9886b9b4b0f674b1dfa133d179c8255ac1ff9373905a5f097ecaafc57",
+    "tests/reflect_dir_generic.py": "5080de193077b2577217e198bc7eb1e11f7b285f246e338fa3dc7361464bc67c",
+    "tests/reflect_dir_generic.out": "d4a7fcd27f5e20db7044b50dd3e43fa86c11dff7da5e50c902a58b5999051e3f",
+    "tests/return_annotated_parameters.py": "7f3feae0169f7532d77444cff6b56f0429c0f29f063b9ee3d34a326e1805b69a",
+    "tests/return_annotated_parameters.out": "149bde01032795c3262a0bf21d0871b6cc57dd7c5ff9e2e47f90446a11109d81",
+    "tests/return_special_unannotated.py": "0d1e9312601f8074235e33eb575983e8b3d06d7bffd71041f3a48270a69c3fbd",
+    "tests/return_special_unannotated.out": "bd40f72b20e07ca6a77e01b9d8413e29da2eeaa6ba997221e7e89c5db8192e2b",
+    "tests/syntax_annotations_uncompiled.py": "b5e3ff33224835c021b0a4c56cfba144323620a7a3ae60e3f6cfe6ac7aba5dfa",
+    "tests/syntax_annotations_uncompiled.out": "1704ab2c11035658638e35e56e349755bc7b7249e20307714003db5226e1b674",
+    "tests/syntax_blocks_generic.py": "b2346ddb12d14c47287ed964b5c4026e2fbc27d17bd64717bc32cefaaa4a9755",
+    "tests/syntax_blocks_generic.out": "b5f28dc74fc7f574d6d94610493c52cf21e3a6b35de7a14d68190c0c33f0a8aa",
+    "tests/type_alias_annotations.py": "b911c8004aa083083e88a552c225d9e8b77e78da2827b45d0435434c2ded40ca",
+    "tests/type_alias_annotations.out": "682b147739ddcc77acee46e1bc22be8d2a3bb133d961bfcf01146224b367b3c3",
+    "tests/type_alias_generic.py": "070ddaffe8205d8b6106bfe5213b913f908d261dbb33de6b2c3a3c5e05673325",
+    "tests/type_alias_generic.out": "a638470dec637e7469cbbab4d1a78f4744f1665a5c14b24bb103077eebe1383b",
+    "tests/types_generic_alias.py": "3dfa0b7f16301a9ad333fcb877ced05260d4a965d4ed0cd5bf0016c7b85bf477",
+    "tests/types_generic_alias.out": "29804cd6baeed3ef211b119404223b6ae77c7f8292a7c64e536ed538a598012d",
+    "tests/typevar_templates.py": "47e0c9fef473e64d68a24f15792210b89ff0c9b9006ad57a1304442ee3625a06",
+    "tests/typevar_templates.out": "518c458f044108f816ab7aeaf4aa2cd47487004ac988227068aa0dbbf8608a3f",
+    "tests/typevar_twice.py": "4291b34bdfc472106af4d7d0e882af48df49196fe69b660ed6937a99ce7b4ae8",
+    "tests/typevar_twice.out": "f9c2b454484477fdee4be94b3f5b26dad877cdb658da0eb2477a7cfe2a474a0e"
+  },
+  "tools_sha256": {
+    "tests/run.sh": "f808375aac9ca707ca794cd398bf939163728366ef6c380f6568cb0e531fef8e",
+    "tools/syntax_sweep.py": "86d07fd6d5395fbf355dbf3b62e15498d2ed15dcd2b871f3e1be4441412b1c3f",
+    "tools/import_sweep.py": "c610fa1ecc9effc949939810131b268000131a8da499efebddf10fcc80a1a370"
+  },
+  "commands": {
+    "build": {
+      "command": [
+        "make",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "mkdir -p build\n/root/.local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/root/.local/bin/python3.13 pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (635461 lines of IR)\n/root/.local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18851 lines)\ncp build/pystachy2 pystachy\n",
+      "stderr": "",
+      "wall_seconds": 139.98940535099973
+    },
+    "focused": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/any_annotated.py",
+        "tests/any_init_annotated.py",
+        "tests/any_variables_annotated.py",
+        "tests/dataclass_generic_field.py",
+        "tests/deftime_generic_later.py",
+        "tests/dict_object_keys_generic.py",
+        "tests/generic_annotations.py",
+        "tests/generic_annotations_hints.py",
+        "tests/generic_callable_field.py",
+        "tests/generic_classes.py",
+        "tests/generic_constructor_forms.py",
+        "tests/generic_dataclass_fields.py",
+        "tests/generic_def_param_scope.py",
+        "tests/generic_def_paramspec.py",
+        "tests/generic_inferred_unions.py",
+        "tests/generic_mod_default.py",
+        "tests/generic_pep695_classes.py",
+        "tests/generic_union_arguments.py",
+        "tests/generic_union_result_annotation.py",
+        "tests/generic_wider_destinations.py",
+        "tests/generic_without_init.py",
+        "tests/iter_annotations.py",
+        "tests/mixed_list_annotation.py",
+        "tests/property_generic.py",
+        "tests/property_setter_generic.py",
+        "tests/reflect_dir_generic.py",
+        "tests/return_annotated_parameters.py",
+        "tests/return_special_unannotated.py",
+        "tests/syntax_annotations_uncompiled.py",
+        "tests/syntax_blocks_generic.py",
+        "tests/type_alias_annotations.py",
+        "tests/type_alias_generic.py",
+        "tests/types_generic_alias.py",
+        "tests/typevar_templates.py",
+        "tests/typevar_twice.py",
+        "tests/errors/generic_ann_arity.py",
+        "tests/errors/generic_ann_bool_int.py",
+        "tests/errors/generic_ann_custom.py",
+        "tests/errors/generic_ann_custom_call.py",
+        "tests/errors/generic_ann_forward.py",
+        "tests/errors/generic_ann_mismatch.py",
+        "tests/errors/generic_ann_tvtuple.py",
+        "tests/errors/generic_ann_unbound.py",
+        "tests/errors/generic_ann_unsupported_class.py",
+        "tests/errors/generic_ann_untyped.py",
+        "tests/errors/generic_annotation_call.py",
+        "tests/errors/generic_base_unstarred.py",
+        "tests/errors/generic_builtin.py",
+        "tests/errors/generic_callable_unbound.py",
+        "tests/errors/generic_class_param.py",
+        "tests/errors/generic_conflict.py",
+        "tests/errors/generic_def_param_body.py",
+        "tests/errors/generic_def_param_enclosing.py",
+        "tests/errors/generic_def_param_method.py",
+        "tests/errors/generic_explicit_hint_concrete.py",
+        "tests/errors/generic_fallback_original_default.py",
+        "tests/errors/generic_fallback_original_destination.py",
+        "tests/errors/generic_fallback_original_direct.py",
+        "tests/errors/generic_fallback_original_keyword.py",
+        "tests/errors/generic_inferred_union_nested.py",
+        "tests/errors/generic_noinit_base.py",
+        "tests/errors/generic_noinit_field.py",
+        "tests/errors/generic_pep695_base.py",
+        "tests/errors/generic_pep695_param_call.py",
+        "tests/errors/generic_pep695_paramspec.py",
+        "tests/errors/generic_pep695_tvtuples.py",
+        "tests/errors/generic_return_untyped.py",
+        "tests/errors/generic_star_arity.py",
+        "tests/errors/generic_typevartuple_bare.py",
+        "tests/errors/generic_unbound.py",
+        "tests/errors/generic_union_argument.py",
+        "tests/errors/generic_union_mutable_argument.py",
+        "tests/errors/generic_union_result_contract.py",
+        "tests/errors/generic_wider_destination_alias.py",
+        "tests/errors/generic_wider_destination_member.py",
+        "tests/errors/import_annotation.py",
+        "tests/errors/import_annotation_attribute.py",
+        "tests/errors/import_annotation_call.py",
+        "tests/errors/import_annotation_class_subscript.py",
+        "tests/errors/import_annotation_later_class.py",
+        "tests/errors/import_annotation_literal.py",
+        "tests/errors/import_annotation_module_attr.py",
+        "tests/errors/import_annotation_operator.py",
+        "tests/errors/import_annotation_subscript.py",
+        "tests/errors/import_annotation_undefined.py",
+        "tests/errors/import_annotation_used.py",
+        "tests/errors/import_class_decorator.py",
+        "tests/errors/import_decorator_alias.py",
+        "tests/errors/import_decorator_unbound.py",
+        "tests/errors/import_method_decorator.py",
+        "tests/errors/syntax_async_comp_typevar.py",
+        "tests/errors/syntax_blocks_typevar_bound.py",
+        "tests/errors/syntax_typevar_bound_walrus.py",
+        "tests/errors/type_alias_typevar_args.py",
+        "tests/errors/type_alias_typevar_value.py",
+        "tests/errors/typevar_constraints.py",
+        "tests/errors/typevar_import_cycle.py",
+        "tests/errors/typevar_method.py",
+        "tests/errors/typevar_method_import.py",
+        "tests/errors/typevar_rebound.py",
+        "tests/errors/typevar_value.py",
+        "tests/errors/typevar_variable.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 102 cases\n142 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 18.230957260999276
+    },
+    "apis": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/lib_functools.py",
+        "tests/lib_functools_cache_object.py",
+        "tests/lib_functools_calls.py",
+        "tests/lib_functools_cmp_to_key.py",
+        "tests/lib_functools_mod.py",
+        "tests/lib_functools_partial.py",
+        "tests/lib_functools_reduce.py",
+        "tests/lib_functools_wraps.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 8 cases\n16 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 13.310558551998838
+    },
+    "ports": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/port_ordered_set_api.py",
+        "tests/port_ordered_set_edges.py",
+        "tests/port_sortedcontainers_api.py",
+        "tests/port_sortedcontainers_index.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 4 cases\n8 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 5.003215120999812
+    },
+    "hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/errors/generic_ann_unsupported_class.py",
+        "tests/generic_annotations.py",
+        "tests/generic_classes.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 3 cases\n5 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 4.616793479999615
+    },
+    "syntax": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-I",
+        "tools/syntax_sweep.py",
+        "--compiler",
+        "./pystachy",
+        "tests/any_annotated.py",
+        "tests/any_init_annotated.py",
+        "tests/any_variables_annotated.py",
+        "tests/dataclass_generic_field.py",
+        "tests/deftime_generic_later.py",
+        "tests/dict_object_keys_generic.py",
+        "tests/generic_annotations.py",
+        "tests/generic_annotations_hints.py",
+        "tests/generic_callable_field.py",
+        "tests/generic_classes.py",
+        "tests/generic_constructor_forms.py",
+        "tests/generic_dataclass_fields.py",
+        "tests/generic_def_param_scope.py",
+        "tests/generic_def_paramspec.py",
+        "tests/generic_inferred_unions.py",
+        "tests/generic_mod_default.py",
+        "tests/generic_pep695_classes.py",
+        "tests/generic_union_arguments.py",
+        "tests/generic_union_result_annotation.py",
+        "tests/generic_wider_destinations.py",
+        "tests/generic_without_init.py",
+        "tests/iter_annotations.py",
+        "tests/mixed_list_annotation.py",
+        "tests/property_generic.py",
+        "tests/property_setter_generic.py",
+        "tests/reflect_dir_generic.py",
+        "tests/return_annotated_parameters.py",
+        "tests/return_special_unannotated.py",
+        "tests/syntax_annotations_uncompiled.py",
+        "tests/syntax_blocks_generic.py",
+        "tests/type_alias_annotations.py",
+        "tests/type_alias_generic.py",
+        "tests/types_generic_alias.py",
+        "tests/typevar_templates.py",
+        "tests/typevar_twice.py",
+        "tests/errors/generic_ann_arity.py",
+        "tests/errors/generic_ann_bool_int.py",
+        "tests/errors/generic_ann_custom.py",
+        "tests/errors/generic_ann_custom_call.py",
+        "tests/errors/generic_ann_forward.py",
+        "tests/errors/generic_ann_mismatch.py",
+        "tests/errors/generic_ann_tvtuple.py",
+        "tests/errors/generic_ann_unbound.py",
+        "tests/errors/generic_ann_unsupported_class.py",
+        "tests/errors/generic_ann_untyped.py",
+        "tests/errors/generic_annotation_call.py",
+        "tests/errors/generic_base_unstarred.py",
+        "tests/errors/generic_builtin.py",
+        "tests/errors/generic_callable_unbound.py",
+        "tests/errors/generic_class_param.py",
+        "tests/errors/generic_conflict.py",
+        "tests/errors/generic_def_param_body.py",
+        "tests/errors/generic_def_param_enclosing.py",
+        "tests/errors/generic_def_param_method.py",
+        "tests/errors/generic_explicit_hint_concrete.py",
+        "tests/errors/generic_fallback_original_default.py",
+        "tests/errors/generic_fallback_original_destination.py",
+        "tests/errors/generic_fallback_original_direct.py",
+        "tests/errors/generic_fallback_original_keyword.py",
+        "tests/errors/generic_inferred_union_nested.py",
+        "tests/errors/generic_noinit_base.py",
+        "tests/errors/generic_noinit_field.py",
+        "tests/errors/generic_pep695_base.py",
+        "tests/errors/generic_pep695_param_call.py",
+        "tests/errors/generic_pep695_paramspec.py",
+        "tests/errors/generic_pep695_tvtuples.py",
+        "tests/errors/generic_return_untyped.py",
+        "tests/errors/generic_star_arity.py",
+        "tests/errors/generic_typevartuple_bare.py",
+        "tests/errors/generic_unbound.py",
+        "tests/errors/generic_union_argument.py",
+        "tests/errors/generic_union_mutable_argument.py",
+        "tests/errors/generic_union_result_contract.py",
+        "tests/errors/generic_wider_destination_alias.py",
+        "tests/errors/generic_wider_destination_member.py",
+        "tests/errors/import_annotation.py",
+        "tests/errors/import_annotation_attribute.py",
+        "tests/errors/import_annotation_call.py",
+        "tests/errors/import_annotation_class_subscript.py",
+        "tests/errors/import_annotation_later_class.py",
+        "tests/errors/import_annotation_literal.py",
+        "tests/errors/import_annotation_module_attr.py",
+        "tests/errors/import_annotation_operator.py",
+        "tests/errors/import_annotation_subscript.py",
+        "tests/errors/import_annotation_undefined.py",
+        "tests/errors/import_annotation_used.py",
+        "tests/errors/import_class_decorator.py",
+        "tests/errors/import_decorator_alias.py",
+        "tests/errors/import_decorator_unbound.py",
+        "tests/errors/import_method_decorator.py",
+        "tests/errors/syntax_async_comp_typevar.py",
+        "tests/errors/syntax_blocks_typevar_bound.py",
+        "tests/errors/syntax_typevar_bound_walrus.py",
+        "tests/errors/type_alias_typevar_args.py",
+        "tests/errors/type_alias_typevar_value.py",
+        "tests/errors/typevar_constraints.py",
+        "tests/errors/typevar_import_cycle.py",
+        "tests/errors/typevar_method.py",
+        "tests/errors/typevar_method_import.py",
+        "tests/errors/typevar_rebound.py",
+        "tests/errors/typevar_value.py",
+        "tests/errors/typevar_variable.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "102 of 102 agree, 0 valid ones Pystachy cannot parse, 0 differ\n",
+      "stderr": "",
+      "wall_seconds": 0.17528309199769865
+    },
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "144 of 470 modules import: _collections_abc _colorize _compat_pickle _opcode_metadata _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n52 left out, as lib/ has _markupbase, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n   54  cannot import name 'getweakrefcount' from '_weakref'\n   34  imports the missing module _io\n   26  imports the missing module _signal\n   24  imports the missing module _opcode\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   11  imports the missing module _ctypes\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    9  imports the missing module pyexpat\n    8  imports the missing module _socket\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  unsupported module attribute sys.base_prefix\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  imports the missing module _operator\n",
+      "stderr": "",
+      "wall_seconds": 27.206005725001887
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "--stubs",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/stubs-metadata.json",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 22 modules built into CPython: _io _opcode _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n146 of 470 modules import with the stubs: _collections_abc _colorize _compat_pickle _opcode_metadata _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile timeit typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n52 left out, as lib/ has _markupbase, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n144 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  gc\n    1     1  zlib\n\n   99  cannot import name 'getweakrefcount' from '_weakref'\n   31  'socketpair' is bound both as a variable and by an import (not supported)\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   13  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  imports the missing module _bz2\n    9  cannot infer the type of 'importlib._bootstrap._bootstrap_external' from None; annotate it (importli\n    7  imports the missing module _contextvars\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    7  imports the missing module urllib.request\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  unsupported module attribute sys.base_prefix\n    3  cannot infer the type of 'opcode._intrinsic_1_descs' from None; annotate it (opcode._intrinsic_1_des\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  only 'del list[i]' and 'del dict[key]' are supported\n    2  unsupported type annotation\n    2  imports the missing module _codecs_tw\n",
+      "stderr": "",
+      "wall_seconds": 173.16180071800045
+    }
+  },
+  "cpython_references": [
+    {
+      "source": "tests/any_annotated.py",
+      "returncode": 0,
+      "stdout": "3 s 4 v 5 6\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/any_init_annotated.py",
+      "returncode": 0,
+      "stdout": "1 text\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/any_variables_annotated.py",
+      "returncode": 0,
+      "stdout": "7 text\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/dataclass_generic_field.py",
+      "returncode": 0,
+      "stdout": "deque([3, 4]) deque([])\n3\nQueue(values=deque([4]))\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/deftime_generic_later.py",
+      "returncode": 1,
+      "stdout": "main: start\n",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/deftime_generic_later.py\", line 4, in <module>\n    import defmods.generic_later\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 4, in <module>\n    class Box[T]:\n        \"a generic class, uncompiled: its body reads LATER, unbound then\"\n        size = LATER\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 4, in <generic parameters of Box>\n    class Box[T]:\n        \"a generic class, uncompiled: its body reads LATER, unbound then\"\n        size = LATER\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 6, in Box\n    size = LATER\n           ^^^^^\nNameError: name 'LATER' is not defined\n",
+      "matches": true
+    },
+    {
+      "source": "tests/dict_object_keys_generic.py",
+      "returncode": 0,
+      "stdout": "int str False {Box(1): 'int'} {Box('s'): 'str'}\n11 False {Cell(1): 11, Cell(5): 5} {Cell('a')} {Cell(1), Cell(2), Cell(3)}\n['Box(3)'] Cell(9)\nTrue True -3550055125485641917\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_annotations.py",
+      "returncode": 0,
+      "stdout": "Box([1, 0, 1, 4]) 4 Box([0, 1]) Box([]) True\nBox([1, 2]) Box(['a', 'b']) Box(['k', 'j']) Box([4, 5]) Box([7]) Box([[1], []])\nBox(['x']) Box([3]) Box([['y']]) True\nBox(['a']) [Box([7]), Box([8])] Box([]) 1.5\nBox([9])\nk 1 1 k 3.14\n['a', 'b'] [1] 0\nBox([1]) Box([1])\nBox([[]]) Box([1, 'mixed'])\n2 3\nBox([[1], []]) Box([[1], []])\nBox([[], [1]]) Box([[], []])\nBox([{'a': [1], 'b': []}]) Box([{'a': [1], 'b': []}])\nBox([{'a': [], 'b': [1]}])\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_annotations_hints.py",
+      "returncode": 0,
+      "stdout": "[1, 2]\n[[1], [2]]\n([1], [1, 2])\n[3]\n[1]\n[4]\n{'a': 3}\n{3: 1}\n{3}\n[1, 2]\n[1, 1]\n[1, 1]\n[2, 2]\n{'a': 1, 'b': 1}\n[None, 1]\n[1, None]\n[True, False]\n[True, 1]\n[1, 'mixed']\n[[], []]\n([], [])\n[]\n[1]\n[1]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_callable_field.py",
+      "returncode": 0,
+      "stdout": "[3] [] []\n0.0\n1.5\n0 0\n['', '\u00e9']\nk {}\nNone\n0\nset()\n['one'] [] [2] [5]\n(1, 'a')\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_classes.py",
+      "returncode": 0,
+      "stdout": "Box(4, 2) 5 ['3', '4'] [1.5, 2.0]\nBox('yz', 2) YZ [1, 2] True True\n[Box(1, 1), Box(2, 1), Box(4, 2)] 7\n0 7 0 ['a', 'b', 'c']\n- -\n10 5 None 5\n12 12 10 2 area [(2, 5), (3, 4)]\n2 kg 2 kg 3 m 2 label\n23416728348467685 81 23416728348467685 81\nmade once made once 1 {(): 'made once'}\nFOUR! four\n(1, 'a', True) (1, 'a', True) (2, 'b', False) ('k', (2, 'b', False))\n() (0, ())\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_constructor_forms.py",
+      "returncode": 0,
+      "stdout": "Table({'a': 1, 'b': 2}) Table({'c': 3.5}) Table({'a': 1, 'b': 2, 'z': 26}) Table({}) Table({7: 'seven'}) Table({'x': 1, 'y': 2}) Table({'p': 1})\nBag(['x', 'y', 'z']) Bag(['x', 'y', 'z']) Bag(['a', 'b']) Bag([1.5, 2.5])\nBag(['x', 'y', 'z', 'w'])\n0 ['item'] (1, 'one') 0 0.0\nKeyError 'missing'\n[1, 2] s\n{'a': [1], 'b': [2]} 7 {1: 0, 2: 7}\n4 ABC [1, 3]\n<class 'int'> <class 'list'> <class 'dict'> <class 'str'> function function function None\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_dataclass_fields.py",
+      "returncode": 0,
+      "stdout": "s [1, 2] [['\u00e9']] True\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_def_param_scope.py",
+      "returncode": 0,
+      "stdout": "5 4 3 6 10\n[1, 1] ['a', 'a'] [2.5, 2.5, 2.5, 2.5] 5\n[10, 12, 7] [1, 2] ['s', 't'] [1, 3]\n['b', 'b'] [4, 4]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_def_paramspec.py",
+      "returncode": 0,
+      "stdout": "call add\ncall add\ncall greet\ncall greet\n3 6 hi bo! hi al?\n30 20\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_inferred_unions.py",
+      "returncode": 0,
+      "stdout": "[9007199254740993, 2.5] True True\n3\n[1, 'x']\n[None, 'text']\n[1, None]\n[2.5, 0]\n[2, 's']\n[3, 'star']\n[4, 'kw']\n['value', 1.5]\n[None, 'present']\n[True, 1, 'flag'] [2]\nTrue True\n[2, 3]\ntext\ninteger\n[1, 'two']\na\nb\n[[1, 3], [2]]\nTrue\n[True, 1]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_mod_default.py",
+      "returncode": 0,
+      "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n['b', 'a'] [3, 2, 1] []\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_pep695_classes.py",
+      "returncode": 0,
+      "stdout": "3 2 [1, 2]\n['\u00e9'] None\nPair('a', 1) Pair(1, 'a') Pair(1, 'x')\nabc 2.5 3 not an int\n4\n['a', 'b', 'c'] [1]\n(1, 'a', 2.5) 2 7.0\n[1, 3]\n1 2.5 True True\na module-level T True True \u00fc\n['1', '2'] 1.0\nn ['x', '\u00ff']\nA MODULE-LEVEL T!\n7 a module-level T! \u00fc\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_union_arguments.py",
+      "returncode": 0,
+      "stdout": "[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[9007199254740993, 2.5] 9007199254740993 2.5\nTrue True\n[3, 4.5] 3 4.5\nTrue True\n6.5\n[1.5, 0] 1.5 0\nFalse False\n[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[5, 6.5] 5 6.5\nTrue True\n[None, 'ok'] True ok\n[True, 1]\n[1, None]\n[[1, 3], {'n': 2}]\n[1, 3, 4]\n[7, 2.5] True\nABC\nabc\nDEFAULT\na\n[1, 3, 4, 5]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_union_result_annotation.py",
+      "returncode": 0,
+      "stdout": "3.5\n1\n3.5\n1\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_wider_destinations.py",
+      "returncode": 0,
+      "stdout": "[9007199254740993, 2] True True\n2.5\n[5, 6] True True\n2.5\n[7, 0] True True\n2.5\n[8, 9] True True\n2.5\n[10, 11] True True\n2.5\n[12, 13] True True\n2.5\n[3, 4] True True\n2.5\n[16, 17] True True\n2.5\n[True, False] True\n1\n[14, 15] True True\n2.5\n[1, 2] None\nTrue\ndefault\n['text', 'text'] True\n[1, 2]\nright\nleft\n[1, 2]\nleft\nright\n[1, 2]\nabc\ndef\nDEFAULT\na\nd\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/generic_without_init.py",
+      "returncode": 0,
+      "stdout": "Box(size=3) 3 box 5 [2, 2] 3 True\n1.5 ['a', 'a'] s\n4 [1, 1] True\n3 [0, 1, 2] 3 t\nTrue True\nk:1 1.5:None :\nTrue True\nTagged(tag='t', n=0) Tagged(tag='u', n=2)\nDoubled(n=6) Doubled(n=10)\n7 7\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/iter_annotations.py",
+      "returncode": 0,
+      "stdout": "3 6 6 5 6\nx [6] 2 1\na-b c+d \u00e9\u00fc\n1 s 1\n[1, 2, 1, 2, 1]\na b a\n1 2 1 2\n4.5 4.5\nh ['r1', 'r2'] x \n16 [8]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/mixed_list_annotation.py",
+      "returncode": 0,
+      "stdout": "[1, 2.5] [1, 'x', 2.5, None] [('a', 1), ('b', 2.5)] [('a', (1, 'x')), ('b', (2.5, 2))]\nTrue True\ncaught TypeError\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/property_generic.py",
+      "returncode": 0,
+      "stdout": "3 generic\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/property_setter_generic.py",
+      "returncode": 0,
+      "stdout": "42 \u00e9\u00e9 1\n1.0 [2.5, 3.5] [1.0] ['a'] [['a']]\n298.15 25.0\nValueError below absolute zero\ndown from 5\ndown from 4\n3\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/reflect_dir_generic.py",
+      "returncode": 0,
+      "stdout": "['__class_getitem__', '__orig_bases__', '__parameters__', '__type_params__', 'item']\n['__class_getitem__', '__orig_bases__', '__parameters__', 'item']\nTrue False True\nTrue False\n['item', '__class_getitem__', '__orig_bases__', '__parameters__', '__type_params__']\n['item', '__class_getitem__', '__orig_bases__', '__parameters__']\n['__dataclass_fields__', '__dataclass_params__', '__match_args__', '__replace__'] ['__annotations__', '__dataclass_fields__', '__dataclass_params__', '__match_args__', '__replace__', 'x']\nFalse True\n['a', 'b'] True ['a', 'b']\n['a', 'b'] False ['a']\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/return_annotated_parameters.py",
+      "returncode": 0,
+      "stdout": "6 10\naa! bbb?\nfound None\n7 6 12\n18 10\nNone\nNone\n4\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/return_special_unannotated.py",
+      "returncode": 0,
+      "stdout": "0 Value(0) 0 False [Value(0)]\n2 Value(2) 2 True [Value(2)]\n1 True\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/syntax_annotations_uncompiled.py",
+      "returncode": 0,
+      "stdout": "ran\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/syntax_blocks_generic.py",
+      "returncode": 0,
+      "stdout": "ok\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/type_alias_annotations.py",
+      "returncode": 0,
+      "stdout": "3 3\n['x', 'x'] None\n5 a.b.c \n(0.5, 1.5)\n3.0 6 empty int 7 str '\u00e9'\n4 root -\nPlaced(at=3, value=2.5, label='?') Placed(at=1, value=2, label='\u00fc')\npos name-or-score name-or-score True True\n42 24 5 1000.0 False\n5\n2 ['z', 'w'] 0\n[6, 3]\n2 3\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/type_alias_generic.py",
+      "returncode": 0,
+      "stdout": "('b', 'a') 1 x\n1.5 (1, 'a')\n3 0\n0 5 18\n4.0\n2 \u00fc sum=3\nb [(2, 2), (1, 1)]\n[[1]]\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/types_generic_alias.py",
+      "returncode": 0,
+      "stdout": "exit True True False\nexit False False True\n[3] [4, 5] 5 3 True\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/typevar_templates.py",
+      "returncode": 0,
+      "stdout": "mods: init mods\nmods.shapes: init mods.shapes\na a [1]\ne None\ndflt y None\n[1] ['a', 'b'] 1.5 [1] s True\n{1: 'a', 2: 'b'} {'x': 1}\n2 1\n1 y (1, 2) ('p', 'q')\n3\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/typevar_twice.py",
+      "returncode": 0,
+      "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n2 True False False\n3 1\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools.py",
+      "returncode": 0,
+      "stdout": "bounded, maxsize=3\n  square 1\n1 1 CacheInfo(hits=0, misses=1, maxsize=3, currsize=1)\n  square 2\n2 4 CacheInfo(hits=0, misses=2, maxsize=3, currsize=2)\n1 1 CacheInfo(hits=1, misses=2, maxsize=3, currsize=2)\n  square 3\n3 9 CacheInfo(hits=1, misses=3, maxsize=3, currsize=3)\n  square 4\n4 16 CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\n1 1 CacheInfo(hits=2, misses=4, maxsize=3, currsize=3)\n  square 2\n2 4 CacheInfo(hits=2, misses=5, maxsize=3, currsize=3)\n  square 5\n5 25 CacheInfo(hits=2, misses=6, maxsize=3, currsize=3)\n  square 3\n3 9 CacheInfo(hits=2, misses=7, maxsize=3, currsize=3)\n  square 4\n16 CacheInfo(hits=2, misses=8, maxsize=3, currsize=3)\ncleared CacheInfo(hits=0, misses=0, maxsize=3, currsize=0)\n  square 1\n1 CacheInfo(hits=0, misses=1, maxsize=3, currsize=1)\n  one a\n  one b\n  one a\nmaxsize=1: aa aa bb aa CacheInfo(hits=1, misses=3, maxsize=1, currsize=1)\ncache: 2880067194370816120 CacheInfo(hits=88, misses=91, maxsize=None, currsize=91)\n55 CacheInfo(hits=8, misses=11, maxsize=None, currsize=11)\n  unbounded 1\n  unbounded 2\nmaxsize=None: -1 -2 -1 CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\n  nocache 1\n  nocache 1\nmaxsize=0: 2 2 CacheInfo(hits=0, misses=2, maxsize=0, currsize=0)\n  negative 1\n  negative 1\nmaxsize=-5: 3 3 CacheInfo(hits=0, misses=2, maxsize=0, currsize=0)\n  bare 1\n@lru_cache: 10 10 CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)\n  triple 1\n  triple 2\n  triple 3\n  triple 2\nlru_cache(2)(f): 3 6 3 9 6 CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n  triple 1\n__wrapped__: 3 CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\nnames: triple triple square fib\n  triple 4\ncache(f): 12 12 CacheInfo(hits=1, misses=1, maxsize=None, currsize=1)\n  falsy 1\n  zero x\nfalsy: '' '' 0 0 CacheInfo(hits=1, misses=1, maxsize=8, currsize=1) CacheInfo(hits=1, misses=1, maxsize=8, currsize=1)\n  items 3\nsame object: True [0, 1, 2, 99] CacheInfo(hits=1, misses=1, maxsize=8, currsize=1)\n  checked 1\n1\n  checked -1\nValueError negative: -1\n  checked -1\nValueError negative: -1\n1\nCacheInfo(hits=1, misses=3, maxsize=4, currsize=1)\n  join ab 2 True\n  join ab 2 False\n  join ab 3 True\ntuple keys: abab abab ab ababab\nCacheInfo(hits=1, misses=3, maxsize=4, currsize=3)\n  pair (2, 'x') None\n  pair (2, 'x') y\ntuple and str | None: xx- xx- xxy CacheInfo(hits=1, misses=2, maxsize=4, currsize=2)\n  flag True\n  flag False\nbool: yes no yes CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  config\nno parameters: {'retries': 4} CacheInfo(hits=1, misses=1, maxsize=None, currsize=1)\n  point 1\n  point 2\n  point 3\n  point 1\nobjects: 1 True -2 -3 False CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n  maybe 1\n  maybe 0\nint | None: 1 None None 1 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nclosures:\n  times 10 2\n  times 10 3\n20 20 30 CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  times 20 2\n  times 20 3\n40 40 60 CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  inner [7, 2]\nreentrant: [7, 2] [7, 2] False CacheInfo(hits=1, misses=2, maxsize=4, currsize=1)\n  clearing 1\n  clearing 2\n  clearing 3\n  clearing 1\nclear inside: 1 2 3 CacheInfo(hits=0, misses=0, maxsize=2, currsize=1) 1 CacheInfo(hits=0, misses=1, maxsize=2, currsize=2)\nchurn: 11310000 CacheInfo(hits=0, misses=5000, maxsize=100, currsize=100)\nCacheInfo(hits=2, misses=5001, maxsize=100, currsize=100)\nmutual: True True CacheInfo(hits=1, misses=26, maxsize=None, currsize=26) CacheInfo(hits=0, misses=26, maxsize=None, currsize=26)\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_cache_object.py",
+      "returncode": 0,
+      "stdout": "10 10 10 [1, 1] CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\n2 2 4 6 2 [1, 2, 3, 1]\nCacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n10 CacheInfo(hits=0, misses=1, maxsize=None, currsize=1)\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_calls.py",
+      "returncode": 0,
+      "stdout": "forms 112 212 312 412 CacheInfo(hits=0, misses=4, maxsize=4, currsize=4)\nhits 112 212 312 412 CacheInfo(hits=4, misses=4, maxsize=4, currsize=4)\norder 512 512 CacheInfo(hits=5, misses=5, maxsize=4, currsize=4)\nevicted 612 CacheInfo(hits=5, misses=6, maxsize=4, currsize=4)\nempty 712 712 CacheInfo(hits=1, misses=1, maxsize=4, currsize=1)\naliases 812 812 812 812 812 CacheInfo(hits=5, misses=2, maxsize=4, currsize=2)\nbound keyword 912 912 CacheInfo(hits=6, misses=3, maxsize=4, currsize=3)\nwrapped 1012 CacheInfo(hits=6, misses=3, maxsize=4, currsize=3)\neval 12 ['default', 'b', 'a', 'body']\neval hit 12 ['default', 'b', 'a', 'body', 'b2', 'a2']\ndefault 12 12 ['default', 'b', 'a', 'body', 'b2', 'a2', 'pos', 'body'] CacheInfo(hits=2, misses=2, maxsize=None, currsize=2)\nexpansion 12 12 CacheInfo(hits=3, misses=3, maxsize=None, currsize=3)\nkw expansion 12 12 CacheInfo(hits=4, misses=4, maxsize=None, currsize=4)\nclosure 3! 3! 3! 3! 3! CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\nclosure 4! 4! 4! 4! 4! CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\noptional none none none none CacheInfo(hits=1, misses=3, maxsize=None, currsize=3)\ndisabled 3 3 3 CacheInfo(hits=0, misses=3, maxsize=0, currsize=0)\npositional 2 2 2 CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\nkw-only omitted 6 6 CacheInfo(hits=0, misses=2, maxsize=None, currsize=2)\ninner 2\nrecursive 2 2 2 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nclear 1 2 2 CacheInfo(hits=0, misses=0, maxsize=2, currsize=1)\nnegative\nnegative\nraises CacheInfo(hits=0, misses=2, maxsize=None, currsize=0)\nnine 45 45 CacheInfo(hits=0, misses=2, maxsize=2, currsize=2)\nnine hit 45 45 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nnine keywords 45 CacheInfo(hits=2, misses=3, maxsize=2, currsize=2)\nnine keywords hit 45 CacheInfo(hits=3, misses=3, maxsize=2, currsize=2)\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_cmp_to_key.py",
+      "returncode": 0,
+      "stdout": "unhashable type: 'functools.KeyWrapper'\ncmp_to_key: TestCmpToKey.test_obj_field and test_sort_int; partial methods and subset edge cases\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_mod.py",
+      "returncode": 0,
+      "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n1 file 2 files 1 file 3 dirs 2 files\nCacheInfo(hits=1, misses=4, maxsize=2, currsize=2) CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n5 7 CacheInfo(hits=1, misses=8, maxsize=None, currsize=8)\n['label 1 file', 'label 2 file', 'label 3 dir', 'label 2 file', 'depth 5', 'depth 4', 'depth 3', 'depth 2', 'depth 1', 'depth 0', 'depth 7', 'depth 6']\n6 6 6 CacheInfo(hits=1, misses=2, maxsize=4, currsize=2) ['area 2 3', 'area 3 2']\nCacheInfo(hits=0, misses=0, maxsize=None, currsize=0) 1 CacheInfo(hits=0, misses=2, maxsize=None, currsize=2)\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_partial.py",
+      "returncode": 0,
+      "stdout": "120 123 125 140\n127 129 (1,) {'c': 7} True\n137 (1, 3) {'c': 7} True False\n240 241 (2,) {'b': 4}\n523 {'c': 3, 'b': 2} 2\nTrue True True False\n5 255\nx x+y+z x/y a-b\n12 7 11 21\n\u00e9\u00df\n51\n[1, 2, 3] 3\n[130, 230] [110, 120]\n990 110\n[410, 420]\neval a\neval b\neval c\neval d\nabcbd\nTypeError: the first argument must be callable\nTypeError: the first argument must be callable\nTypeError: the first argument must be callable\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_reduce.py",
+      "returncode": 0,
+      "stdout": "reduce: supported upstream assertions and subset edge cases\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/lib_functools_wraps.py",
+      "returncode": 0,
+      "stdout": "call add\n5 add add\ncall mul\n12 mul mul\n3 inc name_only.<locals>.inner 2 inner inc 2 inner neither.<locals>.inner\n2 kept module_only.<locals>.kept 2 inc inc\n5 inc inc 5 inc inc\ncall nested\n6 nested outer.<locals>.nested\ncall method\n4 method Box.method\ncall len\n3 len len\ncall <lambda>\n6 <lambda> <lambda>\n11 timer timed.<locals>.timer\n('__module__', '__name__', '__qualname__', '__doc__', '__annotations__', '__type_params__') ('__dict__',)\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/port_ordered_set_api.py",
+      "returncode": 0,
+      "stdout": "order: 5 True ['a', 'b', 'r', 'c', 'd']\nbinary: True OrderedSet(['a', 'b']) True\nbinary: True OrderedSet(['r', 'c', 'd'])\nindexing: True True True 1\nKeyError 'br'\npandas: 1 2\nremove: True r c d\nremove: 0 1 2 True True True\nremove: OrderedSet(['r', 'c', 'd']) False\nclear: 0 True OrderedSet()\nupdate: 7 8 abcdefgh\nupdate: 5 6 abcdef\npop: b a\nKeyError 'Set is empty'\nrepr: OrderedSet() True True\n4 2 False True False | 1 4 | 5 3 | 5 3 | 5 3 1 4\n0 3 True False True |  |  | 3 1 2 | 3 1 2\n3 0 False True True |  | 3 1 2 | 3 1 2 | 3 1 2\n0 0 True True True |  |  |  | \n13 13 False False False | 18 8 14 4 1 5 16 15 | 20 3 11 17 6 | 20 3 11 17 6 10 7 12 2 9 | 18 20 8 3 14 4 1 11 5 17 6 16 15 10 7 12 2 9\n13 13 False False False | 16 14 8 15 18 1 4 5 | 10 7 12 2 9 | 10 7 12 2 9 20 3 11 17 6 | 16 10 14 7 8 15 12 18 1 2 4 5 9 20 3 11 17 6\n14 15 False False False | 14 9 10 17 18 20 0 13 12 11 4 | 6 3 1 | 6 3 1 8 2 5 16 | 14 9 6 10 17 18 3 20 0 13 1 12 11 4 8 2 5 16\n15 14 False False False | 14 20 4 13 17 18 10 12 0 11 9 | 8 2 5 16 | 8 2 5 16 6 3 1 | 8 14 20 4 13 2 17 18 5 10 12 0 11 16 9 6 3 1\n13 14 False False False | 19 13 17 14 2 8 7 16 0 10 | 1 11 20 | 1 11 20 3 12 18 5 | 19 13 1 17 11 14 20 2 8 7 16 0 10 3 12 18 5\n14 13 False False False | 17 2 14 19 8 7 16 13 0 10 | 3 12 18 5 | 3 12 18 5 1 11 20 | 17 2 14 19 8 7 16 3 13 12 0 18 5 10 1 11 20\n13 14 False False False | 11 2 7 10 16 1 8 15 13 | 14 12 20 17 | 14 12 20 17 19 18 9 0 3 | 11 2 7 14 12 20 10 16 1 8 15 13 17 19 18 9 0 3\n14 13 False False False | 13 16 10 1 2 11 8 7 15 | 19 18 9 0 3 | 19 18 9 0 3 14 12 20 17 | 13 19 18 16 10 1 2 9 11 0 8 7 15 3 14 12 20 17\n15 12 False False False | 11 4 16 7 9 12 19 20 15 2 0 | 17 13 1 5 | 17 13 1 5 18 | 11 17 13 4 16 7 9 12 19 20 15 2 1 0 5 18\n12 15 False False False | 2 16 4 20 11 19 15 12 7 0 9 | 18 | 18 17 13 1 5 | 2 16 4 20 11 19 15 12 7 0 18 9 17 13 1 5\n13 12 False False False | 8 1 3 0 6 19 | 5 11 4 2 18 12 16 | 5 11 4 2 18 12 16 20 14 15 17 13 7 | 8 1 3 0 5 6 11 4 2 18 19 12 16 20 14 15 17 13 7\n12 13 False False False | 1 8 3 0 19 6 | 20 14 15 17 13 7 | 20 14 15 17 13 7 5 11 4 2 18 12 16 | 20 14 15 17 1 8 13 3 0 7 19 6 5 11 4 2 18 12 16\n13 12 False False False | 7 20 13 6 17 15 18 19 12 | 16 2 1 11 | 16 2 1 11 8 0 9 | 7 20 16 13 2 6 1 17 11 15 18 19 12 8 0 9\n12 13 False False False | 6 19 20 17 7 12 15 13 18 | 8 0 9 | 8 0 9 16 2 1 11 | 8 6 19 20 0 17 7 12 15 13 9 18 16 2 1 11\n13 12 False False False | 8 1 10 3 0 6 16 17 | 14 18 12 5 7 | 14 18 12 5 7 9 2 15 19 | 8 1 10 14 18 3 0 12 6 16 5 7 17 9 2 15 19\n12 13 False False False | 1 10 17 6 16 8 3 0 | 9 2 15 19 | 9 2 15 19 14 18 12 5 7 | 9 1 10 17 6 16 2 8 3 15 19 0 14 18 12 5 7\n13 15 False False False | 18 16 20 15 17 8 13 5 6 9 | 1 14 0 | 1 14 0 10 12 3 7 19 | 18 16 20 15 17 8 13 1 5 14 0 6 9 10 12 3 7 19\n15 13 False False False | 9 20 13 5 16 17 18 6 15 8 | 10 12 3 7 19 | 10 12 3 7 19 1 14 0 | 9 20 13 10 5 12 16 3 7 17 18 6 15 19 8 1 14 0\n12 12 False False False | 1 17 5 9 18 11 | 0 13 12 8 19 2 | 0 13 12 8 19 2 16 6 3 14 7 15 | 0 13 1 12 17 5 9 8 18 19 2 11 16 6 3 14 7 15\n12 12 False False False | 9 1 5 17 18 11 | 16 6 3 14 7 15 | 16 6 3 14 7 15 0 13 12 8 19 2 | 16 9 6 3 1 14 7 5 15 17 18 11 0 13 12 8 19 2\n14 15 False False False | 13 8 16 15 9 11 6 4 3 19 17 | 12 1 18 | 12 1 18 2 10 20 14 | 12 13 1 8 16 15 9 11 18 6 4 3 19 17 2 10 20 14\nOrderedSet(['1', '2', '3']) 0 2 2\nTrue False True False\n0 OrderedSet(['3'])\n4 OrderedSet(['1', '2', '3', '5', '4']) 1 3\nOrderedSet(['1', '3'])\nOrderedSet(['1', '3']) ['1', '2', '3'] False\nOrderedSet(['3', '1', '4', '5', '2', '0']) OrderedSet(['3', '1', '4', '5', '2', '0', '8', '9']) OrderedSet(['3', '1', '4', '5', '2', '0', '10'])\nOrderedSet(['1', '2', '3']) OrderedSet(['2']) OrderedSet(['1', '2', '3'])\nOrderedSet(['1', '3']) OrderedSet(['1']) OrderedSet(['1', '2', '3'])\nFalse True False\nFalse True False\nOrderedSet(['4', '5', '9', '2'])\nOrderedSet(['1', '3'])\nOrderedSet(['3', '5'])\nOrderedSet(['1', '3', '7'])\nOrderedSet(['4', '5', '9', '2'])\nOrderedSet(['b', 'a'])\nOrderedSet()\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/port_ordered_set_edges.py",
+      "returncode": 0,
+      "stdout": "empty: OrderedSet() OrderedSet() 0 False True False []\nKeyError: 'Set is empty' KeyError('Set is empty')\nKeyError: ''\nIndexError: list index out of range\nempty: OrderedSet() OrderedSet() OrderedSet() OrderedSet()\nempty: True True True True {}\nOrderedSet([\"it's\", 'say \"hi\"', 'tab\\there', 'nl\\n', '\\x00', '\\x7f', '\u00e9', '\u20ac', '\ud83d\ude00', '\\u200b', '\\\\', '\u03a9\u2248\u00e7', ''])\n13 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] [True, True, True, True, True, True, True, True, True, True, True, True, True] \ud83d\ude00 True \ud83d\ude00\nKeyError: '\u00fcn\u00ef' KeyError('\u00fcn\u00ef')\nKeyError: '\ud83d\ude00\ud83d\ude00' KeyError('\ud83d\ude00\ud83d\ude00')\nKeyError: \"'\" KeyError(\"'\")\nKeyError: '\"' KeyError('\"')\nKeyError: 'e' KeyError('e')\nKeyError: ' ' KeyError(' ')\nTrue True True\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nOrderedSet(['x', 'y', 'z']) [0, 1, 2] x z 2 0\nadd: 3 0 3 4 OrderedSet(['x', 'y', 'z', 'w', 'v'])\nupdate: 0 0 0 2 6 OrderedSet(['x', 'y', 'z', 'w', 'v', 'u', 't'])\npop(1): q 2 4 {'p': 0, 'r': 2, 's': 3, 't': 4}\ndiscard: OrderedSet(['p', 'r', 's']) {'p': 0, 'r': 2, 't': 3} False ['p', 'r', 's']\nIndexError: list index out of range\nKeyError: 's'\nafter: OrderedSet(['p', 'r']) {'p': 0, 'r': 2, 't': 3} 2\npop: p r 0 {'t': 3}\ndiscard: OrderedSet(['a', 'c', 'd']) [0, 1, 2] {'a': 0, 'c': 1, 'd': 2}\nTrue False False True\nOrderedSet(['a', 'b', 'd']) OrderedSet(['a', 'b', 'c', 'e']) OrderedSet(['a', 'c']) OrderedSet(['b', 'c']) OrderedSet(['b'])\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\nOrderedSet(['c', 'd', 'd']) {'c': 0, 'd': 2} 3\nOrderedSet(['a', 'b', 'c']) {'a': 0, 'b': 1, 'c': 2}\nFalse True True False False True\nTrue False True True\nTrue 0 2 False\n['pear', 'fig', 'apple', 'kiwi'] [(0, 'pear'), (1, 'fig'), (2, 'apple'), (3, 'kiwi')] ['apple', 'fig', 'kiwi', 'pear'] apple pear pear, fig, apple, kiwi [('pear', 'pear'), ('fig', 'fig'), ('apple', 'apple'), ('kiwi', 'kiwi')]\n16 ['pear', 'fig', 'apple', 'kiwi'] True True [] 3\ndedupe: 824 1278379 939394 k590 k564 500 823\nOrderedSet(['\\xa0', '\\xad', '\\u2028', '\\x85', '\\u0378', 'e\u0301', '\\x1b', '\\r', '\\ufeff', '\\U0010ffff', '\\x80', '\\u3000', '\ud83c\uddfa\ud83c\uddf8', 'a\\'b\"c', '%s', '%%']) [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]\n4 OrderedSet(['a\\x00b', 'a', 'a\\x00', '\\x00\\x00']) [0, 1, 2, 3] False True {'a\\x00b': 0, 'a': 1, 'a\\x00': 2, '\\x00\\x00': 3}\n2 1 True 10001\n['a', 'b', 'd', 'f'] OrderedSet(['a', 'c', 'e', 'f']) {'a': 0, 'c': 1, 'e': 2, 'f': 3}\n['a', 'c', 'e', 'f', 'aa', 'cc'] OrderedSet(['a', 'c', 'e', 'f', 'aa', 'cc'])\n['a'] OrderedSet() 0\nRuntimeError: dictionary changed size during iteration\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\na 2 {'b': 1, 'c': 2, 'd': 2} 2 d\nOrderedSet(['b', 'c']) {'b': 1, 'd': 1}\n2 OrderedSet(['b', 'c', 'c']) {'b': 1, 'd': 1, 'c': 2}\nF T F OrderedSet(['y'])\n3 0 2 a False True\n4 OrderedSet(['b', 'c', 'd', 'e']) OrderedSet()\nOrderedSet() {}\nOrderedSet(['p', 'q']) OrderedSet(['p', 'q', 'z']) False False\n[0, 1, 2, 3, 0, 4, 0, 5] the cat sat on the mat the end OrderedSet(['the', 'cat', 'sat', 'on', 'mat', 'end'])\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/port_sortedcontainers_api.py",
+      "returncode": 0,
+      "stdout": "SortedList([]) SortedList([1, 2, 3, 4, 5])\nSortedList([1, 2, 3])\nSortedList([1, 2, 3])\nTrue False\nTrue\nValueError: 0 not in list\nSortedList([1, 2, 4, 5]) 2 5\n[3, 4, 5, 6] [3, 4, 5, 6]\n2 3 3\n3\n5 3 SortedList([1, 2, 4])\n2\nValueError: 26 is not in list\nSortedList([1, 1, 2, 3, 20, 20])\nSortedList([1, 1, 2, 3, 20, 20]) SortedList([1, 1, 1, 2, 2, 2, 3, 3, 3])\nSortedList([1, 1, 1, 2, 2, 2, 3, 3, 3])\nempty: SortedList([]) 0 False True False 0 0 0\nempty ranges: [] [] [] []\npop IndexError: pop index out of range\nremove ValueError: 3 not in list\ngetitem IndexError: list index out of range\nindex ValueError: 3 is not in list\ndel IndexError: list index out of range\nafter discard: SortedList([]) True True\nSortedList([-9223372036854775808, -9223372036854775808, -7, 0, 1, 2, 2, 3, 3, 3, 5, 10, 9223372036854775807, 9223372036854775807]) 14\ncount: 3 2 2 2 0\nin: True False True True False False\nindex: 7 12 0 7 7\nbisect: 7 10 10 2 12 14\ngetitem: -9223372036854775808 -9223372036854775808 9223372036854775807 9223372036854775807 3 -9223372036854775808\nirange: [0, 1, 2, 2, 3, 3, 3, 5] [1, 2, 2, 3, 3, 3] [] []\nirange reverse: [3, 3, 3, 2, 2, 1, 0] [] [9223372036854775807, 9223372036854775807] []\nirange open: [-9223372036854775808, -9223372036854775808, -7, 0] [3, 3, 3, 5, 10, 9223372036854775807, 9223372036854775807] [-9223372036854775808, -9223372036854775808] []\nislice: [-7, 0, 1, 2] [2, 1, 0, -7] [10, 9223372036854775807, 9223372036854775807] [-9223372036854775808, -9223372036854775808, -7]\nislice out of range: [-9223372036854775808, -9223372036854775808] [9223372036854775807, 9223372036854775807] [] []\nValueError: 9223372036854775806 not in list\nValueError: -9223372036854775807 not in list\nValueError: 4 not in list\nindex 7 3 ValueError: 3 is not in list\nindex 0 3 ValueError: 3 is not in list\nindex -2 None ValueError: 3 is not in list\ngetitem 14 IndexError: list index out of range\npop 14 IndexError: list index out of range\ndel 14 IndexError: list index out of range\ngetitem -15 IndexError: list index out of range\npop -15 IndexError: list index out of range\ndel -15 IndexError: list index out of range\ngetitem 9223372036854775807 IndexError: list index out of range\npop 9223372036854775807 IndexError: list index out of range\ndel 9223372036854775807 IndexError: list index out of range\ngetitem -9223372036854775807 IndexError: list index out of range\npop -9223372036854775807 IndexError: list index out of range\ndel -9223372036854775807 IndexError: list index out of range\npop: 9223372036854775807 -9223372036854775808 0 10 SortedList([-9223372036854775808, -7, 1, 2, 2, 3, 3, 3, 5, 9223372036854775807])\nafter removals: SortedList([-7, 1, 2, 2, 3, 3, 5]) 7\ncopy: SortedList([-7, 1, 2, 2, 3, 3, 5, 100]) SortedList([-7, 1, 2, 2, 3, 3, 5]) True False False\noperators: SortedList([-7, -3, 1, 2, 2, 3, 3, 5, 7]) SortedList([]) SortedList([]) SortedList([-7, -7, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 5, 5]) SortedList([-7, 1, 2, 2, 3, 3, 5, 9]) SortedList([-7, -7, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 5, 5])\nin place: SortedList([-7, 1, 2, 2, 3, 3, 4, 5]) False SortedList([-7, 1, 2, 2, 3, 3, 4, 5]) [SortedList([-7, 1, 2, 2, 3, 3, 4, 5])]\nsetitem NotImplementedError: use ``del sl[index]`` and ``sl.add(value)`` instead\nappend NotImplementedError: use ``sl.add(value)`` instead\nextend NotImplementedError: use ``sl.update(values)`` instead\ninsert NotImplementedError: use ``sl.add(value)`` instead\nreverse NotImplementedError: use ``reversed(sl)`` instead\n==: True False True False True False True\n<: True True False False True True False True True True\nin lists: True False 1 1 True\nsorted: [SortedList([]), SortedList([1, 2]), SortedList([1, 2, 3]), SortedList([1, 2, 4])] SortedList([1, 2]) SortedList([1, 2, 4])\nwith None: 1 True 1 True False True\nin tuples and dicts: True True True False True True False True\noptional lists: True False [None] True\nkeywords: 2 5 5 7 [6, 5, 4, 3] [8, 7, 6, 5, 4, 3, 2, 1, 1] 0 10 SortedList([1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) SortedList([])\niterated: [1, 2, 3] [-14, 2, 4, 4, 6, 6, 10] 9 [5, 3, 3, 2, 2, 1, -7] 5\n",
+      "stderr": "",
+      "matches": true
+    },
+    {
+      "source": "tests/port_sortedcontainers_index.py",
+      "returncode": 0,
+      "stdout": "built: True len=203 sublists=1 [203]..[203] offset=0 index=0 []\nreset: True len=203 sublists=51 [4, 4, 4, 4]..[4, 3] offset=0 index=0 []\npositional: -494 -268 499 441 -21 150\nindexed: True len=203 sublists=51 [4, 4, 4, 4]..[4, 3] offset=63 index=114 [203, 128, 75, 64, 64, 64, 11]\nbisect: 107 107 77 1\nislice: [-480, -478, -476, -465, -460, -459, -458, -454, -436, -435, -434, -431, -430, -428, -426, -422, -410, -406, -402, -402, -400, -398, -396, -393, -379, -373, -372, -371, -347, -345, -339, -335, -332, -325, -316, -305, -304] [481, 480, 480, 458, 456, 441, 436, 432, 428, 424, 419, 416, 404, 403, 398, 386, 381, 380, 379, 375, 371, 370, 369, 368, 366, 365, 343, 328, 319, 318, 303, 302, 292, 289]\nirange: [-298, -296, -294, -292, -287, -283, -281, -280, -276, -272, -268, -265, -262, -259, -250, -241, -236, -231, -224, -222, -222, -212, -210, -206, -201] [292, 289, 288, 277, 277, 271, 267, 263, 256, 244, 243, 230, 229, 223, 215, 215, 211, 211, 209, 202]\nindex ranges: 50 50 120\nValueError: -268 is not in list\nsplit: True len=243 sublists=59 [4, 4, 4, 4]..[4, 3] offset=63 index=0 []\npositional: -22 110 13 151\nreindexed: True len=243 sublists=59 [4, 4, 4, 4]..[4, 3] offset=63 index=122 [243, 131, 112, 64, 67, 69, 43]\nmerged: True len=213 sublists=53 [4, 4, 4, 4]..[4, 3] offset=63 index=0 [] 3\ndeleted: True len=193 sublists=53 [3, 3, 3, 3]..[4, 3] offset=63 index=116 [193, 110, 83, 48, 62, 64, 19]\npopped: 291481 True len=93 sublists=25 [3, 4, 5, 4]..[4, 6] offset=31 index=56 [93, 59, 34, 30, 29, 28, 6]\nupdate add: True len=103 sublists=25 [4, 4, 8, 4]..[4, 8] offset=31 index=56 [103, 66, 37, 35, 31, 29, 8]\nupdate rebuild: True len=163 sublists=41 [4, 4, 4, 4]..[4, 3] offset=0 index=0 []\nreset 5: -210 True len=163 sublists=33 [5, 5, 5, 5]..[5, 3] offset=63 index=96 [163, 160, 3, 80, 80, 3, 0]\ndefault load: -548236193402 1999 True len=2100 sublists=2 [1052, 1048]..[1052, 1048] offset=1 index=3 [2100, 1052, 1048]\ndefault merged: True len=1500 sublists=2 [750, 750]..[750, 750] offset=1 index=3 [1500, 750, 750] True False True\n",
+      "stderr": "",
+      "matches": true
+    }
+  ],
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256",
+    "modules": 522
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/pystachy",
+          "sha256": "e1be7b6de032c77ffd82b7e9d11de299dbef06e6f34f1d07b0e99c359b76e9ee"
+        },
+        "counts": {
+          "error": 326,
+          "excluded": 52,
+          "included": 470,
+          "ok": 144,
+          "ok_without_stubs": 144,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 27.163403738999477,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697",
+          "excluded_modules": [
+            "_markupbase",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "ca7688dd75b5385dea42a0054566a2033e417505",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "result_sha256": "38933a021450fe2dcf91058b6bc4d089275b7c208b08b04ff9a4d78a705cd856",
+      "previous_result_sha256": "38933a021450fe2dcf91058b6bc4d089275b7c208b08b04ff9a4d78a705cd856",
+      "baseline": "Reconstruct the previous map as documented in compatibility-2026-10-19-exception-diagnostics.json; this checkpoint appends deltas.",
+      "deltas": {}
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 324,
+          "excluded": 52,
+          "included": 470,
+          "ok": 146,
+          "ok_without_stubs": 144,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 173.1125718930016,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697",
+          "excluded_modules": [
+            "_markupbase",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "ca7688dd75b5385dea42a0054566a2033e417505",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_io",
+          "_opcode",
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "result_sha256": "5455550d6035c4e650b146b09d0d06e65338d3ebc50b646d05d7099bc6660a74",
+      "previous_result_sha256": "5455550d6035c4e650b146b09d0d06e65338d3ebc50b646d05d7099bc6660a74",
+      "baseline": "Reconstruct the previous map as documented in compatibility-2026-10-19-exception-diagnostics.json; this checkpoint appends deltas.",
+      "deltas": {}
+    }
+  },
+  "variants": {
+    "helper": "from typing import Generic, TypeVar\n\nT = TypeVar(\"T\")\n\n\nclass Box(Generic[T]):\n    def __init__(self, v: T) -> None:\n        self.v = v\n\n    @property\n    def __weird__(self) -> int:\n        return 1\n",
+    "cases": [
+      {
+        "name": "direct",
+        "source": "from boxmod import Box\ndef f(b: Box[int]) -> int:\n    return b.v\nprint(f(Box(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.01672555600089254
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "KeyError: 'boxmod$Box'\n",
+            "wall_seconds": 0.0024284300016006455
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0022141469999041874
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/direct.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.03834320500027388
+          }
+        }
+      },
+      {
+        "name": "qualified",
+        "source": "import boxmod\ndef f(b: boxmod.Box[int]) -> int:\n    return b.v\nprint(f(boxmod.Box(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.015546128997812048
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "KeyError: 'boxmod$Box'\n",
+            "wall_seconds": 0.0024584549973951653
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0021708300009777304
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/qualified.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.037369507997937035
+          }
+        }
+      },
+      {
+        "name": "alias",
+        "source": "from boxmod import Box as Alias\ndef f(b: Alias[int]) -> int:\n    return b.v\nprint(f(Alias(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.016623101000732277
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "KeyError: 'boxmod$Box'\n",
+            "wall_seconds": 0.002440808999381261
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0021063950007373933
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/alias.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.042736024002806516
+          }
+        }
+      },
+      {
+        "name": "quoted",
+        "source": "from boxmod import Box\ndef f(b: \"Box[int]\") -> int:\n    return b.v\nprint(f(Box(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.015761358001327608
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "KeyError: 'boxmod$Box'\n",
+            "wall_seconds": 0.0031021850008983165
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0019358270001248457
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/quoted.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.04066393099856214
+          }
+        }
+      },
+      {
+        "name": "annotated",
+        "source": "from boxmod import Box\nfrom typing import Annotated\ndef f(b: Annotated[Box[int], \"metadata\"]) -> int:\n    return b.v\nprint(f(Box(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.020093372000701493
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py:3: error: unsupported type annotation\n",
+            "wall_seconds": 0.002358478999667568
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py:3: error: unsupported type annotation\n",
+            "wall_seconds": 0.0031994919991120696
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/annotated.py:3: error: unsupported type annotation\n",
+            "wall_seconds": 0.04448402900015935
+          }
+        }
+      },
+      {
+        "name": "bare",
+        "source": "from boxmod import Box\ndef f(b: Box) -> int:\n    return b.v\nprint(f(Box(1)))\n",
+        "results": {
+          "cpython": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py"
+            ],
+            "environment": {},
+            "returncode": 0,
+            "stdout": "1\n",
+            "stderr": "",
+            "wall_seconds": 0.020512393002718454
+          },
+          "old": {
+            "command": [
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-729/pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare-old.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-729"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0025452560003031977
+          },
+          "new": {
+            "command": [
+              "./pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare-new.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.0022499099977721926
+          },
+          "hosted": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "-m",
+              "pystachy",
+              "ir",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare-hosted.ll"
+            ],
+            "environment": {
+              "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697"
+            },
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-697/build/audit-697/bare.py:2: error: class boxmod.Box is not supported: method __weird__() has a decorator\n",
+            "wall_seconds": 0.04726151399881928
+          }
+        }
+      }
+    ]
+  },
+  "old_compiler": {
+    "source_revision": "e33c560e801af86879727fd5f99f5981b84d5046",
+    "sha256": "348ae135b80e951892be480572a8b6e8c45700fb9d4d4803d3e80160aad9b413"
+  },
+  "oracle": {
+    "programs": 3123,
+    "identical": 3122,
+    "changed": [
+      {
+        "source": "tests/errors/generic_ann_unsupported_class.py",
+        "old_exit": 1,
+        "new_exit": 1,
+        "old_message": "KeyError: 'emods$badgeneric$Box'\n",
+        "new_message": "tests/errors/generic_ann_unsupported_class.py:7: error: class emods.badgeneric.Box is not supported: method __weird__() has a decorator\n",
+        "ir_equal": true,
+        "old_ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "new_ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "normalization": "checkout paths only",
+    "input_inventory_sha256": "39652aefaec4fab149730fd40886222b4dc3705ff31c11cb44ffafe124487c66"
+  },
+  "implementation_ci": [
+    {
+      "run_id": 39221083750,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39221083750",
+      "jobs": [
+        {
+          "id": 117956275339,
+          "name": "upstream port preservation (CPython)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275566,
+          "name": "verify (python-free-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275603,
+          "name": "verify (ubsan-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275635,
+          "name": "verify (hosted-2)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275636,
+          "name": "verify (python-free-2)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275643,
+          "name": "verify (ubsan-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275645,
+          "name": "verify (opt-off-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275646,
+          "name": "verify (gc-jit-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275650,
+          "name": "verify (native-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275659,
+          "name": "verify (hosted-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275667,
+          "name": "verify (gc-aot-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275679,
+          "name": "verify (opt-off-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275681,
+          "name": "verify (hosted-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275686,
+          "name": "verify (native-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275691,
+          "name": "verify (gc-aot-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275694,
+          "name": "verify (runtime-cache)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275697,
+          "name": "verify (gc-aot-2)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275713,
+          "name": "verify (scaling-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275748,
+          "name": "verify (ubsan-2)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275761,
+          "name": "verify (gc-jit-0)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275777,
+          "name": "upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275782,
+          "name": "verify (benchmarks)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275816,
+          "name": "verify (python-free-1)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275822,
+          "name": "verify (gc-self)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956275877,
+          "name": "verify (contracts)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117961768998,
+          "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "run_id": 39221083778,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39221083778",
+      "jobs": [
+        {
+          "id": 117956276072,
+          "name": "Install (ubuntu-24.04)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956276418,
+          "name": "Install (macos-15)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117956277140,
+          "name": "Install (macos-15-intel)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "run_id": 39221083672,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39221083672",
+      "jobs": [
+        {
+          "id": 117956274930,
+          "name": "source wheels (CPython, JIT and AOT)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "run_id": 39221083597,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39221083597",
+      "jobs": [
+        {
+          "id": 117956275041,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "implementation_ci_head": "6399d46c90bedddd6d0fd61ec3abe423496646ca",
+  "implementation_ci_equals_evaluated_tree": false,
+  "incomplete_attempts": [
+    {
+      "stage": "CPython references before configuring typing_extensions",
+      "results": [
+        {
+          "source": "tests/any_annotated.py",
+          "returncode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/any_annotated.py\", line 4, in <module>\n    import typing_extensions as tx\nModuleNotFoundError: No module named 'typing_extensions'\n",
+          "matches": false
+        },
+        {
+          "source": "tests/any_init_annotated.py",
+          "returncode": 0,
+          "stdout": "1 text\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/any_variables_annotated.py",
+          "returncode": 0,
+          "stdout": "7 text\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/dataclass_generic_field.py",
+          "returncode": 0,
+          "stdout": "deque([3, 4]) deque([])\n3\nQueue(values=deque([4]))\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/deftime_generic_later.py",
+          "returncode": 1,
+          "stdout": "main: start\n",
+          "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/deftime_generic_later.py\", line 4, in <module>\n    import defmods.generic_later\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 4, in <module>\n    class Box[T]:\n        \"a generic class, uncompiled: its body reads LATER, unbound then\"\n        size = LATER\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 4, in <generic parameters of Box>\n    class Box[T]:\n        \"a generic class, uncompiled: its body reads LATER, unbound then\"\n        size = LATER\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/defmods/generic_later.py\", line 6, in Box\n    size = LATER\n           ^^^^^\nNameError: name 'LATER' is not defined\n",
+          "matches": true
+        },
+        {
+          "source": "tests/dict_object_keys_generic.py",
+          "returncode": 0,
+          "stdout": "int str False {Box(1): 'int'} {Box('s'): 'str'}\n11 False {Cell(1): 11, Cell(5): 5} {Cell('a')} {Cell(1), Cell(2), Cell(3)}\n['Box(3)'] Cell(9)\nTrue True -3550055125485641917\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_annotations.py",
+          "returncode": 0,
+          "stdout": "Box([1, 0, 1, 4]) 4 Box([0, 1]) Box([]) True\nBox([1, 2]) Box(['a', 'b']) Box(['k', 'j']) Box([4, 5]) Box([7]) Box([[1], []])\nBox(['x']) Box([3]) Box([['y']]) True\nBox(['a']) [Box([7]), Box([8])] Box([]) 1.5\nBox([9])\nk 1 1 k 3.14\n['a', 'b'] [1] 0\nBox([1]) Box([1])\nBox([[]]) Box([1, 'mixed'])\n2 3\nBox([[1], []]) Box([[1], []])\nBox([[], [1]]) Box([[], []])\nBox([{'a': [1], 'b': []}]) Box([{'a': [1], 'b': []}])\nBox([{'a': [], 'b': [1]}])\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_annotations_hints.py",
+          "returncode": 0,
+          "stdout": "[1, 2]\n[[1], [2]]\n([1], [1, 2])\n[3]\n[1]\n[4]\n{'a': 3}\n{3: 1}\n{3}\n[1, 2]\n[1, 1]\n[1, 1]\n[2, 2]\n{'a': 1, 'b': 1}\n[None, 1]\n[1, None]\n[True, False]\n[True, 1]\n[1, 'mixed']\n[[], []]\n([], [])\n[]\n[1]\n[1]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_callable_field.py",
+          "returncode": 0,
+          "stdout": "[3] [] []\n0.0\n1.5\n0 0\n['', '\u00e9']\nk {}\nNone\n0\nset()\n['one'] [] [2] [5]\n(1, 'a')\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_classes.py",
+          "returncode": 0,
+          "stdout": "Box(4, 2) 5 ['3', '4'] [1.5, 2.0]\nBox('yz', 2) YZ [1, 2] True True\n[Box(1, 1), Box(2, 1), Box(4, 2)] 7\n0 7 0 ['a', 'b', 'c']\n- -\n10 5 None 5\n12 12 10 2 area [(2, 5), (3, 4)]\n2 kg 2 kg 3 m 2 label\n23416728348467685 81 23416728348467685 81\nmade once made once 1 {(): 'made once'}\nFOUR! four\n(1, 'a', True) (1, 'a', True) (2, 'b', False) ('k', (2, 'b', False))\n() (0, ())\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_constructor_forms.py",
+          "returncode": 0,
+          "stdout": "Table({'a': 1, 'b': 2}) Table({'c': 3.5}) Table({'a': 1, 'b': 2, 'z': 26}) Table({}) Table({7: 'seven'}) Table({'x': 1, 'y': 2}) Table({'p': 1})\nBag(['x', 'y', 'z']) Bag(['x', 'y', 'z']) Bag(['a', 'b']) Bag([1.5, 2.5])\nBag(['x', 'y', 'z', 'w'])\n0 ['item'] (1, 'one') 0 0.0\nKeyError 'missing'\n[1, 2] s\n{'a': [1], 'b': [2]} 7 {1: 0, 2: 7}\n4 ABC [1, 3]\n<class 'int'> <class 'list'> <class 'dict'> <class 'str'> function function function None\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_dataclass_fields.py",
+          "returncode": 0,
+          "stdout": "s [1, 2] [['\u00e9']] True\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_def_param_scope.py",
+          "returncode": 0,
+          "stdout": "5 4 3 6 10\n[1, 1] ['a', 'a'] [2.5, 2.5, 2.5, 2.5] 5\n[10, 12, 7] [1, 2] ['s', 't'] [1, 3]\n['b', 'b'] [4, 4]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_def_paramspec.py",
+          "returncode": 0,
+          "stdout": "call add\ncall add\ncall greet\ncall greet\n3 6 hi bo! hi al?\n30 20\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_inferred_unions.py",
+          "returncode": 0,
+          "stdout": "[9007199254740993, 2.5] True True\n3\n[1, 'x']\n[None, 'text']\n[1, None]\n[2.5, 0]\n[2, 's']\n[3, 'star']\n[4, 'kw']\n['value', 1.5]\n[None, 'present']\n[True, 1, 'flag'] [2]\nTrue True\n[2, 3]\ntext\ninteger\n[1, 'two']\na\nb\n[[1, 3], [2]]\nTrue\n[True, 1]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_mod_default.py",
+          "returncode": 0,
+          "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n['b', 'a'] [3, 2, 1] []\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_pep695_classes.py",
+          "returncode": 0,
+          "stdout": "3 2 [1, 2]\n['\u00e9'] None\nPair('a', 1) Pair(1, 'a') Pair(1, 'x')\nabc 2.5 3 not an int\n4\n['a', 'b', 'c'] [1]\n(1, 'a', 2.5) 2 7.0\n[1, 3]\n1 2.5 True True\na module-level T True True \u00fc\n['1', '2'] 1.0\nn ['x', '\u00ff']\nA MODULE-LEVEL T!\n7 a module-level T! \u00fc\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_union_arguments.py",
+          "returncode": 0,
+          "stdout": "[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[9007199254740993, 2.5] 9007199254740993 2.5\nTrue True\n[3, 4.5] 3 4.5\nTrue True\n6.5\n[1.5, 0] 1.5 0\nFalse False\n[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[1, 2.5] 1 2.5\nTrue True\n[5, 6.5] 5 6.5\nTrue True\n[None, 'ok'] True ok\n[True, 1]\n[1, None]\n[[1, 3], {'n': 2}]\n[1, 3, 4]\n[7, 2.5] True\nABC\nabc\nDEFAULT\na\n[1, 3, 4, 5]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_union_result_annotation.py",
+          "returncode": 0,
+          "stdout": "3.5\n1\n3.5\n1\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_wider_destinations.py",
+          "returncode": 0,
+          "stdout": "[9007199254740993, 2] True True\n2.5\n[5, 6] True True\n2.5\n[7, 0] True True\n2.5\n[8, 9] True True\n2.5\n[10, 11] True True\n2.5\n[12, 13] True True\n2.5\n[3, 4] True True\n2.5\n[16, 17] True True\n2.5\n[True, False] True\n1\n[14, 15] True True\n2.5\n[1, 2] None\nTrue\ndefault\n['text', 'text'] True\n[1, 2]\nright\nleft\n[1, 2]\nleft\nright\n[1, 2]\nabc\ndef\nDEFAULT\na\nd\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/generic_without_init.py",
+          "returncode": 0,
+          "stdout": "Box(size=3) 3 box 5 [2, 2] 3 True\n1.5 ['a', 'a'] s\n4 [1, 1] True\n3 [0, 1, 2] 3 t\nTrue True\nk:1 1.5:None :\nTrue True\nTagged(tag='t', n=0) Tagged(tag='u', n=2)\nDoubled(n=6) Doubled(n=10)\n7 7\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/iter_annotations.py",
+          "returncode": 0,
+          "stdout": "3 6 6 5 6\nx [6] 2 1\na-b c+d \u00e9\u00fc\n1 s 1\n[1, 2, 1, 2, 1]\na b a\n1 2 1 2\n4.5 4.5\nh ['r1', 'r2'] x \n16 [8]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/mixed_list_annotation.py",
+          "returncode": 0,
+          "stdout": "[1, 2.5] [1, 'x', 2.5, None] [('a', 1), ('b', 2.5)] [('a', (1, 'x')), ('b', (2.5, 2))]\nTrue True\ncaught TypeError\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/property_generic.py",
+          "returncode": 0,
+          "stdout": "3 generic\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/property_setter_generic.py",
+          "returncode": 0,
+          "stdout": "42 \u00e9\u00e9 1\n1.0 [2.5, 3.5] [1.0] ['a'] [['a']]\n298.15 25.0\nValueError below absolute zero\ndown from 5\ndown from 4\n3\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/reflect_dir_generic.py",
+          "returncode": 0,
+          "stdout": "['__class_getitem__', '__orig_bases__', '__parameters__', '__type_params__', 'item']\n['__class_getitem__', '__orig_bases__', '__parameters__', 'item']\nTrue False True\nTrue False\n['item', '__class_getitem__', '__orig_bases__', '__parameters__', '__type_params__']\n['item', '__class_getitem__', '__orig_bases__', '__parameters__']\n['__dataclass_fields__', '__dataclass_params__', '__match_args__', '__replace__'] ['__annotations__', '__dataclass_fields__', '__dataclass_params__', '__match_args__', '__replace__', 'x']\nFalse True\n['a', 'b'] True ['a', 'b']\n['a', 'b'] False ['a']\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/return_annotated_parameters.py",
+          "returncode": 0,
+          "stdout": "6 10\naa! bbb?\nfound None\n7 6 12\n18 10\nNone\nNone\n4\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/return_special_unannotated.py",
+          "returncode": 0,
+          "stdout": "0 Value(0) 0 False [Value(0)]\n2 Value(2) 2 True [Value(2)]\n1 True\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/syntax_annotations_uncompiled.py",
+          "returncode": 0,
+          "stdout": "ran\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/syntax_blocks_generic.py",
+          "returncode": 0,
+          "stdout": "ok\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/type_alias_annotations.py",
+          "returncode": 0,
+          "stdout": "3 3\n['x', 'x'] None\n5 a.b.c \n(0.5, 1.5)\n3.0 6 empty int 7 str '\u00e9'\n4 root -\nPlaced(at=3, value=2.5, label='?') Placed(at=1, value=2, label='\u00fc')\npos name-or-score name-or-score True True\n42 24 5 1000.0 False\n5\n2 ['z', 'w'] 0\n[6, 3]\n2 3\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/type_alias_generic.py",
+          "returncode": 0,
+          "stdout": "('b', 'a') 1 x\n1.5 (1, 'a')\n3 0\n0 5 18\n4.0\n2 \u00fc sum=3\nb [(2, 2), (1, 1)]\n[[1]]\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/types_generic_alias.py",
+          "returncode": 0,
+          "stdout": "exit True True False\nexit False False True\n[3] [4, 5] 5 3 True\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/typevar_templates.py",
+          "returncode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-697/tests/typevar_templates.py\", line 6, in <module>\n    import typing_extensions\nModuleNotFoundError: No module named 'typing_extensions'\n",
+          "matches": false
+        },
+        {
+          "source": "tests/typevar_twice.py",
+          "returncode": 0,
+          "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n2 True False False\n3 1\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools.py",
+          "returncode": 0,
+          "stdout": "bounded, maxsize=3\n  square 1\n1 1 CacheInfo(hits=0, misses=1, maxsize=3, currsize=1)\n  square 2\n2 4 CacheInfo(hits=0, misses=2, maxsize=3, currsize=2)\n1 1 CacheInfo(hits=1, misses=2, maxsize=3, currsize=2)\n  square 3\n3 9 CacheInfo(hits=1, misses=3, maxsize=3, currsize=3)\n  square 4\n4 16 CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\n1 1 CacheInfo(hits=2, misses=4, maxsize=3, currsize=3)\n  square 2\n2 4 CacheInfo(hits=2, misses=5, maxsize=3, currsize=3)\n  square 5\n5 25 CacheInfo(hits=2, misses=6, maxsize=3, currsize=3)\n  square 3\n3 9 CacheInfo(hits=2, misses=7, maxsize=3, currsize=3)\n  square 4\n16 CacheInfo(hits=2, misses=8, maxsize=3, currsize=3)\ncleared CacheInfo(hits=0, misses=0, maxsize=3, currsize=0)\n  square 1\n1 CacheInfo(hits=0, misses=1, maxsize=3, currsize=1)\n  one a\n  one b\n  one a\nmaxsize=1: aa aa bb aa CacheInfo(hits=1, misses=3, maxsize=1, currsize=1)\ncache: 2880067194370816120 CacheInfo(hits=88, misses=91, maxsize=None, currsize=91)\n55 CacheInfo(hits=8, misses=11, maxsize=None, currsize=11)\n  unbounded 1\n  unbounded 2\nmaxsize=None: -1 -2 -1 CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\n  nocache 1\n  nocache 1\nmaxsize=0: 2 2 CacheInfo(hits=0, misses=2, maxsize=0, currsize=0)\n  negative 1\n  negative 1\nmaxsize=-5: 3 3 CacheInfo(hits=0, misses=2, maxsize=0, currsize=0)\n  bare 1\n@lru_cache: 10 10 CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)\n  triple 1\n  triple 2\n  triple 3\n  triple 2\nlru_cache(2)(f): 3 6 3 9 6 CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n  triple 1\n__wrapped__: 3 CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\nnames: triple triple square fib\n  triple 4\ncache(f): 12 12 CacheInfo(hits=1, misses=1, maxsize=None, currsize=1)\n  falsy 1\n  zero x\nfalsy: '' '' 0 0 CacheInfo(hits=1, misses=1, maxsize=8, currsize=1) CacheInfo(hits=1, misses=1, maxsize=8, currsize=1)\n  items 3\nsame object: True [0, 1, 2, 99] CacheInfo(hits=1, misses=1, maxsize=8, currsize=1)\n  checked 1\n1\n  checked -1\nValueError negative: -1\n  checked -1\nValueError negative: -1\n1\nCacheInfo(hits=1, misses=3, maxsize=4, currsize=1)\n  join ab 2 True\n  join ab 2 False\n  join ab 3 True\ntuple keys: abab abab ab ababab\nCacheInfo(hits=1, misses=3, maxsize=4, currsize=3)\n  pair (2, 'x') None\n  pair (2, 'x') y\ntuple and str | None: xx- xx- xxy CacheInfo(hits=1, misses=2, maxsize=4, currsize=2)\n  flag True\n  flag False\nbool: yes no yes CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  config\nno parameters: {'retries': 4} CacheInfo(hits=1, misses=1, maxsize=None, currsize=1)\n  point 1\n  point 2\n  point 3\n  point 1\nobjects: 1 True -2 -3 False CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n  maybe 1\n  maybe 0\nint | None: 1 None None 1 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nclosures:\n  times 10 2\n  times 10 3\n20 20 30 CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  times 20 2\n  times 20 3\n40 40 60 CacheInfo(hits=1, misses=2, maxsize=2, currsize=2)\n  inner [7, 2]\nreentrant: [7, 2] [7, 2] False CacheInfo(hits=1, misses=2, maxsize=4, currsize=1)\n  clearing 1\n  clearing 2\n  clearing 3\n  clearing 1\nclear inside: 1 2 3 CacheInfo(hits=0, misses=0, maxsize=2, currsize=1) 1 CacheInfo(hits=0, misses=1, maxsize=2, currsize=2)\nchurn: 11310000 CacheInfo(hits=0, misses=5000, maxsize=100, currsize=100)\nCacheInfo(hits=2, misses=5001, maxsize=100, currsize=100)\nmutual: True True CacheInfo(hits=1, misses=26, maxsize=None, currsize=26) CacheInfo(hits=0, misses=26, maxsize=None, currsize=26)\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_cache_object.py",
+          "returncode": 0,
+          "stdout": "10 10 10 [1, 1] CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\n2 2 4 6 2 [1, 2, 3, 1]\nCacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n10 CacheInfo(hits=0, misses=1, maxsize=None, currsize=1)\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_calls.py",
+          "returncode": 0,
+          "stdout": "forms 112 212 312 412 CacheInfo(hits=0, misses=4, maxsize=4, currsize=4)\nhits 112 212 312 412 CacheInfo(hits=4, misses=4, maxsize=4, currsize=4)\norder 512 512 CacheInfo(hits=5, misses=5, maxsize=4, currsize=4)\nevicted 612 CacheInfo(hits=5, misses=6, maxsize=4, currsize=4)\nempty 712 712 CacheInfo(hits=1, misses=1, maxsize=4, currsize=1)\naliases 812 812 812 812 812 CacheInfo(hits=5, misses=2, maxsize=4, currsize=2)\nbound keyword 912 912 CacheInfo(hits=6, misses=3, maxsize=4, currsize=3)\nwrapped 1012 CacheInfo(hits=6, misses=3, maxsize=4, currsize=3)\neval 12 ['default', 'b', 'a', 'body']\neval hit 12 ['default', 'b', 'a', 'body', 'b2', 'a2']\ndefault 12 12 ['default', 'b', 'a', 'body', 'b2', 'a2', 'pos', 'body'] CacheInfo(hits=2, misses=2, maxsize=None, currsize=2)\nexpansion 12 12 CacheInfo(hits=3, misses=3, maxsize=None, currsize=3)\nkw expansion 12 12 CacheInfo(hits=4, misses=4, maxsize=None, currsize=4)\nclosure 3! 3! 3! 3! 3! CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\nclosure 4! 4! 4! 4! 4! CacheInfo(hits=1, misses=4, maxsize=3, currsize=3)\noptional none none none none CacheInfo(hits=1, misses=3, maxsize=None, currsize=3)\ndisabled 3 3 3 CacheInfo(hits=0, misses=3, maxsize=0, currsize=0)\npositional 2 2 2 CacheInfo(hits=1, misses=2, maxsize=None, currsize=2)\nkw-only omitted 6 6 CacheInfo(hits=0, misses=2, maxsize=None, currsize=2)\ninner 2\nrecursive 2 2 2 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nclear 1 2 2 CacheInfo(hits=0, misses=0, maxsize=2, currsize=1)\nnegative\nnegative\nraises CacheInfo(hits=0, misses=2, maxsize=None, currsize=0)\nnine 45 45 CacheInfo(hits=0, misses=2, maxsize=2, currsize=2)\nnine hit 45 45 CacheInfo(hits=2, misses=2, maxsize=2, currsize=2)\nnine keywords 45 CacheInfo(hits=2, misses=3, maxsize=2, currsize=2)\nnine keywords hit 45 CacheInfo(hits=3, misses=3, maxsize=2, currsize=2)\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_cmp_to_key.py",
+          "returncode": 0,
+          "stdout": "unhashable type: 'functools.KeyWrapper'\ncmp_to_key: TestCmpToKey.test_obj_field and test_sort_int; partial methods and subset edge cases\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_mod.py",
+          "returncode": 0,
+          "stdout": "mods: init mods\nmods.shapes: init mods.shapes\n1 file 2 files 1 file 3 dirs 2 files\nCacheInfo(hits=1, misses=4, maxsize=2, currsize=2) CacheInfo(hits=1, misses=4, maxsize=2, currsize=2)\n5 7 CacheInfo(hits=1, misses=8, maxsize=None, currsize=8)\n['label 1 file', 'label 2 file', 'label 3 dir', 'label 2 file', 'depth 5', 'depth 4', 'depth 3', 'depth 2', 'depth 1', 'depth 0', 'depth 7', 'depth 6']\n6 6 6 CacheInfo(hits=1, misses=2, maxsize=4, currsize=2) ['area 2 3', 'area 3 2']\nCacheInfo(hits=0, misses=0, maxsize=None, currsize=0) 1 CacheInfo(hits=0, misses=2, maxsize=None, currsize=2)\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_partial.py",
+          "returncode": 0,
+          "stdout": "120 123 125 140\n127 129 (1,) {'c': 7} True\n137 (1, 3) {'c': 7} True False\n240 241 (2,) {'b': 4}\n523 {'c': 3, 'b': 2} 2\nTrue True True False\n5 255\nx x+y+z x/y a-b\n12 7 11 21\n\u00e9\u00df\n51\n[1, 2, 3] 3\n[130, 230] [110, 120]\n990 110\n[410, 420]\neval a\neval b\neval c\neval d\nabcbd\nTypeError: the first argument must be callable\nTypeError: the first argument must be callable\nTypeError: the first argument must be callable\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_reduce.py",
+          "returncode": 0,
+          "stdout": "reduce: supported upstream assertions and subset edge cases\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/lib_functools_wraps.py",
+          "returncode": 0,
+          "stdout": "call add\n5 add add\ncall mul\n12 mul mul\n3 inc name_only.<locals>.inner 2 inner inc 2 inner neither.<locals>.inner\n2 kept module_only.<locals>.kept 2 inc inc\n5 inc inc 5 inc inc\ncall nested\n6 nested outer.<locals>.nested\ncall method\n4 method Box.method\ncall len\n3 len len\ncall <lambda>\n6 <lambda> <lambda>\n11 timer timed.<locals>.timer\n('__module__', '__name__', '__qualname__', '__doc__', '__annotations__', '__type_params__') ('__dict__',)\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/port_ordered_set_api.py",
+          "returncode": 0,
+          "stdout": "order: 5 True ['a', 'b', 'r', 'c', 'd']\nbinary: True OrderedSet(['a', 'b']) True\nbinary: True OrderedSet(['r', 'c', 'd'])\nindexing: True True True 1\nKeyError 'br'\npandas: 1 2\nremove: True r c d\nremove: 0 1 2 True True True\nremove: OrderedSet(['r', 'c', 'd']) False\nclear: 0 True OrderedSet()\nupdate: 7 8 abcdefgh\nupdate: 5 6 abcdef\npop: b a\nKeyError 'Set is empty'\nrepr: OrderedSet() True True\n4 2 False True False | 1 4 | 5 3 | 5 3 | 5 3 1 4\n0 3 True False True |  |  | 3 1 2 | 3 1 2\n3 0 False True True |  | 3 1 2 | 3 1 2 | 3 1 2\n0 0 True True True |  |  |  | \n13 13 False False False | 18 8 14 4 1 5 16 15 | 20 3 11 17 6 | 20 3 11 17 6 10 7 12 2 9 | 18 20 8 3 14 4 1 11 5 17 6 16 15 10 7 12 2 9\n13 13 False False False | 16 14 8 15 18 1 4 5 | 10 7 12 2 9 | 10 7 12 2 9 20 3 11 17 6 | 16 10 14 7 8 15 12 18 1 2 4 5 9 20 3 11 17 6\n14 15 False False False | 14 9 10 17 18 20 0 13 12 11 4 | 6 3 1 | 6 3 1 8 2 5 16 | 14 9 6 10 17 18 3 20 0 13 1 12 11 4 8 2 5 16\n15 14 False False False | 14 20 4 13 17 18 10 12 0 11 9 | 8 2 5 16 | 8 2 5 16 6 3 1 | 8 14 20 4 13 2 17 18 5 10 12 0 11 16 9 6 3 1\n13 14 False False False | 19 13 17 14 2 8 7 16 0 10 | 1 11 20 | 1 11 20 3 12 18 5 | 19 13 1 17 11 14 20 2 8 7 16 0 10 3 12 18 5\n14 13 False False False | 17 2 14 19 8 7 16 13 0 10 | 3 12 18 5 | 3 12 18 5 1 11 20 | 17 2 14 19 8 7 16 3 13 12 0 18 5 10 1 11 20\n13 14 False False False | 11 2 7 10 16 1 8 15 13 | 14 12 20 17 | 14 12 20 17 19 18 9 0 3 | 11 2 7 14 12 20 10 16 1 8 15 13 17 19 18 9 0 3\n14 13 False False False | 13 16 10 1 2 11 8 7 15 | 19 18 9 0 3 | 19 18 9 0 3 14 12 20 17 | 13 19 18 16 10 1 2 9 11 0 8 7 15 3 14 12 20 17\n15 12 False False False | 11 4 16 7 9 12 19 20 15 2 0 | 17 13 1 5 | 17 13 1 5 18 | 11 17 13 4 16 7 9 12 19 20 15 2 1 0 5 18\n12 15 False False False | 2 16 4 20 11 19 15 12 7 0 9 | 18 | 18 17 13 1 5 | 2 16 4 20 11 19 15 12 7 0 18 9 17 13 1 5\n13 12 False False False | 8 1 3 0 6 19 | 5 11 4 2 18 12 16 | 5 11 4 2 18 12 16 20 14 15 17 13 7 | 8 1 3 0 5 6 11 4 2 18 19 12 16 20 14 15 17 13 7\n12 13 False False False | 1 8 3 0 19 6 | 20 14 15 17 13 7 | 20 14 15 17 13 7 5 11 4 2 18 12 16 | 20 14 15 17 1 8 13 3 0 7 19 6 5 11 4 2 18 12 16\n13 12 False False False | 7 20 13 6 17 15 18 19 12 | 16 2 1 11 | 16 2 1 11 8 0 9 | 7 20 16 13 2 6 1 17 11 15 18 19 12 8 0 9\n12 13 False False False | 6 19 20 17 7 12 15 13 18 | 8 0 9 | 8 0 9 16 2 1 11 | 8 6 19 20 0 17 7 12 15 13 9 18 16 2 1 11\n13 12 False False False | 8 1 10 3 0 6 16 17 | 14 18 12 5 7 | 14 18 12 5 7 9 2 15 19 | 8 1 10 14 18 3 0 12 6 16 5 7 17 9 2 15 19\n12 13 False False False | 1 10 17 6 16 8 3 0 | 9 2 15 19 | 9 2 15 19 14 18 12 5 7 | 9 1 10 17 6 16 2 8 3 15 19 0 14 18 12 5 7\n13 15 False False False | 18 16 20 15 17 8 13 5 6 9 | 1 14 0 | 1 14 0 10 12 3 7 19 | 18 16 20 15 17 8 13 1 5 14 0 6 9 10 12 3 7 19\n15 13 False False False | 9 20 13 5 16 17 18 6 15 8 | 10 12 3 7 19 | 10 12 3 7 19 1 14 0 | 9 20 13 10 5 12 16 3 7 17 18 6 15 19 8 1 14 0\n12 12 False False False | 1 17 5 9 18 11 | 0 13 12 8 19 2 | 0 13 12 8 19 2 16 6 3 14 7 15 | 0 13 1 12 17 5 9 8 18 19 2 11 16 6 3 14 7 15\n12 12 False False False | 9 1 5 17 18 11 | 16 6 3 14 7 15 | 16 6 3 14 7 15 0 13 12 8 19 2 | 16 9 6 3 1 14 7 5 15 17 18 11 0 13 12 8 19 2\n14 15 False False False | 13 8 16 15 9 11 6 4 3 19 17 | 12 1 18 | 12 1 18 2 10 20 14 | 12 13 1 8 16 15 9 11 18 6 4 3 19 17 2 10 20 14\nOrderedSet(['1', '2', '3']) 0 2 2\nTrue False True False\n0 OrderedSet(['3'])\n4 OrderedSet(['1', '2', '3', '5', '4']) 1 3\nOrderedSet(['1', '3'])\nOrderedSet(['1', '3']) ['1', '2', '3'] False\nOrderedSet(['3', '1', '4', '5', '2', '0']) OrderedSet(['3', '1', '4', '5', '2', '0', '8', '9']) OrderedSet(['3', '1', '4', '5', '2', '0', '10'])\nOrderedSet(['1', '2', '3']) OrderedSet(['2']) OrderedSet(['1', '2', '3'])\nOrderedSet(['1', '3']) OrderedSet(['1']) OrderedSet(['1', '2', '3'])\nFalse True False\nFalse True False\nOrderedSet(['4', '5', '9', '2'])\nOrderedSet(['1', '3'])\nOrderedSet(['3', '5'])\nOrderedSet(['1', '3', '7'])\nOrderedSet(['4', '5', '9', '2'])\nOrderedSet(['b', 'a'])\nOrderedSet()\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/port_ordered_set_edges.py",
+          "returncode": 0,
+          "stdout": "empty: OrderedSet() OrderedSet() 0 False True False []\nKeyError: 'Set is empty' KeyError('Set is empty')\nKeyError: ''\nIndexError: list index out of range\nempty: OrderedSet() OrderedSet() OrderedSet() OrderedSet()\nempty: True True True True {}\nOrderedSet([\"it's\", 'say \"hi\"', 'tab\\there', 'nl\\n', '\\x00', '\\x7f', '\u00e9', '\u20ac', '\ud83d\ude00', '\\u200b', '\\\\', '\u03a9\u2248\u00e7', ''])\n13 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] [True, True, True, True, True, True, True, True, True, True, True, True, True] \ud83d\ude00 True \ud83d\ude00\nKeyError: '\u00fcn\u00ef' KeyError('\u00fcn\u00ef')\nKeyError: '\ud83d\ude00\ud83d\ude00' KeyError('\ud83d\ude00\ud83d\ude00')\nKeyError: \"'\" KeyError(\"'\")\nKeyError: '\"' KeyError('\"')\nKeyError: 'e' KeyError('e')\nKeyError: ' ' KeyError(' ')\nTrue True True\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nIndexError: list index out of range\nIndexError pop: list index out of range\nOrderedSet(['x', 'y', 'z']) [0, 1, 2] x z 2 0\nadd: 3 0 3 4 OrderedSet(['x', 'y', 'z', 'w', 'v'])\nupdate: 0 0 0 2 6 OrderedSet(['x', 'y', 'z', 'w', 'v', 'u', 't'])\npop(1): q 2 4 {'p': 0, 'r': 2, 's': 3, 't': 4}\ndiscard: OrderedSet(['p', 'r', 's']) {'p': 0, 'r': 2, 't': 3} False ['p', 'r', 's']\nIndexError: list index out of range\nKeyError: 's'\nafter: OrderedSet(['p', 'r']) {'p': 0, 'r': 2, 't': 3} 2\npop: p r 0 {'t': 3}\ndiscard: OrderedSet(['a', 'c', 'd']) [0, 1, 2] {'a': 0, 'c': 1, 'd': 2}\nTrue False False True\nOrderedSet(['a', 'b', 'd']) OrderedSet(['a', 'b', 'c', 'e']) OrderedSet(['a', 'c']) OrderedSet(['b', 'c']) OrderedSet(['b'])\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\nOrderedSet(['c', 'd', 'd']) {'c': 0, 'd': 2} 3\nOrderedSet(['a', 'b', 'c']) {'a': 0, 'b': 1, 'c': 2}\nFalse True True False False True\nTrue False True True\nTrue 0 2 False\n['pear', 'fig', 'apple', 'kiwi'] [(0, 'pear'), (1, 'fig'), (2, 'apple'), (3, 'kiwi')] ['apple', 'fig', 'kiwi', 'pear'] apple pear pear, fig, apple, kiwi [('pear', 'pear'), ('fig', 'fig'), ('apple', 'apple'), ('kiwi', 'kiwi')]\n16 ['pear', 'fig', 'apple', 'kiwi'] True True [] 3\ndedupe: 824 1278379 939394 k590 k564 500 823\nOrderedSet(['\\xa0', '\\xad', '\\u2028', '\\x85', '\\u0378', 'e\u0301', '\\x1b', '\\r', '\\ufeff', '\\U0010ffff', '\\x80', '\\u3000', '\ud83c\uddfa\ud83c\uddf8', 'a\\'b\"c', '%s', '%%']) [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]\n4 OrderedSet(['a\\x00b', 'a', 'a\\x00', '\\x00\\x00']) [0, 1, 2, 3] False True {'a\\x00b': 0, 'a': 1, 'a\\x00': 2, '\\x00\\x00': 3}\n2 1 True 10001\n['a', 'b', 'd', 'f'] OrderedSet(['a', 'c', 'e', 'f']) {'a': 0, 'c': 1, 'e': 2, 'f': 3}\n['a', 'c', 'e', 'f', 'aa', 'cc'] OrderedSet(['a', 'c', 'e', 'f', 'aa', 'cc'])\n['a'] OrderedSet() 0\nRuntimeError: dictionary changed size during iteration\nOrderedSet(['b', 'c']) {'b': 0, 'c': 1}\na 2 {'b': 1, 'c': 2, 'd': 2} 2 d\nOrderedSet(['b', 'c']) {'b': 1, 'd': 1}\n2 OrderedSet(['b', 'c', 'c']) {'b': 1, 'd': 1, 'c': 2}\nF T F OrderedSet(['y'])\n3 0 2 a False True\n4 OrderedSet(['b', 'c', 'd', 'e']) OrderedSet()\nOrderedSet() {}\nOrderedSet(['p', 'q']) OrderedSet(['p', 'q', 'z']) False False\n[0, 1, 2, 3, 0, 4, 0, 5] the cat sat on the mat the end OrderedSet(['the', 'cat', 'sat', 'on', 'mat', 'end'])\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/port_sortedcontainers_api.py",
+          "returncode": 0,
+          "stdout": "SortedList([]) SortedList([1, 2, 3, 4, 5])\nSortedList([1, 2, 3])\nSortedList([1, 2, 3])\nTrue False\nTrue\nValueError: 0 not in list\nSortedList([1, 2, 4, 5]) 2 5\n[3, 4, 5, 6] [3, 4, 5, 6]\n2 3 3\n3\n5 3 SortedList([1, 2, 4])\n2\nValueError: 26 is not in list\nSortedList([1, 1, 2, 3, 20, 20])\nSortedList([1, 1, 2, 3, 20, 20]) SortedList([1, 1, 1, 2, 2, 2, 3, 3, 3])\nSortedList([1, 1, 1, 2, 2, 2, 3, 3, 3])\nempty: SortedList([]) 0 False True False 0 0 0\nempty ranges: [] [] [] []\npop IndexError: pop index out of range\nremove ValueError: 3 not in list\ngetitem IndexError: list index out of range\nindex ValueError: 3 is not in list\ndel IndexError: list index out of range\nafter discard: SortedList([]) True True\nSortedList([-9223372036854775808, -9223372036854775808, -7, 0, 1, 2, 2, 3, 3, 3, 5, 10, 9223372036854775807, 9223372036854775807]) 14\ncount: 3 2 2 2 0\nin: True False True True False False\nindex: 7 12 0 7 7\nbisect: 7 10 10 2 12 14\ngetitem: -9223372036854775808 -9223372036854775808 9223372036854775807 9223372036854775807 3 -9223372036854775808\nirange: [0, 1, 2, 2, 3, 3, 3, 5] [1, 2, 2, 3, 3, 3] [] []\nirange reverse: [3, 3, 3, 2, 2, 1, 0] [] [9223372036854775807, 9223372036854775807] []\nirange open: [-9223372036854775808, -9223372036854775808, -7, 0] [3, 3, 3, 5, 10, 9223372036854775807, 9223372036854775807] [-9223372036854775808, -9223372036854775808] []\nislice: [-7, 0, 1, 2] [2, 1, 0, -7] [10, 9223372036854775807, 9223372036854775807] [-9223372036854775808, -9223372036854775808, -7]\nislice out of range: [-9223372036854775808, -9223372036854775808] [9223372036854775807, 9223372036854775807] [] []\nValueError: 9223372036854775806 not in list\nValueError: -9223372036854775807 not in list\nValueError: 4 not in list\nindex 7 3 ValueError: 3 is not in list\nindex 0 3 ValueError: 3 is not in list\nindex -2 None ValueError: 3 is not in list\ngetitem 14 IndexError: list index out of range\npop 14 IndexError: list index out of range\ndel 14 IndexError: list index out of range\ngetitem -15 IndexError: list index out of range\npop -15 IndexError: list index out of range\ndel -15 IndexError: list index out of range\ngetitem 9223372036854775807 IndexError: list index out of range\npop 9223372036854775807 IndexError: list index out of range\ndel 9223372036854775807 IndexError: list index out of range\ngetitem -9223372036854775807 IndexError: list index out of range\npop -9223372036854775807 IndexError: list index out of range\ndel -9223372036854775807 IndexError: list index out of range\npop: 9223372036854775807 -9223372036854775808 0 10 SortedList([-9223372036854775808, -7, 1, 2, 2, 3, 3, 3, 5, 9223372036854775807])\nafter removals: SortedList([-7, 1, 2, 2, 3, 3, 5]) 7\ncopy: SortedList([-7, 1, 2, 2, 3, 3, 5, 100]) SortedList([-7, 1, 2, 2, 3, 3, 5]) True False False\noperators: SortedList([-7, -3, 1, 2, 2, 3, 3, 5, 7]) SortedList([]) SortedList([]) SortedList([-7, -7, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 5, 5]) SortedList([-7, 1, 2, 2, 3, 3, 5, 9]) SortedList([-7, -7, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 5, 5])\nin place: SortedList([-7, 1, 2, 2, 3, 3, 4, 5]) False SortedList([-7, 1, 2, 2, 3, 3, 4, 5]) [SortedList([-7, 1, 2, 2, 3, 3, 4, 5])]\nsetitem NotImplementedError: use ``del sl[index]`` and ``sl.add(value)`` instead\nappend NotImplementedError: use ``sl.add(value)`` instead\nextend NotImplementedError: use ``sl.update(values)`` instead\ninsert NotImplementedError: use ``sl.add(value)`` instead\nreverse NotImplementedError: use ``reversed(sl)`` instead\n==: True False True False True False True\n<: True True False False True True False True True True\nin lists: True False 1 1 True\nsorted: [SortedList([]), SortedList([1, 2]), SortedList([1, 2, 3]), SortedList([1, 2, 4])] SortedList([1, 2]) SortedList([1, 2, 4])\nwith None: 1 True 1 True False True\nin tuples and dicts: True True True False True True False True\noptional lists: True False [None] True\nkeywords: 2 5 5 7 [6, 5, 4, 3] [8, 7, 6, 5, 4, 3, 2, 1, 1] 0 10 SortedList([1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) SortedList([])\niterated: [1, 2, 3] [-14, 2, 4, 4, 6, 6, 10] 9 [5, 3, 3, 2, 2, 1, -7] 5\n",
+          "stderr": "",
+          "matches": true
+        },
+        {
+          "source": "tests/port_sortedcontainers_index.py",
+          "returncode": 0,
+          "stdout": "built: True len=203 sublists=1 [203]..[203] offset=0 index=0 []\nreset: True len=203 sublists=51 [4, 4, 4, 4]..[4, 3] offset=0 index=0 []\npositional: -494 -268 499 441 -21 150\nindexed: True len=203 sublists=51 [4, 4, 4, 4]..[4, 3] offset=63 index=114 [203, 128, 75, 64, 64, 64, 11]\nbisect: 107 107 77 1\nislice: [-480, -478, -476, -465, -460, -459, -458, -454, -436, -435, -434, -431, -430, -428, -426, -422, -410, -406, -402, -402, -400, -398, -396, -393, -379, -373, -372, -371, -347, -345, -339, -335, -332, -325, -316, -305, -304] [481, 480, 480, 458, 456, 441, 436, 432, 428, 424, 419, 416, 404, 403, 398, 386, 381, 380, 379, 375, 371, 370, 369, 368, 366, 365, 343, 328, 319, 318, 303, 302, 292, 289]\nirange: [-298, -296, -294, -292, -287, -283, -281, -280, -276, -272, -268, -265, -262, -259, -250, -241, -236, -231, -224, -222, -222, -212, -210, -206, -201] [292, 289, 288, 277, 277, 271, 267, 263, 256, 244, 243, 230, 229, 223, 215, 215, 211, 211, 209, 202]\nindex ranges: 50 50 120\nValueError: -268 is not in list\nsplit: True len=243 sublists=59 [4, 4, 4, 4]..[4, 3] offset=63 index=0 []\npositional: -22 110 13 151\nreindexed: True len=243 sublists=59 [4, 4, 4, 4]..[4, 3] offset=63 index=122 [243, 131, 112, 64, 67, 69, 43]\nmerged: True len=213 sublists=53 [4, 4, 4, 4]..[4, 3] offset=63 index=0 [] 3\ndeleted: True len=193 sublists=53 [3, 3, 3, 3]..[4, 3] offset=63 index=116 [193, 110, 83, 48, 62, 64, 19]\npopped: 291481 True len=93 sublists=25 [3, 4, 5, 4]..[4, 6] offset=31 index=56 [93, 59, 34, 30, 29, 28, 6]\nupdate add: True len=103 sublists=25 [4, 4, 8, 4]..[4, 8] offset=31 index=56 [103, 66, 37, 35, 31, 29, 8]\nupdate rebuild: True len=163 sublists=41 [4, 4, 4, 4]..[4, 3] offset=0 index=0 []\nreset 5: -210 True len=163 sublists=33 [5, 5, 5, 5]..[5, 3] offset=63 index=96 [163, 160, 3, 80, 80, 3, 0]\ndefault load: -548236193402 1999 True len=2100 sublists=2 [1052, 1048]..[1052, 1048] offset=1 index=3 [2100, 1052, 1048]\ndefault merged: True len=1500 sublists=2 [750, 750]..[750, 750] offset=1 index=3 [1500, 750, 750] True False True\n",
+          "stderr": "",
+          "matches": true
+        }
+      ],
+      "outcome": "45/47 matched; two ModuleNotFoundError setup failures. Repeated all 47 with existing typing_extensions 4.16.0 on explicit PYTHONPATH: 47/47 matched. No dependencies installed or implementation changes made."
+    }
+  ],
+  "limits": [
+    "Diagnostic improvement only: unsupported decorated special methods remain unsupported. Annotated[Box[int], metadata] retains its prior generic unsupported-type diagnostic; bare Box already had the useful diagnostic.",
+    "No full local make verify, unmodified CPython regrtest, broad PyPI census, new benchmark execution or dedicated performance/memory comparison. No corpus IR changes, so no newly affected benchmark was selected.",
+    "Import compilation, executed APIs, adapted ports and hosted compiler tests remain distinct. Existing minor/major adaptation and first-error limits apply.",
+    "IR oracle input inventory is digest-pinned and reconstructed by the retained driver on exact source revision. Byte equality is bounded by this corpus, not universal equivalence.",
+    "Implementation CI passed on a historical PR head, not the combined evaluated main tree."
+  ],
+  "reproduction_scripts": {
+    "audit-697.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nROOT = Path('/workspace/scratch/3ba735e28fa7/pystachy-audit-697')\nOLD = Path('/workspace/scratch/3ba735e28fa7/pystachy-audit-729')\nOUT = ROOT / 'build/audit-697'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = '/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin'\nENV = {k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(name, value):\n    (OUT/(name+'.json')).write_text(json.dumps(value, indent=2)+'\\n')\ndef run(name, args, extra=None, timeout=1200):\n    start = time.monotonic()\n    try:\n        p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), capture_output=True, text=True, timeout=timeout)\n        r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr)\n    except subprocess.TimeoutExpired as e:\n        r = dict(command=args, environment=extra or {}, timeout=timeout, stdout=str(e.stdout), stderr=str(e.stderr))\n    r['wall_seconds'] = time.monotonic()-start\n    save(name, r)\n    print(name, r.get('returncode'), r['stdout'][-500:], r['stderr'][-300:], flush=True)\n    return r\ndef selected(patterns, bases=('tests',)):\n    return sorted({str(p.relative_to(ROOT)) for b in bases for pat in patterns for p in (ROOT/b).glob(pat)})\npositive=selected(['*generic*.py','*typevar*.py','*annotat*.py'])\nerrors=selected(['generic_*.py','*typevar*.py','import_annotation*.py','import_*decorator*.py'],('tests/errors',))\napis=selected(['lib_typing*.py','lib_functools*.py','lib_dataclasses*.py'])\nports=selected(['port_ordered_set*.py','port_sortedcontainers*.py'])\nsave('selection',dict(positive=positive,errors=errors,apis=apis,ports=ports))\njobs={\n    'build':(['make','PY='+PY],{}),\n    'focused':(['tests/run.sh','./pystachy','jit aot',*positive,*errors],{}),\n    'apis':(['tests/run.sh','./pystachy','jit aot',*apis],{}),\n    'ports':(['tests/run.sh','./pystachy','jit aot',*ports],{}),\n    'hosted':(['tests/run.sh',PY+' -m pystachy','jit aot','tests/errors/generic_ann_unsupported_class.py','tests/generic_annotations.py','tests/generic_classes.py'],{}),\n    'syntax':([PY,'-I','tools/syntax_sweep.py','--compiler','./pystachy',*positive,*errors],{}),\n    'imports':([PY,'tools/import_sweep.py','-j','2','--metadata',str(OUT/'imports-metadata.json'),'./pystachy',sysconfig.get_path('stdlib'),str(OUT/'imports.json')],{}),\n    'stubs':([PY,'tools/import_sweep.py','--stubs','-j','2','--metadata',str(OUT/'stubs-metadata.json'),sysconfig.get_path('stdlib'),str(OUT/'stubs.json')],{}),\n}\nmode=sys.argv[1]\nif mode=='oracle':\n    files=['pystachy.py','runtime.py']+selected(['*.py'],('tests','tests/deviations','bench','bench/pyperformance','tests/ir','tests/errors'))\n    def compare(f):\n        results=[]\n        with tempfile.TemporaryDirectory(prefix='audit-697-ir-') as tmp:\n            for label,home in [('old',OLD),('new',ROOT)]:\n                target=Path(tmp)/(label+'.ll')\n                extra={'PYSTACHY_HOME':str(home)}\n                path=(ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH']=path.read_text().strip()\n                how='rt' if f=='runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p=subprocess.run([str(home/'pystachy'),how,f,'-o',str(target)],cwd=ROOT,env=ENV|extra,text=True,capture_output=True,timeout=180)\n                ir=target.read_text() if target.exists() else ''\n                msg=(p.stdout+p.stderr).replace(str(OLD),'CHECKOUT').replace(str(ROOT),'CHECKOUT')\n                ir=ir.replace(str(OLD),'CHECKOUT').replace(str(ROOT),'CHECKOUT')\n                results.append((p.returncode,msg,ir))\n        a,b=results\n        return dict(source=f,old_exit=a[0],new_exit=b[0],old_message=a[1],new_message=b[1],ir_equal=a[2]==b[2],old_ir_sha256=hashlib.sha256(a[2].encode()).hexdigest(),new_ir_sha256=hashlib.sha256(b[2].encode()).hexdigest())\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        results=list(pool.map(compare,files))\n    changed=[r for r in results if r['old_exit']!=r['new_exit'] or r['old_message']!=r['new_message'] or not r['ir_equal']]\n    save('oracle',dict(programs=len(files),identical=len(files)-len(changed),changed=changed,inputs={f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in files},normalization='checkout paths only'))\n    print('oracle',len(files),changed,flush=True)\n    sys.exit(0)\nif mode=='references':\n    refs=[]\n    for f in positive+apis+ports:\n        p=ROOT/f\n        env=ENV|{'PYTHONPATH':str(ROOT/'tools/rt_cpython')+':/workspace/scratch/cca24c0adfdd/devtools/lib/python3.13/site-packages'}\n        if p.with_suffix('.path').exists(): env['PYTHONPATH']=p.with_suffix('.path').read_text().strip()+':'+env['PYTHONPATH']\n        r=subprocess.run([PY,f,'a1','a2'],cwd=ROOT,env=env,input=p.with_suffix('.in').read_text() if p.with_suffix('.in').exists() else '',text=True,capture_output=True,timeout=120)\n        want=p.with_suffix('.err').read_text().strip() if p.with_suffix('.err').exists() else ''\n        last=r.stderr.strip().splitlines()[-1] if r.stderr.strip() else ''\n        refs.append(dict(source=f,returncode=r.returncode,stdout=r.stdout,stderr=r.stderr,matches=r.stdout+f'[exit {r.returncode}]\\n'==p.with_suffix('.out').read_text() and last==want))\n    save('references',refs)\n    print('CPython',sum(r['matches'] for r in refs),'/',len(refs),flush=True)\n    sys.exit(0 if all(r['matches'] for r in refs) else 1)\nif mode=='variants':\n    helper=(ROOT/'tests/errors/emods/badgeneric.py').read_text()\n    (OUT/'boxmod.py').write_text(helper)\n    variants={\n        'direct':('from boxmod import Box','Box[int]'),\n        'qualified':('import boxmod','boxmod.Box[int]'),\n        'alias':('from boxmod import Box as Alias','Alias[int]'),\n        'quoted':('from boxmod import Box','\"Box[int]\"'),\n        'annotated':('from boxmod import Box\\nfrom typing import Annotated','Annotated[Box[int], \"metadata\"]'),\n        'bare':('from boxmod import Box','Box'),\n    }\n    records=[]\n    for name,(imports,ann) in variants.items():\n        ctor='boxmod.Box' if name=='qualified' else 'Alias' if name=='alias' else 'Box'\n        source=imports+'\\ndef f(b: '+ann+') -> int:\\n    return b.v\\nprint(f('+ctor+'(1)))\\n'\n        p=OUT/(name+'.py'); p.write_text(source)\n        row=dict(name=name,source=source,results={})\n        row['results']['cpython']=run('variant-'+name+'-cpython',[PY,str(p)])\n        for label,cmd,home in [('old',[str(OLD/'pystachy')],OLD),('new',['./pystachy'],ROOT),('hosted',[PY,'-m','pystachy'],ROOT)]:\n            row['results'][label]=run('variant-'+name+'-'+label,[*cmd,'ir',str(p),'-o',str(OUT/(name+'-'+label+'.ll'))],{'PYSTACHY_HOME':str(home)})\n        records.append(row)\n    save('variants',dict(helper=helper,cases=records))\n    sys.exit(0)\nif mode=='checks':\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs=list(pool.map(lambda n:run(n,*jobs[n]),['focused','apis','ports','hosted','syntax']))\nelif mode=='sweeps':\n    rs=[run(n+'-command',*jobs[n]) for n in ['imports','stubs']]\nelse: rs=[run(mode,*jobs[mode])]\nsys.exit(0 if all(r.get('returncode')==0 for r in rs) else 1)\n",
+    "audit-697-assemble.py": "import hashlib\nimport json\nfrom pathlib import Path\nimport platform\nimport subprocess\nimport sys\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-697'\nOLD=BASE/'pystachy-audit-729'\nOUT=ROOT/'build/audit-697'\nDEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef read(n): return json.loads((OUT/(n+'.json')).read_text())\ndef sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()\ndef git(*a): return subprocess.check_output(['git','-C',str(ROOT),*a],text=True).strip()\nbaseline=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text())\nselection=read('selection')\nfixtures={}\nfor f in sorted(set(sum(selection.values(),[])+['tests/errors/emods/badgeneric.py'])):\n    for ext in ['.py','.out','.err','.path','.in']:\n        p=Path(f).with_suffix(ext)\n        if (ROOT/p).exists(): fixtures[str(p)]=sha(ROOT/p)\nstdlib=Path(baseline['stdlib']['path'])\ninventory={}\nfor mod in baseline['stdlib']['module_sha256']:\n    p=stdlib/Path(*mod.split('.'))\n    p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py')\n    inventory[mod]=sha(p)\nassert inventory==baseline['stdlib']['module_sha256']\nimports={}\nfor name in ['imports','stubs']:\n    before=json.loads((OLD/'build/audit-729'/(name+'.json')).read_text())\n    current=read(name)\n    deltas={k:dict(before=before.get(k),after=current.get(k)) for k in sorted(set(before)|set(current)) if before.get(k)!=current.get(k)}\n    imports[name]=dict(metadata=read(name+'-metadata'),result_sha256=sha(OUT/(name+'.json')),previous_result_sha256=sha(OLD/'build/audit-729'/(name+'.json')),baseline='Reconstruct the previous map as documented in compatibility-2026-10-19-exception-diagnostics.json; this checkpoint appends deltas.',deltas=deltas)\ncommands={n:read(n) for n in ['build','focused','apis','ports','hosted','syntax','imports-command','stubs-command']}\nassert all(c.get('returncode')==0 for c in commands.values())\nrefs=read('references')\nassert all(r['matches'] for r in refs)\nvariants=read('variants')\nfor row in variants['cases']:\n    r=row['results']\n    assert r['cpython']['returncode']==0 and r['cpython']['stdout']=='1\\n'\n    assert all(r[k]['returncode']==1 for k in ['old','new','hosted'])\n    assert r['new']['stderr']==r['hosted']['stderr']\n    if row['name'] in ['direct','qualified','alias','quoted']:\n        assert 'KeyError:' in r['old']['stderr'] and 'method __weird__() has a decorator' in r['new']['stderr']\n    else: assert r['old']['stderr']==r['new']['stderr']\noracle=read('oracle')\nassert all(c['old_exit']==c['new_exit'] for c in oracle['changed'])\nassert all(c['ir_equal'] for c in oracle['changed'])\nassert [c['source'] for c in oracle['changed']]==['tests/errors/generic_ann_unsupported_class.py']\noracle['input_inventory_sha256']=hashlib.sha256(json.dumps(oracle.pop('inputs'),sort_keys=True).encode()).hexdigest()\nci=read('implementation-ci')\nassert all(j['conclusion']=='success' for w in ci for j in w['jobs'])\next=Path('/workspace/scratch/cca24c0adfdd/devtools/lib/python3.13/site-packages/typing_extensions.py')\ndata=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=git('rev-parse','HEAD'),previous_evaluated_main='e33c560e801af86879727fd5f99f5981b84d5046',compiler_build_source=git('rev-parse','HEAD'),compiler_sha256=sha(ROOT/'pystachy'),source_dirty=bool(git('status','--porcelain','--untracked-files=no')),\n    merges=dict(implementation_prs=[697],history=git('log','--first-parent','--format=%H %s','e33c560e..HEAD').splitlines(),changed_files=git('diff','--name-only','e33c560e','HEAD').splitlines()),\n    environment=dict(python=sys.version,python_executable=sys.executable,python_sha256=sha(Path(sys.executable).resolve()),llvm=subprocess.check_output([str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin/llvm-config'),'--version'],text=True).strip(),platform=platform.platform(),workers_per_group=2,options='Remove inherited PYSTACHY_/COVERAGE_ options, then use explicit recorded options; shared host, no performance inference.',cpython_reference_extra=dict(name='typing_extensions',version='4.16.0',path=str(ext),sha256=sha(ext))),\n    bootstrap=dict(compiler_ir_lines=sum(1 for _ in (ROOT/'build/stage1.ll').open()),runtime_ir_lines=sum(1 for _ in (ROOT/'build/rt1.ll').open()),ir_sha256={n:sha(ROOT/'build'/n) for n in ['stage1.ll','stage2.ll','stage3.ll','rt1.ll','rt2.ll','rt3.ll']}),\n    selection=selection,fixture_sha256=fixtures,tools_sha256={f:sha(ROOT/f) for f in ['tests/run.sh','tools/syntax_sweep.py','tools/import_sweep.py']},commands=commands,cpython_references=refs,stdlib=dict(path=str(stdlib),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256',modules=len(inventory)),imports=imports,\n    variants=variants,old_compiler=dict(source_revision='e33c560e801af86879727fd5f99f5981b84d5046',sha256=sha(OLD/'pystachy')),oracle=oracle,implementation_ci=ci,implementation_ci_head='6399d46c90bedddd6d0fd61ec3abe423496646ca',implementation_ci_equals_evaluated_tree=False,\n    incomplete_attempts=[dict(stage='CPython references before configuring typing_extensions',results=read('references-initial'),outcome='45/47 matched; two ModuleNotFoundError setup failures. Repeated all 47 with existing typing_extensions 4.16.0 on explicit PYTHONPATH: 47/47 matched. No dependencies installed or implementation changes made.')],\n    limits=['Diagnostic improvement only: unsupported decorated special methods remain unsupported. Annotated[Box[int], metadata] retains its prior generic unsupported-type diagnostic; bare Box already had the useful diagnostic.', 'No full local make verify, unmodified CPython regrtest, broad PyPI census, new benchmark execution or dedicated performance/memory comparison. No corpus IR changes, so no newly affected benchmark was selected.', 'Import compilation, executed APIs, adapted ports and hosted compiler tests remain distinct. Existing minor/major adaptation and first-error limits apply.', 'IR oracle input inventory is digest-pinned and reconstructed by the retained driver on exact source revision. Byte equality is bounded by this corpus, not universal equivalence.', 'Implementation CI passed on a historical PR head, not the combined evaluated main tree.'],\n    reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-697.py','audit-697-assemble.py']})\nassert not data['source_dirty']\n(DEST/'compatibility-2026-10-19-generic-diagnostics.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint(json.dumps(dict(compiler=data['compiler_sha256'],bootstrap=data['bootstrap'],imports={k:dict(counts=v['metadata']['counts'],deltas=len(v['deltas'])) for k,v in imports.items()},oracle=dict(programs=oracle['programs'],identical=oracle['identical']))))\n"
+  }
+}

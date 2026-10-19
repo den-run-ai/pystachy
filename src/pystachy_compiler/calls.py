@@ -316,7 +316,7 @@ def gen_not_callable(self, name: str, t: str) -> None:
     # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
     # unless it has __call__ or is a function (is_fn); a builtin's name bound as a variable is
     # rejected as such
-    if is_fn(t) or is_callable(unopt(t)):
+    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype":
         return
     if short(name) in PYBUILTINS or t == "":
         self.err(f"'{name}' is a variable, so it cannot be called")
@@ -331,6 +331,8 @@ def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = F
         return self.call_value(o, args, want, resultsoft)
     if is_callable(unopt(o.t)):
         return self.call_callable(o, args)
+    if unopt(o.t) == "exctype":
+        return self.exc_call(o, args)  # (an exception class's class object: an object of its class)
     if o.t not in self.classes or "__call__" not in self.classes[o.t].methods:
         self.err(f"'{tname(unopt(o.t))}' object is not callable")
     if self.cached_wrapper(o.t):

@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `e33c560e801af86879727fd5f99f5981b84d5046`.
+**Latest evaluated main:** `3609a5f0830f7997f8b2f6e6463313e3aea9e091`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -2617,3 +2617,140 @@ when making a current-state claim. All dated baseline reports/JSON are preserved
 Repeated differential stdout is stored once in `stdout_blobs`, keyed by SHA-256;
 each command names its output hash. The oracle input-inventory digest can be
 reconstructed by the retained driver on the exact source revision.
+
+## 2026-10-19: unsupported generic annotations (#697)
+
+Evaluated `ca7688dd75b5385dea42a0054566a2033e417505`, the sole main merge after
+`e33c560e801af86879727fd5f99f5981b84d5046`. Fresh metadata and ancestry confirm
+[#697](https://github.com/den-run-ai/pystachy/pull/697) merged into main. Read its
+review discussion and #491/#616 coordination before testing; implementation branches
+were not changed. This checkpoint is completed, independently of the next merge.
+
+- Rebuilt with CPython **3.13.16** and LLVM **18.1.3**: compiler/runtime fixed points
+  **635,461 / 18,851 IR lines**. Compiler SHA-256:
+  `e1be7b6de032c77ffd82b7e9d11de299dbef06e6f34f1d07b0e99c359b76e9ee`.
+- **142 focused checks**, **16 functools API checks**, **8 adapted ordered-set /
+  sortedcontainers checks**, and **5 hosted-compiler checks** pass. CPython recordings
+  match **47/47** programs. The selected syntax sweep agrees on **102/102** files.
+- Independent direct, module-qualified, aliased and quoted `Box[int]` annotations
+  previously crash with `KeyError: 'boxmod$Box'`. Both rebuilt native and hosted
+  compilers now report the unsupported decorated special method with file/line.
+  All six independent programs execute under CPython; Pystachy still rejects them.
+  Bare `Box` already had this diagnostic. `Annotated[Box[int], "metadata"]` keeps
+  its earlier `unsupported type annotation` error. This is diagnostic coverage,
+  **not new support for decorated generic classes**.
+- Old/new comparison over **3,123 corpus programs** finds **3,122 identical** in
+  IR/messages/status. The sole difference is the new rejection fixture's diagnostic;
+  all exit statuses and emitted IR are unchanged. No newly affected benchmark was
+  selected. No performance claim follows from this comparison.
+- Isolated `--metadata` sweeps remain **144/470 native** and **146/470 stub-assisted**:
+  identical result maps, first errors, 522 CPython source hashes and 52 exclusions;
+  no lost successes or timeouts. Stubs remain diagnostic aids.
+
+Initial CPython references matched 45/47; the two remaining fixtures failed because
+`typing_extensions` was missing. Repeating all 47 with an existing **4.16.0** copy on
+explicit `PYTHONPATH` passed. Its file hash and the failed attempt are retained; no
+dependency was installed and no implementation failure is inferred from that setup.
+
+The historical implementation head `6399d46c` has **31 successful jobs** across
+CI, Installation, Packages and Lint ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39221083750)).
+It is not the combined evaluated tree. No full local `make verify`, unmodified
+CPython regrtest, broad PyPI census or performance/memory experiment was run.
+Existing adaptation and first-error limitations remain.
+
+[Evidence and replay scripts](compatibility-2026-10-19-generic-diagnostics.json)
+retain commands, complete outputs, fixtures, identities, CI and comparisons. Extract
+`audit-697.py` / `audit-697-assemble.py`, relocate explicit paths, and run `build`,
+`references`, `checks`, `variants`, `oracle` and `sweeps`. Keep the initial reference
+failure as `references-initial.json` and restore historical `implementation-ci.json`
+from the evidence for aggregation. The assembler compares the previous #729 sweep
+maps (replay that checkpoint or reconstruct its documented baseline/deltas). All
+dated baseline reports and JSON are preserved.
+
+## 2026-10-19: exception class values (#721)
+
+Evaluated `3609a5f0830f7997f8b2f6e6463313e3aea9e091`, the sole main merge after
+the completed #697 checkpoint above. Fresh PR metadata and git ancestry confirm
+[#721](https://github.com/den-run-ai/pystachy/pull/721) merged. Read its review
+discussion and the #491/#616 coordination records; no implementation branch was
+modified. Both checkpoints are published together in the existing audit #743.
+
+**Measured progress is executable behavior, not additional importable modules.**
+
+- Fresh CPython **3.13.16** / LLVM **18.1.3** bootstrap reaches identical compiler
+  and runtime fixed points of **644,955 / 18,851 IR lines**. Compiler SHA-256:
+  `945034c7c3f8d7d2780eb578005076a1bcc687596f11647876d9d180f7891d72`.
+- **406 focused checks**, **14 contextlib/I/O API checks**, **14 adapted-port checks**
+  (ordered-set, sortedcontainers, tomli-w), and **2 additional generic-alias checks**
+  pass. The hosted compiler passes **178 checks**. The 36 selected positive
+  programs pass **72 JIT/AOT checks under per-allocation GC** and **72 with
+  optimizations disabled**. CPython reference recordings match **50/50**.
+- An independent **397-line matrix** across 18 builtin/user exception-class entries
+  matches CPython under GC-stress JIT/AOT and optimization-off JIT/AOT: class values,
+  identity, hashing, dict/set keys, construction, type metadata, 18-by-18 subclass
+  and instance relations, and stored `contextlib.suppress` managers. The previous
+  compiler rejects the program. **Minor adaptation:** nested tuples are assigned
+  to a local variable, not supplied as direct tuple displays (see #748 below).
+- Independent old/new controls confirm two corrected results: `raise E from cause()`
+  evaluates the cause before constructing E (old output reversed that order;
+  [#739](https://github.com/den-run-ai/pystachy/issues/739)), and an alias of a
+  user-defined `len` returns **99**, not the builtin's **3**. New results match
+  CPython in all four execution configurations. Old-control outputs are retained.
+- The retained **1,170-output / 65-builtin-exception** string/repr matrix still
+  matches CPython in both old/new JIT and AOT. This is preservation of #729's gain,
+  not another newly fixed set of 1,170 cases.
+- The IR checker and LLVM assembler accept **1,458 programs**; runtime signature,
+  coverage and effect checks pass (**457 entries, 70 exception classes, 171 functions**).
+- Old/new comparison of **3,148 current-source corpus programs** finds **3,110
+  identical** in IR/messages/status, **22 rejected-to-accepted** programs, **12
+  already-accepted programs with changed IR**, and **4 rejection diagnostics changed**.
+  No previously accepted program becomes rejected. Three of the 22 transitions are
+  explicit deviation fixtures, so this is not a count of 22 CPython-compatible
+  libraries. All changed-IR accepted tests are covered by the selected checks.
+  No benchmark IR changed; no additional benchmark execution was selected.
+- Both isolated `--metadata` import sweeps have **zero result/first-error deltas**:
+  **144/470 native**, **146/470 stub-assisted**, the same **522** source hashes and
+  **52** overlay exclusions, no lost successes and no timeouts. The unchanged import
+  count does not measure the new operations inside already-importable modules.
+
+### Confirmed boundaries and failed attempts
+
+[**#748**](https://github.com/den-run-ai/pystachy/issues/748) records a newly exposed
+compile rejection: `issubclass(ValueError, ((b,),))` and
+`isinstance(ValueError("x"), ((b,),))`, with `b: type[BaseException]`, work in CPython
+but fail in the rebuilt compiler. Assigning `nested = ((b,),)` first makes both
+programs match CPython in JIT/AOT. Four minimal programs and the original failed
+matrix attempt are retained. This is a gap in the new support, **not a regression
+from previously executing code**; the old compiler rejects every variant.
+
+Known [#744](https://github.com/den-run-ai/pystachy/issues/744), comparing
+`type(E) is type` for an exception class object, is independently reconfirmed and
+reuses its existing tracker. Dynamic construction with an incompatible initializer
+argument type, calling the NoneType class object, and SyntaxError-family argument
+truth evaluation retain the PR's explicit deviations. Variable except clauses,
+general class objects and all exception attributes are not claimed as supported.
+
+The initial raise-order probe also read `e.__cause__` on a user-defined E; both old
+and new compilers reject that attribute. The narrowed order-only control passes
+and demonstrates the ordering fix. The original failed attempt is retained rather
+than counted as an implementation regression or as passing attribute coverage.
+
+Historical implementation head `f8b74dcf` has **31 successful jobs** across four
+workflows ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39333947268)); it
+does not equal the combined evaluated main tree or this audit PR's head. No full
+local `make verify`, unmodified CPython regrtest, broad PyPI census or dedicated
+performance/memory experiment was run. Timings overlap other checks on a shared
+host and are not performance evidence. Native imports, executed APIs, adapted ports,
+hosted compiler checks and actual upstream suites remain distinct; historical
+minor/major adaptation and first-error limits remain.
+
+[Exact evidence and replay scripts](compatibility-2026-10-19-exception-classes.json)
+retain identities, commands, fixtures, outputs, import deltas, oracle differences,
+controls, failures and CI. Extract the four `audit-721*.py` scripts and relocate
+explicit paths. Run the main driver's `build`, `references`, `checks`, `extra`,
+`oracle`, `sweeps`, `ir`, `rtcheck` and `differential` modes, then the independent
+probe and nested-tuple drivers. Preserve the two historical failed-attempt records
+and implementation-CI snapshot before aggregation. Reconstruct previous sweep maps
+from the linked #729/#697 evidence or replay those checkpoints. Repeated stdout
+is stored once in `stdout_blobs`, keyed by SHA-256; the oracle inventory digest is
+reconstructed from the exact revision. No dated baseline report/JSON was changed.
