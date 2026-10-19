@@ -132,6 +132,10 @@ def gen_modattr(self, path: str) -> Val:
         return Val(self.rt("pys_platform", "ptr", []), "str")
     if path == "sys.byteorder":
         return Val(self.sconst("little"), "str")  # (that of every target Pystachy builds for: x86-64, arm64)
+    if path == "sys.prefix" or path == "sys.base_prefix" or path == "sys.exec_prefix" or path == "sys.base_exec_prefix":
+        # the Pystachy that compiled the program, whose lib/ it loads, as CPython's prefixes are the
+        # installation whose Lib it loads (no virtual environment: all four are one)
+        return Val(self.sconst(self.prefix), "str")
     if path.startswith("errno.") and path[6:] in ERRNO:
         return Val(self.rt("pys_errno", "i64", [f"ptr {self.sconst(path[6:])}"]), "int")
     if path in MODFUNCS:

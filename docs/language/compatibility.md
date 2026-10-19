@@ -265,6 +265,12 @@ above apply to well-formed text (with the surrogate exception described above).
   environment sets `PYTHONWARNINGS` or `PYTHONDEVMODE`: CPython adds their options to it, and
   Pystachy does not read them.
 
+- `sys.prefix`, `sys.base_prefix`, `sys.exec_prefix` and `sys.base_exec_prefix` are one
+  absolute directory, the Pystachy home that compiled the program (whose `lib/` it loads), where
+  CPython's are the installation whose `Lib` it loads (and a virtual environment's). An executable
+  keeps the directory it was built with. `gettext` makes its default locale directory of
+  `sys.base_prefix`, which holds no catalog of Pystachy's.
+
 - `sys.version_info` is a tuple of its items, CPython 3.13.16's: comparisons, indexing,
   slicing and unpacking work as on CPython's, and its attributes are read as
   `sys.version_info.major` and the like, but `str()` and `repr()` show `(3, 13, 16, 'final', 0)`.
