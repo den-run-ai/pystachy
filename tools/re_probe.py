@@ -22,7 +22,9 @@ literal enters the tail only where that literal is: the contexts the matcher ent
 A search whose pattern begins with alternatives that all begin with literals and classes, or
 whose matches all hold literals at a bounded offset from their start, enters the matcher only
 where those can be: its entries are counted. Warm case-insensitive and Unicode classes answer
-repeated non-ASCII code points from memos: no charset() evaluation, no case-mapping search.
+repeated non-ASCII code points from memos: no charset() evaluation, no case-mapping search. The
+bit-parallel filter of such alternatives gives no bits, untested, to a non-ASCII character that
+none of their leading items may match, and answers the others from its memo once warm.
 
 The time of a call of lib/re under CPython says little about compiled code: --time PYSTACHY builds
 tools/re_bench.py with that compiler and prints each operation's time per call, compiled and under
@@ -396,6 +398,51 @@ def check_unicode_memos() -> int:
     return failed
 
 
+def check_branch_memos() -> int:
+    # The bit-parallel filter of alternatives over text from U+0080: a character that none of their
+    # leading literals and classes may match has no bits, untested, and once warm, one that some may
+    # match answers from the filter's memo. _branch_bits(), which tests every item, is not called.
+    failed = total = 0
+    original = sre._branch_bits
+    counted = {"bits": 0}
+
+    def counted_bits(state, code, b, n, ch):
+        counted["bits"] += 1
+        return original(state, code, b, n, ch)
+
+    cyr = "абвгдежзийклмнопрстуфхцчшщъыьэюя"
+    words = ["привет", "мир", "ошибка", "сообщение", "журнал", "error", "запись"]
+    russian = " ".join([words[(i * 5 + i // 3) % 7] for i in range(2000)])
+    letters = "".join([cyr[(i * 7) % 32] for i in range(3000)])
+    cases = [
+        (r"(?:error|warning)", russian),
+        (r"agggtaaa|tttaccct", letters),
+        (r"[cgt]gggtaaa|tttaccc[acg]", russian),
+        (r"(?:прив|мир)", russian),
+        (r"(?:" + cyr[:31] + "|" + cyr[1:32] + ")", letters),
+        (r"(?:[а-я][б-я]x|[в-я][г-я]y)", letters),
+    ]
+    sre._branch_bits = counted_bits
+    try:
+        for pattern, text in cases:
+            mine = port.compile(pattern)
+            theirs = re.compile(pattern)
+            mine.findall(text)  # (builds the filter and warms its memo)
+            counted["bits"] = 0
+            if mine.findall(text) != theirs.findall(text):
+                print(f'branch memo differs: {pattern!r}')
+                failed += 1
+            n = counted["bits"]
+            total += n
+            if n > 0:
+                print(f'branch memos: {pattern!r}: {n} _branch_bits() calls (limit 0)')
+                failed += 1
+    finally:
+        sre._branch_bits = original
+    print(f'branch memos: {total} _branch_bits() calls over {len(cases)} warm cases (limit 0)')
+    return failed
+
+
 def main() -> int:
     paras, blocks = re_bench.inputs(20)
     failed = 0
@@ -422,6 +469,7 @@ def main() -> int:
     failed += check_nested_matches()
     failed += check_prefilters()
     failed += check_unicode_memos()
+    failed += check_branch_memos()
     if "--time" in sys.argv:
         pys = sys.argv[sys.argv.index("--time") + 1]
         with tempfile.TemporaryDirectory() as d:
