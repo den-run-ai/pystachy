@@ -13,7 +13,7 @@
    "runs": 3
   },
   "after": {
-   "description": "a0383a607ee621cb908437429e7bc3181a5ff5b3, the tree main has once #699 merged",
+   "description": "main d97a60c4aceb43f6e510a0673167b1a0386b3f58, once #699 merged (measured at #699's head a0383a607ee621cb908437429e7bc3181a5ff5b3, the same tree)",
    "runs": 6
   }
  },

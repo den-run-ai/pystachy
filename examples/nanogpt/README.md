@@ -241,9 +241,8 @@ This compares inference before and after the changes that followed the measureme
   direct reads (#688);
 - BLAS views lent from an offset instead of copied, with `ffi.at` (#693, #699).
 
-"Before" is main as #642 merged it, with #657, which had merged first, reverted. "After" is
-[`a0383a6`](https://github.com/den-run-ai/pystachy/commit/a0383a607ee621cb908437429e7bc3181a5ff5b3),
-the tree main has once #699 merged. Both ran on a shared 4-vCPU Intel Xeon @ 2.10 GHz VM with
+"Before" is main as #642 merged it, with #657, which had merged first, reverted. "After" is main
+at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58), once #699 merged. Both ran on a shared 4-vCPU Intel Xeon @ 2.10 GHz VM with
 LLVM 18.1.3, and their BLAS rows load SciPy 1.18.1's LP64 OpenBLAS on one thread. CPython 3.12.3
 with NumPy 2.5.4 and PyTorch 2.14.1+cpu ran single-threaded through `nanogpt_numpy_baseline.py`,
 and the typed port on CPython 3.13.16. Compare rows within this table, not with the ones above.

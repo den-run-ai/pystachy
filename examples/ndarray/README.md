@@ -182,7 +182,7 @@ python3 -I bench.py pystachy
 
 The run:
 - **Machine:** a shared 4-vCPU x86-64 VM (Xeon, 2.1 GHz), pinned to one CPU.
-- **Versions:** compiler at [`a0383a6`](https://github.com/den-run-ai/pystachy/commit/a0383a607ee621cb908437429e7bc3181a5ff5b3), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.4.
+- **Versions:** compiler at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.4.
 - **Threads:** NumPy single-threaded (`OPENBLAS_NUM_THREADS=1`), as Pystachy is.
 - **Timing:** best of five inside each process, in milliseconds, so the JIT's numbers exclude its
   compilation; the median of six such runs ([recorded data](results/bench-2026-10-19.json)).

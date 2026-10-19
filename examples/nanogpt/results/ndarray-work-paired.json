@@ -2,7 +2,7 @@
   "schema": 1,
   "recorded_date": "2026-10-19",
   "purpose": "paired timing of nanoGPT inference before and after the array, BLAS-view and compiler changes of #647, #657, #658, #681, #684, #687, #688, #691, #693, #695, #698 and #699, with the typed port on CPython, CPython + NumPy and upstream PyTorch",
-  "after_commit": "a0383a607ee621cb908437429e7bc3181a5ff5b3",
+  "after_commit": "d97a60c4aceb43f6e510a0673167b1a0386b3f58",
   "before_tree": {
     "description": "main at #642's merge, before #647, #657 and #658: base_commit with #657's merge, which had landed before #642, reverted",
     "base_commit": "43fb4007320c8bf2851e7cfcb6f32d66dc637fef",
@@ -503,5 +503,6 @@
     "before_scalar": 3.89e-16,
     "after_scalar": 3.89e-16
   },
-  "output_agreement": "the scalar builds' logits and loss are byte-identical before and after; with BLAS, 1,421 of 2,176 logits differ in the last bit (largest difference 3.3e-16, loss identical), because #699 lends transposed views to OpenBLAS, which sums them in another order"
+  "output_agreement": "the scalar builds' logits and loss are byte-identical before and after; with BLAS, 1,421 of 2,176 logits differ in the last bit (largest difference 3.3e-16, loss identical), because #699 lends transposed views to OpenBLAS, which sums them in another order",
+  "after_note": "measured at a0383a607ee621cb908437429e7bc3181a5ff5b3, #699's head, whose tree main has at after_commit"
 }
