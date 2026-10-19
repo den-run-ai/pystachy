@@ -405,18 +405,24 @@ class TestGenerated(unittest.TestCase):
         self.assertEqual(port.compile("a+b")._fast, -1)
 
     def test_record(self):
+        # the program runs as python prog.py runs it, importing helper.py from its own directory
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             prog = os.path.join(tmp, "prog.py")
+            with open(os.path.join(tmp, "helper.py"), "w") as f:
+                f.write("import re\nQ = re.compile('c+')\n")
             with open(prog, "w") as f:
-                f.write("import re\nimport sys\nP = re.compile(r'\\d+')\nfor _ in range(int(sys.argv[1])):\n"
-                        "    P.search('a1')\nre.findall('b+', 'abb')\nre.compile('unused')\n")
+                f.write("import re\nimport sys\nimport helper\nP = re.compile(r'\\d+')\nfor _ in range(int(sys.argv[1])):\n"
+                        "    P.search('a1')\nre.findall('b+', 'abb')\nre.compile('unused')\nhelper.Q.match('cc')\n"
+                        "print(sys.path[0])\n")
             out = os.path.join(tmp, "profile.json")
-            subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
-                            prog, "7"], check=True)
+            run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
+                                  prog, "7"], check=True, capture_output=True, text=True)
+            plain = subprocess.run([sys.executable, prog, "7"], check=True, capture_output=True, text=True)
+            self.assertEqual(run.stdout, plain.stdout)
             with open(out) as f:
                 profile = json.load(f)
             calls = {(e["pattern"], e["flags"]): e["calls"] for e in profile["patterns"]}
-            self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1})
+            self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1, ("c+", re.U): 1})
 
     def test_checked_in(self):
         # tests/re_specialize_matchers/ holds the matchers of tests/re_specialize.py's patterns, as the

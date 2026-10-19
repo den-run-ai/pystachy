@@ -775,8 +775,11 @@ def record(argv, out):
 
     mon.register_callback(tool, mon.events.CALL, call)
     mon.set_events(tool, mon.events.CALL)
-    saved = sys.argv
+    saved = sys.argv, sys.path[:]
     sys.argv = list(argv)
+    if not sys.flags.safe_path:
+        # (python PROGRAM imports from the program's directory: in place of this tool's)
+        sys.path[0] = os.path.dirname(os.path.realpath(argv[0]))
     status = 0
     try:
         runpy.run_path(argv[0], run_name="__main__")
@@ -786,7 +789,7 @@ def record(argv, out):
         mon.set_events(tool, 0)
         mon.register_callback(tool, mon.events.CALL, None)
         mon.free_tool_id(tool)
-        sys.argv = saved
+        sys.argv, sys.path[:] = saved
     profile = {"format": FORMAT, "program": argv[0],
                "patterns": [{"pattern": p, "flags": f, "calls": n}
                             for (p, f), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]}
