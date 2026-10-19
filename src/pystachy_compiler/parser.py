@@ -688,11 +688,16 @@ class Parser:
             name = self.expect("id").text
             if name in out:
                 self.later(0, f"duplicate type parameter '{name}'", at)
+            if name == "__classdict__":  # (CPython's symbol table, which keeps the name for class scopes)
+                self.later(0, "reserved name '__classdict__' cannot be used for type parameter", at)
             self.no_debug(name, at)
             out.append(name)
             kinds.append("**" if kind == "ParamSpec" else "*" if kind == "TypeVarTuple" else "")
+            colon = self.line()
             if self.eat(":"):
                 b = self.test()
+                if kind != "TypeVar":  # (CPython's grammar: only a TypeVar has a bound or constraints)
+                    self.fail(f"cannot use {'constraints' if b.kind == 'tuple' else 'bound'} with {kind}", colon)
                 self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
                 self.dropped(line, b)
             if self.eat("="):
