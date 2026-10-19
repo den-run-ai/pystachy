@@ -1,0 +1,48 @@
+"\u00e9 \u65e5\u672c\u8a9e \ud83d\ude80"
+'"\xe9 \u65e5\u672c\u8a9e \U0001f680"'
+"\u00e9 \u65e5\u672c\u8a9e \ud83d\ude80"
+7 [233, 32, 26085, 26412, 35486, 32, 128640]
+"\u00e9\u65e5\ud83d\ude80"
+'"\xe9\u65e5\U0001f680"'
+"\u00e9\u65e5\ud83d\ude80"
+3 [233, 26085, 128640]
+"\u0000\b\f\n\r\t/\\\""
+'"\\u0000\\b\\f\\n\\r\\t/\\\\\\""'
+"\u0000\b\f\n\r\t/\\\""
+9 [0, 8, 12, 10, 13, 9, 47, 92, 34]
+"\ud800"
+'"\ud800"'
+"\ud800"
+1 [55296]
+"\udc00"
+'"\udc00"'
+"\udc00"
+1 [56320]
+"\ud800x\udc00"
+'"\ud800x\udc00"'
+"\ud800x\udc00"
+3 [55296, 120, 56320]
+"\ud800A"
+'"\ud800A"'
+"\ud800A"
+2 [55296, 65]
+"\ud800\ud800"
+'"\ud800\ud800"'
+"\ud800\ud800"
+2 [55296, 55296]
+"\udbff\udfff"
+'"\U0010ffff"'
+"\udbff\udfff"
+1 [1114111]
+"\u007f\u0080\u00ff"
+'"\x7f\x80\xff"'
+"\u007f\u0080\u00ff"
+3 [127, 128, 255]
+{"\u00e9": "\u2603", "\ud83d\ude80": ["e\u0301", "\ud800"]}
+'{"\xe9": "\u2603", "\U0001f680": ["e\u0301", "\ud800"]}'
+{"\u00e9": "\u2603", "\ud83d\ude80": ["e\u0301", "\ud800"]}
+Illegal trailing comma before end of object 6 1 7
+Illegal trailing comma before end of array 10 2 9
+Expecting ',' delimiter 13 1 14
+Invalid control character at 2 1 3
+[exit 0]

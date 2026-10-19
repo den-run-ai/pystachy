@@ -8,6 +8,8 @@ from src.pystachy_compiler.utils import is_dict, is_list, is_opt, is_sopt, is_tu
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
     # may be None, where b may be: see to_union)
+    a = self.rec_type(a)
+    b = self.rec_type(b)
     if not is_union(unopt(b)) or a == "None":
         return False
     src = unopt(a)
@@ -26,6 +28,8 @@ def gen_ueq_type(self, t: str) -> bool:
     # Finite builtin value trees: paired runtime descriptors handle their layouts,
     # but no class callbacks, file handles, functions or sets cross this boundary.
     t = unopt(t)
+    if t.startswith("rec[") and t[4:-1] in self.recursive:
+        return True  # each registered graph has only builtin scalar/list/dict leaves
     if t in ["None", "int", "float", "bool", "str"]:
         return True
     if is_union(t):
@@ -93,6 +97,7 @@ def gen_union_type(self, ts: list[str]) -> str:
     ms: list[str] = []
     none = False
     for t in ts:
+        t = self.rec_type(t)
         if t == "None" or t == NONEVAR:
             none = True
             continue

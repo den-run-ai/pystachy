@@ -32,4 +32,6 @@ for unit in ["a", "é", "𝔄"]:
     codes = state.s.copy()
     offs = state.offs.copy()
     rx.match(subject, 0, len(subject))
-    print("owned", state.s == codes, state.offs == offs, state.s is not re._last_codes)
+    # (a subject whose bytes are its code points is read in place: the match leaves the cache that
+    # _state made, which is still the state's)
+    print("owned", state.s == codes, state.offs == offs, (state.s is re._last_codes) == (unit == "a"))

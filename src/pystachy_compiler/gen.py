@@ -283,6 +283,9 @@ from src.pystachy_compiler.declarations import (
     gen_alias_value as declarations_alias_value,
     gen_alias_variadic as declarations_alias_variadic,
     gen_alias_whole as declarations_alias_whole,
+    gen_rec_type as declarations_rec_type,
+    gen_rec_fold as declarations_rec_fold,
+    gen_recursive_aliases as declarations_recursive_aliases,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
@@ -501,6 +504,7 @@ from src.pystachy_compiler.expressions import (
     gen_key_read as expressions_key_read,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
+    gen_bytes_read as expressions_bytes_read,
     gen_listcomp as expressions_listcomp,
     gen_lookup_key as expressions_lookup_key,
     gen_narrow_by as expressions_narrow_by,
@@ -1125,6 +1129,7 @@ class Gen:
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
+        self.recursive: dict[str, str] = {}  # named finite recursive value graphs
         self.resolving: list[str] = []
         self.unaliased = 0  # (the nodes unalias has made of the annotation it expands)
         self.reflrecs: dict[str, Data] = {}  # the reflection records made (refl_record), by global name
@@ -1631,6 +1636,15 @@ class Gen:
 
     def unalias(self, a: Node, seen: list[str]) -> Node:
         return declarations_unalias(self, a, seen)
+
+    def rec_type(self, t: str) -> str:
+        return declarations_rec_type(self, t)
+
+    def rec_fold(self, t: str) -> str:
+        return declarations_rec_fold(self, t)
+
+    def recursive_aliases(self) -> None:
+        return declarations_recursive_aliases(self)
 
     def subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
         return declarations_subst_ann(self, n, tps, args)
@@ -2875,6 +2889,9 @@ class Gen:
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
+
+    def bytes_read(self, o: Val, i: Val) -> Val:
+        return expressions_bytes_read(self, o, i)
 
     def argtype(self, t: str, m: str, j: int, missing: str) -> str:
         return expressions_argtype(self, t, m, j, missing)
