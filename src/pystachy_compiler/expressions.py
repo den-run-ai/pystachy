@@ -2194,7 +2194,7 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     if t == "bytes":
         i = self.ival(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
-        return Val(self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), "int")
+        return self.bytes_read(o, i)
     if is_list(t) or t == "str":
         i = self.ival(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
         o = self.unwrap(o, sub)
@@ -2303,6 +2303,28 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     self.br(done)
     self.place(slow)
     v = self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
+    self.incoming(ph, v, self.cur)
+    self.br(done)
+    self.place(done)
+    return Val(self.phi(ph), "int")
+
+def gen_bytes_read(self, o: Val, i: Val) -> Val:
+    # b[i] of a bytes o (not None): as list_read, an index below the length (an unsigned
+    # comparison, which sends a negative one to the runtime) reads its byte inline. A bytes
+    # never changes in place, so nothing between the check and the load can shorten it
+    if "listfast" not in self.opts:
+        return Val(self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), "int")
+    fast = self.label()
+    slow = self.label()
+    done = self.label()
+    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(self.mload('int', o.v), "int")).v, fast, slow)
+    ph = Ins("phi", "int", "")
+    self.place(fast)
+    p = self.maddr('%byte', o.v, self.scalar('add', [Val(i.v, 'int'), Val('24', 'int')]))
+    self.incoming(ph, self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), self.cur)
+    self.br(done)
+    self.place(slow)
+    v = self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
     self.incoming(ph, v, self.cur)
     self.br(done)
     self.place(done)

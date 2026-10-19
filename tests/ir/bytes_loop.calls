@@ -1,0 +1,9 @@
+@main.init: pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@f.total: pys_raise
+@f.pairs: pys_raise
+@f.backwards: pys_raise
+@f.at: pys_bytes_get
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
