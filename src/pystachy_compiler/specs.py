@@ -70,6 +70,7 @@ HEX = "0123456789ABCDEF"
 # the type of a local that only None has been assigned so far (see none_type): a pointer, which
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
+NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}

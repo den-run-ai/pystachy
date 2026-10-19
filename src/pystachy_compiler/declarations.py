@@ -1,8 +1,8 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import calls_init, local_names, stmt_walrus
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
+from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     ITERS,
     METHODS,
     MODFUNCS,
+    NONEVAR,
     OPAQUE,
     OPTTYPES,
     PATHLIKE,
@@ -42,6 +43,7 @@ from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, menti
 from src.pystachy_compiler.utils import (
     clone,
     elem,
+    empty_display,
     gelem,
     gsend,
     is_callable,
@@ -1971,6 +1973,11 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
+                if t == "" and why == "" and (given == "None" or nonexpr(st.kids[-1])):
+                    # None so far: the first value of another type that the program gives it
+                    # gives it its type, T | None, as for a variable (see none_field)
+                    t = NONEVAR
+                    ci.fnone[name] = st.kids[-1]
                 if t == "" and why == "":
                     why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                 if t == "" and ci.mod == "":
@@ -2317,6 +2324,216 @@ def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
     c = ITERS + "$" + name
     return self.specialize(c, [t], {}, False, {}) if name != "" and c in self.tmpl else ""
 
+def gen_field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
+    # the class that declares field name of class ci: ci, or the base it inherits the field from
+    while ci.base in self.classes and name in self.classes[ci.base].ftypes:
+        ci = self.classes[ci.base]
+    return ci
+
+def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
+    # field name of class ci, which only None has been given so far (NONEVAR), holds a t from
+    # here on: so does the field of the class that declares it and of each class deriving from
+    # that one, whose objects begin with its fields. Its stores of None compiled so far store a
+    # null pointer, which t's None is too (see optional)
+    root = self.field_root(ci, name)
+    for c in self.classes.values():
+        if c.ftypes.get(name, "") == NONEVAR and (c is root or self.derives(c.name, root.name)):
+            c.ftypes[name] = t
+
+def gen_none_field(self, cls: str, name: str, cmp: bool) -> str:
+    # the type of field name of class cls, which only None has been given so far, read here:
+    # T | None for the first value of another type that a store gives it, found in this
+    # function's source (field_fill), the module-level code compiled so far (field_modfill), a
+    # function that stores it, compiled now (field_early), or else self.name = v in a method of
+    # its class (field_guess); None where no code of the program may give it another value
+    # (set_elsewhere); NONEVAR, still unknown, where it is compared with None by is or is not
+    # (cmp), which tests the pointer only; else an error
+    ci = self.classes[cls]
+    root = self.field_root(ci, name)
+    key = root.name + "." + name
+    t = ""
+    if "fill " + key not in self.fieldbusy:
+        self.fieldbusy["fill " + key] = True  # (a value that reads the field itself, self.x = self.x or v)
+        t = self.field_fill(root, name)
+        if t == "":
+            t = self.field_modfill(root, name)
+        del self.fieldbusy["fill " + key]
+    if t == "" and key not in self.fieldbusy:
+        self.fieldbusy[key] = True  # (a function compiled for its type reads it too: field_fill there)
+        t = self.field_early(root, name)
+        if t == "":
+            t = self.field_guess(root, name)
+        del self.fieldbusy[key]
+    if t != "":
+        if ci.ftypes[name] == NONEVAR:
+            self.refine_field(ci, name, t)
+        return ci.ftypes[name]
+    if not self.set_elsewhere(root, name):
+        self.nonereads[key] = where(self.line)
+        return "None"
+    if cmp:
+        return NONEVAR
+    self.err(f"cannot infer the type of field '{name}' from None here, before a value of another type is assigned to it; annotate it (self.{name}: T | None = None)")
+    return ""
+
+def gen_field_fill(self, root: ClassInfo, name: str) -> str:
+    # T | None for the first value of another type than None that a store in this function's
+    # source gives field name of root (or of a class deriving from it), where the store's object
+    # and value can be typed here and call no template being compiled (as none_type finds a
+    # variable's values); "" if there is none
+    body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+    found: list[Node] = []
+    attr_fills(body, name, found)
+    for i in range(0, len(found), 2):
+        x = found[i]
+        e = found[i + 1]
+        if e.kind == "None" or empty_display(e) or not self.typed_now(x) or not self.typed_now(e) or self.calls_open(x, {}) or self.calls_open(e, {}):
+            continue
+        c = unopt(self.dry(x))
+        if c not in self.classes or name not in self.classes[c].ftypes or self.field_root(self.classes[c], name) is not root:
+            continue
+        t = self.dry(e)
+        if t != "" and t != "None" and t != NONEVAR and "?" not in t and self.optional(t) != "":
+            return self.optional(t)
+    return ""
+
+def gen_field_modfill(self, root: ClassInfo, name: str) -> str:
+    # field_fill's type from the module-level code of the program's modules that the store's
+    # object and value can be typed in where that code is compiled so far (a = Node(1), a.f(),
+    # a.next = Node(2): the object made before the call); "" if there is none
+    for mod in self.inits:
+        body = self.inits[mod].node.kids
+        found: list[Node] = []
+        attr_fills(body, name, found)
+        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i])]) == 0:
+            continue
+        fr = self.modframe(mod, self.line)
+        t = ""
+        for i in range(0, len(found), 2):
+            x = found[i]
+            e = found[i + 1]
+            if t != "" or e.kind == "None" or empty_display(e) or not self.typed_now(x) or not self.typed_now(e) or self.calls_open(x, {}) or self.calls_open(e, {}):
+                continue
+            c = unopt(self.dry(x))
+            if c in self.classes and name in self.classes[c].ftypes and self.field_root(self.classes[c], name) is root:
+                v = self.dry(e)
+                t = self.optional(v) if v != "" and v != "None" and v != NONEVAR and "?" not in v else ""
+        self.restore(fr)
+        if t != "":
+            return t
+    return ""
+
+def gen_field_early(self, root: ClassInfo, name: str) -> str:
+    # the type of field name of root (none_field's), read before the function that gives it a
+    # value of another type than None is compiled: each function or method that stores to an
+    # attribute name a value other than None, and that is no template, is compiled now (the
+    # methods of root and of the classes deriving from it first), as early compiles a function
+    # for a global, until one of them gives the field its type; "" if none does
+    fam = [root] + [c for c in self.classes.values() if c is not root and self.derives(c.name, root.name)]
+    fs: list[FnInfo] = []
+    for c in fam:
+        fs.extend([m for m in c.methods.values() if m.cls == c.name])
+    for c in self.classes.values():
+        if c.name not in self.tmpl and c.origin == "" and len([x for x in fam if x is c]) == 0:
+            fs.extend([m for m in c.methods.values() if m.cls == c.name])
+    fs.extend([f for f in self.funcs.values()])
+    for m in fs:
+        if root.ftypes[name] != NONEVAR:
+            return root.ftypes[name]
+        if m.generic or m.bad != "" or m.ll in self.compiled or m.node.kind != "def":
+            continue
+        found: list[Node] = []
+        attr_fills(m.node.kids[2].kids, name, found)
+        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i])]) == 0 or self.unready(m.node.kids[2], m.mod, {}):
+            continue
+        self.making.append(f"compiling {short(m.name) if m.cls == '' else short(m.cls) + '.' + m.name}() for the type of field '{name}' at {where(self.line)}")
+        fr = self.save()
+        cmps = [self.nonecmp, self.fieldcmp]
+        cmpnode = self.cmpnode
+        self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
+        self.fieldcmp = False
+        self.cmpnode = self.nokey
+        self.modlevel = False
+        self.lenient = False
+        self.function(m, m.node.kids[2].kids)
+        self.restore(fr)
+        self.nonecmp = cmps[0]
+        self.fieldcmp = cmps[1]
+        self.cmpnode = cmpnode
+        self.making.pop()
+    return root.ftypes[name] if root.ftypes[name] != NONEVAR else ""
+
+def gen_field_type(self, c: str, name: str) -> str:
+    # the type that field name of class c is read as here: none_field's, where only None has
+    # been given to it so far
+    t = self.classes[c].ftypes[name]
+    return self.none_field(c, name, False) if t == NONEVAR else t
+
+def gen_field_guess(self, root: ClassInfo, name: str) -> str:
+    # T | None for the first value of another type than None that self.name = v in a method of
+    # root (or of a class deriving from it) gives field name, as guess types v (as it types the
+    # values of __init__'s fields); "" if there is none
+    fam = [root] + [c for c in self.classes.values() if c is not root and self.derives(c.name, root.name)]
+    for c in fam:
+        ms = self.classes[c.origin].methods if c.origin != "" else c.methods
+        for m in ms.values():
+            if not takes_self(m) or m.node.kind != "def" or m.bad != "" or len(m.params) == 0:
+                continue
+            found: list[Node] = []
+            attr_fills(m.node.kids[2].kids, name, found)
+            for i in range(0, len(found), 2):
+                x = found[i]
+                e = found[i + 1]
+                if x.kind != "name" or x.s != m.params[0] or e.kind == "None" or e.kind == "index" or empty_display(e):
+                    continue
+                t = self.guess(e, m)
+                if t != "" and t != "None" and t != NONEVAR and not t.startswith("!") and "?" not in t and self.optional(t) != "":
+                    return self.optional(t)
+    return ""
+
+def gen_set_elsewhere(self, root: ClassInfo, name: str) -> bool:
+    # may the program give field name of class root a value other than None: does any of its
+    # code store a value that is not the literal None to an attribute of that name, but where
+    # __init__ gave the field its None (ClassInfo.fnone), and self.name = v in a method of a class
+    # that neither derives from root nor is a base of it
+    if len(self.attrvals) == 0:
+        self.attrvals[""] = []  # (once: every module's code, its functions and classes too)
+        self.attrown[""] = []
+        for m in self.inits.values():
+            attr_values(m.node, self.nokey, "", self.attrvals, self.attrown, self.nokey)
+    fam = [c.node for c in self.classes.values() if c is root or self.derives(c.name, root.name)]
+    b = root.base
+    while b in self.classes:
+        fam.append(self.classes[b].node)
+        b = self.classes[b].base
+    given = root.fnone.get(name, None)
+    vals = self.attrvals.get(name, [])
+    owns = self.attrown.get(name, [])
+    for i in range(len(vals)):
+        if vals[i].kind == "None" or vals[i] is given:
+            continue
+        if owns[i] is not self.nokey and len([c for c in fam if c is owns[i]]) == 0:
+            continue  # (self.name = v of another class's object)
+        return True
+    return False
+
+def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
+    # o.name = v, where only None has been given to field name of o's class so far: a value of
+    # another type gives the field its type from here on, T | None, as a variable's first other
+    # value gives the variable its type
+    if o.t not in self.classes or self.classes[o.t].ftypes.get(name, "") != NONEVAR or v.t == "None" or v.t == NONEVAR:
+        return
+    ci = self.classes[o.t]
+    key = self.field_root(ci, name).name + "." + name
+    if key in self.nonereads:
+        self.err(f"field '{name}' of {shown(o.t)} was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it (self.{name}: T | None = None)")
+    if "?" in v.t:
+        self.err(f"cannot infer the type of field '{name}' from None and an empty container; annotate it (self.{name}: T | None = None)")
+    t = self.optional(v.t)
+    if t == "":
+        self.err(f"field '{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
+    self.refine_field(ci, name, t)
+
 def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if o.t == "exctype":
         self.err(f"the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.{name})")
@@ -2367,6 +2584,8 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err("rebinding __slots__ through an instance is not supported")
         self.class_default(ci, name)
         return Val(ci.fglob[name], ci.ftypes[name])
+    if not store and ci.ftypes[name] == NONEVAR:
+        self.none_field(o.t, name, self.fieldcmp)  # (a field only None has been given so far)
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
 
 def gen_glue_field(self, o: Val, name: str) -> None:
@@ -2486,6 +2705,8 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.place(l2)
         else:
             self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
+    if p.t == NONEVAR and not self.fieldcmp:
+        return Val("null", "None")  # (a field that is always None, see none_field)
     if r == "":
         r = self.mem_load(Val(p.v, "*" + p.t)).v
     if is_opt(p.t) or is_union(p.t):

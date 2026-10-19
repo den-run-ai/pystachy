@@ -233,6 +233,12 @@ context. Otherwise their first useful operation determines the type: `append`, `
 Nested forms such as `d.setdefault(key, []).append(value)` are supported. Empty `set()`
 uses the same principle with `add`, `update`, or set operators.
 
+A list display of `None` items (`[None, None]`, `[None] * n`) or a dict display whose values
+are all `None`, assigned to a variable without an annotation, works the same way: the first
+item of another type that a fill stores types it `list[T | None]` (`dict[K, T | None]`, `K`
+the display's keys). `extend()` and `+=` cannot give such a list `int`, `float` or `bool`
+items, whose optional form is a box; annotate it then.
+
 Before inference succeeds, length and truth tests are allowed. A read earlier in the source
 may obtain its type from a later operation when that operation's item type is known.
 In a template, only code that runs for the selected argument types contributes to inference.
@@ -247,8 +253,19 @@ that cannot yet be typed.
 
 A local first assigned `None` becomes `T | None` when another assignment supplies a known
 `T`. Earlier reads use a known later assignment or their expected type. A local assigned only
-`None` reads as `None`. Module-level inference works when the later assignments can already
-be typed; globals that only functions fill need an explicit optional annotation.
+`None` reads as `None`.
+
+Module globals and fields work the same way. A global first assigned `None` becomes `T | None`
+at the first other value that module code or a function gives it, and a field that `__init__`
+sets to `None` (also through a parameter whose argument is `None`) at the first other value
+any code stores to it. A read that needs the type before that store is compiled looks for it:
+in the code being compiled and in the module-level code compiled so far; for a global, in an
+arm of a value that reads the global itself (`n = 1 if n is None else n + 1`); for a field, in
+the class's `self.x = v` assignments, typed as `__init__`'s are. Otherwise a function or method
+that assigns it, unless it is a template (a parameter without an annotation), is compiled
+first. A comparison with `None` by `is` needs no type. A global or field that no code gives
+another value reads as `None`. Where none of this finds a type in time, annotate it:
+`last: str | None = None`, `self.next: Node | None = None`.
 
 Class types already permit `None`: `C` and `C | None` use the same nullable type. Builtin
 exception annotations such as `Exception | None` are unsupported; objects of the program's
@@ -813,7 +830,9 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. When specializing a class
+function values, and supported container displays and operations. A field that `__init__`
+sets to `None` takes `T | None` from the first other value the program gives it, or holds
+only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
 positional arguments and omitted defaults have known types. This uses normal function
 specialization and does not execute the helper or its defaults during inference. Keyword or
