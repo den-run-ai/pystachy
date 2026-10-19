@@ -542,16 +542,33 @@ def gen_exc_class(self, e: Node) -> str:
         return ""  # (a local the function assigns further on: reading it is the error, see read_ahead)
     return c.s if c.s in self.classes or c.s in EXCEPTIONS else ""
 
-def gen_cause(self, c: Node) -> Val:
-    # raise ... from c: c is evaluated and checked (an exception class, a call of one, an
-    # exception or None: else CPython's TypeError is raised instead); the exception it makes,
-    # the raised exception's __cause__, is returned where the program reads that (Gen.causeread),
-    # else only a traceback would show it (Val("", ""): none)
+def gen_cause_value(self, c: Node) -> Val:
+    # raise ... from c: c's value, which CPython evaluates before it calls the raised class (a
+    # class of the program named is only looked up, Val("", k): cause() calls it, after the raised
+    # class; a builtin class's exception is made here, which no code of the program sees)
     if c.kind == "None":
         return Val("", "")
     k = self.exc_class(c)
     if k == "" or k in self.classes:
-        v = self.exc_value_of(c, k)
+        return self.exc_value_of(c, k, False)
+    name = c.kids[0].s if c.kind == "call" else c.s
+    vals = self.exc_vals(self.exc_args(c), c.kids[0].s if c.kind == "call" else "")
+    if not self.causeread or not self.eh or name == "SystemExit":
+        return Val("", "")
+    return self.exc_value("OSError" if name == "IOError" or name == "EnvironmentError" else name, vals)
+
+def gen_cause(self, c: Node, v: Val) -> Val:
+    # raise ... from c, of c's value v (cause_value), after the raised class is called: checked (an
+    # exception class, a call of one, an exception or None: else CPython's TypeError is raised
+    # instead), and a class called; the exception it makes, the raised exception's __cause__, is
+    # returned where the program reads that (Gen.causeread), else only a traceback would show it
+    # (Val("", ""): none)
+    if c.kind == "None":
+        return Val("", "")
+    k = self.exc_class(c)
+    if k == "" or k in self.classes:
+        if v.v == "" and k != "":
+            v = self.exc_object(k, [])  # (a class of the program named: called now)
         if unopt(v.t) == "exctype" and is_opt(v.t):
             # (a class object that may be None: None is no cause, as from None; a class, an
             # object of it, as below)
@@ -577,20 +594,19 @@ def gen_cause(self, c: Node) -> Val:
         if self.causeread and v.t in self.classes:
             return self.exc_of(v)
         return v if self.causeread and (v.t == "exc" or v.t == "opt[exc]") else Val("", "")  # (an exception, or None: no cause)
-    name = c.kids[0].s if c.kind == "call" else c.s
-    vals = self.exc_vals(self.exc_args(c), c.kids[0].s if c.kind == "call" else "")
-    if not self.causeread or not self.eh or name == "SystemExit":
-        return Val("", "")
-    return self.exc_value("OSError" if name == "IOError" or name == "EnvironmentError" else name, vals)
+    return v  # (a builtin class's exception, which cause_value made)
 
-def gen_exc_value_of(self, e: Node, k: str) -> Val:
+def gen_exc_value_of(self, e: Node, k: str, make: bool = True) -> Val:
     # the value of e, the exception of a raise statement, unless it is a builtin exception class
-    # or a call of one: a class of the program k (or a call of it) makes an object of it
+    # or a call of one: a class of the program k (or a call of it) makes an object of it, a class
+    # named only where make (else it is looked up, Val("", k), and the raise calls it later)
     if k == "":
         return self.expr(e, "")
     if self.classes[k].exc == "":
         self.err(f"'{short(k)}' is not an exception class: exceptions must derive from BaseException")
     self.class_ready(e.kids[0] if e.kind == "call" else e)  # (looked up first, as a call of it does)
+    if not make and e.kind != "call":
+        return Val("", k)
     return self.exc_object(k, e.kids[1:] if e.kind == "call" else [])
 
 def gen_raise_stmt(self, n: Node) -> None:
@@ -621,7 +637,12 @@ def gen_raise_stmt(self, n: Node) -> None:
         self.raise_("RuntimeError", self.sconst("generator raised StopIteration"))
         return
     if k == "" or k in self.classes:
-        v = self.exc_value_of(e, k)
+        # e's value and then the cause's, and only then are their classes called and checked, as
+        # CPython's raise does: raise E from f() calls f() before E
+        v = self.exc_value_of(e, k, len(n.kids) < 2)
+        cv = self.cause_value(n.kids[1]) if len(n.kids) > 1 else Val("", "")
+        if v.v == "" and k != "":
+            v = self.exc_object(k, [])  # (a class of the program named)
         if unopt(v.t) == "exctype":
             # raise C of a class object C: an object of its class, C()
             if is_opt(v.t):
@@ -637,7 +658,7 @@ def gen_raise_stmt(self, n: Node) -> None:
         if v.t != "exc":
             self.err("exceptions must derive from BaseException: raise needs an exception class or a call of one")
         if len(n.kids) > 1:
-            cv = self.cause(n.kids[1])
+            cv = self.cause(n.kids[1], cv)
             if cv.v != "":
                 self.rt("pys_exc_setcause", "void", [f"ptr {v.v}", f"ptr {cv.v}"])
         self.throw(v)
@@ -646,7 +667,7 @@ def gen_raise_stmt(self, n: Node) -> None:
     vals = self.exc_vals(self.exc_args(e), name)
     cause = Val("", "")
     if len(n.kids) > 1:
-        cause = self.cause(n.kids[1])
+        cause = self.cause(n.kids[1], self.cause_value(n.kids[1]))
     if n.s == "init":
         # a module's raise of ImportError at its top level (Loader.init_raise()): under an optional
         # import (a "guard" in a uimport) the module returns, not imported, so that the importer's
@@ -1341,7 +1362,25 @@ def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
     v = vals[0]
     s = self.to_str(v).v
     r = self.repr(v).v
-    flags = self.select(self.truth(v), Val("2", "int"), Val("0", "int"))
+    u = unopt(v.t)
+    if u in self.classes or is_union(u):
+        # (an object whose truth may call its __bool__ or __len__, which CPython calls for no
+        # class: tested only where c is of SyntaxError's family, whose traceback line shows it)
+        e0 = self.cur
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(self.exc_sub(c, self.exc_class_value("SyntaxError")).v, l1, l2)
+        self.place(l1)
+        tv = self.truth(v)
+        e1 = self.cur
+        self.br(l2)
+        self.place(l2)
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, "false", e0)
+        self.incoming(ph, tv, e1)
+        flags = self.select(self.phi(ph), Val("2", "int"), Val("0", "int"))
+    else:
+        flags = self.select(self.truth(v), Val("2", "int"), Val("0", "int"))
     code = "0"
     if v.t == "int" or v.t == "bool" or v.t == "None":
         flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])

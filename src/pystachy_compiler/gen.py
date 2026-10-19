@@ -411,6 +411,7 @@ from src.pystachy_compiler.exceptions import (
     gen_catch_set as exceptions_catch_set,
     gen_catches as exceptions_catches,
     gen_cause as exceptions_cause,
+    gen_cause_value as exceptions_cause_value,
     gen_class_defaults as exceptions_class_defaults,
     gen_clause_or as exceptions_clause_or,
     gen_exc_args as exceptions_exc_args,
@@ -2556,11 +2557,14 @@ class Gen:
     def exc_class(self, e: Node) -> str:
         return exceptions_exc_class(self, e)
 
-    def cause(self, c: Node) -> Val:
-        return exceptions_cause(self, c)
+    def cause_value(self, c: Node) -> Val:
+        return exceptions_cause_value(self, c)
 
-    def exc_value_of(self, e: Node, k: str) -> Val:
-        return exceptions_exc_value_of(self, e, k)
+    def cause(self, c: Node, v: Val) -> Val:
+        return exceptions_cause(self, c, v)
+
+    def exc_value_of(self, e: Node, k: str, make: bool = True) -> Val:
+        return exceptions_exc_value_of(self, e, k, make)
 
     def raise_stmt(self, n: Node) -> None:
         return exceptions_raise_stmt(self, n)
