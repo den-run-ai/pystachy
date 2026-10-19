@@ -6,4 +6,12 @@ equality depth guarded
 [[[1]]] True
 cycle equality guarded
 [[...]] True
+True
+1025
+True
+1027
+equality depth guarded
+repr depth guarded
+equality depth guarded
+repr depth guarded
 [exit 0]

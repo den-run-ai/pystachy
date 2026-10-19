@@ -1,0 +1,15 @@
+True with_lambda a\.b
+True lambda_first c\.d
+True lambda_default e\.f
+True listcomp ['g\\.h', 'i']
+True setcomp {'j\\.k'}
+True dictcomp {'l.m': 'l\\.m'}
+True gen ['n\\.o']
+False with_lambda NameError: cannot access free variable 're' where it is not associated with a value in enclosing scope
+False lambda_first NameError: cannot access free variable 're' where it is not associated with a value in enclosing scope
+False lambda_default UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+False listcomp UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+False setcomp UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+False dictcomp UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+False gen UnboundLocalError: cannot access local variable 're' where it is not associated with a value
+[exit 0]

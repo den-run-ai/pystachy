@@ -629,9 +629,9 @@ def gen_hash_desc(self, t: str) -> str:
 def gen_key_fx(self, kt: str) -> str:
     # Ins.x of a dict or set op on keys or elements of type kt: their descriptor where it holds an
     # object whose class's __hash__ and __eq__ run (H), or whose __repr__ a KeyError runs (P),
-    # which RUNTIME's U? stands for; else ""
+    # which RUNTIME's U? stands for, or a recursive alias's edge (R, RUNTIME's R?); else ""
     d = self.hash_desc(kt) if kt != "int" and kt != "str" and kt != "bytes" else ""
-    return d if "H" in d or ("P" in d and self.key_repr(kt)) else ""
+    return d if "H" in d or "R" in d or ("P" in d and self.key_repr(kt)) else ""
 
 def gen_key_repr(self, t: str) -> bool:
     # may repr() of a key of type t run a __repr__ of the program (a KeyError's message)

@@ -1155,7 +1155,13 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
 }
-double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
+/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
+   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
+   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
+   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
+   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
+   runtime.py's code and the program's */
+__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
   if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
   if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
   double r = pow(a, b);
@@ -1201,7 +1207,7 @@ double pys_m_ulp(double x) {          /* the distance from |x| to the next float
   double a = fabs(x), b = nextafter(a, INFINITY);
   return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
 }
-double pys_m_pow(double x, double y) {
+__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }
@@ -1709,6 +1715,11 @@ static const char *recdesc(const char *d) {
   while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
   return d;
 }
+/* A recursive alias's edge (R) is the one way a descriptor lets a value nest without bound, so
+   repr_depth and eqpair_depth count the edges they follow and raise here past 512. Nothing else
+   calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
+   op's descriptor holds an R (Gen.opfx); other descriptors never get here */
+static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
 static const char *utype(I tag, const char *d) {
   d++;
   for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
@@ -1787,7 +1798,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   switch (*d++) {
   case 'R': {
     const char *ref = d - 1;
-    if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
@@ -1945,16 +1956,18 @@ static int eqv(I a, I b, const char *d) {
   }
   return a == b;
 }
-typedef struct { I value; const char *desc; } EqValue;
+typedef struct { I value; const char *desc; int edge; } EqValue;
 static EqValue eqresolve(I v, const char *d) {
   /* Each operand has its own layout: an optional number is a one-slot box,
-     a union is a tag/payload box, and a concrete container is its original pointer. */
+     a union is a tag/payload box, and a concrete container is its original pointer.
+     edge: whether a recursive alias's edge (R) led here */
+  int edge = 0;
   while (*d == '?' || *d == 'U' || *d == 'R') {
-    if (*d == 'R') { d = recdesc(d); continue; }
-    if (*d == '?') { if (!v) return (EqValue){0, "n"}; v = unbox(v, ++d); }
+    if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
+    if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
     else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
   }
-  return (EqValue){v, d};
+  return (EqValue){v, d, edge};
 }
 static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
@@ -1967,27 +1980,32 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   EQ_PROBE();
   EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
   a = ax.value; x = ax.desc; b = by.value; y = by.desc;
+  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
+  /* The original container's identity survives separate union boxes. Besides
+     matching Python, this keeps a shared DAG from expanding into its logical tree.
+     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
+  if (a == b && (*x == *y || (tx && ty)) && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     depth counts the recursive alias edges followed, as repr_depth's does, and is
+     checked before any leaf is compared, so the 513th edge raises whatever it leads
+     to; a local depth argument survives native unwinding without mutable state. */
+  if (ax.edge || by.edge) {
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
+    depth++;
+  }
   if (*x == 'n' || *y == 'n') return *x == *y;
   int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
   if (nx && ny) return a == b;
   if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
   if (*x == 'f' && ny) return pys_cmp_if(b, dbl(a)) == 0;
-  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
   if (*x != *y && !(tx && ty)) return 0;
-  /* The original container's identity survives separate union boxes. Besides
-     matching Python, this keeps a shared DAG from expanding into its logical tree.
-     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
-  if (a == b && (*x == 'L' || *x == 'D' || tx)) return 1;
-  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
-     Python does, while shared descendants retain the identity shortcut above.
-     A local depth argument survives native unwinding without mutable state. */
-  if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded in comparison");
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth + 1)) return 0;
+    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
     return 1;
   }
   if (*x == 'D') {
@@ -1999,8 +2017,8 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
       if (!dlive(p, i)) continue;
       I j = -1;
       if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth + 1)) { j = k; break; }
-      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth + 1)) return 0;
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
+      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
     }
     return 1;
   }
@@ -2011,7 +2029,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair_depth(p[i], q[i], ex, ey, depth + 1)) return 0;
+      if (!eqpair_depth(p[i], q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -5092,6 +5110,12 @@ I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), un
   return v;
 }
 void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
+void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  if (k < 0 || k > l->len) {
+    char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
+  }
+  return l->a + k;
+}
 /* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries

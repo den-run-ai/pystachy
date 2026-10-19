@@ -50,6 +50,7 @@ The compiler does not read C headers or infer C calling conventions.
 | `ffi.c_buf` argument | `const char *` | Same bytes, NULs allowed; pass the length separately. |
 | `list[float]` argument | `double *` | The list's own items, for the call: C reads and writes them in place. Pass the length separately. |
 | `list[ffi.c_int64]` argument | `int64_t *` | The same, for a list of ints (`list[ffi.c_ssize_t]` too). Other item types, `list[ffi.c_float]` and `list[ffi.c_int]` among them, are rejected: a list's items are 8 bytes each. |
+| `ffi.at(xs, k)` argument | `double *`, `int64_t *` | Item `k` of the list's own items, for a list parameter: C may read and write the `len(xs) - k` items from there. `k` is checked as the call starts, after the other arguments: `IndexError` outside `0 <= k <= len(xs)`. Elsewhere `ffi.at()` is a compile error. |
 | `str` result | `char *` | Copied into a new string; NULL raises `ValueError`. |
 | `str \| None` result | `char *` | Copied into a new string; NULL becomes `None`. |
 | `None` result | `void` | No value. |
@@ -67,12 +68,14 @@ matching deallocator. Pointer addresses and lengths must designate valid memory.
 
 A list argument lends C its item array for the call. The collector moves nothing, and no
 subset code runs until the call returns, so the list cannot grow or lose its array
-meanwhile. C may read and write `len(xs)` items, and what it writes is in the list when the
-call returns; pass a copy (`xs[:]`) to keep the original.
+meanwhile. C may read and write `len(xs)` items (`len(xs) - k` from `ffi.at(xs, k)`), and
+what it writes is in the list when the call returns; pass a copy (`xs[:]`) to keep the
+original.
 
 The CPython twin copies each distinct list into one C array before the call and back into the
 list after it, so a list passed for two parameters is one array there as it is natively:
-`f(xs, xs)` sees its own writes in both runtimes.
+`f(xs, xs)` sees its own writes in both runtimes, and so does `f(xs, ffi.at(xs, 2))`, which
+passes a pointer to that array's item 2.
 
 A declaration must match the real C prototype. A mismatch in widths or calling
 convention, C++ exception or `longjmp` across subset frames, or retained temporary
