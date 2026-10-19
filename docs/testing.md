@@ -122,8 +122,8 @@ Use it when a refactor should preserve code generation. An intentional optimizat
 change IR and needs behavioral tests instead.
 
 `make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
-runtime calls or function attributes recorded for `tests/ir/*.py` (`NAME.fx`, `NAME.calls`,
-`NAME.attrs`). These probes compile without running;
+runtime calls, function attributes or field TBAA tags recorded for `tests/ir/*.py` (`NAME.fx`,
+`NAME.calls`, `NAME.attrs`, `NAME.tbaa`). These probes compile without running;
 `tests/ir/pending/` holds probes for open bugs.
 
 ## Syntax errors against CPython

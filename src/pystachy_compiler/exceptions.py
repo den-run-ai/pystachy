@@ -737,6 +737,15 @@ def gen_unicode_error(self, name: str, vals: list[Val]) -> list[str]:
     args = self.rt("pys_str_slice", "ptr", [f"ptr {self.repr(self.tuple_(vals)).v}", "i64 1", "i64 -1"])
     return [msg, args]
 
+def gen_exc_str_args(self, msg: str) -> str:
+    # what repr(e) shows between its parentheses for one str argument, msg: null, the repr of
+    # str(e), but for an empty str '', which repr(ValueError("")) shows and an exception without
+    # arguments (an empty str(e) too, and null) does not: decided where msg is a constant
+    if msg.startswith("@s."):
+        return self.sconst("''") if self.strvals[int(msg[3:])] == "" else "null"
+    empty = self.num_cmp('==', Val(self.mload('int', msg), "int"), Val("0", "int"))  # (its length in bytes)
+    return self.select(empty.v, Val(self.sconst("''"), "%ptr"), Val("null", "%ptr"))
+
 def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
     # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
     # shows between its parentheses (null: the repr of str(e), as for one str argument)
@@ -752,6 +761,8 @@ def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
             args = self.sconst("")
         elif vals[0].t != "str":
             args = self.repr(vals[0]).v
+        else:
+            args = self.exc_str_args(msg)
     elif len(vals) > 1 and exc_base_of(name, "OSError"):
         oe = self.os_error(name, vals)
         return Val(self.rt("pys_exc_new", "ptr", [f"ptr {oe[0]}", f"ptr {oe[1]}", f"ptr {oe[2]}"]), "exc")
@@ -765,6 +776,8 @@ def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
         msg = (self.repr(vals[0]) if name == "KeyError" else self.to_str(vals[0])).v
         if vals[0].t != "str" and name != "KeyError":
             args = self.repr(vals[0]).v  # (a KeyError's message is its argument's repr already)
+        elif name != "KeyError":
+            args = self.exc_str_args(msg)
     else:
         msg = self.sconst("")
     e = self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {msg}", f"ptr {args}"])
