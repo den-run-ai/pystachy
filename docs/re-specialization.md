@@ -27,10 +27,13 @@ python3.13 tools/re_specialize.py generate -o build/prog-re/_pystachy_re_special
 PYSTACHY_PATH=build/prog-re ./pystachy build prog.py -o prog
 ```
 
-`record` runs the program under CPython. It uses `sys.monitoring` to count the matching calls made
-on each compiled pattern: `match`, `fullmatch`, `search`, `findall`, `finditer`, `split`, `sub`,
-`subn` and `scanner`, wherever they are called (also through bound methods, as `fnmatch` makes
-them). `generate` writes one matcher for each pattern called at least `--min-calls` times
+`record` runs the program under CPython, with `runpy.run_path()`, as `python3.13 PROGRAM` would:
+it imports from the program's directory and ends with the program's status and messages. The paths
+runpy gives keep the spelling of PROGRAM, so a relative PROGRAM has a relative `__file__` (and, for
+a directory or zip file, a relative first entry of `sys.path`). It uses `sys.monitoring` to count
+the matching calls made on each compiled pattern: `match`, `fullmatch`, `search`, `findall`,
+`finditer`, `split`, `sub`, `subn` and `scanner`, wherever they are called (also through bound
+methods, as `fnmatch` makes them). A program that does not start writes no profile. `generate` writes one matcher for each pattern called at least `--min-calls` times
 (default 1), counting the calls of all the profiles it reads. It also takes `--pattern P [--flags F]`.
 The module's docstring lists the patterns it could not generate, with the reason.
 

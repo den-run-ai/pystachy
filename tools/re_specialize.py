@@ -777,9 +777,10 @@ def _bytes(data):
 
 
 def record(argv, out):
-    """Run the program argv[0] with argv under CPython, as python PROGRAM does (with runpy.run_path:
-    __file__ is the path as given), counting the matching calls made on each compiled pattern
-    (through sys.monitoring: the calls of Pattern's methods, wherever made)."""
+    """Run the program argv[0] with argv under CPython, as python PROGRAM does (by runpy.run_path, whose
+    paths keep the spelling given: __file__, and a directory's or zip file's entry of sys.path),
+    counting the matching calls made on each compiled pattern (through sys.monitoring: the calls of
+    Pattern's methods, wherever made)."""
     import re
     out = os.path.abspath(out)  # (the program may change the working directory)
     counts = {}
