@@ -473,6 +473,23 @@ class TestGenerated(unittest.TestCase):
             calls = {(e["pattern"], e["flags"]): e["calls"] for e in profile["patterns"]}
             self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1, ("c+", re.U): 1})
 
+    def test_record_transparent(self):
+        # counting reads nothing of the program's own callables: a proxy's __getattr__ never runs
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            prog = os.path.join(tmp, "prog.py")
+            with open(prog, "w") as f:
+                f.write("import re\nclass Proxy:\n    seen = []\n    def __getattr__(self, name):\n"
+                        "        Proxy.seen.append(name)\n        raise KeyError(name)\n    def __call__(self):\n"
+                        "        return 1\nProxy()()\nm = re.compile('a').match\nm('a')\nre.compile('b').findall('b')\n"
+                        "print(Proxy.seen)\n")
+            out = os.path.join(tmp, "profile.json")
+            run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
+                                  prog], check=True, capture_output=True, text=True)
+            self.assertEqual(run.stdout, "[]\n")
+            with open(out) as f:
+                calls = {(e["pattern"], e["flags"]): e["calls"] for e in json.load(f)["patterns"]}
+            self.assertEqual(calls, {("a", re.U): 1, ("b", re.U): 1})
+
     def test_record_exit(self):
         # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
         # message prints it, an uncaught exception its traceback, each with status 1, and an uncaught

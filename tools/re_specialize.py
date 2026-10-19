@@ -785,9 +785,19 @@ def record(argv, out):
     tool = mon.DEBUGGER_ID
     mon.use_tool_id(tool, "re_specialize")
 
+    # (p.search(s) calls Pattern.search with p first; m = p.match; m(s) calls the bound method: C types,
+    # told apart by type alone, so that nothing of the program's own callables runs here)
+    unbound = type(re.Pattern.match)
+    bound = {type(re.compile("").match), type(re.compile("").findall)}
+
     def call(code, offset, callable, arg0):
-        # (p.search(s) calls Pattern.search with p first; m = p.match; m(s) calls the bound method)
-        p = arg0 if getattr(callable, "__objclass__", None) is re.Pattern else getattr(callable, "__self__", None)
+        t = type(callable)
+        if t is unbound:
+            p = arg0 if callable.__objclass__ is re.Pattern else None
+        elif t in bound:
+            p = callable.__self__
+        else:
+            return
         if type(p) is re.Pattern and isinstance(p.pattern, str) and callable.__name__ in methods:
             key = (p.pattern, p.flags)
             counts[key] = counts.get(key, 0) + 1
