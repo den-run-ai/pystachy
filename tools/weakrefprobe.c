@@ -10,7 +10,9 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 static List *refs;
 static void *strong;
 static void *owner;                   /* what a reference object with a callback would be: it keeps its fire function */
-static I *roots[] = {(I *)&refs, (I *)&strong, (I *)&owner};
+static List *keep;                    /* live objects that can take a dead fire function's slot */
+static I *roots[] = {(I *)&refs, (I *)&strong, (I *)&owner, (I *)&keep};
+static const uintptr_t addr_xor = 0x5a5a5a5a5a5a5a5a;   /* an address xor this is not a root */
 static _Noreturn void bad(const char *what) { fprintf(stderr, "weakrefprobe: %s\n", what); exit(1); }
 
 __attribute__((noinline)) static void scrub_collect(void) {
@@ -97,6 +99,41 @@ __attribute__((noinline)) static void fired(void) {
   refs = NULL;
 }
 
+/* A handle that outlives its reference object, as a stale word can keep it marked, while its
+   target lives: the collection that frees the fire function forgets it, so whatever takes the
+   function's slot later is not queued when the target dies. */
+__attribute__((noinline)) static uintptr_t make_orphan(void) {
+  make_fired(779);
+  uintptr_t was = (uintptr_t)owner ^ addr_xor;
+  owner = NULL;                     /* the reference object and its fire function die; refs keeps the handle */
+  return was;
+}
+
+__attribute__((noinline)) static void reuse(uintptr_t was) {   /* until one takes the dead function's slot */
+  for (I i = 0; i < 10000; i++) {    /* (a bound: its chunk may go to another size) */
+    I *p = pys_alloc(32);
+    p[0] = 999;
+    pys_list_append(keep, (I)p);
+    if (((uintptr_t)p ^ addr_xor) == was) return;
+  }
+}
+
+__attribute__((noinline)) static void orphaned(void) {
+  refs = pys_list_new(4);
+  keep = pys_list_new(4);
+  uintptr_t was = make_orphan();
+  scrub_collect();
+  if (((WeakRef *)refs->a[0])->fire) bad("dead fire function kept by a live handle");
+  reuse(was);
+  strong = NULL;
+  scrub_collect();
+  if (pys_weakref_fired()) bad("the object in a dead fire function's slot queued");
+  pys_list_clear(refs);
+  refs = NULL;
+  pys_list_clear(keep);
+  keep = NULL;
+}
+
 __attribute__((noinline)) static void exercise(void) {
   refs = pys_list_new(4);
   make_pair(16);
@@ -118,11 +155,12 @@ __attribute__((noinline)) static void exercise(void) {
 }
 
 int main(void) {
-  gc_init(__builtin_frame_address(0), roots, 3);
+  gc_init(__builtin_frame_address(0), roots, 4);
   exercise();
   fired();
+  orphaned();
   scrub_collect(); scrub_collect();
   if (registry_size() != 0) bad("registry not empty after dropping all references");
-  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners and callbacks passed");
+  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed");
   return 0;
 }

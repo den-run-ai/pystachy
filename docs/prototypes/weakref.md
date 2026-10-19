@@ -123,11 +123,16 @@ callback's own type, which names the wrapper's class: the specialization that
 an annotation `ref[T]` makes and the one a call makes would then differ. Where
 `weakrefs_sweep` clears a target, it appends the handle's fire function, if it
 has one and the function is itself marked (so the wrapper lives), to a queue
-that is a collector root, and forgets it. Sweeping runs no callback, allocation
-of the collected heap or Python code; the queue grows with `realloc`.
-`_weakref` takes each queued function once (`pys_weakref_fired`, oldest first,
-which is a referent's newest reference first, as the registry lists newest
-handles first) and calls it before it makes or calls a reference.
+that is a collector root, and forgets it. A marked handle whose fire function is
+not marked (the wrapper died while a stale word kept the handle) forgets the
+function in that collection, before its slot can be reused. Sweeping runs no
+callback, allocation of the collected heap or Python code; the queue grows with
+`realloc`. `_weakref` takes each queued function once (`pys_weakref_fired`,
+oldest first, which is a referent's newest reference first, as the registry
+lists newest handles first) and calls it before it makes or calls a reference.
+A reference that a callback makes or calls leaves the queue to the call already
+taking from it, so a callback ends before the next starts, as CPython calls a
+referent's callbacks one after another.
 
 Lookup has an `I` effect in typed IR. `Gen.canon` only reuses runtime expressions
 whose effects are at most `R`, and function summaries preserve `I` through the
@@ -193,9 +198,10 @@ each reference that reads `None` has called back exactly once and each live one
 not; its callbacks allocate nothing, so no collection runs between the queue and
 the reads. `tests/lib_weakref_callback_order.py` checks newest-first order for a
 referent's two references, with callbacks that make and call references;
-`tests/lib_weakref_callback_dead_ref.py` that references dropped before their
-referents do not call back; `tests/lib_weakref_callback_raise.py` the report of
-an exception a callback raises. Those that allocate in callbacks hold the live
+`tests/lib_weakref_callback_nested.py` that such a callback ends before the next
+starts; `tests/lib_weakref_callback_dead_ref.py` that references dropped before
+their referents do not call back; `tests/lib_weakref_callback_raise.py` the
+report of an exception a callback raises. Those that allocate in callbacks hold the live
 referents while they read, so a collection a callback starts cannot clear one
 that was read live. Error cases cover unsupported target kinds, a callback that
 is not a function, a keyword callback, a third argument, private primitive
@@ -211,10 +217,12 @@ exactly once while its weak references are cleared. A handle with a fire
 function must not queue it while its target lives, must queue it exactly once
 once the target dies, and the queue alone must keep it through later collections
 until it is taken. A handle that is still marked whose fire function (and so its
-reference) is dead must queue nothing. Without the queue's root, or without the
-fire function's mark check, the probe fails. It clears its carrier list before
-dropping the list root, so a stale conservative address of that carrier cannot
-invalidate the test.
+reference) is dead must queue nothing. One whose fire function dies while its
+target lives must forget the function in that collection, and must not queue the
+live object that later takes the function's slot when the target dies. Without
+the queue's root, the fire function's mark check, or that forgetting, the probe
+fails. It clears its carrier list before dropping the list root, so a stale
+conservative address of that carrier cannot invalidate the test.
 The same probe belongs to `make verify` and the CI `contracts` group.
 
 Promotion requires full-suite validation and review of the GC change.

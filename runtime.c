@@ -408,7 +408,9 @@ __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc
    where a collection clears its target while it is itself marked, so while the reference is:
    once, newest handle first, as CPython calls a referent's callbacks, a newest reference first.
    wr_fired is a root until _weakref takes the function to call it (pys_weakref_fired): a
-   collection runs no code, and a dead reference's callback is not called, as in CPython. */
+   collection runs no code, and a dead reference's callback is not called, as in CPython. A
+   handle can outlive its reference object (a stale word keeps it marked): the collection that
+   frees its fire function forgets it, before the function's slot can be reused. */
 typedef struct WeakRef WeakRef;
 struct WeakRef { WeakRef *next; void *target; void *fire; };
 static WeakRef *weakrefs;
@@ -431,9 +433,10 @@ void *pys_weakref_fired(void) {        /* the next fire function to call, once; 
 __attribute__((noinline)) static void weakrefs_sweep(void) {
   for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
     if (!gc_marked(ref)) { *link = ref->next; continue; }
+    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;
     if (ref->target && !gc_marked(ref->target)) {
       ref->target = NULL;
-      if (ref->fire && gc_marked(ref->fire)) {
+      if (ref->fire) {
         if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
         wr_fired[wr_nfired++] = ref->fire;
       }

@@ -10,16 +10,26 @@ import sys
 from typing import Callable, Generic, TypeVar
 
 _T = TypeVar("_T")
+_draining = False  # (whether _run_callbacks is calling them)
 
 
 def _run_callbacks() -> None:
     # The callbacks of the references whose referents a collection has found dead, each once, in
     # the order CPython calls a referent's (its newest reference first). A collection runs no
-    # code: they run here, where a reference is made or called, after the collection
-    fire = __pys_weakref_fired()
-    while fire is not None:
-        fire()
+    # code: they run here, where a reference is made or called, after the collection. A callback
+    # that makes or calls a reference runs to its end before the next starts, as in CPython,
+    # which calls a referent's callbacks one after another
+    global _draining
+    if _draining:
+        return
+    _draining = True
+    try:
         fire = __pys_weakref_fired()
+        while fire is not None:
+            fire()
+            fire = __pys_weakref_fired()
+    finally:
+        _draining = False
 
 
 class ReferenceType(Generic[_T]):
