@@ -216,7 +216,11 @@ above apply to well-formed text (with the surrogate exception described above).
   `__repr__` raises makes the call of the exception class (`raise KeyError(obj)`) raise that
   exception instead, so that an `except KeyError` does not run. The `KeyError` of a dict or set
   lookup that misses an object key runs the key's `__repr__` as it is raised, likewise, where
-  CPython runs it only when the error is printed.
+  CPython runs it only when the error is printed. A `SyntaxError`, `IndentationError` or
+  `TabError` made of one argument also tests that argument's truth as it is made (its `__bool__`
+  or `__len__` runs then), for the `<no detail available>` of its traceback line, where CPython
+  tests it only when it prints that line; no other exception class tests it
+  (`tests/deviations/exc_syntax_error_truth.py`).
 
 - An `__exit__` whose traceback parameter is not annotated `TracebackType | None` (from `types`)
   is given `None` for it where CPython passes the exception's traceback (`tb is None` is true);
