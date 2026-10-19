@@ -542,6 +542,25 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
                     out[kid.s] = True
                 collect(kid.kids[1].kids, out)
 
+def bind_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement in body that assigns nm, as collect finds them, or -1
+    for st in body:
+        one: dict[str, bool] = {}
+        targets(st, one)
+        if nm in one:
+            return st.line
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        for kid in st.kids:
+            ln = -1
+            if kid.kind == "block":
+                ln = bind_line(kid.kids, nm)
+            elif kid.kind == "except":
+                ln = kid.line if kid.s == nm else bind_line(kid.kids[1].kids, nm)
+            if ln >= 0:
+                return ln
+    return -1
+
 def mark(names: list[str], sure: dict[str, bool], maybe: dict[str, bool], added: list[str]) -> None:
     # names are bound: added gets those that were not surely bound
     for nm in names:
