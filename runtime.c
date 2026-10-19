@@ -1974,25 +1974,26 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   EQ_PROBE();
   EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
   a = ax.value; x = ax.desc; b = by.value; y = by.desc;
+  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
+  /* The original container's identity survives separate union boxes. Besides
+     matching Python, this keeps a shared DAG from expanding into its logical tree.
+     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
+  if (a == b && (*x == *y || (tx && ty)) && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     depth counts the recursive alias edges followed, as repr_depth's does, and is
+     checked before any leaf is compared, so the 513th edge raises whatever it leads
+     to; a local depth argument survives native unwinding without mutable state. */
+  if (ax.edge || by.edge) {
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
+    depth++;
+  }
   if (*x == 'n' || *y == 'n') return *x == *y;
   int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
   if (nx && ny) return a == b;
   if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
   if (*x == 'f' && ny) return pys_cmp_if(b, dbl(a)) == 0;
-  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
   if (*x != *y && !(tx && ty)) return 0;
-  /* The original container's identity survives separate union boxes. Besides
-     matching Python, this keeps a shared DAG from expanding into its logical tree.
-     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
-  if (a == b && (*x == 'L' || *x == 'D' || tx)) return 1;
-  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
-     Python does, while shared descendants retain the identity shortcut above.
-     depth counts the recursive alias edges followed, as repr_depth's does; a local
-     depth argument survives native unwinding without mutable state. */
-  if (ax.edge || by.edge) {
-    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
-    depth++;
-  }
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
   if (*x == 'L') {

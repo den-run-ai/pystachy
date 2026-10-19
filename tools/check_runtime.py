@@ -16,9 +16,10 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - effects: every letter is one of the compiler's FX, U? or R?; an entry has R if the function's
     C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
     is A) other than through rec_deep (DEEP: a descriptor walk past a recursive alias's 512th
-    edge), and R or R? if it reaches rec_deep (R? is R where the op's descriptor holds such an
-    edge: Gen.opfx), A if it reaches the allocator's slow path (gc_slow) other than on the way out of a
-    raise (through a raise funnel, or the exception it builds, EXC_MAKERS: R stands for that),
+    edge, which those walks alone may call, DEEP_WALKS), and R or R? if it reaches rec_deep (R? is
+    R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
+    path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
+    it builds, EXC_MAKERS: R stands for that),
     U or U? if it reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it
     has a # parameter and reaches eqv, opv or repr (which walk a value of any type by its
     descriptor: the lists and dicts in it), and N if the C function is noreturn;
@@ -86,6 +87,8 @@ RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise
 # the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
 # edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?
 DEEP = {"rec_deep"}
+# and those walks, its only callers: R? stands for nothing else
+DEEP_WALKS = {"repr_depth", "eqpair_depth"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
 # so these do not make an entry A
@@ -762,6 +765,10 @@ def main():
                 note.append(f"{k}: {x}, which runtime.py's code does not show")
     # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
     # call included (with the letters derived above)
+    callers = sorted(n for n, v in fns.items() if v[4] == "define" and DEEP & v[3])
+    if callers != sorted(DEEP_WALKS):
+        bad.append(f"rec_deep has the callers {', '.join(callers) or 'none'}, but R? stands for the depth guards of "
+                   f"{' and '.join(sorted(DEEP_WALKS))} alone")
     pyr = {f for f in letters if "R" in letters[f]}
     pya = {f for f in letters if "A" in letters[f]}
     pyu = {f for f in letters if "U" in letters[f]}
