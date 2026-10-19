@@ -10,4 +10,5 @@ replaced True True True
 decoded again True True
 reused True
 idempotent True 0 0 True
+in place True True 0
 [exit 0]

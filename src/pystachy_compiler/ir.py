@@ -119,6 +119,7 @@ class FnInfo:
         self.vartup = ""  # *args: *Ts, of a specialization of a generic class: the tuple type args is (each call passes its items)
         self.stk = -1  # 1: a call may make its *args tuple in the caller's frame (Gen.stack_ok); -1 not yet known
         self.stknames: dict[str, bool] = {}  # then *args and the locals assigned it, which may hold that tuple
+        self.keyread = -1  # 1: it only reads its index key (Gen.key_read): o[i, j] may make that tuple in its frame; -1 not yet known
         self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
         self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
         self.lib = ""  # @ffi.extern's library ("" the process's own)

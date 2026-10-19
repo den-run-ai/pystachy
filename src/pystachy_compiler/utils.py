@@ -511,6 +511,10 @@ def typestr(t: str) -> str:
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
     t = t.replace("[?,?]", "").replace("[?]", "")
+    while "rec[" in t:
+        a = t.find("rec[")
+        b = t.find("]", a)
+        t = t[:a] + short(t[a + 4:b]) + t[b + 1:]
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7
@@ -805,6 +809,13 @@ def template_ok(name: str) -> bool:
 def takes_self(f: FnInfo) -> bool:
     # is f a method that takes its object as its first parameter (not a static or class method)
     return f.cls != "" and f.deco == ""
+
+
+def stack_keyed(f: FnInfo) -> bool:
+    # whether f is a method that o[k] calls with k (__getitem__; __setitem__ for o[k] = v, and both
+    # for o[k] op= v) and that a tuple k reaches as it is: a parameter that is unannotated (a
+    # template's, which takes the tuple's own type) or a tuple, not a union that would box it
+    return (f.name == "__getitem__" or f.name == "__setitem__") and takes_self(f) and len(f.params) >= 2 and f.vararg != 1 and f.kwarg != 1 and (f.ptypes[1] == "" or is_tuple(f.ptypes[1]))
 
 
 def clone(n: Node) -> Node:

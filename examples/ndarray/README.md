@@ -140,7 +140,7 @@ operation here fixes its order:
 | `sum_axis()` | Pairwise along the fastest axis (absolute strides, ignoring singleton axes); otherwise the lines across it one after another, into one result, as NumPy adds them | Equal |
 | `lazy`'s `sum()` | Python's `sum()` of floats: in order, with Neumaier's compensation | Equal to `sum()` of the items; within 1e-12 of `np.sum` on random data |
 | `dot()` | `total(a * b)` | Equal to `np.sum(a * b)`; within 1e-12 of `np.dot`, which calls BLAS |
-| `matmul()`, `@` | Row by row | Within 1e-12 of BLAS |
+| `matmul()`, `@` | Each item in order along the shared axis, from 0.0, for every layout of the operands | Within 1e-12 of BLAS |
 
 An ill-conditioned sum shows how much the order matters. `[1e16] + [1.0] * 100 + [-1e16]` sums to:
 - 84.0 pairwise (`total()`, `np.sum`);

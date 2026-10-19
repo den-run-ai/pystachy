@@ -67,8 +67,21 @@ def _new_shape(shape: list[int]) -> list[int]:
 def _index(i: int, n: int, axis: int) -> int:
     # i along an axis of n items, from either end, with NumPy's IndexError
     if i < -n or i >= n:
-        raise IndexError(f"index {i} is out of bounds for axis {axis} with size {n}")
+        _out_of_bounds(i, n, axis)
     return i + n if i < 0 else i
+
+
+def _out_of_bounds(i: int, n: int, axis: int) -> None:
+    # _index's IndexError. Its message is formatted here, out of the checks, so that the
+    # functions an index calls are small enough for LLVM to inline into the caller's loop
+    raise IndexError(f"index {i} is out of bounds for axis {axis} with size {n}")
+
+
+def _wrong_count(given: int, ndim: int) -> None:
+    # the IndexError of a[key] without an index for each axis (formatted here, as _out_of_bounds)
+    if given > ndim:
+        raise IndexError(f"too many indices for array: array is {ndim}-dimensional, but {given} were indexed")
+    raise IndexError(f"indexing {given} of the {ndim} axes makes a view: use a.row(i)")
 
 
 class NDArray:
@@ -147,28 +160,33 @@ class NDArray:
         i = _index(i, self.shape[0], 0)
         return NDArray(self.data, self.shape[1:], self.strides[1:], self.offset + i * self.strides[0])
 
-    def _pos(self, key) -> int:
-        # a template: the data index of a[key], key a tuple of one int per axis
-        if len(key) > self.ndim:
-            raise IndexError(f"too many indices for array: array is {self.ndim}-dimensional, but {len(key)} were indexed")
-        if len(key) < self.ndim:
-            raise IndexError(f"indexing {len(key)} of the {self.ndim} axes makes a view: use a.row(i)")
+    def _pos(self, *key: int) -> int:
+        # the data index of a[key], key one int per axis. __getitem__ and __setitem__ pass the
+        # items of their key and keep no tuple, so that the key of a[i, j] and this one can be made
+        # in their callers' frames rather than on the heap
+        shape = self.shape
+        strides = self.strides
+        if len(key) != len(shape):
+            _wrong_count(len(key), len(shape))
         p = self.offset
         k = 0
         for i in key:
-            p += _index(i, self.shape[k], k) * self.strides[k]
+            n = shape[k]
+            if i < 0 or i >= n:
+                i = _index(i, n, k)  # (from the end, or the IndexError)
+            p += i * strides[k]
             k += 1
         return p
 
     def __getitem__(self, key):
         # a template: a[i] of a 1-D array, a[i, j, ...] with an index for every axis
         if isinstance(key, int):
-            return self.data[self._pos((key,))]
-        return self.data[self._pos(key)]
+            return self.data[self._pos(key)]
+        return self.data[self._pos(*key)]
 
     def __setitem__(self, key: tuple[int, int], v: float) -> None:
         # a[i, j] = v, also through a view: the data is shared
-        self.data[self._pos(key)] = v
+        self.data[self._pos(*key)] = v
 
     def __len__(self) -> int:
         if self.ndim == 0:
@@ -554,8 +572,11 @@ def dot(a: NDArray, b: NDArray) -> float:
 
 
 def matmul(a: NDArray, b: NDArray) -> NDArray:
-    # a @ b of 2-D arrays: rows of a times b, accumulated row by row (BLAS adds in blocks, so the
-    # results can differ from NumPy's in rounding)
+    # a @ b of 2-D arrays: each item the sum of a row of a times a column of b, from 0.0 and in order
+    # along the shared axis (BLAS adds in blocks, so the results can differ from NumPy's in
+    # rounding). The rows and columns are taken as lists, slices where they are contiguous (the
+    # columns of x @ w.T are w's rows), which zip() steps through without a bounds check per item;
+    # four columns at a time make four sums at once, each still in order
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError("matmul takes 2-D arrays here")
     if a.shape[1] != b.shape[0]:
@@ -566,22 +587,40 @@ def matmul(a: NDArray, b: NDArray) -> NDArray:
     m = a.shape[0]
     k = a.shape[1]
     n = b.shape[1]
-    ac = ascontiguous(a)
-    bc = ascontiguous(b)
-    A = ac.data
-    B = bc.data
-    rows = [B[bc.offset + p * n : bc.offset + (p + 1) * n] for p in range(k)]
-    C: list[float] = []
+    rows = [_line(a.data, a.offset + i * a.strides[0], a.strides[1], k) for i in range(m)]
+    cols = [_line(b.data, b.offset + j * b.strides[1], b.strides[0], k) for j in range(n)]
+    C = [0.0] * (m * n)
     for i in range(m):
-        crow = [0.0] * n
-        base = ac.offset + i * k
-        for p in range(k):
-            aip = A[base + p]
-            brow = rows[p]
-            for j in range(n):
-                crow[j] += aip * brow[j]
-        C.extend(crow)
+        r = rows[i]
+        c = i * n
+        for j in range(0, n - 3, 4):
+            s0 = 0.0
+            s1 = 0.0
+            s2 = 0.0
+            s3 = 0.0
+            for x, y0, y1, y2, y3 in zip(r, cols[j], cols[j + 1], cols[j + 2], cols[j + 3]):
+                s0 += x * y0
+                s1 += x * y1
+                s2 += x * y2
+                s3 += x * y3
+            C[c + j] = s0
+            C[c + j + 1] = s1
+            C[c + j + 2] = s2
+            C[c + j + 3] = s3
+        for j in range(n - n % 4, n):
+            s = 0.0
+            for x, y in zip(r, cols[j]):
+                s += x * y
+            C[c + j] = s
     return NDArray(C, [m, n], [n, 1], 0)
+
+
+def _line(d: list[float], start: int, step: int, n: int) -> list[float]:
+    # the n items d[start], d[start + step], ...: a slice where they lie next to each other in d,
+    # otherwise read one by one (an index outside d raises, as reading the view does)
+    if step == 1 and start >= 0 and start <= len(d) - n:
+        return d[start : start + n]
+    return [d[start + p * step] for p in range(n)]
 
 
 def greater(a: NDArray, x: float) -> list[bool]:

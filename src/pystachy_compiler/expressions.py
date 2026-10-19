@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, deleted, only_none, stack_aliases, stack_kept, walrus_names
+from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
@@ -18,6 +18,7 @@ from src.pystachy_compiler.specs import (
     IRT,
     MODATTRS,
     NONEVAR,
+    OPAQUE,
     ORDOP,
     PYBUILTINS,
     RANGEC,
@@ -63,6 +64,7 @@ from src.pystachy_compiler.utils import (
     same_kind,
     selem,
     slice_items,
+    stack_keyed,
     takes_self,
     targs,
     tname,
@@ -268,6 +270,8 @@ def gen_has(self, t: str, a: str) -> int:
             return 0  # (no attribute name: a key of a property's setter, x.setter, or a default_factory's)
         if a in ci.methods and ci.methods[a].prop:
             self.err(f"hasattr() of property '{a}' is not supported: read it in a try/except AttributeError block")
+        if ci.mod in OPAQUE and self.curfn.mod != ci.mod and a not in ci.methods and (a in ci.ftypes or a in HASATTR["obj"].split() or a in ["__orig_bases__", "__parameters__", "__type_params__"]):
+            return 0  # (the module's own fields: CPython's object has none, nor a __dict__ or the attributes of a Python class)
         if a in ci.fflag and t + "." + a not in self.cvars:
             return -2
         if a in ci.methods or a in ci.ftypes:
@@ -602,6 +606,7 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
+    want = self.rec_type(want)
     k = n.kind
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:
@@ -1989,6 +1994,49 @@ def gen_stack_ok(self, f: FnInfo) -> bool:
                 f.stknames = names
     return f.stk == 1
 
+def gen_stack_key(self, t: str, ms: list[str]) -> bool:
+    # whether o[k] of an object of class t, which calls its methods ms with k (__getitem__,
+    # __setitem__, or both for o[k] op= v), may make a tuple display k in its own frame, where it
+    # is gone once they return: every method that it may call (a subclass's override too) only
+    # reads the key (key_read), so no copy is needed
+    ci = self.classes[t]
+    cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, t)] if ci.tag > 0 else [ci]
+    for c in cs:
+        for m in ms:
+            if m not in c.methods or not self.key_read(c.methods[m]):
+                return False
+    return True
+
+def gen_key_read(self, f: FnInfo) -> bool:
+    # whether f, a method that o[k] calls with k, takes a tuple k as it is (stack_keyed) and only
+    # reads it, its items, its length or its type, and the locals assigned it (key_reads): it can
+    # keep none of them, nor return it, nor let a closure, a generator expression or a generator's
+    # frame hold it (stack_kept)
+    if f.keyread < 0:
+        f.keyread = 0
+        if stack_keyed(f) and f.node.kind == "def" and not f.export and not f.pyexport:
+            names: dict[str, bool] = {f.params[1]: True}
+            body = f.node.kids[2].kids
+            added = True
+            while added:
+                added = False
+                for st in body:
+                    if stack_aliases(st, names):
+                        added = True
+            bound: dict[str, bool] = {}
+            local_names(body, bound)
+            for st in body:
+                comp_vars(st, bound)  # (len in [len(k) for len in fs] is not the builtin)
+            builtins: dict[str, bool] = {}
+            for b in ["len", "isinstance", "int", "float", "str", "bool"]:
+                if b not in bound and b not in f.params and b not in self.funcs and b not in self.classes and b not in self.mvars:
+                    builtins[b] = True  # (another module's own len is named m$len where it calls it)
+            key = f.params[1] if f.params[1] not in bound else ""
+            ns = list(names)
+            if len([st for st in body if stack_kept(st, ns) or not key_reads(st, names, builtins, key)]) == 0:
+                f.keyread = 1
+    return f.keyread == 1
+
 def gen_keep_stack(self, n: Node) -> None:
     # before statement n of a function whose *args tuple may be in its caller's frame
     # (stack_ok): each local that may hold the tuple and that n uses other than to look it up
@@ -2191,7 +2239,7 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     if t == "bytes":
         i = self.ival(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
-        return Val(self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), "int")
+        return self.bytes_read(o, i)
     if is_list(t) or t == "str":
         i = self.ival(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
         o = self.unwrap(o, sub)
@@ -2237,8 +2285,13 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             return self.getfield(o, self.field(o, ts[j]), ts[j])
         return self.tget(self.unwrap(o, sub), j)
     if t in self.classes:
-        # o[k]: o.__getitem__(k), once k is evaluated
-        ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
+        # o[k]: o.__getitem__(k), once k is evaluated; a tuple display k in the frame where
+        # __getitem__ only reads it (o[i, j]: stack_key)
+        keyt = self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable")
+        if self.lookup_key(n.kids[1]) and self.stack_key(t, ["__getitem__"]):
+            self.stkkey = n.kids[1]
+        ik = self.expr(n.kids[1], keyt)
+        self.stkkey = self.nokey
         self.notnone(o, sub)
         return self.protocol(o, "__getitem__", [ik])
     self.err(f"'{tname(t) if is_gen(t) else t}' object is not subscriptable")
@@ -2300,6 +2353,28 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     self.br(done)
     self.place(slow)
     v = self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
+    self.incoming(ph, v, self.cur)
+    self.br(done)
+    self.place(done)
+    return Val(self.phi(ph), "int")
+
+def gen_bytes_read(self, o: Val, i: Val) -> Val:
+    # b[i] of a bytes o (not None): as list_read, an index below the length (an unsigned
+    # comparison, which sends a negative one to the runtime) reads its byte inline. A bytes
+    # never changes in place, so nothing between the check and the load can shorten it
+    if "listfast" not in self.opts:
+        return Val(self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), "int")
+    fast = self.label()
+    slow = self.label()
+    done = self.label()
+    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(self.mload('int', o.v), "int")).v, fast, slow)
+    ph = Ins("phi", "int", "")
+    self.place(fast)
+    p = self.maddr('%byte', o.v, self.scalar('add', [Val(i.v, 'int'), Val('24', 'int')]))
+    self.incoming(ph, self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), self.cur)
+    self.br(done)
+    self.place(slow)
+    v = self.rt("pys_bytes_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
     self.incoming(ph, v, self.cur)
     self.br(done)
     self.place(done)
@@ -3313,7 +3388,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t))))):
+        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -3474,7 +3549,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 a = Val(nk[0], unopt(elem(b.t)))
                 ok = nk[1]
             et = a.t if is_opt(a.t) and unopt(a.t) == elem(b.t) else elem(b.t)  # (None is in no list[T])
-            if is_union(unopt(elem(b.t))) and self.ueq_type(elem(b.t)):
+            if is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t)):
                 et = self.union_type([elem(b.t), a.t])
             if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                 et = self.optional(elem(b.t))
@@ -3634,6 +3709,8 @@ def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
 def gen_numeric_comparable(self, t: str, u: str) -> bool:
     # Matching builtin container trees may differ at numeric leaves. Keep
     # optional/union widening and user comparison callbacks out of this path.
+    if ("rec[" in t or "rec[" in u) and self.ueq_type(t) and self.ueq_type(u):
+        return True  # paired descriptors preserve each recursive/native layout
     if t == u:
         return self.ueq_type(t)
     if self.isnum(t) and self.isnum(u):
