@@ -12,7 +12,7 @@ The [router example](../examples/route/README.md) shows an application result ca
 | Pattern class tables | Character-class opcode interpretation | 131 entries per used class (+128 for a memo), owned by pattern |
 | Pattern search strategy | Choosing what a search may skip by | 5 entries per pattern, found at its first search |
 | Regex case-mapping memo | Searching the Unicode case tables | 256 recent code points per mapping, process-wide |
-| Regex decoded subject | Decoding the same string object again | Last subject only |
+| Regex decoded subject | Decoding the same non-ASCII string object again (an ASCII one is read in place) | Last subject only |
 | Application `lru_cache` | Entire function body | Chosen `maxsize` |
 
 The regex front caches reference entries in their larger caches; they do not compile extra

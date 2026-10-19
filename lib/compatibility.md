@@ -421,7 +421,9 @@ dictionaries, positions, spans and expansion.
   group numbers are unavailable.
 
 `purge` clears pattern, replacement-template and last-input decoding caches.
-The last input's decoded code points stay cached for the next call on it, but
+An input whose every byte is a code point (ASCII, or raw bytes) is read in place, as
+CPython's `_sre` reads a 1-byte string: it is not decoded or cached. Another input's
+decoded code points stay cached for the next call on it, but
 `findall`, `finditer`, `split`, `sub` and `subn` drop a decoding they made of an
 input longer than 1,048,576 code points once they return. Bounded `findall` and `finditer` calls
 whose `endpos` precedes the input's end keep it, as do caches that `match` or
