@@ -181,6 +181,8 @@ from src.pystachy_compiler.calls import (
     gen_callable_pat as calls_callable_pat,
     gen_close_temp as calls_close_temp,
     gen_dispatches as calls_dispatches,
+    gen_ffi_at as calls_ffi_at,
+    gen_at_arg as calls_at_arg,
     gen_fname as calls_fname,
     gen_kw_dict as calls_kw_dict,
     gen_kw_list as calls_kw_list,
@@ -2188,8 +2190,8 @@ class Gen:
     def externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
         return functions_externtype(self, a, t, what, f)
 
-    def cextern(self, f: FnInfo) -> None:
-        return lower_module_cextern(self, f)
+    def cextern(self, f: FnInfo, at: bool = False) -> None:
+        return lower_module_cextern(self, f, at)
 
     def pyext(self) -> list[str]:
         return lower_module_pyext(self)
@@ -3057,6 +3059,12 @@ class Gen:
 
     def open_call(self, n: Node) -> bool:
         return calls_open_call(self, n)
+
+    def ffi_at(self, n: Node) -> bool:
+        return calls_ffi_at(self, n)
+
+    def at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+        return calls_at_arg(self, n, f, j, offs)
 
     def close_temp(self, n: Node, v: Val) -> None:
         return calls_close_temp(self, n, v)
