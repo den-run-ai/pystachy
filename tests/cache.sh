@@ -5,6 +5,8 @@
 # prints a message of runtime.py and one of runtime.c, which show what its runtime was built from.
 #   - The cache is used again while nothing it is built from changes, also through another path to
 #     the same tools, and by the AOT tier.
+#   - On Linux, the JIT tier's shared library is cached beside the .o, made again from the .o where it
+#     is missing (no runtime is built then), and replaced with its entry.
 #   - It is built again, and the new entry replaces the old, when runtime.py changes by an edit of the
 #     same size whose mtime is set back, when runtime.c changes, when a file it includes from ryu/
 #     changes (the home's: the runs start in a directory whose ryu/d2s.c does not compile), when they
@@ -83,15 +85,16 @@ pass=0; fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
 bad() { fail=$((fail + 1)); echo "FAIL $1"; }
 builds() { wc -l < "$T/built" | tr -d ' '; }
-# the cache's runtimes (inode and name), their number, its ext glue, and the other files but the
-# hashes (partial ones)
-entries() { (cd "$B" && ls -i runtime-py-*-????????????????.bc runtime-py-*-????????????????.o 2> /dev/null); }
+# the cache's runtimes (inode and name: the bitcode, the machine code and, on Linux, the shared
+# library made from it), their number, its ext glue, and the other files but the hashes (partial ones)
+entries() { (cd "$B" && ls -i runtime-py-*-????????????????.bc runtime-py-*-????????????????.o runtime-py-*-????????????????.so 2> /dev/null); }
 pairs() { (cd "$B" && ls runtime-py-*-????????????????.bc 2> /dev/null) | wc -l | tr -d ' '; }
 glue() { (cd "$B" && ls -i runtime-py-*-????????????????.py*.bc 2> /dev/null); }
+libs() { (cd "$B" && ls runtime-py-*-????????????????.so 2> /dev/null) | wc -l | tr -d ' '; }
 others() {
   for f in "$B"/*; do
     case ${f##*/} in
-      runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
+      runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.so | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
       *) printf '%s ' "${f##*/}" ;;
     esac
   done
@@ -122,6 +125,14 @@ echo "-- the compiler: $PYS"
 check "a first run builds the runtime" "$out" 1
 npairs 1 "one entry: a .bc and its .o"
 clean "no partial or temporary file is left"
+# on Linux the JIT tier loads the runtime as a shared library, made from the .o and cached beside it
+# (RTSO in the driver); a run that finds the .o without its library makes the library again
+if [ "$(uname)" = Linux ]; then
+  if [ "$(libs)" = 1 ]; then ok "the shared library is cached beside the .o"; else bad "$(libs) shared libraries in the cache, not 1"; fi
+  rm -f "$B"/runtime-py-*-????????????????.so
+  check "a run that finds no shared library makes it from the .o, and builds no runtime" "$out" 0
+  if [ "$(libs)" = 1 ]; then ok "and caches it"; else bad "$(libs) shared libraries in the cache after it, not 1"; fi
+fi
 E=$(entries)
 check "nothing changed: the cache is used" "$out" 0
 same "$E" "the same entry, not written again"
@@ -139,6 +150,7 @@ if [ "$H/runtime.py" -nt "$T/ref" ] || [ "$H/runtime.py" -ot "$T/ref" ] || [ "$(
 out=$(printf '%s\n%s' "$P1" "$C0")
 check "an edit of runtime.py of the same size, its mtime set back: built again" "$out" 1
 npairs 1 "the new entry replaces the old"
+[ "$(uname)" != Linux ] || { if [ "$(libs)" = 1 ]; then ok "and its shared library the old one's"; else bad "$(libs) shared libraries in the cache, not 1"; fi; }
 cat "$T/INVALID.c" > "$H/runtime.c"
 check "an edit of runtime.c: built again" "$(printf '%s\n%s' "$P1" "$C1")" 1
 printf '/* an edit */\n' >> "$H/ryu/common.h"

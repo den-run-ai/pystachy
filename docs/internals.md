@@ -346,8 +346,15 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, then ORC JIT runs with the cached runtime
-object. A module that holds generators (coroutines, which `lli` cannot run before they are
+program's own functions, performs SSA cleanup, then ORC JIT runs with the cached runtime.
+On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
+from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
+run (`-extra-object`), which cost about 35 ms a run
+([#704](https://github.com/den-run-ai/pystachy/issues/704)). The runtime calls back into the
+program for objects' `==`, ordering and `repr` (`pys_obj_eq`, `pys_obj_cmp`, `pys_obj_repr`),
+which no shared library can name: the library holds stand-ins that call through pointers, which a
+constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
+A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`; other modules keep the same `opt` command. The default inlining threshold is 20,000 lines of generated IR; larger programs skip
