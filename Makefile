@@ -2,7 +2,7 @@
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
-COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
+COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py) lib/_pystachy_unicodedata_names.py
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
 	mkdir -p build
@@ -27,7 +27,7 @@ test: pystachy
 # the CPython-hosted compiler runs as a module, whose bytecode CPython caches (it compiles a script's
 # source again at every start); every compiler module is checked by hash, not its mtime
 test-py:
-	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
+	$(PY) -c 'import py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in "$(COMPILER_SOURCES)".split()]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),

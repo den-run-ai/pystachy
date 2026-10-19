@@ -16,6 +16,7 @@ from src.pystachy_compiler.utils import optimizations
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
+    'lib/_pystachy_unicodedata_names.py',
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',
@@ -57,6 +58,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/templates.py',
     'src/pystachy_compiler/union_arithmetic.py',
     'src/pystachy_compiler/unions.py',
+    'src/pystachy_compiler/unicode_names.py',
     'src/pystachy_compiler/utils.py',
     'src/pystachy_compiler/variables.py',
 ]

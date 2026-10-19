@@ -1,0 +1,3481 @@
+{
+  "recorded_utc": "2026-10-18T13:17:08.454451+00:00",
+  "status": "unmerged candidate; full verification not yet complete",
+  "base_main": "44316e75fabc99108d3188c5b4d0d59e867f4a94",
+  "issue": "https://github.com/den-run-ai/pystachy/issues/122",
+  "source_identity": {
+    "Makefile": {
+      "bytes": 14386,
+      "sha256": "286d8fa3ac296a79067c93c54a3429676092eb1948d4c569b35a37c0f1be97e2"
+    },
+    "THIRD_PARTY_NOTICES": {
+      "bytes": 60165,
+      "sha256": "e27a029f476ad86b4cbfc5a8f77c09009553484b601437b076f90ff85a8abbdd"
+    },
+    "docs/language/compatibility.md": {
+      "bytes": 63106,
+      "sha256": "f92d65810c6f92c5a25dab83e1b4a4a9eb18aaab48c0232398541e3070b26497"
+    },
+    "docs/language/semantics.md": {
+      "bytes": 37570,
+      "sha256": "f64b3b8b351e635cd5d1f396da6f6a506a3a8766e23081b2e48ab2a70eecc3e9"
+    },
+    "src/README.md": {
+      "bytes": 4776,
+      "sha256": "a88eaebff470459f2ed459e3271fad0684e859b9a912998fb6b1846d73e7002f"
+    },
+    "src/pystachy_compiler/driver.py": {
+      "bytes": 37272,
+      "sha256": "3edb54f09d2458673a0c169147f56cd95e1b251994423f404954b21be33847ce"
+    },
+    "src/pystachy_compiler/parser.py": {
+      "bytes": 92203,
+      "sha256": "5aca82e184a6ba49113dfed5d1c16ec92d0507e8dedf66153cff569c6d8ca8d4"
+    },
+    "src/pystachy_compiler/unicode_names.py": {
+      "bytes": 5842,
+      "sha256": "138f061d98a87e1c1d77f9e49312b980bd6c6a06976c3c3e67de3ae5c87da5c5"
+    },
+    "tests/cache.sh": {
+      "bytes": 16008,
+      "sha256": "7ec5be44e24188a1f996a3d1ad7b3c841a2a793a296d6f7dea5d51f71c3f8abe"
+    },
+    "tests/errors/named_escape.py": {
+      "deleted": true
+    },
+    "tests/errors/syntax_fstring_cut_named_escape.py": {
+      "bytes": 219,
+      "sha256": "0f15d0bb924c7cf55f5b6480bc6b6d4a05b2857d8d44d45a0c5d728ffa78b9e1"
+    },
+    "tests/errors/syntax_fstring_named_escape.py": {
+      "deleted": true
+    },
+    "tests/errors/syntax_named_unicode_after_nonascii.py": {
+      "bytes": 154,
+      "sha256": "c5d83bf14d9d4fc88d8375978844af8cc53e052ac656f7289b5cb2c98cb99c0a"
+    },
+    "tests/errors/syntax_named_unicode_after_valid.py": {
+      "bytes": 162,
+      "sha256": "6b81250eadff6211ac95b299ff15ac422429218d3005b99cc020adf76ba0ea87"
+    },
+    "tests/errors/syntax_named_unicode_derived_boundary.py": {
+      "bytes": 156,
+      "sha256": "158005cd5ef5622db2720859daf082419e3e5ae37a4d7ed6e9654037a4ce3479"
+    },
+    "tests/errors/syntax_named_unicode_empty.py": {
+      "bytes": 127,
+      "sha256": "8212c5a551e136fbf7ce3d3abf1f53e2e80ae15e5bf5084517d91f7c04188744"
+    },
+    "tests/errors/syntax_named_unicode_f_empty.py": {
+      "bytes": 132,
+      "sha256": "eff969efd4e33dcfc59519ab29c5230b20973e568e047a63e179d2341d5ee3b1"
+    },
+    "tests/errors/syntax_named_unicode_f_sequence.py": {
+      "bytes": 150,
+      "sha256": "10e69c1136083b7f29762699c6749edce9ba68b255d06e1fef8138a203b7cd9d"
+    },
+    "tests/errors/syntax_named_unicode_f_unknown.py": {
+      "bytes": 156,
+      "sha256": "b6e14586def28a59e543b7968bf0487148131a80c31aa74a87483ca30b7f4b9e"
+    },
+    "tests/errors/syntax_named_unicode_missing_brace.py": {
+      "bytes": 131,
+      "sha256": "10d91a652808c3511483ac9c3948f1d55edbfe8f674428de9d9fb688a2842f38"
+    },
+    "tests/errors/syntax_named_unicode_nonascii_name.py": {
+      "bytes": 136,
+      "sha256": "cfd9d351ab1094e128eb4760eb55a00e1a188818035823a21d1a9e7afe1d77b5"
+    },
+    "tests/errors/syntax_named_unicode_sequence.py": {
+      "bytes": 145,
+      "sha256": "c83f9f2a089b58445ccc3942544142da0c0149953e2012a05e395f5f69e8ccba"
+    },
+    "tests/errors/syntax_named_unicode_unclosed.py": {
+      "bytes": 132,
+      "sha256": "cacc0fb9c24ca771ecd7250709d1c2b9654e6aad569b503e4c67f8b85453295f"
+    },
+    "tests/errors/syntax_named_unicode_unknown.py": {
+      "bytes": 151,
+      "sha256": "8850a11248a8b106081274b51a6a392195d8c5f785c764125c41584dbc4d3e5f"
+    },
+    "tests/syntax_named_unicode.out": {
+      "bytes": 622,
+      "sha256": "37e39fdfe222e95cb3e2a0009b84eec6991f348ab29845ebf9f910e3c233791b"
+    },
+    "tests/syntax_named_unicode.py": {
+      "bytes": 1822,
+      "sha256": "90d734ec95dc3e21a8e0329f8fcca04962dcaed046d220ff3b8c99ce7769eb90"
+    },
+    "tests/verify.sh": {
+      "bytes": 41422,
+      "sha256": "fef5b818bd9db80fcd80e4aebaa01577fc3157b700c3f5af516aefd7c394e2a2"
+    },
+    "tools/syntax_sweep.py": {
+      "bytes": 4280,
+      "sha256": "fc650a84db2beb8ba42d145af6e1548df84e22153311fe8364d6b7e7e0069a50"
+    }
+  },
+  "unchanged_names_data": {
+    "bytes": 713163,
+    "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+  },
+  "toolchain": {
+    "python": "3.13.16",
+    "llvm_clang": "18.1.3",
+    "gnu_ld": "2.42",
+    "jobs": 4,
+    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "logical_cpus": 4
+  },
+  "bootstrap": {
+    "command_each": "make",
+    "baseline": {
+      "exit": 0,
+      "seconds": 177.09809521120042,
+      "compiler_ir_lines": 621423,
+      "runtime_ir_lines": 18388,
+      "three_stage_fixedpoints": true
+    },
+    "candidate": {
+      "exit": 0,
+      "seconds": 185.10292159300297,
+      "compiler_ir_lines": 627615,
+      "runtime_ir_lines": 18388,
+      "three_stage_fixedpoints": true
+    },
+    "initial_setup_failure": "An initial unchanged-main build could not locate GCC CRT files. A task-local clang.cfg selected the extracted GCC toolchain; both subsequent fixed-point builds passed. No compiler change was needed for that setup error."
+  },
+  "binaries": {
+    "baseline": {
+      "bytes": 3406280,
+      "sha256": "7119ee47cc8471759a688143d554da3ee9a36b49f446f9e31d9069ccabd31f11"
+    },
+    "candidate": {
+      "bytes": 4134640,
+      "sha256": "1ff50e8a2ad16735e1d0cb2d6b7b148d109b77912260903d55a9269e801eddb6"
+    }
+  },
+  "syntax_oracle": {
+    "reference": "CPython3.13.16/Unicode15.1; independent oracle frozen before implementation",
+    "fixture_template": "x = 7\nBULLET = \"BULLET_VAR\"\nprint(ascii(EXPRESSION))\n",
+    "cases": [
+      {
+        "id": "official-upper",
+        "group": "ordinary-name",
+        "source": "\"\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u2022'",
+          "ascii": "'\\u2022'",
+          "value": "\u2022",
+          "length": 1,
+          "codepoints": [
+            "U+2022"
+          ],
+          "utf8_hex": "e280a2"
+        },
+        "warnings": []
+      },
+      {
+        "id": "official-lower",
+        "group": "ordinary-name",
+        "source": "\"\\N{bullet}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u2022'",
+          "ascii": "'\\u2022'",
+          "value": "\u2022",
+          "length": 1,
+          "codepoints": [
+            "U+2022"
+          ],
+          "utf8_hex": "e280a2"
+        },
+        "warnings": []
+      },
+      {
+        "id": "official-mixed",
+        "group": "ordinary-name",
+        "source": "\"\\N{Latin Small Letter E With Acute}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u00e9'",
+          "ascii": "'\\xe9'",
+          "value": "\u00e9",
+          "length": 1,
+          "codepoints": [
+            "U+00E9"
+          ],
+          "utf8_hex": "c3a9"
+        },
+        "warnings": []
+      },
+      {
+        "id": "alias-bom",
+        "group": "ordinary-name",
+        "source": "\"\\N{BYTE ORDER MARK}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\ufeff'",
+          "ascii": "'\\ufeff'",
+          "value": "\ufeff",
+          "length": 1,
+          "codepoints": [
+            "U+FEFF"
+          ],
+          "utf8_hex": "efbbbf"
+        },
+        "warnings": []
+      },
+      {
+        "id": "alias-lf",
+        "group": "ordinary-name",
+        "source": "\"\\N{LF}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\n'",
+          "ascii": "'\\n'",
+          "value": "\n",
+          "length": 1,
+          "codepoints": [
+            "U+000A"
+          ],
+          "utf8_hex": "0a"
+        },
+        "warnings": []
+      },
+      {
+        "id": "alias-nbsp",
+        "group": "ordinary-name",
+        "source": "\"\\N{NBSP}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\xa0'",
+          "ascii": "'\\xa0'",
+          "value": "\u00a0",
+          "length": 1,
+          "codepoints": [
+            "U+00A0"
+          ],
+          "utf8_hex": "c2a0"
+        },
+        "warnings": []
+      },
+      {
+        "id": "alias-zwj",
+        "group": "ordinary-name",
+        "source": "\"\\N{ZWJ}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\u200d'",
+          "ascii": "'\\u200d'",
+          "value": "\u200d",
+          "length": 1,
+          "codepoints": [
+            "U+200D"
+          ],
+          "utf8_hex": "e2808d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "control-nul",
+        "group": "ordinary-name",
+        "source": "\"\\N{NUL}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\x00'",
+          "ascii": "'\\x00'",
+          "value": "\u0000",
+          "length": 1,
+          "codepoints": [
+            "U+0000"
+          ],
+          "utf8_hex": "00"
+        },
+        "warnings": []
+      },
+      {
+        "id": "control-long-alias",
+        "group": "ordinary-name",
+        "source": "\"\\N{LINE FEED}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\n'",
+          "ascii": "'\\n'",
+          "value": "\n",
+          "length": 1,
+          "codepoints": [
+            "U+000A"
+          ],
+          "utf8_hex": "0a"
+        },
+        "warnings": []
+      },
+      {
+        "id": "alias-lri",
+        "group": "ordinary-name",
+        "source": "\"\\N{LRI}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\u2066'",
+          "ascii": "'\\u2066'",
+          "value": "\u2066",
+          "length": 1,
+          "codepoints": [
+            "U+2066"
+          ],
+          "utf8_hex": "e281a6"
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-basic",
+        "group": "derived-name",
+        "source": "\"\\N{CJK UNIFIED IDEOGRAPH-4E00}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u4e00'",
+          "ascii": "'\\u4e00'",
+          "value": "\u4e00",
+          "length": 1,
+          "codepoints": [
+            "U+4E00"
+          ],
+          "utf8_hex": "e4b880"
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-lower-hex",
+        "group": "derived-name",
+        "source": "\"\\N{CJK UNIFIED IDEOGRAPH-4e0a}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u4e0a'",
+          "ascii": "'\\u4e0a'",
+          "value": "\u4e0a",
+          "length": 1,
+          "codepoints": [
+            "U+4E0A"
+          ],
+          "utf8_hex": "e4b88a"
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-lower-prefix",
+        "group": "derived-name",
+        "source": "\"\\N{cjk unified ideograph-4E00}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u4e00'",
+          "ascii": "'\\u4e00'",
+          "value": "\u4e00",
+          "length": 1,
+          "codepoints": [
+            "U+4E00"
+          ],
+          "utf8_hex": "e4b880"
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-extension-i-start",
+        "group": "derived-name",
+        "source": "\"\\N{CJK UNIFIED IDEOGRAPH-2EBF0}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud87a\udff0'",
+          "ascii": "'\\U0002ebf0'",
+          "value": "\ud87a\udff0",
+          "length": 1,
+          "codepoints": [
+            "U+2EBF0"
+          ],
+          "utf8_hex": "f0aeafb0"
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-extension-i-past-end",
+        "group": "derived-name",
+        "source": "\"\\N{CJK UNIFIED IDEOGRAPH-2EE5E}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-30: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-30: unknown Unicode character name (cjk-extension-i-past-end.py, line 1)",
+          "filename": "oracle/cjk-extension-i-past-end.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 34,
+          "text": "\"\\N{CJK UNIFIED IDEOGRAPH-2EE5E}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "cjk-basic-before-start",
+        "group": "derived-name",
+        "source": "\"\\N{CJK UNIFIED IDEOGRAPH-4DFF}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-29: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-29: unknown Unicode character name (cjk-basic-before-start.py, line 1)",
+          "filename": "oracle/cjk-basic-before-start.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 33,
+          "text": "\"\\N{CJK UNIFIED IDEOGRAPH-4DFF}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "hangul-first",
+        "group": "derived-name",
+        "source": "\"\\N{HANGUL SYLLABLE GA}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\uac00'",
+          "ascii": "'\\uac00'",
+          "value": "\uac00",
+          "length": 1,
+          "codepoints": [
+            "U+AC00"
+          ],
+          "utf8_hex": "eab080"
+        },
+        "warnings": []
+      },
+      {
+        "id": "hangul-last",
+        "group": "derived-name",
+        "source": "\"\\N{HANGUL SYLLABLE HIH}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud7a3'",
+          "ascii": "'\\ud7a3'",
+          "value": "\ud7a3",
+          "length": 1,
+          "codepoints": [
+            "U+D7A3"
+          ],
+          "utf8_hex": "ed9ea3"
+        },
+        "warnings": []
+      },
+      {
+        "id": "hangul-invalid-jamo",
+        "group": "derived-name",
+        "source": "\"\\N{HANGUL SYLLABLE GAX}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-22: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-22: unknown Unicode character name (hangul-invalid-jamo.py, line 1)",
+          "filename": "oracle/hangul-invalid-jamo.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 26,
+          "text": "\"\\N{HANGUL SYLLABLE GAX}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "tangut-first",
+        "group": "derived-name",
+        "source": "\"\\N{TANGUT IDEOGRAPH-17000}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud81c\udc00'",
+          "ascii": "'\\U00017000'",
+          "value": "\ud81c\udc00",
+          "length": 1,
+          "codepoints": [
+            "U+17000"
+          ],
+          "utf8_hex": "f0978080"
+        },
+        "warnings": []
+      },
+      {
+        "id": "tangut-last",
+        "group": "derived-name",
+        "source": "\"\\N{TANGUT IDEOGRAPH-187F7}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud821\udff7'",
+          "ascii": "'\\U000187f7'",
+          "value": "\ud821\udff7",
+          "length": 1,
+          "codepoints": [
+            "U+187F7"
+          ],
+          "utf8_hex": "f0989fb7"
+        },
+        "warnings": []
+      },
+      {
+        "id": "tangut-past-end",
+        "group": "derived-name",
+        "source": "\"\\N{TANGUT IDEOGRAPH-187F8}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name (tangut-past-end.py, line 1)",
+          "filename": "oracle/tangut-past-end.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 29,
+          "text": "\"\\N{TANGUT IDEOGRAPH-187F8}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "nushu-first",
+        "group": "derived-name",
+        "source": "\"\\N{NUSHU CHARACTER-1B170}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud82c\udd70'",
+          "ascii": "'\\U0001b170'",
+          "value": "\ud82c\udd70",
+          "length": 1,
+          "codepoints": [
+            "U+1B170"
+          ],
+          "utf8_hex": "f09b85b0"
+        },
+        "warnings": []
+      },
+      {
+        "id": "nushu-last",
+        "group": "derived-name",
+        "source": "\"\\N{NUSHU CHARACTER-1B2FB}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud82c\udefb'",
+          "ascii": "'\\U0001b2fb'",
+          "value": "\ud82c\udefb",
+          "length": 1,
+          "codepoints": [
+            "U+1B2FB"
+          ],
+          "utf8_hex": "f09b8bbb"
+        },
+        "warnings": []
+      },
+      {
+        "id": "nushu-past-end",
+        "group": "derived-name",
+        "source": "\"\\N{NUSHU CHARACTER-1B2FC}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-24: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-24: unknown Unicode character name (nushu-past-end.py, line 1)",
+          "filename": "oracle/nushu-past-end.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 28,
+          "text": "\"\\N{NUSHU CHARACTER-1B2FC}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "khitan-first",
+        "group": "derived-name",
+        "source": "\"\\N{KHITAN SMALL SCRIPT CHARACTER-18B00}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud822\udf00'",
+          "ascii": "'\\U00018b00'",
+          "value": "\ud822\udf00",
+          "length": 1,
+          "codepoints": [
+            "U+18B00"
+          ],
+          "utf8_hex": "f098ac80"
+        },
+        "warnings": []
+      },
+      {
+        "id": "khitan-last",
+        "group": "derived-name",
+        "source": "\"\\N{KHITAN SMALL SCRIPT CHARACTER-18CD5}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud823\udcd5'",
+          "ascii": "'\\U00018cd5'",
+          "value": "\ud823\udcd5",
+          "length": 1,
+          "codepoints": [
+            "U+18CD5"
+          ],
+          "utf8_hex": "f098b395"
+        },
+        "warnings": []
+      },
+      {
+        "id": "khitan-past-end",
+        "group": "derived-name",
+        "source": "\"\\N{KHITAN SMALL SCRIPT CHARACTER-18CD6}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-38: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-38: unknown Unicode character name (khitan-past-end.py, line 1)",
+          "filename": "oracle/khitan-past-end.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 42,
+          "text": "\"\\N{KHITAN SMALL SCRIPT CHARACTER-18CD6}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "sequence-keycap",
+        "group": "named-sequence",
+        "source": "\"\\N{KEYCAP DIGIT ONE}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-19: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-19: unknown Unicode character name (sequence-keycap.py, line 1)",
+          "filename": "oracle/sequence-keycap.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 23,
+          "text": "\"\\N{KEYCAP DIGIT ONE}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "sequence-latin",
+        "group": "named-sequence",
+        "source": "\"\\N{LATIN SMALL LETTER A WITH MACRON AND GRAVE}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-45: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-45: unknown Unicode character name (sequence-latin.py, line 1)",
+          "filename": "oracle/sequence-latin.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 49,
+          "text": "\"\\N{LATIN SMALL LETTER A WITH MACRON AND GRAVE}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "name-trailing-space",
+        "group": "name-normalization",
+        "source": "\"\\N{BULLET }\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-10: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-10: unknown Unicode character name (name-trailing-space.py, line 1)",
+          "filename": "oracle/name-trailing-space.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 14,
+          "text": "\"\\N{BULLET }\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "malformed-empty",
+        "group": "malformed",
+        "source": "\"\\N{}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-2: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-2: malformed \\N character escape (malformed-empty.py, line 1)",
+          "filename": "oracle/malformed-empty.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 7,
+          "text": "\"\\N{}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "unknown-name",
+        "group": "malformed",
+        "source": "\"\\N{NO SUCH CHARACTER NAME}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name (unknown-name.py, line 1)",
+          "filename": "oracle/unknown-name.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 29,
+          "text": "\"\\N{NO SUCH CHARACTER NAME}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "malformed-unclosed",
+        "group": "malformed",
+        "source": "\"\\N{BULLET\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-8: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-8: malformed \\N character escape (malformed-unclosed.py, line 1)",
+          "filename": "oracle/malformed-unclosed.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 12,
+          "text": "\"\\N{BULLET\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "malformed-no-opening-brace",
+        "group": "malformed",
+        "source": "\"\\NBULLET\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-1: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-1: malformed \\N character escape (malformed-no-opening-brace.py, line 1)",
+          "filename": "oracle/malformed-no-opening-brace.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 11,
+          "text": "\"\\NBULLET\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "malformed-bare-n",
+        "group": "malformed",
+        "source": "\"\\N\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-1: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-1: malformed \\N character escape (malformed-bare-n.py, line 1)",
+          "filename": "oracle/malformed-bare-n.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 5,
+          "text": "\"\\N\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "malformed-after-nonascii",
+        "group": "malformed",
+        "source": "\"\u00e9\\N{BULLET\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 10-18: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 10-18: malformed \\N character escape (malformed-after-nonascii.py, line 1)",
+          "filename": "oracle/malformed-after-nonascii.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 13,
+          "text": "\"\u00e9\\N{BULLET\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "raw-string",
+        "group": "literal-format",
+        "source": "r\"\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\N{BULLET}'",
+          "ascii": "'\\\\N{BULLET}'",
+          "value": "\\N{BULLET}",
+          "length": 10,
+          "codepoints": [
+            "U+005C",
+            "U+004E",
+            "U+007B",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+007D"
+          ],
+          "utf8_hex": "5c4e7b42554c4c45547d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "bytes-string",
+        "group": "literal-format",
+        "source": "b\"\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "bytes",
+          "repr": "b'\\\\N{BULLET}'",
+          "ascii": "b'\\\\N{BULLET}'",
+          "length": 10,
+          "hex": "5c4e7b42554c4c45547d"
+        },
+        "warnings": [
+          {
+            "category": "SyntaxWarning",
+            "message": "invalid escape sequence '\\N'",
+            "filename": "oracle/bytes-string.py",
+            "lineno": 1
+          }
+        ]
+      },
+      {
+        "id": "raw-bytes",
+        "group": "literal-format",
+        "source": "rb\"\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "bytes",
+          "repr": "b'\\\\N{BULLET}'",
+          "ascii": "b'\\\\N{BULLET}'",
+          "length": 10,
+          "hex": "5c4e7b42554c4c45547d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "two-backslashes",
+        "group": "literal-format",
+        "source": "\"\\\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\N{BULLET}'",
+          "ascii": "'\\\\N{BULLET}'",
+          "value": "\\N{BULLET}",
+          "length": 10,
+          "codepoints": [
+            "U+005C",
+            "U+004E",
+            "U+007B",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+007D"
+          ],
+          "utf8_hex": "5c4e7b42554c4c45547d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "four-backslashes",
+        "group": "literal-format",
+        "source": "\"\\\\\\\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\\\\\N{BULLET}'",
+          "ascii": "'\\\\\\\\N{BULLET}'",
+          "value": "\\\\N{BULLET}",
+          "length": 11,
+          "codepoints": [
+            "U+005C",
+            "U+005C",
+            "U+004E",
+            "U+007B",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+007D"
+          ],
+          "utf8_hex": "5c5c4e7b42554c4c45547d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "three-backslashes",
+        "group": "literal-format",
+        "source": "\"\\\\\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\\u2022'",
+          "ascii": "'\\\\\\u2022'",
+          "value": "\\\u2022",
+          "length": 2,
+          "codepoints": [
+            "U+005C",
+            "U+2022"
+          ],
+          "utf8_hex": "5ce280a2"
+        },
+        "warnings": []
+      },
+      {
+        "id": "doubled-name-braces",
+        "group": "literal-format",
+        "source": "\"\\N{{BULLET}}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-10: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-10: unknown Unicode character name (doubled-name-braces.py, line 1)",
+          "filename": "oracle/doubled-name-braces.py",
+          "lineno": 1,
+          "offset": 1,
+          "end_lineno": 1,
+          "end_offset": 15,
+          "text": "\"\\N{{BULLET}}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-name-and-expression",
+        "group": "literal-format",
+        "source": "f\"\\N{BULLET} {x}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u2022 7'",
+          "ascii": "'\\u2022 7'",
+          "value": "\u2022 7",
+          "length": 3,
+          "codepoints": [
+            "U+2022",
+            "U+0020",
+            "U+0037"
+          ],
+          "utf8_hex": "e280a22037"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-escaped-backslash-expression",
+        "group": "literal-format",
+        "source": "f\"\\\\N{x}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\N7'",
+          "ascii": "'\\\\N7'",
+          "value": "\\N7",
+          "length": 3,
+          "codepoints": [
+            "U+005C",
+            "U+004E",
+            "U+0037"
+          ],
+          "utf8_hex": "5c4e37"
+        },
+        "warnings": []
+      },
+      {
+        "id": "raw-f-expression",
+        "group": "literal-format",
+        "source": "rf\"\\N{BULLET}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\NBULLET_VAR'",
+          "ascii": "'\\\\NBULLET_VAR'",
+          "value": "\\NBULLET_VAR",
+          "length": 12,
+          "codepoints": [
+            "U+005C",
+            "U+004E",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+005F",
+            "U+0056",
+            "U+0041",
+            "U+0052"
+          ],
+          "utf8_hex": "5c4e42554c4c45545f564152"
+        },
+        "warnings": []
+      },
+      {
+        "id": "raw-f-escaped-braces",
+        "group": "literal-format",
+        "source": "rf\"\\N{{BULLET}}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\\\\N{BULLET}'",
+          "ascii": "'\\\\N{BULLET}'",
+          "value": "\\N{BULLET}",
+          "length": 10,
+          "codepoints": [
+            "U+005C",
+            "U+004E",
+            "U+007B",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+007D"
+          ],
+          "utf8_hex": "5c4e7b42554c4c45547d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-escaped-braces-around-name",
+        "group": "literal-format",
+        "source": "f\"{{\\N{BULLET}}}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'{\u2022}'",
+          "ascii": "'{\\u2022}'",
+          "value": "{\u2022}",
+          "length": 3,
+          "codepoints": [
+            "U+007B",
+            "U+2022",
+            "U+007D"
+          ],
+          "utf8_hex": "7be280a27d"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-expression-containing-name",
+        "group": "literal-format",
+        "source": "f\"{'\\N{BULLET}'}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u2022'",
+          "ascii": "'\\u2022'",
+          "value": "\u2022",
+          "length": 1,
+          "codepoints": [
+            "U+2022"
+          ],
+          "utf8_hex": "e280a2"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-adjacent-name-expression",
+        "group": "literal-format",
+        "source": "f\"\\N{BULLET}{x}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u20227'",
+          "ascii": "'\\u20227'",
+          "value": "\u20227",
+          "length": 2,
+          "codepoints": [
+            "U+2022",
+            "U+0037"
+          ],
+          "utf8_hex": "e280a237"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-unknown-name",
+        "group": "literal-format",
+        "source": "f\"\\N{NO SUCH CHARACTER NAME} {x}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-25: unknown Unicode character name (f-unknown-name.py, line 1)",
+          "filename": "oracle/f-unknown-name.py",
+          "lineno": 1,
+          "offset": 33,
+          "end_lineno": 1,
+          "end_offset": 34,
+          "text": "f\"\\N{NO SUCH CHARACTER NAME} {x}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-empty-name",
+        "group": "literal-format",
+        "source": "f\"\\N{} {x}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-2: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-2: malformed \\N character escape (f-empty-name.py, line 1)",
+          "filename": "oracle/f-empty-name.py",
+          "lineno": 1,
+          "offset": 11,
+          "end_lineno": 1,
+          "end_offset": 12,
+          "text": "f\"\\N{} {x}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-unclosed-name",
+        "group": "literal-format",
+        "source": "f\"\\N{BULLET\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-8: malformed \\N character escape",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-8: malformed \\N character escape (f-unclosed-name.py, line 1)",
+          "filename": "oracle/f-unclosed-name.py",
+          "lineno": 1,
+          "offset": 12,
+          "end_lineno": 1,
+          "end_offset": 13,
+          "text": "f\"\\N{BULLET\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-format-fill-name",
+        "group": "literal-format",
+        "source": "f\"{x:\\N{MIDDLE DOT}>3}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\u00b7\u00b77'",
+          "ascii": "'\\xb7\\xb77'",
+          "value": "\u00b7\u00b77",
+          "length": 3,
+          "codepoints": [
+            "U+00B7",
+            "U+00B7",
+            "U+0037"
+          ],
+          "utf8_hex": "c2b7c2b737"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-named-sequence",
+        "group": "literal-format",
+        "source": "f\"\\N{KEYCAP DIGIT ONE} {x}\"",
+        "status": "SyntaxError",
+        "error": {
+          "type": "SyntaxError",
+          "message": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-19: unknown Unicode character name",
+          "str": "(unicode error) 'unicodeescape' codec can't decode bytes in position 0-19: unknown Unicode character name (f-named-sequence.py, line 1)",
+          "filename": "oracle/f-named-sequence.py",
+          "lineno": 1,
+          "offset": 27,
+          "end_lineno": 1,
+          "end_offset": 28,
+          "text": "f\"\\N{KEYCAP DIGIT ONE} {x}\""
+        },
+        "warnings": []
+      },
+      {
+        "id": "triple-quoted-multiline",
+        "group": "literal-format",
+        "source": "\"\"\"first\n\\N{BULLET}\nlast\"\"\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'first\\n\u2022\\nlast'",
+          "ascii": "'first\\n\\u2022\\nlast'",
+          "value": "first\n\u2022\nlast",
+          "length": 12,
+          "codepoints": [
+            "U+0066",
+            "U+0069",
+            "U+0072",
+            "U+0073",
+            "U+0074",
+            "U+000A",
+            "U+2022",
+            "U+000A",
+            "U+006C",
+            "U+0061",
+            "U+0073",
+            "U+0074"
+          ],
+          "utf8_hex": "66697273740ae280a20a6c617374"
+        },
+        "warnings": []
+      },
+      {
+        "id": "f-debug-expression-name",
+        "group": "literal-format",
+        "source": "f\"{'\\N{BULLET}'=}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "\"'\\\\N{BULLET}'='\u2022'\"",
+          "ascii": "\"'\\\\N{BULLET}'='\\u2022'\"",
+          "value": "'\\N{BULLET}'='\u2022'",
+          "length": 16,
+          "codepoints": [
+            "U+0027",
+            "U+005C",
+            "U+004E",
+            "U+007B",
+            "U+0042",
+            "U+0055",
+            "U+004C",
+            "U+004C",
+            "U+0045",
+            "U+0054",
+            "U+007D",
+            "U+0027",
+            "U+003D",
+            "U+0027",
+            "U+2022",
+            "U+0027"
+          ],
+          "utf8_hex": "275c4e7b42554c4c45547d273d27e280a227"
+        },
+        "warnings": []
+      },
+      {
+        "id": "hangul-lowercase",
+        "group": "derived-name-casing",
+        "source": "\"\\N{hangul syllable ga}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\uac00'",
+          "ascii": "'\\uac00'",
+          "value": "\uac00",
+          "length": 1,
+          "codepoints": [
+            "U+AC00"
+          ],
+          "utf8_hex": "eab080"
+        },
+        "warnings": []
+      },
+      {
+        "id": "nushu-lowercase",
+        "group": "derived-name-casing",
+        "source": "\"\\N{nushu character-1B170}\"",
+        "status": "accepted",
+        "result": {
+          "type": "str",
+          "repr": "'\ud82c\udd70'",
+          "ascii": "'\\U0001b170'",
+          "value": "\ud82c\udd70",
+          "length": 1,
+          "codepoints": [
+            "U+1B170"
+          ],
+          "utf8_hex": "f09b85b0"
+        },
+        "warnings": []
+      }
+    ],
+    "comparisons": {
+      "baseline-hosted": {
+        "count": 60,
+        "decision_matches": 28,
+        "invalid_diagnostic_matches": 7,
+        "per_case": [
+          {
+            "id": "official-upper",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-lower",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-mixed",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-bom",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lf",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-nbsp",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-zwj",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-nul",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-long-alias",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lri",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-basic",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-hex",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-prefix",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-start",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "cjk-basic-before-start",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "hangul-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-invalid-jamo",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "tangut-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "nushu-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "khitan-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "sequence-keycap",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "sequence-latin",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "name-trailing-space",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "malformed-empty",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "malformed-unclosed",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-no-opening-brace",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-bare-n",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-after-nonascii",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "raw-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "bytes-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-bytes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "two-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "four-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "three-backslashes",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "doubled-name-braces",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "f-name-and-expression",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-backslash-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-escaped-braces",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-braces-around-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-expression-containing-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-adjacent-name-expression",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "f-empty-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-unclosed-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-format-fill-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-named-sequence",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "triple-quoted-multiline",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-debug-expression-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-lowercase",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-lowercase",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          }
+        ]
+      },
+      "baseline-native": {
+        "count": 60,
+        "decision_matches": 28,
+        "invalid_diagnostic_matches": 7,
+        "per_case": [
+          {
+            "id": "official-upper",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-lower",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-mixed",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-bom",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lf",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-nbsp",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-zwj",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-nul",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-long-alias",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lri",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-basic",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-hex",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-prefix",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-start",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "cjk-basic-before-start",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "hangul-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-invalid-jamo",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "tangut-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "nushu-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "khitan-first",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-last",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "sequence-keycap",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "sequence-latin",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "name-trailing-space",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "malformed-empty",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "malformed-unclosed",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-no-opening-brace",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-bare-n",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-after-nonascii",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "raw-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "bytes-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-bytes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "two-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "four-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "three-backslashes",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "doubled-name-braces",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "f-name-and-expression",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-backslash-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-escaped-braces",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-braces-around-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-expression-containing-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-adjacent-name-expression",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "f-empty-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-unclosed-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-format-fill-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-named-sequence",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": false
+          },
+          {
+            "id": "triple-quoted-multiline",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-debug-expression-name",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-lowercase",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-lowercase",
+            "accepted": false,
+            "decision_match": false,
+            "diagnostic_match": null
+          }
+        ]
+      },
+      "fixed-hosted": {
+        "count": 60,
+        "decision_matches": 60,
+        "invalid_diagnostic_matches": 20,
+        "per_case": [
+          {
+            "id": "official-upper",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-lower",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-mixed",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-bom",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lf",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-nbsp",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-zwj",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-nul",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-long-alias",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lri",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-basic",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-hex",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-prefix",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-start",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "cjk-basic-before-start",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "hangul-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-invalid-jamo",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "tangut-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "nushu-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "khitan-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "sequence-keycap",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "sequence-latin",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "name-trailing-space",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-empty",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-unclosed",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-no-opening-brace",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-bare-n",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-after-nonascii",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "raw-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "bytes-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-bytes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "two-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "four-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "three-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "doubled-name-braces",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-name-and-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-backslash-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-escaped-braces",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-braces-around-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-expression-containing-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-adjacent-name-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-empty-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-unclosed-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-format-fill-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-named-sequence",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "triple-quoted-multiline",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-debug-expression-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-lowercase",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-lowercase",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          }
+        ]
+      },
+      "fixed-native": {
+        "count": 60,
+        "decision_matches": 60,
+        "invalid_diagnostic_matches": 20,
+        "per_case": [
+          {
+            "id": "official-upper",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-lower",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "official-mixed",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-bom",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lf",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-nbsp",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-zwj",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-nul",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "control-long-alias",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "alias-lri",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-basic",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-hex",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-lower-prefix",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-start",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "cjk-extension-i-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "cjk-basic-before-start",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "hangul-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-invalid-jamo",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "tangut-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "tangut-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "nushu-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "khitan-first",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-last",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "khitan-past-end",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "sequence-keycap",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "sequence-latin",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "name-trailing-space",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-empty",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-unclosed",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-no-opening-brace",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-bare-n",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "malformed-after-nonascii",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "raw-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "bytes-string",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-bytes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "two-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "four-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "three-backslashes",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "doubled-name-braces",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-name-and-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-backslash-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "raw-f-escaped-braces",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-escaped-braces-around-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-expression-containing-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-adjacent-name-expression",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-unknown-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-empty-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-unclosed-name",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "f-format-fill-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-named-sequence",
+            "accepted": false,
+            "decision_match": true,
+            "diagnostic_match": true
+          },
+          {
+            "id": "triple-quoted-multiline",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "f-debug-expression-name",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "hangul-lowercase",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          },
+          {
+            "id": "nushu-lowercase",
+            "accepted": true,
+            "decision_match": true,
+            "diagnostic_match": null
+          }
+        ]
+      }
+    },
+    "scope": "Compiler check command compares acceptance and exact rejection message, not executed values. Project differential fixtures and the parser consumer supply separate execution evidence."
+  },
+  "focused_native": {
+    "command": [
+      "tests/run.sh",
+      "./pystachy",
+      "jit aot",
+      "tests/errors/syntax_fstring_backslash.py",
+      "tests/errors/syntax_fstring_comma_lookahead.py",
+      "tests/errors/syntax_fstring_comment.py",
+      "tests/errors/syntax_fstring_conversion_spec_field.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation_cut_after.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation_cut_nested.py",
+      "tests/errors/syntax_fstring_conversion_then_dot.py",
+      "tests/errors/syntax_fstring_conversion_tokenizer_error.py",
+      "tests/errors/syntax_fstring_cut_after_argument.py",
+      "tests/errors/syntax_fstring_cut_after_expression.py",
+      "tests/errors/syntax_fstring_cut_bad_conversion.py",
+      "tests/errors/syntax_fstring_cut_bracket.py",
+      "tests/errors/syntax_fstring_cut_conversion.py",
+      "tests/errors/syntax_fstring_cut_debug_empty.py",
+      "tests/errors/syntax_fstring_cut_escape.py",
+      "tests/errors/syntax_fstring_cut_field_error.py",
+      "tests/errors/syntax_fstring_cut_named_escape.py",
+      "tests/errors/syntax_fstring_cut_non_ascii.py",
+      "tests/errors/syntax_fstring_cut_single_brace.py",
+      "tests/errors/syntax_fstring_debug_continuation.py",
+      "tests/errors/syntax_fstring_debug_expecting.py",
+      "tests/errors/syntax_fstring_debug_tokenizer_error.py",
+      "tests/errors/syntax_fstring_doubled_brace_escape.py",
+      "tests/errors/syntax_fstring_equal_first.py",
+      "tests/errors/syntax_fstring_error_after.py",
+      "tests/errors/syntax_fstring_escape_after_field.py",
+      "tests/errors/syntax_fstring_escape_before_limitation.py",
+      "tests/errors/syntax_fstring_escaped_quote.py",
+      "tests/errors/syntax_fstring_expecting.py",
+      "tests/errors/syntax_fstring_expecting_operand.py",
+      "tests/errors/syntax_fstring_expression_after.py",
+      "tests/errors/syntax_fstring_expression_brackets.py",
+      "tests/errors/syntax_fstring_field_line.py",
+      "tests/errors/syntax_fstring_lambda.py",
+      "tests/errors/syntax_fstring_nested_deeply.py",
+      "tests/errors/syntax_fstring_nested_many.py",
+      "tests/errors/syntax_fstring_paren_mismatch.py",
+      "tests/errors/syntax_fstring_paren_unclosed.py",
+      "tests/errors/syntax_fstring_parser_error_first.py",
+      "tests/errors/syntax_fstring_spec_newline.py",
+      "tests/errors/syntax_fstring_spec_newline_after_field.py",
+      "tests/errors/syntax_fstring_spec_quote.py",
+      "tests/errors/syntax_fstring_spec_unclosed.py",
+      "tests/errors/syntax_fstring_stack.py",
+      "tests/errors/syntax_fstring_unmatched.py",
+      "tests/errors/syntax_fstring_valid_expression.py",
+      "tests/errors/syntax_named_unicode_after_nonascii.py",
+      "tests/errors/syntax_named_unicode_after_valid.py",
+      "tests/errors/syntax_named_unicode_derived_boundary.py",
+      "tests/errors/syntax_named_unicode_empty.py",
+      "tests/errors/syntax_named_unicode_f_empty.py",
+      "tests/errors/syntax_named_unicode_f_sequence.py",
+      "tests/errors/syntax_named_unicode_f_unknown.py",
+      "tests/errors/syntax_named_unicode_missing_brace.py",
+      "tests/errors/syntax_named_unicode_nonascii_name.py",
+      "tests/errors/syntax_named_unicode_sequence.py",
+      "tests/errors/syntax_named_unicode_unclosed.py",
+      "tests/errors/syntax_named_unicode_unknown.py",
+      "tests/lib_unicodedata.py",
+      "tests/lib_unicodedata_chars.py",
+      "tests/lib_unicodedata_iteration.py",
+      "tests/syntax_fstring_fields.py",
+      "tests/syntax_fstring_nested_deep.py",
+      "tests/syntax_fstring_pep701.py",
+      "tests/syntax_named_unicode.py"
+    ],
+    "exit": 0,
+    "seconds": 16.884385949000716,
+    "output": "selected 66 cases\n124 passed, 0 failed\n"
+  },
+  "focused_hosted": {
+    "command": [
+      "tests/run.sh",
+      "python3.13 -m pystachy",
+      "jit aot",
+      "tests/errors/syntax_fstring_backslash.py",
+      "tests/errors/syntax_fstring_comma_lookahead.py",
+      "tests/errors/syntax_fstring_comment.py",
+      "tests/errors/syntax_fstring_conversion_spec_field.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation_cut_after.py",
+      "tests/errors/syntax_fstring_conversion_spec_limitation_cut_nested.py",
+      "tests/errors/syntax_fstring_conversion_then_dot.py",
+      "tests/errors/syntax_fstring_conversion_tokenizer_error.py",
+      "tests/errors/syntax_fstring_cut_after_argument.py",
+      "tests/errors/syntax_fstring_cut_after_expression.py",
+      "tests/errors/syntax_fstring_cut_bad_conversion.py",
+      "tests/errors/syntax_fstring_cut_bracket.py",
+      "tests/errors/syntax_fstring_cut_conversion.py",
+      "tests/errors/syntax_fstring_cut_debug_empty.py",
+      "tests/errors/syntax_fstring_cut_escape.py",
+      "tests/errors/syntax_fstring_cut_field_error.py",
+      "tests/errors/syntax_fstring_cut_named_escape.py",
+      "tests/errors/syntax_fstring_cut_non_ascii.py",
+      "tests/errors/syntax_fstring_cut_single_brace.py",
+      "tests/errors/syntax_fstring_debug_continuation.py",
+      "tests/errors/syntax_fstring_debug_expecting.py",
+      "tests/errors/syntax_fstring_debug_tokenizer_error.py",
+      "tests/errors/syntax_fstring_doubled_brace_escape.py",
+      "tests/errors/syntax_fstring_equal_first.py",
+      "tests/errors/syntax_fstring_error_after.py",
+      "tests/errors/syntax_fstring_escape_after_field.py",
+      "tests/errors/syntax_fstring_escape_before_limitation.py",
+      "tests/errors/syntax_fstring_escaped_quote.py",
+      "tests/errors/syntax_fstring_expecting.py",
+      "tests/errors/syntax_fstring_expecting_operand.py",
+      "tests/errors/syntax_fstring_expression_after.py",
+      "tests/errors/syntax_fstring_expression_brackets.py",
+      "tests/errors/syntax_fstring_field_line.py",
+      "tests/errors/syntax_fstring_lambda.py",
+      "tests/errors/syntax_fstring_nested_deeply.py",
+      "tests/errors/syntax_fstring_nested_many.py",
+      "tests/errors/syntax_fstring_paren_mismatch.py",
+      "tests/errors/syntax_fstring_paren_unclosed.py",
+      "tests/errors/syntax_fstring_parser_error_first.py",
+      "tests/errors/syntax_fstring_spec_newline.py",
+      "tests/errors/syntax_fstring_spec_newline_after_field.py",
+      "tests/errors/syntax_fstring_spec_quote.py",
+      "tests/errors/syntax_fstring_spec_unclosed.py",
+      "tests/errors/syntax_fstring_stack.py",
+      "tests/errors/syntax_fstring_unmatched.py",
+      "tests/errors/syntax_fstring_valid_expression.py",
+      "tests/errors/syntax_named_unicode_after_nonascii.py",
+      "tests/errors/syntax_named_unicode_after_valid.py",
+      "tests/errors/syntax_named_unicode_derived_boundary.py",
+      "tests/errors/syntax_named_unicode_empty.py",
+      "tests/errors/syntax_named_unicode_f_empty.py",
+      "tests/errors/syntax_named_unicode_f_sequence.py",
+      "tests/errors/syntax_named_unicode_f_unknown.py",
+      "tests/errors/syntax_named_unicode_missing_brace.py",
+      "tests/errors/syntax_named_unicode_nonascii_name.py",
+      "tests/errors/syntax_named_unicode_sequence.py",
+      "tests/errors/syntax_named_unicode_unclosed.py",
+      "tests/errors/syntax_named_unicode_unknown.py",
+      "tests/lib_unicodedata.py",
+      "tests/lib_unicodedata_chars.py",
+      "tests/lib_unicodedata_iteration.py",
+      "tests/syntax_fstring_fields.py",
+      "tests/syntax_fstring_nested_deep.py",
+      "tests/syntax_fstring_pep701.py",
+      "tests/syntax_named_unicode.py"
+    ],
+    "exit": 0,
+    "seconds": 16.272260622121394,
+    "output": "selected 66 cases\n124 passed, 0 failed\n"
+  },
+  "new_syntax_sweep": {
+    "command": [
+      "python3.13",
+      "-I",
+      "tools/syntax_sweep.py",
+      "--compiler",
+      "./pystachy",
+      "tests/syntax_named_unicode.py",
+      "tests/errors/syntax_named_unicode_after_nonascii.py",
+      "tests/errors/syntax_named_unicode_after_valid.py",
+      "tests/errors/syntax_named_unicode_derived_boundary.py",
+      "tests/errors/syntax_named_unicode_empty.py",
+      "tests/errors/syntax_named_unicode_f_empty.py",
+      "tests/errors/syntax_named_unicode_f_sequence.py",
+      "tests/errors/syntax_named_unicode_f_unknown.py",
+      "tests/errors/syntax_named_unicode_missing_brace.py",
+      "tests/errors/syntax_named_unicode_nonascii_name.py",
+      "tests/errors/syntax_named_unicode_sequence.py",
+      "tests/errors/syntax_named_unicode_unclosed.py",
+      "tests/errors/syntax_named_unicode_unknown.py"
+    ],
+    "exit": 0,
+    "seconds": 0.13751262007281184,
+    "output": "13 of 13 agree, 0 valid ones Pystachy cannot parse, 0 differ\n"
+  },
+  "independent_helper_checks": {
+    "reference_host": "Python3.13.16/Unicode15.1",
+    "aliases_original_and_lower": 946,
+    "named_sequences_original_and_lower_rejected": 922,
+    "additional_boundaries": 30,
+    "parser_method_utf8_cases": 5,
+    "parser_method_diagnostic_cases": 12,
+    "alternate_host": "Python3.12.3/Unicode15.0 repeats946alias+922sequence+30boundary checks, including Unicode15.1 ExtensionI accepted names. Direct helper checks, not native execution or a3.12literal oracle."
+  },
+  "iniconfig_consumer": {
+    "scope": "Original upstream-hash-identified iniconfig2.3.1 parser and exceptions plus explicitly labelled empty package shim; two synthetic in-memory config inputs. Not full unmodified iniconfig or package-suite compatibility.",
+    "upstream_version": "2.3.1",
+    "parser_sha256": "15824a78105b52aa9ed414ce6ad073967c73be7ea5ae9d991a0df97a6e0cc2e1",
+    "exceptions_sha256": "9a2a50fda3310fd0af4af156375a135d8e10b919ca00c6757f7b027668c34d4d",
+    "input_recovery": "Reverse only ports/iniconfig/_parse.py's documented BOM spelling adaptation in a separate copy; whole recovered file matches PORT_REFERENCE.md's upstream hash. exceptions.py is unchanged. Empty labelled __init__.py shim; not the upstream wrapper.",
+    "probe_source": "from iniconfig._parse import UTF8_BOM, parse_ini_data\n\n# These are synthetic config strings. The imported parser is exact upstream code.\nassert UTF8_BOM == \"\\ufeff\"\ndata = \"[app]\\nname = caf\u00e9\\ncount: 7\\n\"\nplain_sections, plain_sources = parse_ini_data(\n    \"synthetic.ini\", data, strip_inline_comments=False\n)\nbom_sections, bom_sources = parse_ini_data(\n    \"synthetic.ini\", \"\\ufeff\" + data, strip_inline_comments=False\n)\nassert plain_sections == bom_sections\nassert plain_sources == bom_sources\nassert bom_sections[\"app\"][\"name\"] == \"caf\u00e9\"\nassert bom_sections[\"app\"][\"count\"] == \"7\"\nassert bom_sources[(\"app\", None)] == 0\nassert bom_sources[(\"app\", \"name\")] == 1\nassert bom_sources[(\"app\", \"count\")] == 2\nprint(\"BOM\", len(UTF8_BOM), ascii(UTF8_BOM))\nprint(\"config\", bom_sections[\"app\"][\"name\"], bom_sections[\"app\"][\"count\"])\nprint(\"sources\", bom_sources[(\"app\", None)], bom_sources[(\"app\", \"name\")],\n      bom_sources[(\"app\", \"count\")])\n",
+    "reference_stdout": "BOM 1 '\\ufeff'\nconfig caf\u00e9 7\nsources 0 1 2\n",
+    "reference_stdout_sha256": "cb587e37d3133da84e34fa4cd3f3d2a07248ddbc3fdf345f7c5ed15d6edb215d",
+    "baseline": "exit1 at iniconfig/_parse.py:8: \\N{...} escapes are not supported",
+    "candidate": "JIT, AOTbuild, AOTexecution exit0; both executions exact44B CPython stdout, empty stderr",
+    "commands": [
+      "PYTHONPATH=PROBE/upstream python3.13 -B -S -P PROBE/probe.py",
+      "PYSTACHY_HOME=PRIVATE_RUNTIME_HOME PYSTACHY_PATH=PROBE/upstream BASELINE run PROBE/probe.py",
+      "PYSTACHY_HOME=PRIVATE_RUNTIME_HOME PYSTACHY_PATH=PROBE/upstream CANDIDATE run PROBE/probe.py",
+      "PYSTACHY_HOME=PRIVATE_RUNTIME_HOME PYSTACHY_PATH=PROBE/upstream CANDIDATE build PROBE/probe.py -o PROBE/probe-aot",
+      "PROBE/probe-aot"
+    ]
+  },
+  "timing": {
+    "method": "33 rounds of interleaved fresh processes, reversing command order on alternate rounds; discard2warmups, retain31. Warm OS/page cache. No concurrent task-local builds or heavy tests; shared host load uncontrolled. check parses only, no LLVM/JIT. No cold-start/general-throughput inference or timing gate.",
+    "commands": {
+      "baseline_version": [
+        "BASELINE",
+        "--version"
+      ],
+      "baseline_ascii_parse": [
+        "BASELINE",
+        "check",
+        "ascii-startup.py"
+      ],
+      "candidate_version": [
+        "CANDIDATE",
+        "--version"
+      ],
+      "candidate_ascii_parse": [
+        "CANDIDATE",
+        "check",
+        "ascii-startup.py"
+      ],
+      "candidate_alias_parse": [
+        "CANDIDATE",
+        "check",
+        "startup-alias.py"
+      ],
+      "candidate_regular_parse": [
+        "CANDIDATE",
+        "check",
+        "startup-regular.py"
+      ],
+      "candidate_cjk_parse": [
+        "CANDIDATE",
+        "check",
+        "startup-cjk.py"
+      ],
+      "candidate_hangul_parse": [
+        "CANDIDATE",
+        "check",
+        "startup-hangul.py"
+      ]
+    },
+    "source_inputs": {
+      "ascii-startup.py": "print(\"hello\")\n",
+      "startup-alias.py": "print(\"\\N{BYTE ORDER MARK}\")\n",
+      "startup-regular.py": "print(\"\\N{BULLET}\")\n",
+      "startup-cjk.py": "print(\"\\N{CJK UNIFIED IDEOGRAPH-2EBF0}\")\n",
+      "startup-hangul.py": "print(\"\\N{HANGUL SYLLABLE GA}\")\n"
+    },
+    "samples_seconds": {
+      "baseline_version": [
+        0.003383628,
+        0.003146173,
+        0.003197789,
+        0.004855468,
+        0.003543248,
+        0.002561475,
+        0.0025052,
+        0.00319178,
+        0.003219321,
+        0.002563958,
+        0.002838571,
+        0.002958459,
+        0.002803997,
+        0.002602706,
+        0.002574243,
+        0.003362386,
+        0.003616127,
+        0.003241134,
+        0.002927023,
+        0.003443858,
+        0.003388986,
+        0.003380663,
+        0.003345742,
+        0.00319875,
+        0.003607684,
+        0.002977729,
+        0.002861053,
+        0.002521465,
+        0.003492962,
+        0.002853262,
+        0.003094133
+      ],
+      "baseline_ascii_parse": [
+        0.003479622,
+        0.003402837,
+        0.00283868,
+        0.003461325,
+        0.003324649,
+        0.002710597,
+        0.002452921,
+        0.003626443,
+        0.003652543,
+        0.002726141,
+        0.002450527,
+        0.003972813,
+        0.002858,
+        0.003645961,
+        0.002719592,
+        0.003097888,
+        0.003232241,
+        0.003410107,
+        0.00286582,
+        0.003499362,
+        0.003133723,
+        0.003589197,
+        0.00357868,
+        0.003235416,
+        0.002876698,
+        0.003206752,
+        0.003089986,
+        0.003733392,
+        0.002658289,
+        0.003503479,
+        0.002889277
+      ],
+      "candidate_version": [
+        0.003510178,
+        0.003161245,
+        0.003091581,
+        0.003182437,
+        0.003667394,
+        0.003681345,
+        0.002857088,
+        0.003031839,
+        0.003149426,
+        0.003250177,
+        0.002974814,
+        0.003669607,
+        0.002937128,
+        0.003186172,
+        0.002834644,
+        0.003421445,
+        0.003634333,
+        0.003295236,
+        0.003366632,
+        0.003535916,
+        0.003334293,
+        0.003653202,
+        0.003466472,
+        0.003655746,
+        0.003377048,
+        0.003320944,
+        0.003166493,
+        0.003209947,
+        0.002919653,
+        0.003122666,
+        0.002973623
+      ],
+      "candidate_ascii_parse": [
+        0.003360523,
+        0.003513463,
+        0.003100622,
+        0.003552932,
+        0.003148805,
+        0.003780144,
+        0.002976317,
+        0.003010417,
+        0.003847615,
+        0.003457259,
+        0.002694405,
+        0.003343849,
+        0.002830107,
+        0.004374255,
+        0.002831419,
+        0.002976898,
+        0.002754744,
+        0.002841674,
+        0.00336448,
+        0.003529708,
+        0.003592541,
+        0.003989367,
+        0.004111811,
+        0.003816919,
+        0.003395957,
+        0.003394525,
+        0.002818971,
+        0.003239302,
+        0.002431669,
+        0.003541345,
+        0.003144649
+      ],
+      "candidate_alias_parse": [
+        0.013475233,
+        0.012185016,
+        0.013831748,
+        0.013190835,
+        0.011361632,
+        0.012261271,
+        0.013772498,
+        0.011354491,
+        0.01350032,
+        0.012838176,
+        0.01226798,
+        0.013960631,
+        0.012199349,
+        0.013493951,
+        0.012608072,
+        0.012586549,
+        0.013417227,
+        0.012405528,
+        0.012651366,
+        0.012892548,
+        0.013978879,
+        0.012464225,
+        0.013313669,
+        0.012922372,
+        0.013624356,
+        0.013523324,
+        0.011902492,
+        0.012402653,
+        0.012217886,
+        0.011306087,
+        0.012560661
+      ],
+      "candidate_regular_parse": [
+        0.013767931,
+        0.01477293,
+        0.011065606,
+        0.011869744,
+        0.011179086,
+        0.012105869,
+        0.01329327,
+        0.010475711,
+        0.011316543,
+        0.013677446,
+        0.012142383,
+        0.01419244,
+        0.011423434,
+        0.013045337,
+        0.013084235,
+        0.01393245,
+        0.010656012,
+        0.013256804,
+        0.013474843,
+        0.012085568,
+        0.01417277,
+        0.012735362,
+        0.01308676,
+        0.012624177,
+        0.013271597,
+        0.012065208,
+        0.010379338,
+        0.012254822,
+        0.011592709,
+        0.012080169,
+        0.011500969
+      ],
+      "candidate_cjk_parse": [
+        0.01258026,
+        0.011907109,
+        0.011558946,
+        0.010837234,
+        0.011098166,
+        0.012442944,
+        0.010955942,
+        0.010720899,
+        0.012388082,
+        0.012504646,
+        0.011779888,
+        0.013105488,
+        0.011064284,
+        0.013324326,
+        0.014213971,
+        0.012312147,
+        0.012855223,
+        0.013702895,
+        0.013442813,
+        0.01348027,
+        0.013990034,
+        0.012705608,
+        0.011946729,
+        0.013329904,
+        0.013244686,
+        0.012796524,
+        0.014073921,
+        0.011271405,
+        0.010580017,
+        0.011638767,
+        0.012799719
+      ],
+      "candidate_hangul_parse": [
+        0.003209546,
+        0.003449237,
+        0.003150088,
+        0.002869486,
+        0.003434244,
+        0.003230419,
+        0.003077638,
+        0.003621866,
+        0.003263588,
+        0.003357569,
+        0.003821525,
+        0.003612782,
+        0.003339453,
+        0.003201824,
+        0.003648925,
+        0.003232221,
+        0.003082055,
+        0.00401202,
+        0.003376378,
+        0.002598819,
+        0.003520444,
+        0.003708235,
+        0.003359192,
+        0.003599251,
+        0.003030769,
+        0.002854465,
+        0.003608786,
+        0.003719962,
+        0.002775395,
+        0.002566501,
+        0.002899592
+      ]
+    },
+    "summary_seconds": {
+      "baseline_version": {
+        "median": 0.00319178,
+        "min": 0.0025052,
+        "max": 0.004855468,
+        "quartiles": [
+          0.002838571,
+          0.00319178,
+          0.003383628
+        ]
+      },
+      "baseline_ascii_parse": {
+        "median": 0.003232241,
+        "min": 0.002450527,
+        "max": 0.003972813,
+        "quartiles": [
+          0.002858,
+          0.003232241,
+          0.003503479
+        ]
+      },
+      "candidate_version": {
+        "median": 0.003250177,
+        "min": 0.002834644,
+        "max": 0.003681345,
+        "quartiles": [
+          0.003091581,
+          0.003250177,
+          0.003510178
+        ]
+      },
+      "candidate_ascii_parse": {
+        "median": 0.003360523,
+        "min": 0.002431669,
+        "max": 0.004374255,
+        "quartiles": [
+          0.002976317,
+          0.003360523,
+          0.003552932
+        ]
+      },
+      "candidate_alias_parse": {
+        "median": 0.012651366,
+        "min": 0.011306087,
+        "max": 0.013978879,
+        "quartiles": [
+          0.012261271,
+          0.012651366,
+          0.013493951
+        ]
+      },
+      "candidate_regular_parse": {
+        "median": 0.012254822,
+        "min": 0.010379338,
+        "max": 0.01477293,
+        "quartiles": [
+          0.011500969,
+          0.012254822,
+          0.01329327
+        ]
+      },
+      "candidate_cjk_parse": {
+        "median": 0.012504646,
+        "min": 0.010580017,
+        "max": 0.014213971,
+        "quartiles": [
+          0.011558946,
+          0.012504646,
+          0.013324326
+        ]
+      },
+      "candidate_hangul_parse": {
+        "median": 0.003339453,
+        "min": 0.002566501,
+        "max": 0.00401202,
+        "quartiles": [
+          0.003077638,
+          0.003339453,
+          0.003608786
+        ]
+      }
+    },
+    "limits": "Warm page cache, shared host, no cold-OS or general throughput claim. No peak memory or repeated-name benchmark. Ordinary-startup sample ranges overlap."
+  },
+  "lint": "PASS: make lint (Ruff, shellcheck, Clang -fsyntax-only -Wall -Wextra -Werror)",
+  "recordings": {
+    "result": "FAIL",
+    "checked_recordings": 1235,
+    "checked_deviations": 76,
+    "checked_library_copies": 9,
+    "failures": 1,
+    "fixture": "tests/exc_except_attr.py",
+    "actual": "os.remove('/nonexistent_zz') raises OSError30Read-onlyfilesystem",
+    "expected": "FileNotFoundError2No such file or directory",
+    "unchanged_baseline_files": [
+      {
+        "path": "tests/exc_except_attr.py",
+        "bytes": 338,
+        "sha256": "689cfe76a8fbe9ab1b9464bba02b5ed5bc1935a7ba42d4d15a05eb1599a33c00",
+        "unchanged_from": "44316e75fabc99108d3188c5b4d0d59e867f4a94"
+      },
+      {
+        "path": "tests/exc_except_attr.out",
+        "bytes": 117,
+        "sha256": "4ddc5c5c6b69419a1dd25e7987e148027c211b91eda788741f8e66e2ab42a12c",
+        "unchanged_from": "44316e75fabc99108d3188c5b4d0d59e867f4a94"
+      }
+    ],
+    "no_expectation_or_fixture_change": true
+  },
+  "agent_example_source_pins": "PASS: tools/check_agent_source.py,6files at9256333b07628f6e4b399f41916f36d463914501",
+  "full_verification": {
+    "status": "running",
+    "command": "make verify",
+    "no_complete_pass_claim": true,
+    "snapshot_utc": "2026-10-18T13:17:08.454451+00:00",
+    "completed_steps_at_snapshot": [
+      {
+        "name": "bootstrap",
+        "result": "pass",
+        "seconds": 177.584,
+        "ir_identical": true,
+        "ir_lines": 627615,
+        "ir_sha256": "68e36dcd40501d1b186fc56d14c3487c6900b22586c7911cd69d70c4e5cf781b",
+        "native_compiler_bytes": 4134640,
+        "cpython_self_compile_seconds": 19.514,
+        "native_self_compile_seconds": 5.777
+      },
+      {
+        "name": "tests-cpython-0",
+        "result": "pass",
+        "seconds": 292.346,
+        "compiler": "CPython-hosted",
+        "modes": [
+          "jit",
+          "aot"
+        ],
+        "shard_index": 0,
+        "shard_count": 3,
+        "passed": 1488,
+        "failed": 0,
+        "expected": 1488,
+        "failures": []
+      },
+      {
+        "name": "tests-cpython-1",
+        "result": "pass",
+        "seconds": 276.104,
+        "compiler": "CPython-hosted",
+        "modes": [
+          "jit",
+          "aot"
+        ],
+        "shard_index": 1,
+        "shard_count": 3,
+        "passed": 1490,
+        "failed": 0,
+        "expected": 1490,
+        "failures": []
+      }
+    ]
+  }
+}

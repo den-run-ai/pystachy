@@ -75,6 +75,13 @@ In these cases a program can compile but behave differently from CPython.
   `LookupError: unknown encoding: NAME`, where CPython would use its codec, and so does the
   `namereplace` error handler (`unknown error handler name`), which needs the characters' names.
 
+String literals, including nonraw f-string text, accept `\N{...}` names from the
+shipped Unicode 15.1 data: character names, aliases and derived names. Matching is
+ASCII case-insensitive; spaces are significant. Named sequences remain invalid
+in literals, as in CPython, although `unicodedata.lookup()` accepts them. Raw
+strings and bytes keep their existing escape rules. The bootstrap Python's own
+Unicode database does not determine the compiler's accepted names.
+
 To find byte-oriented operations while porting, compile with
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py` or
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app`. The generated code raises
@@ -833,7 +840,7 @@ The [reflection rules](semantics.md#reflection) list what is supported; these ar
 
 ### Source text
 
-- `\N{...}` escapes (in f-strings too), non-ASCII identifiers and tabs in indentation
+- non-ASCII identifiers and tabs in indentation
 - a source file whose coding declaration names an encoding other than UTF-8, Latin-1 and ASCII
 - source nested more than 5,000 levels deep (expressions, statements and `elif` branches; a `**`
   or `lambda` counts twice), and source whose nesting would overflow CPython's parser stack of

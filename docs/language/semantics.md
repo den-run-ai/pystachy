@@ -38,8 +38,9 @@ Restrictions on nested iterator-like expressions, snapshots and mutation are lis
 ## Literals and formatting
 
 Numeric literals support decimal, hexadecimal, octal, binary and underscore separators.
-Strings support raw and triple-quoted literals, implicit concatenation and escapes other
-than `\N{...}`.
+Strings support raw and triple-quoted literals, implicit concatenation and escapes,
+including single-character `\N{...}` names from the shipped Unicode 15.1 data.
+See [compatibility](compatibility.md) for name matching and named-sequence boundaries.
 
 F-strings support `!r`, `!s`, `!a`, debug `=`, nested format specifications and the
 format-spec mini-language. Replacement fields follow Python 3.12's grammar (PEP 701): they may

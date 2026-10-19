@@ -8,7 +8,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 
 | Area | Modules and responsibility |
 |---|---|
-| Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes. |
+| Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes. [unicode_names](pystachy_compiler/unicode_names.py) resolves literal names from the shipped Unicode table. |
 | Imports | [loader](pystachy_compiler/loader.py), [module](pystachy_compiler/module.py): source discovery, qualification and module records. |
 | Analysis | [analysis](pystachy_compiler/analysis.py), [scope](pystachy_compiler/scope.py), [flow](pystachy_compiler/flow.py): AST queries, lexical checks and definite assignment. |
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |
@@ -51,4 +51,6 @@ checks their compiler and runtime IR fixed points.
 The Makefile tracks compiler modules as build inputs. The hosted driver's
 `COMPILER_SOURCES` list also contributes their contents to runtime-cache identity
 and checks that they remain unchanged while publishing a cache entry. Add new
-source files there when extending the layout.
+source files there when extending the layout. The generated
+`lib/_pystachy_unicodedata_names.py` table is also a compiler input; native compilers
+embed its data, while hosted compilers import it from the checkout's `lib` namespace.

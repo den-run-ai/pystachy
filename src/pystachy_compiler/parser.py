@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
 from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, debug_text, string_end, utf8
 from src.pystachy_compiler.scope import Symtable
+from src.pystachy_compiler.unicode_names import lookup_name
 from src.pystachy_compiler.syntax import (
     AUGOPS,
     BINOPS,
@@ -1889,12 +1890,21 @@ class Parser:
                         i += 1
                 out.append(utf8(v))
             elif e == "N":
-                # \N{name}: CPython's error when it is malformed (a name is a Pystachy limitation)
+                # \N{name}: literal decoding accepts one named character, not named sequences.
                 k = s.find("}", i)
                 if s[i : i + 1] != "{" or k < 0 or k == i + 1:
                     end = at + 1 if s[i : i + 1] != "{" else (at + 2 if k == i + 1 else at + n - b - 1)
                     self.fail(f"(unicode error) 'unicodeescape' codec can't decode bytes in position {at}-{end}: malformed \\N character escape", line)
-                self.limit("\\N{...} escapes are not supported", line)
+                v = lookup_name(s[i + 1 : k])
+                if v < 0:
+                    end = at - 1
+                    for j in range(b, k + 1):
+                        c = s[j]
+                        end += (6 if c == "\\" and j + 1 < n and ord(s[j + 1]) >= 128 else
+                                (1 if ord(c) < 128 else (10 if ord(c) >= 192 else 0)))
+                    self.fail(f"(unicode error) 'unicodeescape' codec can't decode bytes in position {at}-{end}: unknown Unicode character name", line)
+                out.append(utf8(v))
+                i = k + 1
             elif e == "\n":
                 pass
             elif e in ESCAPES:
