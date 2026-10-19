@@ -34,6 +34,10 @@ The existing unboxed-NaN identity deviation also applies: separately decoded
 Integer tokens outside signed 64-bit range raise `OverflowError`. The codec's
 maximum nesting is 256 containers, beyond which it raises `RecursionError`;
 CPython uses different limits ([deviation](../tests/deviations/json_limits.py)).
+Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
+are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
+each byte that starts no UTF-8 sequence as one character, as `str` does, in values
+and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
 Bytes input, numeric/non-string object keys, tuples, file APIs, decoder/encoder
 classes, hooks, `default`, `skipkeys`, `check_circular`, `strict` and indentation
 are unsupported. Existing typed containers are not implicitly converted to
