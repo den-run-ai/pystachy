@@ -305,8 +305,8 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         x = self.refl_typeof(k)
         if x is not None:
             v = self.expr(x, "")
-            if v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != ""):
-                sides.append(self.exc_type_of(v))  # (an exception's class: its class object)
+            if v.t == "exc" or v.t == "opt[exc]" or (v.t in self.classes and self.classes[v.t].exc != ""):
+                sides.append(self.exc_type_of(v))  # (an exception's class, or NoneType's: its class object)
             else:
                 sides.append(self.refl_class_of(v, self.knownobj(x)))
         elif k.kind == "name" and ((k.s in self.classes and k.s not in self.ltype and self.classes[k.s].exc != "") or (is_excname(k.s) and not self.bound(k.s))):

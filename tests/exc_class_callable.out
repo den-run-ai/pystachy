@@ -1,0 +1,8 @@
+True True
+False True
+True True
+calls E()
+True True
+calls KeyError()
+True
+[exit 0]

@@ -554,13 +554,13 @@ class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, 
   first that matches stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is
   true, and `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is
   false. `type(c).__name__` is `type`.
-- A call of a class object makes an object of its class from none or one positional argument, as
-  CPython's call does (a `KeyError`'s `str()` is its argument's `repr()`, a `SystemExit`'s status
-  its `int`); `raise c` raises `c()`, as `raise X from c` takes `c()` as the cause (none where
-  `c` is `None`, as `from None`). A class of the
-  program runs its `__init__`, which raises CPython's `TypeError` where it takes another number of
-  arguments; one that takes another type than the argument's raises `TypeError` instead
-  ([deviation](compatibility.md#exceptions-and-exception-classes)).
+- A class object is callable (`callable(c)` is true). A call of it makes an object of its class
+  from none or one positional argument, as CPython's call does (a `KeyError`'s `str()` is its
+  argument's `repr()`, a `SystemExit`'s status its `int`); `raise c` raises `c()`, as
+  `raise X from c` takes `c()` as the cause (none where `c` is `None`, as `from None`). A class
+  of the program runs its `__init__`, which raises CPython's `TypeError` where it takes another
+  number of arguments; one that takes another type than the argument's raises `TypeError`
+  instead ([deviation](compatibility.md#exceptions-and-exception-classes)).
 - `contextlib.suppress()` kept as a value tests its classes as CPython's does.
 
 An `except` clause names its classes; one that takes class objects is not supported.

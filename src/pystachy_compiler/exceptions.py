@@ -1109,11 +1109,12 @@ def gen_exc_class_value(self, c: str) -> Val:
 
 def gen_exc_type_of(self, v: Val) -> Val:
     # type(v) of an exception, or of an object of an exception class of the program, which may be
-    # None: NoneType then, a class object of that name too (no exception class's). A call of the
-    # class object may make an object of v's class (exc_ctors: the classes deriving from v's)
-    self.xtypes[v.t] = True
+    # None (an exception too, opt[exc]): NoneType then, a class object of that name too (no
+    # exception class's). A call of the class object may make an object of v's class (exc_ctors:
+    # the classes deriving from v's)
+    self.xtypes[unopt(v.t)] = True
     if v.t == "exc" or v.v in self.nn:
-        r = self.rt("pys_exc_canon", "ptr", [f"ptr {v.v if v.t == 'exc' else self.exc_of(v).v}"])
+        r = self.rt("pys_exc_canon", "ptr", [f"ptr {v.v if v.t == 'exc' or v.t == 'opt[exc]' else self.exc_of(v).v}"])
         self.nn[r] = True
         return Val(r, "exctype")
     e0 = self.cur
@@ -1122,7 +1123,7 @@ def gen_exc_type_of(self, v: Val) -> Val:
     nt = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"])
     self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
     self.place(l1)
-    r = self.rt("pys_exc_canon", "ptr", [f"ptr {self.rt('pys_exc_user', 'ptr', [f'ptr {v.v}'])}"])
+    r = self.rt("pys_exc_canon", "ptr", [f"ptr {v.v if v.t == 'opt[exc]' else self.rt('pys_exc_user', 'ptr', [f'ptr {v.v}'])}"])
     e1 = self.cur
     self.br(l2)
     self.place(l2)
