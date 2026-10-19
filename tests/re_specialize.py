@@ -4,9 +4,10 @@
 # writes them). They must give CPython's results: spans, groups, lastindex and lastgroup, findall,
 # finditer, split and sub, on ASCII subjects, which the matchers read in place, and on others, which
 # they decline (lib/re's interpreter runs), as they decline group repeats nested deeper than they go.
+# (HTMLParser's patterns are checked on CPython, by tools/test_re_specialize.py: their matchers take
+# minutes to compile with a collection every 1,000 allocations, as CI's GC groups run.)
 import fnmatch
 import re
-from html.parser import HTMLParser
 
 
 def show(m: re.Match | None) -> None:
@@ -58,34 +59,6 @@ for pattern, flags, subjects in CASES:
         print(r.subn("<\\g<0>>", s))
         print(r.sub(lambda m: str(m.span()), s, 2))
 
-
-# HTMLParser's patterns, on a document of each kind of tag
-class Events(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.events: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.events.append("start " + tag + " " + repr(attrs))
-
-    def handle_endtag(self, tag: str) -> None:
-        self.events.append("end " + tag)
-
-    def handle_data(self, data: str) -> None:
-        self.events.append("data " + repr(data))
-
-    def handle_comment(self, data: str) -> None:
-        self.events.append("comment " + repr(data))
-
-
-for doc in ["<!DOCTYPE html><div class=\"row r1\" id=d1><a href='/x?a=1&amp;b=2'>Item &lt;1&gt;</a><br/></div>",
-            "<p title=\"café\">été <b>bold</b></p><!-- note -->",
-            "<img src=x.png alt = \"a b\" checked/><span>Tom &amp; Jerry</span>"]:
-    p = Events()
-    p.feed(doc)
-    p.close()
-    for e in p.events:
-        print(e)
 
 # fnmatch's patterns, as a router's rules
 for name in ["auth.login.failed", "payments.refund.failed", "http.request.404", "http.request.200x",

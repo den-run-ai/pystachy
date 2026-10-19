@@ -155,7 +155,8 @@ runs of one and two loops:
   `lastindex` and `lastgroup` of `search`, `match`, `fullmatch` (also with `pos` and `endpos`),
   `finditer`, `findall`, `split` and `subn`. The same patterns also run on in-place subjects of all
   256 byte values, against CPython's `re` on their Latin-1 decoding.
-- The same test checks four more properties:
+- The same test checks five more properties:
+  - `html.parser`'s own patterns, as CPython compiles them, give CPython's results on HTML;
   - deep repeats decline and still match as CPython does;
   - empty iterations end a repeat;
   - a lookup with other code, flags or source finds no matcher;
@@ -167,10 +168,12 @@ runs of one and two loops:
   does not end its repeat, which the depth limit hides from the results) fail the unit test. They
   cover mark restores, repeat backtracking, lookbehind width, the INFO minimum, case folding,
   possessive and atomic groups, `must_advance`, the attempt's start and mark gaps.
-- `tests/re_specialize.py` is the native differential test. Its `.path` file finds the 38 matchers
-  generated from its own CPython profile. It covers the probe patterns, mark cases, HTMLParser's
-  patterns, `fnmatch` globs, non-ASCII subjects and a repeat deeper than the limit. It passes in JIT
-  and AOT, and with a collection at every allocation.
+- `tests/re_specialize.py` is the native differential test. Its `.path` file finds the 29 matchers
+  generated from its own CPython profile. It covers the probe patterns, mark cases, `fnmatch` globs,
+  non-ASCII subjects and a repeat deeper than the limit. It passes in JIT and AOT, and with a
+  collection at every allocation. It leaves out HTMLParser to keep CI's GC groups short. There the
+  compiler collects every 1,000 allocations: with HTMLParser and its matchers, the test's AOT build
+  took 112 s (50 s without matchers); without HTMLParser, it takes 49 s.
 - The existing `lib/re`, `fnmatch`, `textwrap`, `html.parser` and router tests pass in JIT and AOT:
   45 cases, 90 runs. `make re-fuzz`, `make re-probe` (its counts unchanged) and
   `make check-recordings` pass too.

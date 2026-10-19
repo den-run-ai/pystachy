@@ -606,25 +606,6 @@ None
 ['a']
 ('é<ab>', 1)
 é(1, 3)
-start div [('class', 'row r1'), ('id', 'd1')]
-start a [('href', '/x?a=1&b=2')]
-data 'Item <1>'
-end a
-start br []
-end br
-end div
-start p [('title', 'café')]
-data 'été '
-start b []
-data 'bold'
-end b
-end p
-comment ' note '
-start img [('src', 'x.png'), ('alt', 'a b'), ('checked', None)]
-end img
-start span []
-data 'Tom & Jerry'
-end span
 auth.login.failed ['auth.*.failed', '*.failed']
 payments.refund.failed ['*.failed']
 http.request.404 ['http.request.[45]??']

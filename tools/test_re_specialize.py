@@ -229,6 +229,21 @@ def compare_bytes(port, cp, pattern, flags, data, problems):
             problems.append("%s %r flags %d on bytes %r: lib/re %r, CPython %r" % (kind, pattern, flags, data, got, exp))
 
 
+def count_calls(matchers):
+    # [calls of the generated module's matchers that answered, that declined], from now on
+    used = [0, 0]
+
+    def counted(f):
+        def call(i, state, *toplevel):
+            r = f(i, state, *toplevel)
+            used[0 if r >= 0 else 1] += 1
+            return r
+        return call
+    matchers.match = counted(matchers.match)
+    matchers.attempt = counted(matchers.attempt)
+    return used
+
+
 def fuzz(n, seed, verbose=False):
     """Generate matchers for n random patterns (from seed) and compare; 0 if all agree."""
     rng = random.Random(seed)
@@ -252,17 +267,7 @@ def fuzz(n, seed, verbose=False):
         out = os.path.join(tmp, "_pystachy_re_specialized.py")
         module = re_specialize.generate([], patterns, 1, out)
         port = re_specialize.load_port(out)
-        matchers = sys.modules["_pystachy_re_specialized"]
-        used = [0, 0]  # matcher calls that answered, and that declined
-
-        def counted(f):
-            def call(i, state, *toplevel):
-                r = f(i, state, *toplevel)
-                used[0 if r >= 0 else 1] += 1
-                return r
-            return call
-        matchers.match = counted(matchers.match)
-        matchers.attempt = counted(matchers.attempt)
+        used = count_calls(sys.modules["_pystachy_re_specialized"])
         problems = []
         specialized = 0
         for p, f in patterns:
@@ -302,6 +307,39 @@ class TestGenerated(unittest.TestCase):
         self.assertGreater(generated, total * 3 // 4)
         self.assertEqual(generated, specialized)
         self.assertGreater(used[0], 20000)
+
+    def test_html_parser(self):
+        # html.parser's patterns, as CPython compiles them, on HTML: tests/re_specialize.py leaves them out
+        # (their matchers take minutes to compile with the collections of CI's GC groups)
+        import html
+        import html.parser
+        pats = sorted({(v.pattern, v.flags) for m in (html.parser, html) for v in vars(m).values()
+                       if isinstance(v, re.Pattern)})
+        docs = ["<!DOCTYPE html><div class=\"row r1\" id=d1><a href='/x?a=1&amp;b=2'>Item &lt;1&gt;</a><br/></div>",
+                "<p title=\"café\">été <b>bold</b></p><!-- note --!><!--->",
+                "<img src=x.png alt = \"a b\" checked/><span>Tom &amp; Jerry &#x27;&#39;</span ></span>",
+                "<a b='c' d=\"e\" f=g/>&#1;&#x1g;&ab-c.;&x</ a>"]
+        tokens = ["<", ">", "/", "=", "'", '"', " ", "\t", "\n", "a", "b1", "A-b.c", "&", "&#", "&#x", "27", "f;", ";",
+                  "-", "--", "!", "?", "<a", "</a", " href=", "'v'", '"w x"', "&amp;", "&ab.", "&#39", "-->", "--!>",
+                  "/>", "é"]
+        rng = random.Random(1)
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            out = os.path.join(tmp, "_pystachy_re_specialized.py")
+            module = re_specialize.generate([], pats, 1, out)
+            self.assertEqual(len(module.patterns), len(pats))
+            port = re_specialize.load_port(out)
+            used = count_calls(sys.modules["_pystachy_re_specialized"])
+            problems = []
+            for p, f in pats:
+                cp = port.compile(p, f)
+                self.assertGreaterEqual(cp._fast, 0, p)
+                subjects = docs + ["".join(rng.choice(tokens) for _ in range(rng.randint(0, 12))) for _ in range(40)]
+                for s in subjects:
+                    compare(port, cp, p, f, s, problems)
+                    if s.isascii():
+                        compare_bytes(port, cp, p, f, s.encode(), problems)
+            self.assertEqual(problems, [])
+            self.assertGreater(used[0], 5000)
 
     def test_deep_repeat_declines(self):
         # a match that nests more group repeats than DEPTH is left to the interpreter, from the start
