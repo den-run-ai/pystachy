@@ -664,6 +664,7 @@ from src.pystachy_compiler.lowering import (
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
+    gen_tuple_rets as lowering_tuple_rets,
 )
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
@@ -1081,6 +1082,15 @@ class Gen:
         self.ftags: dict[str, str] = {}
         self.tbaa: dict[str, int] = {}
         self.tbaacls: dict[str, bool] = {}
+        # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
+        # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
+        # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
+        # give them (by "%tN k") and the results of its calls that take slots (their LLVM type)
+        self.vrets: dict[str, int] = {}
+        self.vcalls: dict[str, bool] = {}
+        self.vtuples: dict[str, bool] = {}
+        self.vslots: dict[str, str] = {}
+        self.vaggs: dict[str, str] = {}
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
@@ -2228,6 +2238,9 @@ class Gen:
 
     def tbaa_nodes(self) -> list[str]:
         return lower_module_tbaa_nodes(self)
+
+    def tuple_rets(self) -> None:
+        return lowering_tuple_rets(self)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)

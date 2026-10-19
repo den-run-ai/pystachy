@@ -12,10 +12,17 @@ def gen_lower(self, fn: IFn) -> None:
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
+    # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
+    # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
+    n = self.vrets.get(f.ll, 0)
+    agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+    self.vtuples = fresh_rets(fn) if n > 0 else {}
+    self.vslots = {}
+    self.vaggs = {}
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
     # (a function that only raises is an error path: cold, and kept out of its callers, so that
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
-    o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    o.append(f"define {'' if f.export else 'internal '}{agg if n > 0 else lt(f.ret)} {'@v.' + f.ll[1:] if n > 0 else f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
@@ -52,6 +59,70 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("coro.unreach:")
         o.append("  unreachable")
     o.append("}")
+    if n > 0:
+        # its symbol, for every other use: the tuple, made from the slots the body returns
+        o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
+        o.append("entry:")
+        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join([f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps])})")
+        o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
+        for k in range(n):
+            o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
+            o.append(f"  %p{k} = getelementptr i64, ptr %p, i64 {k}")
+            o.append(f"  store i64 %v{k}, ptr %p{k}")
+        o.append("  ret ptr %p")
+        o.append("}")
+
+def gen_tuple_rets(self) -> None:
+    # tupleret: which functions return their fixed tuple's slots by value, and which calls take
+    # them so (Gen.vrets, Gen.vcalls), once the program's IR is final. Such a function returns,
+    # wherever it returns, a tuple that an alloc.fixed of the ret's block made, which nothing but
+    # that block's tuple.stores reach (fresh_rets): a new tuple, which no code could hold. Such
+    # a call's result is read by tuple.loads alone (an unpacking, a constant index, a loop over
+    # the tuple's slots): the tuple could not escape it either, so CPython's identity of it is
+    # never seen. A function that such a call calls is lowered to return the slots (gen_lower);
+    # the others are lowered as before
+    fns: dict[str, int] = {}
+    for fn in self.fns:
+        if len(fresh_rets(fn)) > 0:
+            fns[fn.f.ll] = len(targs(fn.f.ret))
+    for fn in self.fns:
+        calls: dict[str, str] = {}
+        used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "call" and i.s in fns and len(i.r) == 1:
+                    calls[f"%t{i.r[0]}"] = i.s
+                for j in range(len(i.a)):
+                    if i.op != "tuple.load" or j != 0:
+                        used[i.a[j].v] = True
+        for v in calls:
+            if v not in used:
+                self.vcalls[f"{fn.f.ll} {v}"] = True
+                self.vrets[calls[v]] = fns[calls[v]]
+
+def fresh_rets(fn: IFn) -> dict[str, bool]:
+    # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
+    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it; else none. Not a
+    # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use
+    t = fn.f.ret
+    if fn.coro or fn.f.export or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
+        return {}
+    rets: dict[str, bool] = {}
+    for b in fn.blocks:
+        made: dict[str, bool] = {}
+        for i in b.code:
+            if i.op == "alloc.fixed" and i.t == t:
+                made[f"%t{i.r[0]}"] = True
+            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or i.a[0].v not in made)):
+                return {}
+            elif i.op == "ret":
+                rets[i.a[0].v] = True
+    for b in fn.blocks:
+        for i in b.code:
+            for j in range(len(i.a)):
+                if i.a[j].v in rets and i.op != "ret" and (i.op != "tuple.store" or j != 0):
+                    return {}
+    return rets
 
 def raises_only(fn: IFn) -> bool:
     # whether no call of fn returns: it has no ret, and no branch back to a block before it (a
@@ -121,7 +192,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
-        o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+        if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
+            o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+    elif op == "tuple.store" and i.a[0].v in self.vtuples:
+        self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
+    elif op == "tuple.load" and i.a[0].v in self.vaggs:
+        o.append(f"  %t{i.r[1]} = extractvalue {self.vaggs[i.a[0].v]} {i.a[0].v}, {i.k}")
     elif op == "tuple.load" or op == "tuple.store":
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 {i.k}")
         if op == "tuple.load":
@@ -170,6 +246,17 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         x = i.a[1]
         y = i.a[2]
         o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+    elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
+        # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
+        # of the tuple that alloc.fixed would have made
+        n = len(targs(fn.f.ret))
+        agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+        cur = "zeroinitializer"
+        for k in range(n):
+            s = self.vslots.get(i.a[0].v + " " + str(k), "0")
+            o.append(f"  {i.a[0].v}.v{k} = insertvalue {agg} {cur}, i64 {s}, {k}")
+            cur = f"{i.a[0].v}.v{k}"
+        o.append(f"  ret {agg} {cur}")
     elif op == "ret":
         o.append(f"  ret {lt(i.a[0].t)} {i.a[0].v}" if len(i.a) > 0 else "  ret void")
     elif op == "ret.none":
@@ -194,6 +281,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+    elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
+        # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
+        agg = "{" + ", ".join(["i64" for _ in range(self.vrets[i.s])]) + "}"
+        args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
+        o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+        self.vaggs[f"%t{i.r[0]}"] = agg
     elif op == "call":
         c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
