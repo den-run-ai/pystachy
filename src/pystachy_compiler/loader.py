@@ -2575,8 +2575,12 @@ class Loader:
             return s
         if s in self.qren:
             return self.qren[s]
-        k = self.kind(m, s)
-        if k.startswith("b:builtins.") and is_excname(k[11:]) and s not in self.fk:
+        return self.qbound(m, s, self.kind(m, s), s in self.fk)
+
+    def qbound(self, m: Mod, s: str, k: str, infn: bool) -> str:
+        # the qualified name of s, which m binds as k says (infn: an import in the function being
+        # qualified binds it)
+        if k.startswith("b:builtins.") and is_excname(k[11:]) and not infn:
             return k[11:]  # (a builtin exception class by another name: from builtins import RuntimeError as error)
         if k == "f" or k == "c" or k == "v" or k.startswith("b:"):
             if m.name == "" and s in PYBUILTINS:
@@ -2630,8 +2634,9 @@ class Loader:
             n.kind = "badattr"
             n.s = k[2:]
         else:
+            # t's own binding: no import or type parameter of the code being qualified stands for it
             n.kind = "name"
-            n.s = self.qname(t, n.s, {})
+            n.s = self.qbound(t, n.s, k, False)
         n.kids = []
         return ""
 
@@ -2678,6 +2683,8 @@ class Loader:
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
                 n.kids = []
+            elif k == "attr" and n.kind == "name":
+                pass  # (qmod() named the module's own binding, which no name here stands for)
             elif n.kind == "name" and n.s not in loc and self.kind(m, n.s).startswith("x:"):
                 n.kind = "badattr"
                 n.s = self.kind(m, n.s)[2:]
