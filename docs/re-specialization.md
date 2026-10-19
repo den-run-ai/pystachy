@@ -33,7 +33,9 @@ runpy gives keep the spelling of PROGRAM, so a relative PROGRAM has a relative `
 a directory or zip file, a relative first entry of `sys.path`). It uses `sys.monitoring` to count
 the matching calls made on each compiled pattern: `match`, `fullmatch`, `search`, `findall`,
 `finditer`, `split`, `sub`, `subn` and `scanner`, wherever they are called (also through bound
-methods, as `fnmatch` makes them). A program that does not start writes no profile. `generate` writes one matcher for each pattern called at least `--min-calls` times
+methods, as `fnmatch` makes them). A program that does not start writes no profile. The program
+shares the tool's interpreter: the modules the tool imports, such as `re` and `json`, are already
+imported, and the tool holds one `sys.monitoring` tool id (4, or the first one free). `generate` writes one matcher for each pattern called at least `--min-calls` times
 (default 1), counting the calls of all the profiles it reads. It also takes `--pattern P [--flags F]`.
 The module's docstring lists the patterns it could not generate, with the reason.
 

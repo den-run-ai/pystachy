@@ -462,7 +462,7 @@ class TestGenerated(unittest.TestCase):
             with open(prog, "w") as f:
                 f.write("import os\nimport re\nimport sys\nimport helper\nP = re.compile(r'\\d+')\n"
                         "for _ in range(int(sys.argv[1])):\n    P.search('a1')\nre.findall('b+', 'abb')\n"
-                        "re.compile('unused')\nhelper.Q.match('cc')\nprint(sys.path[0])\nos.chdir('elsewhere')\n")
+                        "re.compile('unused')\nhelper.Q.match('cc')\nprint(sys.path[0], sys.orig_argv)\nos.chdir('elsewhere')\n")
             out = os.path.join("profiles", "profile.json")
             run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
                                   prog, "7"], check=True, capture_output=True, text=True, cwd=tmp)

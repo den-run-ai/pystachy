@@ -812,7 +812,10 @@ def record(argv, out):
 
     mon.register_callback(tool, mon.events.CALL, call)
     mon.set_events(tool, mon.events.CALL)
-    saved = sys.argv, sys.path, sys.path[:]  # (the list itself too: the program may bind sys.path anew)
+    saved = sys.argv, sys.path, sys.path[:], sys.orig_argv  # (sys.path's list too: the program may bind it anew)
+    # (python PROGRAM ARG...: the interpreter's own options, then the program's command line)
+    k = len(sys.orig_argv) - len(sys.argv)
+    sys.orig_argv = (sys.orig_argv[:k] if k > 0 and sys.orig_argv[k] == sys.argv[0] else [sys.executable]) + list(argv)
     sys.argv = list(argv)
     if not sys.flags.safe_path:
         # (python PROGRAM imports from the program's directory, in place of this tool's; from PROGRAM
@@ -845,7 +848,7 @@ def record(argv, out):
             mon.set_events(tool, 0)
             mon.register_callback(tool, mon.events.CALL, None)
             mon.free_tool_id(tool)
-        sys.argv, sys.path = saved[0], saved[1]
+        sys.argv, sys.path, sys.orig_argv = saved[0], saved[1], saved[3]
         sys.path[:] = saved[2]
     # (printed once calls are no longer counted: traceback's own patterns are not the program's)
     if isinstance(error, SystemExit):
