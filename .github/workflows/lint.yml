@@ -71,4 +71,7 @@ jobs:
       - name: DCO certification check tests
         run: python3 -m unittest discover -s tools -p test_dco_check.py
 
+      - name: Generated regex matcher tests
+        run: python3 -m unittest discover -s tools -p test_re_specialize.py
+
       - run: make check-recordings
