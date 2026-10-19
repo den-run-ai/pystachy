@@ -157,9 +157,10 @@ keys and set elements use the identity, `bool()` is true, `repr()` and `str()` g
 `object()` with arguments (CPython's `TypeError`), assigning an attribute of such an object, and a
 variable, return value or `dict.get()` default that would hold either such an object or a value of
 another type, as no union holds one yet
-([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class where a module calls
-the name `object`, so it also rejects a call by another name (`builtins.object()`, or an alias that
-an import or an assignment binds, `obj = object`) in a module that never calls `object()` itself.
+([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class for a program one of
+whose modules calls the name `object`, so it also rejects a call by another name (`builtins.object()`,
+or an alias that an import or an assignment binds, `obj = object`) in a program none of whose
+modules calls `object()`; in any other program such a call makes a sentinel too.
 
 ## Iterators
 
