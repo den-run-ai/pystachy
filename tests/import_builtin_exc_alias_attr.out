@@ -1,0 +1,3 @@
+builtin RuntimeError at module level
+builtin RuntimeError in a function
+[exit 0]
