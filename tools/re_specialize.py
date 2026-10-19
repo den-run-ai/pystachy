@@ -36,6 +36,7 @@ import builtins
 import importlib.util
 import json
 import os
+import pkgutil
 import runpy
 import sys
 import traceback
@@ -783,7 +784,7 @@ def record(argv, out):
     counts = {}
     methods = {"match", "fullmatch", "search", "findall", "finditer", "split", "sub", "subn", "scanner"}
     mon = sys.monitoring
-    tool = mon.DEBUGGER_ID
+    tool = 4  # (an id of no predefined tool: a program's own debugger, coverage or profiler keeps its id)
     mon.use_tool_id(tool, "re_specialize")
 
     # (p.search(s) calls Pattern.search with p first; m = p.match; m(s) calls the bound method: C types,
@@ -808,8 +809,12 @@ def record(argv, out):
     saved = sys.argv, sys.path[:]
     sys.argv = list(argv)
     if not sys.flags.safe_path:
-        # (python PROGRAM imports from the program's directory: in place of this tool's)
-        sys.path[0] = os.path.dirname(os.path.realpath(argv[0]))
+        # (python PROGRAM imports from the program's directory, in place of this tool's; from PROGRAM
+        # itself where it is a directory or a zip file, which run_path then puts first)
+        if pkgutil.get_importer(argv[0]) is None:
+            sys.path[0] = os.path.dirname(os.path.realpath(argv[0]))
+        else:
+            del sys.path[0]
     status = 0
     error = None
     interrupt = None
@@ -847,7 +852,10 @@ def record(argv, out):
             print("%s: can't open file %r: [Errno %d] %s" % (sys.orig_argv[0], argv[0], error.errno, error.strerror),
                   file=sys.stderr)
             return 2  # (as python PROGRAM; no profile, of a program that did not run)
-        traceback.print_exception(type(error), error, tb)
+        if tb is None and isinstance(error, ImportError):
+            print("%s: %s" % (sys.executable, error), file=sys.stderr)  # (a directory without __main__.py)
+            return 1
+        traceback.print_exception(type(error), error, tb, chain=tb is not None)
         if tb is None:
             return 1  # (the program did not run, as on its SyntaxError: no profile)
     profile = {"format": FORMAT, "program": argv[0],

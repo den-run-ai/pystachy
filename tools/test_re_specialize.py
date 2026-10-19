@@ -474,11 +474,15 @@ class TestGenerated(unittest.TestCase):
             self.assertEqual(calls, {("\\d+", re.U): 7, ("b+", re.U): 1, ("c+", re.U): 1})
 
     def test_record_transparent(self):
-        # counting reads nothing of the program's own callables: a proxy's __getattr__ never runs
+        # counting reads nothing of the program's own callables: a proxy's __getattr__ never runs; and
+        # the program may use sys.monitoring's predefined tool ids itself
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             prog = os.path.join(tmp, "prog.py")
             with open(prog, "w") as f:
-                f.write("import re\nclass Proxy:\n    seen = []\n    def __getattr__(self, name):\n"
+                f.write("import re\nimport sys\nfor t in (sys.monitoring.DEBUGGER_ID, sys.monitoring.COVERAGE_ID, "
+                        "sys.monitoring.PROFILER_ID, sys.monitoring.OPTIMIZER_ID):\n"
+                        "    sys.monitoring.use_tool_id(t, 'own')\n"
+                        "class Proxy:\n    seen = []\n    def __getattr__(self, name):\n"
                         "        Proxy.seen.append(name)\n        raise KeyError(name)\n    def __call__(self):\n"
                         "        return 1\nProxy()()\nm = re.compile('a').match\nm('a')\nre.compile('b').findall('b')\n"
                         "print(Proxy.seen)\n")
@@ -494,27 +498,29 @@ class TestGenerated(unittest.TestCase):
         # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
         # message prints it, an uncaught exception its traceback, each with status 1, and an uncaught
         # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames). A
-        # program that does not run (a SyntaxError, no such file) fails as there, and writes none.
-        ends = ["sys.exit('bye')", "raise ValueError('boom')", "sys.exit(3)", "raise KeyboardInterrupt", "def (",
-                None, "raise ValueError('in a directory')"]
+        # directory runs its __main__.py, first on sys.path itself. A program that does not run (a
+        # SyntaxError, no such file, a directory without __main__.py) fails as there, and writes none.
+        cases = [("file", "sys.exit('bye')"), ("file", "raise ValueError('boom')"), ("file", "sys.exit(3)"),
+                 ("file", "raise KeyboardInterrupt"), ("file", "def ("), ("file", None),
+                 ("dir", "print(sys.path[:2])\nraise ValueError('in a directory')"), ("dir", None)]
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
-            for i, end in enumerate(ends):
-                prog = os.path.join(tmp, "prog%d.py" % i)
-                if "directory" in str(end):
-                    prog = os.path.join(tmp, "progdir")  # (python progdir runs progdir/__main__.py)
-                    os.mkdir(prog)
+            for i, (kind, end) in enumerate(cases):
+                prog = os.path.join(tmp, "prog%d" % i + (".py" if kind == "file" else ""))
+                if kind == "dir":
+                    os.mkdir(prog)  # (python prog runs prog/__main__.py)
                 if end is not None:
-                    with open(os.path.join(prog, "__main__.py") if "directory" in end else prog, "w") as f:
+                    with open(os.path.join(prog, "__main__.py") if kind == "dir" else prog, "w") as f:
                         f.write("import re\nimport sys\nre.compile('d+').match('dd')\n%s\n" % end)
                 out = os.path.join(tmp, "profile%d.json" % i)
                 run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o",
                                       out, prog], capture_output=True, text=True)
                 plain = subprocess.run([sys.executable, prog], capture_output=True, text=True)
                 self.assertEqual(run.returncode, plain.returncode)
+                self.assertEqual(run.stdout, plain.stdout)
                 if end == "raise KeyboardInterrupt":
                     self.assertEqual(run.stderr.splitlines()[-1], plain.stderr.splitlines()[-1])
-                elif "directory" in str(end):
-                    # (python progdir also shows the frames of runpy, which runs the directory's __main__.py)
+                elif kind == "dir" and end is not None:
+                    # (python prog also shows the frames of runpy, which runs the directory's __main__.py)
                     self.assertTrue(plain.stderr.endswith(run.stderr.split("\n", 1)[1]), run.stderr)
                 else:
                     self.assertEqual(run.stderr, plain.stderr)
