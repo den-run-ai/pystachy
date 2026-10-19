@@ -493,22 +493,34 @@ class TestGenerated(unittest.TestCase):
     def test_record_exit(self):
         # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
         # message prints it, an uncaught exception its traceback, each with status 1, and an uncaught
-        # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames)
-        ends = ["sys.exit('bye')", "raise ValueError('boom')", "sys.exit(3)", "raise KeyboardInterrupt"]
+        # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames). A
+        # program that does not run (a SyntaxError, no such file) fails as there, and writes none.
+        ends = ["sys.exit('bye')", "raise ValueError('boom')", "sys.exit(3)", "raise KeyboardInterrupt", "def (",
+                None, "raise ValueError('in a directory')"]
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             for i, end in enumerate(ends):
                 prog = os.path.join(tmp, "prog%d.py" % i)
-                with open(prog, "w") as f:
-                    f.write("import re\nimport sys\nre.compile('d+').match('dd')\n%s\n" % end)
+                if "directory" in str(end):
+                    prog = os.path.join(tmp, "progdir")  # (python progdir runs progdir/__main__.py)
+                    os.mkdir(prog)
+                if end is not None:
+                    with open(os.path.join(prog, "__main__.py") if "directory" in end else prog, "w") as f:
+                        f.write("import re\nimport sys\nre.compile('d+').match('dd')\n%s\n" % end)
                 out = os.path.join(tmp, "profile%d.json" % i)
                 run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o",
                                       out, prog], capture_output=True, text=True)
                 plain = subprocess.run([sys.executable, prog], capture_output=True, text=True)
                 self.assertEqual(run.returncode, plain.returncode)
-                if "KeyboardInterrupt" in end:
+                if end == "raise KeyboardInterrupt":
                     self.assertEqual(run.stderr.splitlines()[-1], plain.stderr.splitlines()[-1])
+                elif "directory" in str(end):
+                    # (python progdir also shows the frames of runpy, which runs the directory's __main__.py)
+                    self.assertTrue(plain.stderr.endswith(run.stderr.split("\n", 1)[1]), run.stderr)
                 else:
                     self.assertEqual(run.stderr, plain.stderr)
+                if end is None or end == "def (":
+                    self.assertFalse(os.path.exists(out))
+                    continue
                 with open(out) as f:
                     self.assertEqual(json.load(f)["patterns"], [{"pattern": "d+", "flags": int(re.U), "calls": 1}])
 

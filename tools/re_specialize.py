@@ -44,6 +44,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEPTH = 1000  # the group repeats a match may nest (each a native call) before the interpreter takes it
 MAXLINES = 4000  # the generated lines of one pattern's matcher, at most
 FORMAT = 1  # the profile's format
+RUNNERS = ("runpy", "importlib._bootstrap", "importlib._bootstrap_external")  # (what runs a program for record)
 
 # ---- lib/re on CPython
 
@@ -837,10 +838,18 @@ def record(argv, out):
     if isinstance(error, SystemExit):
         print(error.code, file=sys.stderr)
     elif error is not None:
+        # (from the program's own frames, as python PROGRAM shows them: none where it did not run)
         tb = error.__traceback__
-        while tb is not None and tb.tb_frame.f_code.co_filename != argv[0]:
-            tb = tb.tb_next  # (from the program's own frames, as python PROGRAM shows it)
-        traceback.print_exception(type(error), error, tb or error.__traceback__)
+        while tb is not None and (tb.tb_frame.f_code.co_filename == record.__code__.co_filename or
+                                  tb.tb_frame.f_globals.get("__name__") in RUNNERS):
+            tb = tb.tb_next
+        if tb is None and isinstance(error, OSError) and error.filename == argv[0]:
+            print("%s: can't open file %r: [Errno %d] %s" % (sys.orig_argv[0], argv[0], error.errno, error.strerror),
+                  file=sys.stderr)
+            return 2  # (as python PROGRAM; no profile, of a program that did not run)
+        traceback.print_exception(type(error), error, tb)
+        if tb is None:
+            return 1  # (the program did not run, as on its SyntaxError: no profile)
     profile = {"format": FORMAT, "program": argv[0],
                "patterns": [{"pattern": p, "flags": f, "calls": n}
                             for (p, f), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]}
