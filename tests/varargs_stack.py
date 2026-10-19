@@ -1,6 +1,7 @@
 # *args tuples that a call makes in its own frame (Gen.stack_tuple): each way a function can keep
 # its *args, or a local assigned them, past the call gets a tuple that outlives the call, equal to
-# what was passed, and the same tuple wherever one call kept it; a lookup or a read keeps nothing
+# what was passed, and the same tuple wherever one call kept it; so does a generator expression that
+# reads them as it is iterated, after the call. A lookup or a read keeps nothing
 from functools import cache
 
 saved: list[tuple[int, str]] = []
@@ -60,6 +61,15 @@ def gives(*args):
     return [inner()]
 
 
+def lazy(*args):
+    return (args[i] * 10 for i in range(len(args)))  # (a generator expression reads args later)
+
+
+def lazy_over(*args):
+    g = (x + 1 for x in args)
+    return g
+
+
 def counted(*args):
     n = 0
     for x in args:
@@ -98,6 +108,8 @@ for i in range(3):
     remember(i, "s" * (i + 1))
 print(saved, index, sorted(seen), saved[0] in index)
 print(gives("g", "h"), counted(1, 2, 3), counted(4, 5), text("a", "b", "c"), through(7, 8))
+gens = [lazy(i, i + 1) for i in range(3)] + [lazy_over(i, 5 * i) for i in range(3)]
+print([list(g) for g in gens])
 r = [store(i, i + 1) for i in range(3)]
 print(r, store(1) + store(2, 3), store())
 try:

@@ -1277,12 +1277,13 @@ def stack_aliases(n: Node, names: dict[str, bool]) -> bool:
 def stack_kept(n: Node, names: list[str]) -> bool:
     # whether code n could keep what a name of names holds where the copy before each statement
     # (Gen.keep_stack) does not look: in a generator (yield, await), a closure (a def, lambda or
-    # class that names one), a global or nonlocal, or a while loop's test, which runs again after
-    # the statements of its body
+    # class that names one, or a generator expression, which reads it as it is iterated, after
+    # the statement), a global or nonlocal, or a while loop's test, which runs again after the
+    # statements of its body
     k = n.kind
     if k == "yield" or k == "await" or k == "async":
         return True
-    if k == "def" or k == "lambda" or k == "class" or k == "subclass" or k == "lclass" or k == "global" or k == "nonlocal":
+    if k == "def" or k == "lambda" or k == "class" or k == "subclass" or k == "lclass" or k == "global" or k == "nonlocal" or (k == "listcomp" and n.s == "gen"):
         return mentions(n, names)
     if k == "while" and mentions(n.kids[0], names):
         return True
