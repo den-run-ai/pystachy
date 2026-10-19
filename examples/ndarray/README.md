@@ -181,46 +181,56 @@ python3 -I bench.py pystachy
 ```
 
 The run:
-- **Machine:** a single run on a shared 4-vCPU x86-64 VM (Xeon, 2.8 GHz).
-- **Versions:** compiler at [`2379159`](https://github.com/den-run-ai/pystachy/commit/2379159), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.3.
+- **Machine:** a shared 4-vCPU x86-64 VM (Xeon, 2.1 GHz), pinned to one CPU.
+- **Versions:** compiler at [`a0383a6`](https://github.com/den-run-ai/pystachy/commit/a0383a607ee621cb908437429e7bc3181a5ff5b3), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.4.
 - **Threads:** NumPy single-threaded (`OPENBLAS_NUM_THREADS=1`), as Pystachy is.
-- **Timing:** best of five inside each process, in milliseconds, so the JIT's numbers exclude its compilation.
+- **Timing:** best of five inside each process, in milliseconds, so the JIT's numbers exclude its
+  compilation; the median of six such runs ([recorded data](results/bench-2026-10-19.json)).
 - **Data:** `a` and `b` have 4,000,000 items.
 - **Rows:** "into `out`" writes into an array made once; "loop" is the reduction written by hand as one loop.
 
 | Workload | AOT | JIT | NumPy |
 |---|---:|---:|---:|
-| `a + b` | 34.2 | 39.8 | 8.8 |
-| `a + b`, into `out` | 10.5 | 17.7 | 10.0 |
-| `a * 1.5` | 25.3 | 27.6 | 5.8 |
-| `a * b + a` | 53.7 | 63.4 | 23.9 |
-| `a * b + a`, into `out` | 20.8 | 34.9 | 15.7 |
-| `a * b + a`, lazy | 31.2 | 38.1 | — |
-| `a * b + a`, lazy into `out` | 13.4 | 23.3 | — |
-| `sum(a)` | 5.0 | 8.1 | 3.6 |
-| `sum((a - b) * (a - b))` | 80.9 | 117.9 | 40.0 |
-| `sum((a - b) * (a - b))`, lazy | 9.7 | 31.6 | — |
-| `sum((a - b) * (a - b))`, loop | 7.4 | 6.8 | — |
-| `m + row`, 1000×1000 | 7.6 | 10.2 | 0.8 |
-| `m.T + m`, 1000×1000 | 9.5 | 13.8 | 1.5 |
-| `sum(m, axis=0)`, 1000×1000 | 1.3 | 3.8 | 0.3 |
-| `p @ q`, 256×256 | 15.1 | 59.1 | 0.6 |
+| `a + b` | 20.5 | 34.4 | 7.0 |
+| `a + b`, into `out` | 9.2 | 19.6 | 10.5 |
+| `a * 1.5` | 10.0 | 14.9 | 2.9 |
+| `a * b + a` | 24.1 | 47.8 | 20.1 |
+| `a * b + a`, into `out` | 16.1 | 41.4 | 7.0 |
+| `a * b + a`, lazy | 15.7 | 45.4 | — |
+| `a * b + a`, lazy into `out` | 12.4 | 39.2 | — |
+| `sum(a)` | 3.4 | 12.4 | 1.3 |
+| `sum((a - b) * (a - b))` | 47.5 | 98.1 | 35.2 |
+| `sum((a - b) * (a - b))`, lazy | 9.8 | 46.1 | — |
+| `sum((a - b) * (a - b))`, loop | 5.1 | 7.5 | — |
+| `m + row`, 1000×1000 | 2.8 | 10.9 | 0.8 |
+| `m.T + m`, 1000×1000 | 4.8 | 13.0 | 1.5 |
+| `sum(m, axis=0)`, 1000×1000 | 1.3 | 6.9 | 0.3 |
+| `p @ q`, 256×256 | 8.8 | 12.6 | 0.5 |
 
-- **New arrays are most of the cost.** Writing into an array made once brings `a + b` from 34.2 ms
-  to 10.5, about NumPy's 10.0 into `out`. NumPy's 8.8 for a new array reuses freed memory, while a
+- **New arrays still cost the most.** Writing into an array made once brings `a + b` from 20.5 ms
+  to 9.2, about NumPy's 10.5 into `out`. NumPy's 7.0 for a new array reuses freed memory, while a
   new numeric list here takes fresh memory that the collector then scans
   ([#210](https://github.com/den-run-ai/pystachy/issues/210)).
-- **Fusion removes temporaries.** The lazy sum of `(a - b) * (a - b)`, compensated, takes 9.7 ms
-  against NumPy's 40.0 for the eager expression; a hand-written loop, uncompensated, takes 7.4.
-  The lazy `a * b + a` into `out` takes 13.4, NumPy's two passes into `out` 15.7.
-- **Strided loops are slower.** Broadcast and strided loops, and the axis sum, take 5 to 9 times
-  NumPy's time: they index through strides with a bounds check per item.
+- **Fusion removes temporaries.** The lazy sum of `(a - b) * (a - b)`, compensated, takes 9.8 ms
+  against NumPy's 35.2 for the eager expression; a hand-written loop, uncompensated, takes 5.1.
+  The lazy `a * b + a` into `out` takes 12.4, NumPy's two passes into `out` 7.0.
+- **Strided loops are slower.** Broadcast and strided loops, and the axis sum, take 3 to 4.5 times
+  NumPy's time. A row broadcast has its own loop; the others index through strides with a bounds
+  check per item.
 - **The JIT inlines less** than the executable's whole-program `-O2`
   ([#209](https://github.com/den-run-ai/pystachy/issues/209)).
-- **Matrix products need BLAS.** The compiled loop reaches about 2 GFLOP/s, NumPy's OpenBLAS 52.
+- **Matrix products need BLAS.** The compiled loop reaches about 3.8 GFLOP/s (2.7 in the JIT),
+  NumPy's OpenBLAS about 67.
 - **One call per loop.** Each of `lazy`'s loops calls an expression's `at()` from one place: LLVM
   did not inline it from several, and the compensated sum ran at 6.2 ns per item with two calls
   against 2.4 with one.
+- **Against earlier builds** on the same host, alternating with this one: main as #642 merged
+  it, without #657, took 37.8 ms (AOT) for `a + b`, 35.2 for `a * 1.5`, 103.5 for the eager sum
+  and 14.6 (JIT 67.4) for `p @ q`. Main just before #681 merged
+  ([`0c8b442`](https://github.com/den-run-ai/pystachy/commit/0c8b4427f069d1fd86625ee82548a0b656fa53ef))
+  already took 21.1, 12.4 and 46.7 for the first three, the span where list repetition and the
+  collection budget for large arrays (#657, #658) landed. `p @ q` took 18.9 there (JIT 92.8)
+  and gained from #691's dot-product loop.
 
 ## What the subset cannot express yet
 
