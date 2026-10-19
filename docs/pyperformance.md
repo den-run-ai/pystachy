@@ -250,8 +250,9 @@ What changed (`make re-probe`'s counts are unchanged by all of them: the matcher
 same positions as before):
 
 - **Subjects read in place.**
-  - A str whose every byte is a code point (ASCII, or the raw bytes `chr()` makes of 128–255) is
-    the matcher's subject as it is, through a private `bytes` view.
+  - A str whose every byte is a code point is the matcher's subject as it is, through a private
+    `bytes` view. That is an ASCII str, or a file's bytes that are not UTF-8, which Pystachy reads
+    as they are.
   - The matcher (`_sre.State[_S]`) is compiled once for such bytes and once for the decoded
     `list[int]` of other strs, as CPython's is for each character width.
   - DNA's substitutions no longer decode their new 1 MB subjects, and V8 no longer decodes
@@ -261,6 +262,8 @@ same positions as before):
 - **Alternatives by a bit-parallel filter.** DNA's nine variants step one word of their
   alternatives' partial matches through the subject (Shift-And). They test the full leading items
   only where one of them could begin, which removes the 5.3 million `_branch_starts()` calls a loop.
+  A character from U+0080 that no leading item may match has no bits, untested; the others come
+  from a memo of 64 slots by their low bits.
 - **States without throwaway lists.** A State takes its pattern's tables, and a match leaves its
   empty data stack to the next. V8's steady-state blocks run 26.3M instructions instead of 35.0M.
 
