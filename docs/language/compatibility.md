@@ -714,7 +714,9 @@ supported alternatives.
   argument or with keyword arguments, and `==` between a class object and an object of a class
   of the program (whose `__eq__` CPython would call). A call of one of a class of the program
   whose `__init__` takes another type than the argument's raises `TypeError` where CPython makes
-  the object ([deviation test](../../tests/deviations/exc_class_call_init_type.py))
+  the object ([deviation test](../../tests/deviations/exc_class_call_init_type.py)), and so does a
+  call of `NoneType`'s class object, `type(x)` of an exception `x` that is `None`, where CPython
+  returns `None` ([deviation test](../../tests/deviations/exc_class_call_nonetype.py))
 - `except ... as x` in a function where `x` is a global (the end of the clause deletes it, as `del`
   would), and at a module's top level where `x` is a global of another type that a function reads
   (the function would not see the exception)
