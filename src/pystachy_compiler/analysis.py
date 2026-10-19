@@ -542,6 +542,25 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
                     out[kid.s] = True
                 collect(kid.kids[1].kids, out)
 
+def bind_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement in body that assigns nm, as collect finds them, or -1
+    for st in body:
+        one: dict[str, bool] = {}
+        targets(st, one)
+        if nm in one:
+            return st.line
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        for kid in st.kids:
+            ln = -1
+            if kid.kind == "block":
+                ln = bind_line(kid.kids, nm)
+            elif kid.kind == "except":
+                ln = kid.line if kid.s == nm else bind_line(kid.kids[1].kids, nm)
+            if ln >= 0:
+                return ln
+    return -1
+
 def mark(names: list[str], sure: dict[str, bool], maybe: dict[str, bool], added: list[str]) -> None:
     # names are bound: added gets those that were not surely bound
     for nm in names:
@@ -1512,6 +1531,25 @@ def global_assigns(body: list[Node], out: dict[str, bool], imports: bool = False
     for d in inner:
         if d.kind == "def":
             global_assigns(d.kids[2].kids, out, imports)
+
+
+def global_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement that assigns nm as a global in a function's body, or else in
+    # a def inside it that declares nm global itself (each a scope of its own, as global_assigns
+    # finds them), or -1
+    decl: dict[str, bool] = {}
+    globals_in(body, decl)
+    ln = bind_line(body, nm) if nm in decl else -1
+    if ln >= 0:
+        return ln
+    inner: list[Node] = []
+    for st in body:
+        nested_defs(st, inner)
+    for d in inner:
+        ln = global_line(d.kids[2].kids, nm) if d.kind == "def" else -1
+        if ln >= 0:
+            return ln
+    return -1
 
 
 def fn_globals(n: Node, out: dict[str, bool]) -> None:

@@ -445,6 +445,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_object as exceptions_exc_object,
     gen_exc_of as exceptions_exc_of,
     gen_exc_vals as exceptions_exc_vals,
+    gen_exc_str_args as exceptions_exc_str_args,
     gen_exc_value as exceptions_exc_value,
     gen_exc_value_of as exceptions_exc_value_of,
     gen_exit_ as exceptions_exit_,
@@ -2605,6 +2606,9 @@ class Gen:
 
     def exc_value(self, name: str, vals: list[Val]) -> Val:
         return exceptions_exc_value(self, name, vals)
+
+    def exc_str_args(self, msg: str) -> str:
+        return exceptions_exc_str_args(self, msg)
 
     def exit_(self, vals: list[Val], sysx: bool) -> None:
         return exceptions_exit_(self, vals, sysx)
