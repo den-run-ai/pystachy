@@ -462,11 +462,52 @@ def pys_str_endswith(s: str, p: str, st: int, en: int) -> int:
 
 
 def pys_str_replace(s: str, a: str, b: str) -> str:
-    return replaced(s, a, b, -1)
+    return replaced(s, a, b, -1) if len(a) > 0 else interleaved(s, b, -1)
 
 
 def pys_str_replace_count(s: str, a: str, b: str, count: int) -> str:
-    return replaced(s, a, b, count)
+    return replaced(s, a, b, count) if len(a) > 0 else interleaved(s, b, count)
+
+
+def interleaved(s: str, b: str, count: int) -> str:
+    # s.replace("", b, count), as CPython makes it: b before each of the first count characters,
+    # and after the last one too where count is negative or more than their number. A character
+    # is what uchar reads (bytes.replace() puts b between bytes: replaced()). An ASCII byte, and
+    # a b of one byte, is a store, not a copy
+    n = len(s)
+    if count == 0:
+        return s
+    if count < 0 or count > n:
+        count = n + 1  # (at least the places b can go)
+    k = 0  # b goes before each of the k characters of s[:end], then once more at end
+    end = 0
+    while end < n and k < count - 1:
+        end += 1 if _rt.byte(s, end) < 128 else uchar(s, end, n) & 7
+        k += 1
+    lb = len(b)
+    c = _rt.byte(b, 0) if lb == 1 else 0
+    r = _rt.str_new(n + (k + 1) * lb)
+    at = 0
+    i = 0
+    while i < end:
+        if lb == 1:
+            _rt.str_put(r, at, c)
+        elif lb > 1:
+            _rt.copy(r, at, b, 0, lb)
+        at += lb
+        d = _rt.byte(s, i)
+        if d < 128:
+            _rt.str_put(r, at, d)
+            at += 1
+            i += 1
+        else:
+            m = uchar(s, i, n) & 7
+            _rt.copy(r, at, s, i, m)
+            at += m
+            i += m
+    _rt.copy(r, at, b, 0, lb)
+    _rt.copy(r, at + lb, s, end, n - end)
+    return _rt.str_done(r)
 
 
 def tally(h: str, n: str, st: int, most: int) -> int:
@@ -509,7 +550,7 @@ def tally(h: str, n: str, st: int, most: int) -> int:
 
 def replaced(s: str, a: str, b: str, count: int) -> str:
     # the first count occurrences of a replaced (all of them for a negative count), as CPython's
-    # replace() makes them
+    # replace() makes them; an empty a as bytes.replace() puts it, between bytes
     n = len(s)
     if count == 0:
         return s
@@ -1491,8 +1532,9 @@ def pys_format_float(x: float, spec: str) -> str:
 # ---------- bytes ----------
 # A bytes object is a Str, its bytes a str's (see bytes in runtime.c), so its parameters here are
 # strs. These are its operations: under names of their own where a str's does the same to the
-# bytes (searches, replace, a split at a separator), and apart where a bytes differs: its items
-# are ints, its whitespace, case and digits are ASCII's, and its widths count bytes
+# bytes (searches, replace of a non-empty old, a split at a separator), and apart where a bytes
+# differs: its items are ints, its whitespace, case and digits are ASCII's, its widths count
+# bytes, and replace() of an empty old puts new between bytes
 def ascii_ws(c: int) -> bool:
     # a bytes's whitespace: space, \t, \n, \v, \f and \r
     return c == 32 or (c >= 9 and c <= 13)
@@ -1547,11 +1589,11 @@ def pys_bytes_endswith(h: str, n: str, st: int, en: int) -> int:
 
 
 def pys_bytes_replace(s: str, a: str, b: str) -> str:
-    return pys_str_replace(s, a, b)
+    return replaced(s, a, b, -1)
 
 
 def pys_bytes_replace_count(s: str, a: str, b: str, n: int) -> str:
-    return pys_str_replace_count(s, a, b, n)
+    return replaced(s, a, b, n)
 
 
 def pys_bytes_partition(s: str, sep: str) -> tuple[str, str, str]:
