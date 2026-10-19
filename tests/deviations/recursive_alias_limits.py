@@ -1,5 +1,6 @@
 """Fixed native recursion budgets differ from CPython; unwind state is reusable."""
 type Value = int | list[Value]
+type Leaf = int | str | list[Leaf]
 
 
 def nested(depth: int) -> Value:
@@ -7,6 +8,24 @@ def nested(depth: int) -> Value:
     for _ in range(depth):
         value = [value]
     return value
+
+
+def leafed(depth: int, leaf: Leaf) -> Leaf:
+    value: Leaf = leaf
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+def compare(left: Leaf, right: Leaf) -> None:
+    try:
+        print(left == right)
+    except RecursionError:
+        print("equality depth guarded")
+    try:
+        print(len(repr(left)))
+    except RecursionError:
+        print("repr depth guarded")
 
 
 def main() -> None:
@@ -32,6 +51,11 @@ def main() -> None:
     except RecursionError:
         print("cycle equality guarded")
     print(first, first == first)
+    # Comparison and repr follow at most 512 recursive alias edges, whatever the leaf: the leaf of
+    # a value nested 513 deep is the 513th edge away.
+    for depth in [512, 513]:
+        compare(leafed(depth, 1), leafed(depth, 1))
+        compare(leafed(depth, "a"), leafed(depth, "a"))
 
 
 main()
