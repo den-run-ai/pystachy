@@ -329,8 +329,8 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 
 ## Optimizations
 
-`OPTS` lists the available switches. Only `listget` and `dictfuse` are whole-function IR
-passes; the others select frontend or lowering choices.
+`OPTS` lists the available switches. Only `listget`, `dictfuse` and `unionslots` are
+whole-function IR passes; the others select frontend or lowering choices.
 
 | Option | Implemented behavior |
 |---|---|
@@ -339,6 +339,7 @@ passes; the others select frontend or lowering choices.
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
+| `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and no load whose value leaves the local (to a call, a return, a phi) is on a loop: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded, and boxes nothing uses any more are dropped |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.

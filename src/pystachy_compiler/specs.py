@@ -621,7 +621,7 @@ GENTHROWC = 3
 # list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
 # byte reads of a loop over a bytes, in gen_seq_item), which PYSTACHY_OPT turns off: "-name",
 # comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "unionslots"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)

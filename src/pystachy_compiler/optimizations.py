@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list
+from src.pystachy_compiler.utils import is_list, is_union, umembers
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
@@ -12,6 +12,8 @@ def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
         n += self.listget(fn)
     if "dictfuse" in on:
         n += self.dictfuse(fn)
+    if "unionslots" in on:
+        n += self.unionslots(fn)
     return n
 
 def gen_preds(self, fn: IFn) -> dict[str, list[int]]:
@@ -255,6 +257,253 @@ def gen_dictfuse(self, fn: IFn) -> int:
             i.x = ""
         n += 1
     return n
+
+def gen_unionslots(self, fn: IFn) -> int:
+    # Locals of a union of numbers out of the heap. Such a local's slot holds a box (each value
+    # a ubox's); where its address goes nowhere but to its loads and stores, it becomes two int
+    # slots, its value's tag and its payload's bits. A store keeps the parts of what it stores
+    # (uparts: a ubox's operands, a union phi's as phis of its incoming values' parts, else what
+    # union.tag and union.payload read of the box where it is made); a load reads them, and the
+    # union.tag and union.payload of what it loaded become them. A load whose value goes
+    # elsewhere too (a call, a return, a phi: it leaves the local) makes the box there, so a
+    # slot is split only where no such load is on a loop (on_loop): a box at each pass there
+    # may be one more than the stores made. A ubox, slot.pack, union read or union phi that
+    # nothing uses any more goes: a loop that adds floats to an int | float local allocates
+    # nothing. A generator's locals stay (its frame keeps them). How many slots it split
+    if fn.coro:
+        return 0
+    defs: dict[str, list[int]] = {}  # a value -> the block and position of the op that makes it
+    uses: dict[str, list[list[int]]] = {}  # a value -> the block, position and operand of each use
+    for j in range(len(fn.blocks)):
+        code = fn.blocks[j].code
+        for x in range(len(code)):
+            i = code[x]
+            for r in i.r:
+                defs[f"%t{r}"] = [j, x]
+            for k in range(len(i.a)):
+                if i.a[k].v not in uses:
+                    uses[i.a[k].v] = []
+                uses[i.a[k].v].append([j, x, k])
+    split: dict[str, Ins] = {}  # a slot that splits: its address -> its slot
+    for s in fn.slots:
+        if s.k != 0 or not is_union(s.t) or len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) > 0:
+            continue
+        addr = f"%{s.s or 'h'}.{s.r[0]}"
+        ok = addr in uses
+        for u in uses.get(addr, []):
+            i = fn.blocks[u[0]].code[u[1]]
+            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {})):
+                ok = False
+            elif i.op == "mem.load":
+                for w in uses.get(f"%t{i.r[0]}", []):
+                    o = fn.blocks[w[0]].code[w[1]]
+                    if o.op == "union.payload" and f"%t{o.r[0]}" in uses:
+                        ok = False  # (its address taken: nothing does)
+        if ok:
+            split[addr] = s
+    gone = 1
+    while gone > 0:
+        # (a load on a loop whose value leaves: no split; a copy to a slot that splits stays)
+        gone = 0
+        for addr in [a for a in split]:
+            for u in uses[addr]:
+                i = fn.blocks[u[0]].code[u[1]]
+                for w in uses.get(f"%t{i.r[0]}", []) if i.op == "mem.load" else []:
+                    o = fn.blocks[w[0]].code[w[1]]
+                    stays = o.op == "union.tag" or o.op == "union.payload" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)
+                    if not stays and addr in split and self.on_loop(fn, u[0]):
+                        del split[addr]
+                        gone += 1
+    if len(split) == 0:
+        return 0
+    halves: dict[str, list[str]] = {}  # a split slot's address -> its tag's and payload's slots
+    for addr in split:
+        s = split[addr]
+        halves[addr] = []
+        for half in ["tag", "pay"]:
+            fn.n += 1
+            h = Ins("slot", "int", f"{s.s or 'h'}.{half}")
+            h.r = [fn.n]
+            fn.slots.append(h)
+            halves[addr].append(f"%{h.s}.{fn.n}")
+    parts: dict[str, list[str]] = {}  # a union value -> its tag and its payload's bits (uparts)
+    before: dict[str, list[Ins]] = {}  # "j:x" -> ops to put before op x of block j
+    after: dict[str, list[Ins]] = {}  # "j:x" -> ops to put after it
+    repl: dict[str, list[Ins]] = {}  # "j:x" -> the ops that replace it
+    heads: dict[int, list[Ins]] = {}  # block j -> phis to put after its phis
+    ren: dict[str, str] = {}  # a value -> the value that replaces it
+    for addr in split:
+        for u in uses[addr]:
+            i = fn.blocks[u[0]].code[u[1]]
+            if i.op != "mem.load":
+                continue
+            v = f"%t{i.r[0]}"
+            ops: list[Ins] = []
+            for half in halves[addr]:
+                fn.n += 1
+                ld = Ins("mem.load", "int", "")
+                ld.a = [Val(half, "*int")]
+                ld.r = [fn.n]
+                ops.append(ld)
+            parts[v] = [f"%t{ops[0].r[0]}", f"%t{ops[1].r[0]}"]
+            leaves = False
+            for w in uses.get(v, []):
+                o = fn.blocks[w[0]].code[w[1]]
+                if o.op == "union.tag" or self.tag_read(o):
+                    ren[f"%t{o.r[0]}"] = parts[v][0]
+                    repl[f"{w[0]}:{w[1]}"] = []
+                elif o.op == "union.payload":
+                    p = Ins("slot.pack", "%slot", "")
+                    p.a = [Val(parts[v][1], "int")]
+                    p.r = [o.r[1]]
+                    repl[f"{w[0]}:{w[1]}"] = [p]
+                elif not (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split):
+                    leaves = True  # (a copy to a slot that splits stores the parts)
+            if leaves:
+                # (the box that leaves, as the value it replaces)
+                box = Ins("rt", "%ptr", "ubox")
+                box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
+                box.r = [i.r[0]]
+                ops.append(box)
+            repl[f"{u[0]}:{u[1]}"] = ops
+    for addr in split:
+        for u in uses[addr]:
+            i = fn.blocks[u[0]].code[u[1]]
+            if i.op != "mem.store":
+                continue
+            q = self.uparts(fn, defs, i.a[1].v, split[addr].t, parts, before, after, heads)
+            ops = []
+            for k in range(2):
+                st = Ins("mem.store", "", "")
+                st.a = [Val(halves[addr][k], "*int"), Val(q[k], "int")]
+                ops.append(st)
+            repl[f"{u[0]}:{u[1]}"] = ops
+    for j in range(len(fn.blocks)):
+        b = fn.blocks[j]
+        code = []
+        put = j not in heads
+        for x in range(len(b.code)):
+            key = f"{j}:{x}"
+            if not put and b.code[x].op != "phi":
+                code.extend(heads[j])
+                put = True
+            code.extend(before.get(key, []))
+            if key in repl:
+                code.extend(repl[key])
+            else:
+                code.append(b.code[x])
+            code.extend(after.get(key, []))
+        b.code = code
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                if a.v in ren:
+                    a.v = ren[a.v]
+    fn.slots = [s for s in fn.slots if s.k != 0 or f"%{s.s or 'h'}.{s.r[0]}" not in split]  # (its flag stays)
+    gone = 1
+    while gone > 0:
+        # (what nothing uses any more, of what these ops make)
+        used: dict[str, bool] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                for a in i.a:
+                    used[a.v] = True
+        gone = 0
+        for b in fn.blocks:
+            code = []
+            for i in b.code:
+                pure = (i.op == "rt" and i.s == "ubox") or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or (i.op == "phi" and (is_union(i.t) or i.t == "int"))
+                if pure and len([r for r in i.r if f"%t{r}" in used]) == 0:
+                    gone += 1
+                else:
+                    code.append(i)
+            b.code = code
+    return len(split)
+
+def gen_tag_read(self, i: Ins) -> bool:
+    # does op i, which a union box's value is an operand of (unionslots), read the box's tag as
+    # union.tag does: an int load of its first word, as the dispatch of str(), truth tests,
+    # equality and methods reads it (Gen.mload of the box)
+    return i.op == "mach.load" and i.t == "int" and i.s == ""
+
+def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+    # can unionslots take apart union value v: an op's (a phi's where its incoming values'
+    # are) or a parameter's
+    if v in seen or (v.startswith("%a") and v[2:].isdigit()):
+        return True
+    if v not in defs:
+        return False
+    seen[v] = True
+    i = fn.blocks[defs[v][0]].code[defs[v][1]]
+    if i.op == "phi":
+        for a in i.a:
+            if not self.usplits(fn, defs, a.v, seen):
+                return False
+    return True
+
+def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+    # the tag and the payload's bits of value v of union t (unionslots): a ubox's operands; a
+    # phi's as two phis, put after the phis of its block, of its incoming values' parts; else
+    # what union.tag and union.payload read of the box, put where v is made (a parameter: as the
+    # function begins), so that they are there wherever v is
+    if v in parts:
+        return parts[v]
+    d = defs[v] if v in defs else [0, -1]
+    i = fn.blocks[d[0]].code[d[1]] if d[1] >= 0 else Ins("", "", "")
+    if i.op == "rt" and i.s == "ubox":
+        parts[v] = [i.a[0].v, i.a[1].v]
+        return parts[v]
+    if i.op == "phi":
+        ph: list[Ins] = []
+        for k in range(2):
+            fn.n += 1
+            p = Ins("phi", "int", "")
+            p.r = [fn.n]
+            p.a = []
+            p.b = []
+            ph.append(p)
+        parts[v] = [f"%t{ph[0].r[0]}", f"%t{ph[1].r[0]}"]  # (first: a loop's phi meets itself)
+        for k in range(len(i.a)):
+            q = self.uparts(fn, defs, i.a[k].v, t, parts, before, after, heads)
+            for h in range(2):
+                ph[h].a.append(Val(q[h], "int"))
+                ph[h].b.append(i.b[k])
+        if d[0] not in heads:
+            heads[d[0]] = []
+        heads[d[0]].extend(ph)
+        return parts[v]
+    fn.n += 1
+    tg = Ins("union.tag", "int", "")
+    tg.a = [Val(v, t)]
+    tg.r = [fn.n]
+    pl = Ins("union.payload", "%slot", umembers(t)[0])
+    pl.a = [Val(v, t)]
+    pl.r = [fn.n + 1, fn.n + 2]
+    fn.n += 2
+    parts[v] = [f"%t{tg.r[0]}", f"%t{pl.r[1]}"]
+    key = f"{d[0]}:{d[1]}" if d[1] >= 0 else "0:0"
+    at = after if d[1] >= 0 else before
+    if key not in at:
+        at[key] = []
+    at[key].extend([tg, pl])
+    return parts[v]
+
+def gen_on_loop(self, fn: IFn, j: int) -> bool:
+    # is block j of fn on a loop: does it reach itself, by its branches (and to a landing block)
+    at: dict[str, int] = {}
+    for k in range(len(fn.blocks)):
+        at[fn.blocks[k].label] = k
+    seen: dict[int, bool] = {}
+    todo = [j]
+    while len(todo) > 0:
+        b = fn.blocks[todo.pop()]
+        for l in b.code[len(b.code) - 1].b + ([b.handler] if b.handler != "" else []):
+            if l in at and at[l] == j:
+                return True
+            if l in at and at[l] not in seen:
+                seen[at[l]] = True
+                todo.append(at[l])
+    return False
 
 def gen_canon(self, vs: Values, v: str) -> str:
     # the canonical value of value v (Values): ops with the same canonical value compute
