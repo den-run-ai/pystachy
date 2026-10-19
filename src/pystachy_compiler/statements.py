@@ -1173,8 +1173,13 @@ def gen_augassign(self, n: Node) -> None:
             r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable"))
+            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
+            # display k in the frame where both only read it: stack_key)
+            keyt = self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__getitem__", "__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
             self.notnone(o, sub)
             cur = self.protocol(o, "__getitem__", [ik])
