@@ -5,9 +5,6 @@
 # again at the lookup after `in`, so that those two lookups stay apart (dictfuse fuses them only
 # for the others). A copy of a dict of the latter may run __eq__ (U), and del d[k] of one hashes
 # k where d.pop(k) would not (pys_dict_del); a copy of the others runs no code.
-# Recursive descriptor depth guards conservatively add R to the shared runtime
-# comparison paths. key_fx also expands Shown's U? for a possibly raising lookup;
-# the pinned summary reflects that overapproximation, not a new callback here.
 
 
 class Node:

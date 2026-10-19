@@ -1,9 +1,9 @@
 @main.init: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.node_get: R A I rD
-@f.node_in: R rD
-@f.node_fused: R rD
+@f.node_in: rD
+@f.node_fused: rD
 @f.shown_get: R A U I rL wL rD wD rO wO rG wG rF wF
-@f.shown_in: R A U I rL wL rD wD rO wO rG wG rF wF
+@f.shown_in: rD
 @f.hashed_in: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.hashed_fused: R A U I rL wL rD wD rO wO rG wG rF wF
 @f.node_hash:
