@@ -808,6 +808,13 @@ def takes_self(f: FnInfo) -> bool:
     return f.cls != "" and f.deco == ""
 
 
+def stack_keyed(f: FnInfo) -> bool:
+    # whether f is a method that o[k] calls with k (__getitem__; __setitem__ for o[k] = v, and both
+    # for o[k] op= v) and that a tuple k reaches as it is: a parameter that is unannotated (a
+    # template's, which takes the tuple's own type) or a tuple, not a union that would box it
+    return (f.name == "__getitem__" or f.name == "__setitem__") and takes_self(f) and len(f.params) >= 2 and f.vararg != 1 and f.kwarg != 1 and (f.ptypes[1] == "" or is_tuple(f.ptypes[1]))
+
+
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
     c = Node(n.kind, n.s, n.line)

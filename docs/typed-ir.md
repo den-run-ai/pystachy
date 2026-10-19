@@ -377,7 +377,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 ## Validation
 
-- `make check-ir` verifies generated IR and checks IR probes, including calls and effect summaries.
+- `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
+  and effect summaries.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.

@@ -501,6 +501,7 @@ from src.pystachy_compiler.expressions import (
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
+    gen_key_read as expressions_key_read,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
     gen_bytes_read as expressions_bytes_read,
@@ -534,6 +535,7 @@ from src.pystachy_compiler.expressions import (
     gen_slice_bound as expressions_slice_bound,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
+    gen_stack_key as expressions_stack_key,
     gen_stack_ok as expressions_stack_ok,
     gen_stack_target as expressions_stack_target,
     gen_stack_tuple as expressions_stack_tuple,
@@ -2851,6 +2853,12 @@ class Gen:
 
     def stack_ok(self, f: FnInfo) -> bool:
         return expressions_stack_ok(self, f)
+
+    def stack_key(self, t: str, ms: list[str]) -> bool:
+        return expressions_stack_key(self, t, ms)
+
+    def key_read(self, f: FnInfo) -> bool:
+        return expressions_key_read(self, f)
 
     def keep_stack(self, n: Node) -> None:
         return expressions_keep_stack(self, n)
