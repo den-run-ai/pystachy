@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `898d0b95f66772774b59137b1eeb5791ff17e8e5`.
+**Latest evaluated main:** `5dcb4859d363267bb2c8ce851a4476a2b75a2c36`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 ## Checkpoints
@@ -17,6 +17,7 @@ Do not replace a result merely because a PR description predicts an improvement.
 | 2026-10-19 builtin-module prototypes | `2359de69`; #644, #645, #646 and #648 after `a355c83f`, plus CI-only #677 | **144/475** native imports, up from 142, with none lost; **146/475** stub-assisted. All 27 package probes keep their first errors, and the pyperformance census stays at 6/52. Adds three compiled upstream test files. [Report](compatibility-2026-10-19-prototypes.md). |
 | 2026-10-19 merge catch-up | `5db1e4b5`; #678 integration, #670 native JSON, regex/compiler/array changes through #699, and #723 recorded benchmarks | **144/470** native, **146/470** stub-assisted; five JSON files move into the overlay, no successful imports lost. Native JSON passes 14,444 cases in each JIT/AOT mode with GC stress. Focused checks, affected ports, FFI and BLAS parity pass. [Evidence](compatibility-2026-10-19-catchup.json). |
 | 2026-10-19 JSON/effect follow-up | `898d0b95`; #722 | Imports and first errors unchanged; JSON differentials, 64 focused checks, 52 GC-stressed checks and 8 adapted port checks pass. Corrected recursive equality depth boundary and alias diagnostics. Independent paired encoder medians improve **3.47–4.82x** on two bounded inputs, not whole-library coverage. [Evidence](compatibility-2026-10-19-json-followup.json). |
+| 2026-10-19 coverage tooling | `5dcb4859`; #733 README badges and #731 hosted coverage | 9 selected checks pass with all 10 compiler processes captured; a missing-JIT-data control correctly fails. No compiler/runtime/lib/port/test source changes and no new library-support claim. [Evidence](compatibility-2026-10-19-coverage-tooling.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -1941,3 +1942,77 @@ and from the audit PR's own docs-only checks. No full local `make verify`, CPyth
 regrtest, 27-package sweep, full 52-source census, UBSan rerun or NumPy assessment
 is claimed. General JSON/PyPI blockers and minor/major adaptation boundaries from
 the preceding checkpoint remain; no new uncovered bug was confirmed by this pass.
+
+## 2026-10-19 — #731: validate hosted-compiler coverage, not library coverage
+
+Evaluated [main `5dcb4859d363267bb2c8ce851a4476a2b75a2c36`](https://github.com/den-run-ai/pystachy/commit/5dcb4859d363267bb2c8ce851a4476a2b75a2c36).
+Re-fetched [#731](https://github.com/den-run-ai/pystachy/pull/731), confirmed its
+merge at 2026-10-19 19:23:44 UTC and ancestry in main, and inspected every changed
+file since evaluated `898d0b95`. The only intervening first-parent merges are
+[#733](https://github.com/den-run-ai/pystachy/pull/733) (`057b12335b681d02ba585badad7e5991d33d77fa`,
+README workflow/release badges) and #731 (coverage configuration, script, workflow,
+Makefile target, development dependency and documentation). Source under `src/`,
+`runtime.c`, `runtime.py`, `lib/`, `ports/` and `tests/` is byte-identical to the
+preceding checkpoint. #491/#616 coordination and #731 review comments were read;
+the harness path-filter concern is addressed by including `tests/run.sh` and
+calling `tools/coverage.sh` directly in CI.
+
+### Fresh focused measurement
+
+Used a clean detached checkout at this exact main and the **CPython-hosted compiler
+from that checkout**, CPython **3.13.16**, LLVM **18.1.3**, coverage.py **7.16.2**,
+two workers and a new empty runtime cache. The pinned base Python lacked coverage;
+installed the pinned package into an isolated venv. No native compiler was used or
+rebuilt because implementation sources are unchanged. The previous native compiler
+provenance remains `898d0b95`, not relabeled as this source revision.
+
+With inherited compiler/coverage options removed, ran:
+
+```sh
+tools/coverage.sh tests/json_encoder_strings.py tests/recursive_alias_values.py \
+  tests/errors/recursive_alias_compare_message.py \
+  tests/deviations/recursive_alias_limits.py tests/port_ordered_set_api.py
+```
+
+The exact `env -i` settings, fixture/recording hashes, report summaries and
+aggregation program are retained in [JSON evidence](compatibility-2026-10-19-coverage-tooling.json).
+All **9 checks pass**: six positive JIT/AOT checks, two documented-deviation checks
+and one expected diagnostic rejection. The script validates **10 coverage data
+files**, one per check plus runtime warmup, before combining them. HTML, JSON,
+summary and badge generation complete successfully. This selected subset reports
+**40.0%** combined line/branch coverage; it is deliberately not a full-corpus
+number. The script's 16 seconds covers warmup and tests, excludes report
+generation, and is not a performance comparison.
+
+Preserved the positive artifacts, then repeated only `tests/port_ordered_set_api.py`
+with an external alternate configuration omitting `patch = execv`. Both program
+checks still pass, but only **1 of 3** expected compiler data files survives:
+JIT and runtime warmup replace CPython with `lli`. The coverage script correctly
+exits **1**, reports missing data and writes no badge. This is an intentional
+negative control, not a product regression. No repository implementation or
+coverage configuration was modified by the control.
+
+### Remote evidence and remaining scope
+
+Read the completed [implementation Coverage run](https://github.com/den-run-ai/pystachy/actions/runs/39302676725)
+and [job logs](https://github.com/den-run-ai/pystachy/actions/runs/39302676725/job/118232267886):
+**4,583 checks passed**, zero failed, **93.3%** combined compiler coverage. Its
+tested PR merge is `258b9df`, head `b410472469e3f8a9288dda0bdbc0d6c992c34310` on
+base `5db1e4b5e14e4da6d8bfa5e0952cd191fbc08959`; it is not a fresh full run on this
+checkpoint. The badge-publishing job is correctly skipped on that PR run. No claim
+is made here that main's separate badge-publishing job has completed.
+
+The new daily/on-demand workflow measures **CPython-executed compiler source only**.
+It does not measure execution of `runtime.c`, `runtime.py`, `lib/`, native compiled
+programs or upstream CPython suites. In particular, **93.3% compiler coverage is
+not 93.3% CPython compatibility**. Updated existing [#45](https://github.com/den-run-ai/pystachy/issues/45)
+to remove its stale "no scheduled workflow" statement, mark the compiler lane
+implemented and retain native-runtime coverage and broader nightly work as open.
+No new issue or uncovered bug was needed.
+
+The preceding **144/470 native imports** and **146/470 stub-assisted imports**
+(522-source inventory, 52 overlay exclusions) are retained historical results,
+not fresh sweeps. No implementation changes require repeating import/API/port/
+package/benchmark suites for this merge; no additional library support, performance
+or memory improvement is inferred. Full local corpus coverage and CPython regrtest
+were not run. The dated baseline and all previous evidence remain unchanged.
