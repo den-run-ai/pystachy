@@ -1,0 +1,17 @@
+True True False
+True True True
+True True True
+True True False
+True True False
+True True True False
+False False False True
+False True True False
+pick LookupError
+pick ValueError
+True False
+pick ValueError
+pick KeyError
+True True
+True True
+True True True
+[exit 0]

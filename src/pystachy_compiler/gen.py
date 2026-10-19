@@ -419,6 +419,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_classes as exceptions_exc_classes,
     gen_exc_any as exceptions_exc_any,
     gen_exc_each as exceptions_exc_each,
+    gen_exc_none_class as exceptions_exc_none_class,
     gen_exc_call as exceptions_exc_call,
     gen_exc_class_value as exceptions_exc_class_value,
     gen_exc_ctor_arity as exceptions_exc_ctor_arity,
@@ -2635,6 +2636,9 @@ class Gen:
 
     def exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
         return exceptions_exc_each(self, v, bs, what, done, ph)
+
+    def exc_none_class(self) -> Val:
+        return exceptions_exc_none_class(self)
 
     def exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
         return exceptions_exc_call(self, c, args, how)

@@ -1120,7 +1120,7 @@ def gen_exc_type_of(self, v: Val) -> Val:
     e0 = self.cur
     l1 = self.label()
     l2 = self.label()
-    nt = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"])
+    nt = self.exc_none_class().v
     self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
     self.place(l1)
     r = self.rt("pys_exc_canon", "ptr", [f"ptr {v.v if v.t == 'opt[exc]' else self.rt('pys_exc_user', 'ptr', [f'ptr {v.v}'])}"])
@@ -1165,13 +1165,29 @@ def gen_exc_dynamic(self, t: Node) -> bool:
 
 def gen_exc_held(self, t: Node) -> bool:
     # does t, a variable or a field of an object a variable holds, hold exception classes (a class
-    # object, which may be None, or a tuple of them), as their types say without compiling t
+    # object, which may be None, or a tuple of them), as their types say without compiling t; or
+    # another expression that is no type, as dry() types it: type(x) of an exception x, which x's
+    # type tells (so that type("") keeps isinstance()'s error), a conditional expression whose
+    # values hold them or name them, kinds[0], pick(), a.b.c
     v = ""
+    x: Node | None = None
+    if t.kind == "call":
+        x = self.refl_typeof(t)
     if t.kind == "name":
         v = self.static_type(t)
     elif t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":
         o = unopt(self.static_type(t.kids[0]))
         v = self.classes[o].ftypes.get(t.s, "") if o in self.classes and t.s not in self.classes[o].methods else ""
+    elif x is not None:
+        u = unopt(self.dry(x))
+        return u == "exc" or (u in self.classes and self.classes[u].exc != "")
+    elif t.kind == "ifexp":
+        for k in t.kids[1:]:
+            if not (k.kind == "name" and self.exc_classes(k)) and not self.exc_held(k):
+                return False
+        return True
+    elif (t.kind == "call" or t.kind == "index" or (t.kind == "attr" and t.s != "__class__")) and self.dotted(t) == "" and not self.puretype(t, False):
+        v = self.dry(t)
     return self.exc_holds(v)
 
 def gen_exc_holds(self, t: str) -> bool:
@@ -1184,35 +1200,38 @@ def gen_exc_holds(self, t: str) -> bool:
 def gen_exc_test(self, v: Val, t: Node, what: str) -> Val:
     # issubclass(v, t) (what: "issubclass") of a class object v, or isinstance(v, t), t a value
     # (exc_dynamic): a class object, or a tuple of them, of which v's class is one or derives
-    # from one, v being an exception (or an object of an exception class of the program; None and
-    # a value of another type are no instance). t is evaluated first, as CPython builds its
-    # arguments before it tests them, then its classes in turn (exc_any)
+    # from one, v being an exception (or an object of an exception class of the program). None is
+    # an instance of NoneType's class object only (exc_none_class), and a value of another type
+    # (a class object, a str) of none. t is evaluated first, as CPython builds its arguments
+    # before it tests them, then its classes in turn (exc_any)
     bs = [self.expr(x, "") for x in t.kids] if t.kind == "tuple" else [self.expr(t, "")]
     for b in bs:
         self.exc_flat(b.t, what)
     if what == "issubclass":
         return self.exc_any(v, bs, what)
     u = unopt(v.t)
-    if u != "exc" and (u not in self.classes or self.classes[u].exc == ""):
-        return self.exc_any(Val("null", "None"), bs, what)  # (a class object, None, or a value of another type: no instance)
-    if not is_opt(v.t) and (v.t == "exc" or v.v in self.nn):
-        return self.exc_any(v if v.t == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs, what)
+    xc = u == "exc" or (u in self.classes and self.classes[u].exc != "")
+    nul = self.isnull(v)
+    if nul == "true":
+        return self.exc_any(Val("null", "None"), bs, what)
+    if nul == "false":
+        return self.exc_any((v if v.t == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc")) if xc else Val("null", ""), bs, what)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
-    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
+    self.cbr(nul, l2, l1)
     self.place(l1)
-    r = self.exc_any(Val(v.v, "exc") if u == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc"), bs, what)
+    r = self.exc_any((Val(v.v, "exc") if u == "exc" else Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc")) if xc else Val("null", ""), bs, what)
     e1 = self.cur
     self.br(l3)
     self.place(l2)
-    self.exc_any(Val("null", "None"), bs, what)  # (None is no instance, but its classes are tested still)
+    rn = self.exc_any(Val("null", "None"), bs, what)
     e2 = self.cur
     self.br(l3)
     self.place(l3)
     ph = Ins("phi", "bool", "")
     self.incoming(ph, r.v, e1)
-    self.incoming(ph, "false", e2)
+    self.incoming(ph, rn.v, e2)
     return Val(self.phi(ph), "bool")
 
 def gen_exc_flat(self, t: str, what: str) -> None:
@@ -1231,9 +1250,10 @@ def gen_exc_flat(self, t: str, what: str) -> None:
 def gen_exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
     # does v's class derive from one of the classes bs give isinstance() or issubclass() (what):
     # class objects and tuples of them, tested in turn as CPython tests a tuple's items, where the
-    # first that it does stops and None raises TypeError where it is reached. v None (no instance):
-    # only that
-    if v.t == "None":
+    # first that it does stops and None raises TypeError where it is reached. v None is an
+    # instance of NoneType's class object only; v of type "", a value of another type, of none:
+    # only the raise then
+    if v.t == "":
         self.exc_each(v, bs, what, "", Ins("phi", "bool", ""))
         return Val("false", "bool")
     done = self.label()
@@ -1256,12 +1276,19 @@ def gen_exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> 
             b = self.unwrap(b, "TypeError: issubclass() arg 2 must be a class, a tuple of classes, or a union")
         if is_tuple(b.t):
             v = self.exc_each(v, [self.tget(b, i) for i in range(len(targs(b.t)))], what, done, ph)
-        elif v.t != "None":
+        elif v.t != "":
             nxt = self.label()
             self.incoming(ph, "true", self.cur)
-            self.cbr(self.exc_sub(v, b).v, done, nxt)
+            self.cbr((self.ptr_cmp('==', b, self.exc_none_class()) if v.t == "None" else self.exc_sub(v, b)).v, done, nxt)
             self.place(nxt)
     return v
+
+def gen_exc_none_class(self) -> Val:
+    # NoneType's class object, which type() gives of an exception that is None: None is its
+    # instance, and it derives from no exception class
+    r = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst('NoneType')}", "ptr null"])
+    self.nn[r] = True
+    return Val(r, "exctype")
 
 def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     # c(args) of class object c (an exception class's: exctype), the class evaluated first, then

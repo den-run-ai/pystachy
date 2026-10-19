@@ -1,0 +1,5 @@
+type(e) suppressed
+pick ValueError
+kinds[0] suppressed
+not suppressed: v
+[exit 0]

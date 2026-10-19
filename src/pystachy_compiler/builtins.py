@@ -435,6 +435,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
         self.isinst_reads(args[1])
         v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+        if self.catch_set(args[1]) == "":
+            # (BaseException, which every exception class derives from, but not NoneType, whose
+            # class object type() gives of an exception that is None)
+            return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
