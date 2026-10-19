@@ -85,7 +85,9 @@ def gen_field_tag(self, c: str, k: int) -> str:
         ci = self.classes[ci.base]
     key = f"{ci.name} {k}"
     if key not in self.tbaa:
-        if len([t for t in struct_types(ci) if t not in TBAA_SIZES]) > 0:
+        if ci.name not in self.tbaacls:  # (once a class: its struct has as many members as fields)
+            self.tbaacls[ci.name] = len([t for t in struct_types(ci) if t not in TBAA_SIZES]) == 0
+        if not self.tbaacls[ci.name]:
             return ""
         self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
     return f", !tbaa !{self.tbaa[key]}"

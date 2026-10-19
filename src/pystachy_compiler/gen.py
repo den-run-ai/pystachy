@@ -1074,9 +1074,11 @@ class Gen:
         self.lowblk = ""  # the label of the block being lowered (gen.start's phi names it)
         # fieldtbaa: the field addresses of the function being lowered, each with the TBAA access
         # tag of its loads and stores, and the program's tags, by "<class> <index>" of the class
-        # that lays the field out: their numbers, from TBAA_FIELDS (Gen.field_tag)
+        # that lays the field out: their numbers, from TBAA_FIELDS (Gen.field_tag); and the classes
+        # whose structs the tags can describe (each member of a known size)
         self.ftags: dict[str, str] = {}
         self.tbaa: dict[str, int] = {}
+        self.tbaacls: dict[str, bool] = {}
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
