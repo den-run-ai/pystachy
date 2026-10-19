@@ -45,7 +45,16 @@ jobs:
           python-version-file: .python-version
 
       - name: LLVM 18 toolchain
-        run: tools/setup.sh
+        env:
+          VERIFY_GROUP: ${{ matrix.group }}
+        # Only the sanitizer and BLAS jobs need the extra verification packages.
+        # New groups keep the full setup until their dependencies have been checked.
+        run: |
+          case "$VERIFY_GROUP" in
+            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|contracts|scaling-1)
+              tools/setup.sh --minimal ;;
+            *) tools/setup.sh --verify ;;
+          esac
 
       - name: Verify group
         env:
@@ -117,7 +126,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version-file: .python-version
-      - run: tools/setup.sh
+      - run: tools/setup.sh --minimal
       - run: make port-check-large
 
   verify:

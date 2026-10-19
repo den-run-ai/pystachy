@@ -36,16 +36,8 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: LLVM 18 (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime
-
-      - name: LLVM 20 (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install llvm@20
+      - name: LLVM toolchain (install only when missing)
+        run: tools/setup.sh --minimal
 
       - name: Check dependencies and installer
         run: |
