@@ -458,11 +458,20 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     j = self.join_type(self.newhints.get(key, t), vt)
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
-        # call of a function without a return annotation made it, the function returns the
-        # location's type, as if annotated, and makes a fresh result of it (see retval)
+        # call of a function or method without a return annotation made it, the function returns
+        # the location's type, as if annotated, and makes a fresh result of it (see retval)
         e = self.joinsrc
-        if e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s in self.funcs and self.funcs[e.kids[0].s].node.kind == "def" and self.funcs[e.kids[0].s].node.kids[1].kind == "noann":
-            tf = self.funcs[e.kids[0].s]
+        fs: list[FnInfo] = []  # (the function called: by its name, or a method of the class of the variable it is called on)
+        if e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s in self.funcs:
+            fs.append(self.funcs[e.kids[0].s])
+        elif e.kind == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and self.typed_now(e.kids[0].kids[0]):
+            c = self.dry(e.kids[0].kids[0])
+            if c in self.classes and e.kids[0].s in self.classes[c].methods and len([x for x in self.classes.values() if x.name != c and self.derives(x.name, c)]) == 0:
+                # (no class derives from c: the call is no dispatch to methods of other classes,
+                # whose returns would each need the type)
+                fs.append(self.classes[c].methods[e.kids[0].s])
+        if len(fs) == 1 and fs[0].node.kind == "def" and fs[0].node.kids[1].kind == "noann":
+            tf = fs[0]
             rk = f"{self.fnkey(tf.insts[tf.lastikey] if tf.lastikey in tf.insts else tf)}|return"  # (the call's instance)
             if self.hints.get(rk, "") != t and self.newhints.get(rk, "") != t:
                 self.newhints[rk] = t
