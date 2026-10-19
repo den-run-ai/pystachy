@@ -251,8 +251,8 @@ records the less common cases.
 
 Pystachy checks syntax even in unused functions and dropped import-time branches.
 Diagnostics use `file:line: error:` and aim to match CPython's location and message.
-Some messages are less specific; `match` patterns and parts of newer syntax are not fully
-checked. [Syntax checks](language/semantics.md#syntax-errors) describe those boundaries.
+Some messages are less specific, and parts of newer syntax are not fully checked.
+[Syntax checks](language/semantics.md#syntax-errors) describe those boundaries.
 
 ## Deviations from CPython
 
