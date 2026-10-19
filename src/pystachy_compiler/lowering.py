@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.lower_module import struct_types
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_dict, is_tuple, lt, selem, takes_self, targs
 
 
@@ -16,6 +17,7 @@ def gen_lower(self, fn: IFn) -> None:
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
     o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
+    self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
         o.append(f"  %coro.promise = alloca [{GENSLOTSX if self.gproto else GENSLOTS} x i64], align 8")
         self.coros = True
@@ -69,6 +71,25 @@ def raises_only(fn: IFn) -> bool:
                     return False
     return True
 
+def gen_field_tag(self, c: str, k: int) -> str:
+    # the TBAA of the loads and stores of field k of an object of class c (fieldtbaa): ", !tbaa !N"
+    # with the number of its access tag (from TBAA_FIELDS, as first asked for: lower_module prints
+    # them, Gen.tbaa_nodes), or "" where c's layout has a member of no known size. A derived
+    # class's struct begins with its base's, flags included (fl_fields): a field there is tagged
+    # as its base's, so that an access through either class has the same tag, and LLVM's
+    # struct-path TBAA tells apart only the fields of one class at different offsets and those
+    # of classes neither of which lays out the other's (Gen.disjoint's rule). The tags have a
+    # root of their own: no access of runtime.c's or of runtime.py's is told apart from them
+    ci = self.classes[c]
+    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag:
+        ci = self.classes[ci.base]
+    key = f"{ci.name} {k}"
+    if key not in self.tbaa:
+        if len([t for t in struct_types(ci) if t not in TBAA_SIZES]) > 0:
+            return ""
+        self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
+    return f", !tbaa !{self.tbaa[key]}"
+
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
     o = self.out
@@ -86,13 +107,15 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "mach.addr":
         o.append(f"  %t{i.r[0]} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
     elif op == "mem.load":
-        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}")
+        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "mem.store":
         v = i.a[1]
-        o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}")
+        o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "field.addr":
         self.rangeused = self.rangeused or i.a[0].t == RANGEC
         o.append(f"  %t{i.r[0]} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
+        if "fieldtbaa" in self.opts:
+            self.ftags[f"%t{i.r[0]}"] = self.field_tag(i.a[0].t, i.k)
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
