@@ -1,4 +1,4 @@
-# error: ref.__init__() takes 2 positional arguments but 3 were given
+# error: ReferenceType.__init__() takes 2 positional arguments but 3 were given
 from _weakref import ref
 
 

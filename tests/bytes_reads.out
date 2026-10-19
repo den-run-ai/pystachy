@@ -1,0 +1,57 @@
+[0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255] 255 255 0
+6 [0, 127, 128, 254, 255, 65] [65, 255, 254, 128, 127, 0]
+  5 65
+  6 IndexError index out of range
+  -6 0
+  -7 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+5 [195, 169, 226, 130, 172] [172, 130, 226, 169, 195]
+  4 172
+  5 IndexError index out of range
+  -5 195
+  -6 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+3 [1, 200, 3] [3, 200, 1]
+  2 3
+  3 IndexError index out of range
+  -3 1
+  -4 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+4 [127, 128, 254, 255] [255, 254, 128, 127]
+  3 255
+  4 IndexError index out of range
+  -4 127
+  -5 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+7 [0, 127, 128, 254, 255, 65, 122] [122, 65, 255, 254, 128, 127, 0]
+  6 122
+  7 IndexError index out of range
+  -7 0
+  -8 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+6 [97, 98, 97, 98, 97, 98] [98, 97, 98, 97, 98, 97]
+  5 98
+  6 IndexError index out of range
+  -6 97
+  -7 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+0 [] []
+  -1 IndexError index out of range
+  0 IndexError index out of range
+  0 IndexError index out of range
+  -1 IndexError index out of range
+  4611686018427387904 IndexError index out of range
+  -4611686018427387904 IndexError index out of range
+3460427904
+54069186398085
+[(0, 0), (1, 127), (2, 128), (3, 254), (4, 255), (5, 65)] [(0, 127), (127, 128), (128, 254), (254, 255), (255, 65)] [128, 254, 255]
+32640 255 0 [0, 127, 128, 254, 255, 65] True False
+255 255 2589693061 5381 2931197401
+empty index out of range
+[exit 0]

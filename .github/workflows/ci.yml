@@ -1,5 +1,6 @@
-# Every original verification stage runs on every commit, in independent groups. Each group
-# builds and checks its own bootstrap fixed point; no compiler/runtime cache crosses a run.
+# Every original verification stage runs on every commit, in independent groups; pull requests
+# that change only Markdown or docs/ skip this workflow, and Lint checks them. Each group builds
+# and checks its own bootstrap fixed point; no compiler/runtime cache crosses a run.
 # The final gate retains the required check name and rejects missing, failed or cancelled groups.
 name: CI
 
@@ -7,6 +8,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:   # documentation-only pull requests
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:

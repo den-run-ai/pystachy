@@ -32,6 +32,7 @@ against str.isalpha()/str.isidentifier() for every code point U+0000..U+10FFFF, 
 
 usage: python3 tools/re_fuzz.py [N] [SEED]   (N random patterns, default 2000; SEED default 1)
 """
+import builtins
 import importlib.util
 import os
 import random
@@ -42,6 +43,10 @@ import sys
 import warnings
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# lib/re's private primitives, which Pystachy compiles for re alone: a str's UTF-8 size, and the
+# bytes of a str whose every character is a byte (an ASCII str, on CPython)
+builtins.__pys_text_size = lambda s: len(s.encode("utf-8", "surrogatepass"))
+builtins.__pys_text_bytes = lambda s: s.encode("latin-1")
 _spec = importlib.util.spec_from_file_location("pys_re", os.path.join(ROOT, "lib", "re", "__init__.py"),
                                                submodule_search_locations=[os.path.join(ROOT, "lib", "re")])
 port = importlib.util.module_from_spec(_spec)

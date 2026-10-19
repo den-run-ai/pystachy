@@ -100,7 +100,7 @@ make lint check-recordings
 | Verification harness, workflows, `tools/` | Lint, not CI, runs `python3 -m unittest discover -s tools -p 'test_*verif*.py'` and the other `lint.yml` patterns; register a new test file there or in a make target that CI runs. Change a group's plan, the CI matrix, `merge_verification.py` and [CI docs](docs/testing.md#continuous-integration) together, then confirm the new steps ran. Pin actions by commit SHA; keep `persist-credentials: false` |
 | Syntax/diagnostics | `python3.13 -I tools/syntax_sweep.py --compiler ./pystachy <paths>`; valid boundaries and rejection fixtures |
 | Ports/performance | `make port-check` or affected port checks; relevant benchmark correctness target before timings. Commit the unmodified upstream file before the marked edits; `ports/THIRD_PARTY_NOTICES` must equal the root file |
-| Docs only | Check links, commands and `git diff --check`; disclose that runtime suites were not rerun. CI still runs the full matrix |
+| Docs only | Check links, commands and `git diff --check`; disclose that runtime suites were not rerun. A PR that changes only Markdown or `docs/` runs Lint and DCO, not the CI matrix |
 
 Start with the focused reproducer, then broaden for the affected risk and required gates.
 `make test` covers JIT/AOT but is not the full `make verify` matrix. A hosted parse or
@@ -300,10 +300,11 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   diff for stray files (`*.rej`, a file named `-`) and stale status text. When merging is
   authorized, prefer landing green, independent PRs to growing stacks, and say whether a
   merge you report was a local trial or happened on GitHub.
-- CI runs on pull requests, pushes to main and manual dispatch, so a branch without a PR
-  gets none, and no `pull_request` workflow runs while a PR has conflicts. Each push
-  queues about 30 jobs (about ten minutes) and cancels the PR's previous run: batch
-  commits, and do not push or rerun only to restart checks.
+- CI runs on pull requests (except Markdown- or `docs/`-only ones), pushes to main and
+  manual dispatch, so a branch without a PR gets none, and no `pull_request` workflow
+  runs while a PR has conflicts. Each push queues about 30 jobs (about ten minutes) and
+  cancels the PR's previous run: batch commits, and do not push or rerun only to restart
+  checks.
 - Distinguish queued/running, failed, cancelled/skipped and `action_required` runs.
   No jobs created can mean fork workflow approval is pending. Inspect the cause;
   do not bypass approvals or cancel other sessions' useful runs. To validate or extend

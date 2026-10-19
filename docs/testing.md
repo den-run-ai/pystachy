@@ -142,6 +142,8 @@ counts and syntax-survey results are retained as [historical snapshots](archive/
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
+A pull request that changes only Markdown files or `docs/` skips the CI, Installation and
+Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 Twenty-three groups run in parallel, each with its own fixed-point bootstrap. The target is under
