@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import re_specialize  # noqa: E402
@@ -377,15 +378,39 @@ class TestGenerated(unittest.TestCase):
             self.assertEqual(declined, [])
 
     def test_not_generated(self):
+        # the module's docstring lists them, long ones cut between characters, not inside an escape
+        long = ["(a)?(?(1)b|c)" + "x" * j + "é" * 20 for j in range(6)] + ["(a)?(?(1)b|c)" + "\\\\" * 40,
+                                                                                "(a)?(?(1)b|c)" + "\x01" * 30]
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             out = os.path.join(tmp, "_pystachy_re_specialized.py")
-            module = re_specialize.generate([], [("(a)?(?(1)b|c)", 0), ("[", 0)], 1, out)
+            module = re_specialize.generate([], [("(a)?(?(1)b|c)", 0), ("[", 0)] + [(p, 0) for p in long], 1, out)
             self.assertEqual(module.patterns, [])
             reasons = [reason for _, _, reason in module.skipped]
             self.assertEqual(reasons[0], "GROUPREF_EXISTS")
             self.assertIn("unterminated character set", reasons[1])
+            with open(out) as f:
+                source = f.read()
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                compile(source, out, "exec")
             port = re_specialize.load_port(out)
             self.assertEqual(port.compile("(a)?(?(1)b|c)")._fast, -1)
+            doc = sys.modules["_pystachy_re_specialized"].__doc__
+            self.assertEqual(doc.count("..., flags 32: GROUPREF_EXISTS"), len(long))
+
+    def test_generate_patterns(self):
+        # generate --pattern P [--flags F]: a matcher for each P, keyed as its Pattern.flags gives them,
+        # in a directory that it makes (as build/prog-re/ of the documented commands)
+        with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+            out = os.path.join(tmp, "prog-re", "_pystachy_re_specialized.py")
+            subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "generate", "-o", out,
+                            "--pattern", "a+", "--flags", str(int(re.I)), "--pattern", "b"], check=True,
+                           stdout=subprocess.DEVNULL)
+            port = re_specialize.load_port(out)
+            matchers = sys.modules["_pystachy_re_specialized"]
+            self.assertEqual(matchers._KEYS, {("a+", re.I | re.U): 0, ("b", re.U): 1})
+            self.assertGreaterEqual(port.compile("a+", re.I)._fast, 0)
+            self.assertEqual(port.search("a+", "xAaA", re.I).span(), re.search("a+", "xAaA", re.I).span())
 
     def test_lookup_checks_code(self):
         # a matcher made from other code than the pattern compiles to is not used
@@ -414,7 +439,7 @@ class TestGenerated(unittest.TestCase):
                 f.write("import re\nimport sys\nimport helper\nP = re.compile(r'\\d+')\nfor _ in range(int(sys.argv[1])):\n"
                         "    P.search('a1')\nre.findall('b+', 'abb')\nre.compile('unused')\nhelper.Q.match('cc')\n"
                         "print(sys.path[0])\n")
-            out = os.path.join(tmp, "profile.json")
+            out = os.path.join(tmp, "profiles", "profile.json")
             run = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "re_specialize.py"), "record", "-o", out,
                                   prog, "7"], check=True, capture_output=True, text=True)
             plain = subprocess.run([sys.executable, prog, "7"], check=True, capture_output=True, text=True)

@@ -749,6 +749,18 @@ def _quote(s):
                    for c in repr(s))
 
 
+def _shown(s):
+    # _quote(s) for a line of the module's docstring: if longer than 80 characters, the quoted start
+    # of s, cut between characters (not inside an escape), and "..."
+    q = _quote(s)
+    if len(q) <= 80:
+        return q
+    s = s[:75]
+    while len(_quote(s)) > 77:
+        s = s[:-1]
+    return _quote(s) + "..."
+
+
 def _bytes(data):
     return "b'" + "".join("\\x%02x" % b for b in data) + "'"
 
@@ -793,6 +805,7 @@ def record(argv, out):
     profile = {"format": FORMAT, "program": argv[0],
                "patterns": [{"pattern": p, "flags": f, "calls": n}
                             for (p, f), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]}
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(profile, fh, indent=1, ensure_ascii=True)
         fh.write("\n")
@@ -828,7 +841,8 @@ def generate(profiles, patterns, min_calls, out):
     if module.skipped:
         header += ["", "Not generated (lib/re's interpreter runs them):"]
         for pattern, flags, reason in module.skipped:
-            header.append("  %s, flags %d: %s" % (_quote(pattern)[:80].replace('"""', "'''"), flags, reason))
+            header.append("  %s, flags %d: %s" % (_shown(pattern).replace('"""', "'''"), flags, reason))
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="ascii") as fh:
         fh.write(module.source(header))
     return module
@@ -859,12 +873,13 @@ def main(argv):
                 min_calls = int(argv[i + 1])
                 i += 2
             elif a == "--pattern" and i + 1 < len(argv):
+                pattern = argv[i + 1]
                 flags = 0
-                if i + 3 < len(argv) and argv[i + 2] == "--flags":
-                    flags = int(argv[i + 3])
-                    i += 2
-                patterns.append((argv[i + 1], flags))
                 i += 2
+                if i + 1 < len(argv) and argv[i] == "--flags":
+                    flags = int(argv[i + 1])
+                    i += 2
+                patterns.append((pattern, flags))
             else:
                 profiles.append(a)
                 i += 1

@@ -155,12 +155,14 @@ runs of one and two loops:
   `lastindex` and `lastgroup` of `search`, `match`, `fullmatch` (also with `pos` and `endpos`),
   `finditer`, `findall`, `split` and `subn`. The same patterns also run on in-place subjects of all
   256 byte values, against CPython's `re` on their Latin-1 decoding.
-- The same test checks five more properties:
+- The same test checks six more properties:
   - `html.parser`'s own patterns, as CPython compiles them, give CPython's results on HTML;
   - deep repeats decline and still match as CPython does;
   - empty iterations end a repeat;
   - a lookup with other code, flags or source finds no matcher;
-  - the recorder counts calls, and the checked-in matchers of the native test are what the tool writes.
+  - `generate --pattern P --flags F` keys the matcher by `P` and the flags its `Pattern` has;
+  - the recorder counts calls, running the program as `python3.13 PROGRAM` does, and the checked-in
+    matchers of the native test are what the tool writes.
 - `make re-specialize-check` runs more patterns. With 2,000 patterns on each of seeds 1, 2 and 3,
   1,937, 1,957 and 1,949 matchers were generated, and all agreed with CPython in about 1.9M matcher
   answers.
