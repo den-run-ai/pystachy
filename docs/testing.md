@@ -165,8 +165,9 @@ Every run starts with an empty runtime cache, so the runtime's build is measured
 `make coverage` fails when a test fails or a compiler process leaves no data, never because
 of the percentage: there is no threshold.
 
-The [Coverage workflow](../.github/workflows/coverage.yml) runs `make coverage` daily, on demand,
-and on pull requests and pushes to `main` that change its setup. Its job summary shows
+The [Coverage workflow](../.github/workflows/coverage.yml) runs `tools/coverage.sh`, as
+`make coverage` does, daily and on demand. It also runs on pull requests and pushes to `main`
+that change its setup or `tests/run.sh`, whose report the script reads. Its job summary shows
 `summary.md`, and the report is a workflow artifact. After each successful run on `main`, a
 separate job, which runs no tests, commits the summary and the badge to the `badges` branch, as
 [`coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md) and

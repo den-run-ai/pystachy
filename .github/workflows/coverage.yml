@@ -2,7 +2,8 @@
 # the CPython-hosted compiler runs the whole differential, rejection and deviation suite, JIT and AOT,
 # under coverage.py. The HTML report is an artifact and the table of modules the job summary; a failed
 # test, or a compiler process that left no data, fails the run, and no percentage does. Daily and on
-# demand, and on the pull requests and pushes to main that change its setup. Each run on main also
+# demand, and on the pull requests and pushes to main that change its setup or tests/run.sh, whose
+# report and one compiler process per check tools/coverage.sh relies on. Each run on main also
 # commits its result to the badges branch, which the README's badge reads: coverage.json (a shields.io
 # endpoint) and coverage.md (the summary), from a job of its own, which may write and runs no test.
 name: Coverage
@@ -16,12 +17,14 @@ on:
     paths:
       - .coveragerc
       - .github/workflows/coverage.yml
+      - tests/run.sh
       - tools/coverage.sh
       - tools/requirements-dev.txt
   pull_request:
     paths:
       - .coveragerc
       - .github/workflows/coverage.yml
+      - tests/run.sh
       - tools/coverage.sh
       - tools/requirements-dev.txt
 
@@ -53,7 +56,10 @@ jobs:
 
       - run: python3 -m pip install -r tools/requirements-dev.txt
 
-      - run: make coverage PY=python3
+      - name: tools/coverage.sh (make coverage)
+        env:
+          PY: python3
+        run: tools/coverage.sh
 
       - name: Job summary
         if: always()
