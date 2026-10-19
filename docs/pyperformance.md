@@ -246,6 +246,12 @@ without loops):
 | `regex_effbot`, 2 loops | 495 M | 322 M | 702 M |
 | `regex_v8`, 2 loops (checksum pass removed) | 605 M | 352 M | 520 M |
 
+These are `0c97e13c`'s counts. In the stack as merged (`71522952`), the alternation filter also
+handles characters from U+0080 without testing every leading item at each one
+([#683](https://github.com/den-run-ai/pystachy/pull/683)). Its counts are 501 M (DNA), 325 M
+(effbot) and 353 M (V8). The filter's inlined loop over ASCII characters reloads one more value
+from the stack: about one more instruction per character, 2.9% of DNA's loop.
+
 What changed (`make re-probe`'s counts are unchanged by all of them: the matcher is entered at the
 same positions as before):
 
