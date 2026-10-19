@@ -9,6 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.lower_module import OBJHOOKS
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.utils import optimizations
@@ -108,7 +109,7 @@ RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table
 # library is the cached runtime's .o, linked with RTSO: the runtime calls back into the program
 # for objects' ==, order and repr (pys_obj_eq, pys_obj_cmp, pys_obj_repr, which every program defines,
 # lower_module), which no library can name, so RTSO's stand-ins call what the program hands them first,
-# from a constructor that each run adds to the program's IR (OBJHOOKS)
+# from a constructor that each run adds to the program's IR (lower_module's OBJHOOKS)
 RTSO = """typedef long long I;
 static I (*eq)(I, I, I);
 static I (*cmp)(I, I, I, I);
@@ -117,13 +118,6 @@ I pys_obj_eq(I c, I a, I b) { return eq(c, a, b); }
 I pys_obj_cmp(I c, I op, I a, I b) { return cmp(c, op, a, b); }
 void *pys_obj_repr(I c, I a, I b) { return repr(c, a, b); }
 void pys_obj_hooks(I (*e)(I, I, I), I (*c)(I, I, I, I), void *(*r)(I, I, I)) { eq = e; cmp = c; repr = r; }
-"""
-OBJHOOKS = """declare void @pys_obj_hooks(ptr, ptr, ptr)
-define internal void @pys.obj.hooks() {
-  call void @pys_obj_hooks(ptr @pys_obj_eq, ptr @pys_obj_cmp, ptr @pys_obj_repr)
-  ret void
-}
-@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
 """
 
 
