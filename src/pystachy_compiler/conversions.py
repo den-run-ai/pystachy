@@ -161,6 +161,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
+    if self.join_hint(t, v.t):
+        return Val("undef", t)  # (a store a join drops: the next pass compiles it, see join_hint)
     if is_opt(v.t) and self.widens(unopt(v.t), t):
         # (CPython would pass the None on: there is nothing here that could hold it)
         if what == "":

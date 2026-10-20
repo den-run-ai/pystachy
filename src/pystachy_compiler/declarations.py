@@ -1974,6 +1974,12 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
+                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if k == "assign" and len(self.hints) > 0 else ""
+                if jh != "":
+                    t = jh  # (a join's type: as if annotated, see join_hint)
+                    why = ""
+                if k == "assign":
+                    ci.fguess[name] = True  # (inferred, as join_hint may widen it)
                 if t == "" and why == "" and (given == "None" or nonexpr(st.kids[-1])):
                     # None so far: the first value of another type that the program gives it
                     # gives it its type, T | None, as for a variable (see none_field)
@@ -2737,7 +2743,11 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-    self.mem_store(Val(p.v, "*" + p.t), self.coerce(v, p.t, what))
+    # (a value of another type than an inferred field's may widen it: join_hint)
+    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
+    cv = self.coerce(v, p.t, what)
+    self.join_at(was[0], was[1], was[2])
+    self.mem_store(Val(p.v, "*" + p.t), cv)
     if name in ci.fflag:
         self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
 

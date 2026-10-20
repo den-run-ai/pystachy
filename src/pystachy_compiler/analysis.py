@@ -146,6 +146,22 @@ def attr_fills(body: list[Node], name: str, out: list[Node]) -> None:
                 attr_fills(kid.kids[1].kids, name, out)
 
 
+def ann_target(body: list[Node], name: str) -> bool:
+    # does code body (into blocks, not into the functions and classes it defines) annotate
+    # variable name (name: T, name: T = v)
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s == name:
+            return True
+        for kid in st.kids:
+            if kid.kind == "block" and ann_target(kid.kids, name):
+                return True
+            if kid.kind == "except" and ann_target(kid.kids[1].kids, name):
+                return True
+    return False
+
+
 def none_display(e: Node) -> str:
     # "list" for a display of None items ([None, None], [None] * n, n * [None]) and "dict" for a
     # dict display whose values are all None ({k: None}), which hold only None so far (see
