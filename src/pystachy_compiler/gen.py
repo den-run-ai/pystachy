@@ -598,6 +598,7 @@ from src.pystachy_compiler.expressions import (
     gen_cmp_rest as expressions_cmp_rest,
     gen_cmp_null as expressions_cmp_null,
     gen_cmp_tags as expressions_cmp_tags,
+    gen_cmp_widen as expressions_cmp_widen,
     gen_inherit_contains as expressions_inherit_contains,
     gen_member_item as expressions_member_item,
     gen_iter_in as expressions_iter_in,
@@ -3587,6 +3588,9 @@ class Gen:
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
+
+    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+        return expressions_cmp_widen(self, op, x, y, at, bt)
 
     def cmp_key(self, op: str, a: Val, b: Val) -> str:
         return expressions_cmp_key(self, op, a, b)
