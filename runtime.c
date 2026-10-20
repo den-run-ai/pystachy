@@ -2077,6 +2077,7 @@ I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static const char *tyname(char d);
+static const char *vtyname(I v, const char *d) { return tyname(*d == 'U' ? *eqresolve(v, d).desc : *d); }   /* v's (a union's: its member's) */
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -2102,11 +2103,19 @@ static int opv(I a, I b, const char *d, I op) {
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
+  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
+    EqValue x = eqresolve(a, d), y = eqresolve(b, d);
+    int nx = *x.desc != 'f', ny = *y.desc != 'f';
+    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);
+    if (!nx && !ny) return opv(x.value, y.value, "f", op);
+    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));
+    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */
+  }
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case '?':
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
-          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
+          a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
   case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
@@ -2202,6 +2211,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
+  List *r = pys_list_new_atomic(l->len);
+  for (I i = 0; i < l->len; i++) {
+    EqValue x = eqresolve(l->a[i], d->s);
+    double f = *x.desc == 'f' ? dbl(x.value) : (double)x.value;
+    memcpy(&r->a[i], &f, 8);
+  }
+  r->len = l->len;
+  return r;
+}
 List *pys_vtuple_list(VTuple *t) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
   List *l = pys_list_new(t->len);

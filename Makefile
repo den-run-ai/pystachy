@@ -261,6 +261,13 @@ RE_PROBE ?=
 re-probe:
 	$(PY) tools/re_probe.py $(RE_PROBE)
 
+# matchers that tools/re_specialize.py generates for random patterns, run by lib/re on CPython, must
+# match as CPython's re does (deterministic: N=400 patterns, SEED=1, e.g. make re-specialize-check
+# RE_SPECIALIZE="4000 7"; tools/test_re_specialize.py, which Lint runs, checks 300)
+RE_SPECIALIZE ?=
+re-specialize-check:
+	$(PY) tools/re_specialize.py check $(RE_SPECIALIZE)
+
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint:
@@ -283,4 +290,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe re-specialize-check lint clean install uninstall test-install

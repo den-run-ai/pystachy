@@ -1,0 +1,6 @@
+['0', '1', '2']
+['a', None, None]
+[None, 2.5] True
+[1, None, None, None, 7] 5 3
+2
+[exit 0]

@@ -64,7 +64,7 @@ CPython runs the source.
 
 | Module | Upstream reference | Implementation |
 |---|---|---|
-| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages |
+| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c`, `Modules/_io/_iomodule.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages; `IncrementalNewlineDecoder` without a decoder and `text_encoding()` |
 | `types` (`_pystachy_types`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`) | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
@@ -216,6 +216,16 @@ code point, in both versions; `lookup()` of every name, in upper and lower case,
 sequence and derived name, and of 4,000 malformed ones; `normalize()` and `is_normalized()` of
 50,000 random strings in the four forms of both versions; and the functions' signatures and
 docstrings: 3,515,917 checks.
+
+`tools/io_check.py` runs `lib/io.py`'s `IncrementalNewlineDecoder` and `text_encoding()` on CPython
+and compares them with the C module's (`Modules/_io/textio.c`, SHA-256
+`10d6112b4ac53914b8731c9f551a46526a2ce9fceecd604536f2ef754ba73b44`, and `Modules/_io/_iomodule.c`,
+SHA-256 `7112503c877d5a4ece90994e9a4d02d2e3339f797d4ddb240ec2c687de716fa1`): 20,000 random sequences of
+`decode()`, `getstate()`, `setstate()` and `reset()` calls over text whose newlines fall anywhere, a
+`\r\n` split between two calls included, with each truth value of `translate` and `final`, the
+newlines after each call, `text_encoding()` of names, of `None` in and out of UTF-8 mode and of
+`stacklevel`s beyond a C int, `_pystachy__io.py`'s names, and the signatures and docstrings:
+200,769 checks.
 
 `tools/opcode_tables.py` reads CPython 3.13.16's `Include/opcode_ids.h` (SHA-256
 `e30e7b48f764be2bf4530a931ea5a120d4d91d1427a31c5979206a98fa672ca1`) and
