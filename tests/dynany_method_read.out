@@ -1,0 +1,11 @@
+2
+3 True False True
+C(1)
+300
+400 False
+TypeError: C.m() takes 2 positional arguments but 3 were given
+3
+3 0
+3 6
+7
+[exit 0]

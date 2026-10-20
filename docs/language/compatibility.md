@@ -330,6 +330,17 @@ above apply to well-formed text (with the surrogate exception described above).
   `enumerate()`, `zip()` or `reversed()` there checks its arguments (a zero step), and a dict's or
   set's iterator records its size, when the generator first runs, not where it is made.
 
+### Dynamic `Any` (opt-in prototype)
+
+- In a module whose leading comments hold `# pystachy: dynamic-any`, `Any` values are
+  runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
+  that keeps its first type, that receives an `Any` value of another type raises `TypeError`
+  where CPython, which does not check annotations, goes on
+  (`tests/deviations/dynany_annotation_check.py`). The prototype's other differences, such as
+  `in` of an `Any` item in a typed container, function values printing as `<function>`, and
+  objects of unrelated classes comparing by identity, are listed in its
+  [deviations](../dynamic-any.md#deviations).
+
 ## Rejected rather than miscompiled
 
 CPython can execute these constructs, often raising a runtime error. Pystachy instead rejects
@@ -729,6 +740,13 @@ supported alternatives.
   (`Generic[T]`, `Concatenate[...]`), also where no annotation names the alias; a `type`
   statement's string value that is not an expression, also where nothing evaluates it; an
   annotation whose type aliases expand to more than 65,536 nodes
+- in a module that opts in to [dynamic `Any`](../dynamic-any.md): a typed mutable container
+  (`list[int]`, `dict[str, int]`, a set) that would become an `Any` value, an operation on `Any`
+  values that the prototype does not implement, keyword or unpacked arguments in a call of an
+  `Any` value or its method, and storage that holds `None` before an `Any` value but cannot be
+  made `Any` from its first store: a generator's or closure's local, a module variable that a
+  function gives the `Any` value, a field that code outside its class's methods gives it, a
+  display of `None` items (`tests/errors/dynany_*.py`)
 
 ### Exceptions and exception classes
 

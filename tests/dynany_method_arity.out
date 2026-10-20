@@ -1,0 +1,26 @@
+side 5
+6
+side 2
+6
+11
+side 4
+6
+side 6
+side 7
+6 107
+side 1
+side 2
+TypeError: C.m() takes 2 positional arguments but 3 were given
+TypeError: C.m() missing 1 required positional argument: 'value'
+TypeError: C.two() missing 2 required positional arguments: 'a' and 'b'
+side 1
+side 2
+side 3
+TypeError: C.opt() takes from 2 to 3 positional arguments but 4 were given
+side 1
+TypeError: C.kw() missing 1 required keyword-only argument: 'key'
+TypeError: C.st() takes 1 positional argument but 2 were given
+TypeError: C.cm() takes 2 positional arguments but 3 were given
+TypeError: C.m() takes 2 positional arguments but 3 were given
+AttributeError: 'C' object has no attribute 'nope'
+[exit 0]

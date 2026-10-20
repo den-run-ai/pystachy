@@ -223,7 +223,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.coerce(parts[i], et))])
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str"]:
+    if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
         self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
 
@@ -607,8 +607,9 @@ def gen_key_items(self, t: str) -> bool:
     return True
 
 def gen_key_problem(self, t: str) -> str:
-    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too
-    if self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
+    # (hashed by their types at run time: TypeError: unhashable type)
+    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
@@ -666,7 +667,7 @@ def gen_key_fx(self, kt: str) -> str:
     # object whose class's __hash__ and __eq__ run (H), or whose __repr__ a KeyError runs (P),
     # which RUNTIME's U? stands for, or a recursive alias's edge (R, RUNTIME's R?); else ""
     d = self.hash_desc(kt) if kt != "int" and kt != "str" and kt != "bytes" else ""
-    return d if "H" in d or "R" in d or ("P" in d and self.key_repr(kt)) else ""
+    return d if "H" in d or "R" in d or "A" in d or ("P" in d and self.key_repr(kt)) else ""
 
 def gen_key_repr(self, t: str) -> bool:
     # may repr() of a key of type t run a __repr__ of the program (a KeyError's message)
@@ -761,6 +762,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 
 def gen_to_str(self, v: Val) -> Val:
     t = v.t
+    if t == "dyn":
+        return self.dyn_str(v)  # (by its box's type: dynamic.py)
     if is_union(unopt(t)):
         return self.uop(v, "str")
     if t == "str":
@@ -920,6 +923,8 @@ def gen_hash_value(self, v: Val) -> Val:
     # tuple's of such items: runtime.c's hitem), a str's (and a bytes's) the dict's hash of it;
     # TypeError for an unhashable type, as CPython's
     t = v.t
+    if t == "dyn":
+        return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":

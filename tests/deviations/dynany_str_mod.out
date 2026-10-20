@@ -1,0 +1,3 @@
+R()
+TypeError: unsupported operand type(s) for %: 'str' and 'R'
+[exit 1]

@@ -1,0 +1,12 @@
+float 1.5 int 2 float 2.5
+NoneType None
+str 's'
+P P(3)
+Q Q()
+[1.5, 3, 's', Q(), None]
+str 'a'
+1 one 2.5 2.5
+str 's'
+int 1
+2
+[exit 0]
