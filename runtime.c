@@ -3285,6 +3285,7 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
   }
   if (ka != kb) return 0;
   if (ka == DK_NONE) return 1;
+  if (ka == DK_FUNC) return a->t == b->t && a->v == b->v;   /* the same function, and object or env */
   return eqv(a->v, b->v, a->t->desc->s);
 }
 /* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
@@ -3333,6 +3334,7 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   if (DKIND(seq) == DK_LIST) return dlist(pys_list_mul((List *)seq->v, k));
   VTuple *t = (VTuple *)seq->v;
   if (k == 1 || !t->len) return seq;   /* (CPython's tuple * 1 is the tuple itself) */
+  if (!k) return dtuple(pys_alloc(sizeof(VTuple)));   /* (the empty tuple) */
   if (t->len > INT64_MAX / k) pys_fail("MemoryError");
   VTuple *r = pys_alloc(sizeof(VTuple) + t->len * k * sizeof(I)); r->len = t->len * k;
   for (I i = 0; i < k; i++) memcpy(r->a + i * t->len, t->a, t->len * sizeof(I));

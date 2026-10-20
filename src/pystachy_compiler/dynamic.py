@@ -910,7 +910,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and ci.methods[a].prop)
     if key.startswith("set."):
-        return key[4:] in ci.ftypes
+        a = key[4:]
+        return a in ci.ftypes or (a in ci.methods and ci.methods[a].prop)  # (a property's setter, or CPython's error without one)
     if key.startswith("call.") or key.startswith("has."):
         m = key[key.find(".") + 1 : key.rfind(".")]
         if m not in ci.methods or ci.methods[m].prop:
@@ -1121,7 +1122,9 @@ def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
     for a in args:
         if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
             self.err(f"a method call of an Any value takes positional arguments only (o.{m}(...))")
-    if len([a for a in args if a.kind not in ["int", "float", "str", "True", "False", "None", "name"]]) > 0:
+    # (no lookup first where no argument can run code or raise: literals, and locals that flow
+    # analysis found assigned, whose reads have no check)
+    if len([a for a in args if a.kind not in ["int", "float", "str", "True", "False", "None"] and not (a.kind == "name" and a.s in self.ltype and not a.chk)]) > 0:
         self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(args)}", [DYN], "None", m), [o])
     vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
     return self.dyn_call(self.dyn_dispatcher(f"call.{m}.{len(args)}", [DYN] * (len(args) + 1), DYN, m), [o] + vals)

@@ -99,7 +99,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   boxes (`VA`). Descriptor `A` is a box in a slot: runtime.c's generic `repr`, `==`, ordering,
   hashing, sorting, searching and `KeyError` messages follow it through the box's own DynType,
   so every existing list and dict operation works on containers of `Any` values. `Z` is a
-  boxed function, which prints as `<function>` and compares by identity.
+  boxed function, which prints as `<function>` and equals a box of the same function with the
+  same object (a bound method's) or env (a closure's), as CPython's methods compare.
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
