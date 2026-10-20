@@ -2630,8 +2630,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     pre = self.narrow_by(n.kids[0], True)
     self.branch += 1  # (neither arm surely rebinds a template parameter whose argument is None)
     a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)):
-        a = self.coerce(a, want)  # (construct the requested representation in its arm)
+    if is_vtuple(unopt(want)) or want == "dyn":
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py)
     if (is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
@@ -2645,7 +2645,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
     b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)):
+    if is_vtuple(unopt(want)) or want == "dyn":
         b = self.coerce(b, want)
     if (is_fn(b.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         b = self.coerce(b, want)
@@ -2654,6 +2654,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
     if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
         t = self.join(a.t, b.t)  # x if c else None: T | None
+    if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
+        t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     ph = Ins("phi", t, "")
     if e1 != "":
         self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
@@ -2718,6 +2720,8 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
         rt = unopt(a.t) if n.s == "or" else a.t
         if not self.term and self.join(rt, b.t) != "":
             rt = self.join(rt, b.t)
+    if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
+        rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     ph = Ins("phi", rt, "")
     self.incoming(ph, self.convert_at(a, rt, e1).v if not ascond and self.converts(a.t, rt) else a.v, e1)
     if not self.term:

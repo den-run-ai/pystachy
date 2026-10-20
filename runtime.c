@@ -1662,7 +1662,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
-   A a dynamic value's box (see dynamic values), walked by its DynType's descriptor.
+   A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
+   function a box holds, which compares and hashes by identity.
    skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
@@ -1818,6 +1819,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
+  case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
@@ -3153,7 +3155,7 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
    variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
    numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ };
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4 };   /* a class's ==, ordering and hash run the program's helpers */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
@@ -3269,6 +3271,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
+  case DK_FUNC: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -3500,6 +3503,9 @@ VTuple *pys_dyn_unpack(Dyn *o, I n) {
   if (k < n) failf("ValueError: not enough values to unpack (expected %lld, got %lld)", (long long)n, (long long)k);
   return t;
 }
+/* id(x): a reference's own address, as the identity of the object it is; a number's box's (the
+   collector moves nothing, so neither changes while the value lives) */
+I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR ? x->v : (I)x; }
 /* int(x) and float(x) */
 I pys_dyn_int_of(Dyn *x) {
   switch (DKIND(x)) {

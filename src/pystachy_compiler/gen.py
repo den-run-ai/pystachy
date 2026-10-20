@@ -28,6 +28,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
     gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
     gen_dyn_call as dynamic_dyn_call,
+    gen_dyn_call_value as dynamic_dyn_call_value,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
     gen_dyn_cmp2 as dynamic_dyn_cmp2,
@@ -38,6 +39,10 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_dispatchers as dynamic_dyn_dispatchers,
     gen_dyn_fallback as dynamic_dyn_fallback,
     gen_dyn_float as dynamic_dyn_float,
+    gen_dyn_fn_arms as dynamic_dyn_fn_arms,
+    gen_dyn_fn_box as dynamic_dyn_fn_box,
+    gen_dyn_fn_takes as dynamic_dyn_fn_takes,
+    gen_dyn_fn_type as dynamic_dyn_fn_type,
     gen_dyn_fresh as dynamic_dyn_fresh,
     gen_dyn_getattr as dynamic_dyn_getattr,
     gen_dyn_getitem as dynamic_dyn_getitem,
@@ -1248,6 +1253,10 @@ class Gen:
         self.dynkeys: dict[str, str] = {}
         self.dynlines: dict[str, int] = {}
         self.dynsig = ""
+        # and the function value types boxed, with their DynTypes, and the constant boxes of defs
+        self.dynfuncs: list[str] = []
+        self.dynfnt: dict[str, str] = {}
+        self.dynboxes: dict[str, bool] = {}
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
@@ -1361,6 +1370,9 @@ class Gen:
     def dyn_body(self, key: str) -> None:
         return dynamic_dyn_body(self, key)
 
+    def dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+        return dynamic_dyn_fn_arms(self, f, key, o, args)
+
     def dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return dynamic_dyn_supports(self, c, key, dunder, nargs)
 
@@ -1402,6 +1414,18 @@ class Gen:
 
     def dyn_mixed(self, es: list[Node]) -> bool:
         return dynamic_dyn_mixed(self, es)
+
+    def dyn_fn_type(self, ft: str) -> str:
+        return dynamic_dyn_fn_type(self, ft)
+
+    def dyn_fn_box(self, v: Val) -> Val:
+        return dynamic_dyn_fn_box(self, v)
+
+    def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
+        return dynamic_dyn_call_value(self, o, args)
+
+    def dyn_fn_takes(self, ft: str, n: int) -> str:
+        return dynamic_dyn_fn_takes(self, ft, n)
 
     # ---- end of dynamic values
     # ---- reflection (reflection.py)

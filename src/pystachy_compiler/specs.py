@@ -701,7 +701,7 @@ RUNTIME: dict[str, str] = {
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
     "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
     "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
     # homogeneous runtime-length tuples (immutable copied slots)

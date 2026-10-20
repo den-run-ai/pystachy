@@ -25,6 +25,7 @@ from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_li
 DYN = "dyn"
 # runtime.c's DynType kinds (DK_*) and the flags of a class's (DF_*)
 DK_OBJ = 8
+DK_FUNC = 9
 DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
@@ -74,8 +75,10 @@ def gen_dyn_boxable(self, t: str) -> str:
         # box where its typed code reads a number: copying it would break its identity)
         which = "list[Any]" if is_list(t) else "dict[Any, Any]" if is_dict(t) else "set[Any]"
         return f"a {typestr(t)} cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a {which} from the start, or copy it)"
+    if t.startswith("fn[b:") or t.startswith("fn[d:") or t.startswith("fn[u:"):
+        return f"a builtin function or method as an Any value is not supported yet ({typestr(t)})"
     if is_fn(t) or is_callable(t):
-        return f"a function as an Any value is not supported yet ({typestr(t)})"
+        return ""
     return f"a {typestr(t)} value cannot become an Any value"
 
 
@@ -160,6 +163,8 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.err(f"a {typestr(t)} as an Any value is not supported yet")
     if t in self.classes and self.classes[t].tag > 0:
         return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_tagged_type(v)}", f"ptr {v.v}"]), DYN)
+    if is_fn(t) or is_callable(t):
+        return self.dyn_fn_box(v)
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
 
 
@@ -541,7 +546,30 @@ def gen_dyn_body(self, key: str) -> None:
             self.place(nxt)
     if key.startswith("call.") or key.startswith("has."):
         self.dyn_builtin_methods(f, key, o, ps[1:])
+    if key.startswith("callv."):
+        self.dyn_fn_arms(f, key, o, ps[1:])
     self.dyn_fallback(f, key, ps)
+
+
+def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+    # the cases of dispatcher callv.<n> for the function values boxed: each called as its own
+    # type calls it (defaults, a closure's env, a bound method's object), or the TypeError of a
+    # call with the wrong number of arguments
+    t = Val(self.dyn_typeof(o), "dyntype")
+    line = self.line
+    for ft in [x for x in self.dynfuncs]:
+        hit = self.label()
+        nxt = self.label()
+        self.cbr(self.ptr_cmp("==", t, Val(self.dynfnt[ft], "dyntype")).v, hit, nxt)
+        self.place(hit)
+        bad = self.dyn_fn_takes(ft, len(args))
+        if bad != "":
+            i = bad.find(": ")
+            self.raise_(bad[:i], self.sconst(bad[i + 2 :]))
+        else:
+            x = Val("null", ft) if ft.startswith("fn[f:") else self.dyn_payload(o, ft)
+            self.dyn_return(f, self.obj_call(x, [self.vnode(a) for a in args], ""))
+        self.place(nxt)
 
 
 def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
@@ -558,6 +586,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         if m not in ci.methods or ci.methods[m].prop:
             return False
         return self.dyn_takes(ci.methods[m], 0 if ci.methods[m].deco != "" else 1, nargs)
+    if key.startswith("callv."):
+        return "__call__" in ci.methods and self.dyn_takes(ci.methods["__call__"], 1, nargs)
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
@@ -699,6 +729,9 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val("null", "None"))
     elif key == "contains":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_contains", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"]), "int"), Val("0", "int")))
+    elif key.startswith("callv."):
+        msg = self.concat([Val(self.sconst("'"), "str"), self.dyn_type_name(o), Val(self.sconst("' object is not callable"), "str")])
+        self.raise_("TypeError", msg.v)
     else:
         # an attribute or method no boxed value of this type has: AttributeError, naming its type
         a = key[4:] if key.startswith("get.") or key.startswith("set.") else key[key.find(".") + 1 : key.rfind(".")]
@@ -735,6 +768,8 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
         return self.dyn_int(v)
     if name == "float":
         return self.dyn_float(v)
+    if name == "id":
+        return Val(self.rt("pys_dyn_id", "i64", [f"ptr {v.v}"]), "int")
     return Val(self.dyn_truth(v), "bool")
 
 
@@ -778,3 +813,74 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
     return j == "" or j == DYN
+
+
+
+def gen_dyn_fn_type(self, ft: str) -> str:
+    # @dtf.<n>: the DynType of the boxes of function values of type ft (a def's, a closure's, a
+    # bound method's, a Callable's), made once: DK_FUNC, descriptor Z (runtime.c prints such a
+    # value as <function>, and compares and hashes it by identity), the name of its type. Each is
+    # a case of the dispatchers that call boxes (callv.<n>)
+    if ft in self.dynfnt:
+        return self.dynfnt[ft]
+    name = f"@dtf.{len(self.dynfnt)}"
+    self.dynfnt[ft] = name
+    self.dynfuncs.append(ft)
+    dt = Data("dyntype", name)
+    tn = "method" if ft.startswith("fn[m:") else "function"
+    dt.refs = [self.sconst("Z"), self.sconst(tn), "null"]
+    dt.items = [Val(str(DK_FUNC), "int"), Val("-1", "int"), Val("0", "int")]
+    self.consts.append(dt)
+    return name
+
+
+def gen_dyn_fn_box(self, v: Val) -> Val:
+    # function value v boxed: a def of a module's top level has no value (null), so that its box
+    # is a constant of its own, whose payload, the address of its DynType, tells it apart from
+    # other functions; a closure's box holds its env, a bound method's its object, a Callable's
+    # its {code, env} object
+    t = self.dyn_fn_type(v.t)
+    if v.t.startswith("fn[f:"):
+        g = "@dbx." + t[5:]
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynbox", g)
+            d.refs = [t]
+            self.consts.append(d)
+        return Val(g, DYN)
+    return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {t}", f"ptr {v.v}"]), DYN)
+
+
+def gen_dyn_call_value(self, o: Val, args: list[Node]) -> Val:
+    # o(args) for a dyn o: the function its box holds, called with the arguments boxed (positional
+    # only), once they are evaluated, as CPython calls the value (callv.<n>)
+    for a in args:
+        if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
+            self.err("a call of an Any value takes positional arguments only")
+    vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
+    return self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [o] + vals)
+
+
+def gen_dyn_fn_takes(self, ft: str, n: int) -> str:
+    # "" if a function value of type ft takes n positional arguments, else CPython's TypeError
+    if is_callable(ft):
+        k = len(targs(ft)) - 1
+        return "" if k == n else f"TypeError: the function takes {k} positional argument{'s' if k != 1 else ''} but {n} {'were' if n != 1 else 'was'} given"
+    k = ft[3:-1]
+    f: FnInfo | None = None
+    own = 0
+    if k.startswith("f:"):
+        f = self.funcs[k[2:]] if k[2:] in self.funcs else None
+    elif k.startswith("c:"):
+        f = self.closures[int(k[2 : k.find(":", 2)])].f
+        own = 1  # (its env, which a call passes first)
+    elif k.startswith("m:"):
+        c = k[2 : k.rfind(".")]
+        f = self.classes[c].methods[k[k.rfind(".") + 1 :]] if c in self.classes and k[k.rfind(".") + 1 :] in self.classes[c].methods else None
+        own = 1 if f is not None and f.deco == "" else 0
+    if f is None:
+        return "TypeError: the function cannot be called with positional arguments only"
+    if self.dyn_takes(f, own, n):
+        return ""
+    have = len(f.params) - own
+    return f"TypeError: {short(f.name) if not k.startswith('c:') else k[k.find(':', 2) + 1 : k.find('@')]}() takes {have} positional argument{'s' if have != 1 else ''} but {n} {'were' if n != 1 else 'was'} given"

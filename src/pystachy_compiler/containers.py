@@ -189,7 +189,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.coerce(parts[i], et))])
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str"]:
+    if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
         self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
 

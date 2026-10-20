@@ -218,7 +218,7 @@ def gen_ann(self, n: Node) -> str:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
             t = self.ann(a[0])
-            if unopt(t) not in ["int", "float", "bool", "str"]:
+            if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
         ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]

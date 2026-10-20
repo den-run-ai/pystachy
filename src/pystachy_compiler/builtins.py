@@ -268,7 +268,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
-        if unopt(elem(v.t)) not in ["int", "float", "bool", "str"]:
+        if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
             self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
         return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
@@ -615,7 +615,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         elif kvals[j].t != "None":
             keyv = kvals[j]  # (key=None: the items themselves)
             self.key_check(keyv, f"{name}()")
-    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool"]:
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
