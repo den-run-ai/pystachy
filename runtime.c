@@ -2848,7 +2848,9 @@ static int keq(I a, I b, const char *d, int pure) {
   }
   return 1;
 }
-static int keyeq(I a, I b, const char *d) { return *d == 'T' ? keq(a, b, d, 0) : eqv(a, b, d); }   /* keys of descriptor d */
+static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any key is found as itself first, as an item is */
+  return *d == 'T' ? keq(a, b, d, 0) : *d == 'A' ? dyn_eqitem((Dyn *)a, (Dyn *)b) : eqv(a, b, d);
+}
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
   return kind ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
@@ -3202,7 +3204,8 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
    numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4 };   /* a class's ==, ordering and hash run the program's helpers */
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8 };   /* a class's ==, ordering and hash run the program's helpers;
+                                                            a box of this type is its own identity (a bound method's) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
@@ -3281,7 +3284,7 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
   if (ka == DK_OBJ && kb == DK_OBJ) {   /* by the class both are objects of, as the program compares them */
     const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
     if (!t || !(t->flags & DF_EQ)) return a->v == b->v;
-    return a->v == b->v || pys_obj_eq(t->cls, a->v, b->v);
+    return pys_obj_eq(t->cls, a->v, b->v);   /* (x == x runs __eq__ too; a container's search tries identity first) */
   }
   if (ka != kb) return 0;
   if (ka == DK_NONE) return 1;
@@ -3335,7 +3338,7 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   VTuple *t = (VTuple *)seq->v;
   if (k == 1 || !t->len) return seq;   /* (CPython's tuple * 1 is the tuple itself) */
   if (!k) return dtuple(pys_alloc(sizeof(VTuple)));   /* (the empty tuple) */
-  if (t->len > INT64_MAX / k) pys_fail("MemoryError");
+  if (t->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) / k) pys_fail("MemoryError");   /* (its size in bytes fits) */
   VTuple *r = pys_alloc(sizeof(VTuple) + t->len * k * sizeof(I)); r->len = t->len * k;
   for (I i = 0; i < k; i++) memcpy(r->a + i * t->len, t->a, t->len * sizeof(I));
   return dtuple(r);
@@ -3553,7 +3556,7 @@ VTuple *pys_dyn_unpack(Dyn *o, I n) {
 }
 /* id(x): a reference's own address, as the identity of the object it is; a number's box's (the
    collector moves nothing, so neither changes while the value lives) */
-I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR ? x->v : (I)x; }
+I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR && !(x->t->flags & DF_BOXID) ? x->v : (I)x; }
 /* int(x) and float(x) */
 I pys_dyn_int_of(Dyn *x) {
   switch (DKIND(x)) {

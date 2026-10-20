@@ -32,6 +32,7 @@ DK_FUNC = 9
 DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
+DF_BOXID = 8
 # the operator codes of pys_dyn_binop and pys_dyn_unary
 BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11}
 UNOPS: dict[str, int] = {"-": 0, "+": 1, "~": 2}
@@ -113,8 +114,8 @@ def gen_dyn_class_type(self, c: str) -> str:
     d = self.desc(c, "repr")  # (O<id>: its repr helper)
     flags = 0
     ms = ci.methods
-    if "__eq__" in ms:
-        flags |= DF_EQ
+    if "__eq__" in ms or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and "__eq__" in x.methods]) > 0:
+        flags |= DF_EQ  # (also where a subclass defines it, whose == the class's helper dispatches to)
     if "__lt__" in ms or "__le__" in ms or "__gt__" in ms or "__ge__" in ms:
         flags |= DF_CMP
     if flags != 0:
@@ -735,7 +736,8 @@ def gen_dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
 
 def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     # a is b (op "is") or a is not b, where either is dyn: the same box, or the same type and
-    # payload but for floats (a float's box is its identity, as a float object's is CPython's)
+    # payload but for floats and bound methods (whose box is their identity, as a float object's
+    # and a method object's is CPython's: DF_BOXID)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     ta = Val(self.dyn_typeof(x), "dyntype")
@@ -743,6 +745,9 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     st = self.ptr_cmp("==", ta, Val(self.dyn_typeof(y), "dyntype")).v
     sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(x, "int")), "int"), Val(self.to_slot(self.dyn_payload(y, "int")), "int")).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
+    fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
+    nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
+    nf = self.scalar("and", [Val(nf, "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
     r = self.scalar("or", [Val(same, "bool"), Val(alike, "bool")])
     return Val(r if op == "is" else self.scalar("xor", [Val(r, "bool"), Val("true", "bool")]), "bool")
@@ -1163,7 +1168,8 @@ def gen_dyn_fn_type(self, ft: str) -> str:
     dt = Data("dyntype", name)
     tn = "method" if ft.startswith("fn[m:") else "function"
     dt.refs = [self.sconst("Z"), self.sconst(tn), "null"]
-    dt.items = [Val(str(DK_FUNC), "int"), Val("-1", "int"), Val("0", "int")]
+    # (a bound method's box is its identity, as each evaluation of o.m makes a new method object)
+    dt.items = [Val(str(DK_FUNC), "int"), Val("-1", "int"), Val(str(DF_BOXID) if ft.startswith("fn[m:") else "0", "int")]
     self.consts.append(dt)
     return name
 

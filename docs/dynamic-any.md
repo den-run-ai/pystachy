@@ -100,7 +100,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   hashing, sorting, searching and `KeyError` messages follow it through the box's own DynType,
   so every existing list and dict operation works on containers of `Any` values. `Z` is a
   boxed function, which prints as `<function>` and equals a box of the same function with the
-  same object (a bound method's) or env (a closure's), as CPython's methods compare.
+  same object (a bound method's) or env (a closure's), as CPython's methods compare. A bound
+  method's box is its own identity for `is` and `id()`, as each evaluation of `o.m` makes a new
+  method object.
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
@@ -161,7 +163,10 @@ Each case calls the class's operation with `Any` arguments: a method whose param
 unannotated or `Any` takes them as they are (a template is instantiated for `Any` once), and
 one annotated with a concrete type unboxes them as above. `==` and ordering between objects of
 one class (or of a class and its subclass) run the class's `__eq__`, `__lt__` and so on through
-the existing `pys_obj_eq`/`pys_obj_cmp`; objects of unrelated classes compare by identity.
+the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code compares them: a subclass's `__eq__`
+first, also where the base class has none, and `x == x` runs `__eq__` too, while a container's
+search and a dict's lookup find an object as itself first (`tests/dynany_subclass_eq.py`).
+Objects of unrelated classes compare by identity.
 
 ## Policy and programs that do not opt in
 

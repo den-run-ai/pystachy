@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 # Function values as Any values compare as CPython's do: two bound methods are equal where they
 # are the same function of the same object, so methods of one object that differ are not equal
-# although their boxes hold that one object.
+# although their boxes hold that one object. Each is a value of its own for `is` and id().
 from typing import Any
 
 
@@ -36,3 +36,8 @@ g: Any = pair[1]
 print(f == g, f == f, f(), g())
 methods: list[Any] = [c.a, c.b]
 print(methods.count(c.a), methods.index(c.b), c.b in methods, d.b in methods)
+# each evaluation of c.a makes a new method object, whose box is its identity (not c's)
+cc: Any = c
+print(x is z, x is y, x is x, id(x) == id(z), id(x) == id(y), id(x) == id(cc))
+same = x
+print(same is x, id(same) == id(x))
