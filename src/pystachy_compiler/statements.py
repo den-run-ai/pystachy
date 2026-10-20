@@ -618,12 +618,14 @@ def gen_stmt(self, n: Node) -> None:
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc
-            self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
             if n.s == "local-retype":
+                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                 self.store_name(t0.s, v, True)
             else:
                 for i in range(len(n.kids) - 1):
-                    self.assign(n.kids[i], v)
+                    tgt = n.kids[i]
+                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                    self.assign(tgt, v)
             self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
