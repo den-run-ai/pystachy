@@ -2649,12 +2649,14 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
 
 def gen_glue_field(self, o: Val, name: str) -> None:
     # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others;
-    # one of OPAQUE's (weakref.ReferenceType) too, as CPython's object has no such attribute
+    # one of OPAQUE's (weakref.ReferenceType, mappingproxy) too, as CPython's object has no such
+    # attribute (named as CPython names its type: with the module of TYPEMODS, or a builtin's alone)
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
     if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
-        self.err(f"'{TYPEMODS.get(ci.mod, ci.mod)}.{short(ci.name)}' object has no attribute '{name}'")
+        tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if ci.mod in TYPEMODS else short(ci.name)
+        self.err(f"'{tshown}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body

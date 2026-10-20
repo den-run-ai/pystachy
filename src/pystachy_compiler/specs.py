@@ -50,10 +50,11 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
                             "_imp": "_pystachy_imp", "_io": "_pystachy__io", "_opcode": "_pystachy_opcode",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
                             "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
-# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct): their
-# classes' fields are the module's own, which a program can neither read, assign, find by
-# hasattr() nor reflect over, and a call of __init__ on an object cannot initialize it again
-OPAQUE: dict[str, bool] = {"_weakref": True}
+# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct, and a
+# mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
+# are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
+# over, and a call of __init__ on an object cannot initialize it again
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
 # lib's io defines is the C module _io's in CPython)

@@ -1027,7 +1027,12 @@ iterator does where the dict changes size), `reversed()`, `get()`, `keys()`, `va
 CPython's results, from the dict's items as they are when the view is read; `|=` and `hash()` raise
 CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.py)). Item assignment and
 deletion are compile-time errors, where CPython raises `TypeError`
-([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)).
+([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)). A view has no
+attributes of its own, as CPython's has none, so code given only the view cannot reach its dict:
+`hasattr()` of its fields or of `__dict__` is false, and `__init__` leaves it viewing its dict
+([test](../tests/programs/library/lib_types_mappingproxy_opaque.py)); reading or assigning a field
+is a compile-time error, where CPython raises `AttributeError`
+([error test](../tests/errors/library/lib_types_mappingproxy_field.py)).
 
 - It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
   CPython's takes any mapping. `keys()`, `values()` and `items()` give lists, as a dict's do, and
