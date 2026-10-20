@@ -30,8 +30,9 @@
 #   test_class_base_containing_lambda, test_complex_base, test_starargs_base,
 #   test_incorrect_mro_explicit_object, test_traditional_01 and _02 (bases of generic classes)
 # - SyntaxErrors (check_syntax_error()): Pystachy reports test_name_collisions',
-#   test_disallowed_expressions' and test_type_aliases.py's with CPython's messages at compile
-#   time (checked with tools/syntax_sweep.py), but accepts DefaultsTest.test_starred_invalid's
+#   test_disallowed_expressions', test_typevartuple_01's, test_paramspec_01's and
+#   test_type_aliases.py's with CPython's messages at compile time (checked with
+#   tools/syntax_sweep.py), but accepts DefaultsTest.test_starred_invalid's
 #   `type Alias[T = *int] = int` and `type Alias[**P = *int] = int` (a bug)
 from typing import TypeVar
 

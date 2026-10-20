@@ -1,7 +1,7 @@
 """Parser component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
-from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, debug_text, string_end, utf8
+from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.syntax import (
     AUGOPS,
@@ -20,6 +20,48 @@ from src.pystachy_compiler.syntax import (
 )
 
 ATOMS: list[str] = "id int float complex str fstr rfstr bytes ... None True False ) ] }".split()  # what ends an atom
+
+
+def bytes_repr(b: str) -> str:
+    # repr() of the bytes whose characters b holds, one per byte
+    q = '"' if "'" in b and '"' not in b else "'"
+    out: list[str] = []
+    for c in b:
+        o = ord(c)
+        if c == q or c == "\\":
+            out.append("\\" + c)
+        elif c == "\t" or c == "\n" or c == "\r":
+            out.append("\\t" if c == "\t" else "\\n" if c == "\n" else "\\r")
+        elif o < 32 or o >= 127:
+            out.append("\\x" + "0123456789abcdef"[o >> 4] + "0123456789abcdef"[o & 15])
+        else:
+            out.append(c)
+    return "b" + q + "".join(out) + q
+
+
+def int_digits(r: float) -> str:
+    # the digits of the int that float r equals ("" if none: it is not integral, or inf), past what
+    # 64 bits hold too: r halved to fit, then the digits doubled back
+    if r - r != 0.0 or (abs(r) < 9.2e18 and r != float(int(r))):
+        return ""
+    v = abs(r)
+    n = 0
+    while v >= 9.2e18:
+        v = v / 2
+        n += 1
+    d = str(int(v))
+    for _ in range(n):
+        out: list[str] = []
+        carry = 0
+        for i in range(len(d) - 1, -1, -1):
+            x = (ord(d[i]) - 48) * 2 + carry
+            out.append(chr(48 + x % 10))
+            carry = x // 10
+        if carry > 0:
+            out.append(chr(48 + carry))
+        out.reverse()
+        d = "".join(out)
+    return ("-" if r < 0 and d != "0" else "") + d
 
 
 class Parser:
@@ -456,39 +498,42 @@ class Parser:
                 out.append(mk("async", "", line, inner))
         elif k == "id" and self.toks[self.p].text == "match" and self.soft_match():
             # match subject: case pattern [if guard]: ... -- kept as a "match" node: the subject, then
-            # per case a "pattern" node (s: the names the pattern's captures bind; kids: the guard)
-            # and the block. A pattern is skipped, not checked.
+            # per case a "pattern" node (s: the names the pattern's captures bind; kids: the guard,
+            # then the names, dotted names and f-strings that the pattern reads) and the block
             self.p += 1
             n = mk("match", "", line, [self.exprlist(True)])
+            if n.kids[0].kind == "starred":
+                self.invalid(self.line())  # (a starred subject needs a comma: match *a, b:)
             self.expect(":")
             self.expect("nl")
             self.expect("indent")
+            trees: list[Node] = []
+            guards: list[bool] = []
             while not self.eat("dedent"):
                 if self.eat("nl"):
                     continue
                 if self.toks[self.p].text != "case":
                     self.fail("expected 'case'", self.line())
                 pat = mk("pattern", "", self.line(), [])
-                caps: list[str] = []
                 self.p += 1
-                depth = 0
-                while not (depth == 0 and (self.peek() == ":" or self.peek() == "if")):
-                    tk = self.toks[self.p]
-                    if tk.kind == "(" or tk.kind == "[" or tk.kind == "{":
-                        depth += 1
-                    elif tk.kind == ")" or tk.kind == "]" or tk.kind == "}":
-                        depth -= 1
-                    elif tk.kind == "eof":
-                        self.fail("expected ':'", tk.line)
-                    elif tk.kind == "id" and tk.text != "_" and self.toks[self.p - 1].kind != "." and self.ahead() != "(" and self.ahead() != "." and self.ahead() != "=":
-                        caps.append(tk.text)  # (not a class, a dotted value or a keyword of a class pattern)
-                    self.p += 1
-                if self.eat("if"):
+                tree = self.patterns()
+                guards.append(self.eat("if"))
+                if guards[-1]:
                     pat.kids.append(self.named())
                 self.expect(":")
+                caps: list[str] = []
+                self.pnames(tree, caps, pat.kids)
                 pat.s = " ".join(caps)
+                trees.append(tree)
                 n.kids.append(pat)
                 n.kids.append(self.block())
+            # CPython's compiler checks each case's pattern in turn: one that cannot fail must be last
+            # or have a guard (and a last case _ is not compiled as a pattern)
+            last = len(trees) - 1
+            wild = last > 0 and trees[last].kind == "pas" and trees[last].s == "" and len(trees[last].kids) == 0
+            for i in range(last if wild else last + 1):
+                if self.pcheck(trees[i], guards[i] or i == last, []):
+                    break
             out.append(n)
         else:
             self.simple(out)
@@ -513,6 +558,353 @@ class Parser:
                 d -= 1
             j += 1
         return j + 2 < len(self.toks) and self.toks[j - 1].kind == ":" and self.toks[j + 1].kind == "indent" and self.toks[j + 2].text == "case" and j > self.p + 2
+
+    # ---- a case's patterns, parsed as CPython's grammar has them, into nodes of their own: "pas" (a
+    # capture, the wildcard _ or p as name: s the name, "" for _; kids p), "pvalue" (a literal or a
+    # dotted name), "pconst" (None, True or False: s), "pseq", "pstar" (*name or *_: s), "pmap" (kids
+    # each key, then its pattern; s **name), "pclass" (kids the class, its positional patterns,
+    # then "pkw" ones: s the attribute) and "por" (kids the alternatives). A number literal is a
+    # "pnum": s its value's repr(), kids its "num" nodes (see number_repr), the first's s a key that
+    # equal numbers share ("" for a complex number whose real part no float holds)
+    def patterns(self) -> Node:
+        # a case's patterns: a pattern, or an open sequence of them (a, *b)
+        line = self.line()
+        p = self.pstarred()
+        if self.peek() != ",":
+            if p.kind == "pstar":
+                self.invalid(self.line())
+            return p
+        kids = [p]
+        while self.eat(","):
+            if self.peek() == ":" or self.peek() == "if":
+                break
+            kids.append(self.pstarred())
+        return mk("pseq", "", line, kids)
+
+    def pstarred(self) -> Node:
+        # a pattern, or in a sequence *name or *_
+        line = self.line()
+        if not self.eat("*"):
+            return self.pattern()
+        t = self.toks[self.p]
+        if self.peek() != "id" or (t.text != "_" and (self.ahead() == "." or self.ahead() == "(" or self.ahead() == "=")):
+            self.invalid(t.line)
+        self.p += 1
+        return mk("pstar", "" if t.text == "_" else t.text, line, [])
+
+    def pattern(self) -> Node:
+        # alternatives (a | b), maybe bound as a name (... as x)
+        line = self.line()
+        p = self.pclosed()
+        if self.peek() == "|":
+            p = mk("por", "", line, [p])
+            while self.eat("|"):
+                p.kids.append(self.pclosed())
+        if not self.eat("as"):
+            return p
+        t = self.toks[self.p]
+        if self.peek() == "id" and t.text == "_":
+            self.fail("cannot use '_' as a target", t.line)
+        if t.kind == "id" and self.ahead() != "." and self.ahead() != "(" and self.ahead() != "=":
+            self.p += 1
+            return mk("pas", t.text, line, [p])
+        if t.kind != "id" and t.kind in STARTS:
+            self.test()  # (an expression other than a name)
+            self.fail("invalid pattern target", t.line)
+        self.invalid(t.line)
+        return p
+
+    def pclosed(self) -> Node:
+        # a literal, a capture, _, a dotted name's value, (pattern), or a sequence, mapping or class pattern
+        self.deeper()
+        k = self.peek()
+        t = self.toks[self.p]
+        line = t.line
+        p = mk("pseq", "", line, [])
+        if k == "int" or k == "float" or k == "complex" or k == "-" or k == "str" or k == "fstr" or k == "rfstr" or k == "bytes":
+            p = mk("pvalue", "", line, [self.pliteral()])
+        elif k == "None" or k == "True" or k == "False":
+            self.p += 1
+            p = mk("pconst", k, line, [])
+        elif k == "id" and (t.text == "_" or (self.ahead() != "." and self.ahead() != "(" and self.ahead() != "=")):
+            self.p += 1
+            p = mk("pas", "" if t.text == "_" else t.text, line, [])
+        elif k == "id":
+            e = self.pdotted()
+            if self.eat("("):
+                p = self.pclass(e, line)
+            elif e.kind == "attr" and self.peek() != "=":
+                p = mk("pvalue", "", line, [e])
+            else:
+                self.invalid(self.line())
+        elif k == "(" or k == "[":
+            self.p += 1
+            end = ")" if k == "(" else "]"
+            while not self.eat(end):
+                p.kids.append(self.pstarred())
+                if not self.eat(","):
+                    if k == "(" and len(p.kids) == 1:
+                        if p.kids[0].kind == "pstar":
+                            self.invalid(self.line())
+                        p = p.kids[0]  # ((pattern): the pattern)
+                    self.expect(end)
+                    break
+        elif k == "{":
+            p = self.pmapping()
+        else:
+            self.invalid(line)
+        self.nest -= 1
+        return p
+
+    def pdotted(self) -> Node:
+        # a name, or a dotted one
+        t = self.toks[self.p]
+        self.p += 1
+        e = mk("name", t.text, t.line, [])
+        while self.peek() == ".":
+            line = self.line()
+            self.p += 1
+            e = mk("attr", self.expect("id").text, line, [e])
+        return e
+
+    def pliteral(self) -> Node:
+        # a string, or a number: maybe negated, or a real one + or - an imaginary one
+        k = self.peek()
+        if k == "str" or k == "fstr" or k == "rfstr" or k == "bytes":
+            j = self.p
+            while self.toks[j].kind == "str" or self.toks[j].kind == "fstr" or self.toks[j].kind == "rfstr" or self.toks[j].kind == "bytes":
+                if self.toks[j].kind != "str" and self.toks[j].kind != "bytes":
+                    return mk("fstr", "", self.line(), [self.atom()])  # (no constant, even without fields)
+                j += 1
+            return self.atom()
+        line = self.line()
+        neg = self.eat("-")
+        t = self.toks[self.p]
+        if self.peek() != "int" and t.kind != "float" and t.kind != "complex":
+            self.invalid(t.line)
+        self.p += 1
+        re = mk("num", ("-" if neg else "") + t.text, line, [])
+        if t.big != "":
+            # (a literal too big for 64 bits, written in base 16, 8 or 2: keys compare its value)
+            re.s = ("-" if neg else "") + big_key(t.big)
+        if self.peek() != "+" and self.peek() != "-":
+            return mk("pnum", self.number_repr(re, mk("num", "", line, [])), line, [re])
+        if t.kind == "complex":
+            self.fail("real number required in complex literal", t.line)
+        sign = self.toks[self.p].kind
+        self.p += 1
+        u = self.toks[self.p]
+        if self.peek() != "int" and u.kind != "float" and u.kind != "complex":
+            self.invalid(u.line)
+        if u.kind != "complex":
+            self.fail("imaginary number required in complex literal", u.line)
+        self.p += 1
+        im = mk("num", sign + u.text, line, [])
+        return mk("pnum", self.number_repr(re, im), line, [re, im])
+
+    def number_repr(self, re: Node, im: Node) -> str:
+        # repr() of the number literal re, or of the complex number re + im (re - im): both texts as
+        # the lexer gives them, maybe negated (and im "" for none); re.s becomes the value's
+        # floats ("real imag"), or an int's digits, which key equality compares ("" for a real part
+        # that is an int no float holds, which CPython cannot add to an imaginary number)
+        x = re.s[1:] if re.s.startswith("-") else re.s
+        isint = x.startswith("0x") or (not x.endswith("j") and "." not in x and "e" not in x and "E" not in x)
+        if isint and im.s == "":
+            # an int: its digits (as written, but leading zeros), which may not fit in 64 bits (a
+            # float equal to it has the same, see int_digits); or "0x" and its hexadecimal digits,
+            # past 14,285 bits (big_key)
+            x = x if x.startswith("0x") else x.lstrip("0")
+            x = "0" if x == "" else x
+            re.s = ("-" if re.s.startswith("-") and x != "0" else "") + x
+            return re.s
+        if isint and (x.startswith("0x") or float(x) - float(x) != 0.0):
+            # (CPython's compiler leaves the sum or difference an expression, which pcheck rejects)
+            re.s = ""
+            return ""
+        r = 0.0
+        i = 0.0
+        if x.endswith("j"):
+            i = -float(x[:-1]) if re.s.startswith("-") else float(x[:-1])
+            r = -0.0 if re.s.startswith("-") else 0.0  # (-1j is complex(-0.0, -1.0))
+        else:
+            r = -float(x) if re.s.startswith("-") else float(x)
+        if im.s != "":
+            # real + imaginary: CPython adds them as complex numbers, (r + 0.0, 0.0 + i)
+            v = float(im.s[1:-1])
+            r = r + 0.0 if im.s.startswith("+") else r - 0.0
+            i = 0.0 + v if im.s.startswith("+") else 0.0 - v
+        if not x.endswith("j") and im.s == "":
+            # a float: equal to the int it holds, as a key
+            re.s = int_digits(r) if int_digits(r) != "" else repr(r) + " 0.0"
+            return repr(r)
+        re.s = int_digits(r) if i == 0.0 and int_digits(r) != "" else repr(r + 0.0) + " " + repr(i + 0.0)
+        ri = repr(i)
+        ri = ri[:-2] if ri.endswith(".0") else ri
+        if r == 0.0 and not repr(r).startswith("-"):
+            return ri + "j"
+        rr = repr(r)
+        return "(" + (rr[:-2] if rr.endswith(".0") else rr) + ("" if ri.startswith("-") else "+") + ri + "j)"
+
+    def pclass(self, cls: Node, line: int) -> Node:
+        # Class(positional patterns, attribute=pattern ...) after its '('
+        p = mk("pclass", "", line, [cls])
+        kw = False
+        while not self.eat(")"):
+            t = self.toks[self.p]
+            if t.kind == "id" and self.ahead() == "=":
+                self.p += 2
+                p.kids.append(mk("pkw", t.text, t.line, [self.pattern()]))
+                kw = True
+            else:
+                q = self.pattern()
+                if kw:
+                    self.fail("positional patterns follow keyword patterns", q.line)
+                p.kids.append(q)
+            if not self.eat(","):
+                self.expect(")")
+                break
+        return p
+
+    def pmapping(self) -> Node:
+        # {key: pattern, ..., **name}: a key is a literal, None, True, False or a dotted name
+        p = mk("pmap", "", self.line(), [])
+        self.p += 1
+        while not self.eat("}"):
+            if self.eat("**"):
+                t = self.toks[self.p]
+                if self.peek() != "id" or t.text == "_" or self.ahead() == "." or self.ahead() == "(" or self.ahead() == "=":
+                    self.invalid(t.line)
+                self.p += 1
+                p.s = t.text
+                self.eat(",")
+                self.expect("}")
+                break
+            k = self.peek()
+            if k == "None" or k == "True" or k == "False":
+                p.kids.append(mk(k, "", self.line(), []))
+                self.p += 1
+            elif k == "id":
+                e = self.pdotted()
+                if e.kind != "attr":
+                    self.invalid(self.line())
+                p.kids.append(e)
+            else:
+                p.kids.append(self.pliteral())
+            self.expect(":")
+            p.kids.append(self.pattern())
+            if not self.eat(","):
+                self.expect("}")
+                break
+        return p
+
+    def pnames(self, p: Node, caps: list[str], reads: list[Node]) -> None:
+        # the names that pattern p's captures bind, in order, and the names, dotted names and f-strings
+        # it reads (a value, a class, a key)
+        k = p.kind
+        if k == "pvalue" or k == "pclass":
+            if p.kids[0].kind == "name" or p.kids[0].kind == "attr" or p.kids[0].kind == "fstr":
+                reads.append(p.kids[0])
+            for q in p.kids[1:]:
+                self.pnames(q.kids[0] if q.kind == "pkw" else q, caps, reads)
+        elif k == "pmap":
+            for i in range(0, len(p.kids), 2):
+                if p.kids[i].kind == "attr" or p.kids[i].kind == "fstr":
+                    reads.append(p.kids[i])
+                self.pnames(p.kids[i + 1], caps, reads)
+        else:
+            for q in p.kids:
+                self.pnames(q, caps, reads)
+        if (k == "pas" or k == "pstar" or k == "pmap") and p.s != "":
+            caps.append(p.s)
+
+    def pcheck(self, p: Node, irrefutable: bool, stores: list[str]) -> bool:
+        # CPython's compiler, compiling pattern p (compiler_pattern), where p may be a capture or _
+        # (irrefutable) and the names in stores are bound already: the first error it reports there
+        # (later(); then True)
+        k = p.kind
+        if k == "pas" and len(p.kids) == 0 and not irrefutable:
+            self.later(2, f"name capture '{p.s}' makes remaining patterns unreachable" if p.s != "" else "wildcard makes remaining patterns unreachable", p.line)
+            return True
+        if k == "pas" or k == "pstar":
+            return (len(p.kids) > 0 and self.pcheck(p.kids[0], irrefutable, stores)) or self.pstore(p.s, p.line, stores)
+        if k == "pvalue" and (p.kids[0].kind == "fstr" or (p.kids[0].kind == "pnum" and p.kids[0].kids[0].s == "")):
+            self.later(2, "patterns may only match literals and attribute lookups", p.line)
+            return True
+        if k == "pseq":
+            star = False
+            for q in p.kids:
+                if q.kind == "pstar" and star:
+                    self.later(2, "multiple starred names in sequence pattern", p.line)
+                    return True
+                star = star or q.kind == "pstar"
+        if k == "pmap":
+            seen: list[str] = []
+            for i in range(0, len(p.kids), 2):
+                key = p.kids[i]
+                if key.kind == "fstr" or (key.kind == "pnum" and key.kids[0].s == ""):
+                    self.later(2, "mapping pattern keys may only match literals and attribute lookups", p.line)
+                    return True
+                if key.kind != "attr":
+                    # a constant: equal keys are an error (1, 1.0 and True; but no other str
+                    # equals a str, no other bytes a bytes)
+                    v = key.kids[0].s if key.kind == "pnum" else ("1" if key.kind == "True" else "0" if key.kind == "False" else key.kind + ":" + key.s)
+                    if v in seen:
+                        r = key.s if key.kind == "pnum" else repr(key.s) if key.kind == "str" else bytes_repr(key.s) if key.kind == "bytes" else key.kind
+                        self.later(2, f"mapping pattern checks duplicate key ({r})", p.line)
+                        return True
+                    seen.append(v)
+            for i in range(1, len(p.kids), 2):
+                if self.pcheck(p.kids[i], True, stores):
+                    return True
+            return self.pstore(p.s, p.line, stores)
+        if k == "pclass":
+            kws = [q for q in p.kids if q.kind == "pkw"]
+            for i in range(len(kws)):
+                if kws[i].s == "__debug__":
+                    self.later(2, "cannot assign to __debug__", kws[i].kids[0].line)
+                    return True
+                for j in range(i + 1, len(kws)):
+                    if kws[j].s == kws[i].s:
+                        self.later(2, f"attribute name repeated in class pattern: {kws[i].s}", kws[j].kids[0].line)
+                        return True
+            for q in p.kids[1:]:
+                if self.pcheck(q.kids[0] if q.kind == "pkw" else q, True, stores):
+                    return True
+            return False
+        if k == "por":
+            # each alternative but the last must be able to fail, and all bind the same names
+            control: list[str] = []
+            for i in range(len(p.kids)):
+                alt: list[str] = []
+                if self.pcheck(p.kids[i], irrefutable and i == len(p.kids) - 1, alt):
+                    return True
+                if i == 0:
+                    control = alt
+                elif len(alt) != len(control) or len([nm for nm in control if nm not in alt]) > 0:
+                    self.later(2, "alternative patterns bind different names", p.line)
+                    return True
+            for nm in control:
+                if nm in stores:
+                    self.later(2, f"multiple assignments to name '{nm}' in pattern", p.line)
+                    return True
+                stores.append(nm)
+            return False
+        for q in p.kids if k == "pseq" else p.kids[:0]:
+            if self.pcheck(q, True, stores):
+                return True
+        return False
+
+    def pstore(self, name: str, line: int, stores: list[str]) -> bool:
+        # a pattern binds name ("" for none): CPython's compiler checks that nothing else in it does
+        if name == "__debug__":
+            self.later(2, "cannot assign to __debug__", line)
+            return True
+        if name != "" and name in stores:
+            self.later(2, f"multiple assignments to name '{name}' in pattern", line)
+            return True
+        if name != "":
+            stores.append(name)
+        return False
 
     def with_parens(self) -> bool:
         # with (a as x, b as y): parenthesized items, told from a parenthesized expression by an
@@ -688,11 +1080,16 @@ class Parser:
             name = self.expect("id").text
             if name in out:
                 self.later(0, f"duplicate type parameter '{name}'", at)
+            if name == "__classdict__":  # (CPython's symbol table, which keeps the name for class scopes)
+                self.later(0, "reserved name '__classdict__' cannot be used for type parameter", at)
             self.no_debug(name, at)
             out.append(name)
             kinds.append("**" if kind == "ParamSpec" else "*" if kind == "TypeVarTuple" else "")
+            colon = self.line()
             if self.eat(":"):
                 b = self.test()
+                if kind != "TypeVar":  # (CPython's grammar: only a TypeVar has a bound or constraints)
+                    self.fail(f"cannot use {'constraints' if b.kind == 'tuple' else 'bound'} with {kind}", colon)
                 self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
                 self.dropped(line, b)
             if self.eat("="):
@@ -1001,7 +1398,7 @@ class Parser:
         self.expect("import")
         paren = self.eat("(")
         while True:
-            x = "*" if self.eat("*") else self.expect("id").text
+            x = "*" if not paren and len(n.kids) == 0 and self.eat("*") else self.expect("id").text  # (a * alone, unparenthesized)
             name = x
             if x != "*" and self.eat("as"):
                 name = self.expect("id").text
