@@ -84,6 +84,67 @@ class PartsTests(unittest.TestCase):
             self.assertIn("no parts", coverage_report.parts_of(d)[1][0])
 
 
+DIFF = """diff --git a/src/m.py b/src/m.py
+--- a/src/m.py
++++ b/src/m.py
+@@ -10,0 +11,3 @@ def f():
++a
++b
++c
+@@ -20 +23 @@ def g():
+-x
++y
+@@ -30,2 +33,0 @@
+-gone
+-gone
+diff --git a/src/new.py b/src/new.py
+new file mode 100644
+--- /dev/null
++++ b/src/new.py
+@@ -0,0 +1,2 @@
++n
++m
+diff --git a/src/old.py b/src/old.py
+deleted file mode 100644
+--- a/src/old.py
++++ /dev/null
+@@ -1,2 +0,0 @@
+-a
+-b
+"""
+
+
+class ChangedTests(unittest.TestCase):
+    def test_diff(self):
+        # added and replaced lines count, by their new numbers; deleted ones and deleted files none
+        self.assertEqual(coverage_report.parse_diff(DIFF), {"src/m.py": {11, 12, 13, 23}, "src/new.py": {1, 2}})
+
+    def test_spans(self):
+        self.assertEqual(coverage_report.spans([9, 1, 2, 3, 7, 10]), "1-3, 7, 9-10")
+        self.assertEqual(coverage_report.spans([]), "")
+
+    def test_hosted(self):
+        files = {"src/m.py": {"executed_lines": [10, 11, 12, 23], "missing_lines": [13, 40],
+                              "executed_branches": [[11, 12], [23, 24]], "missing_branches": [[11, 13], [23, -20], [40, 41]]},
+                 "src/other.py": {"executed_lines": [1], "missing_lines": [], "executed_branches": [], "missing_branches": []}}
+        rows, st, br = coverage_report.hosted_changed(files, {"src/m.py": {11, 12, 13, 14, 23}, "src/gone.py": {1}})
+        self.assertEqual(st, [3, 4])           # 11, 12, 23 run, 13 not; 14 is no statement
+        self.assertEqual(br, [2, 4])           # from 11 and 23: two taken, two not
+        self.assertEqual(rows, [("src/m.py", "13", "11->13, 23->exit")])
+
+    def test_runtime(self):
+        records = {"runtime.c": {"lines": {5: 3, 6: 0, 7: 0, 9: 1}, "branches": [(5, True), (5, False), (9, True), (9, True)],
+                                 "functions": {}, "starts": {}}}
+        rows, ln, br = coverage_report.runtime_changed(records, {"runtime.c": {5, 6, 7, 8, 9}, "ryu/x.h": {1}})
+        self.assertEqual(ln, [2, 4])
+        self.assertEqual(br, [3, 4])
+        self.assertEqual(rows, [("runtime.c", "6-7", "5 (1 of 2)")])
+        section = coverage_report.changed_section("main", "0123456789abcdef", rows, ln, br, "Changed lines of code", "Lines not run")
+        self.assertIn("### Changed since main (merge base `0123456789ab`)", section)
+        self.assertIn("Changed lines of code: 2 of 4 run (50.0%); their branches: 3 of 4 taken (75.0%).", section)
+        self.assertIn("| `runtime.c` | 6-7 | 5 (1 of 2) |", section)
+
+
 LCOV = """SF:runtime.c
 FN:3,a
 FN:8,b

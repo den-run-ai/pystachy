@@ -22,7 +22,8 @@
 # usage: tools/runtime_coverage.sh [FILE...]   env: COMPILER (default ./pystachy), PY (default python3:
 #        the FFI suite's CPython, and the report's), PYSTACHY_LLVM (its llvm-profdata, llvm-cov and
 #        clang's profile runtime, which Ubuntu's libclang-rt-18-dev holds); RUNTIME_COVERAGE_SUITES
-#        (default "corpus ffi", or corpus alone for FILEs)
+#        (default "corpus ffi", or corpus alone for FILEs); COVERAGE_BASE=REF, the summary also lists
+#        the C code changed since REF's merge base with HEAD that the programs did not run
 cd "$(dirname "$0")/.." || exit 1
 PYS=${COMPILER:-./pystachy}
 PY=${PY:-python3}

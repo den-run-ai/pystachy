@@ -23,7 +23,8 @@
 #        (pip install -r tools/requirements-dev.txt); COVERAGE_SUITES, the suites to run (default
 #        "corpus ffi cache unit ir", or corpus alone for FILEs); COVERAGE_SHARD=I/N, the corpus cases I,
 #        I + N, I + 2N... alone, as tests/verify.sh's shards are; COVERAGE_REPORT=0, no report (CI
-#        measures the parts in jobs of their own, then combines them)
+#        measures the parts in jobs of their own, then combines them); COVERAGE_BASE=REF, the summary
+#        also lists the code changed since REF's merge base with HEAD that no suite ran
 cd "$(dirname "$0")/.." || exit 1
 R=$(pwd)
 PY=${PY:-python3}

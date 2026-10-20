@@ -6,15 +6,22 @@
 # runtime's C code under clang's source-based coverage, while the native compiler's programs run the
 # corpus and the FFI suite. A failed test, or a process that left no data, fails a run; no percentage
 # does, and nothing waits for it. Daily and on demand, and on the pull requests and pushes to main that
-# change its setup or the suites' runners. Each run on main also commits its results to the badges
-# branch, which the README's badges read (coverage.json and coverage.md, runtime-coverage.json and
-# runtime-coverage.md), from a job of its own, which may write and runs no test.
+# change its setup or the suites' runners. A pull request's run, and one run by hand (input base, by
+# default origin/main), also lists the changed code that no suite ran (COVERAGE_BASE), for review.
+# Each run on main also commits its results to the badges branch, which the README's badges read
+# (coverage.json and coverage.md, runtime-coverage.json and runtime-coverage.md), from a job of its
+# own, which may write and runs no test.
 name: Coverage
 
 on:
   schedule:
     - cron: '41 5 * * *'   # daily, 05:41 UTC
   workflow_dispatch:
+    inputs:
+      base:
+        description: The git ref whose changes the summaries list the coverage of (empty for none)
+        default: origin/main
+        required: false
   push:
     branches: [main]
     paths:
@@ -109,6 +116,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0   # (the merge base of the changes the summary lists)
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -123,6 +131,8 @@ jobs:
           merge-multiple: true
 
       - name: tools/coverage_report.py (the parts combined)
+        env:
+          COVERAGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base || '' }}
         run: python3 tools/coverage_report.py
 
       - name: Job summary
@@ -153,6 +163,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -167,6 +178,7 @@ jobs:
       - name: tools/runtime_coverage.sh (make runtime-coverage)
         env:
           PY: python3
+          COVERAGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base || '' }}
         run: tools/runtime_coverage.sh
 
       - name: Job summary

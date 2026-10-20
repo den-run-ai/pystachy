@@ -231,6 +231,14 @@ code that only runs outside these suites, which the per-suite figures and the re
 help tell apart. Coverage is advisory: no check requires it and no change has to raise it, while a
 fix still needs a regression test that fails without it ([contributor guide](../CONTRIBUTING.md#validation)).
 
+What a change adds is reviewed where it is: with `COVERAGE_BASE=REF` (for example
+`make coverage COVERAGE_BASE=origin/main`), either summary also lists the code changed since the
+merge base of `REF` and `HEAD`, uncommitted changes included, that no suite ran: its statements or
+lines not run and its branches not taken. Review those before any threshold on the total. The
+Coverage workflow lists them for a pull request that runs it and for a run by hand on a branch
+(its `base` input, `origin/main` by default). A selection (`FILES=...`) runs less of the suites, so
+it lists more.
+
 The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
 demand, and on pull requests and pushes to `main` that change its setup or the suites' runners.
 The compiler's coverage runs in four parallel jobs (the corpus in three shards; the FFI,

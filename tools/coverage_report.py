@@ -15,6 +15,10 @@ never on a percentage.
 The second form writes the summary.md and badge.json of tools/runtime_coverage.sh's DIR from llvm-cov's
 coverage.json and lcov.info there, and its suites.tsv: lines, branches, functions and regions for each
 file, and for each section of runtime.c (its "/* ---------- NAME" comments).
+
+With COVERAGE_BASE set to a git ref (origin/main, a pull request's base), either summary also lists the
+code that changed since the merge base of that ref and HEAD (the working tree's, uncommitted changes
+included) and that no suite ran: its statements (lines) not run and its branches not taken.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ import glob
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -59,6 +64,103 @@ def badge(path: str, label: str, first: tuple[str, int, int], second: tuple[str,
     message = ", ".join(f"{pct(c, t)} {name}" for name, c, t in (first, second))
     with open(path, "w", encoding="utf-8") as f:
         f.write(json.dumps({"schemaVersion": 1, "label": label, "message": message, "color": color}) + "\n")
+
+
+def parse_diff(text: str) -> dict[str, set[int]]:
+    """The new side's lines of each file that a `git diff -U0` changes (added or replaced)."""
+    changed: dict[str, set[int]] = {}
+    name = ""
+    for line in text.split("\n"):
+        if line.startswith("+++ "):
+            name = line[6:] if line.startswith("+++ b/") else ""  # (+++ /dev/null: a deleted file)
+        elif line.startswith("@@ ") and name != "":
+            m = re.match(r"@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+            if m:
+                start = int(m.group(1))
+                changed.setdefault(name, set()).update(range(start, start + int(m.group(2) or "1")))
+    return changed
+
+
+def changed_lines(base: str, paths: list[str]) -> tuple[str, dict[str, set[int]]]:
+    """(the merge base of base and HEAD, the lines of paths changed since it in the working tree)."""
+    mb = subprocess.run(["git", "merge-base", base, "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    if mb.returncode != 0:
+        raise SystemExit(f"tools/coverage_report.py: COVERAGE_BASE={base}: no merge base with HEAD {mb.stderr.strip()}")
+    commit = mb.stdout.strip()
+    diff = subprocess.run(["git", "diff", "-U0", "--no-color", "--no-ext-diff", commit, "--"] + paths, cwd=ROOT,
+                          capture_output=True, text=True, check=True)
+    return commit, parse_diff(diff.stdout)
+
+
+def spans(lines: list[int]) -> str:
+    """Line numbers as runs: [1, 2, 3, 7] is "1-3, 7"."""
+    out: list[str] = []
+    for n in sorted(lines):
+        if out and n == int(out[-1].split("-")[-1]) + 1:
+            out[-1] = out[-1].split("-")[0] + f"-{n}"
+        else:
+            out.append(str(n))
+    return ", ".join(out)
+
+
+def changed_section(base: str, commit: str, rows: list[tuple[str, str, str]], st: list[int], br: list[int], what: str, column: str) -> list[str]:
+    """The summary's lines on changed code: totals (what: "Changed statements"), then a row for each
+    file whose changed code did not all run (column: "Statements not run")."""
+    out = ["", f"### Changed since {base} (merge base `{commit[:12]}`)", "",
+           f"{what}: {st[0]} of {st[1]} run ({pct(st[0], st[1])}); their branches: {br[0]} of {br[1]} taken"
+           f" ({pct(br[0], br[1])})."]
+    if rows:
+        out += ["", f"| File | {column} | Branches not taken |", "|---|---|---|"]
+        out += [f"| `{name}` | {a or '-'} | {b or '-'} |" for name, a, b in rows]
+    return out
+
+
+def hosted_changed(files: dict, changed: dict[str, set[int]]) -> tuple[list[tuple[str, str, str]], list[int], list[int]]:
+    """coverage.py's report's files against the changed lines: (rows, [run, statements], [taken, branches])."""
+    rows: list[tuple[str, str, str]] = []
+    st = [0, 0]
+    br = [0, 0]
+    for name in sorted(changed):
+        f = files.get(name)
+        if f is None:
+            continue  # (no statement: an empty module)
+        lines = changed[name]
+        missed = sorted(set(f["missing_lines"]) & lines)
+        st[0] += len(set(f["executed_lines"]) & lines)
+        st[1] += len((set(f["executed_lines"]) | set(f["missing_lines"])) & lines)
+        notaken = [a for a in f["missing_branches"] if a[0] in lines]
+        br[0] += len([a for a in f["executed_branches"] if a[0] in lines])
+        br[1] += len([a for a in f["executed_branches"] if a[0] in lines]) + len(notaken)
+        if missed or notaken:
+            arcs = ", ".join(f"{a}->{b if b > 0 else 'exit'}" for a, b in notaken)
+            rows.append((name, spans(missed), arcs))
+    return rows, st, br
+
+
+def runtime_changed(records: dict, changed: dict[str, set[int]]) -> tuple[list[tuple[str, str, str]], list[int], list[int]]:
+    """lcov.info's records against the changed lines: (rows, [run, lines], [taken, branches])."""
+    rows: list[tuple[str, str, str]] = []
+    ln = [0, 0]
+    br = [0, 0]
+    for name in sorted(changed):
+        r = records.get(name)
+        if r is None:
+            continue  # (compiled into no object: a header nothing includes)
+        lines = changed[name]
+        code = [n for n in r["lines"] if n in lines]
+        missed = sorted(n for n in code if r["lines"][n] == 0)
+        ln[0] += len(code) - len(missed)
+        ln[1] += len(code)
+        per: dict[int, list[bool]] = {}
+        for n, taken in r["branches"]:
+            if n in lines:
+                per.setdefault(n, []).append(taken)
+        br[0] += sum(sum(t) for t in per.values())
+        br[1] += sum(len(t) for t in per.values())
+        notaken = ", ".join(f"{n} ({len(t) - sum(t)} of {len(t)})" for n, t in sorted(per.items()) if not all(t))
+        if missed or notaken:
+            rows.append((name, spans(missed), notaken))
+    return rows, ln, br
 
 
 def parts_of(d: str) -> tuple[list[dict], list[str]]:
@@ -172,7 +274,12 @@ def hosted(d: str) -> int:
     lines.append(f"| **all** | | | **{procs}** | | **{pct(*st)}** | **{pct(*br)}** |")
     if others:
         lines += ["", f"The other suites run {extra[0]} statements and {extra[1]} branches that the corpus does not."]
-    print("\n".join(lines[2:]))  # (the totals and the suites, for the log)
+    base = os.environ.get("COVERAGE_BASE", "")
+    if base != "":
+        commit, changed = changed_lines(base, ["src/pystachy_compiler"])
+        rows, cst, cbr = hosted_changed(whole["files"], changed)
+        lines += changed_section(base, commit, rows, cst, cbr, "Changed statements", "Statements not run")
+    print("\n".join(lines[2:]))  # (the totals, the suites and the changed code, for the log)
     lines += [
         "",
         "| Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total |"
@@ -250,6 +357,11 @@ def runtime(d: str, rev: str, dirty: str, source: str = os.path.join(ROOT, "runt
         "|---|---|---|---:|",
     ]
     lines += [f"| {n} | {RUNTIME_SUITES[n]} | {r} | {s} s |" for n, r, s in suites]
+    base = os.environ.get("COVERAGE_BASE", "")
+    if base != "":
+        commit, changed = changed_lines(base, ["runtime.c", "pyembed.c", "pyext.c", "ryu"])
+        rows, cln, cbr = runtime_changed(records, changed)
+        lines += changed_section(base, commit, rows, cln, cbr, "Changed lines of code", "Lines not run")
     print("\n".join(lines[2:]))
     lines += [
         "",
