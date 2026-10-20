@@ -72,6 +72,9 @@ templates create ordinary compiled classes for their field types. The
 
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
+A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
+each distinct call once: pairs of classes that call one method instance, on the same
+operand, share its code.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
 

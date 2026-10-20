@@ -180,6 +180,14 @@ def gen_cbr(self, c: str, a: str, b: str) -> None:
     self.add(i)
     self.term = True
 
+def gen_switch(self, v: Val, cases: list[str], to: list[str], other: str) -> None:
+    # go to to[j] where int v is cases[j], distinct int literals, else to other
+    i = Ins("switch", "", "")
+    i.a = [v] + [Val(c, "int") for c in cases]
+    i.b = [other] + to
+    self.add(i)
+    self.term = True
+
 def gen_ret_(self, v: Val) -> None:
     # return v (of type None: return nothing)
     i = Ins("ret", "", "")
