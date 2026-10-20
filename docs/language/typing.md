@@ -534,10 +534,11 @@ Method calls dispatch on the union member and use ordinary native class dispatch
 within that member's family. Every member must declare the requested method, and
 all implementations must return the same static type. Positional and keyword
 arguments run once; each selected method uses its own defaults. A subclass may be
-stored under one base member, but a union cannot contain overlapping class families
-such as `Base | Child`. `isinstance()` checks the actual subclass; narrowing to a
-whole declared member is supported, while narrowing a base member to a subclass is
-not yet implemented.
+stored under one base member, and an annotation leaves out a member derived from another,
+whose type holds its objects: `Base | Child` and `datetime | date` are the base class, and
+`Base | Child | Other` is `Base | Other`. `isinstance()` checks the actual subclass; narrowing to
+a whole declared member is supported, while narrowing a base member to a subclass is not yet
+implemented.
 
 Reference unions cannot mix with scalar or container members or exception types.
 Callable fields, bound-method extraction and unpacked method arguments

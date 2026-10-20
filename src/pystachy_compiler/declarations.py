@@ -185,7 +185,8 @@ def gen_ann(self, n: Node) -> str:
         for t in ts:
             if t.startswith("!"):
                 return t
-        return self.union_type(ts)  # A | B
+        fam = self.class_family(ts)
+        return fam if fam != "" else self.union_type(ts)  # A | B
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and (is_excname(n.kids[1].s) or (n.kids[1].s in self.classes and self.classes[n.kids[1].s].exc != "")):
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
@@ -256,12 +257,23 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
-            return self.union_type(us)
+            fam = self.class_family(us)
+            return fam if fam != "" else self.union_type(us)
     if self.typing_ref(n) == "Final":
         return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def gen_class_family(self, ts: list[str]) -> str:
+    # the type of an annotation A | B ... whose members include classes of the program derived
+    # from another member, whose type holds their objects too: the union of the others
+    # (datetime | date is date, Base | Child | Other is Base | Other); "" where there are none
+    cs = [t for t in ts if t in self.classes and self.classes[t].exc == ""]
+    drop = [c for c in cs if len([b for b in cs if b != c and self.derives(c, b)]) > 0]
+    if len(drop) == 0:
+        return ""
+    return self.union_type([t for t in ts if t not in drop])
 
 def gen_ann_base(self, b: Node) -> str:
     # what b of annotation b[...] is (a name or attribute): list, dict, tuple, set, frozenset, or

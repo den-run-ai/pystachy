@@ -1,0 +1,4 @@
+child True
+base False
+child other base none
+[exit 0]

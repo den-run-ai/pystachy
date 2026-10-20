@@ -391,6 +391,7 @@ from src.pystachy_compiler.declarations import (
     gen_any_variables as declarations_any_variables,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
+    gen_class_family as declarations_class_family,
     gen_class_params as declarations_class_params,
     gen_class_tvars as declarations_class_tvars,
     gen_ctype as declarations_ctype,
@@ -2019,6 +2020,9 @@ class Gen:
 
     def union_members(self, n: Node, out: list[Node]) -> list[Node]:
         return declarations_union_members(self, n, out)
+
+    def class_family(self, ts: list[str]) -> str:
+        return declarations_class_family(self, ts)
 
     def has_path(self, n: Node) -> bool:
         return declarations_has_path(self, n)
