@@ -308,6 +308,45 @@ def gen_dyn_union_box(self, v: Val) -> Val:
     return Val(self.phi(ph), DYN)
 
 
+def gen_dyn_value_type(self, v: Val) -> str:
+    # the DynType of typed value v's exact type, as type(v) compares with an Any value's
+    # (refl_dyn_type_cmp): its box's; else a list's, a dict's or a tuple's for one whose items no
+    # box holds, null where no box holds a value of its type (bytes, a set), and for an optional
+    # or a union whose value may be one of these, the one of the value it holds: None's for None,
+    # a member's by its tag, as dyn_union_box selects the member's box
+    t = self.rec_type(v.t)
+    if self.dyn_boxable(t) == "":
+        return self.dyn_typeof(self.dyn_box(v))
+    if is_list(t) or is_dict(t) or is_tuple(t) or is_vtuple(t):
+        return self.dyn_type("list[dyn]" if is_list(t) else "dict[dyn,dyn]" if is_dict(t) else "vtuple[dyn]")
+    if not is_union(unopt(t)) and not (is_opt(t) and t != NONEVAR):
+        return "null"
+    u = Val(v.v, unopt(t))
+    ms = umembers(u.t) if is_union(u.t) else [u.t]
+    end = self.label()
+    ph = Ins("phi", "dyntype", "")
+    if is_opt(t) or len([m for m in ms if m in self.classes]) > 0:
+        some = self.label()
+        self.incoming(ph, self.dyn_type("None"), self.cur)
+        self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+        self.place(some)
+    for j in range(len(ms)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(ms) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(u, [ms[j]], False), hit, miss)
+        self.place(hit)
+        r = self.dyn_value_type(self.uget(u, ms[j]) if is_union(u.t) else u)
+        self.incoming(ph, r, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return self.phi(ph)
+
+
 def gen_dyn_tagged_type(self, v: Val) -> str:
     # the DynType of the object v of a class of a hierarchy: its concrete class's, by its tag
     # (None, null, has no tag: pys_dyn_ref boxes it as None whatever DynType it is given)

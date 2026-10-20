@@ -103,6 +103,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_union_box as dynamic_dyn_union_box,
     gen_dyn_untyped_empty as dynamic_dyn_untyped_empty,
     gen_dyn_untyped_items as dynamic_dyn_untyped_items,
+    gen_dyn_value_type as dynamic_dyn_value_type,
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
@@ -1440,6 +1441,9 @@ class Gen:
 
     def dyn_unboxable(self, t: str) -> bool:
         return dynamic_dyn_unboxable(self, t)
+
+    def dyn_value_type(self, v: Val) -> str:
+        return dynamic_dyn_value_type(self, v)
 
     def dyn_untyped_empty(self, e: Node) -> bool:
         return dynamic_dyn_untyped_empty(self, e)

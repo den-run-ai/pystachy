@@ -280,19 +280,14 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
 def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
     # refl_type_cmp where a type(x) operand's x is an Any value: the DynTypes of the two exact
     # types, as CPython compares type(x) (a bool's is no int's, a subclass's object's no base's):
-    # a box's, the one of a typed value's type, of a class or builtin type named, or null where
-    # no box holds a value of that type (an exception, a set, bytes), which no DynType is
+    # a box's, the one of a typed value's type by the value it holds (dyn_value_type: None's for
+    # an optional list that is None), of a class or builtin type named, or null where no box
+    # holds a value of that type (an exception, a set, bytes), which no DynType is
     ts: list[str] = []
     for k in n.kids:
         x = self.refl_typeof(k)
         if x is not None:
-            v = self.expr(x, "")
-            t = self.rec_type(v.t)
-            if self.dyn_boxable(t) == "":
-                ts.append(self.dyn_typeof(self.dyn_box(v)))
-            else:
-                b = "list[dyn]" if is_list(t) else "dict[dyn,dyn]" if is_dict(t) else "vtuple[dyn]" if is_tuple(t) or is_vtuple(t) else ""
-                ts.append(self.dyn_type(b) if b != "" else "null")
+            ts.append(self.dyn_value_type(self.expr(x, "")))
         elif k.kind == "name" and ((k.s in self.classes and k.s not in self.ltype and self.classes[k.s].exc != "") or (is_excname(k.s) and not self.bound(k.s))):
             ts.append("null")  # (an exception class: no Any value is an exception yet)
         elif (k.kind == "name" and k.s not in self.ltype and k.s not in self.gtypes) or (k.kind == "call" and len(k.kids) == 2 and k.kids[1].kind == "None"):
