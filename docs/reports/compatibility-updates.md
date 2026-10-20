@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `727b88ce5e12dc5d7b569aba0c0c1e2b34360df5`.
+**Latest evaluated main:** `5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4233,5 +4233,116 @@ Historical implementation-head CI, Lint, Packages and Installation passed
 ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39361584023)); audit-head
 checks are read separately after publication. Full local `make verify`, CPython
 regrtest and a broad PyPI/NumPy census were not run. Native imports, executed
+APIs, adapted workloads and hosted compilation remain distinct. Dated baseline
+reports/JSON and concurrent edits are preserved.
+
+## 2026-10-20 — #732: syntax rejection and continuation correctness
+
+Evaluated [main `5a915947`](https://github.com/den-run-ai/pystachy/commit/5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3),
+the sole merge after `727b88ce`: [#732](https://github.com/den-run-ai/pystachy/pull/732).
+Verified the merge is in main's history and its tree equals implementation head
+`08fe3c50d5345cbdb3b52c2cf69587f0723e2603`. The 53-file diff changes the lexer,
+parser, syntax documentation, 40 rejection fixtures, four positive programs and
+recordings, and the existing upstream-derived type-parameter program's comments.
+No runtime or library implementation changed.
+
+A fresh **CPython 3.13.16 / LLVM 18.1.3** three-stage bootstrap reaches compiler
+and runtime fixed points of **677,819 / 18,709 IR lines**. Compiler-build and
+evaluated-source revisions both equal `5a915947`; compiler SHA-256 is
+`31653d9c17c2c595d0036636d8eecd53ff1b9fdc2808d19bd3afd3b5b2a673b1`.
+[Evidence and replay scripts](compatibility-2026-10-20-syntax-validation.json)
+retain the previous compiler identity, exact programs, input hashes, commands,
+environments, outputs and diagnostic boundaries.
+
+### Measured corrections
+
+- **A silent continuation error is corrected.** The independent program
+  `x = 0; if x: ...` with a line-start backslash continuing into the indented
+  `x = 2` assignment prints `2` with the previous native compiler, but `0` with
+  CPython and merged main. All **six new executions** (ordinary, GC-stressed and
+  optimization-off, JIT/AOT) match CPython. The complete multiline program is in
+  the evidence; the new retained fixtures also exercise blank/comment continuation
+  lines, indentation columns and an empty function block.
+- **58 independent syntax programs reduce acceptance mismatches from 33 to 2.**
+  They cover sequence, mapping, class, OR/as/capture patterns, repeated names,
+  unreachable cases and guards, numeric/boolean/complex/string/bytes duplicate
+  keys, mixed-base large integer keys, complex-real overflow, type-parameter
+  bounds and import-star placement. The two remaining mismatches are the known
+  plain-TypeVar and ParamSpec starred defaults, tracked by
+  [#541](https://github.com/den-run-ai/pystachy/issues/541). This is **31 corrected
+  acceptance outcomes in this matrix**, not a count of newly compatible packages.
+- Equal keys written in different bases are rejected for **2^64, 2^1000, 2^4001,
+  2^14285 and 2^15000**; adjacent distinct values remain accepted in
+  unused functions. This independently covers the review's missing duplicate
+  detection above 1,000 written digits. At the two largest values CPython raises
+  `ValueError` because printing the key exceeds its 4,300-decimal-digit limit;
+  Pystachy reports the duplicate in hexadecimal. Both reject, but their diagnostics
+  are intentionally different. No native arbitrary-precision arithmetic is implied.
+
+### Retained checks and diagnostic precision
+
+**403 selected syntax/generic/import cases pass 689 checks per configuration**:
+native, program-GC-stressed, optimization-off and hosted compiler, **2,756 total**.
+These include execution, expected rejection and parse-only checks, not 2,756
+unique upstream tests. The five changed positive programs additionally pass
+**14 UBSan/GC checks** (including syntax checks). All five CPython recordings
+match, and the IR checker plus LLVM assembler accept 51 selected positive programs.
+Runtime contracts still pass: **460 entries, 70 exception classes, 171 functions**.
+Four adapted iniconfig/tomli-w/roman/pylev consumers pass **8 JIT/AOT smoke checks**.
+
+CPython rejects all **40 new negative fixtures** and accepts the five changed
+positive files. `tools/syntax_sweep.py` compares line/message as well as acceptance:
+**43/45 agree exactly**. The two differences are a less-specific `expected an
+indented block` message (same line) and the huge-key rendering exception described
+above. Neither is an acceptance regression; exact diagnostic parity is not claimed.
+
+The **3,311-program old/new comparison** has **3,269 identical results** and
+**42 changes**: 34 accepted-to-rejected programs, six rejection-message changes,
+one rejected-to-accepted valid continuation program, and one corrected continuation
+IR result. **Every newly rejected program was independently confirmed invalid by
+CPython.** All changes are among the selected new fixtures; no additional executable
+test required a follow-up run. Existing port and benchmark IR is unchanged, which
+is compile-only evidence. Broad benchmark reruns were unnecessary for this parser
+delta and were not performed.
+
+After the correctness groups finished, three fresh `check` samples for an
+8,000-digit hexadecimal expression took **1.85–2.27 ms**, and three samples for
+two equal 8,000-digit mapping keys took **4.56–5.21 ms**. The expression is valid
+for parsing, not for native integer evaluation; the duplicates are rejected.
+These bounded parser probes preserve the review's large-input risk check, not a
+growth-complexity proof or a before/after performance ratio. The shared host was
+not load-controlled; the author's timing table was not independently replicated.
+
+### Scope, remaining gaps and reproducibility
+
+Fresh isolated sweeps with `--metadata` remain **148/464 native** and
+**150/464 stub-assisted**, with the same **522 CPython source hashes**, **58 overlay
+exclusions**, zero timeouts and identical first errors after checkout-path
+normalization. The correction is source-language behavior, not an increase in
+importable libraries or complete upstream-suite support. Throwing stubs remain
+dependency diagnostics, not module implementations.
+
+An independent executed-match program is still rejected with **`'match' statements
+are not supported`**. Valid patterns inside an unused function being accepted does
+not establish working pattern-matching execution. The two #541 starred-default
+cases remain wrongly accepted; #661 is not counted as merged. Other unrelated gaps
+retain their dated evidence and were not all rerun. No new uncovered bug or duplicate
+issue was filed; no implementation branch or other session's work was modified.
+
+Replay `audit-732.py` modes `build`, `references`, `runtime`, `checks`, `sanitize`,
+`ir`, `consumer-smoke`, `syntax-sweep`, `oracle`, `extras`, `imports`, `stubs`;
+`audit-732-probes.py` modes `fixtures`, `syntax`, `execution`, `oracle-verdicts`,
+then `cost` after other measurements finish; and the assembler. Embedded scripts
+include their `audit-737.py`/`audit-725.py` dependencies. All selected evaluations
+completed, with no failed test attempts. Completing the audit requires separate
+CPython-invalid verification of every new rejection from the corpus oracle.
+
+Historical implementation-head CI, Lint, Packages and Installation now pass
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39364806949)). Its initial
+GC self-compile hit the 600-second bound; the rerun succeeded, as recorded in the
+[PR discussion](https://github.com/den-run-ai/pystachy/pull/732#issuecomment-6282884171).
+That history is preserved rather than recast as a local performance regression.
+Audit-head checks are read separately after publishing. Full local `make verify`,
+CPython regrtest and a broad PyPI/NumPy census were not run. Native imports, executed
 APIs, adapted workloads and hosted compilation remain distinct. Dated baseline
 reports/JSON and concurrent edits are preserved.

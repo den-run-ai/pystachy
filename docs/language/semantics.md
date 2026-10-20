@@ -602,12 +602,14 @@ statement placement, aiming to match CPython's error location and message.
 
 Checks include bracket and indentation limits, unterminated literals, invalid targets,
 argument-list errors, invalid `global` / `nonlocal`, misplaced control-flow statements,
-late future imports and excessive statically nested blocks. Error selection follows the
-parser, tokenizer where reached, symbol table, then compiler checks.
+late future imports and excessive statically nested blocks. A `match` statement's patterns
+follow CPython's grammar and its compiler's checks (a capture or `_` before the last case,
+alternatives that bind different names, a name bound twice, duplicate mapping keys), although
+match statements themselves are not compiled. Error selection follows the parser, tokenizer
+where reached, symbol table, then compiler checks.
 
-Some messages fall back to `invalid syntax` where CPython is more specific.
-Patterns inside `match` statements are not checked, and the supported source syntax has
-[additional restrictions](compatibility.md#source-text).
+Some messages fall back to `invalid syntax` where CPython is more specific, and the supported
+source syntax has [additional restrictions](compatibility.md#source-text).
 `tools/syntax_sweep.py` compares `pystachy check` with CPython's `compile()`;
 `pystachy check` checks parsing and syntax, not whether a program can compile.
 
