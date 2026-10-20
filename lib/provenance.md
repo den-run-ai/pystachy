@@ -38,6 +38,7 @@ observable contract.
 | `random` | `Lib/random.py` | `fb2625eb54412c880e8f1af449785a74e125556159fc7997814e51dd054cc5da` |
 | `datetime` | `Lib/_pydatetime.py` | `9a6652ecbdc8bcb9774136febc36b13f99aa926c7b42c19ac77e6c84128560a4` |
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
+| `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
 
