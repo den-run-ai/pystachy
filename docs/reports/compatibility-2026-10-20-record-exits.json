@@ -1,0 +1,363 @@
+{
+  "source_revision": "45e88b6fa0898c5aee62ba220f63781bdc1e4702",
+  "previous_evaluated_main": "9392fddf2b87b18e278abfc4f48f0f889ac99b16",
+  "merged_prs": [
+    753
+  ],
+  "changed_files": [
+    "tools/re_specialize.py",
+    "tools/test_re_specialize.py"
+  ],
+  "sha256": {
+    "tools/re_specialize.py": "f1c7dd5c8aeca450c392329f4dbce673e6c2aeee35d4432fe440a168855cb348",
+    "tools/test_re_specialize.py": "f6f0d1c3f42cb350d23d3cfd60bfccc8e91a5973a76c0def2ed4b22414b5f3eb"
+  },
+  "compiler_build_source": "9392fddf2b87b18e278abfc4f48f0f889ac99b16",
+  "compiler_sha256": "6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf",
+  "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "status": "completed",
+  "records": {
+    "unittest": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_re_specialize.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "..............\n----------------------------------------------------------------------\nRan 14 tests in 2.637s\n\nOK\n",
+      "wall_seconds": 2.722655659999873,
+      "expected_exit": 0
+    },
+    "lint": {
+      "command": [
+        "/workspace/scratch/cca24c0adfdd/devtools/bin/ruff",
+        "check",
+        "tools/re_specialize.py",
+        "tools/test_re_specialize.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": "",
+      "wall_seconds": 0.008385239998460747,
+      "expected_exit": 0
+    },
+    "controls": {
+      "base": {
+        "program": "import re\nre.compile(\"d+\").match(\"dd\")\nclass Stop(BaseException):\n    pass\nraise Stop(\"halt\")\n",
+        "results": {
+          "plain": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.025865464998787502,
+            "expected_exit": 1
+          },
+          "old": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base-old.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 972, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ~~~~^^^^^^^^^^^^^^\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 933, in main\n    return record(rest, out)\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 881, in record\n    raise interrupt\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 831, in record\n    runpy.run_path(argv[0], run_name=\"__main__\")\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen runpy>\", line 294, in run_path\n  File \"<frozen runpy>\", line 98, in _run_module_code\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.04047888800050714,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          },
+          "new": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base-new.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.04106746999968891,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/base.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      "interrupt-subclass": {
+        "program": "import re\nre.compile(\"d+\").match(\"dd\")\nclass Stop(KeyboardInterrupt):\n    pass\nraise Stop(\"halt\")\n",
+        "results": {
+          "plain": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.025317284002085216,
+            "expected_exit": 1
+          },
+          "old": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass-old.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 972, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ~~~~^^^^^^^^^^^^^^\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 933, in main\n    return record(rest, out)\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 881, in record\n    raise interrupt\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 831, in record\n    runpy.run_path(argv[0], run_name=\"__main__\")\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen runpy>\", line 294, in run_path\n  File \"<frozen runpy>\", line 98, in _run_module_code\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.06143598800190375,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          },
+          "new": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass-new.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.04000327099856804,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/interrupt-subclass.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      "hybrid": {
+        "program": "import re\nre.compile(\"d+\").match(\"dd\")\nclass Stop(KeyboardInterrupt, Exception):\n    pass\nraise Stop(\"halt\")\n",
+        "results": {
+          "plain": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.029010480000579264,
+            "expected_exit": 1
+          },
+          "old": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid-old.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.03506803200070863,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          },
+          "new": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid-new.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.043904741996811936,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/hybrid.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      "generator": {
+        "program": "import re\nre.compile(\"d+\").match(\"dd\")\nclass Stop(GeneratorExit):\n    pass\nraise Stop(\"halt\")\n",
+        "results": {
+          "plain": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.02650158799951896,
+            "expected_exit": 1
+          },
+          "old": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator-old.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 972, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ~~~~^^^^^^^^^^^^^^\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 933, in main\n    return record(rest, out)\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 881, in record\n    raise interrupt\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-750/tools/re_specialize.py\", line 831, in record\n    runpy.run_path(argv[0], run_name=\"__main__\")\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen runpy>\", line 294, in run_path\n  File \"<frozen runpy>\", line 98, in _run_module_code\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.040317725000932114,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          },
+          "new": {
+            "command": [
+              "/root/.local/bin/python3.13",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/tools/re_specialize.py",
+              "record",
+              "-o",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator-new.profile.json",
+              "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py"
+            ],
+            "environment": {},
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py\", line 5, in <module>\n    raise Stop(\"halt\")\nStop: halt\n",
+            "wall_seconds": 0.037811005997355096,
+            "expected_exit": 1,
+            "profile": {
+              "format": 1,
+              "program": "/workspace/scratch/3ba735e28fa7/pystachy-audit-753/build/audit-753/generator.py",
+              "patterns": [
+                {
+                  "pattern": "d+",
+                  "flags": 32,
+                  "calls": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "reproduction_scripts": {
+    "audit-725.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-725'\nOLD = BASE / 'pystachy-audit-694'\nOUT = ROOT / 'build/audit-725'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_warnings*.py', 'tests/deviations/lib_warnings*.py', 'tests/errors/lib_warnings*.py'] for p in ROOT.glob(pattern))\nadjacent = ['tests/errors/lib_datetime_utcnow.py', 'tests/errors/lib_urllib_parse_deprecated.py', 'tests/upstream_bool.py', 'tests/upstream_fnmatch.py', 'tests/sys_warnoptions.py', 'tests/exc_class_misc.py']\nsave('selection', dict(warnings=files, adjacent=adjacent))\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files, *adjacent], extra)\nelif mode == 'references':\n    results = {}\n    for f in files + adjacent:\n        if '/errors/' in f or '/deviations/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'ir':\n    run('ir', ['tools/check_ir.sh', './pystachy', *[f for f in files+adjacent if '/errors/' not in f]])\nelif mode == 'negative':\n    original = (ROOT/'lib/warnings.py').read_text()\n    changes = {\n        'unanchored-main': ('module=\"__main__\\\\\\\\Z\", append=1)', 'module=\"__main__\", append=1)', 'tests/lib_warnings_main_filter.py'),\n        'unchecked-prefixes': ('    for prefix in skip_file_prefixes:\\n        if not isinstance(prefix, str):\\n            raise TypeError(\"Found non-str \\'\" + type(prefix).__name__ + \"\\' in skip_file_prefixes.\")\\n', '', 'tests/lib_warnings_skip_prefixes.py'),\n    }\n    results = {}\n    for name, (before, after, test) in changes.items():\n        assert original.count(before)==1\n        overlay = OUT/name\n        overlay.mkdir(exist_ok=True)\n        (overlay/'warnings.py').write_text(original.replace(before, after))\n        r=run('negative-'+name, ['./pystachy','run',test], {'PYSTACHY_PATH':str(overlay)})\n        recording=(ROOT/test).with_suffix('.out').read_text()\n        assert r['stdout']+'[exit 0]\\n' != recording\n        results[name]=dict(before=before,after=after,test=test,expected_recording=recording,mutant_output=r['stdout'],detected=True)\n    save('negative-controls',results)\nelif mode == 'matrix':\n    program = '''import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n'''\n    f=OUT/'matrix.py'; f.write_text(program)\n    save('matrix-program',dict(program=program,sha256=hashlib.sha256(program.encode()).hexdigest()))\n    ref=run('matrix-cpython',[PY,str(f)])\n    for label, extra in [('gc', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', {'PYSTACHY_OPT':'-all'})]:\n        r=run('matrix-jit-'+label,['./pystachy','run',str(f)],extra)\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n        exe=OUT/('matrix-'+label)\n        run('matrix-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n        r=run('matrix-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\nelif mode == 'oracle':\n    # All retained programs are cheap compile-only checks; changed executables\n    # beyond the selected warning consumers must be executed before completion.\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='warnings-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(ROOT/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-753.py": "from pathlib import Path\nexec(Path('/workspace/scratch/3ba735e28fa7/audit-725.py').read_text().split('files = sorted')[0].replace(\"'pystachy-audit-725'\",\"'pystachy-audit-753'\").replace(\"'build/audit-725'\",\"'build/audit-753'\"))\nrun('unittest',[PY,'-m','unittest','discover','-s','tools','-p','test_re_specialize.py'])\nrun('lint',['/workspace/scratch/cca24c0adfdd/devtools/bin/ruff','check','tools/re_specialize.py','tools/test_re_specialize.py'])\nresults={}\nfor name,base in [('base','BaseException'),('interrupt-subclass','KeyboardInterrupt'),('hybrid','KeyboardInterrupt, Exception'),('generator','GeneratorExit')]:\n    source=f'import re\\nre.compile(\"d+\").match(\"dd\")\\nclass Stop({base}):\\n    pass\\nraise Stop(\"halt\")\\n'\n    f=OUT/(name+'.py');f.write_text(source);rs={}\n    for label,tool in [('plain',None),('old',BASE/'pystachy-audit-750/tools/re_specialize.py'),('new',ROOT/'tools/re_specialize.py')]:\n        profile=OUT/(name+'-'+label+'.profile.json')\n        cmd=[PY,str(f)] if tool is None else [PY,str(tool),'record','-o',str(profile),str(f)]\n        r=run(name+'-'+label,cmd,expected=1)\n        if tool is not None:r['profile']=json.loads(profile.read_text());assert r['profile']['patterns']==[dict(pattern='d+',flags=32,calls=1)]\n        rs[label]=r\n    assert rs['new']['stdout']==rs['plain']['stdout'] and rs['new']['stderr']==rs['plain']['stderr']\n    assert (rs['old']['stderr']==rs['plain']['stderr'])==(name=='hybrid')\n    results[name]=dict(program=source,results=rs)\nsave('controls',results)\nchanged=subprocess.check_output(['git','diff','--name-only','9392fddf','HEAD'],cwd=ROOT,text=True).splitlines()\nassert changed==['tools/re_specialize.py','tools/test_re_specialize.py']\nassert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT,text=True)\ndata=dict(source_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),previous_evaluated_main='9392fddf2b87b18e278abfc4f48f0f889ac99b16',merged_prs=[753],changed_files=changed,sha256={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in changed},compiler_build_source='9392fddf2b87b18e278abfc4f48f0f889ac99b16',compiler_sha256=hashlib.sha256((BASE/'pystachy-audit-750/pystachy').read_bytes()).hexdigest(),python=sys.version,status='completed',records={n:json.loads((OUT/(n+'.json')).read_text()) for n in ['unittest','lint','controls']},reproduction_scripts={'audit-725.py':(BASE/'audit-725.py').read_text(),'audit-753.py':Path(__file__).read_text()},limits=['Tooling only: no compiler/runtime/lib/port/benchmark/test-fixture implementation changes. #750 native/import results carry forward by source identity, not a repeat measurement.','Plain KeyboardInterrupt retains SIGINT and extra tool traceback frames; the retained unit test explicitly compares only its final exception line. No claim of exact traceback parity for that case.','No new compiled upstream library suite or general regex support claimed.'],historical_implementation_ci=dict(head='46ad66dd9747f5e4b733cc5a8fd242616fee7403',successful_runs=[39348810101,39348809982,39348809929,39348809947]),review_context='https://github.com/den-run-ai/pystachy/pull/753#discussion_r4320290493')\ndata['incomplete_attempts']=[dict(reason='Audit driver initially reused the profile filename for its command-result JSON; its own profile assertion stopped with KeyError before testing the new tool. Separate .profile.json paths fixed the driver; the full unit tests and controls were rerun. No implementation failure.')]\n(BASE/'pystachy-audit-followup-729/docs/reports/compatibility-2026-10-20-record-exits.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint('753 complete: 14 hosted unit tests and four independent before/after controls',flush=True)\n"
+  },
+  "limits": [
+    "Tooling only: no compiler/runtime/lib/port/benchmark/test-fixture implementation changes. #750 native/import results carry forward by source identity, not a repeat measurement.",
+    "Plain KeyboardInterrupt retains SIGINT and extra tool traceback frames; the retained unit test explicitly compares only its final exception line. No claim of exact traceback parity for that case.",
+    "No new compiled upstream library suite or general regex support claimed."
+  ],
+  "historical_implementation_ci": {
+    "head": "46ad66dd9747f5e4b733cc5a8fd242616fee7403",
+    "successful_runs": [
+      39348810101,
+      39348809982,
+      39348809929,
+      39348809947
+    ]
+  },
+  "review_context": "https://github.com/den-run-ai/pystachy/pull/753#discussion_r4320290493",
+  "incomplete_attempts": [
+    {
+      "reason": "Audit driver initially reused the profile filename for its command-result JSON; its own profile assertion stopped with KeyError before testing the new tool. Separate .profile.json paths fixed the driver; the full unit tests and controls were rerun. No implementation failure."
+    }
+  ]
+}

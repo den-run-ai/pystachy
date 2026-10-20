@@ -196,6 +196,33 @@ prefixes, GNU option interleaving, a leading `+`, and `POSIXLY_CORRECT` through
 `longopts` must be `list[str]`; CPython also accepts one string. Messages are
 untranslated. Error messages and parsing otherwise follow the upstream code.
 
+## Gettext
+
+CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
+CPython makes of a tuple bound to the same name first, as a module global has one type here. The
+module imports, as `argparse` needs at its start (`argparse` has other blockers after it). Its
+default locale directory is made of `sys.base_prefix` (the Pystachy home, see
+[sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
+methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
+`bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is imported.
+
+Its other edits are annotations: the types of `NullTranslations`' fields, which it fills none of,
+and the return types of its methods that a fallback's own call answers.
+
+Not supported, as compile-time errors:
+- The functions that look up a catalog: `gettext()`, `dgettext()`, `ngettext()`, `translation()`,
+  `install()` and the like. `_localedirs` has a type only where `bindtextdomain()` fills it.
+  `translation()` imports `locale`, which does not compile, and keys its cache by the
+  translations' class, which is not a value here (#7).
+- `NullTranslations.ngettext()` and `npgettext()`. They take the count through `operator.index()`,
+  which `lib/operator.py` does not apply to an `int`, and for a count of another type find the
+  frame to warn from with `sys._getframe()`, which is not supported.
+- `GNUTranslations` of a catalog with a plural form, which calls `c2py()`: it needs `exec()`.
+- A subclass of `NullTranslations`, such as a translation class to add as a fallback.
+  `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
+  template class, which a class cannot derive from. `add_fallback()` takes another
+  `NullTranslations`, which answers as the identity.
+
 ## Heapq
 
 Heap operations, including `_max` variants, and `nlargest`/`nsmallest` work.

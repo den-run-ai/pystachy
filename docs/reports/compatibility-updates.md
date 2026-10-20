@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `be822311f751a32cb75660ac41b914ea1a52bf6a`.
+**Latest evaluated main:** `d87a215df913828337e522e367a7c2e1d38bbf5f`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3590,3 +3590,165 @@ No full recording suite or runtime suite was repeated for #749. Historical head
 CI/Lint/Packages/Installation succeeded
 ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39345045649)); audit-head
 checks are reported separately after publication. Dated baselines remain intact.
+
+## 2026-10-20 — #750 percent conversion order and malformed-text counts
+
+Evaluated main
+[`9392fddf2b87b18e278abfc4f48f0f889ac99b16`](https://github.com/den-run-ai/pystachy/commit/9392fddf2b87b18e278abfc4f48f0f889ac99b16),
+the only merge after `be822311`, incorporating
+[#750](https://github.com/den-run-ai/pystachy/pull/750). This is October 19 locally;
+the heading uses the UTC date. Reviewed its 12 changed files, review comments,
+and existing issues [#223](https://github.com/den-run-ai/pystachy/issues/223) and
+[#29](https://github.com/den-run-ai/pystachy/issues/29), plus #491/#616 coordination.
+No implementation branch was changed.
+
+[Machine-readable evidence and replay drivers](compatibility-2026-10-20-format-counts.json)
+retain exact sources, fixtures including binary stdin/stdout, commands, environment,
+old/new comparisons and compiler identity. CPython **3.13.16**, LLVM **18.1.3**,
+two workers per group. Rebuilt compiler SHA-256:
+`6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf`.
+Compiler and runtime three-stage fixed points pass at **663,923 / 18,709 IR lines**.
+The prior binary was built at `b85f0f3c`, with evaluated sources `be822311`.
+
+- **#223 corrected:** literal `%s`/`%r`/`%a` tuple displays now evaluate and
+  convert each item in CPython's order. Independent **44-case / 244-output-row**
+  probes cover side effects, conversion exceptions, flags, escaped percent,
+  two-/three-digit width and precision boundaries, and mixed numeric conversions.
+  All four GC-stressed/optimization-off JIT/AOT runs match CPython **byte for byte**;
+  the old compiler differs. Retained tests additionally cover tuple variables,
+  module format constants, argument exceptions and mismatched conversion counts.
+- **#29 corrected within the documented byte model:** independent **169 raw-input
+  cases / 1,352 output rows** cover valid, mixed, truncated, overlong, continuation,
+  out-of-range and invalid-lead bytes. Length, slicing, alignment, zero-fill,
+  precision and five tab sizes match CPython's UTF-8 `surrogateescape` stdin
+  behavior in all four native configurations. The old runtime differs. No output
+  normalization is applied to these matrices. The separate retained fixture
+  normalizes only `\udcXX` versus `\xXX` in presentation-error spelling;
+  raw base64 evidence preserves that distinction.
+- **94 retained cases / 159 checks** pass in each of native, GC-stress,
+  optimization-off and hosted configurations. **53 additional changed-IR cases /
+  106 checks** and **20 adapted wcwidth/pyfiglet checks** pass: **762 retained
+  checks** total. Also **56 CPython recordings**, **65 IR/LLVM checks**, runtime
+  contracts and native Unicode cache/GC probes pass.
+- The **3,213-program compiler comparison** has **3,149 identical / 64 changed
+  IR programs**, with **no exit-status or diagnostic changes**. All affected
+  retained executables are covered, including ordered-set, QR and SGP4 cases.
+  The three affected adapted pyperformance workloads (`chaos`, `float`, `raytrace`)
+  match CPython in JIT/AOT at smoke inputs `1 200`, `1 1000`, `1 20 20`.
+  These concurrent single samples are **correctness evidence, not performance
+  or memory comparisons**.
+- `tools/rtcheck.py` passes **569,601 hosted comparisons**, zero failures. It
+  executes runtime.py through CPython stand-ins and is not native or full
+  upstream-library-suite coverage.
+
+Fresh isolated `--metadata` sweeps retain **146/467 native / 148/467 stub-assisted**,
+**55 overlay exclusions**, zero timeouts, identical first errors and the same
+**522 CPython input hashes**. No import success or broader library support is added
+by these correctness fixes.
+
+Remaining boundaries were rerun, not assumed fixed: raw `ED A0 80` still has
+native length **1**, versus CPython surrogateescape length **3**. Reading one
+character from raw `C0 80 Z` returns native length **2** with **1** remaining,
+versus CPython stdin lengths **1 / 2**. This is the documented malformed
+`read(n)` behavior; ordinary strict-decoding CPython files are a different contract.
+Computed percent format strings, catalog/PyPI support and general Unicode parity
+are not claimed. Existing minor/major adaptation and first-error limits remain.
+
+Replay `audit-750.py` modes `build`, `references`, `checks`, `hosted`, `ir`,
+`oracle`, `extras`, `negative`, `ports`, `unicode`, `bench`, `sweeps`, plus
+`audit-750-matrix.py` and the assembler; embedded scripts include the shared helper.
+An initial benchmark command used comma-separated names and was rejected by
+argparse before running; the corrected invocation passed, and the failed attempt
+is retained. No full local verify, CPython regrtest or new upstream-suite census.
+Historical implementation-head CI/Lint/Packages/Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39349830821)); these are
+not audit-head checks.
+
+## 2026-10-20 — #753 regex profile exit/traceback fidelity
+
+Evaluated main
+[`45e88b6fa0898c5aee62ba220f63781bdc1e4702`](https://github.com/den-run-ai/pystachy/commit/45e88b6fa0898c5aee62ba220f63781bdc1e4702),
+merging [#753](https://github.com/den-run-ai/pystachy/pull/753) after #750.
+Only `tools/re_specialize.py` and its unit tests change; compiler/runtime/library/
+ports/benchmark/recording sources are identical. #750's compiler and import/API
+results carry forward by that identity, not by a repeated native sweep.
+
+[Evidence and driver](compatibility-2026-10-20-record-exits.json): **14 hosted
+unit tests** and focused Ruff checks pass under CPython 3.13.16. Four independent
+programs exercise subclasses of `BaseException`, `KeyboardInterrupt`, both
+`KeyboardInterrupt` and `Exception`, and `GeneratorExit`. Current `record` matches
+plain CPython's exit status, stdout and full stderr in all four, preserving the
+one-call regex profile. The old tool adds its own frames in three; the hybrid
+already worked and remains correct. This directly checks the
+[review finding](https://github.com/den-run-ai/pystachy/pull/753#discussion_r4320290493).
+Plain `KeyboardInterrupt` remains distinct: SIGINT is preserved, but extra tool
+frames remain; its retained test compares only the final exception line.
+
+An initial audit-driver filename collision overwrote its profile with its command
+record and caused a driver `KeyError`; separate profile filenames fixed it and
+the full checks were rerun. This was not an implementation failure. Tooling fidelity
+does not add compiled regex/library coverage. Historical implementation-head
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39348809947), Lint, Packages
+and Installation succeeded; publication checks are separate.
+
+## 2026-10-20 — #720 localized gettext port
+
+Evaluated main
+[`d87a215df913828337e522e367a7c2e1d38bbf5f`](https://github.com/den-run-ai/pystachy/commit/d87a215df913828337e522e367a7c2e1d38bbf5f),
+merging [#720](https://github.com/den-run-ai/pystachy/pull/720) after #753. This
+completes the three-merge interval after `be822311`: #750, #753, #720. The ten-file
+diff adds a library port, documentation and four fixtures; compiler/runtime sources
+are unchanged. The verified #750 binary is reused with current library sources:
+**compiler build `9392fddf`**, separately from **evaluated source `d87a215d`**.
+
+[Evidence, commands, hashes and replay drivers](compatibility-2026-10-20-gettext.json)
+retain CPython **3.13.16**, LLVM **18.1.3** and the unchanged 522-file inventory.
+The upstream `gettext.py` hash is independently verified as
+`7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d`.
+Its source diff is a **minor localized adaptation**: replace the type-changing
+global initialization with the equivalent ordered operator dictionary, and add
+field/recursive-return annotations. Dictionary values **and order** match CPython.
+This assessment describes source edits, not full API compatibility.
+
+- **6 retained cases / 9 checks** pass in each of native JIT/AOT, GC-stress,
+  optimization-off and hosted configurations: **36 checks**, plus **3 CPython
+  recordings** and **3 IR/LLVM checks**.
+- The independent API program combines **20 message/fallback-depth pairs**
+  (including empty, multibyte and newline text), three domain bindings and the
+  operator table. Its **38 output rows** match CPython in all four stressed/
+  unoptimized native JIT/AOT runs. Identity `gettext`/`pgettext`, metadata and
+  domain binding are exercised; identity fallbacks do **not** prove overriding
+  translations or catalog parsing.
+- The **3,217-program comparison** leaves **3,213 unchanged**. Only the four new
+  gettext fixtures differ: one newly accepted API program and three diagnostic
+  advances from missing module to explicit remaining blockers. No previously
+  accepted program is rejected and no benchmark IR changes.
+
+Fresh isolated native and stub-assisted `--metadata` sweeps give **146/466** and
+**148/466**, respectively, with **56 exclusions** and zero timeouts. The successful
+counts are unchanged: the denominator falls from 467 because `lib/gettext.py` now
+replaces the upstream file. Its separately executed port is not silently counted
+as an unchanged upstream import. Both sweeps have exactly these three map changes:
+
+| Module | Measured result after #720 |
+|---|---|
+| `gettext` | Excluded upstream file; supplied by the tested localized port. |
+| `argparse` | First error advances to `argparse.py:879`, unsupported `object()`. It still does not import. |
+| `optparse` | First error advances to inability to infer `gettext._localedirs` during its import-time catalog lookup. It still does not import. |
+
+The three retained error programs confirm catalog lookup rejection, the plural
+method's `operator.index(int)` blocker, and inability to subclass the generic
+`NullTranslations` base. These limits directly address the PR's
+[argparse claim](https://github.com/den-run-ai/pystachy/pull/720#discussion_r4320296283)
+and [fallback review](https://github.com/den-run-ai/pystachy/pull/720#discussion_r4320296290).
+No working catalog translations, plural-form compiler, full upstream gettext
+suite, argparse API or general PyPI support is claimed. Existing issue #491 remains
+the library umbrella; no duplicate issue was opened.
+
+Replay `audit-720.py` modes `provenance`, `references`, `checks`, `matrix`, `ir`,
+`oracle`, `sweeps`, then `audit-720-assemble.py`; copy the hash-verified #750 binary
+into this checkout first. No rebuild or broad port/benchmark repetition was needed
+for this library-only change. No full local verify, regrtest or performance/memory
+claim. Historical implementation-head CI/Lint/Packages/Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39350427632)); audit-head
+checks are read separately after publication. Dated baseline files are unchanged.
