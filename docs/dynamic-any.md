@@ -176,11 +176,11 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 
 The comment is per module: a program can mix modules that opt in with modules that do not, and
 values cross between them as above. A program without the comment produces the same IR,
-messages and exit status as before: compiled by the prototype and by main `611af05e`, which it
-merges, each of the 3,239 programs of `make irsame`'s 3,262-program corpus that do not opt in
+messages and exit status as before: compiled by the prototype and by main `8990e417`, which it
+merges, each of the 3,323 programs of `make irsame`'s 3,358-program corpus that do not opt in
 gave the same output, once the reference compiler's own paths were normalized: the
 `build/ref/` library paths that some messages name, the installation prefix that `sys.prefix`
-holds, and the lengths of the strings that hold them. The 23 that opt in differ, as they should.
+holds, and the lengths of the strings that hold them. The 35 that opt in differ, as they should.
 
 ## What works
 
