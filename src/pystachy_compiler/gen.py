@@ -43,11 +43,13 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_contains as dynamic_dyn_contains,
     gen_dyn_delitem as dynamic_dyn_delitem,
     gen_dyn_dispatcher as dynamic_dyn_dispatcher,
+    gen_dyn_dry as dynamic_dyn_dry,
     gen_dyn_dispatchers as dynamic_dyn_dispatchers,
     gen_dyn_fallback as dynamic_dyn_fallback,
     gen_dyn_field_stores as dynamic_dyn_field_stores,
     gen_dyn_fields as dynamic_dyn_fields,
     gen_dyn_float as dynamic_dyn_float,
+    gen_dyn_format as dynamic_dyn_format,
     gen_dyn_fn_arms as dynamic_dyn_fn_arms,
     gen_dyn_fn_box as dynamic_dyn_fn_box,
     gen_dyn_fn_takes as dynamic_dyn_fn_takes,
@@ -95,6 +97,9 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_union_box as dynamic_dyn_union_box,
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
+    gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_dyn_xhelper as dynamic_dyn_xhelper,
+    gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_rtdata as dynamic_rtdata,
 )
 from src.pystachy_compiler.unions import (
@@ -1104,6 +1109,7 @@ class Gen:
         self.fchk: dict[str, bool] = {}  # the records whose fields desc is checking
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
         self.one: dict[str, bool] = {}  # those whose != a dynamic value runs through the program (@o.ne: pys_dyn_ne)
+        self.xobj: dict[str, bool] = {}  # those whose comparisons with a dynamic value of another type run their methods (@o.x: dyn_xhelper)
         self.lenient = False
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -1347,6 +1353,10 @@ class Gen:
         self.dynrets: dict[str, str] = {}
         self.dynrline: dict[str, int] = {}
         self.dynseen: dict[str, bool] = {}
+        # and the items of displays whose dry-run types dyn_dry remembers for the statement being
+        # compiled, with those types (each item's memo is its position)
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
@@ -1363,6 +1373,15 @@ class Gen:
 
     def dyn_class_type(self, c: str) -> str:
         return dynamic_dyn_class_type(self, c)
+
+    def dyn_xmethod(self, c: str, m: str) -> bool:
+        return dynamic_dyn_xmethod(self, c, m)
+
+    def dyn_xhelper(self, c: str) -> None:
+        return dynamic_dyn_xhelper(self, c)
+
+    def dyn_xbody(self, c: str) -> None:
+        return dynamic_dyn_xbody(self, c)
 
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
@@ -1553,8 +1572,14 @@ class Gen:
     def dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return dynamic_dyn_method(self, o, m, args)
 
+    def dyn_format(self, v: Val, spec: Val) -> Val:
+        return dynamic_dyn_format(self, v, spec)
+
     def dyn_mixed(self, es: list[Node]) -> bool:
         return dynamic_dyn_mixed(self, es)
+
+    def dyn_dry(self, e: Node) -> str:
+        return dynamic_dyn_dry(self, e)
 
     def dyn_fn_type(self, ft: str) -> str:
         return dynamic_dyn_fn_type(self, ft)

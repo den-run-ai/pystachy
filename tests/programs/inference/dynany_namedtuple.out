@@ -1,0 +1,7 @@
+True True False True True False True True
+True True p p True
+True True True [Pt(x=1, y=5), Pt(x=2, y=0)] Pt(x=1, y=2)
+False False True
+True False True True
+1 Pt Pt(x=1, y=2)
+[exit 0]

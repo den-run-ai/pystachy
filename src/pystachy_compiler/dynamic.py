@@ -34,6 +34,10 @@ DF_CMP = 2
 DF_HASH = 4
 DF_BOXID = 8
 DF_NE = 16
+DF_X = 32
+# the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
+XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
+XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
 # the operator codes of pys_dyn_binop and pys_dyn_unary
 BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11}
 UNOPS: dict[str, int] = {"-": 0, "+": 1, "~": 2}
@@ -125,7 +129,14 @@ def gen_dyn_class_type(self, c: str) -> str:
         flags |= DF_CMP  # (also where a subclass defines one, whose reflected method the class's helper runs first)
     if flags != 0:
         self.ocmp[c] = True  # (@o.eq and @o.cmp, compiled leniently: what the class cannot compare raises when it runs)
-    if self.hash_kind(c) != "id" or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and self.hash_kind(x.name) != "id"]) > 0:
+    if c in self.nts:
+        flags |= DF_EQ | DF_CMP  # (a NamedTuple's objects compare as tuples of their fields: ntop)
+        self.ocmp[c] = True
+    if len([m for m in XCMP if self.dyn_xmethod(c, m)]) > 0 or c in self.nts:
+        flags |= DF_X  # (its comparisons with values of other types run its methods: @o.x.<class>, pys_dyn_eq)
+        self.xobj[c] = True
+    if self.hash_kind(c) != "id" or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and self.hash_kind(x.name) != "id"]) > 0 or c in self.nts:
+        # (a NamedTuple's: tuple's hash of its fields or its own __hash__, as hash_value gives it)
         if c not in self.hcls:
             self.hcls[c] = True
         flags |= DF_HASH
@@ -135,6 +146,69 @@ def gen_dyn_class_type(self, c: str) -> str:
     self.consts.append(dt)
     self.dynclasses.append(c)
     return name
+
+
+def gen_dyn_xmethod(self, c: str, m: str) -> bool:
+    # does class c have comparison method m (its own or a base's) for a value of another type: not
+    # one that @dataclass wrote, which declines an object of another class, nor one whose
+    # declaration failed, which the lenient helpers leave out (see desc)
+    ms = self.classes[c].methods
+    return m in ms and ms[m].bad == "" and not (ms[m].synthetic and self.is_dc(ms[m].cls))
+
+
+def gen_dyn_xhelper(self, c: str) -> None:
+    # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
+    # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
+    # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, or 2 where c has no
+    # method for op, as object's own methods decline (dyn_xbody)
+    f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
+    f.params = ["op", "a", "b"]
+    f.ptypes = ["int", c, DYN]
+    f.ret = "int"
+    self.lenient = True
+    self.function(f, [mk("dynx", c, self.classes[c].node.line, [])])
+    self.lenient = False
+
+
+def gen_dyn_xbody(self, c: str) -> None:
+    # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
+    # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
+    # NamedTuple without the method compares its fields with a tuple, as tuple's methods do, which
+    # decline any other value
+    line = self.line
+    op = self.read(mk("name", "op", line, []))
+    a = self.read(mk("name", "a", line, []))
+    b = self.read(mk("name", "b", line, []))
+    nt = c in self.nts
+    for k in range(len(XCMP)):
+        m = XCMP[k]
+        inv = False
+        if not self.dyn_xmethod(c, m) and k == 1 and self.dyn_xmethod(c, "__eq__"):
+            m = "__eq__"
+            inv = True
+        if not self.dyn_xmethod(c, m) and not nt:
+            continue
+        hit = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
+        self.place(hit)
+        if self.dyn_xmethod(c, m):
+            r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+            if inv:
+                r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
+            if not self.term:
+                self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
+        else:
+            tup = self.label()
+            other = self.label()
+            self.cbr(self.dyn_test(b, ["vtuple[dyn]"]), tup, other)
+            self.place(tup)
+            same = self.cmp2(XOPS[k], self.ntup(a, True), b)
+            self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+            self.place(other)
+            self.ret_(Val("2", "int"))
+        self.place(nxt)
+    self.ret_(Val("2", "int"))
 
 
 def gen_dyn_box(self, v: Val) -> Val:
@@ -780,6 +854,13 @@ def gen_dyn_len(self, v: Val) -> Val:
     return self.dyn_call(f, [v])
 
 
+def gen_dyn_format(self, v: Val, spec: Val) -> Val:
+    # format(v, spec) for a dyn v: its class's __format__, else what CPython's object.__format__ and
+    # the builtin types' do (dyn_fallback)
+    f = self.dyn_dispatcher("format", [DYN, "str"], "str", "__format__")
+    return self.dyn_call(f, [v, spec])
+
+
 def gen_dyn_hash(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_hash", "i64", [f"ptr {v.v}"]), "int")
 
@@ -1128,6 +1209,16 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt("pys_dyn_str", "ptr", [f"ptr {o.v}"]), "str"))
     elif key == "len":
         self.ret_(Val(self.rt("pys_dyn_len", "i64", [f"ptr {o.v}"]), "int"))
+    elif key == "format":
+        # str() for an empty spec, as object.__format__ and the builtin types' give; else a number's
+        # or a str's own formatting, or the TypeError that names the value's type
+        empty = self.label()
+        some = self.label()
+        self.cbr(self.num_cmp("==", Val(self.mload("int", ps[1].v), "int"), Val("0", "int")).v, empty, some)
+        self.place(empty)
+        self.ret_(self.dyn_str(o))
+        self.place(some)
+        self.ret_(Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(o), f"ptr {self.sconst('A')}", f"ptr {ps[1].v}"]), "str"))
     elif key == "getitem":
         self.ret_(Val(self.rt("pys_dyn_getitem", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}"]), DYN))
     elif key == "setitem":
@@ -1237,13 +1328,30 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
             continue
         if e.kind == "starred" or e.kind == "dstar":
             return False
-        ts.append(self.dry(e, ""))
+        ts.append(self.dyn_dry(e))
     if len(ts) < 2:
         return DYN in ts
     j = ts[0]
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
     return j == "" or j == DYN
+
+
+def gen_dyn_dry(self, e: Node) -> str:
+    # dry(e) of an item of a display that dyn_mixed decides, remembered for the statement being
+    # compiled (gen_stmt forgets them): compiling the display compiles its items again, and each
+    # item that holds a display decides it again, so that without this the work doubled with each
+    # level of nesting (#781). A literal or a name costs no more to compile again
+    if e.kind in ["int", "float", "str", "bytes", "True", "False", "None", "name"]:
+        return self.dry(e, "")
+    j = e.memo - 1
+    if j >= 0 and j < len(self.dmemo) and self.dmemo[j] is e:
+        return self.dmemot[j]
+    t = self.dry(e, "")
+    e.memo = len(self.dmemo) + 1
+    self.dmemo.append(e)
+    self.dmemot.append(t)
+    return t
 
 
 

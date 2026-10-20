@@ -1702,6 +1702,11 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
     # format()'s argument
     empty = spec.kind == "str" and spec.s == ""
+    if v.t == "dyn":
+        # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec
+        # and runtime.c's formatting of a number or a str for another (TypeError for other values)
+        sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return self.dyn_format(v, sv)
     if v.t in self.classes and self.classes[v.t].tag > 0:
         cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
         if any(["__format__" in c.methods for c in cs]):
@@ -1748,11 +1753,6 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
     if empty:
         return self.to_str(v)
-    if v.t == "dyn":
-        # by its box's type (dynamic.py): runtime.c formats a number or a str, and raises for
-        # another value with a spec that is not empty
-        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
-        return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst('A')}", f"ptr {sv.v}"]), "str")
     if is_union(unopt(v.t)):
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
@@ -2943,6 +2943,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     f = self.classes[t].methods[m]
     if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (self.widens(other, f.ptypes[1]) or f.ptypes[1] == "")):
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
+    if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
+        return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
     return ""
 
 def gen_exc_kinds(self, t: str) -> list[str]:

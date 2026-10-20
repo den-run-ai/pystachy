@@ -18,6 +18,7 @@ class Node:
         self.mchk = ""
         self.depth = 1  # levels of nodes from this one down, as mk counted them
         self.made = False  # the variable of a comprehension the compiler makes (made_var)
+        self.memo = 0  # an item of a display: where Gen.dmemo remembers its dry-run type, + 1 (Gen.dyn_dry)
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:

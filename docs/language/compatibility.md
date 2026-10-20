@@ -336,10 +336,11 @@ above apply to well-formed text (with the surrogate exception described above).
   runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
   that keeps its first type, that receives an `Any` value of another type raises `TypeError`
   where CPython, which does not check annotations, goes on
-  (`tests/deviations/dynany_annotation_check.py`). The prototype's other differences, such as
-  `in` of an `Any` item in a typed container, function values printing as `<function>`, and
-  objects of unrelated classes comparing by identity, are listed in its
-  [deviations](../dynamic-any.md#deviations).
+  (`tests/deviations/dynany_annotation_check.py`), as does a comparison method's parameter
+  annotated with a class where an object is compared with a value of another type
+  (`tests/deviations/dynany_eq_annotated.py`). The prototype's other differences, such as `in`
+  of an `Any` item in a typed container and function values printing as `<function>`, are listed
+  in its [deviations](../dynamic-any.md#deviations).
 
 ## Rejected rather than miscompiled
 
