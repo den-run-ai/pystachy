@@ -444,6 +444,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # decided by the static types, or by whether it is None (an optional value, an object)
         v = self.expr(args[0], "")
         self.isinst_reads(args[1])
+        if v.t == "dyn":
+            return self.dyn_isinst(v, args[1])  # (by its box's type: dynamic.py)
         if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
             return self.exc_isinst(v, args[1])
         if v.t == "opt[exc]" and self.exc_classes(args[1]):
@@ -613,6 +615,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         elif kvals[j].t != "None":
             keyv = kvals[j]  # (key=None: the items themselves)
             self.key_check(keyv, f"{name}()")
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool"]:
+        return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):

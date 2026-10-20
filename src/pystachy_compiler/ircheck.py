@@ -250,6 +250,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
                 if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
+            if i.op == "dyn.type" or i.op == "dyn.payload":
+                if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
+                if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))):
+                    self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
             n = self.nums(i)
@@ -311,8 +316,10 @@ def gen_nums(self, i: Ins) -> int:
         return 3
     if i.op == "list.load":
         return 4
-    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load":
+    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load" or i.op == "dyn.payload":
         return 2
+    if i.op == "dyn.type":
+        return 1
     if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp" or i.op == "empty.kind":
         return 1
     if i.op == "gen.yield":
@@ -370,8 +377,9 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
         # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        fx = f.fx | (FXBIT["R"] if f.rq and "R" in i.x else 0)
-        u = "O" in i.x or "H" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
+        # (and a dynamic value, A, may hold any of these: dynamic.py)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x) else 0)
+        u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
         return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
         st = i.op == "mem.store" or i.op == "mach.store"

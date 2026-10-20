@@ -125,6 +125,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == "dyn":
+        return self.dyn_box(v)  # (into dynamic storage: dynamic.py)
+    if v.t == "dyn":
+        return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):
         et = targs(unopt(t))[0]
         vals = [self.coerce(self.tget(v, i), et) for i in range(len(targs(v.t)))]
@@ -188,6 +192,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return ("?" if is_opt(t) else "") + d
     # type descriptor for the runtime's generic repr (use "repr"), equality ("==") or ordering
     # ("<", ">", ...; a list or tuple compares its items with == first)
+    if t == "dyn":
+        return "A"  # (a dynamic value's box, walked by its own DynType's descriptor)
     if t == "int":
         return "i"
     if t == "float":

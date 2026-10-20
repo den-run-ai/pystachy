@@ -26,6 +26,31 @@ MODDUNDERS = "__file__ __doc__ __spec__ __loader__ __package__ __builtins__"  # 
 RAW = "latin-1" if len("\xe9") == 1 else "utf-8"
 
 
+# the files of the modules that compile typing.Any as a dynamic type (docs/dynamic-any.md), by
+# their index in FILES: those whose lines before their first line of code hold DYNPRAGMA
+DYNFILES: dict[int, bool] = {}
+DYNPRAGMA = "# pystachy: dynamic-any"
+
+
+def dynamic_pragma(src: str) -> bool:
+    # does source src opt in: a comment line DYNPRAGMA (spaces around it allowed) among the
+    # comment and blank lines it starts with (after a byte order mark)
+    at = 3 if src.startswith(chr(239) + chr(187) + chr(191)) else 0
+    while at < len(src):
+        e = src.find("\n", at)
+        ln = (src[at:] if e < 0 else src[at:e]).strip()
+        if ln != "" and not ln.startswith("#"):
+            return False
+        if ln == DYNPRAGMA:
+            return True
+        at = len(src) if e < 0 else e + 1
+    return False
+
+
+def dynamic_file(k: int) -> bool:
+    return k in DYNFILES
+
+
 def shown(s: str) -> str:
     # a name as Python spells it: the "$" of a qualified name (heapq$heappush) between two
     # identifier characters is the "." of a module attribute; the main program's names are

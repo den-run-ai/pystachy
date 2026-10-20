@@ -201,6 +201,8 @@ class Ins:
         # the opaque eight-byte container payload. Only LLVM lowering chooses its bitcast.
         # union.tag reads a nonoptional union's tag; union.payload reads its member's
         # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
+        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
+        # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
         # num.cast promotes one numeric operand; num.cmp records the source comparison
         # in s and compares two operands of the same native numeric type.
         # empty.kind fixes a fresh dict/set result's key layout, using its typed
@@ -360,8 +362,10 @@ class Values:
                 i = code[x]
                 if (i.op == "select" or i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "rt" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "mach.load" or i.op == "mach.addr" or i.op == "mem.load" or i.op == "field.addr" or i.op == "int.ucmp" or i.op == "ptr.cmp") and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x
-                elif i.op == "union.payload" and len(i.r) == 2:
+                elif (i.op == "union.payload" or i.op == "dyn.payload") and len(i.r) == 2:
                     self.at[i.r[1]] = j * self.stride + x
+                elif i.op == "dyn.type" and len(i.r) == 1:
+                    self.at[i.r[0]] = j * self.stride + x
                 elif i.op == "tuple.load" or i.op == "tuple.store":
                     for r in i.r:
                         self.at[r] = j * self.stride + x

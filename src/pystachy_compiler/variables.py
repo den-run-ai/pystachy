@@ -115,7 +115,7 @@ def gen_load_name(self, name: str) -> Val:
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
         if name == self.selfname and name not in self.compvars:
             self.nn[r] = True
-        if name in self.narrowed and (is_opt(t) or is_union(t) or t in self.classes) and t != NONEVAR:
+        if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         return Val(r, t)
     self.read_ahead(name)
@@ -1562,6 +1562,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
+        if o.t == "dyn":
+            self.dyn_setattr(o, t.s, v)  # (a field of its box's class: dynamic.py)
+            return
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
@@ -1586,6 +1589,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
+        if o.t == "dyn":
+            self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
+            return
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
@@ -1614,6 +1620,12 @@ def gen_assign(self, t: Node, v: Val) -> None:
         bnd: list[str] = []
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment")
         self.slice_store(o, bnd, v)
+    elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
+        # a, b = x: x's items, all taken (as CPython does) before the first is stored
+        u = Val(self.rt("pys_dyn_unpack", "ptr", [f"ptr {v.v}", f"i64 {len(t.kids)}"]), "vtuple[dyn]")
+        items = [self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {u.v}", f"i64 {i}"]), "dyn") for i in range(len(t.kids))]
+        for i in range(len(t.kids)):
+            self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):

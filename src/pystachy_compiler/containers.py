@@ -573,8 +573,9 @@ def gen_key_items(self, t: str) -> bool:
     return True
 
 def gen_key_problem(self, t: str) -> str:
-    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too
-    if self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
+    # (hashed by their types at run time: TypeError: unhashable type)
+    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
@@ -632,7 +633,7 @@ def gen_key_fx(self, kt: str) -> str:
     # object whose class's __hash__ and __eq__ run (H), or whose __repr__ a KeyError runs (P),
     # which RUNTIME's U? stands for, or a recursive alias's edge (R, RUNTIME's R?); else ""
     d = self.hash_desc(kt) if kt != "int" and kt != "str" and kt != "bytes" else ""
-    return d if "H" in d or "R" in d or ("P" in d and self.key_repr(kt)) else ""
+    return d if "H" in d or "R" in d or "A" in d or ("P" in d and self.key_repr(kt)) else ""
 
 def gen_key_repr(self, t: str) -> bool:
     # may repr() of a key of type t run a __repr__ of the program (a KeyError's message)
@@ -727,6 +728,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 
 def gen_to_str(self, v: Val) -> Val:
     t = v.t
+    if t == "dyn":
+        return self.dyn_str(v)  # (by its box's type: dynamic.py)
     if is_union(unopt(t)):
         return self.uop(v, "str")
     if t == "str":

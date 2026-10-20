@@ -587,6 +587,7 @@ IROPS: dict[str, str] = {
     "num.cast": "", "num.cmp": "", "int.ucmp": "", "ptr.cmp": "",
     "empty.kind": "wD",
     "union.tag": "rL rD rO", "union.payload": "rL rD rO",
+    "dyn.type": "", "dyn.payload": "",
     "landing": "T", "throw": "T R N", "exc.match": "",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
@@ -688,6 +689,19 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
+    # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
+    # any type, so that an operation on one may run the program's code (an object's __repr__,
+    # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A) but -5..256's
+    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
+    "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
+    "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",
+    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
+    "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
+    "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
+    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
     "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
@@ -871,6 +885,13 @@ RUNTIME: dict[str, str] = {
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
 # the last def has run, which spares the compiled functions a check that each callee is defined)
+# the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
+# and the constant boxes of None, True and False, with their LLVM types; a module declares those
+# it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
+DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64}"
+RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
+for _k in "none bool int float str list dict tuple".split():
+    RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:
     _s = RUNTIME[_k][RUNTIME[_k].rfind("|") + 1 :]

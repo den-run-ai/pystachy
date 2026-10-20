@@ -661,6 +661,8 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.unbound_call(o.t[5:-1], m, args)
     if is_kw(o.t):
         return self.kw_method(o, m, args)
+    if o.t == "dyn":
+        return self.dyn_method(o, m, args)  # (its box's type's: dynamic.py)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):

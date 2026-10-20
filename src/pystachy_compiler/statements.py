@@ -562,6 +562,8 @@ def gen_stmt(self, n: Node) -> None:
             self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
     elif k == "gendrop":
         self.gen_drop(self.expr(n.kids[0], ""))  # (a generator a loop owns: owned_loop)
+    elif k == "dynbody":
+        self.dyn_body(n.s)  # (a dispatcher of dynamic values: dynamic.py)
     elif (k == "assign" or k == "annassign") and n.kids[-1].kind == "yield" and n.kids[-1].s == "from" and (k == "annassign" or len(n.kids) == 2):
         # r = yield from g(): what the generator g() makes returns
         v = self.yield_from(n.kids[-1].kids[0])
@@ -1521,7 +1523,10 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
 def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
     # what a for loop steps through (for_seq): a tuple as it is, whose items must then share
     # one type (with PYSTACHY_OPT=-tupleiter, a list of them), an object the list its __iter__
-    # steps through or the iterator object it returns (obj_iterator); None raises msg
+    # steps through or the iterator object it returns (obj_iterator); None raises msg; a dynamic
+    # value the runtime's iterator over it (dyniter: dynamic.py)
+    if v.t == "dyn":
+        return Val(self.rt("pys_dyn_iter", "ptr", [f"ptr {v.v}"]), "dyniter")
     v = self.unwrap(v, msg)
     if is_kw(v.t):
         return self.kw_list(v)  # (iterating **kwargs gives the names)
@@ -1698,6 +1703,11 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
             j = self.rt("pys_file_readline", "ptr", [f"ptr {s.v}"])
             ok = self.num_cmp('!=', Val(self.mload('int', j), "int"), Val('0', "int")).v
             nx = ""
+        elif s.t == "dyniter":
+            # a dynamic value's next item, null at its end (dynamic.py)
+            j = self.rt("pys_dyn_next", "ptr", [f"ptr {s.v}"])
+            ok = self.ptr_cmp('!=', Val(j, "dyn"), Val('null', 'None')).v
+            nx = ""
         elif is_gen(s.t):
             # a generator runs to its next yield (the address of its promise, which holds the value)
             j = self.gen_next(s, le)
@@ -1790,6 +1800,8 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [Val(self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), "int")]
     if s.t == "file":
         return [Val(j, "str")]
+    if s.t == "dyniter":
+        return [Val(j, "dyn")]
     if is_gen(s.t):
         return [self.from_slot(self.mload('int', j), gelem(s.t))]  # (j: its promise, gen_next)
     if is_set(s.t):
@@ -1814,7 +1826,7 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         self.err(f"'{tname(s.t)}' object is not reversible")
     if is_gen(s.t) and mode == "reversed":
         self.err("'generator' object is not reversible")
-    if self.is_iterator(s.t) and mode != "reversed":
+    if (self.is_iterator(s.t) or s.t == "dyniter") and mode != "reversed":
         made.st.append("")
         made.used.append("")
         return

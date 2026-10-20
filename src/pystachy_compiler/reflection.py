@@ -233,6 +233,8 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     # type decides it, else the name in the record of its exact class (refl_class_of)
     v = self.expr(x, "")
     known = self.knownobj(x)
+    if v.t == "dyn" and what == "__name__":
+        return self.dyn_type_name(v)  # (its box's DynType's: dynamic.py)
     if v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != ""):
         if what == "__module__":
             # (its class's, which pys_exc_module reads in an exception as in a class object;

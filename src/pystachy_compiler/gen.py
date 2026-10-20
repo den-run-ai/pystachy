@@ -18,6 +18,59 @@ from src.pystachy_compiler.memory_ir import (
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
 )
+from src.pystachy_compiler.dynamic import (
+    gen_dyn_arith as dynamic_dyn_arith,
+    gen_dyn_arm as dynamic_dyn_arm,
+    gen_dyn_body as dynamic_dyn_body,
+    gen_dyn_box as dynamic_dyn_box,
+    gen_dyn_boxable as dynamic_dyn_boxable,
+    gen_dyn_builtin as dynamic_dyn_builtin,
+    gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
+    gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
+    gen_dyn_call as dynamic_dyn_call,
+    gen_dyn_check as dynamic_dyn_check,
+    gen_dyn_class_type as dynamic_dyn_class_type,
+    gen_dyn_cmp2 as dynamic_dyn_cmp2,
+    gen_dyn_compare as dynamic_dyn_compare,
+    gen_dyn_contains as dynamic_dyn_contains,
+    gen_dyn_delitem as dynamic_dyn_delitem,
+    gen_dyn_dispatcher as dynamic_dyn_dispatcher,
+    gen_dyn_dispatchers as dynamic_dyn_dispatchers,
+    gen_dyn_fallback as dynamic_dyn_fallback,
+    gen_dyn_float as dynamic_dyn_float,
+    gen_dyn_fresh as dynamic_dyn_fresh,
+    gen_dyn_getattr as dynamic_dyn_getattr,
+    gen_dyn_getitem as dynamic_dyn_getitem,
+    gen_dyn_hash as dynamic_dyn_hash,
+    gen_dyn_identity as dynamic_dyn_identity,
+    gen_dyn_int as dynamic_dyn_int,
+    gen_dyn_isinst as dynamic_dyn_isinst,
+    gen_dyn_isinst_types as dynamic_dyn_isinst_types,
+    gen_dyn_len as dynamic_dyn_len,
+    gen_dyn_method as dynamic_dyn_method,
+    gen_dyn_mixed as dynamic_dyn_mixed,
+    gen_dyn_narrow_type as dynamic_dyn_narrow_type,
+    gen_dyn_payload as dynamic_dyn_payload,
+    gen_dyn_policy as dynamic_dyn_policy,
+    gen_dyn_repr as dynamic_dyn_repr,
+    gen_dyn_return as dynamic_dyn_return,
+    gen_dyn_select as dynamic_dyn_select,
+    gen_dyn_setattr as dynamic_dyn_setattr,
+    gen_dyn_setitem as dynamic_dyn_setitem,
+    gen_dyn_str as dynamic_dyn_str,
+    gen_dyn_supports as dynamic_dyn_supports,
+    gen_dyn_tagged_type as dynamic_dyn_tagged_type,
+    gen_dyn_takes as dynamic_dyn_takes,
+    gen_dyn_test as dynamic_dyn_test,
+    gen_dyn_truth as dynamic_dyn_truth,
+    gen_dyn_type as dynamic_dyn_type,
+    gen_dyn_type_name as dynamic_dyn_type_name,
+    gen_dyn_typeof as dynamic_dyn_typeof,
+    gen_dyn_types_of as dynamic_dyn_types_of,
+    gen_dyn_unary as dynamic_dyn_unary,
+    gen_dyn_unbox as dynamic_dyn_unbox,
+    gen_rtdata as dynamic_rtdata,
+)
 from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
@@ -1184,7 +1237,173 @@ class Gen:
         self.refllate: dict[str, bool] = {}  # those assigned other than by an __init__ through its object (refl_late)
         self.refltexts: list[RText] = []  # the deferred texts of reflective lookups (refl_defer)
         self.reflcopies = 1  # the copies of the code being compiled that unrolled loops make (refl_unroll_for)
+        # dynamic values (dynamic.py): the runtime data the module declares (RTDATA), the DynTypes
+        # of the classes whose objects are boxed (in the order they were made), the dispatchers
+        # (by key, with the dunder each runs and the line of its first use) and what they were
+        # last compiled for (dyn_dispatchers)
+        self.rtdatas: dict[str, bool] = {}
+        self.dyntypes: dict[str, str] = {}
+        self.dynclasses: list[str] = []
+        self.dynfns: dict[str, FnInfo] = {}
+        self.dynkeys: dict[str, str] = {}
+        self.dynlines: dict[str, int] = {}
+        self.dynsig = ""
 
+    # ---- dynamic values (dynamic.py)
+    def dyn_policy(self, line: int) -> bool:
+        return dynamic_dyn_policy(self, line)
+
+    def rtdata(self, sym: str) -> str:
+        return dynamic_rtdata(self, sym)
+
+    def dyn_boxable(self, t: str) -> str:
+        return dynamic_dyn_boxable(self, t)
+
+    def dyn_type(self, t: str) -> str:
+        return dynamic_dyn_type(self, t)
+
+    def dyn_class_type(self, c: str) -> str:
+        return dynamic_dyn_class_type(self, c)
+
+    def dyn_box(self, v: Val) -> Val:
+        return dynamic_dyn_box(self, v)
+
+    def dyn_tagged_type(self, v: Val) -> str:
+        return dynamic_dyn_tagged_type(self, v)
+
+    def dyn_typeof(self, v: Val) -> str:
+        return dynamic_dyn_typeof(self, v)
+
+    def dyn_payload(self, v: Val, t: str) -> Val:
+        return dynamic_dyn_payload(self, v, t)
+
+    def dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
+        return dynamic_dyn_unbox(self, v, t, what)
+
+    def dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
+        return dynamic_dyn_check(self, v, ts, shown)
+
+    def dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
+        return dynamic_dyn_select(self, v, ts, t)
+
+    def dyn_test(self, v: Val, ts: list[str]) -> str:
+        return dynamic_dyn_test(self, v, ts)
+
+    def dyn_types_of(self, t: str) -> list[str]:
+        return dynamic_dyn_types_of(self, t)
+
+    def dyn_isinst_types(self, c: Node) -> list[str]:
+        return dynamic_dyn_isinst_types(self, c)
+
+    def dyn_isinst(self, v: Val, c: Node) -> Val:
+        return dynamic_dyn_isinst(self, v, c)
+
+    def dyn_narrow_type(self, c: Node, truth: bool) -> str:
+        return dynamic_dyn_narrow_type(self, c, truth)
+
+    def dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
+        return dynamic_dyn_arith(self, op, a, b, inplace)
+
+    def dyn_unary(self, op: str, v: Val) -> Val:
+        return dynamic_dyn_unary(self, op, v)
+
+    def dyn_compare(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_compare(self, op, a, b)
+
+    def dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_cmp2(self, op, a, b)
+
+    def dyn_identity(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_identity(self, op, a, b)
+
+    def dyn_truth(self, v: Val) -> str:
+        return dynamic_dyn_truth(self, v)
+
+    def dyn_str(self, v: Val) -> Val:
+        return dynamic_dyn_str(self, v)
+
+    def dyn_repr(self, v: Val) -> Val:
+        return dynamic_dyn_repr(self, v)
+
+    def dyn_len(self, v: Val) -> Val:
+        return dynamic_dyn_len(self, v)
+
+    def dyn_hash(self, v: Val) -> Val:
+        return dynamic_dyn_hash(self, v)
+
+    def dyn_getitem(self, o: Val, k: Val) -> Val:
+        return dynamic_dyn_getitem(self, o, k)
+
+    def dyn_setitem(self, o: Val, k: Val, v: Val) -> None:
+        return dynamic_dyn_setitem(self, o, k, v)
+
+    def dyn_delitem(self, o: Val, k: Val) -> None:
+        return dynamic_dyn_delitem(self, o, k)
+
+    def dyn_contains(self, o: Val, k: Val) -> Val:
+        return dynamic_dyn_contains(self, o, k)
+
+    def dyn_int(self, v: Val) -> Val:
+        return dynamic_dyn_int(self, v)
+
+    def dyn_float(self, v: Val) -> Val:
+        return dynamic_dyn_float(self, v)
+
+    def dyn_type_name(self, v: Val) -> Val:
+        return dynamic_dyn_type_name(self, v)
+
+    def dyn_dispatcher(self, key: str, ptypes: list[str], ret: str, dunder: str) -> FnInfo:
+        return dynamic_dyn_dispatcher(self, key, ptypes, ret, dunder)
+
+    def dyn_call(self, f: FnInfo, args: list[Val]) -> Val:
+        return dynamic_dyn_call(self, f, args)
+
+    def dyn_body(self, key: str) -> None:
+        return dynamic_dyn_body(self, key)
+
+    def dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
+        return dynamic_dyn_supports(self, c, key, dunder, nargs)
+
+    def dyn_takes(self, fm: FnInfo, own: int, nargs: int) -> bool:
+        return dynamic_dyn_takes(self, fm, own, nargs)
+
+    def dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
+        return dynamic_dyn_arm(self, f, key, dunder, x, args)
+
+    def dyn_return(self, f: FnInfo, r: Val) -> None:
+        return dynamic_dyn_return(self, f, r)
+
+    def dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+        return dynamic_dyn_builtin_methods(self, f, key, o, args)
+
+    def dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
+        return dynamic_dyn_builtin_takes(self, bt, m, n)
+
+    def dyn_fresh(self, v: Val) -> Val:
+        return dynamic_dyn_fresh(self, v)
+
+    def dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
+        return dynamic_dyn_fallback(self, f, key, ps)
+
+    def dyn_dispatchers(self) -> bool:
+        return dynamic_dyn_dispatchers(self)
+
+    def dyn_builtin(self, name: str, v: Val) -> Val:
+        return dynamic_dyn_builtin(self, name, v)
+
+    def dyn_getattr(self, o: Val, a: str) -> Val:
+        return dynamic_dyn_getattr(self, o, a)
+
+    def dyn_setattr(self, o: Val, a: str, v: Val) -> None:
+        return dynamic_dyn_setattr(self, o, a, v)
+
+    def dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return dynamic_dyn_method(self, o, m, args)
+
+    def dyn_mixed(self, es: list[Node]) -> bool:
+        return dynamic_dyn_mixed(self, es)
+
+    # ---- end of dynamic values
     # ---- reflection (reflection.py)
     def refl_typeof(self, n: Node) -> Node | None:
         return reflection_refl_typeof(self, n)
