@@ -55,7 +55,8 @@ optional elements copies its slots rather than reinterpreting numeric bits as po
 
 Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with fixed tuples
 into a new tuple of one item type, or return the other operand itself where one is empty, as
-CPython does; items of a type and of that type or `None` make a tuple of the latter. They do not
+CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
+of that type or `None` (`nums + (None,)`). They do not
 support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
