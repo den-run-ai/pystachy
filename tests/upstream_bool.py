@@ -19,8 +19,8 @@
 #   base type"; int.__new__), test_repr's eval(repr(...)) (no eval()), test_complex (complex
 #   numbers are not supported)
 # - test_math's ~false, ~true, eval("~False") and eval("~True"): CPython 3.13 warns there
-#   (assertWarns(DeprecationWarning)), on stderr, which Pystachy does not do (no warnings module;
-#   ~ of a bool gives the same int)
+#   (assertWarns(DeprecationWarning)), on stderr, which Pystachy does not do (its ~ of a bool
+#   warns through no warnings module, and gives the same int)
 # - test_convert's bool(42, 42): a compile-time error worded "bool() takes exactly one argument (2
 #   given)" where CPython says "bool expected at most 1 argument, got 2" (bug: message wording,
 #   as #277's); test_keyword_args (bool(x=10): a compile-time error worded "keyword argument 'x'
