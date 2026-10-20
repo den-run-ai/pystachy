@@ -200,6 +200,10 @@ then a `str`), and a copier chosen at run time by `type(x).__name__` from a dict
 `Callable[[Any, dict[int, Any]], Any]`. The copy preserves sharing and cycles and is independent
 of the original, as CPython's is.
 
+`lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
+document into dicts and lists of `Any` values that programs which do not opt in read
+([tomllib](../lib/compatibility.md#tomllib)).
+
 This is not `copy.deepcopy` itself. Running the unchanged module still needs `type(x)` as a
 value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` and
 `__reduce_ex__` by run-time names (#489), `cls.__new__(cls)`, and `object.__dict__` updates.

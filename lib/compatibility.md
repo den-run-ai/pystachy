@@ -45,6 +45,44 @@ recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
 characters unchanged; writing that string follows the runtime's text-encoding
 rules. See the [prototype design and validation](../docs/json-prototype.md).
 
+## Tomllib
+
+`tomllib` is CPython 3.13.16's `Lib/tomllib` with the edits below, each marked `Pystachy port:`.
+Its modules opt in to [dynamic `Any`](../docs/dynamic-any.md), so `loads(s, *, parse_float=float)`
+returns a dict of dynamic values, of the types CPython's `tomllib` gives them: tables are dicts,
+arrays are lists, and strings, ints, floats, bools and `datetime`, `date` and `time` objects keep
+their types. A program that does not opt in reads them as such values: indexing, iteration,
+comparisons, arithmetic and printing work, and `isinstance()` or an annotation
+(`name: str = doc["project"]["name"]`) gives typed code a concrete value
+([test](../tests/programs/library/lib_tomllib.py)). `TOMLDecodeError` has CPython's messages, and an
+uncaught one's line names it `tomllib.TOMLDecodeError`
+([test](../tests/programs/library/lib_tomllib_uncaught.py)). The 62 documents of CPython's
+`Lib/test/test_tomllib/data`, and the assertions of its `test_error.py` and `test_misc.py` that
+need no binary file, `decimal`, `copy` or `test.support`, are in the differential suite
+([data](../tests/programs/upstream/upstream_tomllib_data.py),
+[errors and limits](../tests/programs/upstream/upstream_tomllib_misc.py)).
+
+- `load(fp)` reads a binary file, which Pystachy does not have: its `BinaryIO` parameter is a
+  compile-time error. Read the file as text and call `loads(f.read())`, which CPython runs too.
+- The values have dynamic `Any`'s [deviations](../docs/dynamic-any.md#deviations): an
+  annotation that receives a value of another type raises `TypeError`, and `keys()`, `values()`
+  and `items()` give lists.
+- `parse_float` is a function of one `str`, whose result is the value. One that returns a typed
+  `dict` or `list` is a compile-time error (a typed container cannot become an `Any` value); one
+  that returns an `Any` dict or list raises CPython's `ValueError`.
+
+The edits: the three modules that use `Any` hold the comment `# pystachy: dynamic-any`.
+`_parser.py` annotates tables `dict[Any, Any]` where CPython writes `dict[str, Any]`, and makes an
+empty table with a function, `_new_table()`, where CPython writes `{}`, as a typed or empty dict
+does not become an `Any` value yet ([#777](https://github.com/den-run-ai/pystachy/issues/777));
+keeps `Flags`'s flags as dict keys where CPython uses sets, which are no `Any` values yet, and its
+pending flags in a list, as a set's tuples do not hold a runtime-length tuple yet
+([#783](https://github.com/den-run-ai/pystachy/issues/783)); and declares the variable that
+`parse_basic_str()` gives one of two functions,
+`Callable[[str, Pos], tuple[Pos, str]]`, as each function is a type of its own. `_re.py` asserts that
+an offset's hour and minute groups matched, which its pattern ensures, and passes
+`str(match.group())` to `parse_float`, as a group is a `str | None`.
+
 ## `_imp` prototype
 
 The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread

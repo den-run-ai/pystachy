@@ -41,8 +41,16 @@ observable contract.
 | `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
+| `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
+| `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
+| `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
 
 `heapq` adapts its top-k routines while retaining the other upstream code.
+`tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
+modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
+test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
+`Python-3.13.16.tgz` release (SHA-256
+`cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427`).
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
