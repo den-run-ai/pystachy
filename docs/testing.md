@@ -14,7 +14,8 @@ Run these from the repository root:
 | `make` | Bootstrap the native compiler; successive compilers must emit byte-identical IR for the compiler and subset runtime. |
 | `make test` | Run the differential, rejection and deviation suite with the native compiler, JIT and AOT. |
 | `make test-py` | Run the same suite with the compiler hosted by CPython. |
-| `make coverage` | Measure which lines and branches of the compiler's source that suite runs, in the CPython-hosted compiler ([compiler coverage](#compiler-coverage)). |
+| `make coverage` | Measure which statements and branches of the compiler's source that suite, the FFI and runtime-cache suites, the IR checks and the compiler's unit tests run, in the CPython-hosted compiler ([compiler coverage](#compiler-coverage)). |
+| `make runtime-coverage` | Measure which lines and branches of the runtime's C code the corpus's programs and the FFI suite run ([native runtime coverage](#native-runtime-coverage)). |
 | `make verify` | Run the complete verification plan and write `build/verification.json`. |
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
@@ -140,38 +141,107 @@ counts and syntax-survey results are retained as [historical snapshots](archive/
 
 ## Compiler coverage
 
-`make coverage` runs the differential, rejection and deviation suite, JIT and AOT, with the
-CPython-hosted compiler under [coverage.py](https://coverage.readthedocs.io/), pinned in
-`tools/requirements-dev.txt`. It reports which lines and branches of `src/pystachy_compiler/`
-the suite runs. `FILES="..."` selects cases, as for `make test-py`. The results go to
-`build/coverage/`:
+`make coverage` measures which statements and branches of `src/pystachy_compiler/` the
+compiler's tests run, with the CPython-hosted compiler under
+[coverage.py](https://coverage.readthedocs.io/), pinned in `tools/requirements-dev.txt`. It runs
+five suites, each under a coverage.py context of its name:
+
+| Suite | Runs |
+|---|---|
+| `corpus` | The differential, rejection and deviation suite, JIT and AOT (`tests/run.sh`, as `make test-py` does). |
+| `ffi` | `tests/ffi/run.sh`, JIT and AOT: C calls, FFI diagnostics, embedded CPython and extension modules. |
+| `cache` | `tests/cache.sh`: the runtime cache's rules and the driver's search for LLVM and for itself. |
+| `unit` | The compiler's unit tests, `tools/test_typed*.py` and `tools/test_function_summaries.py`. |
+| `ir` | `tools/check_ir.sh` on the programs the corpus does not compile: `pystachy.py` and `runtime.py`, as the bootstrap's first stage compiles them, the benchmarks and the `tests/ir/` probes with their effect, call, attribute and TBAA contracts. |
+
+`FILES="..."` selects corpus cases and runs the corpus alone; `COVERAGE_SUITES` names the
+suites to run. The results go to `build/coverage/`:
 
 | File | Contents |
 |---|---|
-| `html/index.html` | Each module's source, marked line by line. |
-| `summary.md` | The commit, the suite's counts, the run time and a table of the modules. |
+| `html/index.html` | Each module's source, marked line by line, with the suites that ran each line. |
+| `summary.md` | The commit; statement and branch coverage, in all and for each suite alone; what only the other suites run; a table of the modules, with the corpus's own total beside each. |
 | `coverage.json` | coverage.py's JSON report. |
-| `badge.json` | The total, as a [shields.io endpoint](https://shields.io/badges/endpoint-badge). |
-| `tests.log` | The report of `tests/run.sh`. |
+| `badge.json` | Statement and branch coverage, as a [shields.io endpoint](https://shields.io/badges/endpoint-badge). |
+| `parts/` | Each suite's data (`data.PART`), counts (`PART.json`) and test report (`PART.log`). |
 
-The percentage is **hosted compiler coverage**: the compiler's own source, as CPython runs it.
-It does not measure `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as
-native code. `make test-ffi` and `make test-cache` are not part of the run either, so code that
-only they reach, such as C calls, extension modules and the driver's search of `PATH` for LLVM,
-counts as missed. [`.coveragerc`](../.coveragerc) holds the settings. Each compiler process writes
-its own data file. `pystachy run` replaces its process with `lli` through `os.execv`, so
-coverage.py saves the data first (`patch = execv`); without that, JIT runs record nothing.
-Every run starts with an empty runtime cache, so the runtime's build is measured too.
-`make coverage` fails when a test fails or a compiler process leaves no data, never because
-of the percentage: there is no threshold.
+The percentages are **hosted compiler coverage**: the compiler's own source, as CPython runs
+it, statements and branches apart. coverage.py's own total, which the summary also gives,
+counts both together. None of it measures `runtime.c`, `runtime.py`, `lib/` or the compiled
+programs, which run as native code ([native runtime coverage](#native-runtime-coverage)
+measures `runtime.c`'s). The native compiler's runs in `make verify` (its own bootstrap stages,
+the sanitizer, Python-free and collector-stress stages) add nothing to it either, though they
+run the same compiler code.
 
-The [Coverage workflow](../.github/workflows/coverage.yml) runs `tools/coverage.sh`, as
-`make coverage` does, daily and on demand. It also runs on pull requests and pushes to `main`
-that change its setup or `tests/run.sh`, whose report the script reads. Its job summary shows
-`summary.md`, and the report is a workflow artifact. After each successful run on `main`, a
-separate job, which runs no tests, commits the summary and the badge to the `badges` branch, as
+[`.coveragerc`](../.coveragerc) holds the settings. Each compiler process starts through a
+launcher that counts it and writes its own data file. `pystachy run` replaces its process with
+`lli` through `os.execv`, so coverage.py saves the data first (`patch = execv`); without that,
+JIT runs record nothing. A suite fails unless every process left data, but for the one build
+that `tests/cache.sh` kills on purpose. `tests/cache.sh` runs a copy of the compiler in a
+directory of its own, which `[paths]` maps to `src/`. Each suite starts with an empty runtime
+cache, so the runtime's build is measured too. `make coverage` fails when a test fails or data
+is missing, never because of a percentage: there is no threshold.
+
+`COVERAGE_SHARD=I/N` limits the corpus to the cases `I`, `I + N`, `I + 2N`... in the order of
+`tests/verify.sh`'s shards, and `COVERAGE_REPORT=0` leaves out the report.
+`tools/coverage_report.py` combines such parts later. It first checks that every part passed
+with complete data, that no suite was measured twice, that no shard is missing and that all
+parts measured one commit.
+
+## Native runtime coverage
+
+`make runtime-coverage` measures which lines and branches of the runtime's C code the programs
+run: `runtime.c` with the `ryu/` files it includes, `pyembed.c` (embedded CPython) and `pyext.c`
+(the extension-module ABI). It builds a new runtime cache with clang's
+[source-based coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
+(`PYSTACHY_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"`), then runs the corpus's
+programs, JIT and AOT, and the FFI suite, AOT, with the native compiler. It needs clang's
+profile runtime (Ubuntu's `libclang-rt-18-dev`, which `tools/setup.sh` installs) and LLVM's
+`llvm-profdata` and `llvm-cov`. `FILES="..."` selects corpus cases. The results go to
+`build/runtime-coverage/`: `html/` (llvm-cov's annotated source, with branch counts),
+`summary.md` (lines, branches, functions and regions for each file and for each section of
+`runtime.c`: the collector, strings, arithmetic, lists, dicts, sets, I/O, exceptions and the
+rest), `coverage.json` (llvm-cov's summary), `lcov.info`, `badge.json` and the suites' logs.
+
+Each instrumented program adds its counts at exit to one profile for each kind of binary (the
+JIT tier's shared runtime, AOT executables, extension modules); a program that ends by a signal,
+`_exit()` or `os.execv` adds none. The driver compiles a copy of `runtime.c` behind a `#line`
+directive, which clang's coverage mapping does not follow, and `pyembed.c` and `pyext.c` from
+standard input. llvm-cov therefore reads the counts through objects compiled here from the
+sources themselves, with the same flags: clang finds a function's counters by its name and a
+hash of its body, and a function whose body differs from its source's (llvm-cov's "mismatched
+data") fails the run. `runtime.py`, which Pystachy
+compiles, carries no instrumentation and is not measured, nor are the C probes (`make dictprobe`
+and the others), which compile `runtime.c` under macros of their own. As for the compiler's
+coverage, a failed test fails the run and no percentage does.
+
+The instrumented runtime's machine code differs from the normal build's, and so do the stack
+words and registers that the conservative collector scans; the corpus must pass all the same.
+Running it so found that `open()` could keep alive the unreachable writer that it collects to
+close, where register allocation left that writer in a callee-saved register across the
+collection.
+
+## Reading coverage
+
+Coverage shows which code ran, not that it ran correctly. The differential tests, rejection
+fixtures and collector stress check results; a covered line can still miss a combination of
+types, an optimization pass or an exception path. A missed line is either untested behavior or
+code that only runs outside these suites, which the per-suite figures and the report's contexts
+help tell apart. Coverage is advisory: no check requires it and no change has to raise it, while a
+fix still needs a regression test that fails without it ([contributor guide](../CONTRIBUTING.md#validation)).
+
+The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
+demand, and on pull requests and pushes to `main` that change its setup or the suites' runners.
+The compiler's coverage runs in four parallel jobs (the corpus in three shards; the FFI,
+runtime-cache, unit and IR suites in the fourth) and a fifth combines them; the runtime's runs
+in a job of its own, which bootstraps the native compiler first. Job summaries show the summaries, and
+the reports are workflow artifacts. After each run on `main`, a separate job, which runs no
+tests, commits the summaries and badges of the reports that passed to the `badges` branch, which
+the README's badges read:
 [`coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md) and
-`coverage.json`, which the README's badge reads.
+`coverage.json`,
+[`runtime-coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)
+and `runtime-coverage.json`.
 
 ## Continuous integration
 
@@ -247,7 +317,7 @@ The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, repo
 and recording checks use the pinned CPython and require no compiler bootstrap.
 
 The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, daily and when its
-setup changes, and no check requires it; [compiler coverage](#compiler-coverage) describes it.
+setup changes, and no check requires it; [reading coverage](#reading-coverage) describes it.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from

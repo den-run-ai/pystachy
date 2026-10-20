@@ -30,11 +30,19 @@ test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
-# the lines and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, or FILES,
-# runs, measured in the CPython-hosted compiler as test-py runs it (tools/coverage.sh, .coveragerc):
+# the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
+# FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
+# alone), measured in the CPython-hosted compiler as test-py runs it (tools/coverage.sh, .coveragerc):
 # report only, in build/coverage/; $(PY) needs coverage.py (tools/requirements-dev.txt)
 coverage:
 	PY="$(PY)" tools/coverage.sh $(FILES)
+
+# the lines and branches of the native runtime's C code (runtime.c, pyembed.c, pyext.c) that the corpus's
+# programs (or FILES) and the FFI suite run, built with clang's source-based coverage
+# (tools/runtime_coverage.sh): report only, in build/runtime-coverage/; needs clang's profile runtime
+# (Ubuntu's libclang-rt-18-dev, which tools/setup.sh installs)
+runtime-coverage: pystachy
+	PY="$(PY)" tools/runtime_coverage.sh $(FILES)
 
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
 # with the native compiler, then the CPython-hosted one ($(PY) loads the extension modules)
@@ -283,4 +291,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
