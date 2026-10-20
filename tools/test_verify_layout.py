@@ -48,8 +48,9 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(self.sh("corpus_strays"), "")
 
     def test_a_test_outside_the_areas_is_a_stray(self):
-        strays = ["tests/old.py", "tests/old.out", "tests/old.path", "tests/errors/old.py",
-                  "tests/programs/old.py", "tests/programs/a/sub/deep.py", "tests/errors/a/sub/deep.py"]
+        strays = ["tests/old.py", "tests/old.out", "tests/old.path", "tests/errors/old.py", "tests/errors/old.path",
+                  "tests/errors/rej.out", "tests/programs/old.py", "tests/programs/a/sub/deep.py",
+                  "tests/errors/a/sub/deep.py"]
         for name in strays:
             self.write(name, "")
         self.assertEqual(sorted(self.sh("corpus_strays").split()), sorted(strays))

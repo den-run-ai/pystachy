@@ -25,7 +25,8 @@ corpus() {
 # before kept them), or in a directory below an area's
 corpus_strays() {
   for f in tests/*.py tests/*.out tests/*.err tests/*.in tests/*.full tests/*.path \
-    tests/programs/* tests/programs/*/*/* tests/errors/*.py tests/errors/*/*/*; do
+    tests/programs/* tests/programs/*/*/* tests/errors/*.py tests/errors/*.out tests/errors/*.err \
+    tests/errors/*.in tests/errors/*.full tests/errors/*.path tests/errors/*/*/*; do
     [ -e "$f" ] || [ -L "$f" ] || continue
     case $f in
       */__pycache__ | */__pycache__/*) continue ;;  # (CPython's, where a program imports another)
