@@ -24,7 +24,7 @@ print(damerau_levenshtein("ab", "ba"))
 
 ## Compatibility
 
-- String distances count UTF-8 bytes: `levenshtein("café", "cafe")` is 2, where CPython’s character distance is 1. ASCII strings and word/integer sequences agree.
+- String distances count characters, as in CPython: `levenshtein("café", "cafe")` is 1.
 - Recursive variants are limited by the native stack. Use the iterative variant for long inputs.
 - List comparisons involving a shared NaN can differ from CPython’s object-identity shortcut.
 

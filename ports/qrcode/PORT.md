@@ -29,7 +29,7 @@ qr.print_ascii()
 
 - `version` and `mask_pattern` are fields. Invalid assignments are checked on the next `make()`; reading an unset version returns `None` rather than fitting one.
 - `get_matrix()` is typed as `list[list[bool | None]]`; completed modules have boolean values. `optimal_data_chunks()` returns a list rather than a generator.
-- Text literals encode the same UTF-8 data as upstream. `chr()` values 128–255 are raw bytes in Pystachy, and lone-surrogate behavior differs.
+- Text literals and `chr()` values encode the same UTF-8 data as upstream; lone-surrogate behavior differs.
 - `print_ascii(tty=True)` always raises `OSError("Not a tty")`.
 
 <a id="tests"></a>

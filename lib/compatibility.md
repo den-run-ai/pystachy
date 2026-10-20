@@ -199,9 +199,11 @@ See [the probe record](../docs/html-parser-probe.md) for provenance and commands
 queries, opcodes, and the three ratio methods. `get_close_matches`, `Match`,
 `IS_CHARACTER_JUNK` and `IS_LINE_JUNK` also work.
 
-Items of other types are rejected. Generator APIs are unavailable:
-`get_grouped_opcodes`, `unified_diff`, `context_diff`, `ndiff`, `restore`,
-`Differ.compare`, and `HtmlDiff` tables. The linediff example groups opcodes itself.
+Items of other types are rejected. The generators `get_grouped_opcodes()`, `unified_diff()`
+(with file names, dates, `n` and `lineterm`) and `restore()` work. `context_diff()` does not
+compile, as it calls `dict()` with keyword arguments; neither do `ndiff()` and
+`Differ.compare()`, whose recursive `_fancy_helper()` generator yields a type the compiler
+cannot infer, nor `HtmlDiff`, whose class attributes' types it cannot infer.
 
 ## Getopt
 

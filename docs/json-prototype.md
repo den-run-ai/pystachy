@@ -6,8 +6,9 @@ whose nesting and scalar alternatives are chosen by input text, without a
 CPython interpreter or a user-visible node wrapper.
 
 This establishes a generic representation for one useful closed set of types.
-`Any` remains inference-only in its supported positions. There is no runtime
-profiling, online compilation or automatic skew-based specialization.
+`Any` remains inference-only in its supported positions, except in modules that opt in to
+[dynamic `Any`](dynamic-any.md). There is no runtime profiling, online compilation or automatic
+skew-based specialization.
 
 ## Values and ownership
 

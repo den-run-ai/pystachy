@@ -1,0 +1,55 @@
+--- 
++++ 
+@@ -1,8 +1,9 @@
+ one
+-two
++tree
+ three
+ four
+ five
+ six
+ seven
+ eight
++nine
+--- a.txt	2026-10-19
++++ b.txt	2026-10-20
+@@ -1,8 +1,9 @@
+ one
+-two
++tree
+ three
+ four
+ five
+ six
+ seven
+ eight
++nine
+--- 
++++ 
+@@ -2 +2 @@
+-two
++tree
+@@ -8,0 +9 @@
++nine
+--- 
++++ 
+@@ -1,3 +1,3 @@
+ one
+-two
++tree
+ three
+@@ -8 +8,2 @@
+ eight
++nine
+['--- ', '+++ ', '@@ -1 +1 @@', '-x', '+y']
+[]
+['--- \n', '+++ \n', '@@ -0,0 +1 @@\n', '+only\n']
+['--- \n', '+++ \n', '@@ -1 +0,0 @@\n', '-only\n']
+one
+two
+three
+one
+tree
+three
+four
+[exit 0]

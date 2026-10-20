@@ -29,8 +29,8 @@ print(wcwidth("中"), wcswidth("中文"))
 ## Compatibility
 
 - `wcswidth()` splits well-formed UTF-8 sequences before measuring characters, so literals and `n=` match the tested CPython widths.
-- A caller’s own `len()`, slicing or iteration still counts bytes: `wcswidth("中文", len("中"))` measures both characters in Pystachy, while CPython measures one.
-- Raw bytes produced by `chr()` or incomplete text slices have the documented byte-decoding behavior; boolean width/count arguments are outside the typed API.
+- A caller’s own `len()`, slicing and iteration count characters, as in CPython: `wcswidth("中文", len("中"))` measures one character.
+- Boolean width/count arguments are outside the typed API.
 
 <a id="tests"></a>
 

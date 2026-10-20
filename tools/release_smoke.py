@@ -17,6 +17,19 @@ import tempfile
 from install_smoke import PROGRAM, execute
 from release import binary_target, sha256
 
+# Recursive JSON values and code-point indexing use the packaged json module and the
+# runtime's string operations from the relocated installation.
+TEXT_PROGRAM = r'''
+import json
+
+record = json.loads('{"word": "caf\\u00e9", "tags": ["α", "\\ud83d\\ude00"], "n": [3, 2.5, null, true]}')
+text = json.dumps(record, sort_keys=True)
+print(text)
+print(json.loads(text) == record, json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+word = "naïve 😀 café"
+print(len(word), word[6], word[-4:], word.find("café"), word[::-1])
+'''
+
 
 def extract(archive, destination):
     with tarfile.open(archive, "r:gz") as handle:
@@ -79,6 +92,11 @@ def llvm_directory(override):
     return directory
 
 
+def runtime_files(cache):
+    """Name, inode and modification time of each cached runtime file."""
+    return {path.name: (path.stat().st_ino, path.stat().st_mtime_ns) for path in cache.glob("runtime-py-*")}
+
+
 def smoke(archive, llvm=None):
     toolchain = llvm_directory(llvm)
     environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
@@ -93,13 +111,14 @@ def smoke(archive, llvm=None):
         work = scratch / "outside checkout"
         work.mkdir()
         program = work / "demo.py"
-        program.write_text(PROGRAM, encoding="utf-8")
+        program.write_text(PROGRAM + TEXT_PROGRAM, encoding="utf-8")
         expected = execute([sys.executable, str(program)], work, environment)
         commands = scratch / "python-free-path"
         commands.mkdir()
-        # clang may invoke the system linker/assembler and macOS SDK tools.
-        # Add only these commands, not an entire bin directory containing Python.
-        for name in ("sh", "dirname", "readlink", "sed", "mkdir", "mv", "rm", "rmdir",
+        # The launcher and driver run POSIX tools (without chmod, the Linux JIT silently
+        # skips its shared runtime); clang may invoke the system linker/assembler and macOS
+        # SDK tools. Add only these commands, not an entire bin directory containing Python.
+        for name in ("sh", "dirname", "readlink", "sed", "chmod", "mkdir", "mv", "rm", "rmdir",
                      "ld", "as", "xcrun", "dsymutil", "uname"):
             command = shutil.which(name)
             if command:
@@ -142,6 +161,14 @@ def smoke(archive, llvm=None):
         cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
         if not list(cache.glob("runtime-*.bc")) or (relocated / "libexec/pystachy/build").exists():
             raise RuntimeError("release compiler did not use its external runtime cache")
+        if manifest["target"].startswith("linux-") and not list(cache.glob("runtime-*.so")):
+            raise RuntimeError("release JIT did not cache its shared runtime library")
+        runtime = runtime_files(cache)
+        if execute(["pystachy", "run", str(program)], work, environment) != expected:
+            raise RuntimeError("release warm JIT output differs from CPython")
+        if runtime_files(cache) != runtime:
+            raise RuntimeError("release warm JIT rebuilt its cached runtime")
+        print("relocated release warm JIT: CPython output matches, cached runtime reused")
         print(f"release {manifest['version']} {manifest['target']}: Python-free PATH, read-only resources, external cache")
 
 
