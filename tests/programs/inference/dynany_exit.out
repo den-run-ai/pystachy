@@ -1,0 +1,10 @@
+enter
+body True
+exit True
+exit False False
+after the suppressed error
+exit False False
+caught 'kept'
+no error
+exit True True
+[exit 0]

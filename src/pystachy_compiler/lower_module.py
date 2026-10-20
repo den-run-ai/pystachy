@@ -318,12 +318,13 @@ def gen_pyext(self) -> list[str]:
 
 def gen_dispatch(self, op: str) -> None:
     # pys_obj_<op>(class id, [op code,] a, b), called by the runtime for "O<id>" descriptors;
-    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper), and
-    # pys_obj_cmp(-1 - id, 0, a, b) is a != b, for a dynamic value's (one: pys_dyn_ne). Only a
-    # class that a descriptor compares (ocmp) has @o.eq and @o.cmp
+    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper),
+    # pys_obj_cmp(-1 - id, 0, a, b) is a != b, for a dynamic value's (one: pys_dyn_ne), and
+    # pys_obj_cmp(-1 - id, op, a, b), op 1 to 6, a's comparison with b, a dynamic value of another
+    # type (xobj: dyn_xhelper). Only a class that a descriptor compares (ocmp) has @o.eq and @o.cmp
     r = "ptr" if op == "repr" else "i64"
     hs = [c for c in self.hcls] if op == "eq" else []
-    ns = [c for c in self.one] if op == "cmp" else []
+    ns = [c for c in self.one] + [c for c in self.xobj if c not in self.one] if op == "cmp" else []
     cs = [c for c in self.ocls if op == "repr" or c in self.ocmp]
     self.out.append(f"define {r} @pys_obj_{op}(i64 %c, {'i64 %op, ' if op == 'cmp' else ''}i64 %a, i64 %b) {{")
     self.out.append("entry:")
@@ -350,9 +351,19 @@ def gen_dispatch(self, op: str) -> None:
     for c in ns:
         i = self.ocls[c]
         self.out.append(f"n{i}:")
-        self.out.append(f"  %y{i} = call i1 @o.ne.{c}(ptr %pa, ptr %pb)")
-        self.out.append(f"  %w{i} = zext i1 %y{i} to i64")
-        self.out.append(f"  ret i64 %w{i}")
+        if c in self.one and c in self.xobj:
+            self.out.append(f"  %q{i} = icmp eq i64 %op, 0")
+            self.out.append(f"  br i1 %q{i}, label %ne{i}, label %xc{i}")
+            self.out.append(f"ne{i}:")
+        if c in self.one:
+            self.out.append(f"  %y{i} = call i1 @o.ne.{c}(ptr %pa, ptr %pb)")
+            self.out.append(f"  %w{i} = zext i1 %y{i} to i64")
+            self.out.append(f"  ret i64 %w{i}")
+        if c in self.one and c in self.xobj:
+            self.out.append(f"xc{i}:")
+        if c in self.xobj:
+            self.out.append(f"  %u{i} = call i64 @o.x.{c}(i64 %op, ptr %pa, ptr %pb)")
+            self.out.append(f"  ret i64 %u{i}")
     self.out.append("none:")
     self.out.append("  unreachable")
     self.out.append("}")

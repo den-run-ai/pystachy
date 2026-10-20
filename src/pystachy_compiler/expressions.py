@@ -827,14 +827,21 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
+        if o.t == "dyn":
+            return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
         fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
-        bnd = [self.slice_bound(n.kids[1], fold), self.slice_bound(n.kids[2], fold)]
-        step = self.slice_step(n.kids[3], fold) if len(n.kids) == 4 else "1"
+        dvs: list[Val] = []
+        bnd = [self.slice_bound(n.kids[1], dvs, fold), self.slice_bound(n.kids[2], dvs, fold)]
+        step = self.slice_step(n.kids[3], dvs, fold) if len(n.kids) == 4 else "1"
         o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
         if o.t in self.classes and o.t not in self.nts and "__getitem__" not in self.classes[o.t].methods:
             self.err(f"'{tname(o.t)}' object is not subscriptable")
         if o.t in self.classes and o.t not in self.nts:
             self.err(f"slicing an object is not supported: {short(o.t)}.__getitem__ would take a slice object, which Pystachy does not have")
+        ss = [bnd[0], bnd[1], step]
+        self.slice_dyn(ss, dvs)
+        bnd = ss[:2]
+        step = ss[2]
         if is_tuple(o.t) or o.t in self.nts:
             return self.slice_tuple(o, bnd, step)
         if is_vtuple(o.t):
@@ -872,7 +879,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     et = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
-        if not given and jt == "-" and self.dyn_policy(n.line):
+        if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
             et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
             for v in items:
@@ -944,7 +951,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
-        if self.dyn_policy(n.line) and ((not given and jt == "-") or (not kgiven and kj == "-")):
+        if self.dyn_policy(n.line) and ((not given and jt == "-" and not self.dyn_callables([b.t for b in vs])) or (not kgiven and kj == "-")):
             kv = ["dyn", "dyn"]  # (keys or values of no one type, in a module that compiles Any so: dynamic.py)
         ks = [self.store_key(x, kv[0]) for x in ks]
         if given and soft:
@@ -1702,6 +1709,11 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
     # format()'s argument
     empty = spec.kind == "str" and spec.s == ""
+    if v.t == "dyn":
+        # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec
+        # and runtime.c's formatting of a number or a str for another (TypeError for other values)
+        sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return self.dyn_format(v, sv)
     if v.t in self.classes and self.classes[v.t].tag > 0:
         cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
         if any(["__format__" in c.methods for c in cs]):
@@ -1748,11 +1760,6 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
     if empty:
         return self.to_str(v)
-    if v.t == "dyn":
-        # by its box's type (dynamic.py): runtime.c formats a number or a str, and raises for
-        # another value with a spec that is not empty
-        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
-        return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst('A')}", f"ptr {sv.v}"]), "str")
     if is_union(unopt(v.t)):
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
@@ -1784,9 +1791,10 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     d = self.sconst(self.desc(v.t, "repr"))
     return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
 
-def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
+def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # a slice's start or stop: an int, or the runtime's marker of an omitted bound (-2**63), which
-    # an explicit None is too; with fold, True and False are the constants 1 and 0
+    # an explicit None is too; with fold, True and False are the constants 1 and 0. An Any value
+    # goes to dvs, and its place, ?<index>, to slice_dyn, which converts it
     if x.kind == "omit":
         return "-9223372036854775808"
     bv = self.expr(x, "int")
@@ -1796,6 +1804,9 @@ def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optbound(bv)  # (None: omitted)
+    if bv.t == "dyn":
+        dvs.append(bv)
+        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
     bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
     if bd.startswith("%"):
@@ -1804,9 +1815,9 @@ def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
         bd = "-9223372036854775807"
     return bd
 
-def gen_slice_step(self, x: Node, fold: bool = False) -> str:
+def gen_slice_step(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # a slice's step: an int, 1 where it is omitted or None (the runtime raises CPython's
-    # ValueError for 0, and takes -2**63 as -(2**63 - 1)); fold as for slice_bound
+    # ValueError for 0, and takes -2**63 as -(2**63 - 1)); dvs and fold as for slice_bound
     if x.kind == "omit":
         return "1"
     bv = self.expr(x, "int")
@@ -1816,7 +1827,25 @@ def gen_slice_step(self, x: Node, fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optint(bv, "1")
+    if bv.t == "dyn":
+        dvs.append(bv)
+        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
     return self.coerce(self.as_int(bv), "int").v
+
+def gen_slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
+    # the start, stop and step ss of a typed sequence's slice, all evaluated, where the receiver is
+    # no None: those that are Any values, ?<index> into dvs (slice_bound), converted as CPython's
+    # PySlice_Unpack converts them once the slice is made, the step first, and its 0's ValueError
+    # before a bound's TypeError (dynamic.py)
+    if len(dvs) == 0:
+        return
+    if ss[2].startswith("?"):
+        ss[2] = self.dyn_bound(dvs[int(ss[2][1:])], False)
+    if ss[0].startswith("?") or ss[1].startswith("?"):
+        self.slice_check(ss[2])
+    for i in range(2):
+        if ss[i].startswith("?"):
+            ss[i] = self.dyn_bound(dvs[int(ss[i][1:])], True)
 
 def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
     # o[lo:hi:st] of a fixed-shape tuple or a NamedTuple (a plain tuple of its fields, as in
@@ -2943,6 +2972,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     f = self.classes[t].methods[m]
     if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (self.widens(other, f.ptypes[1]) or f.ptypes[1] == "")):
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
+    if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
+        return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
     return ""
 
 def gen_exc_kinds(self, t: str) -> list[str]:
@@ -3587,7 +3618,16 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     # where it is, and on in a new block where it is not; False if no branch can reach hit
     u = unopt(item.t)
     identity = (item.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u)) and self.isref(a.t)
-    if identity:
+    if (item.t == "dyn" or a.t == "dyn") and self.comparable(item.t, a.t):
+        # (an Any value: the same value first, also a float's, as the runtime's dyn_eqitem tests
+        # the items of a list of Any values; then ==, which may run a class's __eq__)
+        nx = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.cmp2("is", item, a).v, hit, nx)
+        self.place(nx)
+        identity = True
+    elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
         # by identity first, as the runtime's eqitem finds a list's item: xs in (xs,)
         # with xs = [nan]; a number has no identity here, see the deviation about NaN,
@@ -4045,6 +4085,10 @@ def gen_numeric_comparable(self, t: str, u: str) -> bool:
 
 def gen_comparable(self, t: str, u: str) -> bool:
     # can t == u be true at all? (otherwise CPython just answers False)
+    if t == "dyn" or u == "dyn":
+        # (an Any value may be any value that a box can hold: dynamic.py)
+        o = u if t == "dyn" else t
+        return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "" or self.numeric_comparable(t, u):

@@ -1,0 +1,5 @@
+caught pop: 'zz'
+1
+caught index: 5 is not in list
+end
+[exit 0]

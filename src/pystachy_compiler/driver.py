@@ -71,8 +71,12 @@ COMPILER_SOURCES: list[str] = [
 def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # the program's IR: where a join finds a location's inferred type too narrow for a value the
     # program stores to it (Gen.join_hint), the program is compiled again with the union of both
-    # types, as if annotated, until no join widens one (at most JOINS passes after the first)
+    # types, as if annotated, until no join widens one (at most JOINS passes after the first).
+    # Where a comparison method's call with an Any value does not compile, it is compiled again
+    # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
+    # limit)
     hints: dict[str, str] = {}
+    xnot: dict[str, bool] = {}
     files = len(FILES)
     lambdas = LAMBDAS[0]
     libs = len(LIBS)
@@ -84,6 +88,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
         g.hints = hints
+        g.xnot = xnot
         g.final = passes >= JOINS
         ld = Loader(dirs)
         ld.ext = ext
@@ -92,7 +97,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         except Rejoin:
             for k in g.newhints:
                 hints[k] = g.newhints[k]
-            passes += 1
+            if len([k for k in g.newx if k not in xnot]) == 0:
+                passes += 1
+            for k in g.newx:
+                xnot[k] = True
             # (as the loader and lowering found them: the next pass numbers files and lambdas,
             # and lists C libraries, as the first did)
             while len(FILES) > files:
@@ -279,10 +287,14 @@ def main() -> None:
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
             fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (MCJIT) or 2 (default ORC)", 0)
+        # cold functions (a function that only raises: cold noinline) stay in .text: where some
+        # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
+        # moved into main, and a try statement there missed what it should have caught
+        jitflags = " -profile-guided-section-prefix=false"
         if codegen == "0":
             # lli's default ORC path ignores -O0 in LLVM 18. MCJIT honors it; keep this
             # startup/execution tradeoff opt-in, independently of the IR inlining budget.
-            jitflags = " -jit-kind=mcjit -O0"
+            jitflags += " -jit-kind=mcjit -O0"
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
