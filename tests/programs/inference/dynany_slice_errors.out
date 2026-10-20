@@ -1,0 +1,23 @@
+dict: slice(1, 2, None)
+dict: slice(None, 'a', True)
+dict: slice(None, None, None)
+receiver: 'int' object is not subscriptable
+receiver: 'NoneType' object is not subscriptable
+step first: ValueError slice step cannot be zero
+step: slice indices must be integers or None or have an __index__ method
+f 2
+later bound: slice indices must be integers or None or have an __index__ method
+[2, 3, 4] [2, 4]
+typed step first: ValueError slice step cannot be zero
+typed step 0: ValueError slice step cannot be zero
+f 3
+typed later bound: slice indices must be integers or None or have an __index__ method
+typed None: 'NoneType' object is not subscriptable
+[2, 4] ell (2, 3)
+[1, 7, 8, 9, 4]
+[7, 8, 9, 4]
+f 1
+assign: slice indices must be integers or None or have an __index__ method
+delete: ValueError slice step cannot be zero
+[7, 8, 9, 4]
+[exit 0]

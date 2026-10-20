@@ -901,9 +901,9 @@ def gen_dyn_type_module(self, v: Val) -> Val:
 
 
 def gen_dyn_bound(self, v: Val, bound: bool) -> str:
-    # a slice's bound (or, not bound, its step) that is an Any value: an int's or a bool's value,
-    # None as an omitted one, else CPython's TypeError; a given bound of -2**63 is -2**63 + 1, as
-    # slice_bound clamps it
+    # a typed sequence's slice's bound (or, not bound, its step) that is an Any value (slice_dyn):
+    # an int's or a bool's value, None as an omitted one, else CPython's TypeError; a given bound of
+    # -2**63 is -2**63 + 1, as slice_bound clamps it (runtime.c's dbound for an Any value's slice)
     none = self.dyn_test(v, ["None"])
     ok = self.scalar("or", [Val(none, "bool"), Val(self.dyn_test(v, ["int", "bool"]), "bool")])
     self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
@@ -913,11 +913,16 @@ def gen_dyn_bound(self, v: Val, bound: bool) -> str:
     return self.select(none, Val("-9223372036854775808" if bound else "1", "int"), x)
 
 
-def gen_dyn_slice(self, o: Val, bnd: list[str], step: str) -> Val:
-    # o[lo:hi:st] for a dyn o: a str's, list's or tuple's items (slice; an object's __getitem__
-    # would take a slice object, which Pystachy does not have)
-    f = self.dyn_dispatcher("slice", [DYN, "int", "int", "int"], DYN, "__getitem__")
-    return self.dyn_call(f, [o, Val(bnd[0], "int"), Val(bnd[1], "int"), Val(step, "int")])
+def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
+    # o[lo:hi:st] for a dyn o, bs its bounds and step (omit nodes where omitted, no step where no
+    # second colon): their values, evaluated in turn, as Any values (None where omitted), which
+    # runtime.c's pys_dyn_slice converts once it has tested o, as CPython's sequences do (an
+    # object's __getitem__ would take a slice object, which Pystachy does not have)
+    vs = [o]
+    for i in range(3):
+        vs.append(self.expr(bs[i], "") if i < len(bs) and bs[i].kind != "omit" else Val("null", "None"))
+    f = self.dyn_dispatcher("slice", [DYN, DYN, DYN, DYN], DYN, "__getitem__")
+    return self.dyn_call(f, vs)
 
 
 def gen_dyn_type_name(self, v: Val) -> Val:
@@ -1245,7 +1250,7 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "module":
         self.ret_(Val(self.sconst("builtins"), "str"))
     elif key == "slice":
-        self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"i64 {ps[1].v}", f"i64 {ps[2].v}", f"i64 {ps[3].v}"]), DYN))
+        self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"ptr {ps[2].v}", f"ptr {ps[3].v}"]), DYN))
     elif key == "format":
         # str() for an empty spec, as object.__format__ and the builtin types' give; else a number's
         # or a str's own formatting, or the TypeError that names the value's type

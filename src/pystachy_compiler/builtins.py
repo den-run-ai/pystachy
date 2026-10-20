@@ -1267,7 +1267,7 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
     elif name == "sum" and r.t == "dyn":
-        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int or a float: stream_start)
         self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(sv))
     elif name == "sum" and r.isf != "":
         # (an int start begins CPython's int phase, a float one its float phase)

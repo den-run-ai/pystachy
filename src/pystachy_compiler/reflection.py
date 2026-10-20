@@ -9,7 +9,7 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
@@ -346,8 +346,8 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         return None
     for k in n.kids:
         x = self.refl_typeof(k)
-        if x is not None and self.dry(x, "") == "dyn":
-            return self.refl_dyn_type_cmp(n)
+        if x is not None and dynamic_program() and self.dry(x, "") == "dyn":
+            return self.refl_dyn_type_cmp(n)  # (an Any value's type, where a module opts in: its box's)
     sides: list[Val] = []
     for k in n.kids:
         x = self.refl_typeof(k)

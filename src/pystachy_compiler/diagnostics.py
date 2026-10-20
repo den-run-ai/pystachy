@@ -51,6 +51,11 @@ def dynamic_file(k: int) -> bool:
     return k in DYNFILES
 
 
+def dynamic_program() -> bool:
+    # does a module of the program opt in, so that values may be dynamic (dyn)
+    return len(DYNFILES) > 0
+
+
 def shown(s: str) -> str:
     # a name as Python spells it: the "$" of a qualified name (heapq$heappush) between two
     # identifier characters is the "." of a module attribute; the main program's names are

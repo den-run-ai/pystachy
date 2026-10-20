@@ -827,16 +827,21 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 bv = self.expr(bx, "int") if bx.kind != "omit" else Val("null", "None")
                 bs.append(self.vnode(self.as_int(bv) if bv.t == "bool" else bv))
             return self.call_fn(self.funcs[RANGES + "$_slice"], [], bs)
-        fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
-        bnd = [self.slice_bound(n.kids[1], fold), self.slice_bound(n.kids[2], fold)]
-        step = self.slice_step(n.kids[3], fold) if len(n.kids) == 4 else "1"
-        o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
         if o.t == "dyn":
-            return self.dyn_slice(o, bnd, step)  # (by its box's type: dynamic.py)
+            return self.dyn_slice(o, n.kids[1:])  # (by its box's type, of the bounds as Any values: dynamic.py)
+        fold = is_tuple(unopt(o.t)) or o.t in self.nts  # (constant bounds: the items' types)
+        dvs: list[Val] = []
+        bnd = [self.slice_bound(n.kids[1], dvs, fold), self.slice_bound(n.kids[2], dvs, fold)]
+        step = self.slice_step(n.kids[3], dvs, fold) if len(n.kids) == 4 else "1"
+        o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
         if o.t in self.classes and o.t not in self.nts and "__getitem__" not in self.classes[o.t].methods:
             self.err(f"'{tname(o.t)}' object is not subscriptable")
         if o.t in self.classes and o.t not in self.nts:
             self.err(f"slicing an object is not supported: {short(o.t)}.__getitem__ would take a slice object, which Pystachy does not have")
+        ss = [bnd[0], bnd[1], step]
+        self.slice_dyn(ss, dvs)
+        bnd = ss[:2]
+        step = ss[2]
         if is_tuple(o.t) or o.t in self.nts:
             return self.slice_tuple(o, bnd, step)
         if is_vtuple(o.t):
@@ -1786,9 +1791,10 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     d = self.sconst(self.desc(v.t, "repr"))
     return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {d}", f"ptr {sv.v}"]), "str")
 
-def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
+def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # a slice's start or stop: an int, or the runtime's marker of an omitted bound (-2**63), which
-    # an explicit None is too; with fold, True and False are the constants 1 and 0
+    # an explicit None is too; with fold, True and False are the constants 1 and 0. An Any value
+    # goes to dvs, and its place, ?<index>, to slice_dyn, which converts it
     if x.kind == "omit":
         return "-9223372036854775808"
     bv = self.expr(x, "int")
@@ -1799,7 +1805,8 @@ def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
     if is_sopt(bv.t):
         return self.optbound(bv)  # (None: omitted)
     if bv.t == "dyn":
-        return self.dyn_bound(bv, True)  # (an Any value's: dynamic.py)
+        dvs.append(bv)
+        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
     bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
     if bd.startswith("%"):
@@ -1808,9 +1815,9 @@ def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
         bd = "-9223372036854775807"
     return bd
 
-def gen_slice_step(self, x: Node, fold: bool = False) -> str:
+def gen_slice_step(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # a slice's step: an int, 1 where it is omitted or None (the runtime raises CPython's
-    # ValueError for 0, and takes -2**63 as -(2**63 - 1)); fold as for slice_bound
+    # ValueError for 0, and takes -2**63 as -(2**63 - 1)); dvs and fold as for slice_bound
     if x.kind == "omit":
         return "1"
     bv = self.expr(x, "int")
@@ -1821,8 +1828,24 @@ def gen_slice_step(self, x: Node, fold: bool = False) -> str:
     if is_sopt(bv.t):
         return self.optint(bv, "1")
     if bv.t == "dyn":
-        return self.dyn_bound(bv, False)  # (an Any value's: dynamic.py)
+        dvs.append(bv)
+        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
     return self.coerce(self.as_int(bv), "int").v
+
+def gen_slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
+    # the start, stop and step ss of a typed sequence's slice, all evaluated, where the receiver is
+    # no None: those that are Any values, ?<index> into dvs (slice_bound), converted as CPython's
+    # PySlice_Unpack converts them once the slice is made, the step first, and its 0's ValueError
+    # before a bound's TypeError (dynamic.py)
+    if len(dvs) == 0:
+        return
+    if ss[2].startswith("?"):
+        ss[2] = self.dyn_bound(dvs[int(ss[2][1:])], False)
+    if ss[0].startswith("?") or ss[1].startswith("?"):
+        self.slice_check(ss[2])
+    for i in range(2):
+        if ss[i].startswith("?"):
+            ss[i] = self.dyn_bound(dvs[int(ss[i][1:])], True)
 
 def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
     # o[lo:hi:st] of a fixed-shape tuple or a NamedTuple (a plain tuple of its fields, as in

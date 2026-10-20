@@ -3558,15 +3558,31 @@ List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, 
   for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
   return l;
 }
-/* o[lo:hi:st] of a str, a list or a tuple, with the bounds and step the compiler gives the typed
-   slices (an omitted bound is -2**63): a new value of its type (all of a str or tuple is itself) */
-Dyn *pys_dyn_slice(Dyn *o, I lo, I hi, I st) {
-  switch (DKIND(o)) {
-  case DK_STR: return dstr(st == 1 ? pys_text_slice((Str *)o->v, lo, hi) : pys_text_slice_step((Str *)o->v, lo, hi, st));
-  case DK_LIST: return dlist(st == 1 ? pys_list_slice((List *)o->v, lo, hi) : pys_list_slice_step((List *)o->v, lo, hi, st));
-  case DK_TUPLE: return dtuple(pys_vtuple_slice((VTuple *)o->v, lo, hi, st));
+/* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
+   step's 1), an int or a bool its value (a bound of -2**63 is -2**63 + 1, as the compiler clamps a
+   typed one's), else CPython's TypeError (no object here has __index__) */
+static I dbound(Dyn *x, int bound) {
+  if (DKIND(x) == DK_NONE) return bound ? NONE : 1;
+  if (DKIND(x) != DK_INT && DKIND(x) != DK_BOOL) pys_fail("TypeError: slice indices must be integers or None or have an __index__ method");
+  return bound && x->v == NONE ? NONE + 1 : x->v;
+}
+/* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
+   CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
+   of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
+   is the slice's, which no dict holds as a key */
+Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
+  int k = DKIND(o);
+  if (k == DK_DICT) {
+    Buf b = {0}; put(&b, "KeyError: slice(", 16); repr(&b, (I)lo, "A"); put(&b, ", ", 2); repr(&b, (I)hi, "A");
+    put(&b, ", ", 2); repr(&b, (I)st, "A"); put(&b, ")", 2); pys_fail(b.p);
   }
-  failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  if (k != DK_STR && k != DK_LIST && k != DK_TUPLE) failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  I s = dbound(st, 0);
+  if (!s) pys_fail("ValueError: slice step cannot be zero");
+  I a = dbound(lo, 1), z = dbound(hi, 1);
+  if (k == DK_STR) return dstr(s == 1 ? pys_text_slice((Str *)o->v, a, z) : pys_text_slice_step((Str *)o->v, a, z, s));
+  if (k == DK_LIST) return dlist(s == 1 ? pys_list_slice((List *)o->v, a, z) : pys_list_slice_step((List *)o->v, a, z, s));
+  return dtuple(pys_vtuple_slice((VTuple *)o->v, a, z, s));
 }
 /* d.update(x) of a dict of Any values: another dict's items, else x's items, each a pair, as
    CPython's dict.update takes them (its messages for one of another length, or no sequence) */

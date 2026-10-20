@@ -151,13 +151,15 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 ## Operations
 
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
-`Any` bounds too), item assignment and deletion, `len()`, `str()`, `repr()`, `int()`,
-`float()`, `bool()`, `hash()`, `id()`, `sum()` (also of a generator), `sorted()`, `min()`,
-`max()`, `list()`, `str.join()`, `dict.update()`, f-strings and `format()`, iteration,
-unpacking, augmented assignment, `type(x).__name__`, `__qualname__` and `__module__`, and
-`type(x) is C` and `type(x) == type(y)` (exact types: a bool's is no int's) work on `Any`
-values with CPython's results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a bool, mixed
-`int`/`float` comparisons are exact, and the error messages are CPython's
+`Any` bounds too, which convert as CPython converts them: once every bound is evaluated and the
+receiver tested, the step first; a dict's slice raises the slice's `KeyError`), item assignment
+and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`, `id()`, `sum()`
+(also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`, `dict.update()`,
+f-strings and `format()`, iteration, unpacking, augmented assignment, `type(x).__name__`,
+`__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
+bool's is no int's) work on `Any` values with CPython's results and errors: `int / int` and
+`2 ** -1` give floats, `True & False` is a bool, mixed `int`/`float` comparisons are exact, and
+the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
 
@@ -173,7 +175,7 @@ or CPython's `AttributeError`/`TypeError`:
 | `op<k>`, `iop<k>`, `un<k>` | binary, in-place and unary arithmetic in CPython's order: the class's in-place dunder; else the reflected dunder of a right operand of a strict subclass that has its own, then the class's dunder; else the reflected dunder of a right operand of another type (not for `str % x`, which formats `x`); then the builtin types' |
 | `truth`, `str`, `len` | `__bool__`/`__len__`, `__str__`/`__repr__`, `__len__` |
 | `format` | `__format__`, also with an empty spec; else `str()` for an empty spec, and the TypeError that names the class for another |
-| `slice`, `module` | a slice (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
+| `slice`, `module` | a slice, of its bounds and step as `Any` values (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
 | `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
@@ -252,7 +254,7 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
 - A NamedTuple's object compares and hashes as the tuple of its fields through `Any` values
   (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
-  identity, where CPython compares their fields.
+  identity (an ordering raises `TypeError`), where CPython compares their fields.
 - An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
   class has no `__contains__`) raise `TypeError` instead of calling `__iter__`. `int()` and
   `float()` of an object raise `TypeError` instead of calling `__int__`, `__index__` or

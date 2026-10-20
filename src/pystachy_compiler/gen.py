@@ -670,6 +670,7 @@ from src.pystachy_compiler.expressions import (
     gen_puretype as expressions_puretype,
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
+    gen_slice_dyn as expressions_slice_dyn,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
     gen_stack_key as expressions_stack_key,
@@ -1586,8 +1587,8 @@ class Gen:
     def dyn_bound(self, v: Val, bound: bool) -> str:
         return dynamic_dyn_bound(self, v, bound)
 
-    def dyn_slice(self, o: Val, bnd: list[str], step: str) -> Val:
-        return dynamic_dyn_slice(self, o, bnd, step)
+    def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
+        return dynamic_dyn_slice(self, o, bs)
 
     def dyn_mixed(self, es: list[Node]) -> bool:
         return dynamic_dyn_mixed(self, es)
@@ -3480,11 +3481,14 @@ class Gen:
     def optbound(self, v: Val) -> str:
         return expressions_optbound(self, v)
 
-    def slice_bound(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_bound(self, x, fold)
+    def slice_bound(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_bound(self, x, dvs, fold)
 
-    def slice_step(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_step(self, x, fold)
+    def slice_step(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_step(self, x, dvs, fold)
+
+    def slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
+        return expressions_slice_dyn(self, ss, dvs)
 
     def slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
         return expressions_slice_tuple(self, o, bnd, step)
