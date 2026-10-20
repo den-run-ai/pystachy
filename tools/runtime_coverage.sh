@@ -28,6 +28,9 @@ cd "$(dirname "$0")/.." || exit 1
 PYS=${COMPILER:-./pystachy}
 PY=${PY:-python3}
 C=build/runtime-coverage
+# (plain counters, not atomic ones: the registers their updates take moved a dead File pointer into
+# one that collect() scans, which showed open() keeping alive the writer it collected to close,
+# tests/rt_list_vacated.py, as no -O level nor register allocator did: this run is also a variant)
 CF="-fprofile-instr-generate -fcoverage-mapping"
 llvm=${PYSTACHY_LLVM:-$($PY -c 'import pystachy; print(pystachy.llvm_dir())')}
 L=${llvm:+${llvm%/}/}

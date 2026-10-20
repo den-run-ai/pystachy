@@ -44,6 +44,12 @@ coverage:
 runtime-coverage: pystachy
 	PY="$(PY)" tools/runtime_coverage.sh $(FILES)
 
+# the corpus (or FILES), JIT and AOT, in configurations that verify does not test (tools/variants.sh):
+# the IR passes off in a covering array of their pairs (PYSTACHY_OPT), the runtime and AOT programs
+# built at -O0 (PYSTACHY_CFLAGS); VARIANTS="opt-1 cflags-O0" selects some; logs in build/variants/
+variants: pystachy
+	PY="$(PY)" tools/variants.sh $(FILES)
+
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
 # with the native compiler, then the CPython-hosted one ($(PY) loads the extension modules)
 test-cache: pystachy
@@ -298,4 +304,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe re-specialize-check lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe re-specialize-check lint clean install uninstall test-install

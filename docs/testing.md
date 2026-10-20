@@ -16,6 +16,7 @@ Run these from the repository root:
 | `make test-py` | Run the same suite with the compiler hosted by CPython. |
 | `make coverage` | Measure which statements and branches of the compiler's source that suite, the FFI and runtime-cache suites, the IR checks and the compiler's unit tests run, in the CPython-hosted compiler ([compiler coverage](#compiler-coverage)). |
 | `make runtime-coverage` | Measure which lines and branches of the runtime's C code the corpus's programs and the FFI suite run ([native runtime coverage](#native-runtime-coverage)). |
+| `make variants` | Run the suite, JIT and AOT, in configurations that verification does not test: combinations of IR passes turned off, and the runtime and AOT programs built at `-O0` ([configuration variants](#configuration-variants)). |
 | `make verify` | Run the complete verification plan and write `build/verification.json`. |
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
@@ -252,6 +253,28 @@ the README's badges read:
 [`runtime-coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)
 and `runtime-coverage.json`.
 
+## Configuration variants
+
+`make variants` (`tools/variants.sh`) runs the differential, rejection and deviation suite, JIT
+and AOT, in configurations that `make verify` does not test and that must change no result:
+
+| Variant | Configuration |
+|---|---|
+| `opt-1` … `opt-5` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these five rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for ten. |
+| `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
+
+`make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
+allocation, and only that build showed `open()` keeping alive the writer it collected to close
+(`tests/rt_list_vacated.py`). With the fix reverted, the runtime built at `-O0`, `-O1`, `-O3`,
+`-Os` or `-Oz`, or with LLVM's basic or PBQP register allocator, still passes.
+
+`VARIANTS="opt-1 cflags-O0"` selects variants, `FILES=...` cases and `MODES=jit` one tier. The
+script drops the caller's settings that verification drops, builds each variant's runtime in a
+cache of its own and writes the logs to `build/variants/`, so run one at a time in a checkout.
+Each variant takes about as long as `make test`. The
+[Variants workflow](../.github/workflows/variants.yml) runs each one in a job of its own, daily,
+on demand and when the script or the workflow changes; no check requires it.
+
 ## Continuous integration
 
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
@@ -326,7 +349,9 @@ The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, repo
 and recording checks use the pinned CPython and require no compiler bootstrap.
 
 The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, daily and when its
-setup changes, and no check requires it; [reading coverage](#reading-coverage) describes it.
+setup changes, and no check requires it; [reading coverage](#reading-coverage) describes it. So
+does the [Variants workflow](../.github/workflows/variants.yml), which
+[configuration variants](#configuration-variants) describes.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
