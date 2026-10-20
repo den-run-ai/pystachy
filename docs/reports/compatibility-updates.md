@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `8990e41776e8e74f57812120f81ec3e897065eda`.
+**Latest evaluated main:** `4f71b5a013ddcce19ab12c282690106467faf4df`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4459,3 +4459,98 @@ Audit-head checks are read separately after publishing. Full local `make verify`
 CPython regrtest and a broad PyPI/NumPy census were not run. Native imports, executed
 APIs, adapted workloads and hosted compilation remain distinct. Dated baseline
 reports/JSON and concurrent edits are preserved.
+
+## 2026-10-20 — #764: starred type-parameter default acceptance corrected
+
+Evaluated [main `4f71b5a0`](https://github.com/den-run-ai/pystachy/commit/4f71b5a013ddcce19ab12c282690106467faf4df),
+the only first-parent merge after the last evaluated `8990e417`:
+[#764](https://github.com/den-run-ai/pystachy/pull/764). Re-fetched the PR, verified
+its merge in main's history and verified its tree equals implementation head
+`9e09520cd8701bfb22cd56ae50269a5d356fb9e3`. #635 is merged; #743 remains the open
+audit destination. Latest #491/#616 coordination, #541 and the PR review were read;
+no implementation branch or external contributor work was modified.
+
+The diff changes one parser rule, eight rejection fixtures, a valid-default
+program/recording and comments in the adapted upstream type-parameter test.
+Plain TypeVar and ParamSpec defaults now use the expression rule; only a
+TypeVarTuple can start with a starred expression. No library/runtime implementation
+changes. Selection: those **10 changed Python files plus 68 adjacent generic and
+type-parameter cases**, not a repeat of the entire syntax execution suite.
+
+A fresh **CPython 3.13.16 / LLVM 18.1.3** bootstrap reaches compiler/runtime fixed
+points **677,917 / 18,709 IR lines**. Compiler-build and evaluated-source revision
+both equal `4f71b5a0`; compiler SHA-256:
+`dbe44e25653a36004511aeedddec03bdcb0084178b62b1a492793e64b3b8d121`.
+The comparison binary is separately retained at source `8990e417`, SHA-256
+`6969b66e38efa0619afaaaadb634caf76a56b5488503fc08d6577f588d3b1dee`.
+[Evidence and replay scripts](compatibility-2026-10-20-starred-defaults.json)
+include commands, exact programs, input hashes, diagnostics and both identities.
+
+### Measured change
+
+- **The retained 58-program matrix goes from two acceptance mismatches to zero.**
+  Replayed the exact program text and verified every recorded SHA-256 from the
+  #732 evidence. `starred-default-T` and `starred-default-P` now reject like
+  CPython; all other acceptance results are unchanged. This is acceptance parity,
+  not a claim that every syntax diagnostic matches: two huge-key cases retain
+  CPython's integer-rendering `ValueError` versus the compiler's syntax diagnostic.
+- **An independent 144-case boundary matrix goes from 32 acceptance mismatches
+  to zero.** All three parameter kinds, six default expressions, aliases/classes/
+  functions/async functions and single/multiline lists are covered. Valid nested
+  unpacking and TypeVarTuple starred defaults remain accepted. **128/144** also
+  match exact diagnostic line/message. The other **16** are def/async rejections:
+  CPython reports `expected '('` at the opening line, while Pystachy reports
+  `invalid syntax`, on the default's later line in eight multiline cases.
+- CPython rejects all **eight new negative fixtures**, which the old parser's
+  `check` command accepts; the new parser rejects all eight. Across the ten
+  changed files, syntax-sweep exact line/message agreement is **6/10**; four
+  def/async cases retain the wording difference, with no acceptance disagreement.
+
+These residual diagnostics remain within
+[#541](https://github.com/den-run-ai/pystachy/issues/541)'s wording/position scope;
+the audit does not close it. Separate malformed-def and malformed-alias controls
+reconfirm the pre-existing recovery/heuristic differences on both revisions.
+Actual async calls and ParamSpec class compilation remain explicitly rejected on
+both revisions. Parsing unused declarations is not execution, reflection or
+default-driven inference support. The upstream-derived test keeps its existing
+adaptations and omissions; this is not an unmodified CPython type-parameter suite.
+
+### Regression checks and import boundaries
+
+| Fresh check | Result |
+|---|---|
+| Selected native / GC / optimization-off / hosted configurations | **118/118 each, 472 total**, across 78 programs; includes execution, expected rejection and syntax checks, not 472 unique upstream tests. |
+| Changed positive recordings | Both match CPython exactly. |
+| UBSan with per-allocation program GC | **5/5** checks on the two changed positive programs. |
+| IR validation | Checker and LLVM assembler accept **18/18** selected positive programs. |
+| Runtime contracts | **460** entries, **70** exception classes, **171** functions agree. |
+| Adapted port smoke | **8/8** JIT/AOT checks over iniconfig, tomli_w, roman and pylev. |
+| Retained compile comparison | **3,323/3,331 identical** normalized IR/message/status results. Only the eight new rejection fixtures differ: seven previously compiled invalid programs now reject, and one former unsupported-ParamSpec-class error becomes a syntax error. CPython independently rejects every newly rejected program; no valid-program acceptance regression observed. |
+
+No extra executable changed outside the selected files. Port and benchmark IR
+remain identical, which is compile-only evidence, not a fresh upstream execution
+or performance result. Broad benchmark reruns were not warranted for this delta.
+
+Fresh isolated sweeps with `--metadata` remain **148/464 native / 150/464
+stub-assisted**, the same **58 overlay exclusions**, all **522 CPython source
+hashes**, zero timeouts and identical first errors after checkout-prefix
+normalization. Throwing stubs are still dependency diagnostics. No new native
+library, general PyPI/NumPy or full regrtest support is inferred. Prior minor/major
+adaptation assessments and unrelated dated gaps remain; the #763 hosted-cache
+coverage limitation was not rerun or erased by this parser-only checkpoint.
+
+Replay `audit-764.py` modes `build`, `references`, `checks`, `sanitize`, `ir`,
+`runtime`, `consumer-smoke`, `syntax-sweep`, `oracle`, `extras`, `imports`, `stubs`;
+`audit-764-probes.py` modes `retained`, `boundaries`, `fixtures`, `limits`,
+`oracle-verdicts`; then the assembler. Scripts retain their `audit-737.py` and
+`audit-725.py` dependencies. Every selected evaluation completed; no failed test
+attempts. Concurrent shared-host wall times are descriptive, not performance
+regression evidence. No full local `make verify` or broad upstream suite was run.
+
+Historical implementation-head **CI, Lint, Packages and Installation all pass**
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39374862632)); the head's
+tree equals evaluated main. Those results are separately attributed, not called
+local full-matrix runs. Audit-head checks are read after publication. Only report
+and evidence changes are added beyond evaluated main, preserving dated baselines
+and concurrent edits. No duplicate issue or external-contributor attestation was
+created, and no PR was merged by this audit.
