@@ -45,6 +45,10 @@ class Reduce:
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
+        # a sum of a union's numbers (Gen.sum_union_item): acc the int sum, facc the float sum,
+        # isf whether a float came (CPython's float phase, which comp compensates)
+        self.facc = ""
+        self.isf = ""
 
 
 class SetArg:
@@ -112,6 +116,8 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
+        self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])
@@ -442,6 +448,8 @@ class ClassInfo:
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
+        self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
+        self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
@@ -471,6 +479,7 @@ class ClassInfo:
         self.specs: dict[str, str] = {}
         self.nspec = 0  # (the names it has given: one each, also to those found to be one already made)
         self.origin = ""
+        self.speckey = ""  # (a specialization: the types of the call that made it, see Gen.stable)
         # a specialization of a generic class (Gen.tparams): the types its type variables are bound
         # to, by the call that made it (Gen.bind); a TypeVarTuple's is a tuple type of its types
         self.tvars: dict[str, str] = {}

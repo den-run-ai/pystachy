@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, OPAQUE, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OPAQUE, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -504,7 +504,7 @@ def gen_refl_setattr(self, args: list[Node]) -> Val:
         return self.refl_setattr_runtime(args)
     o = self.expr(args[0], "")
     want = ""
-    if o.t in self.classes and a in self.classes[o.t].ftypes:
+    if o.t in self.classes and a in self.classes[o.t].ftypes and self.classes[o.t].ftypes[a] != NONEVAR:
         want = self.classes[o.t].ftypes[a]
     v = self.expr(args[2], want)
     if o.t in self.classes and a not in self.classes[o.t].ftypes and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
@@ -1129,7 +1129,7 @@ def gen_refl_fields_table(self, c: str) -> str:
         t = Data("classfields", rec + ".fields")
         t.text = "%C." + c
         for fl in order:
-            ft = ci.ftypes[fl]
+            ft = self.field_type(c, fl)
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
             t.refs.append(self.sconst(fl))
@@ -1290,7 +1290,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
         orders.append(order)
         total += len(order)
         for fl in order:
-            types.append(Val("", self.classes[lf.c].ftypes[fl]))
+            types.append(Val("", self.field_type(lf.c, fl)))
     if total * self.reflcopies > REFL_BUDGET:
         self.err(f"unrolling this loop over the attributes of {typestr(o.t)} would compile its body {total * self.reflcopies} times, more than the budget of {REFL_BUDGET} copies (#486)")
     # (the values' join only where the loop binds them: a loop over the names alone takes fields
@@ -1459,7 +1459,7 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
     for lf in leaves:
         ci = self.classes[lf.c]
         for fl in self.refl_dict_order(lf.c):
-            types.append(Val("", ci.ftypes[fl]))
+            types.append(Val("", self.field_type(lf.c, fl)))
     vt = self.refl_join(types, f"the values of vars() of {typestr(o.t)}") if len(types) > 0 else "int"
     dt = self.ctype("dict", ["str", vt])
     vals: list[Val] = []
@@ -1514,7 +1514,7 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
                 unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[k]), "*bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
             args.append(self.vnode(self.getfield(ov, self.field(ov, k), k)))
-        r = self.percent(fmt, mk("tuple", "", self.line, args)) if what == "%" else self.str_format(fmt, "format", args)
+        r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
         vals.append(r)
         blocks.append(self.cur)
         self.br(end)

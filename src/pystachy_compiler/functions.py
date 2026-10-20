@@ -116,6 +116,9 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
 def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     # one compilation of f's code into a new IFn (gen_function)
     self.enter(f, body)
+    if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
+        f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
+        self.ret = f.ret
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True

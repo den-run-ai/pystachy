@@ -22,15 +22,17 @@ Imports search builtin modules first, then the program's directory,
 | `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | Byte columns; ASCII name case conversion; see [probe](../docs/html-parser-probe.md) |
 | `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `get_close_matches`, junk predicates and `Match` | String items; `unified_diff()` and `context_diff()` still need `type(x).__name__` and `str.format()`, `ndiff()` a `Differ` with `None` junk functions |
 | `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
+| `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain`; the module imports, as `argparse` needs | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
 | `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
 | `keyword` | Adapted CPython | Keyword lists, `iskeyword`, `issoftkeyword` | Compiled predicates accept strings and `None` |
 | `token` | Adapted CPython | Token constants, `tok_name`, `EXACT_TOKEN_TYPES`, `ISTERMINAL`, `ISNONTERMINAL`, `ISEOF` | `__all__` and `tok_name` written out, with CPython's values and order |
+| `warnings` | Adapted CPython | `warn`, `warn_explicit`, the filters (`simplefilter`, `filterwarnings`, `resetwarnings`, `sys.warnoptions`) and their actions, `catch_warnings` (also `record=True`), `formatwarning`, `showwarning`, with the registries of CPython's C module | `warn()` shows a warning at `<sys>:0`, with no source line; `showwarning` cannot be replaced; no `deprecated`; see [limits](compatibility.md#warnings) |
 | `collections` | Subset implementation | Typed `deque` (both ends, bounded queues, searches and comparisons), `defaultdict`, `OrderedDict`, `Counter` and `namedtuple()` (a NamedTuple class the compiler makes) | Items share one type; mappings hold dicts; deque iterators check mutation, other iteration is a snapshot; `namedtuple()` only as a module's top-level `NAME = namedtuple(...)` with literal arguments |
 | `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
-| `io` | Subset implementation | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes | `StringIO`'s byte positions; lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure` |
+| `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | `StringIO`'s byte positions; lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
 | `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators | Signed 64-bit integers, 256-container depth, string keys; no hooks, indentation or file APIs; see [scope](../docs/json-prototype.md) |
-| `re` | Subset port of parser/compiler and C engine | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
+| `re` | Subset port of parser/compiler and C engine; optional matchers generated for a program's own patterns ([prototype](../docs/re-specialization.md)) | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
 | `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
 | `textwrap` | Adapted CPython | `TextWrapper`, `wrap`, `fill`, `shorten`, `dedent`, `indent` | No subclassing |
@@ -52,7 +54,8 @@ Imports search builtin modules first, then the program's directory,
 | `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 | `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
 | `_ast` | Experimental typed subset (`_pystachy_ast`) | `Expression` and the expression nodes but comprehensions, lambdas and f-strings (`Constant`, `Name`, `BinOp`, `UnaryOp`, `BoolOp`, `Compare`, `Call`, `keyword`, `Attribute`, `Subscript`, `Slice`, `List`, `Tuple`, `Dict`, ...), operator/context tags and their metadata | Constructor/field-access prototype only; no source parsing, AST compilation, statements or locations; see [scope and tests](../docs/prototypes/ast.md) |
-| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()` and `repr()` as CPython's, though referents die at collection rather than at the last reference | No callbacks, proxies, reference counts or weak containers; the `weakref` module does not import; see [contract](../docs/prototypes/weakref.md) |
+| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()`, `repr()` and callbacks as CPython's, though referents die at collection rather than at the last reference, and callbacks run after it | No `__callback__`, proxies, reference counts or weak containers; see [contract](../docs/prototypes/weakref.md) |
+| `weakref` | Adapted CPython, on `_weakref` | `ref` and `ReferenceType`, also by from-imports and `import *` | `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` are compile-time errors where used; no `finalize`, proxies, `getweakrefcount()` or `getweakrefs()`; see [limits](compatibility.md#_weakref-prototype) |
 | `opcode` | Adapted CPython (one annotation), on `_opcode_metadata`, unchanged, and a port of the C module `_opcode` (`_pystachy_opcode`) on CPython's tables | `opmap`, `opname`, the `has*` lists, `stack_effect()` and the other functions of `_opcode`, with CPython's values and errors | The tables describe CPython 3.13.16's bytecode: Pystachy has no code objects, `ENABLE_SPECIALIZATION` is 0, and `dis` does not compile |
 
 The [compatibility reference](compatibility.md) defines each module's accepted
@@ -97,6 +100,7 @@ to the compiled paths listed here and in the compatibility reference.
 | `curses.ascii` | `Lib/curses/ascii.py` | `780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6` | ASCII character predicates and conversions. |
 | `urllib` | `Lib/urllib/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | Empty package; `urllib.parse` is adapted separately. |
 | `struct` | `Lib/struct.py` | `9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856` | Its names, on `_pystachy_struct`; see [limits](compatibility.md#struct). |
+| `_weakrefset` | `Lib/_weakrefset.py` | `91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac` | What `weakref` imports from it; `WeakSet` itself is not supported, see [limits](compatibility.md#_weakref-prototype). |
 | `_opcode_metadata` | `Lib/_opcode_metadata.py` | `9a27d5830732442110b5945ddac1668db17abb51c44882ba9d4a8536bcc0ea1c` | The opcode tables of `opcode`; see [limits](compatibility.md#opcode). |
 
 `curses/__init__.py` is a Pystachy stand-in for the package that normally imports
@@ -104,10 +108,11 @@ to the compiled paths listed here and in the compatibility reference.
 
 `_pystachy_binascii.py` is `binascii`, `_pystachy_codecs.py` is `_codecs`, `_pystachy_atexit.py` is
 `atexit`, `_pystachy_struct.py` is `_struct`, `_pystachy_thread.py` is `_thread`,
-`_pystachy_unicodedata.py` is `unicodedata`, `_pystachy_itertools.py` is `itertools` and
-`_pystachy_opcode.py` is `_opcode`, modules CPython builds into its interpreter: Pystachy loads those
-files for `import binascii`, `import _codecs`, `import atexit`, `import _struct`, `import _thread`,
-`import unicodedata`, `import itertools` and `import _opcode`, where CPython imports its C modules.
+`_pystachy_unicodedata.py` is `unicodedata`, `_pystachy_itertools.py` is `itertools`,
+`_pystachy__io.py` is `_io` and `_pystachy_opcode.py` is `_opcode`, modules CPython builds into its
+interpreter: Pystachy loads those files for `import binascii`, `import _codecs`, `import atexit`,
+`import _struct`, `import _thread`, `import unicodedata`, `import itertools`, `import _io` and
+`import _opcode`, where CPython imports its C modules.
 `tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py` and
 `_pystachy_unicodedata_names.py`, from CPython's own module; `tools/opcode_tables.py` writes those of
 `_opcode`, `_pystachy_opcode_db.py`, from CPython's opcode headers.

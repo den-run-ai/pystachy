@@ -78,9 +78,31 @@ collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPytho
 adds for a referent whose class defines `__name__`. A reference has no attributes
 of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
 which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
-unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
-`getweakrefs()`, weak containers and the reuse of one reference per referent
-(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
+unchanged. A callback, `ref(obj, callback)`, runs once with the reference after
+the collection that finds the referent dead, where the program next makes or
+calls a reference, rather than when CPython's last counted reference goes: a
+referent's callbacks newest reference first, none of a reference that is itself
+dead, and an exception one raises reported as CPython reports one it ignores. A
+callback must be a function or `None`. `__callback__`, proxies,
+`getweakrefcount()`, `getweakrefs()`, weak containers and the reuse of one
+reference per referent (`ref(x) is ref(x)`) are absent.
+
+`weakref` is CPython's module, adapted ([test](../tests/lib_weakref_module.py)): its `ref`
+and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
+`_weakrefset` is CPython's file, unchanged.
+
+- `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` keep
+  CPython's code, which is a compile-time error where a program uses them: `WeakSet`
+  binds a method under another name (`__sub__ = difference`), the dictionaries derive
+  from `_collections_abc.MutableMapping`, and `WeakMethod` from the generic
+  `ReferenceType` ([error tests](../tests/errors/lib_weakref_weakset.py)).
+- `proxy`, `ProxyType`, `CallableProxyType`, `ProxyTypes`, `getweakrefcount()`,
+  `getweakrefs()` and `finalize` are absent, and `__all__` leaves them out
+  ([deviation](../tests/deviations/lib_weakref_all.py)); `getweakrefcount()` would need
+  CPython's one reference per referent, and `finalize` takes `*args` and `**kwargs`.
+- `WeakSet` is not registered as a `MutableSet`: a class is not a value here
+  ([#7](https://github.com/den-run-ai/pystachy/issues/7)).
+- `_remove_dead_weakref()`, `_weakref`'s in CPython, is `weakref`'s own here.
 
 ## Operator
 
@@ -189,6 +211,33 @@ prefixes, GNU option interleaving, a leading `+`, and `POSIXLY_CORRECT` through
 
 `longopts` must be `list[str]`; CPython also accepts one string. Messages are
 untranslated. Error messages and parsing otherwise follow the upstream code.
+
+## Gettext
+
+CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
+CPython makes of a tuple bound to the same name first, as a module global has one type here. The
+module imports, as `argparse` needs at its start (`argparse` has other blockers after it). Its
+default locale directory is made of `sys.base_prefix` (the Pystachy home, see
+[sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
+methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
+`bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is imported.
+
+Its other edits are annotations: the types of `NullTranslations`' fields, which it fills none of,
+and the return types of its methods that a fallback's own call answers.
+
+Not supported, as compile-time errors:
+- The functions that look up a catalog: `gettext()`, `dgettext()`, `ngettext()`, `translation()`,
+  `install()` and the like. `_localedirs` has a type only where `bindtextdomain()` fills it.
+  `translation()` imports `locale`, which does not compile, and keys its cache by the
+  translations' class, which is not a value here (#7).
+- `NullTranslations.ngettext()` and `npgettext()`. They take the count through `operator.index()`,
+  which `lib/operator.py` does not apply to an `int`, and for a count of another type find the
+  frame to warn from with `sys._getframe()`, which is not supported.
+- `GNUTranslations` of a catalog with a plural form, which calls `c2py()`: it needs `exec()`.
+- A subclass of `NullTranslations`, such as a translation class to add as a fallback.
+  `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
+  template class, which a class cannot derive from. `add_fallback()` takes another
+  `NullTranslations`, which answers as the identity.
 
 ## Heapq
 
@@ -389,6 +438,36 @@ CPython.
 - Where a buffer class has `read1()`, its `read()` must take a size. A subclass's `read1()`,
   `write()` or `tell()` must also be its base class's.
 
+`IncrementalNewlineDecoder` is the C type's universal-newline decoder (`Modules/_io/textio.c`),
+for `decoder=None`: `decode()` takes `str` input, holds a final `\r` back until the next call or a
+final one, records the kinds of newline it decodes and, with `translate` true, makes `\r\n` and
+`\r` `\n`. `getstate()`, `setstate()`, `reset()`, `newlines` and the truth tests of `translate`
+and `final` are CPython's ([test](../tests/lib_io_newline_decoder.py)). `text_encoding()` gives its
+argument, or for `None` `"utf-8"` in UTF-8 mode, which the runtime's rule above turns on in the C
+and POSIX locales, and `"locale"` otherwise; Pystachy reads no `PYTHONWARNDEFAULTENCODING`, so it
+never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_SIZE` is 8192.
+
+- A decoder object, which CPython's decodes `bytes` input with first, raises
+  `NotImplementedError` ([deviation](../tests/deviations/lib_io_newline_decoder_object.py)), and
+  `bytes` input, for which CPython raises `TypeError`, is a compile-time error
+  ([error test](../tests/errors/lib_io_newline_decoder_bytes.py)).
+- `newlines` raises `NotImplementedError` once more than one kind of newline has been decoded,
+  where CPython's is a tuple of them, as `TextIOWrapper`'s does
+  ([deviation](../tests/deviations/lib_io_newline_decoder_tuple.py)).
+
+`_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
+that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
+`TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
+`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). Its classes are `io`'s, and their module
+is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
+`repr()` name `_io` ([test](../tests/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
+`open_code()` need binary files, which `open()` does not make
+([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
+`io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
+compile-time error ([error test](../tests/errors/lib_io_open_code.py),
+[another](../tests/errors/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
+`_warnings`, and then needs `marshal` and CPython's runtime import machinery.
+
 ## Csv
 
 The module provides `reader`, `writer`, `DictReader`, `DictWriter`, `Dialect`,
@@ -578,8 +657,8 @@ override them. `lib/_pystachy_string.py` implements the parsers of CPython's
 raises before its first field is looked up. Automatic and manual numbering,
 conversions, nested format specs and recursion limits follow CPython.
 Positional arguments may have different types (as may keyword ones): a field's
-value has their union type, which formats as its value does. When a call has
-both, their types must agree, so `format("{0} {x}", 1, x="s")` is rejected.
+value has their union type, which formats as its value does, also where a call has
+both: `format("{0} {x}", 1, x="s")` gives `'1 s'`.
 `vformat` takes a tuple and a dict, or a `**kwargs` record; type an empty dict.
 
 Field names with attributes or indexes (`{0.x}`, `{0[1]}`) raise `ValueError`, but
@@ -600,9 +679,11 @@ Supported APIs are `fmean` (including weights), `geometric_mean`, `median`,
 floats. Weighted `fmean` uses the port of CPython's
 `math.sumprod` algorithm; unsupported iterators are materialized first.
 
-- `median` and `quantiles` require floats: integer/bool inputs can produce
-  different return types in CPython. `median_low` and `median_high` retain the
-  item type. `median` of strings is unsupported.
+- `median` of ints or bools returns their union with `float`, as CPython returns the middle
+  item of an odd number of them and the mean of the two middle ones otherwise. `quantiles`
+  requires floats: of ints CPython returns `n - 1` copies of a single data point, ints, and
+  floats otherwise ([error test](../tests/errors/lib_statistics_quantiles_int.py)).
+  `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
 - Integer products in weighted `fmean` can raise `OverflowError` beyond 64 bits;
   CPython's integers continue growing.
@@ -648,8 +729,9 @@ as Pystachy's `math` has none.
 - Of the module functions, only `random` and `getrandbits` convert to a typed
   `Callable`; the others are unannotated upstream methods, which unannotated
   parameters or a lambda can take.
-- `randrange` and `randint` take ints or bools, and `triangular` floats: with int
-  bounds, its `low == high` case would return an int.
+- `randrange` and `randint` take ints or bools. `triangular` of int bounds returns an
+  `int | float`: its low bound where the mode's fraction of the range divides by zero, as in
+  CPython, and a float otherwise.
 
 Seeds of `str`, `bytes` or `bytearray` (SHA-512 into a long integer), `randbytes`,
 `SystemRandom` (absent from `__all__`), subclasses of `Random` (its
@@ -1023,14 +1105,13 @@ functions are templates: each call's argument types make its code
 - The iterators are generators (`Generator[T]`), which yield items of one type: `chain()` of
   iterables of different item types ([error test](../tests/errors/lib_itertools_chain_mixed.py)),
   an `accumulate()` function that returns another type than the items'
-  ([error test](../tests/errors/lib_itertools_accumulate_type.py)) and a `zip_longest()`
-  `fillvalue` of another type than an iterable's items
-  ([error test](../tests/errors/lib_itertools_zip_longest_fillvalue.py)) are compile-time
+  ([error test](../tests/errors/lib_itertools_accumulate_type.py)) are compile-time
   errors, as is an `accumulate()` `initial` of another type than its sums, such as `initial=0`
   of floats, where CPython yields the int `0` and then floats (`initial=0.0` is not an error)
   ([error test](../tests/errors/lib_itertools_accumulate_initial.py)). `accumulate()` of bools
   gives a bool and then ints, as in CPython, and `zip_longest()` without `fillvalue` gives
-  optional items.
+  optional items. A `zip_longest()` `fillvalue` of another scalar type than an iterable's items
+  gives items of their union ([test](../tests/lib_itertools_zip_longest_fillvalue.py)).
 - `batched()`, `permutations()`, `combinations()`, `combinations_with_replacement()` and
   `product(..., repeat=n)` yield tuples whose length the program knows only as it runs, whose
   items must be ints, floats, bools, strs or their optional types
@@ -1091,6 +1172,58 @@ functions are templates: each call's argument types make its code
   function cannot take one ([error test](../tests/errors/lib_itertools_zip_argument.py)); it can
   take a generator expression over them. Ints are 64-bit: `count()` past `2**63 - 1` raises
   `OverflowError`, where CPython's ints grow.
+
+## Warnings
+
+CPython's `warnings.py`, with marked edits, which decide as CPython's C module `_warnings` does
+(`Python/_warnings.c`), as CPython runs that one: the registries, `warn()`'s checks of its
+arguments and the types of `warn_explicit()`'s file and line. `warn()` and `warn_explicit()` of a
+`str` or of a warning (also of a class of the program), the filters (`simplefilter()`,
+`filterwarnings()` by message, category, module and line, `resetwarnings()` and
+`sys.warnoptions`, read as the module is imported) and their actions, `catch_warnings()` (also
+`record=True` and `action=...`), `formatwarning()`, `showwarning()` to a file and `_deprecated()`
+work. The module imports `re`, which its default filters need, and `string`'s `Formatter`, which
+formats `_deprecated()`'s message.
+
+- `warn()` shows a warning at `<sys>`, line 0, as Pystachy has no frames (`sys._getframe()`):
+  CPython gives that location where the stack is shallower than `stacklevel`, and otherwise the
+  file and line of the code that warns, with its source line. Every warning is the main
+  program's: its module is `__main__`, so that the default filters show a `DeprecationWarning`
+  as CPython shows one that the main program's code causes, and its registry is the main
+  program's, so that the `default` action shows a text and category once in the program, where
+  CPython shows it once per location
+  ([deviation](../tests/deviations/lib_warnings_location.py)).
+- No warning shows a source line, as there is no `linecache`: CPython shows the line of a file
+  that `warn_explicit()` names where the file exists. `module_globals` is not read.
+- A registry's keys are `(text, category, lineno)` tuples, as a dict's keys have one type:
+  CPython's `(text, category)` key has a line number that no C int is, and so has the key of the
+  filters version, `version` in CPython; a value is 1 for `True`. The default filter's module is
+  the pattern `re.compile('__main__\\Z')`, which matches the module name `__main__` alone, as the
+  str `'__main__'` that CPython's C module keeps does
+  ([test](../tests/lib_warnings_main_filter.py)); `warnings.filters` shows the pattern (same
+  deviation test).
+- A message that is neither a `str` nor a warning raises `TypeError`, where CPython takes the
+  object itself as the warning's text; `showwarning()` and `formatwarning()` given a `str` make a
+  warning of its category of it, which a recorded message holds, where CPython keeps the `str`
+  ([deviation](../tests/deviations/lib_warnings_message_type.py)).
+- `sys.warnoptions` names the builtin warning categories (also as `builtins.NAME`): another name
+  is an unknown category, and a dotted one names a module, which is not imported by name, so it
+  is an invalid module name.
+
+Not supported, as compile-time errors:
+- Replacing `showwarning()` or `formatwarning()`, as a module's function is bound once
+  ([error test](../tests/errors/lib_warnings_showwarning.py)), and `catch_warnings(module=...)`,
+  as a module is not a value.
+- A recorded message's `file` and `source`
+  ([error test](../tests/errors/lib_warnings_message_file.py)).
+- A filter of a tuple of categories, which CPython's `issubclass()` takes
+  ([error test](../tests/errors/lib_warnings_category_tuple.py)).
+- A `skip_file_prefixes` tuple of a `str` and an item of another type, as `warn()` checks its
+  items one by one ([error test](../tests/errors/lib_warnings_skip_prefixes_mixed.py)): CPython
+  raises `TypeError` for it where the call runs, as for a tuple of other items alone
+  ([test](../tests/lib_warnings_skip_prefixes.py)).
+- `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
+  it with `functools.wraps()` ([error test](../tests/errors/lib_warnings_deprecated.py)).
 
 ## Opcode
 

@@ -1,7 +1,7 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union
-from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names
+from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import (
     FXBIT,
     GLUE,
     MODULES,
+    NONE_ITEM,
     NONEVAR,
     OPTTYPES,
     ORDOP,
@@ -589,6 +590,8 @@ def gen_stmt(self, n: Node) -> None:
             self.str_append(t0, val.kids[1], "")
         elif len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty(ekind, t0.s))
+        elif len(n.kids) == 2 and t0.kind == "name" and none_display(val) != "" and self.target_type(t0) == "" and (t0.s not in self.gtypes and t0.s not in self.noneglobals if self.is_global(t0.s) else t0.s not in self.ltype):
+            self.assign(t0, self.none_container(val))  # ([None] * n: its first fill types it)
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "call" and len(val.kids) == 2 and val.kids[0].kind == "name" and val.kids[0].s == "dict" and not self.bound("dict") and val.kids[1].kind == "name" and self.static_type(val.kids[1]) == "kw[]" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty("dict", t0.s))  # (d = dict(kwargs) of a call without extra keywords: d = {})
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or self.twin_of.get(t0.s, "-") == self.twin_of.get(val.s, "")) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
@@ -616,11 +619,16 @@ def gen_stmt(self, n: Node) -> None:
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
                 v = self.expr(val, self.target_type(t0))
+            src = self.joinsrc
             if n.s == "local-retype":
+                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                 self.store_name(t0.s, v, True)
             else:
                 for i in range(len(n.kids) - 1):
-                    self.assign(n.kids[i], v)
+                    tgt = n.kids[i]
+                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                    self.assign(tgt, v)
+            self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
         # an annotation that names a class template types nothing: x: Box = v is x = v
@@ -774,7 +782,15 @@ def gen_stmt(self, n: Node) -> None:
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)
-                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                    was = self.join_at("return", f"{self.fnkey(self.curfn)}|return", self.ret)
+                    src = self.joinsrc
+                    self.joinsrc = n.kids[0]  # (a call's fresh result: see join_hint)
+                    joined = self.join_hint(self.ret, v.t)  # (it returns both: their union, see join_hint)
+                    self.joinsrc = src
+                    self.join_at(was[0], was[1], was[2])
+                    if not joined:
+                        self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                    v = Val("undef", self.ret)
             v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)
@@ -1093,9 +1109,12 @@ def gen_augassign(self, n: Node) -> None:
         v = self.expr(n.kids[1], "")
         if not is_list(v.t):
             self.err(f"cannot extend a list with {v.t}")
+        nones = NONE_ITEM in cur.t
         self.refine(t.s, v.t)
+        if nones:
+            self.none_extend(t.s)
         self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {v.v}"])
-        self.store_name(t.s, Val(cur.v, v.t))  # (the right operand may have rebound the name)
+        self.store_name(t.s, Val(cur.v, self.qtype(t.s)))  # (the right operand may have rebound the name; a list of None's items are optional)
     elif t.kind == "name" and op == "|" and is_set(self.rtype(t.s)) and "?" in self.qtype(t.s):
         # s |= t on an empty set without a type
         self.allowq = True

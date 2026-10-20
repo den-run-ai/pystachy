@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import DUNDER, NONEVAR, REFL
+from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -103,6 +103,12 @@ def gen_floats(self, v: Val) -> Val:
         return Val(self.rt("pys_m_floats", "ptr", [f"ptr {v.v}"]), "list[float]")
     return self.as_float(v)
 
+def gen_ufloats(self, v: Val) -> Val:
+    # a list of a union's numbers as floats, as math.fsum() and math.dist() make them (each item's
+    # own number: an int's float, by its tag)
+    d = self.sconst(self.desc(elem(v.t), "=="))
+    return Val(self.rt("pys_m_ufloats", "ptr", [f"ptr {v.v}", f"ptr {d}"]), "list[float]")
+
 def gen_is_dc(self, t: str) -> bool:
     return t in self.classes and (len(self.classes[t].node.kids) > 1 or t in self.nts)
 
@@ -159,6 +165,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
+    if self.join_hint(t, v.t):
+        return Val("undef", t)  # (a store a join drops: the next pass compiles it, see join_hint)
     if is_opt(v.t) and self.widens(unopt(v.t), t):
         # (CPython would pass the None on: there is nothing here that could hold it)
         if what == "":
@@ -183,7 +191,8 @@ def gen_desc(self, t: str, use: str) -> str:
 def gen_plain_desc(self, t: str, use: str) -> str:
     # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
-        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
+        # (a union of numbers also orders, as runtime.c's opv compares its members' values)
+        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))
         d = "U" + str(len(members)) + ":"

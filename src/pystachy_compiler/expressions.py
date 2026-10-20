@@ -699,9 +699,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop" and n.s == "%" and self.refl_dict_of(n.kids[1]) is not None and (n.kids[0].kind == "str" or (n.kids[0].kind == "name" and self.const_str(n.kids[0]).kind == "str")):
         return self.refl_percent(n.kids[0].s if n.kids[0].kind == "str" else self.strglobals[n.kids[0].s], n.kids[1])  # (fmt % vars(x): reflection.py)
     if k == "binop" and n.s == "%" and n.kids[0].kind == "str":
-        return self.percent(n.kids[0].s, n.kids[1])
+        return self.percent(n.kids[0].s, n.kids[1], True)
     if k == "binop" and n.s == "%" and n.kids[0].kind == "name" and self.const_str(n.kids[0]).kind == "str":
-        return self.percent(self.strglobals[n.kids[0].s], n.kids[1])  # (FMT % args of a module's FMT = "...")
+        return self.percent(self.strglobals[n.kids[0].s], n.kids[1], False)  # (FMT % args of a module's FMT = "...")
     if k == "binop" and n.s == "|" and n.kids[0].kind == "dict" and len(n.kids[0].kids) == 0 and not is_dict(unopt(want)):
         # {} | d: the empty display takes d's type (it has nothing to evaluate first)
         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
@@ -809,7 +809,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t in self.classes:
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
-        return self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        fv = self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = False
+        return fv
     if k == "index":
         return self.index(n, want)
     if k == "slice":
@@ -884,7 +887,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             hint = items[0].t
             for v in items[1:]:
                 hint = self.list_hint_type(hint, v.t) if hint != "" else ""
-            for v in items if hint != "" else items[:0]:
+            if hint != "" and not self.term and len([v for v in items if not self.widens(v.t, et) and not self.converts(v.t, et)]) > 0:
+                et = hint  # (items of mixed scalar types: of their union, as if annotated)
+            for v in items if hint != "" and et != hint else items[:0]:
                 if not (self.term and v.v == "undef") and not self.widens(v.t, et) and not self.converts(v.t, et):
                     self.line = n.line
                     advice = typestr(hint).replace("float | int", "int | float")
@@ -929,6 +934,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     kv[1] = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and jt == "-" and not self.term:
+            vh = vs[0].t
+            for b in vs[1:]:
+                vh = self.list_hint_type(vh, b.t) if vh != "" else ""
+            if vh != "":
+                kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
         if self.dyn_policy(n.line) and ((not given and jt == "-") or (not kgiven and kj == "-")):
@@ -1116,11 +1127,52 @@ def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
     if len(subs) > 0:
         self.err(f"calling class method {f.name}() on an object of {short(c)}, which may be one of {short(subs[0])}, is not supported: it uses cls, which would be {short(c)} (calls are not dispatched on the object's class; call {short(c)}.{f.name}() or {short(subs[0])}.{f.name}())")
 
-def gen_percent(self, fmt: str, rhs: Node) -> Val:
+def fstring_percent(fmt: str, items: list[Node]) -> bool:
+    # whether CPython 3.11+ compiles the literal fmt % (items), a tuple display, as an f-string
+    # (Python/ast_opt.c's optimize_format): one %s, %r or %a for each item, with flags, and a width
+    # and a precision of at most two digits, and no starred item. Each item is then evaluated
+    # just before its conversion, where % evaluates them all first
+    for x in items:
+        if x.kind == "starred":
+            return False
+    n = 0
+    i = 0
+    while i < len(fmt):
+        if fmt[i] != "%":
+            i += 1
+            continue
+        if i + 1 < len(fmt) and fmt[i + 1] == "%":
+            i += 2
+            continue
+        i += 1
+        while i < len(fmt) and fmt[i] in "-+ #0":
+            i += 1
+        for part in range(2):
+            if part == 1:
+                if i >= len(fmt) or fmt[i] != ".":
+                    break
+                i += 1
+            d = 0
+            while i < len(fmt) and fmt[i] in "0123456789":
+                i += 1
+                d += 1
+            if d > 2:
+                return False
+        if i >= len(fmt) or fmt[i] not in "sra":
+            return False
+        i += 1
+        n += 1
+    return n == len(items)
+
+def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
     # "format" % args with a constant format: each conversion becomes what format() or
-    # str()/repr() of its argument gives, as CPython's printf-style formatting does
+    # str()/repr() of its argument gives, as CPython's printf-style formatting does. Where fmt is
+    # the literal itself (lit, not a module's FMT) and args a tuple display that CPython compiles
+    # as an f-string (fstring_percent), each item is evaluated just before its conversion
     items: list[Val] = []
     if rhs.kind == "tuple":
+        if lit and len(rhs.kids) > 1 and fstring_percent(fmt, rhs.kids):
+            return self.pformat(fmt, items, False, rhs.kids)
         for x in rhs.kids:
             items.append(self.expr(x, ""))
     else:
@@ -1134,7 +1186,7 @@ def gen_percent(self, fmt: str, rhs: Node) -> Val:
             self.err("% formatting with a mapping (%(name)s) is not supported")
         else:
             items.append(v)
-    return self.pformat(fmt, items, False)
+    return self.pformat(fmt, items, False, [])
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
@@ -1143,7 +1195,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
-    a = self.pformat(fmt, [Val("null", "None")], True)
+    a = self.pformat(fmt, [Val("null", "None")], True, [])
     ph = Ins("phi", "str", "")
     if not self.term:
         self.incoming(ph, a.v, self.cur)
@@ -1153,7 +1205,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     items: list[Val] = []
     for i in range(len(targs(tv.t))):
         items.append(self.tget(tv, i))
-    b = self.pformat(fmt, items, False)
+    b = self.pformat(fmt, items, False, [])
     if not self.term:
         self.incoming(ph, b.v, self.cur)
     self.br(l3)
@@ -1163,11 +1215,13 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
+def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
-    # (it is a tuple's place, see percent_opt), as CPython's error
+    # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
+    # instead, each evaluated as its conversion comes (an f-string's order: percent)
     parts: list[Val] = []
     lit: list[str] = []
+    count = len(lazy) if len(lazy) > 0 else len(items)
     used = 0
     i = 0
     while i < len(fmt):
@@ -1205,9 +1259,9 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
             self.err("% formatting with a * width or precision is not supported")
         if t not in "sradiuxXoeEfFgGc":
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
-        if used >= len(items):
+        if used >= count:
             return self.fmt_error("not enough arguments for format string")
-        v = items[used]
+        v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
         used += 1
         if len(lit) > 0:
             parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -1217,7 +1271,7 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
         if is_sopt(v.t) and t not in "sra":
             v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
         parts.append(self.conversion(v, flags, width, prec, t))
-    if used < len(items):
+    if used < count:
         return self.fmt_error("not all arguments converted during string formatting")
     if len(lit) > 0:
         parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -3285,6 +3339,7 @@ def gen_compare(self, n: Node) -> Val:
         return self.cmp2(ops[0], self.expr(n.kids[0], w, resultsoft=True), b)
     # (x is None reads a local that only None was assigned to so far, see none_type)
     self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
+    self.cmpnode = n.kids[0] if len(ops) == 1 and n.kids[1].kind == "None" and (ops[0] == "is" or ops[0] == "is not") else self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.lookup_key(n.kids[0]):
         t = unopt(self.probe_type(n.kids[1]))
         if is_dict(t) or is_set(t):
@@ -3292,6 +3347,7 @@ def gen_compare(self, n: Node) -> Val:
     a = self.expr(n.kids[0], "")
     self.stkkey = self.nokey
     self.nonecmp = False
+    self.cmpnode = self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
         # None that is None equals no item
@@ -3446,6 +3502,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
+        if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
+            return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
         if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):

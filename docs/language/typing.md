@@ -217,7 +217,8 @@ print(parse_count(" 41 "))  # 42
 
 An explicit local or parameter annotation remains a contract for every assignment.
 Stores inside branches and loops, augmented assignments, tuple/chained assignments,
-globals and object fields retain their existing consistent-type rules. A simple
+globals and object fields keep one type, which a value of another scalar type widens to
+their union ([inferred unions](#inferred-unions)). A simple
 assignment after a branch or loop can start a new binding when the existing
 unbound-variable analysis proves the name safe.
 
@@ -235,6 +236,12 @@ context. Otherwise their first useful operation determines the type: `append`, `
 Nested forms such as `d.setdefault(key, []).append(value)` are supported. Empty `set()`
 uses the same principle with `add`, `update`, or set operators.
 
+A list display of `None` items (`[None, None]`, `[None] * n`) or a dict display whose values
+are all `None`, assigned to a variable without an annotation, works the same way: the first
+item of another type that a fill stores types it `list[T | None]` (`dict[K, T | None]`, `K`
+the display's keys). `extend()` and `+=` cannot give such a list `int`, `float` or `bool`
+items, whose optional form is a box; annotate it then.
+
 Before inference succeeds, length and truth tests are allowed. A read earlier in the source
 may obtain its type from a later operation when that operation's item type is known.
 In a template, only code that runs for the selected argument types contributes to inference.
@@ -249,8 +256,20 @@ that cannot yet be typed.
 
 A local first assigned `None` becomes `T | None` when another assignment supplies a known
 `T`. Earlier reads use a known later assignment or their expected type. A local assigned only
-`None` reads as `None`. Module-level inference works when the later assignments can already
-be typed; globals that only functions fill need an explicit optional annotation.
+`None` reads as `None`.
+
+Module globals and fields work the same way. A global first assigned `None` becomes `T | None`
+at the first other value that module code or a function gives it, and a field that `__init__`
+sets to `None` (also through a parameter whose argument is `None`) at the first other value
+any code stores to it. A read that needs the type before that store is compiled looks for it:
+in the code being compiled and in the module-level code compiled so far; for a global, in an
+arm of a value that reads the global itself (`n = 1 if n is None else n + 1`); for a field, in
+the class's `self.x = v` assignments, typed as `__init__`'s are. Otherwise a function or method
+that assigns it, unless it is a template (a parameter without an annotation), is compiled
+first; `self.x = v` in a method of an unrelated class assigns that class's own field, not this
+one. A comparison with `None` by `is` needs no type. A global or field that no code gives
+another value reads as `None`. Where none of this finds a type in time, annotate it:
+`last: str | None = None`, `self.next: Node | None = None`.
 
 Class types already permit `None`: `C` and `C | None` use the same nullable type. Builtin
 exception annotations such as `Exception | None` are unsupported; objects of the program's
@@ -335,11 +354,24 @@ scalar-union values support printing and equality; lists also support membership
 find an integer `1`. Numeric equality uses the existing exact int/float comparison,
 including integers above the exact range of a float. `None` equals only `None`.
 
+Lists of numeric unions (`int`, `float` and `bool` members) also order. Two such lists
+compare, and `min()`, `max()`, `sorted()` and `sort()` work, with the same exact int/float
+comparison; a NaN orders with nothing. With `None` too, comparing a `None` raises CPython's
+`TypeError`. Without `None`, `sum()` adds the items as CPython does: ints exactly until the
+first float, then floats with CPython's compensated sum, and later ints as floats. The result
+is an `int`, a `float`, or an `int | float` where both are possible. `math.fsum()` and
+`math.dist()` take each item's float. A union with `str` still needs narrowing for these.
+
 These operations select the existing native operation by the tag. A concrete value
 keeps its native representation until it enters a union; widening a union reuses
 its box. A concrete equality/search operand may allocate a temporary box. The boxes
 do not create Python numeric object identity: the existing [NaN identity
 deviation](compatibility.md#deviations-from-cpython) also applies to union payloads.
+A local of a union of numbers keeps its tag and payload in two slots instead of a box
+where that makes no more boxes (the `unionslots` [IR pass](../typed-ir.md#optimizations)):
+a loop that updates such a total allocates nothing, and the box is made where the value
+leaves, at a call or a return. A local whose values all come boxed, from a call, a parameter or
+a list, keeps those boxes.
 
 Numeric unions of `int`, `float` and `bool`, optionally including `None`, support
 `+`, `-`, `*`, `/`, `//`, `%` and unary `+` or `-` without narrowing. Tag dispatch
@@ -355,12 +387,60 @@ strings or other nonnumeric members still require narrowing.
 formatter after evaluating the value and specification once. Numeric and string
 members retain their supported formats; `None` accepts only an empty specification.
 
-Narrow before other arithmetic, ordering and member methods. No union is inferred from unrelated assignments or
-return values; annotate it explicitly. Recursive JSON-shaped types use the
+Ordering comparisons (`<`, `<=`, `>`, `>=`) of numeric unions, and calls of builtin
+functions with a scalar-union argument (`abs()`, `round()`, `int()`, `float()`, `min()` and
+`max()` of values, `math` functions and others), use each member's native operation, chosen by
+the tag. Each operand and argument is evaluated once, in CPython's order. Narrow before other
+arithmetic, ordering and member methods; lists of numeric union items also order and sum, as
+described above. Recursive JSON-shaped types use the
 [bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
 claim.
+
+### Inferred unions
+
+An unannotated location given values of several scalar types holds their union, as if it
+were annotated with it: a local variable, a module global, a field that `__init__` types by
+the value it assigns, and the return of a function without a return annotation. Each value
+keeps its own type, as in CPython:
+
+```python
+def mean(xs):
+    total = 0
+    for x in xs:
+        total += x
+    return total / len(xs) if xs else None
+
+def half(n: int):
+    if n % 2 == 0:
+        return n // 2
+    return n / 2
+
+print(mean([1.5, 2.5]), half(4), half(5))  # 2.0 2 2.5
+```
+
+`total` is an `int | float` here, which holds the int `0` and then floats, and `half()`
+returns an `int | float`. The members are `int`, `float`, `bool` and `str`, with `None`
+([optional values](#optional-values-and-narrowing)). Lists, and dicts of one key type, join
+their items' types, and tuples of one length join item by item: the display
+`[1, 2.5]` makes a `list[int | float]`, and `[("a", 1), ("b", 2.5)]` a
+`list[tuple[str, int | float]]`. A list made by a call of a function without a return
+annotation, assigned where a list of joined items is kept or returned by a function that
+returns one, makes that function return the joined list type, as a fresh result. So does a
+method called on a variable (`ops.scale(u, 0.5)`, `self.scale(...)`) whose class no other
+class derives from; where one does, the call may run either class's method, and the method
+needs a return annotation.
+
+The compiler finds a join where a value does not fit the type a location has so far, and
+then compiles the program again with the union as that location's annotation, up to eight
+times. A program without joins compiles once, as before. A template's function or class
+specialization joins its own locations: `mean([1, 2])` keeps an `int` total, and only the
+specialization for a `list[float]` holds a union. Annotated variables, parameters, constants
+and locations of other types do not join: a value of a list type and a `str`, or objects of
+two classes, still need an annotation or are rejected. A joined union supports the
+operations of an annotated one, so narrow it before other operations; a global or a field
+is not narrowed by a test, as described above.
 
 ## Mixed scalar and container unions
 
@@ -422,6 +502,7 @@ layouts compare keys pairwise, which can take quadratic time; ordinary string-ke
 JSON-shaped dictionaries use hashed lookup. User objects, files, functions and sets
 inside mixed-value equality remain unsupported. Narrow before ordering, container
 methods on a union receiver or indexing; there is no generic method dispatch.
+Container members are not [inferred](#inferred-unions).
 
 ## Native reference unions
 
@@ -457,8 +538,8 @@ Reference unions cannot mix with scalar or container members or exception types.
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
 expected type. Narrow a local to a member before field access, identity/equality
-comparison, truth testing or formatting. Containers remain invariant, and no union
-is inferred from unrelated assignments. This adds deterministic native execution,
+comparison, truth testing or formatting. Containers remain invariant, and no reference
+union is [inferred](#inferred-unions). This adds deterministic native execution,
 without profiles, an interpreter, runtime compilation or speculative assumptions;
 boxing and dispatch have costs, so no performance improvement is claimed.
 
@@ -606,8 +687,8 @@ integers: list[int | float] = pair(1, 2)
 
 Such contextual results specialize for both argument types and result context; scalar values
 retain their original types. Fresh return branches can use the same explicitly named element
-union; unrelated return types still do not infer a union. Stored mutable containers, fields
-and declared function results are never widened. Context follows direct displays and calls;
+union; returns of other scalar types [join](#inferred-unions). Stored mutable containers and
+declared function results are never widened. Context follows direct displays and calls;
 other operations retain their existing inference. A comparison's context is a hint: an
 incompatible fresh display keeps its own element types, preserving exact integer comparisons.
 
@@ -620,10 +701,10 @@ User method calls, bound method values and callable fields retain the same expec
 A union context supplies a list or dict result's type when exactly one member has the same
 container kind; ambiguous contexts retain the fallback above.
 
-For mixed scalar list literals, an error names a supported union annotation, such as
-`xs: list[int | float] = [1, 2.5]`. Rows can use unions within tuple fields:
-`rows: list[tuple[str, int | float]] = [("a", 1), ("b", 2.5)]`.
-The annotation preserves the individual values' types; it does not convert integers to floats.
+A mixed scalar list display has the [union](#inferred-unions) of its items' types, as the
+annotation `xs: list[int | float] = [1, 2.5]` gives it, also within tuple fields:
+`[("a", 1), ("b", 2.5)]` is a `list[tuple[str, int | float]]`.
+The values keep their types; integers are not converted to floats.
 
 ## Class templates and generic classes
 
@@ -731,8 +812,9 @@ arguments: `p: Pair[int | float] = Pair(1, 2)` stores union-valued fields that c
 later accept a float. This also works for annotated parameters, returns and fields,
 including calls with explicit type arguments. A constructor subscription alone remains
 a hint: `Box[int | str]("x")` still stores a concrete `str`, and
-`Pair[int | float](1, 2)` still makes `Pair[int]`. Use
-`p: Pair[int | float] = Pair(1, 2)` when later field writes need to accept floats.
+`Pair[int | float](1, 2)` still makes `Pair[int]`, whose field a later store of a float
+[joins](#inferred-unions) to `int | float`. Use `p: Pair[int | float] = Pair(1, 2)` for
+union fields from the start.
 Existing objects stay invariant, and container members must fit exactly: neither `Box[int]` nor `list[int]`
 can be reinterpreted with wider mutable contents.
 
@@ -742,8 +824,8 @@ retain both Python value types. This fallback supports `int`, `float`, `bool`, `
 and `None`, including existing scalar unions. Ordinary consistent inference still wins.
 Every constructor annotation that mentions a type variable must be a direct type
 variable; nested forms such as `list[T]`, variadic bindings, and non-scalar conflicts
-still need annotations. This does not add container covariance, mixed-display or
-function-return union inference. Nested generic parameter forms still require their
+still need annotations. This does not add container covariance; displays and returns
+of mixed scalars [join](#inferred-unions). Nested generic parameter forms still require their
 arguments' container types to match; this does not infer wider mutable contents.
 
 A method's `-> T` promises the same bound type as its fields. With
@@ -817,7 +899,9 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. When specializing a class
+function values, and supported container displays and operations. A field that `__init__`
+sets to `None` takes `T | None` from the first other value the program gives it, or holds
+only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
 positional arguments and omitted defaults have known types. This uses normal function
 specialization and does not execute the helper or its defaults during inference. Keyword or

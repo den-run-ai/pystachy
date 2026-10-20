@@ -80,4 +80,11 @@ def fail(msg: str, line: int) -> None:
     sys.exit(1)
 
 
+class Rejoin(Exception):
+    # a value that a location (a variable, a field, a function's result) does not take, the type
+    # of which was inferred: Gen.newhints has the location's join, the union of both types, and
+    # the driver compiles the program again with it, as if annotated (see Gen.join_hint)
+    pass
+
+
 # ---------------------------------------------------------------- lexer

@@ -1,0 +1,10 @@
+11
+default - Warning a\.b\Z 0
+once hello SyntaxWarning mod\Z 12
+ignore - RuntimeWarning - 0
+always - UserWarning - 0
+ignore Quiet Warning - 0
+error - DeprecationWarning - 0
+2 ['quiet here', 'hello']
+error DeprecationWarning('old')
+[exit 0]

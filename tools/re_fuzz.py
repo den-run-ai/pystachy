@@ -47,6 +47,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # bytes of a str whose every character is a byte (an ASCII str, on CPython)
 builtins.__pys_text_size = lambda s: len(s.encode("utf-8", "surrogatepass"))
 builtins.__pys_text_bytes = lambda s: s.encode("latin-1")
+# (lib/re imports the module of matchers a program may have generated: lib/'s, which has none)
+_spec = importlib.util.spec_from_file_location("_pystachy_re_specialized",
+                                               os.path.join(ROOT, "lib", "_pystachy_re_specialized.py"))
+sys.modules["_pystachy_re_specialized"] = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(sys.modules["_pystachy_re_specialized"])
 _spec = importlib.util.spec_from_file_location("pys_re", os.path.join(ROOT, "lib", "re", "__init__.py"),
                                                submodule_search_locations=[os.path.join(ROOT, "lib", "re")])
 port = importlib.util.module_from_spec(_spec)

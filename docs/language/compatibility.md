@@ -54,7 +54,11 @@ In these cases a program can compile but behave differently from CPython.
   `ord()` count characters, as `strip()` (also of given characters), `split()`,
   `rsplit()`, `splitlines()` and `isspace()` read them (CPython's Unicode whitespace and
   line breaks). A UTF-8 file holds a str's bytes, read and written without checking them
-  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A native
+  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A byte of it
+  that begins no character is one character, in `len()` and in widths, padding, precision
+  and `expandtabs()` alike, as CPython counts a byte that `surrogateescape` decodes. `read(n)`
+  of such a file still counts each byte that does not continue a sequence as a character, so it
+  can return text that `len()` counts as longer than `n`. A native
   UTF-8 file's `write()` result still counts bytes; a Latin-1 file's counts characters.
   A Latin-1 file's bytes are its characters, as in CPython: the str read holds each as
   UTF-8, and a write gives each character as its byte and returns
@@ -262,6 +266,12 @@ above apply to well-formed text (with the surrogate exception described above).
 - `sys.warnoptions` is `[]`, CPython's for a program run without `-W` options, also where the
   environment sets `PYTHONWARNINGS` or `PYTHONDEVMODE`: CPython adds their options to it, and
   Pystachy does not read them.
+
+- `sys.prefix`, `sys.base_prefix`, `sys.exec_prefix` and `sys.base_exec_prefix` are one
+  absolute directory, the Pystachy home that compiled the program (whose `lib/` it loads), where
+  CPython's are the installation whose `Lib` it loads (and a virtual environment's). An executable
+  keeps the directory it was built with. `gettext` makes its default locale directory of
+  `sys.base_prefix`, which holds no catalog of Pystachy's.
 
 - `sys.version_info` is a tuple of its items, CPython 3.13.16's: comparisons, indexing,
   slicing and unpacking work as on CPython's, and its attributes are read as
@@ -488,9 +498,15 @@ supported alternatives.
 - an empty list or dict that a template's function returns empty, used where the `list[int]` /
   `dict[int, int]` guess does not fit and the context gives no type (`xs: list[str] = collect()`
   gives one)
-- a template whose returns have different types (or `None` and an empty `[]` or `{}` that it does
-  not fill), or that calls itself before a return statement decides its type (or, after a return of
-  a `T`, before a return of `None` makes it return `T | None`)
+- a template whose returns have different types that do not
+  [join](typing.md#inferred-unions) (or `None` and an empty `[]` or `{}` that it does not fill),
+  or that calls itself before a return statement decides its type (or, after a return of a `T`,
+  before a return of `None` makes it return `T | None`)
+- a variable, field or return given values of types that do not [join](typing.md#inferred-unions)
+  (a list and a `str`, objects of two classes, a `list[str]` variable stored where a
+  `list[int]` is kept), a joined value used where its union is not accepted (an `int | str`
+  returned by a function annotated `-> int`, as CPython would for some inputs), and a program
+  whose joins need more than eight compilation passes
 - in a template's function, a use of a parameter whose argument is `None` as a value (`s.upper()`,
   `xs[0]`; `len()`, `int()`, `float()` and `ord()` of it raise CPython's error when they run), also
   in a branch that does not run for that call, and in a `try` whose clause would catch CPython's
@@ -667,12 +683,16 @@ supported alternatives.
 - a read that needs the type of a local that only `None` has been assigned so far, where no other
   value assigned to it can be typed yet and the context expects none (annotate it:
   `x: T | None = None`)
-- an empty `[]` or `{}` assigned to a local first assigned `None`, a list display of only `None`
-  items (`[None] * n`, `print([None])`) or a dict display of only `None` values that no annotation
-  or other operand gives a type, and an empty list that `append(None)` fills first (annotate them)
-- a module global first assigned `None` whose other values in module code cannot be typed where it
-  is first assigned (`for w in ws: last = w`), or that only functions or other modules give another
-  value (annotate it at module level: `last: str | None = None`)
+- an empty `[]` or `{}` assigned to a local first assigned `None`; a list display of only `None`
+  items (`print([None])`) or a dict display of only `None` values that is no variable's value and
+  that no annotation or other operand gives a type; a variable's such display that nothing fills
+  where it is read, or that `extend()` or `+=` gives `int`, `float` or `bool` items; and an empty
+  list that `append(None)` fills first (annotate them)
+- a read that needs the type of a module global or a field that only `None` has been given so
+  far, where the value of another type that it is given cannot be typed there yet: only a
+  template's function or method (a parameter without an annotation) gives it one, or module-level
+  code does so after the read is compiled to an object made after it too (annotate it:
+  `last: str | None = None`, `self.next: Node | None = None`)
 
 ### Dict keys, set elements and `bool` values
 
