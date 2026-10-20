@@ -156,10 +156,11 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
 `Any` bounds too, which convert as CPython converts them: once every bound is evaluated and the
-receiver tested, the step first; a dict's slice raises the slice's `KeyError`), item assignment
-and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`, `id()`, `sum()`
-(also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`, `dict.update()`,
-f-strings and `format()`, iteration, unpacking, augmented assignment, `type(x).__name__`,
+receiver tested, the step first; a dict's slice hashes the slice, then raises its `KeyError`),
+item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`,
+`id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
+`dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
+iteration, unpacking, augmented assignment, `type(x).__name__`,
 `__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
 bool's is no int's, and every function's is `function`; a typed `y`'s by the value it holds,
 `NoneType` for a `list[int] | None` that is `None`: `tests/programs/inference/dynany_type_is_value.py`,

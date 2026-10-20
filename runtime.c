@@ -3578,10 +3578,12 @@ static I dbound(Dyn *x, int bound) {
 /* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
    CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
    of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
-   is the slice's, which no dict holds as a key */
+   is the slice's, which no dict holds as a key, once the slice is hashed as CPython 3.12's are (its
+   start, stop and step in turn: an unhashable one's TypeError, an object's __hash__) */
 Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
   int k = DKIND(o);
   if (k == DK_DICT) {
+    pys_dyn_hash(lo); pys_dyn_hash(hi); pys_dyn_hash(st);
     Buf b = {0}; put(&b, "KeyError: slice(", 16); repr(&b, (I)lo, "A"); put(&b, ", ", 2); repr(&b, (I)hi, "A");
     put(&b, ", ", 2); repr(&b, (I)st, "A"); put(&b, ")", 2); pys_fail(b.p);
   }
@@ -3593,8 +3595,10 @@ Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
   if (k == DK_LIST) return dlist(s == 1 ? pys_list_slice((List *)o->v, a, z) : pys_list_slice_step((List *)o->v, a, z, s));
   return dtuple(pys_vtuple_slice((VTuple *)o->v, a, z, s));
 }
-/* d.update(x) of a dict of Any values: another dict's items, else x's items, each a pair, as
-   CPython's dict.update takes them (its messages for one of another length, or no sequence) */
+/* d.update(x) of a dict of Any values: another dict's items, else x's items, each an iterable of
+   two, whose items it takes as CPython's dict.update does (a dict's are its keys), with its
+   messages for one of another length, or no iterable */
+List *pys_dyn_list(Dyn *o);
 void pys_dyn_update(Dict *d, Dyn *x) {
   if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
   if (DKIND(x) != DK_LIST && DKIND(x) != DK_TUPLE && DKIND(x) != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(x));
@@ -3602,10 +3606,10 @@ void pys_dyn_update(Dict *d, Dyn *x) {
   I n = 0;
   for (Dyn *e; (e = pys_dyn_next(it)); n++) {
     int k = DKIND(e);
-    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
-    I len = pys_dyn_len(e);
-    if (len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)len);
-    pys_dict_set(d, (I)pys_dyn_getitem(e, pys_dyn_int(0)), (I)pys_dyn_getitem(e, pys_dyn_int(1)));
+    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR && k != DK_DICT) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    List *kv = pys_dyn_list(e);
+    if (kv->len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)kv->len);
+    pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
