@@ -923,12 +923,13 @@ def gen_dyn_return(self, f: FnInfo, r: Val) -> None:
 def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
     # the cases of a method call's dispatcher (call.<m>.<n>, and has.<m>.<n>, which only finds it)
     # for the builtin types that box: list[Any] and dict[Any, Any]'s methods, which keep their
-    # boxes, and str's and tuple's, whose arguments unbox (dyn_unbox) and whose fresh results box
+    # boxes, and str's, tuple's and the numbers', whose arguments unbox (dyn_unbox) and whose fresh
+    # results box (a bool's are int's, of its payload, 0 or 1)
     m = key[key.find(".") + 1 : key.rfind(".")]
     n = int(key[key.rfind(".") + 1 :])
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
-    for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]"]:
+    for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
         if not self.dyn_builtin_takes(bt, m, n):
             continue
         hit = self.label()
@@ -938,7 +939,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         if key.startswith("has."):
             self.ret_(Val("null", "None"))
         else:
-            x = self.dyn_payload(o, bt)
+            x = self.dyn_payload(o, "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + [self.vnode(a) for a in args]), "")
             self.dyn_return(f, self.dyn_fresh(r))
         self.place(nxt)
@@ -946,7 +947,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
 
 def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
     # does builtin type bt (one a box holds) have method m, called with n positional arguments
-    base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else bt
+    base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
     special = {"list.sort": "0 0", "dict.update": "1 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:

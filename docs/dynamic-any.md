@@ -43,9 +43,9 @@ Storage that an unannotated first value types, and that a later store gives an `
   an item of a container of `Any` items, or arithmetic on one. A field's type is fixed before
   any code that reads it is compiled.
 - **Module variables**: one that module code assigns an `Any` value after its first value, as
-  far as module code shows before it runs: the target of a loop over `Any` items, arithmetic on
-  one, a function declared to return `Any`, or what the expression types to where it can be
-  compiled early.
+  far as the types known before module code runs show: an `Any` variable, the target of a loop
+  over `Any` items, an item of a container of `Any` items, arithmetic, an attribute or a method
+  result of an `Any` value, or a call of a function declared to return `Any`.
 
 Where something besides the function being compiled has already taken the first type, the
 storage keeps it, and storing an `Any` value of another type raises `TypeError` (a
@@ -108,7 +108,7 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   bools and `**`, which stay dynamic (`tests/dynany_proven_int.py`). A concrete annotation that
   receives an `Any` value checks the box's type where it unboxes it, raising
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
-  on: the one new runtime error, a [deviation](#deviations).
+  on: the one kind of runtime error that CPython never raises, a [deviation](#deviations).
 
 ## Operations
 
@@ -134,7 +134,7 @@ or CPython's `AttributeError`/`TypeError`:
 | `truth`, `str`, `len` | `__bool__`/`__len__`, `__str__`/`__repr__`, `__len__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class |
-| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called; also the methods of `list`, `dict`, `str` and `tuple` |
+| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` |
 | `callv.<n>` | a call of a boxed function value, bound method or object with `__call__` with `n` positional arguments, through the function's own calling code (defaults, a closure's env), or CPython's `TypeError` for a wrong count |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are
@@ -146,11 +146,12 @@ the existing `pys_obj_eq`/`pys_obj_cmp`; objects of unrelated classes compare by
 ## Policy and programs that do not opt in
 
 The comment is per module: a program can mix modules that opt in with modules that do not, and
-values cross between them as above. A program without the comment produces byte-identical IR,
-messages and exit statuses: at the prototype's tip, `make irsame` against main `b7e869f` over
-the 3,154-program corpus differed only in the 76 programs whose IR or messages name the
-reference compiler's own `build/ref/` library paths (no other difference after normalizing
-those paths).
+values cross between them as above. A program without the comment produces the same IR,
+messages and exit status as before: compiled by the prototype at `d4a2ce80` and by main
+`b7e869f`, each of the 3,155 programs of `make irsame`'s 3,171-program corpus that do not opt in
+gave the same output, once the reference compiler's own `build/ref/` library paths, which some
+messages name, and the lengths of the strings that hold them were normalized. The 16 that opt
+in differ, as they should.
 
 ## What works
 
@@ -183,6 +184,9 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and
   unpacking are rejected at compile time.
+- A builtin type's method that typed code does not support either (`int.to_bytes()`,
+  `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
+  typed code rejects it at compile time.
 - Objects of unrelated classes compare by identity even where `__eq__` would accept the other
   object (CPython calls it); `__eq__` between an object and a builtin value is not called.
 - Assigning an attribute that the object's class does not have raises `AttributeError` (a
@@ -196,8 +200,8 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
 with `process_time_ns`, excluding startup and compilation. Medians of 7 rounds, each running
 every mode once for the AOT build and for CPython 3.13.16, alternating and pinned to one core
 (`taskset -c 1`), on a 4-vCPU Intel Xeon 2.80 GHz Linux container with LLVM 18.1.3, compiler at
-`bc79f24c`. Every run's checksum equals CPython's. Single samples on a shared host: differences
-under about 20% are noise.
+`bc79f24c`. Every run's checksum equals CPython's. On this shared host, differences under about
+20% are noise.
 
 | Mode (N) | What | AOT build | AOT process | CPython build | CPython process |
 |---|---|---:|---:|---:|---:|

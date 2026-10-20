@@ -1,0 +1,8 @@
+10 6 4
+True 2 1
+False 0 0
+-7 6 3
+255 16 8
+False True True
+0x1.4000000000000p+1 False
+[exit 0]
