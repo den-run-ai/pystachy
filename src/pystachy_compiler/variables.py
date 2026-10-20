@@ -1269,6 +1269,13 @@ def gen_adopt(self, t: str) -> None:
     # type (see retval), returns t: the containers it returned have that type too
     if self.curfn.ll in self.qused and self.qused[self.curfn.ll] != t:
         self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a use shows what the {tname(t)} it returns holds; annotate its return type")
+    if self.curfn.ll in self.qroot:
+        # it also returns, as t, the open results of those it forwards (qchain): those still
+        # being compiled can then return only t
+        for g in self.qchain(self.qroot[self.curfn.ll]):
+            if g.ll in self.building and g.ll != self.curfn.ll:
+                old = self.qused.get(g.ll, t)
+                self.qused[g.ll] = t if old == t else "?"
     self.ret = t
     self.curfn.ret = t
     for nm in self.qret[self.curfn.ll].split():
@@ -1278,6 +1285,17 @@ def gen_adopt(self, t: str) -> None:
         self.holes[h] = t
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+
+def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
+    # f, and the functions whose open empty result it returns unchanged, through those it
+    # forwards (qroot): a call cycle's, so that what one of them returns, they all do
+    out = [f]
+    seen = {f.ll: True}
+    while out[len(out) - 1].ll in self.qroot and self.qroot[out[len(out) - 1].ll].ll not in seen:
+        g = self.qroot[out[len(out) - 1].ll]
+        seen[g.ll] = True
+        out.append(g)
+    return out
 
 def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
     # the empty list or dict a template's function f returns (see retval): the type the call's
@@ -1289,6 +1307,15 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
         # concrete return fix this call's key layout without changing its callee.
         self.qret[self.curfn.ll] = self.qret.get(self.curfn.ll, "")
         self.qforward[self.curfn.ll] = True
+        if (f.ll in self.building or f.ll in self.qroot) and f.ll != self.curfn.ll:
+            # the open result of a call cycle's function still being compiled, or of one that
+            # returns such a result unchanged, which this one returns: a use of what this one
+            # returns uses theirs (qchain, see call_fn)
+            if self.curfn.ll in self.qroot and self.qroot[self.curfn.ll].ll != f.ll:
+                # it returns the results of two: none of their functions can take a type now
+                for g in self.qchain(self.qroot[self.curfn.ll]) + self.qchain(f):
+                    self.qused[g.ll] = "?"
+            self.qroot[self.curfn.ll] = f
         if is_dict(v.t) or is_set(v.t):
             i = Ins("empty.kind", "", "")
             i.a = [v]
