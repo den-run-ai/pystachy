@@ -198,8 +198,8 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
         self.place(hit)
         ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
-        takes = self.dyn_isa(b, ps[1]) if len(ps) == 2 else ""
-        if takes == "false":
+        takes = self.dyn_isa(b, ps[1]) if len(ps) >= 2 else ""
+        if takes == "false" or f"{c}.{m}" in self.xnot:
             self.ret_(Val("3", "int"))
             self.place(nxt)
             continue
@@ -211,7 +211,9 @@ def gen_dyn_xbody(self, c: str) -> None:
             self.ret_(Val("3", "int"))
             self.place(run)
         if self.dyn_xmethod(c, m):
+            self.xtry = f"{c}.{m}"
             r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+            self.xtry = ""
             if inv:
                 r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
             if not self.term:

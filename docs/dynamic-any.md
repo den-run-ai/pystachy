@@ -201,7 +201,11 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
 `Any` argument (`tests/programs/inference/dynany_eq_other.py`). A comparison method whose parameter is
 `Any` takes any operand, also between typed objects of its class
-(`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter is annotated with a class (or
+(`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no annotation, or
+`object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
+list compared with an `Any` value's field), the program is compiled again without that call
+(`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
+in (`tests/programs/inference/dynany_eq_template.py`). One whose parameter is annotated with a class (or
 another concrete type) runs where the other value has that type (an object of the class or of a
 subclass, or `None`, as such a parameter takes an `Any` value; for a tuple's shape, a tuple of its
 length whose items have its item types); its body is compiled for that type, so it does not run
@@ -247,11 +251,12 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
-- A comparison method whose parameter is annotated with a class (or another concrete type) does
-  not run with a value of another type that an `Any` value brings it, nor with any `Any` value
-  where none has the type (`list[int]`): the comparison is identity's, or `TypeError` for an
-  ordering, where CPython runs the method, whose body may give another result or raise another
-  error (`tests/deviations/dynany_eq_annotated_body.py`).
+- A comparison method does not run with a value of another type that an `Any` value brings it
+  where its parameter is annotated with a class (or another concrete type) that the value does
+  not have, or with a type that no `Any` value has (`list[int]`), or where its body does not
+  compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
+  CPython runs the method, whose body may give another result or raise another error
+  (`tests/deviations/dynany_eq_annotated_body.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.

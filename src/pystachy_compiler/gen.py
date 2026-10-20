@@ -1179,6 +1179,12 @@ class Gen:
         self.hints: dict[str, str] = {}
         self.newhints: dict[str, str] = {}
         self.final = True
+        # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as
+        # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass
+        # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
+        self.xnot: dict[str, bool] = {}
+        self.newx: dict[str, bool] = {}
+        self.xtry = ""
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
         self.jointype = ""  # (and its type)
