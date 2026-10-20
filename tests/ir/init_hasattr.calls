@@ -1,4 +1,4 @@
-@main.init: pys_alloc pys_list_new pys_list_append pys_list_append pys_list_append pys_list_new pys_list_append pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_raise pys_raise
+@main.init: pys_alloc pys_list_new pys_list_append pys_list_append pys_list_append pys_list_new pys_list_append pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_raise
 @m.Tally.__init__: pys_dict_new_atomic pys_dict_get pys_dict_set pys_raise
 @m.Tally.get: pys_dict_get
 @pys_obj_eq:
