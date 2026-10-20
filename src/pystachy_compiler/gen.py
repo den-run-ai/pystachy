@@ -2982,14 +2982,14 @@ class Gen:
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
 
-    def percent(self, fmt: str, rhs: Node) -> Val:
-        return expressions_percent(self, fmt, rhs)
+    def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
+        return expressions_percent(self, fmt, rhs, lit)
 
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
 
-    def pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
-        return expressions_pformat(self, fmt, items, rtnone)
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+        return expressions_pformat(self, fmt, items, rtnone, lazy)
 
     def nonefmt(self, t: str) -> str:
         return expressions_nonefmt(self, t)
