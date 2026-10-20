@@ -46,8 +46,10 @@ Every platform rebuilds the compiler to its bootstrap fixed point. Archives incl
 relative launcher, runtime sources, libraries, licenses, source metadata and checksums.
 Smoke tests extract and move the archive, then compare JIT/AOT output with CPython using
 a compiler PATH without Python and a cache outside the installation. GC stress is tested
-as well. The Docker build also verifies JIT/AOT without Python; CI checks an unprivileged
-user and bind-mounted inputs/outputs.
+as well, the programs include a JSON round trip and code-point string indexing, and a warm
+JIT run must reuse the cached runtime, which on Linux includes its shared library. The
+Docker build also verifies JIT/AOT without Python; CI checks an unprivileged user and
+bind-mounted inputs/outputs.
 
 Only after every build and smoke passes does the publishing job receive write permission.
 It checks artifact hashes, loads the tested image, pushes its version tag, and uploads the
