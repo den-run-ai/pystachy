@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `611af05e4c21ab736d59501a2d7db12cbfb70d22`.
+**Latest evaluated main:** `17c7e1ff4b8510912d1829c967ae2691d03da0ea`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3931,3 +3931,91 @@ Historical implementation-head CI/Lint/Packages/Installation succeeded
 ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39352237792)); that head
 is not this merged main or the publication head. Audit checks are read separately.
 Dated baseline reports and JSON remain unchanged.
+
+## 2026-10-20 — #755: empty-container results through forwarding recursion
+
+Evaluated [main `17c7e1ff`](https://github.com/den-run-ai/pystachy/commit/17c7e1ff4b8510912d1829c967ae2691d03da0ea),
+the sole merge after `611af05e`: [#755](https://github.com/den-run-ai/pystachy/pull/755).
+The merge is in main's history and its tree equals implementation head
+`0fdfc792f73abff5a06acd101b2aa50749b4a256`. The changed `calls`, `gen` and
+`variables` compiler modules require a fresh bootstrap. **CPython 3.13.16 /
+LLVM 18.1.3** reaches three-stage compiler/runtime IR fixed points of
+**670,901 / 18,709 lines**. Evaluated source and compiler-build revision both
+equal `17c7e1ff`; compiler SHA-256 is
+`cf8769bc70729eca9f6ef20a17e788811d18d5544db53c01bfacbee08258e508`.
+
+[Evidence, exact commands, source/fixture hashes and replay drivers](compatibility-2026-10-20-forwarding-recursion.json)
+retain the previous compiler identity separately. Selection by changed files and
+adjacent empty-container, forwarding, return-context, Any-recursion and join
+families gives **101 cases: 50 positive and 51 expected rejections**. Native
+JIT/AOT, per-allocation program GC, all optimizations off and hosted compilation
+each pass **151 checks**, totaling **604**. The 14 changed cases additionally
+pass **24 UBSan/GC checks** (20 executions and four rejection diagnostics).
+All **50 CPython recordings**, **50 IR/LLVM checks** and runtime signature/effect
+checks pass.
+
+### Measured fix and retained boundaries
+
+The exact original list and dictionary forwarding programs from the dated
+`compatibility-2026-10-17-recursion.json` now compile and print CPython's
+`[1, 2, 3]` and `{1: 1, 2: 2, 3: 3}`. The previous `611af05e` compiler rejects
+both. Their annotated controls and the annotated scalar-forwarding control also
+match CPython: **five accepted replay programs, each in GC-stressed JIT/AOT and
+optimization-off JIT/AOT**, or 20 native executions. The unannotated scalar
+`completed_forwarder` still rejects its unresolved `int * NoneType` operand in
+both compilers; this is not arbitrary recursive-return inference. All six replay
+programs execute under CPython. [#595](https://github.com/den-run-ai/pystachy/issues/595)
+is closed as completed following #755; this checkpoint independently confirms
+its original container regression is fixed rather than inferring that from closure.
+
+The **3,251-program old/new compiler comparison** has **3,241 identical results**
+and exactly **10 rejected-to-accepted programs**, all executed in the focused
+checks. There is no accepted-to-rejected transition, changed rejection diagnostic
+or changed IR among previously accepted programs. Retained adapted port and
+benchmark IR remains identical. Current source fixtures are used for both
+compiler/home pairs; the former forwarding-error fixture is represented by its
+positive successor, not counted twice.
+
+The four changed adopting/layout-conflict/two-root rejection programs still
+reject. Incompatible concrete layouts and unresolved competing roots are not
+silently accepted. These changes keep concrete native representations and do not
+implement general runtime Any, arbitrary mixed storage or broad PyPI support.
+
+### Review-sensitive layout control and workload checks
+
+Read [the dict/set alias review](https://github.com/den-run-ai/pystachy/pull/755#discussion_r4320585712)
+and its [fix follow-up](https://github.com/den-run-ai/pystachy/pull/755#discussion_r4320747325).
+The retained `finally` programs read string-key containers through a global alias
+while a forwarding return is still unwinding. An isolated copied hosted compiler
+with **only forwarding key-layout-hole propagation disabled** returns false for
+existing `k1`/`k2` members in both dict and set controls. The unmodified hosted
+compiler and CPython return the correct true memberships; native configurations
+above also pass. This negative control detects the actual layout corruption even
+though the final sorted container contents look correct. Tracked implementation
+sources and all implementation branches remain untouched.
+
+Six adapted qrcode, sortedcontainers and tomli-w workloads pass **12 GC-stressed
+JIT/AOT checks**. Together with focused/sanitized checks, this is **640 retained
+configuration checks**, not 640 unique upstream tests. Adapted hexiom, nqueens and
+meteor-contest smoke outputs match CPython in JIT/AOT. Their recorded single smoke
+timings overlap other correctness work and support **no performance or memory
+claim**. No full hosted or compiled upstream suite was added. The prior 7/52
+runner-replaced source census is historical, not rerun here.
+
+Fresh isolated `--metadata` import sweeps remain **145/464 native** and
+**147/464 stub-assisted**, **58 overlay exclusions**, zero timeouts, with the
+same **522 source hashes**. After checkout-prefix normalization, no result or
+first error changes. Executed recursive APIs improve without increasing import
+counts; general NumPy/CPython-extension compatibility is not implied.
+
+Replay `audit-755.py` modes `build`, `references`, `checks`, `sanitize`, `ir`,
+`runtime`, `oracle`, `extras`, `sweeps`, and `audit-755-probes.py` modes `retained`,
+`negative`, `ports`, `benchmark`, then the assembler. The evidence gives the
+isolated negative-control copy/one-line mutation setup. Initial wrapper setup and
+benchmark CLI-choice errors are explicit; corrected measurements complete.
+Historical implementation-head CI, Lint, Packages and Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39357393358)); audit-head
+checks are read separately after publication. No full local `make verify`,
+CPython regrtest or timing/memory study. Other unaffected known gaps retain their
+dated evidence. Dated baseline reports and JSON are preserved; no new issue or
+implementation change was needed.

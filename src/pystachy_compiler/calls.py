@@ -1244,12 +1244,26 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     self.gencall = f"%t{c.r[0]}" if f.gen else ""  # (a new generator: a loop over it owns it, see owned_gen)
     self.gencallf = f if f.gen else None
     if "?" in f.ret:
-        v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
-        if f.ll in self.building:
+        # f returns an open empty result: its own, or also that of the call cycle's functions
+        # it returns unchanged (qchain), one of which may have its type now: f returns it too
+        chain = self.qchain(f)
+        known = ""
+        for g in chain:
+            if known == "" and g.ret != "" and "?" not in g.ret:
+                v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), g.ret, f)
+                if v.t != g.ret:
+                    self.err(f"cannot infer what {short(f.name)}() returns: it returns what {short(g.name)}() does, {typestr(g.ret)}; annotate its return type")
+                known = g.ret
+        if known == "":
+            v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
+        if "?" not in v.t:
             # A recursive call may already consume a concrete layout. Later
             # inference can adopt exactly that layout, never a different one.
-            old = self.qused.get(f.ll, v.t)
-            self.qused[f.ll] = v.t if old == v.t else "?"
+            # One that forwards the result still open (return a(n)) consumes none.
+            for g in chain:
+                if g.ll in self.building:
+                    old = self.qused.get(g.ll, v.t)
+                    self.qused[g.ll] = v.t if old == v.t else "?"
         return v
     return Val(f"%t{c.r[0]}", f.ret)
 
