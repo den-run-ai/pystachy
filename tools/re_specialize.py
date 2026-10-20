@@ -836,13 +836,13 @@ def record(argv, out):
         else:
             error = e
             status = 1
-    except Exception as e:
+    except KeyboardInterrupt as e:
+        # (the calls made until then are written, then it is raised again)
+        interrupt = e
+    except BaseException as e:
         # (as python PROGRAM ends on an uncaught exception; the calls made until then are still written)
         error = e
         status = 1
-    except BaseException as e:
-        # (KeyboardInterrupt: the calls made until then are written, then it is raised again)
-        interrupt = e
     finally:
         if mon.get_tool(tool) == "re_specialize":  # (unless the program freed it)
             mon.set_events(tool, 0)
