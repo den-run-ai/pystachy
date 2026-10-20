@@ -3465,6 +3465,12 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             t = a.t if is_opt(ia) and unopt(ia) == ib else b.t if is_opt(ib) and unopt(ib) == ia else ""
             if t == "":
                 self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a runtime-length tuple holds items of one type)")
+        elif not is_vtuple(a.t) or not is_vtuple(b.t):
+            # (so too a fixed tuple's items that are None, or of the type or None)
+            o = self.optional(targs(t)[0])
+            fixed = targs(a.t) if is_tuple(a.t) else targs(b.t)
+            if o != "" and o != targs(t)[0] and len([x for x in fixed if x == "None" or x == o]) > 0:
+                t = self.ctype("vtuple", [o])
         return Val(self.rt("pys_vtuple_concat", "ptr", [f"ptr {self.coerce(a, t).v}", f"ptr {self.coerce(b, t).v}"]), t)
     if op == "*" and is_tuple(a.t) and b.t == "int":
         if b.v.startswith("%"):

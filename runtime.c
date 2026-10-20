@@ -4799,6 +4799,10 @@ void pys_exc_setmodule(ExcClass *c, Str *mod) {   /* C.__module__ = mod of a use
   if (mod->len == 8 && !memcmp(mod->s, "builtins", 8)) pys_fail("NotImplementedError: a class's __module__ = 'builtins' is not supported");
   int top = mod->len == 8 && !memcmp(mod->s, "__main__", 8);
   I len = top ? n : mod->len + 1 + n;
+  Str *o = c->disp;   /* the name it has already (a function that assigns it on each call): kept. A name
+                         replaced is not freed: an uncaught exception's line holds it while the class's
+                         __str__ runs, which may assign another */
+  if (o->len == len && (top ? !memcmp(o->s, q, n) : !memcmp(o->s, mod->s, mod->len) && o->s[mod->len] == '.' && !memcmp(o->s + mod->len + 1, q, n))) return;
   Str *d = malloc(sizeof(Str) + len + 1);
   if (!d) oom();
   d->len = len; d->dict_hash = 0; d->chars1 = 0;

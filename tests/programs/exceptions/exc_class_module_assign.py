@@ -31,6 +31,12 @@ Local.__module__ = "elsewhere.deep"
 print(Local.__module__, repr(Local))
 Local.__module__ = "__main__"
 print(Local.__module__, repr(Local))
+for _ in range(3):
+    Local.__module__ = "again"  # (the name it has already, after the first: kept)
+print(Local.__module__, repr(Local))
+Local.__module__ = "__main__"
+Local.__module__ = "__main__"
+print(Local.__module__, repr(Local))
 try:
     raise Named("n")
 except Named as e:

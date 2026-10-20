@@ -1,0 +1,5 @@
+(1, 2, None) (None, 1, 2) (1, 2, None, 3) (4, None, 1, 2)
+('a', None) (None, 'b', 'a') 3
+(1, 2, None) (None, 5, 1, 2) True
+(None,) (None,) (1, 2)
+[exit 0]
