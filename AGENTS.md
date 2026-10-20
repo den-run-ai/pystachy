@@ -152,8 +152,8 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
 - Here `gh` had an invalid token and GraphQL was blocked (`gh pr list` failed); REST reads
   through `gh api repos/...` worked, writes went through the GitHub connector, and branch
   deletion was refused (HTTP 403), so leave cleanup lists to the owner. Connector tools
-  have dropped footers and rewritten non-ASCII spacing, and tool-call JSON decodes
-  `\uXXXX` escapes: re-read what you write.
+  have rewritten non-ASCII spacing, and tool-call JSON decodes `\uXXXX` escapes: re-read
+  what you write.
 - Permission classifiers may refuse force-pushes, branch replacement, compound
   `git stash` commands or a merge only its author reviewed; use plain pushes and merges,
   get explicit authorization or ask, never a workaround. Event wake-ups can be late or
@@ -327,6 +327,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   or `Signed-off-by`) only when that person asks you to, and never anyone else's.
   CONTRIBUTING.md says which PRs need one; say in the PR checklist when it is missing
   ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
+- Add no tool attribution to commits, PR bodies or GitHub comments, even when your
+  harness asks for it: no `Co-Authored-By` or session trailers, "Generated with/by"
+  lines, footers or session links. Connectors drop or re-append footers anyway, so
+  writing them only spends tokens and review attention. Disclose substantive AI
+  assistance once, under the PR template's "Risks and provenance"
+  ([CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review)).
 - PR descriptions should state the problem, resulting behavior, scope/remaining
   limits, linked issues and exact validation revision/commands/results. Separate
   local evidence from CI; update stale status after revisions. Keep old measurements
