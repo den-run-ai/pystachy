@@ -20,7 +20,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -33,6 +33,7 @@ DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
 DF_BOXID = 8
+DF_NE = 16
 # the operator codes of pys_dyn_binop and pys_dyn_unary
 BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11}
 UNOPS: dict[str, int] = {"-": 0, "+": 1, "~": 2}
@@ -116,8 +117,12 @@ def gen_dyn_class_type(self, c: str) -> str:
     ms = ci.methods
     if "__eq__" in ms or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and "__eq__" in x.methods]) > 0:
         flags |= DF_EQ  # (also where a subclass defines it, whose == the class's helper dispatches to)
-    if "__lt__" in ms or "__le__" in ms or "__gt__" in ms or "__ge__" in ms:
-        flags |= DF_CMP
+    if "__ne__" in ms or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and "__ne__" in x.methods]) > 0:
+        flags |= DF_NE  # (its != runs the program's @o.ne helper, as == does @o.eq: pys_dyn_ne)
+        self.one[c] = True
+    cmps = ["__lt__", "__le__", "__gt__", "__ge__"]
+    if len([k for k in cmps if k in ms]) > 0 or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and len([k for k in cmps if k in x.methods]) > 0]) > 0:
+        flags |= DF_CMP  # (also where a subclass defines one, whose reflected method the class's helper runs first)
     if flags != 0:
         self.ocmp[c] = True  # (@o.eq and @o.cmp, compiled leniently: what the class cannot compare raises when it runs)
     if self.hash_kind(c) != "id" or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and self.hash_kind(x.name) != "id"]) > 0:
@@ -712,8 +717,8 @@ def gen_dyn_compare(self, op: str, a: Val, b: Val) -> Val:
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     if op == "==" or op == "!=":
-        r = Val(self.rt("pys_dyn_eq", "i64", [f"ptr {x.v}", f"ptr {y.v}"]), "int")
-        return self.num_cmp("!=" if op == "==" else "==", r, Val("0", "int"))
+        r = Val(self.rt("pys_dyn_eq" if op == "==" else "pys_dyn_ne", "i64", [f"ptr {x.v}", f"ptr {y.v}"]), "int")
+        return self.num_cmp("!=", r, Val("0", "int"))
     r = Val(self.rt("pys_dyn_cmp", "i64", [f"ptr {x.v}", f"ptr {y.v}", f"i64 {CMPOPS[op]}"]), "int")
     return self.num_cmp("!=", r, Val("0", "int"))
 
@@ -856,6 +861,8 @@ def gen_dyn_body(self, key: str) -> None:
     o = ps[0]
     dunder = self.dynkeys[key]
     t = Val(self.dyn_typeof(o), "dyntype")
+    arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
+    r = "__r" + dunder[2:] if arith else ""
     for c in [x for x in self.dynclasses]:
         if not self.dyn_supports(c, key, dunder, len(ps) - 1):
             continue
@@ -863,28 +870,44 @@ def gen_dyn_body(self, key: str) -> None:
         nxt = self.label()
         self.cbr(self.ptr_cmp("==", t, Val(self.dyntypes[c], "dyntype")).v, hit, nxt)
         self.place(hit)
+        if arith and not (key.startswith("iop") and ("__i" + dunder[2:]) in self.classes[c].methods):
+            # (CPython's binary_op1 runs first the reflected method of a right operand of a strict
+            # subclass, where it is that subclass's own and not c's)
+            cm = self.classes[c].methods
+            for s in [x for x in self.dynclasses if x != c and self.derives(x, c) and r in self.classes[x].methods and (r not in cm or self.classes[x].methods[r] is not cm[r])]:
+                self.dyn_reflected(f, s, r, o, ps[1], "true")
         self.dyn_arm(f, key, dunder, self.dyn_payload(o, c), ps[1:])
         self.place(nxt)
-    if key.startswith("op") and dunder != "":
-        # the reflected operation of the right operand's class (b.__radd__(a)), where a's has none
-        r = "__r" + dunder[2:]
-        b = ps[1]
-        tb = Val(self.dyn_typeof(b), "dyntype")
+    if arith:
+        # the reflected operation of the right operand's class (b.__radd__(a)), where a's has
+        # none and is of another type (not of the same class, nor str for %, which formats b)
         for c in [x for x in self.dynclasses]:
             if r not in self.classes[c].methods:
                 continue
-            hit = self.label()
-            nxt = self.label()
-            self.cbr(self.ptr_cmp("==", tb, Val(self.dyntypes[c], "dyntype")).v, hit, nxt)
-            self.place(hit)
-            x = self.dyn_payload(b, c)
-            self.dyn_return(f, self.expr(mk("call", "", line, [mk("attr", r, line, [self.vnode(x)]), self.vnode(o)]), ""))
-            self.place(nxt)
+            ok = "true"
+            for s in [x for x in self.dynclasses if x == c or (self.tmpl_of(c) != "" and self.tmpl_of(x) == self.tmpl_of(c))]:
+                ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyntypes[s], "dyntype"))])
+            if dunder == "__mod__":
+                ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("str"), "dyntype"))])
+            self.dyn_reflected(f, c, r, o, ps[1], ok)
     if key.startswith("call.") or key.startswith("has."):
         self.dyn_builtin_methods(f, key, o, ps[1:])
     if key.startswith("callv."):
         self.dyn_fn_arms(f, key, o, ps[1:])
     self.dyn_fallback(f, key, ps)
+
+
+def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
+    # dispatcher f's case for a right operand b of class c, where ok holds too: b.r(a), the
+    # reflected method r of b's class
+    hit = self.label()
+    nxt = self.label()
+    tb = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), Val(self.dyntypes[c], "dyntype"))
+    self.cbr(tb.v if ok == "true" else self.scalar("and", [tb, Val(ok, "bool")]), hit, nxt)
+    self.place(hit)
+    x = self.dyn_payload(b, c)
+    self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", r, self.line, [self.vnode(x)]), self.vnode(a)]), ""))
+    self.place(nxt)
 
 
 def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
@@ -908,22 +931,25 @@ def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
 
 
 def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
-    # does class c have a case in dispatcher key: it defines the dunder (or the attribute, the
-    # method that takes nargs positional arguments) the operation runs
+    # does class c have a case in dispatcher key: it defines the dunder (or the attribute, or the
+    # method, whatever the arguments: a call that does not fit raises its TypeError) the
+    # operation runs
     ci = self.classes[c]
     if key.startswith("get."):
         a = key[4:]
-        return a in ci.ftypes or (a in ci.methods and ci.methods[a].prop)
+        return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
     if key.startswith("set."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and ci.methods[a].prop)  # (a property's setter, or CPython's error without one)
     if key.startswith("call.") or key.startswith("has."):
         m = key[key.find(".") + 1 : key.rfind(".")]
+        if m in ci.ftypes and m not in ci.methods:
+            return True  # (a field, whose value the call calls as a function value: dyn_arm)
         if m not in ci.methods or ci.methods[m].prop:
             return False
-        return self.dyn_takes(ci.methods[m], 0 if ci.methods[m].deco != "" else 1, nargs)
+        return ci.methods[m].bad == "" and len(ci.methods[m].defaults) >= len(ci.methods[m].params)  # (has.: CPython's lookup finds it)
     if key.startswith("callv."):
-        return "__call__" in ci.methods and self.dyn_takes(ci.methods["__call__"], 1, nargs)
+        return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
@@ -947,6 +973,32 @@ def gen_dyn_takes(self, fm: FnInfo, own: int, nargs: int) -> bool:
     return len(kwreq) == 0 and given >= required and (fm.vararg >= 0 or given <= last)
 
 
+def gen_dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
+    # CPython's TypeError message for a call of fm with own values (its object) and nargs
+    # positional arguments that dyn_takes rejects, as arity words it for a typed call: too many
+    # positional arguments, else the missing positional, then keyword-only, parameters
+    np = len(fm.params)
+    last = fm.vararg if fm.vararg >= 0 else fm.npos if fm.npos >= 0 else np
+    last = min(last, fm.kwarg) if fm.kwarg >= 0 else last
+    given = own + nargs
+    off = 1 if fm.deco == "classmethod" else 0  # (cls, which CPython counts and fm.params leaves out)
+    if fm.vararg < 0 and given > last:
+        dflt = len([j for j in range(last) if fm.defaults[j].kind != "noann"])
+        takes = f"from {last + off - dflt} to {last + off}" if dflt > 0 else str(last + off)
+        plural = "s" if dflt > 0 or last + off != 1 else ""
+        return f"{self.fname(fm)}() takes {takes} positional argument{plural} but {given + off} {'was' if given + off == 1 else 'were'} given"
+    for kind in ["positional", "keyword-only"]:
+        miss = [fm.params[j] for j in range(np) if ((given <= j and j < last) if kind == "positional" else j >= last) and j != fm.vararg and j != fm.kwarg and fm.defaults[j].kind == "noann"]
+        if len(miss) > 0:
+            names = "'" + "', '".join(miss) + "'"
+            if len(miss) == 2:
+                names = f"'{miss[0]}' and '{miss[1]}'"
+            elif len(miss) > 2:
+                names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
+            return f"{self.fname(fm)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}"
+    return f"{self.fname(fm)}() cannot take {nargs} positional argument{'s' if nargs != 1 else ''}"
+
+
 def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
     # class x.t's case of dispatcher key: its own operation on the object x, then return
     line = self.line
@@ -959,8 +1011,26 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = Val("null", "None")
     elif key.startswith("has."):
         r = Val("null", "None")  # (it has the method: the call that follows calls it)
+    elif key.startswith("call.") and key[5 : key.rfind(".")] not in self.classes[x.t].methods:
+        # a field's value, called as a function value is (callv.<n>), or CPython's TypeError for
+        # one that no box holds, which is not callable either
+        v = self.expr(mk("attr", key[5 : key.rfind(".")], line, [xn]), "")
+        if self.dyn_boxable(self.rec_type(v.t)) != "":
+            self.raise_("TypeError", self.sconst(f"'{tname(self.rec_type(v.t))}' object is not callable"))
+            return
+        r = self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [v] + args)
     elif key.startswith("call."):
+        fm = self.classes[x.t].methods[key[5 : key.rfind(".")]]
+        own = 0 if fm.deco != "" else 1
+        if not self.dyn_takes(fm, own, len(args)):
+            # (arguments that do not fit its parameters: CPython's TypeError, once they are evaluated)
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(args))))
+            return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
+    elif key.startswith("callv.") and not self.dyn_takes(self.classes[x.t].methods["__call__"], 1, len(args)):
+        # (arguments that do not fit __call__'s parameters: CPython's TypeError)
+        self.raise_("TypeError", self.sconst(self.dyn_arity(self.classes[x.t].methods["__call__"], 1, len(args))))
+        return
     elif key == "truth":
         r = Val(self.truth(x), "bool")
     elif key == "str":
@@ -1077,10 +1147,11 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
 
 
 def gen_dyn_dispatchers(self) -> bool:
-    # compile the dispatchers (again) for the classes boxed so far, if any or a new dispatcher
-    # appeared since the last time: True if so. Compiling them may box more classes, and need
-    # more dispatchers, so that program calls this until it is False
-    sig = f"{len(self.dynclasses)} {len(self.dynfns)}"
+    # compile the dispatchers (again) for the classes and function values boxed so far, if any
+    # or a new dispatcher appeared since the last time: True if so. Compiling them may box more
+    # classes and function values (get.<a> a bound method), and need more dispatchers, so that
+    # program calls this until it is False
+    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)}"
     if sig == self.dynsig:
         return False
     self.dynsig = sig
@@ -1222,6 +1293,8 @@ def gen_dyn_fn_takes(self, ft: str, n: int) -> str:
         return "TypeError: the function cannot be called with positional arguments only"
     if self.dyn_takes(f, own, n):
         return ""
+    if f.bad == "" and not k.startswith("c:"):
+        return "TypeError: " + self.dyn_arity(f, own, n)  # (by its qualified name, as a method call's)
     have = len(f.params) - own
     return f"TypeError: {short(f.name) if not k.startswith('c:') else k[k.find(':', 2) + 1 : k.find('@')]}() takes {have} positional argument{'s' if have != 1 else ''} but {n} {'were' if n != 1 else 'was'} given"
 

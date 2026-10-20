@@ -83,9 +83,10 @@ def gen_callable_guard(self, st: Node, f: FnInfo) -> str:
     return c.kids[1].s
 
 def gen_obj_helpers(self, c: str, which: list[int]) -> None:
-    # @o.eq/cmp/repr.<class>: what the runtime's generic ==, ordering and repr do with objects
-    # of class c, those which picks (0 eq, 1 cmp, 2 repr): @o.eq and @o.cmp only for a class that
-    # a descriptor compares (ocmp), so printing a container compiles no comparison. They are
+    # @o.eq/cmp/repr/ne.<class>: what the runtime's generic ==, ordering, repr and a dynamic
+    # value's != do with objects of class c, those which picks (0 eq, 1 cmp, 2 repr, 3 ne): @o.eq
+    # and @o.cmp only for a class that a descriptor compares (ocmp), so printing a container
+    # compiles no comparison, and @o.ne for one whose != pys_dyn_ne runs (one). They are
     # compiled leniently: an operation the class does not support raises TypeError when it
     # runs rather than failing the compilation.
     line = self.classes[c].node.line
@@ -98,8 +99,9 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
         cmp.append(mk("if", "", line, [mk("cmp", "==", line, [op, mk("int", str(ORDOP[o]), line, [])]), hit, mk("block", "", line, [])]))
     cmp.append(mk("return", "", line, [mk("cmp", ">=", line, [a, b])]))
     bodies = [[mk("return", "", line, [mk("cmp", "==", line, [a, b])])], cmp,
-              [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])]]
-    ops = ["eq", "cmp", "repr"]
+              [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])],
+              [mk("return", "", line, [mk("cmp", "!=", line, [a, b])])]]
+    ops = ["eq", "cmp", "repr", "ne"]
     self.lenient = True
     for i in which:
         f = FnInfo(ops[i], f"@o.{ops[i]}.{c}", self.classes[c].node, "")

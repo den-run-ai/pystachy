@@ -25,6 +25,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_again as dynamic_dyn_again,
     gen_dyn_ahead as dynamic_dyn_ahead,
     gen_dyn_arith as dynamic_dyn_arith,
+    gen_dyn_arity as dynamic_dyn_arity,
     gen_dyn_arm as dynamic_dyn_arm,
     gen_dyn_asked as dynamic_dyn_asked,
     gen_dyn_body as dynamic_dyn_body,
@@ -71,6 +72,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_policy as dynamic_dyn_policy,
     gen_dyn_proven_int as dynamic_dyn_proven_int,
+    gen_dyn_reflected as dynamic_dyn_reflected,
     gen_dyn_repr as dynamic_dyn_repr,
     gen_dyn_return as dynamic_dyn_return,
     gen_dyn_select as dynamic_dyn_select,
@@ -1101,6 +1103,7 @@ class Gen:
         self.ocmp: dict[str, bool] = {}  # those of ocls a descriptor compares, not only prints (obj_helpers)
         self.fchk: dict[str, bool] = {}  # the records whose fields desc is checking
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
+        self.one: dict[str, bool] = {}  # those whose != a dynamic value runs through the program (@o.ne: pys_dyn_ne)
         self.lenient = False
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -1510,6 +1513,12 @@ class Gen:
 
     def dyn_takes(self, fm: FnInfo, own: int, nargs: int) -> bool:
         return dynamic_dyn_takes(self, fm, own, nargs)
+
+    def dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
+        return dynamic_dyn_arity(self, fm, own, nargs)
+
+    def dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
+        return dynamic_dyn_reflected(self, f, c, r, a, b, ok)
 
     def dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
         return dynamic_dyn_arm(self, f, key, dunder, x, args)

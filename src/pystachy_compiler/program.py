@@ -1077,8 +1077,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     cmped: dict[str, bool] = {}
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
+    ned: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1091,6 +1092,10 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in cmped:
                 cmped[c] = True
                 self.obj_helpers(c, [0, 1])
+        for c in [x for x in self.one]:
+            if c not in ned:
+                ned[c] = True
+                self.obj_helpers(c, [3])
         for c in [x for x in self.hcls]:
             if c not in hashed:
                 hashed[c] = True
@@ -1114,7 +1119,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for i in later:
             hpush(self.wake, i)
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors) == before and not self.dyn_dispatchers():
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
     self.exc_tables()
     for nm in self.flagged:

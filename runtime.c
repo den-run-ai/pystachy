@@ -3204,8 +3204,8 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
    numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8 };   /* a class's ==, ordering and hash run the program's helpers;
-                                                            a box of this type is its own identity (a bound method's) */
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16 };   /* a class's ==, ordering, hash and != run the program's
+                                                                     helpers; a box of this type is its own identity (a bound method's) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
@@ -3290,6 +3290,16 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
   if (ka == DK_NONE) return 1;
   if (ka == DK_FUNC) return a->t == b->t && a->v == b->v;   /* the same function, and object or env */
   return eqv(a->v, b->v, a->t->desc->s);
+}
+/* a != b: where the class both objects are of (as for ==) or a subclass defines __ne__ (DF_NE),
+   the program's helper, pys_obj_cmp(-1 - id, 0, a, b), runs it as typed code does; else not ==,
+   as object.__ne__ inverts __eq__ */
+I pys_dyn_ne(Dyn *a, Dyn *b) {
+  if (DKIND(a) == DK_OBJ && DKIND(b) == DK_OBJ) {
+    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+    if (t && (t->flags & DF_NE)) return pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0;
+  }
+  return !pys_dyn_eq(a, b);
 }
 /* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
    is a float object here, so a NaN equals itself in a list) */

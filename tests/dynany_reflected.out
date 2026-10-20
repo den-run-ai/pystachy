@@ -1,0 +1,18 @@
+S.__radd__ 2 1
+B.__add__ 2 1
+B.__add__ 1 1
+B.__add__ 1 3
+S.__radd__ 4 1
+B.__add__ 3 2
+S.__rsub__ 2 1
+B.__sub__ 1 3
+B.__sub__ 2 4
+7
+TypeError: unsupported operand type(s) for +: 'R' and 'R'
+7
+S.__radd__ 2 7
+J.__radd__
+I.__iadd__
+6 6
+TypeError: unsupported operand type(s) for +: 'Box' and 'Box'
+[exit 0]

@@ -136,7 +136,7 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 
 Arithmetic, comparisons, truth, `is`, `in`, indexing, item assignment and deletion, `len()`,
 `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`, `id()`, `sum()`, `sorted()`,
-`min()`, `max()`, `list()`, `tuple()`, `str.join()`, f-strings and `format()`, iteration,
+`min()`, `max()`, `list()`, `str.join()`, f-strings and `format()`, iteration,
 unpacking, augmented assignment and `type(x).__name__` work on `Any` values with CPython's
 results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a bool, mixed
 `int`/`float` comparisons are exact, and the error messages are CPython's
@@ -152,21 +152,25 @@ or CPython's `AttributeError`/`TypeError`:
 
 | Dispatcher | Operation |
 |---|---|
-| `op<k>`, `iop<k>`, `un<k>` | binary, in-place and unary arithmetic: the class's dunder, then the right operand's reflected one, then the builtin types' |
+| `op<k>`, `iop<k>`, `un<k>` | binary, in-place and unary arithmetic in CPython's order: the class's in-place dunder; else the reflected dunder of a right operand of a strict subclass that has its own, then the class's dunder; else the reflected dunder of a right operand of another type (not for `str % x`, which formats `x`); then the builtin types' |
 | `truth`, `str`, `len` | `__bool__`/`__len__`, `__str__`/`__repr__`, `__len__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
-| `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class |
-| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` |
-| `callv.<n>` | a call of a boxed function value, bound method or object with `__call__` with `n` positional arguments, through the function's own calling code (defaults, a closure's env), or CPython's `TypeError` for a wrong count |
+| `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
+| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
+| `callv.<n>` | a call of a boxed function value, bound method or object with `__call__` with `n` positional arguments, through the function's own calling code (defaults, a closure's env), or CPython's `TypeError` for a wrong count, worded by the function's qualified name |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are
 unannotated or `Any` takes them as they are (a template is instantiated for `Any` once), and
 one annotated with a concrete type unboxes them as above. `==` and ordering between objects of
 one class (or of a class and its subclass) run the class's `__eq__`, `__lt__` and so on through
 the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code compares them: a subclass's `__eq__`
-first, also where the base class has none, and `x == x` runs `__eq__` too, while a container's
-search and a dict's lookup find an object as itself first (`tests/dynany_subclass_eq.py`).
-Objects of unrelated classes compare by identity.
+or reflected ordering method first, also where the base class has none, and `x == x` runs
+`__eq__` too, while a container's search and a dict's lookup find an object as itself first.
+`!=` runs `__ne__` the same way where the class or a subclass defines it (`pys_dyn_ne`), and
+otherwise inverts `==` (`tests/dynany_subclass_eq.py`, `tests/dynany_subclass_cmp.py`,
+`tests/dynany_ne.py`). Objects of unrelated classes compare by identity. Arithmetic runs
+reflected methods in CPython's order too (`tests/dynany_reflected.py`), which typed code
+rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
 
 ## Policy and programs that do not opt in
 
@@ -181,7 +185,7 @@ holds, and the lengths of the strings that hold them. The 23 that opt in differ,
 ## What works
 
 The tests are `tests/dynany_*.py` (differential, JIT and AOT, also with a collection at every
-allocation), `tests/errors/dynany_*.py` and `tests/deviations/dynany_annotation_check.py`.
+allocation), `tests/errors/dynany_*.py` and `tests/deviations/dynany_*.py`.
 `tests/dynany_graph.py` is the acceptance workload: a deepcopy-style copy of a heterogeneous
 object graph. One memo, keyed by `id()`, holds lists, dicts, tuples, scalars and objects of six
 unrelated classes; the graph has repeated references (a shared list in three places), cycles
@@ -211,13 +215,29 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   unpacking are rejected at compile time.
 - A builtin type's method that typed code does not support either (`int.to_bytes()`,
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
-  typed code rejects it at compile time.
+  typed code rejects it at compile time. So does a builtin type's method called through an
+  `Any` value with arguments it does not take, before they are evaluated, where CPython
+  evaluates them and raises `TypeError`. A class's method raises CPython's `TypeError`.
+- `%` of an `Any` str raises `TypeError`: printf-style formatting is implemented for a str that
+  is known as such, which formats `Any` values (`tests/deviations/dynany_str_mod.py`).
 - Objects of unrelated classes compare by identity even where `__eq__` would accept the other
-  object (CPython calls it); `__eq__` between an object and a builtin value is not called.
+  object (CPython calls it), and their ordering raises `TypeError` even where `__lt__` would
+  accept it; `__eq__` and `__ne__` between an object and a builtin value are not called.
+- An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
+  class has no `__contains__`) raise `TypeError` instead of calling `__iter__`. `int()` and
+  `float()` of an object raise `TypeError` instead of calling `__int__`, `__index__` or
+  `__float__`.
+- A static or class method read through an `Any` value without a call raises `AttributeError`
+  (typed code rejects a static method as a value at compile time), and so does a call of a
+  property's value (`x.p(...)`). A field's value is called as a function value is.
 - Assigning an attribute that the object's class does not have raises `AttributeError` (a
   class's fields are fixed), as for typed objects.
 - `set`, `bytes` and exception objects, and typed containers other than tuples, cannot become
   `Any` values yet.
+- Rejected at compile time where an argument is an `Any` value: `abs()`, `divmod()`, `round()`,
+  `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
+  `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
+  attribute.
 
 ## Measurements
 
@@ -281,5 +301,7 @@ lines.
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: keyword arguments and `*args` through a generic binding entry; builtin functions
   as values; `type(x)` as a class object.
+- **Protocols**: iteration of objects (`__iter__`), `__int__`/`__index__`/`__float__`, and the
+  builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.
