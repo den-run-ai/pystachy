@@ -580,7 +580,7 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 # a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
 # summary (IFn.fx). Every instruction has typed operands; there is no text escape hatch.
 IROPS: dict[str, str] = {
-    "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
+    "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
     "list.load": "rL", "list.len": "rL",
     "alloc.fixed": "A",
