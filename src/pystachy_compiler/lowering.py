@@ -237,6 +237,8 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
         o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
+    elif op == "switch":
+        o.append(f"  switch i64 {i.a[0].v}, label %{i.b[0]} [{' '.join([f'i64 {i.a[j].v}, label %{i.b[j]}' for j in range(1, len(i.a))])}]")
     elif op == "check":
         o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.x if i.x != '' else i.s]}, label %{i.b[0]}")
     elif op == "phi":
