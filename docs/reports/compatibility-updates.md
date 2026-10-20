@@ -79,6 +79,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 comparison-operand widening (#792), **partial** | `452a0864`; follows #785 | The retained 80-subclass `other: object` probe moves from #785's 4,096-specialization rejection to 13,220 raw IR lines; 40 subclasses shrink 73,420 → 6,860. Declared-`Base` controls are byte-identical. 135 tooling tests, 57 before/after hosted compilations, 30 rejections and four CPython 3.12 recordings pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-comparison-widening-partial.json). |
 | 2026-10-20 concurrency contract (#789), bounded tooling evaluation complete | `870bfa15`; no compiler/runtime/library implementation paths | Five registration checks and both 25-line source-twin clients pass; exact-tree native CI and FFI coverage jobs succeeded. This records contracts and probes, not a new native concurrency or import-compatibility claim. [Evidence](compatibility-2026-10-20-concurrency-contract.json). |
 | 2026-10-20 dominated null-check elimination (#791), **partial** | `10097965`; compiler/typed-IR pass changes after #789 | On the same prior compiler source, hosted IR falls **710,837→621,696 lines** and null tests **36,182→13,978**; disabling the pass is byte-identical to the previous compiler. 137 hosted tests, three call contracts, the new reference and linear-scaling controls pass. Native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-nullcheck-partial.json). |
+| 2026-10-20 JIT landing pads and dynamic Any follow-up (#793/#790), **partial** | `3d48ce8c`; #793 intermediate `a79e6bbc`, both exact PR-head trees | 29/29 new CPython references, 31/31 new positive/deviation hosted compilations, one exact rejection, 19/19 targeted unit tests and six retained consumer compilations pass. The retained depth-199 compiler input finishes in 7.96s where `10097965` exceeds 20s. Exact-tree CI is green; local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-any-followup-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5236,3 +5237,73 @@ the compiler checkpoint with an authorized pinned CPython 3.13.16 / LLVM 18
 rebuild, selected native parity and the pinned import sweep. #762 and #792's
 outstanding native/release work also remains. Latest fully evaluated main stays
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-20 — #793/#790: JIT landing pads and dynamic Any follow-up
+
+Inspected [main `3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15`](https://github.com/den-run-ai/pystachy/commit/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15)
+after [#793](https://github.com/den-run-ai/pystachy/pull/793) and
+[#790](https://github.com/den-run-ai/pystachy/pull/790) merged in that order at
+2026-10-20 23:21:06 and 23:23:47 UTC. Fresh ancestry checks put both implementation
+heads in main. #793 head `72d6941e` and merge `a79e6bbc` share tree `a8e2778a`;
+#790 head `8706e3f9` and merge `3d48ce8c` share tree `3a5a386c`. #790 incorporates
+the #793 driver change, so the final main diff contains one copy rather than a
+second behavioral change.
+
+#793 adds `lli -profile-guided-section-prefix=false` to the JIT driver. It keeps
+cold functions in `.text`; on LLVM 18 ORC this preserves landing pads moved into
+`main` by inlining, so the selected dynamic-call `try` catches its `KeyError`
+instead of terminating. This changes JIT code placement, not compiler IR. A
+hosted before/after oracle confirms all **138/138** selected dynamic-Any and
+exception programs emit byte-identical IR, **53/53** verification-tool tests
+pass, and the new CPython 3.12.14 reference matches its recording. Local LLVM 18
+was unavailable, so the actual JIT result is retained separately from exact-tree
+CI rather than relabeled as a local native reproduction.
+
+#790 extends the explicitly opt-in dynamic `Any` prototype. The measured changes
+cover `Any`-parameter comparison methods and CPython rich-comparison order,
+container/dictionary search, structural NamedTuple equality and hashing, equality
+between typed and `Any` items, `format()` dispatch, slices, selected type metadata,
+`sum(generator)` and `dict.update`. Dry-run memoization also removes the retained
+nested-display compilation blow-up. These results remain opt-in prototype scope,
+not general Python, PyPI or NumPy compatibility.
+
+[Machine-readable evidence](compatibility-2026-10-20-dynamic-any-followup-partial.json)
+retains exact source/tree identities, commands, key input hashes, results,
+workflow links, review state, environment and source snapshots.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| New positive references | **29/29** CPython 3.12.14 stdout/exit recordings match. This is not a pinned-3.13 regeneration. |
+| New compiler inputs | All **29** positive and **2** deviation programs emit checked hosted IR: **31/31**, 35,570 raw lines total. The new expected rejection exits 1 with the exact diagnostic. |
+| Targeted unit tests | `test_typed_comparisons`, `test_typed_nullcheck` and `test_concurrency_contract`: **19/19** pass (12 + 2 + 5). |
+| Retained adapted consumers | iniconfig, tomli-w, roman, pylev, textwrap and regex: **6/6** emit checked hosted IR. A local `tests/run.sh` JIT/AOT attempt ran **0/12** native checks because `clang`/LLVM 18 was absent; hosted compilation is not counted as a port pass. |
+| Deep nested displays | The current compiler finishes the retained depth-199/wider-tree input in **7.96s**, emitting 3,343 raw lines; `10097965` exceeds a **20s** bound. One shared-host run proves bounded progress/completion, not a stable speed ratio or universal linear scaling. |
+| Non-opt-in oracle | **1,467/1,467** pre-existing positive programs present at both revisions, excluding dynamic-Any headers, emit byte-identical hosted IR after absolute roots are normalized with equal-length paths. A broader 3,336-source attempt exposed path and rejected-output harness artifacts and is retained as incomplete, not counted as an equality result. |
+
+Two deviations are explicit rather than counted as passes. A comparison method
+with a concrete/unsupported annotation, or a body that cannot compile for `Any`,
+can fall back to identity or generic ordering where CPython runs the method.
+Custom objects still are not iterable through `Any`, so a custom pair object in
+`dict.update` raises `TypeError` rather than being iterated. The implementation
+PR's review had seven earlier threads: six were fixed with tests and one became
+the documented deviation; all are resolved. Its final Codex review completed
+without findings. #793 had no inline thread and its Codex review completed
+without findings before later main merges.
+
+Historical workflows on both identical implementation trees succeeded. For
+#793, [CI](https://github.com/den-run-ai/pystachy/actions/runs/39509843577)
+has **27/27 successful jobs**, and Installation, Lint and Packages succeeded.
+For #790, [CI](https://github.com/den-run-ai/pystachy/actions/runs/39509136079)
+also has **27/27 successful jobs**, and Installation, Lint and Packages succeeded.
+Those matrices include native, hosted, GC/UBSan, Python-free, optimization-off,
+runtime-cache, benchmark and final `make verify` gates. They are exact-tree
+historical CI evidence, not fresh local JIT/AOT execution.
+
+No new uncovered correctness bug was confirmed, so no issue was filed. Pinned
+CPython **3.13.16** and LLVM 18 were unavailable locally. No local native JIT/AOT,
+GC-stress, metadata-enabled import sweep, native adapted-port benchmark, full
+upstream suite or CPython regrtest completed. Existing import totals and unrelated
+gaps remain historical; no runtime-speed, peak-memory or broad library-support
+claim follows. Complete this checkpoint after an authorized pinned rebuild,
+selected native parity and the retained import sweep. The latest fully evaluated
+main therefore remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
