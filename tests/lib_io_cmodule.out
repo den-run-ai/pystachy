@@ -1,0 +1,11 @@
+The io module provides the Python interfaces to stream handling. The 1473
+8192 8192
+'line one\n' utf-8
+'x\r\ny'
+'p\nq' '\n' '\r\n'
+latin-1 utf-8 True
+True
+'text\n'
+BlockingIOError [Errno 11] Resource temporarily unavailable
+the builtin's [Errno 11] x
+[exit 0]

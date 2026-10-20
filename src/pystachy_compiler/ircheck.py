@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
-from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
 
@@ -194,7 +194,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values()):
                     self.bad_ir(fn, b, "field.addr needs a declared field or assignment flag index")
                 t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "bool"
-                if i.t != "*" + t:
+                if i.t != "*" + t and not (i.t == "*" + NONEVAR and lt(t) == "ptr"):
+                    # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":
                 if len(i.a) != (1 if i.op == "tuple.load" else 2) or i.x != "" or len(i.b) != 0:
@@ -367,10 +368,12 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
     if i.op == "rt":
         # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run;
         # a key hashed by its class, H, runs __hash__ and __eq__, and one hashed by identity, P,
-        # its __repr__ where a KeyError names it)
+        # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
+        # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        u = "O" in i.x or "H" in i.x or ("P" in i.x and f.fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
-        return FXALL if f.q and u else f.fx
+        fx = f.fx | (FXBIT["R"] if f.rq and "R" in i.x else 0)
+        u = "O" in i.x or "H" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
+        return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
         st = i.op == "mem.store" or i.op == "mach.store"
         a = i.a[0].v

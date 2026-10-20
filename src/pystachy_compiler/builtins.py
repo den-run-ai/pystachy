@@ -132,6 +132,10 @@ def gen_modattr(self, path: str) -> Val:
         return Val(self.rt("pys_platform", "ptr", []), "str")
     if path == "sys.byteorder":
         return Val(self.sconst("little"), "str")  # (that of every target Pystachy builds for: x86-64, arm64)
+    if path == "sys.prefix" or path == "sys.base_prefix" or path == "sys.exec_prefix" or path == "sys.base_exec_prefix":
+        # the Pystachy that compiled the program, whose lib/ it loads, as CPython's prefixes are the
+        # installation whose Lib it loads (no virtual environment: all four are one)
+        return Val(self.sconst(self.prefix), "str")
     if path.startswith("errno.") and path[6:] in ERRNO:
         return Val(self.rt("pys_errno", "i64", [f"ptr {self.sconst(path[6:])}"]), "int")
     if path in MODFUNCS:
@@ -150,6 +154,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     want = "" if want == "?" else want
     if name.startswith(TYPESMOD + "."):
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
+    if name == "ffi.at":
+        self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -353,9 +359,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err("delattr() is not supported: deleting an attribute needs an unbound state for each field (#489)")
     if name == "type" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         tv = self.expr(args[0], "")
-        if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != "" and tv.v in self.nn):
-            # (type(e) of an exception, as a value: its class, an exctype, which is the exception)
-            return Val(tv.v if tv.t == "exc" else self.exc_of(tv).v, "exctype")
+        if tv.t == "exc" or tv.t == "opt[exc]" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
+            return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
@@ -428,13 +433,23 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if hy < 0:
             return self.ptr_cmp('!=', hv, Val('null', 'None'))
         return Val("true" if hy == 1 else "false", "bool")
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
+        # issubclass(t, c) of an exception class's class object t, c a value holding them
+        v = self.expr(args[0], "")
+        if unopt(v.t) != "exctype":
+            self.err(f"issubclass() is supported for exception classes (type[BaseException]), not {typestr(v.t)}")
+        return self.exc_test(v, args[1], "issubclass")
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and self.exc_classes(args[1]):
-        # issubclass(t, C) of the class of an exception (exctype: the exception itself)
+        # issubclass(t, C) of an exception class's class object t
         v = self.expr(args[0], "")
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
         self.isinst_reads(args[1])
         v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+        if self.catch_set(args[1]) == "":
+            # (BaseException, which every exception class derives from, but not NoneType, whose
+            # class object type() gives of an exception that is None)
+            return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
@@ -468,6 +483,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if known < 0:
             if v.t in self.classes and self.classes[v.t].tag > 0:
                 return self.obj_isinst(v, args[1])
+            if self.exc_dynamic(args[1]):
+                return self.exc_test(v, args[1], "isinstance")  # (exception classes held as values)
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
@@ -613,6 +630,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # (an iterator object's or a generator's items, added as they come)
         item = made_var("__item", self.line)
         return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])]), self.vnode(vals[1])], vals[1].t)
+    if name == "sum" and len(vals) > 0 and is_list(vals[0].t) and self.num_union(elem(vals[0].t)) and (len(vals) == 1 or vals[1].t == "int" or vals[1].t == "float"):
+        # (a list of a union's numbers: added as they come, see sum_union_item)
+        item = made_var("__item", self.line)
+        return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])])] + [self.vnode(v) for v in vals[1:]], vals[1].t if len(vals) == 2 else "")
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and (vals[0].t in self.classes or is_tuple(vals[0].t) or is_dict(vals[0].t) or is_gen(vals[0].t)):
         vals[0] = self.as_list(vals[0], name)  # (sum(o, start) iterates o once start is evaluated)
     if name == "round" and len(vals) == 2 and vals[1].t == "None":
@@ -736,7 +757,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if key not in CALLS and (name == "math.fsum" or name == "math.prod" or name == "math.dist"):
         # CPython makes a float of each int item (in a product, of each item and the start once
         # there is a float)
-        fl = [self.floats(v) for v in vals]
+        fl = [self.ufloats(v) if name != "math.prod" and is_list(v.t) and self.num_union(elem(v.t)) else self.floats(v) for v in vals]
         if f"{name}({','.join([v.t for v in fl])})" in CALLS:
             vals = fl
             key = f"{name}({','.join([v.t for v in vals])})"
@@ -884,9 +905,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
 def gen_callable_type(self, t: str) -> int:
     # callable(x) for x of static type t: 1 (a function or Callable), 0, or -2 (an object whose
     # class defines __call__: callable unless it is None)
-    if is_fn(t) or is_callable(t):
-        return 1
-    if is_opt(t) and is_callable(unopt(t)):
+    if is_fn(t) or is_callable(t) or t == "exctype":
+        return 1  # (a class object too: a call makes an object of its class)
+    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
         return -2
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
     calls = [c for c in cs if c in self.classes and "__call__" in self.classes[c].methods]
@@ -1224,6 +1245,13 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name == "math.prod":
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
+    elif name == "sum" and r.isf != "":
+        # (an int start begins CPython's int phase, a float one its float phase)
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        self.mstore('int', "0" if sv.t == "float" else self.as_int(sv).v, r.acc)
+        self.mstore('float', sv.v if sv.t == "float" else fbits('0.0'), r.facc)
+        self.mstore('float', fbits('0.0'), r.comp)
+        self.mstore('bool', 'true' if sv.t == "float" else 'false', r.isf)
     elif name == "sum":
         sv = self.expr(args[1], "") if len(args) == 2 else Val("0" if r.t != "float" else fbits("0.0"), "int" if r.t != "float" else "float")
         if r.t == "float":
@@ -1250,16 +1278,102 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name != "sum":
         self.guard(self.mload('bool', r.first), f"ValueError: {name}() iterable argument is empty")
         return Val(self.mload(r.t, r.acc), r.t)
+    if r.isf != "":
+        return self.sum_union_end(r)
     if r.comp == "":
         ft = "float" if r.stt == "float" else "int"
         return Val(self.mload(ft, r.acc), ft)
+    return Val(self.comp_end(r.acc, r.comp), "float")
+
+
+def gen_comp_end(self, acc: str, comp: str) -> str:
     # fsum's end: the compensation is added where it is a finite number other than 0
-    s = self.mload('float', r.acc)
-    c = self.mload('float', r.comp)
+    s = self.mload('float', acc)
+    c = self.mload('float', comp)
     fin = self.scalar_cmp('olt', Val(self.rt('fabs', 'double', [f'double {c}']), 'float'), Val('0x7FF0000000000000', 'float'))
     nz = self.scalar_cmp('une', Val(c, 'float'), Val(fbits('0.0'), 'float'))
     use = self.scalar('and', [Val(nz, 'bool'), Val(fin, 'bool')])
-    return Val(self.select(use, Val(self.scalar('fadd', [Val(s, 'float'), Val(c, 'float')]), "float"), Val(s, "float")), "float")
+    return self.select(use, Val(self.scalar('fadd', [Val(s, 'float'), Val(c, 'float')]), "float"), Val(s, "float"))
+
+
+def gen_neumaier(self, acc: str, comp: str, x: str) -> None:
+    # Neumaier's step, as runtime.c's fsum takes it: float x added to the sum in acc, and what
+    # the addition rounded off to the compensation in comp
+    s = self.mload('float', acc)
+    t = self.scalar('fadd', [Val(s, 'float'), Val(x, 'float')])
+    ge = self.scalar_cmp('oge', Val(self.rt('fabs', 'double', [f'double {s}']), 'float'), Val(self.rt('fabs', 'double', [f'double {x}']), 'float'))
+    d1 = self.scalar('fadd', [Val(self.scalar('fsub', [Val(s, 'float'), Val(t, 'float')]), 'float'), Val(x, 'float')])
+    d2 = self.scalar('fadd', [Val(self.scalar('fsub', [Val(x, 'float'), Val(t, 'float')]), 'float'), Val(s, 'float')])
+    d = self.select(ge, Val(d1, "float"), Val(d2, "float"))
+    c = self.mload('float', comp)
+    self.mstore('float', f"{self.scalar('fadd', [Val(c, 'float'), Val(d, 'float')])}", comp)
+    self.mstore('float', t, acc)
+
+
+def gen_sum_union_item(self, r: Reduce, v: Val) -> None:
+    # an item of a union's numbers added to its sum as CPython adds it: while no float came, an
+    # int (or a bool) to the int sum exactly (an overflow raises, as in a sum of ints), and a float
+    # to the int sum made a float, which starts the float sum (CPython's int + float); then a float
+    # by Neumaier's step, and an int as a float, not compensated
+    members = umembers(v.t)
+    end = self.label()
+    for j in range(len(members)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(v, [members[j]], False), hit, miss)
+        self.place(hit)
+        x = self.uget(v, members[j])
+        ints = self.label()
+        floats = self.label()
+        self.cbr(self.mload('bool', r.isf), floats, ints)
+        self.place(ints)
+        si = self.mload('int', r.acc)
+        if members[j] == "float":
+            self.mstore('float', f"{self.scalar('fadd', [self.as_float(Val(si, 'int')), x])}", r.facc)
+            self.mstore('bool', 'true', r.isf)
+        else:
+            self.mstore('int', self.iop('+', si, self.as_int(x).v), r.acc)
+        self.br(end)
+        self.place(floats)
+        if members[j] == "float":
+            self.neumaier(r.facc, r.comp, x.v)
+        else:
+            sf = self.mload('float', r.facc)
+            self.mstore('float', f"{self.scalar('fadd', [Val(sf, 'float'), self.as_float(self.as_int(x))])}", r.facc)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+
+
+def gen_sum_union_end(self, r: Reduce) -> Val:
+    # a union's sum: the float sum (with fsum's end) once a float came, else the int sum; a float
+    # from a float start, an int where no item is a float, else an int | float
+    if r.stt == "float":
+        return Val(self.comp_end(r.facc, r.comp), "float")
+    if "float" not in umembers(r.t):
+        return Val(self.mload('int', r.acc), "int")
+    ut = self.union_type(["int", "float"])
+    ints = self.label()
+    floats = self.label()
+    end = self.label()
+    self.cbr(self.mload('bool', r.isf), floats, ints)
+    self.place(ints)
+    a = self.coerce(Val(self.mload('int', r.acc), "int"), ut)
+    ea = self.cur
+    self.br(end)
+    self.place(floats)
+    b = self.coerce(Val(self.comp_end(r.facc, r.comp), "float"), ut)
+    eb = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", ut, "")
+    self.incoming(ph, a.v, ea)
+    self.incoming(ph, b.v, eb)
+    return Val(self.phi(ph), ut)
 
 def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     # an item of reduce()'s generator: added to the sum, or compared with the item kept. Its
@@ -1267,10 +1381,15 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     v = self.expr(e, "")
     if r.t == "":
         r.t = v.t
-        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float":
+        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float" and not self.num_union(v.t):
             self.err(f"unsupported call sum(list[{v.t}]{',' + r.stt if r.stt != '' else ''})")
         if r.name == "math.prod":
             r.acc = self.alloca(r.stt, "")
+        elif r.name == "sum" and self.num_union(v.t):
+            r.acc = self.alloca("int", "")
+            r.facc = self.alloca("float", "")
+            r.comp = self.alloca("float", "")
+            r.isf = self.alloca("bool", "")
         elif r.name == "sum":
             r.acc = self.alloca("float" if v.t == "float" or r.stt == "float" else "int", "")
             if v.t == "float":
@@ -1305,6 +1424,9 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.br(skip)
         self.place(skip)
         return
+    if r.isf != "":
+        self.sum_union_item(r, v)
+        return
     if r.t != "float" and r.stt != "float":
         si = self.mload('int', r.acc)
         self.mstore('int', self.iop('+', si, self.as_int(v).v), r.acc)
@@ -1326,16 +1448,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore('bool', 'false', r.first)
         self.br(nm)
         self.place(comp)
-    # Neumaier's step, as runtime.c's fsum takes it
-    s = self.mload('float', r.acc)
-    t = self.scalar('fadd', [Val(s, 'float'), Val(v.v, 'float')])
-    ge = self.scalar_cmp('oge', Val(self.rt('fabs', 'double', [f'double {s}']), 'float'), Val(self.rt('fabs', 'double', [f'double {v.v}']), 'float'))
-    d1 = self.scalar('fadd', [Val(self.scalar('fsub', [Val(s, 'float'), Val(t, 'float')]), 'float'), Val(v.v, 'float')])
-    d2 = self.scalar('fadd', [Val(self.scalar('fsub', [Val(v.v, 'float'), Val(t, 'float')]), 'float'), Val(s, 'float')])
-    d = self.select(ge, Val(d1, "float"), Val(d2, "float"))
-    c = self.mload('float', r.comp)
-    self.mstore('float', f"{self.scalar('fadd', [Val(c, 'float'), Val(d, 'float')])}", r.comp)
-    self.mstore('float', t, r.acc)
+    self.neumaier(r.acc, r.comp, v.v)
     self.br(nm)
     self.place(nm)
 

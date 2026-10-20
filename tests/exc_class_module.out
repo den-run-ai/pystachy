@@ -1,0 +1,12 @@
+mods: init mods
+mods.shapes: init mods.shapes
+__main__ Local
+mods.errs Missing mods.errs
+builtins KeyError
+__main__ Local Local
+mods.errs Missing Missing
+mods.errs StoreError StoreError
+builtins KeyError KeyError
+builtins OSError OSError
+mods.errs Missing Missing
+[exit 0]

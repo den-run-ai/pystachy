@@ -7,6 +7,8 @@
 # Positions are indices into State.s; __init__.py turns them into the str's own indices.
 from typing import Generic, TypeVar
 
+import _pystachy_re_specialized
+
 from . import _unicode
 from ._constants import *
 
@@ -308,6 +310,8 @@ class State(Generic[_S]):
         self.charset_ascii = charset_ascii
         # (not _sre's) the Pattern's lazily found filter of the general search case: see _prefilter
         self.prefilter = prefilter
+        # (not _sre's) the matcher generated for the Pattern, which a search runs (_attempt), or -1
+        self.fast = -1
 
     def reset(self) -> None:
         # state_reset (a data stack that the last match left empty is kept, not made again)
@@ -1388,6 +1392,24 @@ def sre_match(state: State[_S], code: list[int], start: int, toplevel: bool) -> 
             k = K_ENTRANCE
 
 
+def _attempt(state: State[_S], code: list[int], pattern: int, toplevel: bool) -> int:
+    # (not _sre's) sre_match() where a search tries state.start: by the matcher a program's build of
+    # _pystachy_re_specialized has for the pattern (tools/re_specialize.py), from the code's start
+    # (a skipped prefix matches again), where the state has one; where it declines (group repeats
+    # nested too deep), the state is as the search left it, and sre_match() runs
+    if state.fast >= 0:
+        ptr = state.ptr
+        r = _pystachy_re_specialized.attempt(state.fast, state, toplevel)
+        if r >= 0:
+            return r
+        state.ptr = ptr
+        state.lastmark = -1
+        state.lastindex = -1
+        if len(state.data) != 0:
+            state.data = []
+    return sre_match(state, code, pattern, toplevel)
+
+
 def sre_search(state: State[_S], code: list[int]) -> int:
     # SRE(search): the first position from state.start where the code matches (state.start and
     # state.ptr then bound the match), or 0
@@ -1437,7 +1459,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
             state.ptr = ptr + prefix_skip
             if flags & SRE_INFO_LITERAL != 0:
                 return 1  # (that is all of it)
-            status = sre_match(state, code, pattern + 2 * prefix_skip, False)
+            status = _attempt(state, code, pattern + 2 * prefix_skip, False)
             if status != 0:
                 return status
             ptr += 1
@@ -1474,7 +1496,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
                     state.ptr = ptr - (prefix_len - prefix_skip - 1)
                     if flags & SRE_INFO_LITERAL != 0:
                         return 1
-                    status = sre_match(state, code, pattern + 2 * prefix_skip, False)
+                    status = _attempt(state, code, pattern + 2 * prefix_skip, False)
                     if status != 0:
                         return status
                     # close, but no match: try again
@@ -1521,7 +1543,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
                 continue
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, False)
+            status = _attempt(state, code, pattern, False)
             if status != 0:
                 break
             ptr += 1
@@ -1535,7 +1557,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
         if ptr == 0 or s[ptr - 1] == 10:
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, True)
+            status = _attempt(state, code, pattern, True)
         state.must_advance = False
         while status == 0:
             while ptr < end and s[ptr] != 10:
@@ -1550,7 +1572,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
             state.lastindex = -1
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, False)
+            status = _attempt(state, code, pattern, False)
     elif pf[0] == PF_REPEATED:
         # (not _sre's: a pattern that begins with a character repeated at least once, after
         # groups' marks, can match only where that character is: the matcher is entered there
@@ -1569,7 +1591,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
             state.lastindex = -1
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, ptr == first)
+            status = _attempt(state, code, pattern, ptr == first)
             state.must_advance = False
             if status != 0:
                 return status
@@ -1594,7 +1616,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
             state.lastindex = -1
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, ptr == first)
+            status = _attempt(state, code, pattern, ptr == first)
             state.must_advance = False
             if status != 0:
                 return status
@@ -1621,7 +1643,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
                 state.lastindex = -1
                 state.start = ptr
                 state.ptr = ptr
-                status = sre_match(state, code, pattern, ptr == first)
+                status = _attempt(state, code, pattern, ptr == first)
                 state.must_advance = False
                 if status != 0:
                     return status
@@ -1636,7 +1658,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
         # the general case
         state.start = ptr
         state.ptr = ptr
-        status = sre_match(state, code, pattern, True)
+        status = _attempt(state, code, pattern, True)
         state.must_advance = False
         if status == 0 and code[pattern] == AT and (code[pattern + 1] == AT_BEGINNING or code[pattern + 1] == AT_BEGINNING_STRING):
             state.start = end
@@ -1648,7 +1670,7 @@ def sre_search(state: State[_S], code: list[int]) -> int:
             state.lastindex = -1
             state.start = ptr
             state.ptr = ptr
-            status = sre_match(state, code, pattern, False)
+            status = _attempt(state, code, pattern, False)
     return status
 
 
@@ -1942,7 +1964,7 @@ def _branch_search(state: State[_S], code: list[int], pattern: int, pf: list[int
                 state.lastindex = -1
                 state.start = at
                 state.ptr = at
-                status = sre_match(state, code, pattern, False if charset else at == first)
+                status = _attempt(state, code, pattern, False if charset else at == first)
                 if not charset:
                     state.must_advance = False
                 if status != 0:

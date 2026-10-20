@@ -181,3 +181,22 @@ for k in range(22):
             print(len(NDArray([1.0], [], [], 0)))
     except (ValueError, IndexError, TypeError) as e:
         print(type(e).__name__, repr(str(e)))
+
+# a[i, j] = v checks its key as a[i, j] does: from either end, with NumPy's IndexError
+w = array2([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+w[-1, -1] = 60.0
+w[0, 1] = 20.0
+print("w[-1, -1] = 60, w[0, 1] = 20:", w.values(), w[-2, 1], w[1, -3])
+for k in range(4):
+    try:
+        if k == 0:
+            w[2, 0] = 1.0
+        elif k == 1:
+            w[0, -4] = 1.0
+        elif k == 2:
+            b[0, 0] = 1.0
+        else:
+            cube[0, 0] = 1.0
+    except IndexError as e:
+        print(type(e).__name__, repr(str(e)))
+print(w.values(), b.values(), cube[1, 2, 3], cube[-1, -1, -1])

@@ -45,6 +45,10 @@ class Reduce:
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
+        # a sum of a union's numbers (Gen.sum_union_item): acc the int sum, facc the float sum,
+        # isf whether a float came (CPython's float phase, which comp compensates)
+        self.facc = ""
+        self.isf = ""
 
 
 class SetArg:
@@ -119,6 +123,7 @@ class FnInfo:
         self.vartup = ""  # *args: *Ts, of a specialization of a generic class: the tuple type args is (each call passes its items)
         self.stk = -1  # 1: a call may make its *args tuple in the caller's frame (Gen.stack_ok); -1 not yet known
         self.stknames: dict[str, bool] = {}  # then *args and the locals assigned it, which may hold that tuple
+        self.keyread = -1  # 1: it only reads its index key (Gen.key_read): o[i, j] may make that tuple in its frame; -1 not yet known
         self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
         self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
         self.lib = ""  # @ffi.extern's library ("" the process's own)
@@ -436,6 +441,7 @@ class ClassInfo:
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
+        self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}

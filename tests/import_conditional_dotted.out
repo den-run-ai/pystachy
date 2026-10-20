@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+mods.counter: init mods.counter
+3
+UnboundLocalError: cannot access local variable 'mods' where it is not associated with a value
+[exit 0]

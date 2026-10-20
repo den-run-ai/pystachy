@@ -1,0 +1,5 @@
+[None, 'x'] True
+[None, None, 'a', 'b'] 4
+['a', None, None, None, None, None]
+[None, None, None, 'z'] 3
+[exit 0]

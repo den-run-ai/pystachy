@@ -5,6 +5,9 @@
 # prints a message of runtime.py and one of runtime.c, which show what its runtime was built from.
 #   - The cache is used again while nothing it is built from changes, also through another path to
 #     the same tools, and by the AOT tier.
+#   - On Linux, the JIT tier's shared library is cached beside the .o, which lli loads, made again from
+#     the .o where it is missing (no runtime is built then), and replaced with its entry; a run that
+#     may not execute it (its file system mounted noexec since: here its mode) links the .o instead.
 #   - It is built again, and the new entry replaces the old, when runtime.py changes by an edit of the
 #     same size whose mtime is set back, when runtime.c changes, when a file it includes from ryu/
 #     changes (the home's: the runs start in a directory whose ryu/d2s.c does not compile), when they
@@ -57,9 +60,11 @@ printf 'try:\n    print(b"abc".index(b"z"))\nexcept ValueError as e:\n    print(
 P0="subsection not found"; P1="subsection NOT found"
 C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() with base 10: 'x'"
 : > "$T/built"
+: > "$T/loaded"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)
 # when it links the runtime (not a program: --only-needed); opt kills the compiler once it has written
-# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it
+# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it; lli
+# notes how it takes the runtime, as a library (so) or as machine code it links (o)
 for t in clang llvm-as llvm-link opt lli; do
   real=$(command -v "${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}$t") || { echo "tests/cache.sh: cannot find $t"; exit 1; }
   case $t in
@@ -67,6 +72,7 @@ for t in clang llvm-as llvm-link opt lli; do
     llvm-link) hook="if [ \"\$1\" != --only-needed ]; then [ -z \"\$CACHE_FAIL\" ] || exit 1; [ -z \"\$CACHE_EDIT\" ] || sh '$T/edit.sh'; fi" ;;
     opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
   case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi" ;;
+    lli) hook="case \" \$* \" in *\" -dlopen=/dev/fd/8 \"*) echo so ;; *) echo o ;; esac >> '$T/loaded'" ;;
     clang) hook=:; realdir=$(dirname "$real") ;;
     *) hook=: ;;
   esac
@@ -83,15 +89,16 @@ pass=0; fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
 bad() { fail=$((fail + 1)); echo "FAIL $1"; }
 builds() { wc -l < "$T/built" | tr -d ' '; }
-# the cache's runtimes (inode and name), their number, its ext glue, and the other files but the
-# hashes (partial ones)
-entries() { (cd "$B" && ls -i runtime-py-*-????????????????.bc runtime-py-*-????????????????.o 2> /dev/null); }
+# the cache's runtimes (inode and name: the bitcode, the machine code and, on Linux, the shared
+# library made from it), their number, its ext glue, and the other files but the hashes (partial ones)
+entries() { (cd "$B" && ls -i runtime-py-*-????????????????.bc runtime-py-*-????????????????.o runtime-py-*-????????????????.so 2> /dev/null); }
 pairs() { (cd "$B" && ls runtime-py-*-????????????????.bc 2> /dev/null) | wc -l | tr -d ' '; }
 glue() { (cd "$B" && ls -i runtime-py-*-????????????????.py*.bc 2> /dev/null); }
+libs() { (cd "$B" && ls runtime-py-*-????????????????.so 2> /dev/null) | wc -l | tr -d ' '; }
 others() {
   for f in "$B"/*; do
     case ${f##*/} in
-      runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
+      runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.so | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
       *) printf '%s ' "${f##*/}" ;;
     esac
   done
@@ -122,6 +129,21 @@ echo "-- the compiler: $PYS"
 check "a first run builds the runtime" "$out" 1
 npairs 1 "one entry: a .bc and its .o"
 clean "no partial or temporary file is left"
+# on Linux the JIT tier loads the runtime as a shared library, made from the .o and cached beside it
+# (RTSO in the driver); a run that finds the .o without its library makes the library again
+if [ "$(uname)" = Linux ]; then
+  if [ "$(libs)" = 1 ]; then ok "the shared library is cached beside the .o"; else bad "$(libs) shared libraries in the cache, not 1"; fi
+  if [ "$(tail -n 1 "$T/loaded")" = so ]; then ok "and lli loads it"; else bad "lli did not load the shared library"; fi
+  rm -f "$B"/runtime-py-*-????????????????.so
+  check "a run that finds no shared library makes it from the .o, and builds no runtime" "$out" 0
+  if [ "$(libs)" = 1 ]; then ok "and caches it"; else bad "$(libs) shared libraries in the cache after it, not 1"; fi
+  # a library that the run may not execute, as on a file system mounted noexec since it was cached,
+  # from which lli could map nothing: Linux's access(X_OK) fails there as it does for this mode
+  chmod a-x "$B"/runtime-py-*-????????????????.so
+  check "a run that may not execute the cached library builds no runtime" "$out" 0
+  if [ "$(tail -n 1 "$T/loaded")" = o ]; then ok "and lli links the .o instead"; else bad "lli loaded the library that the run may not execute"; fi
+  chmod a+x "$B"/runtime-py-*-????????????????.so
+fi
 E=$(entries)
 check "nothing changed: the cache is used" "$out" 0
 same "$E" "the same entry, not written again"
@@ -139,6 +161,7 @@ if [ "$H/runtime.py" -nt "$T/ref" ] || [ "$H/runtime.py" -ot "$T/ref" ] || [ "$(
 out=$(printf '%s\n%s' "$P1" "$C0")
 check "an edit of runtime.py of the same size, its mtime set back: built again" "$out" 1
 npairs 1 "the new entry replaces the old"
+[ "$(uname)" != Linux ] || { if [ "$(libs)" = 1 ]; then ok "and its shared library the old one's"; else bad "$(libs) shared libraries in the cache, not 1"; fi; }
 cat "$T/INVALID.c" > "$H/runtime.c"
 check "an edit of runtime.c: built again" "$(printf '%s\n%s' "$P1" "$C1")" 1
 printf '/* an edit */\n' >> "$H/ryu/common.h"
@@ -163,7 +186,7 @@ check "the same flags then build the runtime" "$out" 1 PYSTACHY_CFLAGS=-DPYSTACH
 npairs 2 "PYSTACHY_CFLAGS: an entry of their own"
 check "PYSTACHY_OPT=-all: built" "$out" 1 PYSTACHY_OPT=-all
 npairs 3 "PYSTACHY_OPT: an entry of its own"
-check "the same passes turned off by name: the same entry" "$out" 0 PYSTACHY_OPT=-tupleiter,-dictfuse,-listget,-listfast,-moduleints
+check "the same passes turned off by name: the same entry" "$out" 0 PYSTACHY_OPT=-tupleiter,-dictfuse,-listget,-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots
 check "without them, the first entry is used" "$out" 0
 echo "# changed" >> "$T/llvm/opt"
 sleep 3

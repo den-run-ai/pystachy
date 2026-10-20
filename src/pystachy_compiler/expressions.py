@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, deleted, only_none, stack_aliases, stack_kept, walrus_names
+from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNARY,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.utils import (
@@ -64,6 +65,7 @@ from src.pystachy_compiler.utils import (
     same_kind,
     selem,
     slice_items,
+    stack_keyed,
     takes_self,
     targs,
     tname,
@@ -407,6 +409,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
+    if c.s == "type" and t == "exctype":
+        return 1  # (an exception class's class object is a type)
+    if is_excname(c.s) and t != "exc" and not (t in self.classes and self.classes[t].exc != ""):
+        return 0  # (a value that is no exception, such as a class object, is no instance of one)
     if c.s == "type" and t.startswith("fn[b:"):
         # a builtin's value: one of CPython's builtin classes (int, list, ...) is a type
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
@@ -615,8 +621,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "excinfo":
-        # (with_cm's except clause: the exception it handles, and its class as an exctype)
-        return Val(self.excs[-1].v, "exctype" if n.s == "type" else "exc")
+        # (with_cm's except clause: the exception it handles, and its class's class object)
+        if n.s == "type":
+            return self.exc_type_of(Val(self.excs[-1].v, "exc"))
+        return Val(self.excs[-1].v, "exc")
+    if k == "excobj":
+        # (exc_ctors: an object of exception class n.s, made of the arguments n.kids)
+        return self.exc_of(self.exc_object(n.s, n.kids))
     if k == "int":
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
@@ -675,9 +686,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop" and n.s == "%" and self.refl_dict_of(n.kids[1]) is not None and (n.kids[0].kind == "str" or (n.kids[0].kind == "name" and self.const_str(n.kids[0]).kind == "str")):
         return self.refl_percent(n.kids[0].s if n.kids[0].kind == "str" else self.strglobals[n.kids[0].s], n.kids[1])  # (fmt % vars(x): reflection.py)
     if k == "binop" and n.s == "%" and n.kids[0].kind == "str":
-        return self.percent(n.kids[0].s, n.kids[1])
+        return self.percent(n.kids[0].s, n.kids[1], True)
     if k == "binop" and n.s == "%" and n.kids[0].kind == "name" and self.const_str(n.kids[0]).kind == "str":
-        return self.percent(self.strglobals[n.kids[0].s], n.kids[1])  # (FMT % args of a module's FMT = "...")
+        return self.percent(self.strglobals[n.kids[0].s], n.kids[1], False)  # (FMT % args of a module's FMT = "...")
     if k == "binop" and n.s == "|" and n.kids[0].kind == "dict" and len(n.kids[0].kids) == 0 and not is_dict(unopt(want)):
         # {} | d: the empty display takes d's type (it has nothing to evaluate first)
         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
@@ -721,6 +732,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
+            self.class_ready(n.kids[0])
+            q = shown(c)
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -764,10 +780,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "exc" and n.s == "__cause__" and self.causeread:
             # (raise ... from c's c, or the StopIteration of PEP 479's RuntimeError; else None)
             return Val(self.rt("pys_exc_cause", "ptr", [f"ptr {o.v}"]), "opt[exc]")
-        if unopt(o.t) == "exctype" and n.s == "__name__":
-            # (the class of an exception, as __exit__ takes it: the exception itself)
-            o = self.unwrap(o, "AttributeError: 'NoneType' object has no attribute '__name__'")
-            return Val(self.rt("pys_exc_name", "ptr", [f"ptr {o.v}"]), "str")
+        if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
+            # (an exception class's class object: its name, qualified name and module)
+            o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
+            return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
@@ -777,7 +794,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t in self.classes:
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
-        return self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        fv = self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = False
+        return fv
     if k == "index":
         return self.index(n, want)
     if k == "slice":
@@ -1076,11 +1096,52 @@ def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
     if len(subs) > 0:
         self.err(f"calling class method {f.name}() on an object of {short(c)}, which may be one of {short(subs[0])}, is not supported: it uses cls, which would be {short(c)} (calls are not dispatched on the object's class; call {short(c)}.{f.name}() or {short(subs[0])}.{f.name}())")
 
-def gen_percent(self, fmt: str, rhs: Node) -> Val:
+def fstring_percent(fmt: str, items: list[Node]) -> bool:
+    # whether CPython 3.11+ compiles the literal fmt % (items), a tuple display, as an f-string
+    # (Python/ast_opt.c's optimize_format): one %s, %r or %a for each item, with flags, and a width
+    # and a precision of at most two digits, and no starred item. Each item is then evaluated
+    # just before its conversion, where % evaluates them all first
+    for x in items:
+        if x.kind == "starred":
+            return False
+    n = 0
+    i = 0
+    while i < len(fmt):
+        if fmt[i] != "%":
+            i += 1
+            continue
+        if i + 1 < len(fmt) and fmt[i + 1] == "%":
+            i += 2
+            continue
+        i += 1
+        while i < len(fmt) and fmt[i] in "-+ #0":
+            i += 1
+        for part in range(2):
+            if part == 1:
+                if i >= len(fmt) or fmt[i] != ".":
+                    break
+                i += 1
+            d = 0
+            while i < len(fmt) and fmt[i] in "0123456789":
+                i += 1
+                d += 1
+            if d > 2:
+                return False
+        if i >= len(fmt) or fmt[i] not in "sra":
+            return False
+        i += 1
+        n += 1
+    return n == len(items)
+
+def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
     # "format" % args with a constant format: each conversion becomes what format() or
-    # str()/repr() of its argument gives, as CPython's printf-style formatting does
+    # str()/repr() of its argument gives, as CPython's printf-style formatting does. Where fmt is
+    # the literal itself (lit, not a module's FMT) and args a tuple display that CPython compiles
+    # as an f-string (fstring_percent), each item is evaluated just before its conversion
     items: list[Val] = []
     if rhs.kind == "tuple":
+        if lit and len(rhs.kids) > 1 and fstring_percent(fmt, rhs.kids):
+            return self.pformat(fmt, items, False, rhs.kids)
         for x in rhs.kids:
             items.append(self.expr(x, ""))
     else:
@@ -1094,7 +1155,7 @@ def gen_percent(self, fmt: str, rhs: Node) -> Val:
             self.err("% formatting with a mapping (%(name)s) is not supported")
         else:
             items.append(v)
-    return self.pformat(fmt, items, False)
+    return self.pformat(fmt, items, False, [])
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
@@ -1103,7 +1164,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l1, l2)
     self.place(l1)
-    a = self.pformat(fmt, [Val("null", "None")], True)
+    a = self.pformat(fmt, [Val("null", "None")], True, [])
     ph = Ins("phi", "str", "")
     if not self.term:
         self.incoming(ph, a.v, self.cur)
@@ -1113,7 +1174,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     items: list[Val] = []
     for i in range(len(targs(tv.t))):
         items.append(self.tget(tv, i))
-    b = self.pformat(fmt, items, False)
+    b = self.pformat(fmt, items, False, [])
     if not self.term:
         self.incoming(ph, b.v, self.cur)
     self.br(l3)
@@ -1123,11 +1184,13 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
+def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
-    # (it is a tuple's place, see percent_opt), as CPython's error
+    # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
+    # instead, each evaluated as its conversion comes (an f-string's order: percent)
     parts: list[Val] = []
     lit: list[str] = []
+    count = len(lazy) if len(lazy) > 0 else len(items)
     used = 0
     i = 0
     while i < len(fmt):
@@ -1165,9 +1228,9 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
             self.err("% formatting with a * width or precision is not supported")
         if t not in "sradiuxXoeEfFgGc":
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
-        if used >= len(items):
+        if used >= count:
             return self.fmt_error("not enough arguments for format string")
-        v = items[used]
+        v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
         used += 1
         if len(lit) > 0:
             parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -1177,7 +1240,7 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
         if is_sopt(v.t) and t not in "sra":
             v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
         parts.append(self.conversion(v, flags, width, prec, t))
-    if used < len(items):
+    if used < count:
         return self.fmt_error("not all arguments converted during string formatting")
     if len(lit) > 0:
         parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -1993,6 +2056,49 @@ def gen_stack_ok(self, f: FnInfo) -> bool:
                 f.stknames = names
     return f.stk == 1
 
+def gen_stack_key(self, t: str, ms: list[str]) -> bool:
+    # whether o[k] of an object of class t, which calls its methods ms with k (__getitem__,
+    # __setitem__, or both for o[k] op= v), may make a tuple display k in its own frame, where it
+    # is gone once they return: every method that it may call (a subclass's override too) only
+    # reads the key (key_read), so no copy is needed
+    ci = self.classes[t]
+    cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, t)] if ci.tag > 0 else [ci]
+    for c in cs:
+        for m in ms:
+            if m not in c.methods or not self.key_read(c.methods[m]):
+                return False
+    return True
+
+def gen_key_read(self, f: FnInfo) -> bool:
+    # whether f, a method that o[k] calls with k, takes a tuple k as it is (stack_keyed) and only
+    # reads it, its items, its length or its type, and the locals assigned it (key_reads): it can
+    # keep none of them, nor return it, nor let a closure, a generator expression or a generator's
+    # frame hold it (stack_kept)
+    if f.keyread < 0:
+        f.keyread = 0
+        if stack_keyed(f) and f.node.kind == "def" and not f.export and not f.pyexport:
+            names: dict[str, bool] = {f.params[1]: True}
+            body = f.node.kids[2].kids
+            added = True
+            while added:
+                added = False
+                for st in body:
+                    if stack_aliases(st, names):
+                        added = True
+            bound: dict[str, bool] = {}
+            local_names(body, bound)
+            for st in body:
+                comp_vars(st, bound)  # (len in [len(k) for len in fs] is not the builtin)
+            builtins: dict[str, bool] = {}
+            for b in ["len", "isinstance", "int", "float", "str", "bool"]:
+                if b not in bound and b not in f.params and b not in self.funcs and b not in self.classes and b not in self.mvars:
+                    builtins[b] = True  # (another module's own len is named m$len where it calls it)
+            key = f.params[1] if f.params[1] not in bound else ""
+            ns = list(names)
+            if len([st for st in body if stack_kept(st, ns) or not key_reads(st, names, builtins, key)]) == 0:
+                f.keyread = 1
+    return f.keyread == 1
+
 def gen_keep_stack(self, n: Node) -> None:
     # before statement n of a function whose *args tuple may be in its caller's frame
     # (stack_ok): each local that may hold the tuple and that n uses other than to look it up
@@ -2241,8 +2347,13 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             return self.getfield(o, self.field(o, ts[j]), ts[j])
         return self.tget(self.unwrap(o, sub), j)
     if t in self.classes:
-        # o[k]: o.__getitem__(k), once k is evaluated
-        ik = self.expr(n.kids[1], self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable"))
+        # o[k]: o.__getitem__(k), once k is evaluated; a tuple display k in the frame where
+        # __getitem__ only reads it (o[i, j]: stack_key)
+        keyt = self.argtype(t, "__getitem__", 1, f"'{tname(t)}' object is not subscriptable")
+        if self.lookup_key(n.kids[1]) and self.stack_key(t, ["__getitem__"]):
+            self.stkkey = n.kids[1]
+        ik = self.expr(n.kids[1], keyt)
+        self.stkkey = self.nokey
         self.notnone(o, sub)
         return self.protocol(o, "__getitem__", [ik])
     self.err(f"'{tname(t) if is_gen(t) else t}' object is not subscriptable")
@@ -3182,6 +3293,7 @@ def gen_compare(self, n: Node) -> Val:
         return self.cmp2(ops[0], self.expr(n.kids[0], w, resultsoft=True), b)
     # (x is None reads a local that only None was assigned to so far, see none_type)
     self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
+    self.cmpnode = n.kids[0] if len(ops) == 1 and n.kids[1].kind == "None" and (ops[0] == "is" or ops[0] == "is not") else self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.lookup_key(n.kids[0]):
         t = unopt(self.probe_type(n.kids[1]))
         if is_dict(t) or is_set(t):
@@ -3189,6 +3301,7 @@ def gen_compare(self, n: Node) -> Val:
     a = self.expr(n.kids[0], "")
     self.stkkey = self.nokey
     self.nonecmp = False
+    self.cmpnode = self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
         # None that is None equals no item
@@ -3413,6 +3526,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
             self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
         return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
+    if (op == "==" or op == "!=") and (unopt(a.t) == "exctype" or unopt(b.t) == "exctype"):
+        # class objects of exception classes: by identity (each class has one), and never equal
+        # to a value of another type (but None, which a class object that may be None is)
+        o = b.t if unopt(a.t) == "exctype" else a.t
+        if unopt(o) == "exctype" or o == "None":
+            return self.ptr_cmp(op, a, b)
+        if o in self.classes or is_union(unopt(o)):
+            self.err(f"comparing an exception class with {typestr(o)} is not supported")
+        return Val("false" if op == "==" else "true", "bool")
     if op == "is" or op == "is not":
         if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
             # a number or bool is never None

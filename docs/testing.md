@@ -14,6 +14,7 @@ Run these from the repository root:
 | `make` | Bootstrap the native compiler; successive compilers must emit byte-identical IR for the compiler and subset runtime. |
 | `make test` | Run the differential, rejection and deviation suite with the native compiler, JIT and AOT. |
 | `make test-py` | Run the same suite with the compiler hosted by CPython. |
+| `make coverage` | Measure which lines and branches of the compiler's source that suite runs, in the CPython-hosted compiler ([compiler coverage](#compiler-coverage)). |
 | `make verify` | Run the complete verification plan and write `build/verification.json`. |
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
@@ -93,7 +94,8 @@ every program allocation. It also runs the contract checks below.
 | Benchmarks | CPython-equivalent output plus advisory timings. |
 
 The implementation and exact budgets live in `tests/verify.sh` and its named `tools/` probes.
-Useful individual checks include `make re-fuzz`, `make re-probe`, `make dictprobe`,
+Useful individual checks include `make re-fuzz`, `make re-probe`, `make re-specialize-check`
+(matchers generated for random patterns, against CPython's `re`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
@@ -119,8 +121,9 @@ The oracle compares emitted IR byte for byte, and rejection messages and exit st
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
-`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries or
-runtime calls recorded for `tests/ir/*.py`. These probes compile without running;
+`make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
+runtime calls, function attributes or field TBAA tags recorded for `tests/ir/*.py` (`NAME.fx`,
+`NAME.calls`, `NAME.attrs`, `NAME.tbaa`). These probes compile without running;
 `tests/ir/pending/` holds probes for open bugs.
 
 ## Syntax errors against CPython
@@ -136,6 +139,41 @@ It reports diagnostic differences separately from valid Python that Pystachy can
 Current boundaries are in [syntax checks](language/semantics.md#syntax-errors). Earlier test
 counts and syntax-survey results are retained as [historical snapshots](archive/verification-snapshots.md).
 
+## Compiler coverage
+
+`make coverage` runs the differential, rejection and deviation suite, JIT and AOT, with the
+CPython-hosted compiler under [coverage.py](https://coverage.readthedocs.io/), pinned in
+`tools/requirements-dev.txt`. It reports which lines and branches of `src/pystachy_compiler/`
+the suite runs. `FILES="..."` selects cases, as for `make test-py`. The results go to
+`build/coverage/`:
+
+| File | Contents |
+|---|---|
+| `html/index.html` | Each module's source, marked line by line. |
+| `summary.md` | The commit, the suite's counts, the run time and a table of the modules. |
+| `coverage.json` | coverage.py's JSON report. |
+| `badge.json` | The total, as a [shields.io endpoint](https://shields.io/badges/endpoint-badge). |
+| `tests.log` | The report of `tests/run.sh`. |
+
+The percentage is **hosted compiler coverage**: the compiler's own source, as CPython runs it.
+It does not measure `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as
+native code. `make test-ffi` and `make test-cache` are not part of the run either, so code that
+only they reach, such as C calls, extension modules and the driver's search of `PATH` for LLVM,
+counts as missed. [`.coveragerc`](../.coveragerc) holds the settings. Each compiler process writes
+its own data file. `pystachy run` replaces its process with `lli` through `os.execv`, so
+coverage.py saves the data first (`patch = execv`); without that, JIT runs record nothing.
+Every run starts with an empty runtime cache, so the runtime's build is measured too.
+`make coverage` fails when a test fails or a compiler process leaves no data, never because
+of the percentage: there is no threshold.
+
+The [Coverage workflow](../.github/workflows/coverage.yml) runs `tools/coverage.sh`, as
+`make coverage` does, daily and on demand. It also runs on pull requests and pushes to `main`
+that change its setup or `tests/run.sh`, whose report the script reads. Its job summary shows
+`summary.md`, and the report is a workflow artifact. After each successful run on `main`, a
+separate job, which runs no tests, commits the summary and the badge to the `badges` branch, as
+[`coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md) and
+`coverage.json`, which the README's badge reads.
+
 ## Continuous integration
 
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
@@ -145,8 +183,13 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
-Twenty-three groups run in parallel, each with its own fixed-point bootstrap. The target is under
-ten minutes of work per group; the 15-minute job limit leaves room for runner variation:
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups
+run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
+complete tracked source identity, commit and toolchain before using it. No runtime cache is
+shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
+independent. Local `make verify` and group runs still build their own bootstrap.
+The target is under ten minutes of work per group; the 15-minute job limit leaves room for
+runner variation:
 
 | Group | Work after bootstrap |
 |---|---|
@@ -166,9 +209,11 @@ ten minutes of work per group; the 15-minute job limit leaves room for runner va
 A failed group leaves the others running. The required check remains
 `make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
 succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
-toolchains, and different bootstrap IR. Reports and logs are uploaded as workflow artifacts.
+toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+Reports and logs are uploaded as workflow artifacts. A failed producer blocks its consumers
+and fails the final gate; there is no fallback to an older compiler.
 
-The combined report's duration is the longest group's verification work;
+The combined report's duration is bootstrap work plus the longest consumer group's verification work;
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
 workflow time. The 15-minute limit applies to each verification job.
 
@@ -201,6 +246,9 @@ The final report job allows ten minutes for artifact downloads and validation.
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
+
+The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, daily and when its
+setup changes, and no check requires it; [compiler coverage](#compiler-coverage) describes it.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
