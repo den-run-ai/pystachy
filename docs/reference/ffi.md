@@ -198,7 +198,9 @@ Only the importing thread may call the module; another thread gets `RuntimeError
 CPython subinterpreters are unsupported for both extension ABIs.
 The runtime is single-threaded and has no TLS. Computation holds the GIL, so long
 calls delay other Python threads and Ctrl-C. Host I/O calls can release the GIL;
-thread-ID and entry-depth checks still protect the runtime.
+thread-ID and entry-depth checks still protect the runtime. Process pools whose
+workers each import the module run it in parallel; the
+[concurrency contract](../concurrency.md) states what they guarantee.
 
 A callback into the module while its I/O hooks call the host's `sys.stdout`,
 `sys.stderr` or `sys.stdin` raises `RuntimeError`. Stack-switching libraries such
