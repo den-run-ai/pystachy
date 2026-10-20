@@ -1093,7 +1093,7 @@ class Parser:
                 self.scoped(b, "a TypeVar constraint" if b.kind == "tuple" else "a TypeVar bound")
                 self.dropped(line, b)
             if self.eat("="):
-                b = self.item()
+                b = self.item() if kind == "TypeVarTuple" else self.test()  # (CPython's grammar: a star expression only for a TypeVarTuple)
                 self.scoped(b, f"a {kind} default")
                 self.dropped(line, b)
                 kinds[len(kinds) - 1] = kinds[len(kinds) - 1] + "="
