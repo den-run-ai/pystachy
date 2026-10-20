@@ -333,6 +333,14 @@ scalar-union values support printing and equality; lists also support membership
 find an integer `1`. Numeric equality uses the existing exact int/float comparison,
 including integers above the exact range of a float. `None` equals only `None`.
 
+Lists of numeric unions (`int`, `float` and `bool` members) also order. Two such lists
+compare, and `min()`, `max()`, `sorted()` and `sort()` work, with the same exact int/float
+comparison; a NaN orders with nothing. With `None` too, comparing a `None` raises CPython's
+`TypeError`. Without `None`, `sum()` adds the items as CPython does: ints exactly until the
+first float, then floats with CPython's compensated sum, and later ints as floats. The result
+is an `int`, a `float`, or an `int | float` where both are possible. `math.fsum()` and
+`math.dist()` take each item's float. A union with `str` still needs narrowing for these.
+
 These operations select the existing native operation by the tag. A concrete value
 keeps its native representation until it enters a union; widening a union reuses
 its box. A concrete equality/search operand may allocate a temporary box. The boxes

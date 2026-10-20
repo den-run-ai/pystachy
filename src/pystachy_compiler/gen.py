@@ -21,6 +21,7 @@ from src.pystachy_compiler.memory_ir import (
 from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
+    gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -156,6 +157,10 @@ from src.pystachy_compiler.builtins import (
     gen_pwrite as builtins_pwrite,
     gen_reduce as builtins_reduce,
     gen_reduce_item as builtins_reduce_item,
+    gen_comp_end as builtins_comp_end,
+    gen_neumaier as builtins_neumaier,
+    gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
     gen_bytes_method as builtins_bytes_method,
@@ -265,6 +270,7 @@ from src.pystachy_compiler.conversions import (
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
+    gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -1580,6 +1586,9 @@ class Gen:
 
     def floats(self, v: Val) -> Val:
         return conversions_floats(self, v)
+
+    def ufloats(self, v: Val) -> Val:
+        return conversions_ufloats(self, v)
 
     def is_dc(self, t: str) -> bool:
         return conversions_is_dc(self, t)
@@ -3407,6 +3416,18 @@ class Gen:
     def reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return builtins_reduce(self, name, args, stt)
 
+    def comp_end(self, acc: str, comp: str) -> str:
+        return builtins_comp_end(self, acc, comp)
+
+    def neumaier(self, acc: str, comp: str, x: str) -> None:
+        return builtins_neumaier(self, acc, comp, x)
+
+    def sum_union_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_union_item(self, r, v)
+
+    def sum_union_end(self, r: Reduce) -> Val:
+        return builtins_sum_union_end(self, r)
+
     def reduce_item(self, r: Reduce, e: Node) -> None:
         return builtins_reduce_item(self, r, e)
 
@@ -3628,6 +3649,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def num_union(self, t: str) -> bool:
+        return unions_num_union(self, t)
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)

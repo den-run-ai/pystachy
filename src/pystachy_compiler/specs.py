@@ -816,7 +816,7 @@ RUNTIME: dict[str, str] = {
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
     "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
-    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|",
+    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|", "m.ufloats": "list[float]:list[T],#|A rL|",
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor
