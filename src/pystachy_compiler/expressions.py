@@ -3002,7 +3002,7 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
         o = a if side == 0 else b
         if o.t in self.classes and self.classes[o.t].exc != "":
             # (the classes but the last of an exception object, whose ExcClass its tests compare
-            # with: they are made, as before #625, whether or not cmp_branch tests them all)
+            # with: they are made, as before #625, whether or not cmp_tags tests them all)
             for c in [x.t for x in (xs if side == 0 else ys) if x.t != "None"][:-1]:
                 self.xcls[c] = True
     keys: list[str] = []
@@ -3038,20 +3038,41 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
     starts = [to[0] if uniform(to) else self.label() for to in tos] if len(rows) > 1 else [""]
     end = self.label()
     ph = Ins("phi", "bool", "")
-    if len(rows) > 1:
-        self.cmp_branch(a, xs, [starts[g] for g in group])
-    for g in range(len(rows)):
-        if not uniform(tos[g]):
-            if len(rows) > 1:
-                self.place(starts[g])
-            self.cmp_branch(b, ys, tos[g])
-    for i in range(len(keys)):
-        self.place(arms[i])
-        # ("is": the identity of the operands, which each alternative pointer is)
-        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[i] == "is" else self.concrete_cmp(op, pairs[i][0], pairs[i][1])
-        if not self.term:
-            self.incoming(ph, r.v, self.cur)
-            self.br(end)
+    # The tests and arms go in preorder, as each class's used to follow each other: a's test of
+    # None, the row of its None alternative, the tests of a's classes, then each row (b's test of
+    # None, its None alternative's arm, the tests of b's classes, its arms) and arm where first
+    # reached, which LLVM lays out with fewer jumps. They compile in their first pairs' order.
+    ta = [starts[g] for g in group]
+    some = "-"  # (a's class tests: "-" none or done, "" none after its test of None, else their label)
+    if len(rows) > 1 and xs[0].t == "None":
+        some = self.cmp_null(a, xs, ta)
+    elif len(rows) > 1:
+        self.cmp_tags(a, xs, ta)
+    done: dict[int, bool] = {}
+    placed: dict[int, bool] = {}
+    for xi in range(len(xs)):
+        g = group[xi]
+        if g not in done:
+            done[g] = True
+            sb = "-"  # (b's class tests, as some is a's)
+            if not uniform(tos[g]):
+                if len(rows) > 1:
+                    self.place(starts[g])
+                if ys[0].t == "None":
+                    sb = self.cmp_null(b, ys, tos[g])
+                else:
+                    self.cmp_tags(b, ys, tos[g])
+            for yi in range(len(ys)):
+                i = rows[g][yi]
+                if i not in placed:
+                    placed[i] = True
+                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end)
+                if yi == 0 and sb != "-" and sb != "":
+                    self.place(sb)
+                    self.cmp_tags(b, ys, tos[g])
+        if xi == 0 and some != "-" and some != "":
+            self.place(some)
+            self.cmp_tags(a, xs, ta)
     self.place(end)
     if len(ph.a) == 0:
         self.unreachable()
@@ -3103,45 +3124,64 @@ def uniform(to: list[str]) -> bool:
             return False
     return True
 
-def gen_cmp_branch(self, v: Val, alts: list[Val], to: list[str]) -> None:
-    # go to to[i] where operand v is alternative i of alts (cmp_alts): None by a test of the
-    # pointer, an object by its class's tag (an exception object by its ExcClass). Where no
-    # test matches is the target that the most classes share (where targets tie, the last
-    # class's), and for an exception object the last class's, as before #625: its ExcClass
-    # need not be made
-    if uniform(to):
-        self.br(to[0])
-        return
-    first = 0
-    if alts[0].t == "None":
-        some = self.label()
-        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, to[0], some)
-        self.place(some)
-        first = 1
-    xc = self.classes[v.t].exc != ""
-    n: dict[str, int] = {}
-    for j in range(first, len(to)):
-        n[to[j]] = n[to[j]] + 1 if to[j] in n else 1
+def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+    # arm l of inherit_cmp, for key k: what concrete_cmp compiles for pair p, and then end, where
+    # phi ph takes its result ("is": the identity of the operands, which each alternative is)
+    self.place(l)
+    r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+
+def gen_cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
+    # where none of the tests of operand v's classes matches (cmp_tags): the target the most of
+    # its classes share (where targets tie, the last class's), and for an exception object the
+    # last class's, as before #625: its ExcClass need not be made
+    first = 1 if alts[0].t == "None" else 0
     rest = to[len(to) - 1]
-    for j in range(first, len(to)):
-        if n[to[j]] > n[rest] and not xc:
-            rest = to[j]
+    if self.classes[v.t].exc == "":
+        n: dict[str, int] = {}
+        for j in range(first, len(to)):
+            n[to[j]] = n[to[j]] + 1 if to[j] in n else 1
+        for j in range(first, len(to)):
+            if n[to[j]] > n[rest]:
+                rest = to[j]
+    return rest
+
+def gen_cmp_null(self, v: Val, alts: list[Val], to: list[str]) -> str:
+    # the test of whether operand v, whose first alternative is None (cmp_alts), is None: to
+    # to[0] if so; else to cmp_rest's target where its classes need no test, and then "", or to
+    # the label it returns, which the caller places for cmp_tags
+    rest = self.cmp_rest(v, alts, to)
+    tags = len([j for j in range(1, len(to)) if to[j] != rest]) > 0
+    some = self.label() if tags else rest
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, to[0], some)
+    return some if tags else ""
+
+def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
+    # go to to[i] where operand v, an object, is of alternative i's class (cmp_alts): by a switch
+    # on its class's tag, an int, or for an exception object by tests of its ExcClass pointer,
+    # which no switch takes; else to cmp_rest's target, which LLVM need not test either
+    first = 1 if alts[0].t == "None" else 0
+    rest = self.cmp_rest(v, alts, to)
     tested = [j for j in range(first, len(to)) if to[j] != rest]
-    tag = self.mload('%ptr' if xc else 'int', v.v) if len(tested) > 0 else ""
+    if len(tested) == 0:
+        self.br(rest)
+        return
+    xc = self.classes[v.t].exc != ""
+    tag = self.mload('%ptr' if xc else 'int', v.v)
+    if not xc:
+        self.switch(Val(tag, "int"), [str(self.classes[alts[j].t].tag) for j in tested], [to[j] for j in tested], rest)
+        return
     for i in range(len(tested)):
         c = alts[tested[i]].t
-        if xc:
-            # (an exception object's first field is its class's ExcClass, made for the test)
-            self.xcls[c] = True
-            hit = self.scalar_cmp('eq', Val(tag, '%ptr'), Val(f"@x.{c}", '%ptr'))
-        else:
-            hit = self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[c].tag), "int")).v
+        # (an exception object's first field is its class's ExcClass, made for the test)
+        self.xcls[c] = True
+        hit = self.scalar_cmp('eq', Val(tag, '%ptr'), Val(f"@x.{c}", '%ptr'))
         nxt = self.label() if i + 1 < len(tested) else rest
         self.cbr(hit, to[tested[i]], nxt)
         if i + 1 < len(tested):
             self.place(nxt)
-    if len(tested) == 0:
-        self.br(rest)
 
 def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
     # Both objects now have known, non-null concrete classes. NotImplemented is outside
