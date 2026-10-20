@@ -3809,6 +3809,15 @@ static int codec(Str *e) {             /* encoding= as CPython's codec lookup fi
   for (int k = 0; k < 2; k++) if (strstr(alias[k], b) || (!dot && !strcmp(b, module[k]))) return k + 1;
   return 0;
 }
+/* is a file of files[] open for writing to the file (dev, ino)? A leaf of its own: inlined into
+   pys_open, the File it finds could stay in a callee-saved register there (as one build's
+   register allocation left it), which collect() spills and scans, so that the collection meant to
+   close that unreachable writer would find it reachable and keep it, its buffer unwritten */
+__attribute__((noinline)) static int writing(dev_t dev, ino_t ino) {
+  for (I i = 0; i < nfiles; i++)
+    if (files[i]->wr && !files[i]->closed && files[i]->dev == dev && files[i]->ino == ino) return 1;
+  return 0;
+}
 File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
   int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
   if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
@@ -3825,9 +3834,8 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
   io_in();
   struct stat st;
-  if (nfiles && !gc_off && !stat(path->s, &st))   /* a writer to this file that nothing refers to any more has */
-    for (I i = 0; i < nfiles; i++)               /* been closed by CPython: a collection closes it first */
-      if (files[i]->wr && !files[i]->closed && files[i]->dev == st.st_dev && files[i]->ino == st.st_ino) { collect(); break; }
+  if (nfiles && !gc_off && !stat(path->s, &st) && writing(st.st_dev, st.st_ino))   /* a writer to this file that */
+    collect();                         /* nothing refers to any more has been closed by CPython: a collection closes it first */
   char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
   if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
   FILE *f = fopen(path->s, m);
