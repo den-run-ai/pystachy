@@ -141,7 +141,8 @@ memory trade-offs and reproduction details, and the [caching guide](docs/caching
 Pystachy supports typed containers, classes and dataclasses, exceptions, functions as values,
 closures, decorators, generators (`send` / `throw` / `close`), context managers and generic typing.
 Unannotated functions and supported `Any` annotations specialize to concrete types;
-`Any` does not introduce dynamically typed storage. See the
+`Any` adds dynamically typed storage only in modules that opt in to the experimental
+[dynamic `Any`](docs/dynamic-any.md). See the
 [typing rules](docs/language/typing.md#function-and-method-templates).
 
 Some standard-library modules compile unchanged. Others, including `fnmatch`, `textwrap`,

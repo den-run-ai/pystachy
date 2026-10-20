@@ -15,6 +15,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Types | [declarations](pystachy_compiler/declarations.py), [templates](pystachy_compiler/templates.py): annotations, fields and specialization. |
 | Unions | [unions](pystachy_compiler/unions.py), [union_arithmetic](pystachy_compiler/union_arithmetic.py): explicit closed scalar, container and native reference unions, their narrowing and numeric operations. |
 | Values | [variables](pystachy_compiler/variables.py), [local_versions](pystachy_compiler/local_versions.py), [expressions](pystachy_compiler/expressions.py): binding, bounded local retyping, closures and expression typing. |
+| Dynamic values | [dynamic](pystachy_compiler/dynamic.py): `typing.Any` as a runtime-typed box in modules that opt in ([dynamic `Any`](../docs/dynamic-any.md)), with the dispatchers that run its operations on the program's classes. |
 | Calls | [calls](pystachy_compiler/calls.py), [builtins](pystachy_compiler/builtins.py), [structs](pystachy_compiler/structs.py): function dispatch, builtin operations and `struct` calls whose format is known at compile time. |
 | Reflection | [reflection](pystachy_compiler/reflection.py): `type()` names and identity, `getattr`/`setattr`/`hasattr`, `vars`, `dir` and `dataclasses`' introspection, and classes' reflection records. |
 | Containers | [containers](pystachy_compiler/containers.py), [conversions](pystachy_compiler/conversions.py): collection operations, coercion and runtime slots. |

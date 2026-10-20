@@ -70,14 +70,14 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Multiple/generic inheritance, arbitrary recursive value types and dynamic `Any` storage,
-`bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
-limit library coverage. Generator functions, resumable generator objects, bytes, bounded
-unions and per-call function/constructor specialization are already supported; their
-remaining restrictions depend on the operation and the concrete types involved.
-CPython extensions and import
-graphs through unavailable modules can block otherwise suitable pure-Python functions.
-The [compatibility reference](language/compatibility.md) lists the detailed restrictions.
+Multiple/generic inheritance, arbitrary recursive value types, dynamic `Any` storage (an opt-in
+[prototype](dynamic-any.md) only), `bytearray` and binary files, dynamic reflection and
+unrestricted argument expansion still limit library coverage. Generator functions, resumable
+generator objects, bytes, bounded unions and per-call function/constructor specialization are
+already supported; their remaining restrictions depend on the operation and the concrete types
+involved. CPython extensions and import graphs through unavailable modules can block otherwise
+suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
+the detailed restrictions.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of

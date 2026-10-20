@@ -214,7 +214,7 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 | Failure pattern | Rule to carry forward |
 |---|---|
 | Another `iter()` masked a missing iterator helper ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Keep dependency regressions in separate programs; test all annotation spellings. |
-| Inferring `Any` erased concrete generator channels ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Preserve yield/send/return contracts independently. `Any` specializes concrete types; it does not add dynamically typed storage. |
+| Inferring `Any` erased concrete generator channels ([#633](https://github.com/den-run-ai/pystachy/pull/633)) | Preserve yield/send/return contracts independently. `Any` specializes concrete types; it adds dynamically typed storage only in modules that opt in to [dynamic `Any`](docs/dynamic-any.md). |
 | An unresolved empty-container allocation could serve pointer-bearing callers ([#603](https://github.com/den-run-ai/pystachy/pull/603)) | Mark storage pointer-free only after representation is proven; test copy, growth, clear/refill and shared template results under GC. |
 | A lazily created global needed an explicit collector root ([#602](https://github.com/den-run-ai/pystachy/pull/602)) | Test survival after caller references disappear, including aliases and extension initialization. |
 | A C `float` declared as `double` compiled but returned zeros ([#609](https://github.com/den-run-ai/pystachy/pull/609)) | Verify ABI widths, mutation, aliasing and pointer lifetime with real C calls; twin parity alone cannot establish ABI correctness. |

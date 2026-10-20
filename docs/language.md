@@ -36,7 +36,8 @@ Explicit closed scalar unions such as `int | str`, bounded native reference unio
 and optional unions are supported. A variable, field or return given values of several
 scalar types holds their union. `Any` in supported function/method signatures,
 constructor parameters and initialized module/local variables uses concrete inference;
-dynamic `Any` values are not supported.
+a module that opts in to the [dynamic `Any` prototype](dynamic-any.md) gets runtime-typed
+`Any` values instead.
 Generic classes can infer type arguments from construction or name them explicitly with
 `Box[int]` annotations and constructor subscriptions; variadic generic classes remain inferred.
 Module-level type aliases (`Row = list[str]`, `type Pair[T] = tuple[T, T]`) name types in
@@ -248,10 +249,11 @@ separately in [FFI](ffi.md).
 
 ## Unsupported features
 
-The main gaps are multiple inheritance, general object unions and dynamic `Any` values, `async`,
-`bytearray`, `memoryview` and binary files, complex and arbitrary-precision numbers, `match`,
-attribute values looked up by names only the run time knows (their text and `hasattr()` are
-supported), slice objects and unrestricted argument expansion.
+The main gaps are multiple inheritance, general object unions, dynamic `Any` values outside the
+opt-in [prototype](dynamic-any.md), `async`, `bytearray`, `memoryview` and binary files, complex
+and arbitrary-precision numbers, `match`, attribute values looked up by names only the run time
+knows (their text and `hasattr()` are supported), slice objects and unrestricted argument
+expansion.
 
 Supported templates can avoid compiling unused branches containing some of these features.
 An unsupported feature that the program needs produces a compile-time error.
