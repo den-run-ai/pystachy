@@ -36,6 +36,7 @@ from src.pystachy_compiler.analysis import (
     module_reads,
     names_name,
     own_specials,
+    object_values,
     range_values,
     read_names,
     rebound,
@@ -69,6 +70,7 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PLATFORM,
     PYBUILTINS,
+    OBJECTS,
     RANGES,
     STANDINS,
     TYPESMOD,
@@ -328,6 +330,10 @@ class Loader:
             # if the program calls them)
             self.load(RANGES, self.dirs[-1] + "/" + RANGES + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
+        if not self.rtmode and len(self.dirs) > 0 and OBJECTS not in self.mods and len([x for x in self.order if object_values(x.body) and module_reads(x.body, "object")]) > 0:
+            # object() makes an object of lib's class, whose module nothing imports (as range's)
+            self.load(OBJECTS, self.dirs[-1] + "/" + OBJECTS + ".py", "")
+            self.order = [self.order[-1]] + self.order[:-1]
         if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods and len([x for x in self.order if module_reads(x.body, "iter")]) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first)
@@ -484,8 +490,8 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES:
-            return ""  # (iter()'s classes and range's, which no program imports: see program)
+        if name == ITERS or name == RANGES or name == OBJECTS:
+            return ""  # (iter()'s classes, range's and object's, which no program imports: see program)
         return self.filepath(name)
 
     def filepath(self, name: str) -> str:

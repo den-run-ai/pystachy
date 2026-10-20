@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `17c7e1ff4b8510912d1829c967ae2691d03da0ea`.
+**Latest evaluated main:** `11f4681adfc19404a0b4f97fdd015d3a01b301e6`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4019,3 +4019,118 @@ checks are read separately after publication. No full local `make verify`,
 CPython regrtest or timing/memory study. Other unaffected known gaps retain their
 dated evidence. Dated baseline reports and JSON are preserved; no new issue or
 implementation change was needed.
+
+## 2026-10-20 — #718: object sentinels and three additional imports
+
+Evaluated [main `11f4681a`](https://github.com/den-run-ai/pystachy/commit/11f4681adfc19404a0b4f97fdd015d3a01b301e6),
+the sole merge after `17c7e1ff`: [#718](https://github.com/den-run-ai/pystachy/pull/718).
+The merge is in main's history; its tree equals implementation head
+`eae2a9183d6277e68561fa046332107ca26b0ecd`. Twelve compiler modules change and
+`lib/_pystachy_object.py` is added. A fresh **CPython 3.13.16 / LLVM 18.1.3**
+bootstrap reaches compiler/runtime fixed points of **672,243 / 18,709 IR lines**.
+Compiler-build and evaluated-source revision both equal `11f4681a`; compiler
+SHA-256 is `edf26ee1d2b52ac7e033e509f07a4d7d0c9d10d3bd4a14fad6f65f98a1b3b943`.
+
+[Evidence, exact commands, input hashes and replay drivers](compatibility-2026-10-20-object-sentinels.json)
+retain the previous compiler identity separately. The selected **86 cases**
+contain 72 positive programs and 14 expected rejections: the changed sentinel
+fixtures plus adjacent equality, identity, optional-scalar, reflection, iterator,
+callable, range and alias cases. Each native JIT/AOT, GC-stress, optimization-off
+and hosted-compiler configuration passes **158 checks**, totaling **632**.
+The changed 12 cases pass **16 UBSan/GC checks** (eight executions, eight expected
+rejections). All **72 CPython recordings**, **72 IR/LLVM checks** and runtime
+signature/effect checks pass.
+
+### Identity, nullable comparisons and remaining sentinel limits
+
+An independent **36-case nullable matrix / 288 comparison results** matches
+CPython in GC-stressed and optimization-off JIT/AOT. It checks both operand
+orders for equality/inequality and identity/non-identity across nine optional
+types, with the sentinel and other operand independently null/non-null. A copied
+hosted compiler with only the nullable equality safeguard disabled differs on
+**nine of 36 rows**; the unmodified hosted compiler matches. This reproduces the
+[reviewed silent-result risk](https://github.com/den-run-ai/pystachy/pull/718#discussion_r4320291782)
+and verifies its [fix](https://github.com/den-run-ai/pystachy/pull/718#discussion_r4320379840),
+not merely successful compilation. No tracked compiler source was edited.
+
+A separate lifetime/identity probe retains **128 distinct objects**, clears the
+original list, creates 512 more objects, checks all pairwise identities and stable
+hash/dictionary lookup, then removes 32 keys. It matches CPython in **six native
+runs**: GC-stressed, UBSan plus GC, and optimization-off JIT/AOT. Sentinel defaults,
+repr shape and type metadata are checked without comparing process-specific
+addresses or hash numbers.
+
+Qualified, imported-alias and assigned-alias construction still reject when no
+module calls the bare `object()` name. An independent two-module program confirms
+all three spellings work once another module triggers that load, matching CPython
+in four native runs. The boundary is program-wide, not per module.
+
+[#251](https://github.com/den-run-ai/pystachy/issues/251) remains open. Its original
+mixed int/sentinel-return shape now reaches `get() returns both int and object`;
+dict default lookup still rejects `expected int, got object`, and appending a
+sentinel to a string list rejects `expected str, got object`. All three work in
+CPython. Thus the shipped fnmatch port's `None`-for-STAR adaptation is still
+needed; native construction does not establish class-bearing unions or runtime Any.
+
+### Import gains versus usable APIs
+
+Fresh isolated `--metadata` sweeps improve **145/464 → 148/464 native** and
+**147/464 → 150/464 stub-assisted**, with the same **522 source hashes**, **58
+overlay exclusions** and zero timeouts. No successful included import is lost.
+Newly accepted imports are **argparse, traceback and _pyrepl._threading_handler**.
+The stub sweep labels argparse with `_operator`; the independent native sweep
+already accepts it, so that label is not evidence it requires a stub natively.
+
+With the same overlay and **unedited CPython 3.13.16 module sources**, argparse
+constants and traceback's private `_safe_string(ValueError(...))` match CPython
+in GC-stressed and optimization-off JIT/AOT (eight executions). Full public API
+support does not follow:
+
+| Executed/reference probe | Current native boundary |
+|---|---|
+| `argparse.ArgumentParser(...).parse_args(...)` | Multiple inheritance rejected |
+| `argparse.Namespace(count=3)` | Generic/template base-class inheritance rejected |
+| `argparse.HelpFormatter(...)` | Unsupported statements in class body |
+| `traceback.format_exception_only(ValueError("bad"))` | `expected _Sentinel, got BaseException` |
+
+All four reference programs execute under CPython; the old compiler stopped at
+`object()` before reaching these API errors. `_pyrepl._threading_handler` is only
+import-compiled here, not a working threading hook. Native `code` advances to
+`__future__.all_feature_names`; `hashlib` and `logging` advance to `_thread.lock`
+as an unsupported class value. Stub-assisted `hmac` advances to that same latter
+blocker. These remain first-error observations, not complete compatibility claims.
+
+### Corpus result and an explicit compatibility loss outside it
+
+The **3,263-program old/new comparison** has **3,254 identical results**, four
+newly accepted sentinel programs and five changed rejection diagnostics. No
+previously accepted corpus program changes IR or becomes rejected. All nine
+changed programs are covered by the selected execution/diagnostic checks.
+
+**Do not generalize this to zero regressions:** a user module named
+`_pystachy_object.py` containing `VALUE = 37` imports and prints 37 under CPython
+and the previous compiler, but the new compiler rejects it as unavailable. The
+name is newly reserved for the helper. This is an independently reproduced,
+[reviewed and documented compatibility loss](https://github.com/den-run-ai/pystachy/pull/718#discussion_r4319731036),
+outside the retained corpus. It is not a newly uncovered bug; no duplicate issue
+or implementation change was made.
+
+Four adapted ordered-set/sortedcontainers workloads and four retained native
+fnmatch programs pass **16 GC-stressed JIT/AOT checks**. Together with the focused
+and sanitized checks, this totals **664 retained configuration checks**, not
+unique upstream tests. The two adapted Richards benchmark variants match CPython
+in JIT/AOT smoke runs; recorded timings overlap correctness work and support no
+performance or memory conclusion. No full upstream suite or 52-source census was
+rerun. Imports, executed APIs, adapted workloads and hosted compilation stay
+distinct; no general NumPy/PyPI or CPython regrtest claim.
+
+Replay `audit-718.py` modes `build`, `references`, `checks`, `sanitize`, `ir`,
+`runtime`, `oracle`, `extras`, `imports`, `stubs`; then `audit-718-probes.py` modes
+`matrix`, `identity`, `apis`, `reserved`, `aliases`, `negative`, `ports`,
+`benchmark`, and the assembler. Run matrix before its negative control; the
+evidence retains the copied-compiler mutation setup. All selected evaluations
+complete, with no failed test attempts. Historical implementation-head CI, Lint,
+Packages and Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39359741663)); audit-head
+checks are read separately after publishing. Full local `make verify` was not
+run. Dated baseline reports/JSON and other sessions' work are preserved.
