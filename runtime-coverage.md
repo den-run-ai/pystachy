@@ -1,23 +1,23 @@
 ## Native runtime coverage
 
-Commit `ad19255e448be45ac098443936798755053139d7`: lines **94.0%** (4550 of 4838) and branches **85.7%** (4775 of 5572) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.9%, regions 91.2%. `pys_init` ran 3118 times: the program runs whose profiles were written.
+Commit `870bfa154f940026a7135f5c285fb0df7148ee88`: lines **94.0%** (4550 of 4838) and branches **85.7%** (4776 of 5572) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.9%, regions 91.2%. `pys_init` ran 3122 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5093 passed, 0 failed | 950 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 103 passed, 0 failed | 67 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5097 passed, 0 failed | 1003 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 106 passed, 0 failed | 68 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `pyembed.c` | 236 | 18 | 92.4% | 264 | 105 | 60.2% | 95.2% | 80.5% |
-| `pyext.c` | 128 | 10 | 92.2% | 142 | 43 | 69.7% | 100.0% | 83.9% |
+| `pyext.c` | 128 | 10 | 92.2% | 142 | 42 | 70.4% | 100.0% | 83.9% |
 | `runtime.c` | 4002 | 160 | 96.0% | 5036 | 641 | 87.3% | 97.4% | 92.0% |
 | `ryu/common.h` | 66 | 46 | 30.3% | 6 | 6 | 0.0% | 44.4% | 23.5% |
 | `ryu/d2s.c` | 284 | 13 | 95.4% | 118 | 2 | 98.3% | 71.4% | 98.3% |
 | `ryu/d2s_intrinsics.h` | 84 | 41 | 51.2% | 2 | 0 | 100.0% | 69.2% | 76.5% |
 | `ryu/d2s_small_table.h` | 38 | 0 | 100.0% | 4 | 0 | 100.0% | 100.0% | 100.0% |
-| **Total** | 4838 | 288 | **94.0%** | 5572 | 797 | **85.7%** | 95.9% | 91.2% |
+| **Total** | 4838 | 288 | **94.0%** | 5572 | 796 | **85.7%** | 95.9% | 91.2% |
 
 `runtime.c` by section (the comments that start them):
 
