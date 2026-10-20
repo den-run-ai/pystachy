@@ -1,16 +1,16 @@
 ## Hosted compiler coverage
 
-Commit `3c63613b9ad4748dfc030fc923f7704e26b21ba9`: statements **95.7%** (33184 of 34679) and branches **92.3%** (17468 of 18916); 94.5% together, coverage.py's total. 5 suites, 5327 processes measured.
+Commit `ad19255e448be45ac098443936798755053139d7`: statements **95.7%** (33184 of 34679) and branches **92.3%** (17468 of 18916); 94.5% together, coverage.py's total. 5 suites, 5329 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 5091 passed, 0 failed | 5099 | 2112 s | 94.5% | 90.8% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 136 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 125 | 119 s | 39.2% | 30.9% |
-| cache | `tests/cache.sh` | 67 passed, 0 failed | 33 | 148 s | 31.1% | 21.5% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py` | 85 tests, OK | 2 | 7 s | 49.2% | 41.3% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 68 programs | 68 | 112 s | 57.1% | 49.2% |
-| **all** | | | **5327** | | **95.7%** | **92.3%** |
+| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 5093 passed, 0 failed | 5101 | 2291 s | 94.5% | 90.8% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 136 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 125 | 128 s | 39.2% | 30.9% |
+| cache | `tests/cache.sh` | 67 passed, 0 failed | 33 | 174 s | 31.1% | 21.5% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py` | 85 tests, OK | 2 | 11 s | 49.2% | 41.3% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 68 programs | 68 | 114 s | 57.1% | 49.2% |
+| **all** | | | **5329** | | **95.7%** | **92.3%** |
 
 The other suites run 420 statements and 295 branches that the corpus does not.
 

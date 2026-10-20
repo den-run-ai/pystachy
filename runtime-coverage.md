@@ -1,12 +1,12 @@
 ## Native runtime coverage
 
-Commit `3c63613b9ad4748dfc030fc923f7704e26b21ba9`: lines **94.0%** (4550 of 4838) and branches **85.7%** (4775 of 5572) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.9%, regions 91.2%. `pys_init` ran 3116 times: the program runs whose profiles were written.
+Commit `ad19255e448be45ac098443936798755053139d7`: lines **94.0%** (4550 of 4838) and branches **85.7%** (4775 of 5572) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.9%, regions 91.2%. `pys_init` ran 3118 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5091 passed, 0 failed | 785 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 103 passed, 0 failed | 47 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5093 passed, 0 failed | 950 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 103 passed, 0 failed | 67 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
