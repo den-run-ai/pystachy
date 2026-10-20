@@ -14,11 +14,11 @@ support for its complete upstream package or dependencies.
 | [ordered-set](ordered_set/PORT.md) | 4.1.0 | Insertion-ordered sets of strings |
 | [pyaes](pyaes/PORT.md) | 1.6.1 | AES blocks with integer-list keys/data |
 | [pyfiglet](pyfiglet/PORT.md) | 1.0.4 | ASCII banners in three embedded fonts |
-| [pylev](pylev/PORT.md) | 1.4.0 | Edit distances for ASCII strings and typed sequences |
+| [pylev](pylev/PORT.md) | 1.4.0 | Edit distances for strings and typed sequences |
 | [qrcode](qrcode/PORT.md) | 8.2 | QR matrices and terminal text from strings |
 | [roman](roman/PORT.md) | 5.2 | Roman numeral conversions |
 | [sgp4](sgp4/PORT.md) | 2.27 | Pure-Python SGP4/SDP4 orbit propagation |
-| [snowballstemmer](snowballstemmer/PORT.md) | 3.1.1 | ASCII English Porter2 and Porter stemming |
+| [snowballstemmer](snowballstemmer/PORT.md) | 3.1.1 | English Porter2 and Porter stemming |
 | [sortedcontainers](sortedcontainers/PORT.md) | 2.4.0 | Sorted integer lists |
 | [sqids](sqids/PORT.md) | 0.5.2 | URL-safe IDs from nonnegative integer lists |
 | [tomli-w](tomli_w/PORT.md) | 1.2.0 | TOML text from homogeneous typed documents |

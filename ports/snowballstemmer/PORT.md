@@ -24,7 +24,7 @@ print(EnglishStemmer().stemWords(["connection", "connected", "connecting"]))
 
 ## Compatibility
 
-ASCII English inputs follow upstream. Non-ASCII words can stem differently because the cursor counts UTF-8 bytes: `boñing` becomes `boñ` rather than CPython’s `boñe`. This port is not a general Unicode-language stemmer.
+English inputs follow upstream, non-ASCII words included: the cursor counts characters, so `boñing` becomes `boñe`, as in CPython. This port is not a general Unicode-language stemmer.
 
 <a id="tests"></a>
 

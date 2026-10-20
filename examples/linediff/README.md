@@ -22,8 +22,9 @@ pystachy build linediff.py -o linediff
 1 for differences and 2 for errors.
 
 Line endings are preserved, and a final line without a newline is marked. Word
-differences compare changed groups separately. The example groups opcodes itself
-because the library’s `unified_diff` generator does not compile.
+differences compare changed groups separately. The example groups opcodes itself, which
+also lets it mark a final line without a newline; the library's `unified_diff()`, which
+marks no such line, now compiles too.
 
 <a id="linediff-unified-and-word-diffs-from-difflibs-sequencematcher"></a>
 <a id="speed"></a>

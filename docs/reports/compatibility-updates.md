@@ -8,6 +8,23 @@ Do not replace a result merely because a PR description predicts an improvement.
 **Latest evaluated main:** `3c63613b9ad4748dfc030fc923f7704e26b21ba9`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
+**Source-provenance correction (2026-10-20):** historical evidence/replay scripts
+that use `git status --porcelain --untracked-files=no` establish only tracked-file
+cleanliness. Their `dirty: false` / `source_dirty: false` fields do **not** rule out
+untracked library or test inputs. The old working trees were pruned, so this missing
+observation cannot be reconstructed or retroactively certified. Dated reports and
+JSON are preserved, with this qualification applying wherever that command occurs.
+Before replaying those scripts, use a fresh evaluated checkout and run the new
+[preflight](compatibility-2026-10-20-release-replay.py) with
+`python3.13 -B REPLAY.py --preflight CHECKOUT`, before producing build outputs.
+It rejects tracked modifications, all untracked files and ignored files, with no
+blanket build-directory exemption. Keep the driver/output outside that checkout.
+Five regression controls cover clean, modified tracked, untracked `lib/`, untracked
+`tests/` and ignored inputs. Subsequent build products are not evidence that the
+pre-build snapshot was dirty; retain pre/post snapshots and exact selected inputs.
+This corrects [review finding](https://github.com/den-run-ai/pystachy/pull/743#discussion_r4319518176),
+not a claim that historical untracked inputs were present or absent.
+
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
 embedded GC-budget, BLAS-fold or Unicode driver from its evaluated checkout, run
 `mkdir -p build/audit-gc build/audit-blas build/audit-unicode`. Their historical
@@ -29,6 +46,34 @@ below records four clean-directory controls for this correction.
 | 2026-10-19 module bindings | `681bdd17`; #690 | Silent wrong function/exception bindings corrected; local module calls and same-named type parameters now work. 404 focused, 28 API and 8 port checks pass; imports remain 144/470 native, 146/470 stub-assisted. Only four corrected fixtures differ in the 3,109-program IR oracle. [Evidence](compatibility-2026-10-19-module-bindings.json). |
 | 2026-10-19 Unicode empty replacement | `946ce035`; #728 | Empty-pattern string replacement no longer splits UTF-8 bytes: all 1,328 supplementary cases match CPython (532 differed before). 215 focused, 58 API and 16 port checks pass; 4,560 Unicode audit controls pass. Imports and first errors stay unchanged. [Evidence](compatibility-2026-10-19-unicode-replace.json). |
 | 2026-10-19 conditional imports / power | `53c17bad`; #692, #735 and incorporated #665 | Conditional-import wrong results fixed; 450,000 power values match CPython (185 old AOT differences). Five import first errors advance, totals remain 144/470 native and 146/470 stub-assisted. 210 focused, 36 API and 12 port checks pass. [Evidence](compatibility-2026-10-19-imports-power.json). |
+| 2026-10-19: field alias metadata, tuple returns and shared JIT runtime (#724/#727/#730) | `4a1a29aa` | [Evidence](compatibility-2026-10-19-field-tuples.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: empty-string exception representations and binding diagnostics (#729/#726; audit #669) | `e33c560e` | [Evidence](compatibility-2026-10-19-exception-diagnostics.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: unsupported generic annotations (#697) | `ca7688dd` | [Evidence](compatibility-2026-10-19-generic-diagnostics.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: exception class values (#721) | `3609a5f0` | [Evidence](compatibility-2026-10-19-exception-classes.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: shared CI bootstrap harness (#741) | `552d7301` | [Commands and results](#2026-10-19-shared-ci-bootstrap-harness-741). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: native opcode metadata and stack effects (#686) | `b7e869f8` | [Evidence](compatibility-2026-10-19-opcode.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: tuple-return regression coverage (#747) | `837843bc` | [Evidence](compatibility-2026-10-19-tuple-return-coverage.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: compile-time sys installation prefixes (#719) | `633cdf1a` | [Evidence](compatibility-2026-10-19-sys-prefix.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19: numeric-union local slots (#742) | `a1f3b6a7` | [Evidence](compatibility-2026-10-19-union-slots.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19 — collector-backed weakref callbacks (#694) | `c71d4ca5` | [Evidence](compatibility-2026-10-19-weakref-callbacks.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19 — #725 warnings and #740 regex specialization | `c8439d40` | [Evidence 1](compatibility-2026-10-19-warnings.json); [Evidence 2](compatibility-2026-10-19-regex-specialization.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19 — #738 numeric-union reductions and #736 None inference | `f9eaba8f` | [Evidence](compatibility-2026-10-19-union-none.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19 — #689 native `_io` stand-in | `b85f0f3c` | [Evidence](compatibility-2026-10-19-io-standin.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-19 — #749 virtual-environment recording portability | `be822311` | [Evidence](compatibility-2026-10-19-prefix-venv.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #750 percent conversion order and malformed-text counts | `9392fddf` | [Evidence](compatibility-2026-10-20-format-counts.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #753 regex profile exit/traceback fidelity | `45e88b6f` | [Evidence](compatibility-2026-10-20-record-exits.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #720 localized gettext port | `d87a215d` | [Evidence](compatibility-2026-10-20-gettext.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #696 public weakref module | `88013afb` | [Evidence](compatibility-2026-10-20-weakref-module.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #737 inferred scalar unions and builtin splitting | `611af05e` | [Evidence](compatibility-2026-10-20-inferred-unions.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #755: empty-container results through forwarding recursion | `17c7e1ff` | [Evidence](compatibility-2026-10-20-forwarding-recursion.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #718: object sentinels and three additional imports | `11f4681a` | [Evidence](compatibility-2026-10-20-object-sentinels.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #760: UTF-8 file-write counts and dropped-result lowering | `727b88ce` | [Evidence](compatibility-2026-10-20-text-write-counts.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #763: tuple exits, instrumented file flushing and coverage tooling | `8990e417` | [Evidence](compatibility-2026-10-20-coverage-runtime.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #732: syntax rejection and continuation correctness | `5a915947` | [Evidence](compatibility-2026-10-20-syntax-validation.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #764: starred type-parameter default acceptance corrected | `4f71b5a0` | [Evidence](compatibility-2026-10-20-starred-defaults.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #765: less compiler allocation, unchanged compatibility | `3ab11f03` | [Evidence](compatibility-2026-10-20-compiler-allocations.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 — #761: opt-in dynamic Any, not general library compatibility | `3c63613b` | [Evidence](compatibility-2026-10-20-dynamic-any.json). Completed checkpoint; detailed findings and limits below. |
+| 2026-10-20 release validation (#762), **incomplete** | `afb59cd3`; fully evaluated marker remains `3c63613b` | Hosted checks and historical CI verified; local LLVM/native execution unavailable. [Evidence](compatibility-2026-10-20-release-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -4750,3 +4795,65 @@ equal to evaluated main. This is separate from local focused testing, not a loca
 full `make verify`. Audit-head checks are read after publication. Only reviewed
 report/evidence changes are added beyond evaluated main; dated baselines and
 concurrent edits are preserved.
+
+## 2026-10-20 — #762: release validation; local native evaluation incomplete
+
+Inspected [main `afb59cd3`](https://github.com/den-run-ai/pystachy/commit/afb59cd3c32eecaa38e4dd6b38ccff17f020ba24),
+the sole first-parent merge since fully evaluated `3c63613b`:
+[#762](https://github.com/den-run-ai/pystachy/pull/762), merged 2026-10-20 11:11:26 UTC.
+Fresh PR metadata, git ancestry and tree comparison confirm the merge and equality
+with implementation head `e4613eda2d2f3fa3386e477a2a434a35f1c9ed6e` (tree
+`d7b582fa8b1a1101292ca5bc31d87a8835c22d4d`). Read the rolling record, baseline,
+#491/#616 coordination and #762/#743 review discussions. No implementation branch
+was changed; #743 remains the report destination.
+
+The 38-file delta changes release version/notes, release gating and smoke tools,
+documentation, and adds a difflib differential fixture. Compiler/runtime/library
+implementation sources are unchanged. The allocation change mentioned in the PR
+was already evaluated in #765. This is not a new library-support gain.
+
+[Evidence](compatibility-2026-10-20-release-partial.json) and the
+[replay/preflight driver](compatibility-2026-10-20-release-replay.py) distinguish
+fresh hosted checks from historical CI. A new checkout was clean before and after
+the hosted checks, including untracked and ignored paths. CPython **3.13.16** was
+available; no native compiler or complete LLVM 18 toolchain survived locally.
+`apt-get update` failed with exit 100 (`setgroups: Operation not permitted`,
+`setegid/seteuid: Invalid argument`, apt HTTPS method exit 112). No privileged
+retry or permission workaround was attempted. This is an environment blocker,
+not a Pystachy compilation failure. **Latest evaluated main remains `3c63613b`.**
+
+| Fresh local check | Result and boundary |
+|---|---|
+| `python3.13 -B -m unittest discover -s tools -p 'test_release*.py' -v` | **33/33** pass. Includes missing Packages, wrong commit/branch/event, stale success, cancelled runs and missing-workflow diagnostics. Registry/publication operations are mocked; no release was published or promoted. |
+| `python3.13 -B -m unittest discover -s tools -p test_workflow_limits.py -v` | **4/4** pass; `sh -n tools/docker_smoke.sh` also passes. This is syntax/contract validation, not a Docker execution. |
+| Retained difflib programs | `lib_difflib`, `lib_difflib_grouped`, `lib_difflib_unified`: **3/3** CPython outputs match checked-in recordings; all **3** emit IR through the CPython-hosted compiler. No LLVM assembly or native execution was performed locally. |
+| Independent difflib boundary probes | All **4** run under CPython and reject hosted IR compilation: `context_diff` at unsupported `dict(insert=...)`; `ndiff`/`Differ.compare` at recursive `_fancy_helper` yield inference; `HtmlDiff.make_table` at `_file_template` inference. Exact sources/first errors are retained. |
+| Provenance regression controls | **5/5** pass, including untracked library/test and ignored-file rejection. No source-clean claim relies on `--untracked-files=no`. |
+
+The new difflib fixture covers unified diff names/dates/context/line endings and
+`restore` with a prepared ndiff-style delta. It is upstream-derived selected
+coverage, not the full upstream difflib suite. The four failures remain documented
+boundaries; no duplicate issues were filed. IR generation is not execution.
+
+Historical CI was re-fetched for the exact implementation head whose tree equals
+the inspected main tree: CI, Installation, Lint, Packages and Release all succeeded.
+The [CI run](https://github.com/den-run-ai/pystachy/actions/runs/39382506276)
+includes successful `gc-self`, complete-report and every-required-group gates.
+The [Release run](https://github.com/den-run-ai/pystachy/actions/runs/39382506187)
+has successful prepare, container and all three binary-platform jobs; publication
+is **skipped**, as expected for a PR. This corroborates the changed archive smoke
+on CI, including Linux shared-runtime caching and relocated JSON/Unicode checks;
+it does not substitute for the missing local native run or prove a release exists.
+
+Remaining local work: obtain an authorized complete LLVM 18 environment, rebuild
+at this source SHA, run the three difflib cases in JIT/AOT (normal and program-GC
+stress), and run `tools/release.py` plus `tools/release_smoke.py` on the produced
+archive. Keep native compiler hash/build source separate from evaluated source.
+Do not advance the evaluated marker until those checks finish. No fresh import
+sweep, port/benchmark timings, general NumPy/PyPI claim, full upstream suite or
+CPython regrtest is reported. Prior import counts remain historical, not rerun.
+
+The checkpoint index now includes every completed section after `53c17bad`,
+including `e33c560e` and latest `3c63613b`, plus this explicitly incomplete attempt.
+The dated evidence is unchanged. Audit-head checks are read after publication;
+no PR merge or release action is part of this update.

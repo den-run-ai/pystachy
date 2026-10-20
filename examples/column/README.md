@@ -17,8 +17,8 @@ pystachy build column.py -o column
 
 `-s SEP` chooses the input delimiter (tab by default); `-o SEP` chooses the
 output separator (two spaces); `-R COLS` right-aligns columns numbered from one.
-The last cell is padded only when right-aligned. Widths count bytes under
-Pystachy and Unicode characters under CPython.
+The last cell is padded only when right-aligned. Widths count Unicode characters
+under both Pystachy and CPython.
 
 <a id="column-aligned-columns-built-in-an-iostringio"></a>
 <a id="speed"></a>

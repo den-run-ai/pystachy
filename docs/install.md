@@ -38,7 +38,7 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.1`, and use your
+Replace `VERSION` with the release tag, such as `v0.1.0-alpha.2`, and use your
 platform's archive name. Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.

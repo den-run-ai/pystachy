@@ -17,6 +17,7 @@ printf '%s\n' "$expected_version: installed and native --version passed without 
 cat > "$work/demo.py" <<'PY'
 import fnmatch
 from functools import lru_cache
+import json
 import sys
 import textwrap
 
@@ -32,6 +33,13 @@ for event in ["api.read", "api.read", "misc"]:
     print(route(event))
 print(textwrap.fill("alpha beta gamma", width=10))
 print("argument", sys.argv[1])
+
+record = json.loads('{"word": "caf\\u00e9", "tags": ["α", "\\ud83d\\ude00"], "n": [3, 2.5, null, true]}')
+text = json.dumps(record, sort_keys=True)
+print(text)
+print(json.loads(text) == record, json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+word = "naïve 😀 café"
+print(len(word), word[6], word[-4:], word.find("café"), word[::-1])
 PY
 cat > "$work/expected" <<'OUT'
 api
@@ -40,6 +48,9 @@ other
 alpha beta
 gamma
 argument from-container
+{"n": [3, 2.5, null, true], "tags": ["\u03b1", "\ud83d\ude00"], "word": "caf\u00e9"}
+True {"word":"café","tags":["α","😀"],"n":[3,2.5,null,true]}
+12 😀 café 8 éfac 😀 evïan
 OUT
 # Relative source/output paths exercise the documented /work bind-mount usage.
 cd "$work"
@@ -48,4 +59,4 @@ cd "$work"
 ./demo from-container > aot.out
 cmp expected jit.out
 cmp expected aot.out
-printf '%s\n' "installed JIT/AOT smoke: passed (fnmatch, lru_cache, textwrap, arguments)"
+printf '%s\n' "installed JIT/AOT smoke: passed (fnmatch, lru_cache, textwrap, arguments, JSON, Unicode indexing)"

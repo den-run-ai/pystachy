@@ -19,7 +19,7 @@ its measurements and the decisions behind the split.
 |---|---|
 | `runtime.py` | String methods, integer `math` functions, `fsum`/`prod`, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
-| `pystachy.py` | Runtime compilation, checked primitives, runtime signatures and linking. |
+| [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
 Moving a function into the subset keeps its C symbol and signature. Programs
 continue calling the same runtime entry points. LLVM can inline across the two
