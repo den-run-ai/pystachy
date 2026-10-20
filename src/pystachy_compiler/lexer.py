@@ -100,6 +100,22 @@ def prefix_at(s: str, i: int) -> str:
     return p if p in PREFIXES else ""
 
 
+def big_decimal(digits: str, base: int) -> str:
+    # the decimal digits of the number that digits (of base 16, 8 or 2, without prefix, underscores
+    # or leading zeros) write, which does not fit in 64 bits: a digit at a time, as no int holds it
+    dec = [0]  # (least significant first)
+    for c in digits:
+        carry = int(c, 16)
+        for i in range(len(dec)):
+            v = dec[i] * base + carry
+            dec[i] = v % 10
+            carry = v // 10
+        while carry > 0:
+            dec.append(carry % 10)
+            carry = carry // 10
+    return "".join([str(dec[i]) for i in range(len(dec) - 1, -1, -1)])
+
+
 class Tok:
     def __init__(self, kind: str, text: str, line: int):
         self.kind = kind
@@ -377,8 +393,9 @@ class Lexer:
                     d0 = d0 >> 1
                 bits += (len(h) - 1) * (4 if base == 16 else (3 if base == 8 else 1))
             if bits > 64 or (bits == 64 and (h[1:].strip("0") != "" or int(h[0], 16) & (int(h[0], 16) - 1) != 0)):
-                # Gen rejects the literal where it compiles it: "integer literal does not fit in 64 bits"
-                self.add("int", "99999999999999999999")
+                # its value's decimal digits, which Gen rejects where it compiles the literal ("integer
+                # literal does not fit in 64 bits"), and which a mapping pattern's keys compare
+                self.add("int", big_decimal(h, base))
                 self.i = j
                 return
             # 2**63 is valid only negated; Gen checks that, as for decimal literals

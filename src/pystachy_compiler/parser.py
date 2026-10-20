@@ -684,8 +684,6 @@ class Parser:
             self.invalid(t.line)
         self.p += 1
         re = mk("num", ("-" if neg else "") + t.text, line, [])
-        if t.text == "99999999999999999999" and t.kind == "int":
-            re.s = f"{t.text}#{self.p}"  # (a literal too big for 64 bits, see Lexer.number: no key equals it)
         if self.peek() != "+" and self.peek() != "-":
             return mk("pnum", self.number_repr(re, mk("num", "", line, [])), line, [re])
         if t.kind == "complex":
@@ -706,8 +704,6 @@ class Parser:
         # the lexer gives them, maybe negated (and im "" for none); re.s becomes the value's
         # floats ("real imag"), or an int's digits, which key equality compares
         x = re.s[1:] if re.s.startswith("-") else re.s
-        if "#" in x:
-            return x[: x.find("#")]
         if not x.endswith("j") and "." not in x and "e" not in x and "E" not in x and im.s == "":
             # an int: its digits (as written, but leading zeros), which may not fit in 64 bits (then
             # no float equals it here)
