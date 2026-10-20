@@ -485,6 +485,7 @@ from src.pystachy_compiler.emission import (
     gen_boxes as emission_boxes,
     gen_br as emission_br,
     gen_cbr as emission_cbr,
+    gen_switch as emission_switch,
     gen_checked as emission_checked,
     gen_convert_at as emission_convert_at,
     gen_convert_in as emission_convert_in,
@@ -601,6 +602,12 @@ from src.pystachy_compiler.expressions import (
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
     gen_inherit_cmp as expressions_inherit_cmp,
+    gen_cmp_alts as expressions_cmp_alts,
+    gen_cmp_key as expressions_cmp_key,
+    gen_cmp_arm as expressions_cmp_arm,
+    gen_cmp_rest as expressions_cmp_rest,
+    gen_cmp_null as expressions_cmp_null,
+    gen_cmp_tags as expressions_cmp_tags,
     gen_inherit_contains as expressions_inherit_contains,
     gen_member_item as expressions_member_item,
     gen_iter_in as expressions_iter_in,
@@ -1897,6 +1904,9 @@ class Gen:
 
     def cbr(self, c: str, a: str, b: str) -> None:
         return emission_cbr(self, c, a, b)
+
+    def switch(self, v: Val, cases: list[str], to: list[str], other: str) -> None:
+        return emission_switch(self, v, cases, to, other)
 
     def ret_(self, v: Val) -> None:
         return emission_ret_(self, v)
@@ -3613,8 +3623,26 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val, phase: int=0) -> Val:
-        return expressions_inherit_cmp(self, op, a, b, phase)
+    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_inherit_cmp(self, op, a, b)
+
+    def cmp_alts(self, v: Val) -> list[Val]:
+        return expressions_cmp_alts(self, v)
+
+    def cmp_key(self, op: str, a: Val, b: Val) -> str:
+        return expressions_cmp_key(self, op, a, b)
+
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end)
+
+    def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
+        return expressions_cmp_rest(self, v, alts, to)
+
+    def cmp_null(self, v: Val, alts: list[Val], to: list[str]) -> str:
+        return expressions_cmp_null(self, v, alts, to)
+
+    def cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
+        return expressions_cmp_tags(self, v, alts, to)
 
     def inherit_contains(self, op: str, a: Val, b: Val) -> Val:
         return expressions_inherit_contains(self, op, a, b)

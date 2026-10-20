@@ -154,6 +154,23 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or (t in ["T", "K", "V", "S"] and t not in self.classes):
                     self.bad_ir(fn, b, "select needs a native or machine scalar value type")
 
+            if i.op == "switch":
+                # (an int, then its cases, distinct int literals, with the default's label and then
+                # one for each case; a block that starts with a phi it reaches by one edge at
+                # most, as a phi has one entry for each block that branches there)
+                if len(i.a) < 2 or len(i.b) != len(i.a) or i.a[0].t != "int" or i.t != "" or i.s != "" or i.x != "" or i.k != 0:
+                    self.bad_ir(fn, b, "switch needs an int, its cases, and the default's label and theirs")
+                cases: dict[str, bool] = {}
+                for cv in i.a[1:]:
+                    if cv.t != "int" or not (cv.v[1:] if cv.v.startswith("-") else cv.v).isdigit() or cv.v in cases:
+                        self.bad_ir(fn, b, "switch needs distinct int literal cases")
+                    cases[cv.v] = True
+                edges: dict[str, int] = {}
+                for l in i.b:
+                    edges[l] = edges[l] + 1 if l in edges else 1
+                    if edges[l] == 2 and l in at and len(fn.blocks[at[l]].code) > 0 and fn.blocks[at[l]].code[0].op == "phi":
+                        self.bad_ir(fn, b, f"a switch reaches {l}, which starts with a phi, by more than one edge")
+
             if i.op == "mach.load" or i.op == "mach.store":
                 load = i.op == "mach.load"
                 if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
