@@ -1,0 +1,6 @@
+{'a': 1, 'b': 'two', 'c': None}
+{'a': 10, 'b': 'two', 'c': None, 'z': [1], 'p': 1, 'q': 2}
+TypeError: 'int' object is not iterable
+ValueError: dictionary update sequence element #0 has length 3; 2 is required
+ValueError: dictionary update sequence element #1 has length 1; 2 is required
+[exit 0]

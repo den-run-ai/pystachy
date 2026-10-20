@@ -1,0 +1,8 @@
+{'a': 'b', 'c': 3, 'd': 'e', 'f': 4}
+ValueError: dictionary update sequence element #0 has length 1; 2 is required
+ValueError: dictionary update sequence element #0 has length 3; 2 is required
+TypeError: cannot convert dictionary update sequence element #0 to a sequence
+TypeError: unhashable type: 'list'
+ValueError: dictionary update sequence element #1 has length 3; 2 is required
+{'a': 'b', 'c': 3, 'd': 'e', 'f': 4, 'o': 'k'}
+[exit 0]

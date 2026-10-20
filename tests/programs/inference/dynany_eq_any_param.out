@@ -1,0 +1,9 @@
+True False False True True False 1 1
+True False False True True False 1 1
+True False False True True False 1 1
+True False False True True False 1 1
+found True found True
+False True True [Lt(1), Lt(2), Lt(3)] Lt(1) Lt(3)
+True False True 1 0
+False True True [Lt(1), Lt(2)] Lt(1) Lt(2)
+[exit 0]

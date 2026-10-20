@@ -29,6 +29,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_arm as dynamic_dyn_arm,
     gen_dyn_asked as dynamic_dyn_asked,
     gen_dyn_body as dynamic_dyn_body,
+    gen_dyn_bound as dynamic_dyn_bound,
     gen_dyn_box as dynamic_dyn_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
     gen_dyn_builtin as dynamic_dyn_builtin,
@@ -36,6 +37,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
     gen_dyn_call as dynamic_dyn_call,
     gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
     gen_dyn_cmp2 as dynamic_dyn_cmp2,
@@ -43,11 +45,13 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_contains as dynamic_dyn_contains,
     gen_dyn_delitem as dynamic_dyn_delitem,
     gen_dyn_dispatcher as dynamic_dyn_dispatcher,
+    gen_dyn_dry as dynamic_dyn_dry,
     gen_dyn_dispatchers as dynamic_dyn_dispatchers,
     gen_dyn_fallback as dynamic_dyn_fallback,
     gen_dyn_field_stores as dynamic_dyn_field_stores,
     gen_dyn_fields as dynamic_dyn_fields,
     gen_dyn_float as dynamic_dyn_float,
+    gen_dyn_format as dynamic_dyn_format,
     gen_dyn_fn_arms as dynamic_dyn_fn_arms,
     gen_dyn_fn_box as dynamic_dyn_fn_box,
     gen_dyn_fn_takes as dynamic_dyn_fn_takes,
@@ -60,6 +64,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_hash as dynamic_dyn_hash,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
+    gen_dyn_isa as dynamic_dyn_isa,
     gen_dyn_isinst as dynamic_dyn_isinst,
     gen_dyn_isinst_types as dynamic_dyn_isinst_types,
     gen_dyn_items_ahead as dynamic_dyn_items_ahead,
@@ -78,6 +83,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_select as dynamic_dyn_select,
     gen_dyn_setattr as dynamic_dyn_setattr,
     gen_dyn_setitem as dynamic_dyn_setitem,
+    gen_dyn_slice as dynamic_dyn_slice,
     gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
     gen_dyn_str as dynamic_dyn_str,
     gen_dyn_sum as dynamic_dyn_sum,
@@ -87,14 +93,23 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_test as dynamic_dyn_test,
     gen_dyn_truth as dynamic_dyn_truth,
     gen_dyn_type as dynamic_dyn_type,
+    gen_dyn_type_module as dynamic_dyn_type_module,
     gen_dyn_type_name as dynamic_dyn_type_name,
     gen_dyn_typeof as dynamic_dyn_typeof,
     gen_dyn_types_of as dynamic_dyn_types_of,
     gen_dyn_unary as dynamic_dyn_unary,
     gen_dyn_unbox as dynamic_dyn_unbox,
+    gen_dyn_unboxable as dynamic_dyn_unboxable,
     gen_dyn_union_box as dynamic_dyn_union_box,
+    gen_dyn_untyped_empty as dynamic_dyn_untyped_empty,
+    gen_dyn_untyped_items as dynamic_dyn_untyped_items,
+    gen_dyn_value_type as dynamic_dyn_value_type,
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
+    gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_dyn_xhelper as dynamic_dyn_xhelper,
+    gen_dyn_xmethod as dynamic_dyn_xmethod,
+    gen_empty_ctor as dynamic_empty_ctor,
     gen_rtdata as dynamic_rtdata,
 )
 from src.pystachy_compiler.unions import (
@@ -144,6 +159,7 @@ from src.pystachy_compiler.reflection import (
     gen_refl_class_of as reflection_refl_class_of,
     gen_refl_type_attr as reflection_refl_type_attr,
     gen_refl_type_operand as reflection_refl_type_operand,
+    gen_refl_dyn_type_cmp as reflection_refl_dyn_type_cmp,
     gen_refl_type_cmp as reflection_refl_type_cmp,
     gen_refl_derived_only as reflection_refl_derived_only,
     gen_refl_replace_changes as reflection_refl_replace_changes,
@@ -668,6 +684,7 @@ from src.pystachy_compiler.expressions import (
     gen_puretype as expressions_puretype,
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
+    gen_slice_dyn as expressions_slice_dyn,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
     gen_stack_key as expressions_stack_key,
@@ -1114,6 +1131,7 @@ class Gen:
         self.fchk: dict[str, bool] = {}  # the records whose fields desc is checking
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
         self.one: dict[str, bool] = {}  # those whose != a dynamic value runs through the program (@o.ne: pys_dyn_ne)
+        self.xobj: dict[str, bool] = {}  # those whose comparisons with a dynamic value of another type run their methods (@o.x: dyn_xhelper)
         self.lenient = False
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -1164,6 +1182,12 @@ class Gen:
         self.hints: dict[str, str] = {}
         self.newhints: dict[str, str] = {}
         self.final = True
+        # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as
+        # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass
+        # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
+        self.xnot: dict[str, bool] = {}
+        self.newx: dict[str, bool] = {}
+        self.xtry = ""
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
         self.jointype = ""  # (and its type)
@@ -1357,6 +1381,10 @@ class Gen:
         self.dynrets: dict[str, str] = {}
         self.dynrline: dict[str, int] = {}
         self.dynseen: dict[str, bool] = {}
+        # and the items of displays whose dry-run types dyn_dry remembers for the statement being
+        # compiled, with those types (each item's memo is its position)
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
@@ -1373,6 +1401,15 @@ class Gen:
 
     def dyn_class_type(self, c: str) -> str:
         return dynamic_dyn_class_type(self, c)
+
+    def dyn_xmethod(self, c: str, m: str) -> bool:
+        return dynamic_dyn_xmethod(self, c, m)
+
+    def dyn_xhelper(self, c: str) -> None:
+        return dynamic_dyn_xhelper(self, c)
+
+    def dyn_xbody(self, c: str) -> None:
+        return dynamic_dyn_xbody(self, c)
 
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
@@ -1400,6 +1437,24 @@ class Gen:
 
     def dyn_test(self, v: Val, ts: list[str]) -> str:
         return dynamic_dyn_test(self, v, ts)
+
+    def dyn_isa(self, v: Val, t: str) -> str:
+        return dynamic_dyn_isa(self, v, t)
+
+    def dyn_unboxable(self, t: str) -> bool:
+        return dynamic_dyn_unboxable(self, t)
+
+    def dyn_value_type(self, v: Val) -> str:
+        return dynamic_dyn_value_type(self, v)
+
+    def dyn_untyped_empty(self, e: Node) -> bool:
+        return dynamic_dyn_untyped_empty(self, e)
+
+    def dyn_untyped_items(self, ks: list[Node]) -> bool:
+        return dynamic_dyn_untyped_items(self, ks)
+
+    def empty_ctor(self, e: Node) -> str:
+        return dynamic_empty_ctor(self, e)
 
     def dyn_types_of(self, t: str) -> list[str]:
         return dynamic_dyn_types_of(self, t)
@@ -1563,8 +1618,26 @@ class Gen:
     def dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return dynamic_dyn_method(self, o, m, args)
 
+    def dyn_format(self, v: Val, spec: Val) -> Val:
+        return dynamic_dyn_format(self, v, spec)
+
+    def dyn_type_module(self, v: Val) -> Val:
+        return dynamic_dyn_type_module(self, v)
+
+    def dyn_bound(self, v: Val, bound: bool) -> str:
+        return dynamic_dyn_bound(self, v, bound)
+
+    def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
+        return dynamic_dyn_slice(self, o, bs)
+
     def dyn_mixed(self, es: list[Node]) -> bool:
         return dynamic_dyn_mixed(self, es)
+
+    def dyn_dry(self, e: Node) -> str:
+        return dynamic_dyn_dry(self, e)
+
+    def dyn_callables(self, ts: list[str]) -> bool:
+        return dynamic_dyn_callables(self, ts)
 
     def dyn_fn_type(self, ft: str) -> str:
         return dynamic_dyn_fn_type(self, ft)
@@ -1615,6 +1688,9 @@ class Gen:
 
     def refl_type_operand(self, n: Node) -> str:
         return reflection_refl_type_operand(self, n)
+
+    def refl_dyn_type_cmp(self, n: Node) -> Val:
+        return reflection_refl_dyn_type_cmp(self, n)
 
     def refl_type_cmp(self, n: Node) -> Val | None:
         return reflection_refl_type_cmp(self, n)
@@ -3454,11 +3530,14 @@ class Gen:
     def optbound(self, v: Val) -> str:
         return expressions_optbound(self, v)
 
-    def slice_bound(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_bound(self, x, fold)
+    def slice_bound(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_bound(self, x, dvs, fold)
 
-    def slice_step(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_step(self, x, fold)
+    def slice_step(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_step(self, x, dvs, fold)
+
+    def slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
+        return expressions_slice_dyn(self, ss, dvs)
 
     def slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
         return expressions_slice_tuple(self, o, bnd, step)

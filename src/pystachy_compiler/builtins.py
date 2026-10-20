@@ -1266,6 +1266,9 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name == "math.prod":
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
+    elif name == "sum" and r.t == "dyn":
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int or a float: stream_start)
+        self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(sv))
     elif name == "sum" and r.isf != "":
         # (an int start begins CPython's int phase, a float one its float phase)
         sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
@@ -1299,6 +1302,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name != "sum":
         self.guard(self.mload('bool', r.first), f"ValueError: {name}() iterable argument is empty")
         return Val(self.mload(r.t, r.acc), r.t)
+    if r.t == "dyn":
+        return self.mem_load(Val(r.acc, "*dyn"))
     if r.isf != "":
         return self.sum_union_end(r)
     if r.comp == "":
@@ -1402,10 +1407,12 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     v = self.expr(e, "")
     if r.t == "":
         r.t = v.t
-        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float" and not self.num_union(v.t):
+        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float" and not self.num_union(v.t) and v.t != "dyn":
             self.err(f"unsupported call sum(list[{v.t}]{',' + r.stt if r.stt != '' else ''})")
         if r.name == "math.prod":
             r.acc = self.alloca(r.stt, "")
+        elif r.name == "sum" and v.t == "dyn":
+            r.acc = self.alloca("dyn", "")  # (Any values: added as dynamic values, dyn_arith)
         elif r.name == "sum" and self.num_union(v.t):
             r.acc = self.alloca("int", "")
             r.facc = self.alloca("float", "")
@@ -1447,6 +1454,9 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         return
     if r.isf != "":
         self.sum_union_item(r, v)
+        return
+    if r.t == "dyn":
+        self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), v))
         return
     if r.t != "float" and r.stt != "float":
         si = self.mload('int', r.acc)
@@ -2307,6 +2317,10 @@ def gen_update(self, o: Val, args: list[Node]) -> Val:
     kw = self.expr(mk("dict", "", self.line, kws), o.t) if len(kws) > 0 else Val("", "")
     if is_opt(x.t):
         x = self.unwrap(x, "TypeError: 'NoneType' object is not iterable")
+    if x.t == "dyn" and o.t == "dict[dyn,dyn]":
+        # (another dict's items, or pairs, by the box's type: runtime.c's pys_dyn_update)
+        self.rt("pys_dyn_update", "void", [f"ptr {o.v}", f"ptr {x.v}"])
+        x = Val("", "")
     if x.t == "int" or x.t == "float" or x.t == "bool" or x.t == "None":
         self.err(f"'{tname(x.t)}' object is not iterable")  # (CPython's TypeError)
     if x.t != "" and x.t != o.t and x.t != pairs:
