@@ -75,9 +75,12 @@ which a `with` statement gives an exception class and an exception (no `Any` val
 and the return of `__iter__` and of a generator, whose objects no `Any` value holds yet either
 (`tests/programs/inference/dynany_inferred_annotations.py`, `tests/programs/inference/dynany_exit.py`,
 `tests/programs/inference/dynany_init_varargs.py`, `tests/programs/inference/dynany_iter_any.py`). `Annotated[Any, ...]` is `Any`
-(`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display take
-their type from the items before them, as elsewhere (`tests/programs/inference/dynany_display_empty.py`), and
-functions after a `Callable` item are `Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
+(`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display that
+nothing in them types (`([], 3)`) take their type from the items before them, as elsewhere
+(`tests/programs/inference/dynany_display_empty.py`); one whose own items type it
+(`({"a": [1], "b": []}, 1)`) decides with the others whether the items have one type
+(`tests/programs/inference/dynany_display_empty_nested.py`). Functions after a `Callable` item are
+`Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
 
 [Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
 variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
