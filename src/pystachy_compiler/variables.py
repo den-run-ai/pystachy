@@ -1906,11 +1906,13 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str) -> Val:
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
     # nosub. Strs and tuples cannot change, and Pystachy has no slice objects for __setitem__
     o = self.expr(t.kids[0], "")
-    bnd.append(self.slice_bound(t.kids[1]))
-    bnd.append(self.slice_bound(t.kids[2]))
-    bnd.append(self.slice_step(t.kids[3]) if len(t.kids) == 4 else "1")
+    dvs: list[Val] = []
+    bnd.append(self.slice_bound(t.kids[1], dvs))
+    bnd.append(self.slice_bound(t.kids[2], dvs))
+    bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
     o = self.unwrap(o, nosub)
     if is_list(o.t):
+        self.slice_dyn(bnd, dvs)  # (bounds that are Any values: converted now, as CPython does)
         return o
     what = "deletion" if "deletion" in nosub else "assignment"
     m = "__delitem__" if what == "deletion" else "__setitem__"

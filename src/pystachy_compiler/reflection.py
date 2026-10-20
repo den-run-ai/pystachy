@@ -9,7 +9,7 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
@@ -233,8 +233,10 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     # type decides it, else the name in the record of its exact class (refl_class_of)
     v = self.expr(x, "")
     known = self.knownobj(x)
-    if v.t == "dyn" and what == "__name__":
-        return self.dyn_type_name(v)  # (its box's DynType's: dynamic.py)
+    if v.t == "dyn" and (what == "__name__" or what == "__qualname__"):
+        return self.dyn_type_name(v)  # (its box's DynType's, as refl_type_name gives a class's: dynamic.py)
+    if v.t == "dyn":
+        return self.dyn_type_module(v)
     if v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != ""):
         if what == "__module__":
             # (its class's, which pys_exc_module reads in an exception as in a class object;
@@ -275,6 +277,43 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     return Val(self.mload('str', a), "str")
 
 
+def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
+    # refl_type_cmp where a type(x) operand's x is an Any value: the DynTypes of the two exact
+    # types, as CPython compares type(x) (a bool's is no int's, a subclass's object's no base's):
+    # a box's, the one of a typed value's type by the value it holds (dyn_value_type: None's for
+    # an optional list that is None), of a class or builtin type named, or null where no box
+    # holds a value of that type (an exception, a set, bytes), which no DynType is
+    ts: list[str] = []
+    for k in n.kids:
+        x = self.refl_typeof(k)
+        if x is not None:
+            ts.append(self.dyn_value_type(self.expr(x, "")))
+        elif k.kind == "name" and ((k.s in self.classes and k.s not in self.ltype and self.classes[k.s].exc != "") or (is_excname(k.s) and not self.bound(k.s))):
+            ts.append("null")  # (an exception class: no Any value is an exception yet)
+        elif (k.kind == "name" and k.s not in self.ltype and k.s not in self.gtypes) or (k.kind == "call" and len(k.kids) == 2 and k.kids[1].kind == "None"):
+            c = self.refl_type_operand(k)
+            b = "list[dyn]" if is_list(c) else "dict[dyn,dyn]" if is_dict(c) else "vtuple[dyn]" if is_tuple(c) else c
+            if b in self.tmpl:
+                self.err(f"type(x) is {short(b)} of an Any value is not supported: {short(b)} is a class template, whose objects are its specializations'")
+            if b in self.classes and self.classes[b].exc == "":
+                ts.append(self.dyn_class_type(b))
+            elif b in ["None", "bool", "int", "float", "str", "list[dyn]", "dict[dyn,dyn]", "vtuple[dyn]"]:
+                ts.append(self.dyn_type(b))
+            else:
+                ts.append("null")
+        else:
+            v = self.expr(k, "")
+            if unopt(v.t) != "exctype":
+                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
+            ts.append("null")
+    neg = n.s == "is not" or n.s == "!="
+    if not ts[0].startswith("%") or not ts[1].startswith("%"):
+        # (a type named, or one no box holds, is no function's: its DynType is the only one)
+        return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
+    r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])
+    return self.num_cmp("==" if neg else "!=", Val(r, "int"), Val("0", "int"))
+
+
 def gen_refl_type_operand(self, n: Node) -> str:
     # what an operand of a type comparison names statically, as refl_record takes it: a class
     # or a builtin type named by its name (C, int, list, ...); "" for type(x) and x.__class__
@@ -304,6 +343,10 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         return None
     if self.refl_typeof(n.kids[0]) is None and self.refl_typeof(n.kids[1]) is None:
         return None
+    for k in n.kids:
+        x = self.refl_typeof(k)
+        if x is not None and dynamic_program() and self.dry(x, "") == "dyn":
+            return self.refl_dyn_type_cmp(n)  # (an Any value's type, where a module opts in: its box's)
     sides: list[Val] = []
     for k in n.kids:
         x = self.refl_typeof(k)

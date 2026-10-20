@@ -210,9 +210,13 @@ def gen_ann(self, n: Node) -> str:
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
             return base
+        a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
+        if base == "annotated" and len(a) >= 2 and self.dyn_policy(n.line) and self.any_in(a[:1]):
+            # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
+            # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
+            return self.ann(a[0])
         if base == "literal" or base == "annotated":
             return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
-        a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
             # (an iterator of another kind, as #477 makes them, is not one of these)
@@ -443,7 +447,11 @@ def gen_any_variables(self, n: Node, classbody: bool) -> None:
     if n.kind == "def":
         self.any_variables(n.kids[2], False)
         return
-    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and not self.dyn_policy(n.line):
+    # (In a module that compiles Any as dyn, an annotation is kept, but one that gives a class of
+    # the program a type argument that mentions Any, box: Box[Any] = Box(3): a generic class's
+    # specialization is its constructor call's, #782)
+    generic = n.kind == "annassign" and len(n.kids) == 3 and n.kids[1].kind == "index" and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s in self.classes
+    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and (not self.dyn_policy(n.line) or generic):
         n.kind = "assign"
         n.kids = [n.kids[0], n.kids[2]]
     for k in n.kids:
@@ -1144,10 +1152,31 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not genann:
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
-    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]) and not self.dyn_policy(d.line):
+    elif (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+        # in a module that compiles Any as dyn: an annotation that mentions Any where no Any value
+        # can stand (Callable[..., Any], whose parameters no Callable type names) requests
+        # inference, as in a module that does not opt in, and so do __exit__'s, which a with
+        # statement gives an exception class and an exception, which no Any value holds yet
+        # (#775): the comment rejects no program that compiles without it (#782)
+        for i in range(len(ps)):
+            pa = ps[i].kids[0]
+            if not (cls != "" and i == 0 and f.deco != "staticmethod") and self.any_in([pa]) and (d.s == "__exit__" or self.ann(pa).startswith("!")):
+                ps[i].kids[0] = mk("noann", "", d.line, [])
+                f.anys.append(ps[i].s)
+        if not init and self.any_in([d.kids[1]]):
+            # (a generator's -> Any too, but Generator[...] and Iterator[...], whose Any items are
+            # Any values: no generator object is an Any value yet, #773)
+            ra = self.parse_expr(d.kids[1].s) if d.kids[1].kind == "str" else d.kids[1]
+            gen = has_kind(d.kids[2], "yield")
+            genann = gen and ra.kind == "index" and self.typing_ref(ra.kids[0]) in ["Generator", "Iterator", "Iterable"]
+            if (gen and not genann) or (not gen and self.ann(d.kids[1]).startswith("!")):
+                d.kids[1] = mk("noann", "", d.line, [])
+                f.anys.append("")
+    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]) and (not self.dyn_policy(d.line) or d.s == "__iter__"):
         # These protocols already infer an omitted return from their body. An Any return
         # (also Iterator[Any]) uses that path, without making their parameters templates.
-        # Generator annotations retain their separate yield, send and return channels.
+        # Generator annotations retain their separate yield, send and return channels. (So does
+        # __iter__'s in a module that compiles Any as dyn: iter() takes no Any value yet, #773)
         d.kids[1] = mk("noann", "", d.line, [])
         f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"

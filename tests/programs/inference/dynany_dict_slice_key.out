@@ -1,0 +1,7 @@
+TypeError unhashable type: 'list'
+KeyError slice(1, 2, None)
+hash ran
+KeyError
+TypeError unhashable type: 'list'
+TypeError unhashable type: 'list'
+[exit 0]
