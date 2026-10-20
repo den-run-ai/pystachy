@@ -471,9 +471,10 @@
           "evidence": [
             "tests/upstream_textwrap_layout.py",
             "tests/upstream_textwrap_layout.out",
-            "tests/errors/upstream_textwrap_field_rebind.py"
+            "tests/upstream_textwrap_field_rebind.py",
+            "tests/upstream_textwrap_field_rebind.out"
           ],
-          "reason": "All original result assertions and integer-0 arguments run, but the wrapper is initialized with integer 0 before reassignment. The original default-bool-to-int field assignment is rejected and tested separately; this setup adaptation prevents claiming a complete unadapted method."
+          "reason": "All original result assertions and integer-0 arguments run, but the wrapper is initialized with integer 0 before reassignment. The original default-bool-to-int field assignment now compiles, the field holding bool | int, and is tested separately; this setup adaptation prevents claiming a complete unadapted method."
         },
         "test_textwrap.LongWordTestCase.test_max_lines_long": {
           "status": "compiled",

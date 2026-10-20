@@ -1551,6 +1551,8 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
     return ""
 
 def gen_new_global(self, name: str, t: str) -> None:
+    if len(self.hints) > 0 and "global:" + name in self.hints:
+        t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
     self.gtypes[name] = t
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
@@ -1566,7 +1568,7 @@ def gen_declare(self, name: str, t: str) -> None:
     else:
         self.alloca(t, name)
         old = t
-    if old != t:
+    if old != t and self.hints.get("global:" + name, "") != old:
         self.err(f"'{name}' was declared as {old}, not {t}")
 
 def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
@@ -1598,7 +1600,10 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.mem_store(Val(f"@g.{name}", "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
+        was = self.join_at("global", name, t)  # (a value it does not take may widen it: join_hint)
+        cv = self.coerce(v, t, self.assigned_to(v, t, name))
+        self.join_at(was[0], was[1], was[2])
+        self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
     else:
@@ -1614,7 +1619,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             if self.branch > 0:
                 self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
             self.nonevars[name] = self.line
-        if retype and name in self.ltype and name not in self.nonevars:
+        if retype and name in self.ltype and name not in self.nonevars and self.local_hint(name) == "":
             old = self.ltype[name]
             # A None/empty binding still needs the existing inference machinery.
             # Compatible stores retain their slot, including optional boxing and
@@ -1624,7 +1629,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
                 if name in self.narrowed:
                     del self.narrowed[name]
                 self.lkk.pop(name, "")
-        if name not in self.ltype and v.t == "None":
+        if name not in self.ltype and self.local_hint(name) != "":
+            self.alloca(self.local_hint(name), name)  # (a join's type: as if annotated, see join_hint)
+        elif name not in self.ltype and v.t == "None":
             # first None: T | None, typed by the first store of another value, or by a read
             # that needs the type before it (see none_read)
             self.alloca(NONEVAR, name)
@@ -1641,7 +1648,10 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.mem_store(Val(self.lreg[name], "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
+        was = self.join_at("local", name, t)  # (a value it does not take may widen it: join_hint)
+        cv = self.coerce(v, t, self.assigned_to(v, t, name))
+        self.join_at(was[0], was[1], was[2])
+        self.mem_store(Val(self.lreg[name], "*" + t), cv)
         if name in self.lflag and name not in self.compvars:
             self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
         if name in self.owned:
@@ -1668,6 +1678,9 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return self.narrowed[n.s]
         if base and n.s not in self.ltype and (n.s not in self.assigned or n.s in self.gdecl):
             return self.gtypes.get(n.s, "")
+        if len(self.hints) > 0 and n.s not in self.ltype and n.s not in self.gtypes:
+            # (a join's type of a variable not yet bound, as an annotation: see join_hint)
+            return self.hints.get("global:" + n.s, "") if self.is_global(n.s) else self.local_hint(n.s)
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
     if n.kind == "slice":
         t = unopt(self.target_type(n.kids[0], True))

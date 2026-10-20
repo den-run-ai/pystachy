@@ -899,6 +899,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(NONEARG[name].replace("NoneType", tname(t)))
     if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
         self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
+    us = [j for j in range(len(vals)) if self.scalar_union(vals[j].t) and not is_opt(vals[j].t)]
+    if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
+        return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
     self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range')}")
     return v
 
