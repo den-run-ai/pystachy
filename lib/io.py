@@ -5,16 +5,21 @@ CPython 3.13.16: the same reads, writes, seeks, newline translation and errors, 
 (lib/README.md). Positions and sizes count Unicode code points, as len() and slicing do.
 BytesIO follows Modules/_io/bytesio.c in the same way, on a bytes buffer.
 TextIOWrapper, after Modules/_io/textio.c, is the text layer over a binary stream; its sizes count
-characters, as CPython's do.
+characters, as CPython's do. IncrementalNewlineDecoder, from the same file, is its newline
+decoder for str input, and text_encoding(), of Modules/_io/_iomodule.c, names the encoding that
+an encoding=None argument stands for.
 """
 
+from builtins import open, BlockingIOError
 from typing import Self
 
-__all__ = ["StringIO", "BytesIO", "TextIOWrapper", "SEEK_SET", "SEEK_CUR", "SEEK_END"]
+__all__ = ["StringIO", "BytesIO", "TextIOWrapper", "IncrementalNewlineDecoder", "text_encoding", "open",
+           "BlockingIOError", "DEFAULT_BUFFER_SIZE", "SEEK_SET", "SEEK_CUR", "SEEK_END"]
 
 SEEK_SET = 0
 SEEK_CUR = 1
 SEEK_END = 2
+DEFAULT_BUFFER_SIZE = 8192  # (CPython 3.13's)
 # the largest Py_ssize_t (PY_SSIZE_T_MAX), which bounds BytesIO's positions and size
 _SSIZE_MAX = 9223372036854775807
 
@@ -554,6 +559,104 @@ def _codec(encoding: str) -> int:
     if not known:
         raise NotImplementedError(f"TextIOWrapper supports only the UTF-8, Latin-1 and ASCII encodings, not '{encoding}'")
     return 0 if len(e) == 2 else 1 if e == b"\xe9" else 2
+
+
+def text_encoding(encoding: str | None, stacklevel: int = 2, /) -> str:
+    """A helper function to choose the text encoding.
+
+    When encoding is not None, this function returns it.
+    Otherwise, this function returns the default text encoding
+    (i.e. "locale" or "utf-8" depends on UTF-8 mode).
+
+    This function emits an EncodingWarning if encoding is None and
+    sys.flags.warn_default_encoding is true.
+
+    This can be used in APIs with an encoding=None parameter.
+    However, please consider using encoding="utf-8" for new APIs."""
+    if stacklevel < -2147483648 or stacklevel > 2147483647:
+        raise OverflowError("Python int too large to convert to C int")  # (a C int, as the C function takes)
+    if encoding is not None:
+        return encoding
+    # UTF-8 mode's "utf-8" where the C and POSIX locales turn it on, as the runtime opens a file
+    # without encoding= in "utf-8" exactly then, else "locale"; Pystachy has no warn_default_encoding
+    # (-X warn_default_encoding, PYTHONWARNDEFAULTENCODING), so no EncodingWarning
+    from _pystachy_io import default_encoding
+    return "utf-8" if default_encoding() == "utf-8" else "locale"
+
+
+class IncrementalNewlineDecoder:
+    r"""Codec used when reading a file in universal newlines mode.
+
+    It wraps another incremental decoder, translating \r\n and \r into \n.
+    It also records the types of newlines encountered.  When used with
+    translate=False, it ensures that the newline sequence is returned in
+    one piece. When used with decoder=None, it expects unicode strings as
+    decode input and translates newlines without first invoking an external
+    decoder."""
+
+    # Modules/_io/textio.c's, with decoder None: decode() takes the str itself. Another decoder,
+    # whose decode() CPython's calls first, raises NotImplementedError. A \r at the end of what a
+    # call decodes waits in _pendingcr for the \n that may follow it; _seennl records the newlines
+    # decoded (1 \r, 2 \n, 4 \r\n). translate and final are tested for truth, as CPython's are;
+    # errors, which it only keeps, is not kept.
+    def __init__(self, decoder, translate, errors="strict") -> None:
+        if decoder is not None:
+            raise NotImplementedError("IncrementalNewlineDecoder supports only decoder=None, which decodes str input")
+        self._translate: bool = bool(translate)
+        self._pendingcr: bool = False
+        self._seennl: int = 0
+
+    def decode(self, input: str, final=False) -> str:
+        last = bool(final)
+        output = input
+        if self._pendingcr and (last or output != ""):
+            output = "\r" + output
+            self._pendingcr = False
+        if not last and output.endswith("\r"):
+            # (retained, so that readline() gets a \r\n in one piece)
+            output = output[:-1]
+            self._pendingcr = True
+        if output == "":
+            return output
+        seen = self._seennl
+        crlf = "\r\n" in output
+        if crlf:
+            seen |= 4
+        if "\r" in output:
+            single = output.replace("\r\n", "") if crlf else output
+            if "\r" in single:
+                seen |= 1
+            if "\n" in single:
+                seen |= 2
+            if self._translate:
+                output = output.replace("\r\n", "\n").replace("\r", "\n")
+        elif "\n" in output:
+            seen |= 2
+        self._seennl = seen
+        return output
+
+    def getstate(self) -> tuple[bytes, int]:
+        # (no decoder: its buffer and flag are b"" and 0, and the flag's lowest bit is the \r)
+        return (b"", 1 if self._pendingcr else 0)
+
+    def setstate(self, state: tuple[bytes, int], /) -> None:
+        self._pendingcr = state[1] & 1 != 0
+
+    def reset(self) -> None:
+        self._seennl = 0
+        self._pendingcr = False
+
+    @property
+    def newlines(self) -> str | None:
+        if self._seennl == 0:
+            return None
+        if self._seennl == 1:
+            return "\r"
+        if self._seennl == 2:
+            return "\n"
+        if self._seennl == 4:
+            return "\r\n"
+        raise NotImplementedError("IncrementalNewlineDecoder.newlines is a tuple once more than one kind of newline has been decoded, which is not supported")
 
 
 # The buffer's methods that a TextIOWrapper may not need, called where CPython calls them: an

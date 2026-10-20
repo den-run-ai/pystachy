@@ -47,7 +47,7 @@ ABSTRACT_DECOS: dict[str, str] = {"abc$abstractmethod": "", "abc$abstractpropert
 # that file as the module (Loader.modpath), where CPython imports its C module
 STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pystachy_codecs", "atexit": "_pystachy_atexit",
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
-                            "_imp": "_pystachy_imp", "_opcode": "_pystachy_opcode",
+                            "_imp": "_pystachy_imp", "_io": "_pystachy__io", "_opcode": "_pystachy_opcode",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
                             "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
 # the stand-ins whose objects have no attributes in CPython (a weak reference's C struct): their
@@ -55,8 +55,9 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # hasattr() nor reflect over, and a call of __init__ on an object cannot initialize it again
 OPAQUE: dict[str, bool] = {"_weakref": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
-# not the module's own: weakref.ReferenceType, ast.Constant
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast"}
+# not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
+# lib's io defines is the C module _io's in CPython)
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
