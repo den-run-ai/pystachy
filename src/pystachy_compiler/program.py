@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import fail, shown
+from src.pystachy_compiler.diagnostics import Rejoin, fail, shown
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
@@ -1077,7 +1077,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1098,6 +1098,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in xmade:
                 xmade[c] = True
                 self.exc_helpers(c)
+        self.exc_ctors()  # (calls of class objects: the functions that make objects of the program's classes)
         at = -1
         later: list[int] = []
         while len(self.wake) > 0:
@@ -1111,11 +1112,14 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) == before:
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors) == before:
             break
+    self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j
@@ -1150,6 +1154,8 @@ def gen_program(self, mods: list[Mod]) -> str:
     if dump:
         for fn in self.fns:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
+    if "tupleret" in on:
+        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
     for fn in self.fns:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)

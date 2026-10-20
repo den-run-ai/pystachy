@@ -31,7 +31,8 @@ type, and a constant index the item's own type. Runtime-length
 `int`, `float`, `bool`, `str`, or one of these with `None`.
 
 Explicit closed scalar unions such as `int | str`, bounded native reference unions,
-and optional unions are supported. `Any` in supported function/method signatures,
+and optional unions are supported. A variable, field or return given values of several
+scalar types holds their union. `Any` in supported function/method signatures,
 constructor parameters and initialized module/local variables uses concrete inference;
 dynamic `Any` values are not supported.
 Generic classes can infer type arguments from construction or name them explicitly with
@@ -61,8 +62,11 @@ print(total([1.5, 2.5]), counts["request"])
 The main rules are:
 
 - An unannotated local or parameter can change type at a simple, unconditional assignment
-  in a supported function body. An explicit annotation remains a contract; branches, loops,
-  fields and globals still require consistent types. See [local bindings](language/typing.md#variables-and-empty-containers).
+  in a supported function body. An explicit annotation remains a contract. A local in branches
+  or loops, a field or a global given values of several scalar types (`int`, `float`, `bool`,
+  `str`, `None`) holds their union; other types must be consistent. See
+  [local bindings](language/typing.md#variables-and-empty-containers) and
+  [inferred unions](language/typing.md#inferred-unions).
 - Mutable containers are invariant: a `list[int]` cannot become a `list[int | None]`.
 - Empty lists and dictionaries need an annotation or a use that determines their type.
 - Ordinary functions and methods infer an omitted return annotation from their supported returns,
@@ -70,7 +74,8 @@ The main rules are:
   types, explicit `-> None` stays a contract, and functions without value returns return `None`.
   Constructors and implicit special methods keep their own result contracts.
 - A module-level function or ordinary method with an unannotated parameter is specialized for
-  each call's argument types. Its supported branches and returns must have consistent types.
+  each call's argument types. Returns of several scalar types return their union; other
+  branches and returns must have consistent types.
 - An unannotated constructor can specialize its class from the fields it initializes.
   Objects of different specializations cannot share one variable or container.
 
@@ -180,7 +185,9 @@ keys, division by zero, failed file opens and integer overflow can be caught.
 
 User-defined exception classes can derive from a supported builtin exception or another
 exception class in the program. They can define fields, constructors and string
-representations. `raise`, bare re-raise and `raise ... from ...` are supported.
+representations. `raise`, bare re-raise and `raise ... from ...` are supported. Exception
+classes are values too: stored, compared, tested with `issubclass()` and `isinstance()`,
+called and raised ([exception classes as values](language/semantics.md#exception-classes-as-values)).
 
 Exception attributes such as `e.args`, exception groups and `except*` are not supported.
 Uncaught exceptions print the final error line rather than a complete traceback.

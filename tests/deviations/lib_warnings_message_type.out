@@ -1,0 +1,4 @@
+UserWarning text
+TypeError: a warning's message that is neither a str nor a Warning is not supported
+TypeError: a warning's message that is neither a str nor a Warning is not supported
+[exit 0]

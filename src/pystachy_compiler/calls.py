@@ -316,7 +316,7 @@ def gen_not_callable(self, name: str, t: str) -> None:
     # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
     # unless it has __call__ or is a function (is_fn); a builtin's name bound as a variable is
     # rejected as such
-    if is_fn(t) or is_callable(unopt(t)):
+    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype":
         return
     if short(name) in PYBUILTINS or t == "":
         self.err(f"'{name}' is a variable, so it cannot be called")
@@ -331,6 +331,8 @@ def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = F
         return self.call_value(o, args, want, resultsoft)
     if is_callable(unopt(o.t)):
         return self.call_callable(o, args)
+    if unopt(o.t) == "exctype":
+        return self.exc_call(o, args)  # (an exception class's class object: an object of its class)
     if o.t not in self.classes or "__call__" not in self.classes[o.t].methods:
         self.err(f"'{tname(unopt(o.t))}' object is not callable")
     if self.cached_wrapper(o.t):
@@ -549,6 +551,39 @@ def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool =
 def gen_bound(self, s: str) -> bool:
     # a builtin's name that the program binds (a local, def, class or module-level variable)
     return s in self.ltype or s in self.funcs or s in self.classes or s in self.mvars
+
+def gen_ffi_at(self, n: Node) -> bool:
+    # whether n calls ffi.at (from ffi import at too), which only an argument of a call of an
+    # @extern function may (call_fn, at_arg)
+    if n.kind != "call":
+        return False
+    c = n.kids[0]
+    if c.kind == "name":
+        return c.s not in self.ltype and c.s not in self.funcs and c.s not in self.gtypes and self.aliases.get(c.s, "") == "ffi.at"
+    return c.kind == "attr" and self.dotted(c) == "ffi.at"
+
+def gen_at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+    # ffi.at(xs, k) passed for parameter j of @extern function f: xs, a list f takes as its items,
+    # from index k (in offs[j]), which the call checks once the other arguments are evaluated.
+    # First, as call does for a name it calls, whether ffi.at is bound where it runs: an import
+    # that has not run yet (modchk), a local assigned later (read_ahead) or a global (gflag)
+    c = n.kids[0]
+    self.modchk(c)
+    if c.kind == "name":
+        self.read_ahead(c.s)
+        if (c.chk or self.foreign(c.s)) and c.s in self.gflag:
+            bad = self.scalar('xor', [Val(self.mload('bool', f'@g.{c.s}.def'), 'bool'), Val('true', 'bool')])
+            self.guard(bad, self.unbound(c.s))
+    if not is_list(f.ptypes[j]):
+        self.err(f"ffi.at() passes a list from an index, but parameter '{f.params[j]}' of {f.name}() takes no list")
+    if len(n.kids) != 3 or len([a for a in n.kids[1:] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        self.err("ffi.at() takes a list and an index: ffi.at(xs, k)")
+    xs = self.pcoerce(self.expr(n.kids[1], f.ptypes[j]), f.ptypes[j], f, j)
+    k = self.expr(n.kids[2], "int")
+    if k.t != "int" and k.t != "bool":
+        self.err(f"ffi.at() takes an int index, not {typestr(k.t)}")
+    offs[j] = self.as_int(k)
+    return xs
 
 def gen_open_call(self, n: Node) -> bool:
     return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and not self.bound("open")
@@ -1053,6 +1088,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     extra: list[Val] = []
     kwn: list[str] = []
     kwv: list[Val] = []
+    offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
     for a in args:
         j = pos
         e = a
@@ -1075,6 +1111,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             e = a.kids[0]
         else:
             pos += 1
+        if f.extern and self.ffi_at(e):
+            vals[j] = self.at_arg(e, f, j, offs)
+            continue
         vals[j] = self.pcoerce(self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j])), f.ptypes[j], f, j)
         if j in f.pats:
             vals[j] = self.pat_arg(vals[j], f.pats[j])
@@ -1178,6 +1217,14 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    if len(offs) > 0:
+        # a list as ffi.at(xs, k): the stub that takes an index after the arguments for each list
+        # (0 for one passed as it is), which it checks as the call starts (cextern)
+        if f.ll + ".at" not in self.externs:
+            self.cextern(f, True)
+            self.line = line
+        c = Ins("call", f.ret, f.ll + ".at")
+        c.a = [v for v in vals if v.t != "None"] + [offs[j] if j in offs else Val("0", "int") for j in range(np) if is_list(f.ptypes[j])]
     if f.noret:
         # it never returns: the code after the call is not reached, and the call's value has the
         # type its context expects (return fail("bad") in a function returning int)

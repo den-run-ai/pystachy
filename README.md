@@ -2,8 +2,12 @@
 
 **Typed Python in, fast native code out.**
 
-[![CI](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml/badge.svg)](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml)
+[![CI](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Installation](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml?query=branch%3Amain+event%3Apush)
+[![Lint](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml?query=branch%3Amain+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/den-run-ai/pystachy?include_prereleases)](https://github.com/den-run-ai/pystachy/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Hosted compiler coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fcoverage.json)](docs/testing.md#compiler-coverage)
 
 Pystachy compiles a statically typed subset of Python to native code, retaining Python
 readability and reusing existing CPython library code. It targets CPU-intensive workloads
@@ -24,9 +28,10 @@ produce byte-identical LLVM IR.
   autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
   faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
 - **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
-  108K-parameter model with OpenBLAS, AOT inference is **166× faster** than the same model in
-  pure Python on CPython and about 1.5× PyTorch's CPU latency; results match PyTorch within
-  1.4e-14 ([example](examples/nanogpt/README.md)).
+  108K-parameter float64 model with OpenBLAS on one thread, AOT inference is **faster than
+  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
+  the same model in pure Python on CPython; results match PyTorch within 1.4e-14
+  ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
 - **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).

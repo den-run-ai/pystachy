@@ -171,6 +171,8 @@ static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
 static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
+static void **wr_fired;                /* the fire functions of weak references whose referents died, */
+static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
 static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
                                      handled, the uncaught one whose str() is being shown, the one a with-file's
                                      close raised while unwinding (see exceptions), the one a generator raised
@@ -182,6 +184,8 @@ static Thrower *xthrow;                /* where the funnels send what they raise
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
+static Exc **protos;                   /* exception classes' class objects, malloc'd: roots (see exceptions) */
+static I nprotos, cprotos;
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
@@ -229,6 +233,8 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)ch1, (const W *)(ch1 + 256));
   scan((const W *)&args, (const W *)(&args + 1));
   scan((const W *)&warnopts, (const W *)(&warnopts + 1));
+  if (nprotos) scan((const W *)protos, (const W *)(protos + nprotos));
+  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */
   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
     scan((const W *)&xr, (const W *)(&xr + 1));
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
@@ -396,25 +402,49 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
-   the target nor the next registry entry is a strong edge. The registry itself is NOT a
-   collector root. Prune dead handles before sweeping their storage, and clear surviving
-   handles whose targets were not marked before the target's address can be reused. */
+/* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
+   nor the next registry entry, nor the fire function is a strong edge. The registry itself is
+   NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused.
+   The fire function of a reference with a callback (_weakref's, a Callable[[], None] that calls
+   the callback with the reference, and that the reference object keeps alive) goes to wr_fired
+   where a collection clears its target while it is itself marked, so while the reference is:
+   once, newest handle first, as CPython calls a referent's callbacks, a newest reference first.
+   wr_fired is a root until _weakref takes the function to call it (pys_weakref_fired): a
+   collection runs no code, and a dead reference's callback is not called, as in CPython. A
+   handle can outlive its reference object (a stale word keeps it marked): the collection that
+   frees its fire function forgets it, before the function's slot can be reused. */
 typedef struct WeakRef WeakRef;
-struct WeakRef { WeakRef *next; void *target; };
+struct WeakRef { WeakRef *next; void *target; void *fire; };
 static WeakRef *weakrefs;
-void *pys_weakref_new(void *target) {
+void *pys_weakref_new(void *target, void *fire) {
   WeakRef *ref = pys_alloc_atomic(sizeof *ref);
   ref->target = target;
+  ref->fire = fire;
   ref->next = weakrefs;
   weakrefs = ref;
   return ref;
 }
 void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+void *pys_weakref_fired(void) {        /* the next fire function to call, once; NULL: none */
+  if (wr_head == wr_nfired) return NULL;
+  void *f = wr_fired[wr_head];
+  wr_fired[wr_head++] = NULL;
+  if (wr_head == wr_nfired) wr_head = wr_nfired = 0;
+  return f;
+}
 __attribute__((noinline)) static void weakrefs_sweep(void) {
   for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
     if (!gc_marked(ref)) { *link = ref->next; continue; }
-    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;
+    if (ref->target && !gc_marked(ref->target)) {
+      ref->target = NULL;
+      if (ref->fire) {
+        if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
+        wr_fired[wr_nfired++] = ref->fire;
+      }
+      ref->fire = NULL;
+    }
     link = &ref->next;
   }
 }
@@ -474,6 +504,7 @@ static Exc *exc_line(const char *m);
 static Exc *exc_exit(I c, Str *msg);
 static const char *exc_name(Exc *e, int *n);
 Str *pys_exc_repr(Exc *e);
+Str *pys_exc_type(Exc *e);
 void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
@@ -1155,7 +1186,13 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
 }
-double pys_fpow(double a, double b) {          /* float ** float with CPython's errors */
+/* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
+   whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
+   pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
+   (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
+   without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
+   runtime.py's code and the program's */
+__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
   if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
   if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
   double r = pow(a, b);
@@ -1201,7 +1238,7 @@ double pys_m_ulp(double x) {          /* the distance from |x| to the next float
   double a = fabs(x), b = nextafter(a, INFINITY);
   return isinf(b) ? a - nextafter(a, -INFINITY) : b - a;
 }
-double pys_m_pow(double x, double y) {
+__attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (no_builtin: see pys_fpow) */
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }
@@ -1709,6 +1746,11 @@ static const char *recdesc(const char *d) {
   while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
   return d;
 }
+/* A recursive alias's edge (R) is the one way a descriptor lets a value nest without bound, so
+   repr_depth and eqpair_depth count the edges they follow and raise here past 512. Nothing else
+   calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
+   op's descriptor holds an R (Gen.opfx); other descriptors never get here */
+static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
 static const char *utype(I tag, const char *d) {
   d++;
   for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
@@ -1787,7 +1829,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   switch (*d++) {
   case 'R': {
     const char *ref = d - 1;
-    if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
@@ -1840,6 +1882,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
   case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
   case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
+  case 'C': { Str *s = pys_exc_type((Exc *)v); put(b, s->s, s->len); return d; }   /* an exception class (its class object) */
   }
   return d;
 }
@@ -1939,22 +1982,24 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': return a == b;
+  case 'P': case 'C': return a == b;
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
   return a == b;
 }
-typedef struct { I value; const char *desc; } EqValue;
+typedef struct { I value; const char *desc; int edge; } EqValue;
 static EqValue eqresolve(I v, const char *d) {
   /* Each operand has its own layout: an optional number is a one-slot box,
-     a union is a tag/payload box, and a concrete container is its original pointer. */
+     a union is a tag/payload box, and a concrete container is its original pointer.
+     edge: whether a recursive alias's edge (R) led here */
+  int edge = 0;
   while (*d == '?' || *d == 'U' || *d == 'R') {
-    if (*d == 'R') { d = recdesc(d); continue; }
-    if (*d == '?') { if (!v) return (EqValue){0, "n"}; v = unbox(v, ++d); }
+    if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
+    if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
     else { I *box = (I *)v; d = utype(box[0], d); v = box[1]; }
   }
-  return (EqValue){v, d};
+  return (EqValue){v, d, edge};
 }
 static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
@@ -1967,27 +2012,32 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   EQ_PROBE();
   EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
   a = ax.value; x = ax.desc; b = by.value; y = by.desc;
+  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
+  /* The original container's identity survives separate union boxes. Besides
+     matching Python, this keeps a shared DAG from expanding into its logical tree.
+     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
+  if (a == b && (*x == *y || (tx && ty)) && (*x == 'L' || *x == 'D' || tx)) return 1;
+  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
+     Python does, while shared descendants retain the identity shortcut above.
+     depth counts the recursive alias edges followed, as repr_depth's does, and is
+     checked before any leaf is compared, so the 513th edge raises whatever it leads
+     to; a local depth argument survives native unwinding without mutable state. */
+  if (ax.edge || by.edge) {
+    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
+    depth++;
+  }
   if (*x == 'n' || *y == 'n') return *x == *y;
   int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
   if (nx && ny) return a == b;
   if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
   if (*x == 'f' && ny) return pys_cmp_if(b, dbl(a)) == 0;
-  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
   if (*x != *y && !(tx && ty)) return 0;
-  /* The original container's identity survives separate union boxes. Besides
-     matching Python, this keeps a shared DAG from expanding into its logical tree.
-     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
-  if (a == b && (*x == 'L' || *x == 'D' || tx)) return 1;
-  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
-     Python does, while shared descendants retain the identity shortcut above.
-     A local depth argument survives native unwinding without mutable state. */
-  if (depth >= 512) pys_fail("RecursionError: maximum recursion depth exceeded in comparison");
   if (*x == 'f') return dbl(a) == dbl(b);
   if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth + 1)) return 0;
+    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
     return 1;
   }
   if (*x == 'D') {
@@ -1999,8 +2049,8 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
       if (!dlive(p, i)) continue;
       I j = -1;
       if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth + 1)) { j = k; break; }
-      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth + 1)) return 0;
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
+      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
     }
     return 1;
   }
@@ -2011,7 +2061,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair_depth(p[i], q[i], ex, ey, depth + 1)) return 0;
+      if (!eqpair_depth(p[i], q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -2027,6 +2077,7 @@ I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static const char *tyname(char d);
+static const char *vtyname(I v, const char *d) { return tyname(*d == 'U' ? *eqresolve(v, d).desc : *d); }   /* v's (a union's: its member's) */
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -2052,11 +2103,20 @@ static int opv(I a, I b, const char *d, I op) {
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
+  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
+    EqValue x = eqresolve(a, d), y = eqresolve(b, d);
+    int nx = *x.desc != 'f', ny = *y.desc != 'f';
+    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);
+    if (!nx && !ny) return opv(x.value, y.value, "f", op);
+    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));
+    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */
+  }
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case '?':
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
-          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
+          a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
+  case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
     failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
@@ -2151,6 +2211,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
+  List *r = pys_list_new_atomic(l->len);
+  for (I i = 0; i < l->len; i++) {
+    EqValue x = eqresolve(l->a[i], d->s);
+    double f = *x.desc == 'f' ? dbl(x.value) : (double)x.value;
+    memcpy(&r->a[i], &f, 8);
+  }
+  r->len = l->len;
+  return r;
+}
 List *pys_vtuple_list(VTuple *t) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
   List *l = pys_list_new(t->len);
@@ -3075,7 +3145,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
-  case 'P': return hptr(k);
+  case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
   }
   return hint(k);
@@ -3363,7 +3433,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : "object";
+  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -4227,7 +4297,7 @@ void pys_exc_setcause(Exc *e, Exc *c) { e->cause = c; }
 Exc *pys_exc_cause(Exc *e) { return e->cause; }
 Str *pys_exc_type(Exc *e) {            /* str(type(e)): "<class 'KeyError'>", "<class '__main__.C'>" */
   Buf b = {0}; put(&b, "<class '", 8);
-  if (e->obj && !memchr(XCLS(e)->kind->s, '$', XCLS(e)->kind->len)) put(&b, "__main__.", 9);
+  if (e->obj && !memchr(XCLS(e)->disp->s, '.', XCLS(e)->disp->len)) put(&b, "__main__.", 9);   /* (also __main__$ValueError's) */
   Str *d = e->obj ? XCLS(e)->disp : e->kind;
   put(&b, d->s, d->len); put(&b, "'>", 2); return done(&b);
 }
@@ -4239,16 +4309,76 @@ Str *pys_exc_brepr(void *obj, Str *args) {   /* BaseException.__repr__ of one: i
   Buf b = {0}; int n; const char *k = short_name((*(ExcClass **)obj)->disp, &n);
   put(&b, k, n); put(&b, "(", 1); put(&b, args->s, args->len); put(&b, ")", 1); return done(&b);
 }
-I pys_exc_in(Exc *e, Str *names) {     /* e's kind is one of the names in "\1A\1B\1" */
-  Str *k = e->kind;
-  for (const char *p = names->s, *end = p + names->len; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
+static int name_in(const char *p, const char *end, Str *k) {   /* k is one of the names in [p, end): "\1A\1B\1" */
+  for (; (p = memchr(p, 1, end - p)) && end - p > k->len + 1; p++)
     if (!memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) return 1;
   return 0;
 }
+I pys_exc_in(Exc *e, Str *names) { return name_in(names->s, names->s + names->len, e->kind); }   /* e's kind is one of names */
 void *pys_exc_obj(Exc *e) { return e->obj; }
 void *pys_exc_id(Exc *e) { return e->obj ? e->obj : e; }   /* for is and ==: its object (each raise makes an Exc) */
 Exc *pys_exc_handled(void) { return xr.handled; }
 void pys_exc_restore(Exc *e) { xr.handled = e; }
+/* Exception classes as values. A class object is its class's one Exc (protos), which nothing
+   raises: its kind, an empty msg and, for a class of the program, an obj that is one word holding
+   the class's ExcClass, so that what reads an exception's class reads a class object alike
+   (pys_exc_name, pys_exc_type). is, ==, hash() and dict keys take its address, as each class has
+   one, and pys_exc_canon gives an exception's (type(e)). The compiler gives a test of a class
+   against one it does not name (issubclass(a, b), isinstance(e, b)) its classes, each with those it
+   is or derives from (tree, "\2K\1K\1A\1B\1\2K2..."), and makes an object of a class of the
+   program from a class object by the function its table (pys_exc_ctor) holds for the class; a
+   builtin class's is pys_exc_make's */
+Exc *pys_exc_proto(Str *kind, void *xcls) {   /* the class object of builtin class kind, or of ExcClass xcls */
+  for (I i = 0; i < nprotos; i++)
+    if (xcls ? protos[i]->obj && XCLS(protos[i]) == xcls : !protos[i]->obj && pys_str_eq(protos[i]->kind, kind)) return protos[i];
+  Exc *e = exc_new(xcls ? ((ExcClass *)xcls)->kind : kind, cstr(""), 0);
+  if (xcls) { void **o = pys_alloc(sizeof *o); *o = xcls; e->obj = o; }
+  if (nprotos == cprotos && !(protos = realloc(protos, (cprotos = 2 * cprotos + 16) * sizeof *protos))) oom();
+  return protos[nprotos++] = e;
+}
+Exc *pys_exc_canon(Exc *e) { return e->obj ? pys_exc_proto(0, XCLS(e)) : pys_exc_proto(e->kind, 0); }   /* type(e) */
+I pys_exc_sub(Exc *a, Exc *b, Str *tree) {    /* a's class (a's, an exception's or a class object's) is b's or derives from it */
+  Str *k = a->kind;
+  for (const char *p = tree->s, *end = p + tree->len; (p = memchr(p, 2, end - p)); p++)
+    if (end - p > k->len + 1 && !memcmp(p + 1, k->s, k->len) && p[k->len + 1] == 1) {
+      const char *q = memchr(p + 1, 2, end - p - 1);
+      return name_in(p + k->len + 1, q ? q : end, b->kind);
+    }
+  return pys_str_eq(k, b->kind);
+}
+Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin class's own module (io), the program's
+                                           (its displayed name but the last part: mods.errs.Missing's mods.errs) */
+  if (!e->obj) { const char *d = memchr(e->kind->s, '.', e->kind->len); return d ? pys_str(e->kind->s, d - e->kind->s) : cstr("builtins"); }
+  Str *k = XCLS(e)->disp; I n = k->len;
+  while (n > 0 && k->s[n - 1] != '.') n--;
+  return n ? pys_str(k->s, n - 1) : cstr("__main__");
+}
+void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
+                                              pairs ended by NULL, or NULL */
+  if (c->obj) for (; *table; table += 2) if (*table == XCLS(c)) return table[1];
+  return 0;
+}
+/* an object of the builtin class of class object c, called with n (0 or 1) arguments: one whose
+   str() is s and repr() r, flags 2 true, 4 an int, bool or None, the status code (a SystemExit's);
+   flags 8 and 16 for raise c and raise ... from c, where c is NoneType's class object.
+   A class of the program that has no function in pys_exc_ctor's table (one whose __init__ takes
+   another type) raises TypeError, as do the builtin classes whose __new__ takes more arguments */
+Exc *pys_exc_make(Exc *c, I n, Str *s, Str *r, I flags, I code) {
+  Str *k = c->kind; int m; const char *nm = exc_name(c, &m);
+  if (c->obj) failf("TypeError: a call of class object %.*s with an argument of this type is not supported (its __init__ takes another type)", m, nm);
+  if (!strcmp(k->s, "NoneType"))   /* type() of an exception that is None; flags 8 raise c, 16 raise ... from c */
+    failf("%s", flags & 8 ? "TypeError: exceptions must derive from BaseException" : flags & 16 ? "TypeError: exception causes must derive from BaseException"
+                : "TypeError: a call of class object NoneType is not supported (CPython's returns None)");
+  if (!strcmp(k->s, "SystemExit")) return !n ? pys_exc_exit(0, cstr(""), cstr("")) : flags & 4 ? pys_exc_exit(code, s, s) : exc_new(k, s, r);
+  if (!strcmp(k->s, "UnicodeDecodeError") || !strcmp(k->s, "UnicodeEncodeError") || !strcmp(k->s, "UnicodeTranslateError"))
+    failf("TypeError: function takes exactly %d arguments (%lld given)", k->s[7] == 'T' ? 4 : 5, (long long)n);
+  if (!strcmp(k->s, "BaseExceptionGroup") || !strcmp(k->s, "ExceptionGroup"))
+    failf("TypeError: BaseExceptionGroup.__new__() takes exactly 2 arguments (%lld given)", (long long)n);
+  if (!strcmp(k->s, "SyntaxError") || !strcmp(k->s, "IndentationError") || !strcmp(k->s, "TabError"))
+    return pys_exc_detail(!n ? exc_new(k, cstr("None"), cstr("")) : exc_new(k, s, r), n && flags & 2 ? s : cstr("<no detail available>"));
+  if (!n) return exc_new(k, cstr(""), 0);
+  return !strcmp(k->s, "KeyError") ? exc_new(k, r, 0) : exc_new(k, s, r);
+}
 static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
   if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
   unw[nunw++] = (Unwind){fn, arg};
@@ -5092,6 +5222,12 @@ I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), un
   return v;
 }
 void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
+void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  if (k < 0 || k > l->len) {
+    char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
+  }
+  return l->a + k;
+}
 /* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries

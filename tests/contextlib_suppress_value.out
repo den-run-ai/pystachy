@@ -1,0 +1,8 @@
+after
+nothing raised
+fine
+not reached 2
+escaped: invalid literal for int() with base 10: 'x'
+after starred
+after a class object
+[exit 0]

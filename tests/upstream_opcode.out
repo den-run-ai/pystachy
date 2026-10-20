@@ -1,0 +1,8 @@
+test_invalid_opcodes ok
+test_is_valid ok
+test_oplists ok
+ValueError: invalid opcode or oparg
+test_stack_effect ok: 119 defined, 118 not defined
+test_stack_effect_jump ok: 119
+test_specialization_stats ok: ['binary_op', 'binary_subscr', 'call', 'compare_op', 'contains_op', 'for_iter', 'load_attr', 'load_global', 'load_super_attr', 'send', 'store_attr', 'store_subscr', 'to_bool', 'unpack_sequence'] None
+[exit 0]

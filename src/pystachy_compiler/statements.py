@@ -1,7 +1,7 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union
-from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names
+from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import (
     FXBIT,
     GLUE,
     MODULES,
+    NONE_ITEM,
     NONEVAR,
     OPTTYPES,
     ORDOP,
@@ -24,6 +25,7 @@ from src.pystachy_compiler.specs import (
     IOMOD,
     TYPING,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
@@ -279,9 +281,9 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes:
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "":
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
-    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower():
+    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"
     if t == "" and (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0:
         return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
@@ -497,12 +499,15 @@ def gen_cm_exits(self) -> bool:
 
 def gen_suppress_item(self, e: Node) -> bool:
     # is e, a with statement's item, a call of contextlib.suppress (lib/contextlib.py) with
-    # exception classes, which the statement compiles as an except clause that catches them
+    # exception classes named, which the statement compiles as an except clause that catches
+    # them (with other arguments, class objects, it is lib's class, as elsewhere)
     if e.kind != "call" or e.kids[0].kind != "name" or e.kids[0].s != "contextlib$suppress":
         return False
     for a in e.kids[1:]:
-        if a.kind == "kw" or a.kind == "starred" or not self.exc_classes(a):
-            self.err("contextlib.suppress() is supported with exception classes, named, as a with statement's item")
+        if a.kind != "kw" and (a.kind == "starred" or self.exc_dynamic(a)):
+            return False
+        if a.kind == "kw" or not self.exc_classes(a):
+            self.err("contextlib.suppress() is supported with exception classes, as a with statement's item")
     return True
 
 def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
@@ -510,7 +515,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     # x, then body runs as the body of a try statement whose except clause takes every exception
     # e to __exit__(type(e), e, tb), which suppresses it if it returns a true value (else e goes
     # on); its else block, and a break, continue or return out of body (an exit like a finally
-    # block's), call __exit__(None, None, None) instead. type(e) is e itself, as an exctype; tb is
+    # block's), call __exit__(None, None, None) instead. type(e) is its class's class object; tb is
     # None, or an object of TracebackType (lib/_pystachy_types.py) where __exit__ declares that type
     c = m.t
     ms = self.classes[c].methods
@@ -583,6 +588,8 @@ def gen_stmt(self, n: Node) -> None:
             self.str_append(t0, val.kids[1], "")
         elif len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty(ekind, t0.s))
+        elif len(n.kids) == 2 and t0.kind == "name" and none_display(val) != "" and self.target_type(t0) == "" and (t0.s not in self.gtypes and t0.s not in self.noneglobals if self.is_global(t0.s) else t0.s not in self.ltype):
+            self.assign(t0, self.none_container(val))  # ([None] * n: its first fill types it)
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "call" and len(val.kids) == 2 and val.kids[0].kind == "name" and val.kids[0].s == "dict" and not self.bound("dict") and val.kids[1].kind == "name" and self.static_type(val.kids[1]) == "kw[]" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty("dict", t0.s))  # (d = dict(kwargs) of a call without extra keywords: d = {})
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or self.twin_of.get(t0.s, "-") == self.twin_of.get(val.s, "")) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
@@ -610,11 +617,16 @@ def gen_stmt(self, n: Node) -> None:
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
                 v = self.expr(val, self.target_type(t0))
+            src = self.joinsrc
             if n.s == "local-retype":
+                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                 self.store_name(t0.s, v, True)
             else:
                 for i in range(len(n.kids) - 1):
-                    self.assign(n.kids[i], v)
+                    tgt = n.kids[i]
+                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                    self.assign(tgt, v)
+            self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
         # an annotation that names a class template types nothing: x: Box = v is x = v
@@ -764,7 +776,15 @@ def gen_stmt(self, n: Node) -> None:
             if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
-                self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                was = self.join_at("return", f"{self.fnkey(self.curfn)}|return", self.ret)
+                src = self.joinsrc
+                self.joinsrc = n.kids[0]  # (a call's fresh result: see join_hint)
+                joined = self.join_hint(self.ret, v.t)  # (it returns both: their union, see join_hint)
+                self.joinsrc = src
+                self.join_at(was[0], was[1], was[2])
+                if not joined:
+                    self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                v = Val("undef", self.ret)
             v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)
@@ -1081,9 +1101,12 @@ def gen_augassign(self, n: Node) -> None:
         v = self.expr(n.kids[1], "")
         if not is_list(v.t):
             self.err(f"cannot extend a list with {v.t}")
+        nones = NONE_ITEM in cur.t
         self.refine(t.s, v.t)
+        if nones:
+            self.none_extend(t.s)
         self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {v.v}"])
-        self.store_name(t.s, Val(cur.v, v.t))  # (the right operand may have rebound the name)
+        self.store_name(t.s, Val(cur.v, self.qtype(t.s)))  # (the right operand may have rebound the name; a list of None's items are optional)
     elif t.kind == "name" and op == "|" and is_set(self.rtype(t.s)) and "?" in self.qtype(t.s):
         # s |= t on an empty set without a type
         self.allowq = True

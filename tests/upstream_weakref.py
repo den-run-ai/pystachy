@@ -7,7 +7,7 @@
 # Each test method becomes a function of the same name (ModuleTestCase's is prefixed with its class,
 # and reads the attributes of a reference's type, as a class object is not a value here);
 # assertTrue(x), assertFalse(x), assertIs(a, b) and assertEqual(a, b) assert, and each function
-# prints what it checked. weakref.ref is _weakref.ref: the weakref module does not import here
+# prints what it checked. weakref.ref is _weakref.ref, which the test imports from _weakref
 # (docs/prototypes/weakref.md). Object's __eq__ and __lt__ take an Object (upstream returns
 # NotImplemented for another type, which is not a value here); C has a field, as a class without
 # one has nothing to hold it apart. Where upstream drops the last owners and calls gc.collect(), whose
