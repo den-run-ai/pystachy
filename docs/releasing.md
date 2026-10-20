@@ -22,18 +22,27 @@ only build inputs and excludes environment files, keys and caches.
 
 ## Publish a version
 
-1. Set [VERSION](../VERSION) to the intended semantic version (initially
-   `v0.1.0-alpha.1`), then merge the version bump, intended fixes and packaging changes
-   into `main`.
+1. Set [VERSION](../VERSION) to the intended semantic version and add its curated notes
+   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.2](releases/v0.1.0-alpha.2.md).
+   Then merge the version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit.
 3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
+4. Download an archive and `SHA256SUMS` from the release, check the archive's hash, and
+   confirm that its `bin/pystachy --version` and `docker run --rm IMAGE:VERSION --version`
+   report the new version and the release commit.
 
 The workflow verifies that the source commit belongs to `main` and waits up to 20
 minutes for all four verification workflows on that commit. A failure or cancellation
 blocks publication. A published version cannot be replaced, and an existing tag must
 resolve to the selected commit. Create a new version for changed code.
+
+The release notes are the version's file under `docs/releases/`, followed by the
+generated asset list, Docker image, installation link and source commit. Every Release
+run, including a pull request's, fails if `VERSION` has no notes file. GitHub shows the
+notes outside the repository, so they use absolute links and no top-level title; the
+release is titled "Pystachy VERSION". A retried publication keeps an existing draft's notes.
 
 The same version identifies the Git tag, GitHub release, binary archive names, manifest,
 Docker version tag and OCI labels. `pystachy --version` (or `-V`) reports the release

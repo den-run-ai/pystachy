@@ -35,7 +35,7 @@ are linked from the relevant guide.
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |
 | [Testing](testing.md) | Bootstrap, differential tests, CI and targeted checks |
-| [Releases](releasing.md) | Binary packaging, Docker publishing and release gates |
+| [Releases](releasing.md) | Binary packaging, Docker publishing, release gates and [release notes](releases/) |
 | [History](history.md) | Design decisions and project lineage |
 
 Historical surveys, prototypes and development reports are retained in [the archive](archive/).
