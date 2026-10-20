@@ -411,6 +411,7 @@ class Frame:
         self.ret = ""
         self.retann = False
         self.nn: dict[str, bool] = {}
+        self.dynints: dict[str, bool] = {}
         self.selfname = ""
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}

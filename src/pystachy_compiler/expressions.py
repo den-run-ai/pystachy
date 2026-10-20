@@ -106,7 +106,7 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             nt = self.isinst_narrow(t, n.kids[2], truth)
             if nt != "":
                 out[nm] = nt
-        elif t == "dyn":
+        elif t == "dyn" or t == "dyn[int]":
             nt = self.dyn_narrow_type(n.kids[2], truth)  # (its box's payload, read as that type: dynamic.py)
             if nt != "":
                 out[nm] = nt
@@ -343,7 +343,8 @@ def gen_static_type(self, n: Node, typed: bool = False) -> str:
             # loop's later passes, unless None is all that its function assigns it)
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
             return "None" if only_none(body, n.s) else ""
-        return self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR else t
+        nt = self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR else t
+        return nt if nt != "dyn[int]" else "dyn"  # (a box proved to hold an int or a bool: dynamic.py)
     if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
         return self.gtypes[n.s]
     return ""

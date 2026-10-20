@@ -16,13 +16,16 @@ the program's classes, functions the compiler writes once every class that is bo
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, typestr, umembers, unopt
 
 DYN = "dyn"
+# what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
+# which arithmetic reads as an int (dyn_proven_int); everything else reads it as dyn
+DYNINT = "dyn[int]"
 # runtime.c's DynType kinds (DK_*) and the flags of a class's (DF_*)
 DK_OBJ = 8
 DK_FUNC = 9
@@ -349,15 +352,263 @@ def gen_dyn_isinst(self, v: Val, c: Node) -> Val:
 
 def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
     # the static type a dyn local has where isinstance(x, c) is truth: the one type c names (the
-    # payload's), else "" (it stays dyn)
+    # payload's), else "" (it stays dyn); DYNINT where c is int, which a bool passes too
     if not truth:
         return ""
     ts = self.dyn_isinst_types(c)
     if len(ts) == 2 and ts[0] == "int" and ts[1] == "bool":
-        return ""  # (an int or a bool: both stay boxed)
+        return DYNINT
     if len(ts) != 1 or ts[0] == "" or ts[0] == "*":
         return ""
     return ts[0]
+
+
+def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
+    # box v of a local that a test narrowed to nt: its payload as a value of type nt, or where nt is
+    # DYNINT the box itself, which arithmetic and comparisons then read as an int (dyn_proven_int)
+    if nt == DYNINT:
+        self.dynints[v.v] = True
+        return v
+    return self.dyn_payload(v, nt)
+
+
+def gen_dyn_proven_int(self, v: Val) -> Val:
+    # v as an int, for an operation whose result is the same for a bool as for the int it equals:
+    # a static int or bool, or a box that a test proved holds one (its payload: 0 or 1 for a bool);
+    # Val("", "") for any other value
+    if v.t == "int" or v.t == "bool":
+        return self.as_int(v)
+    if v.t == DYN and v.v in self.dynints:
+        return self.dyn_payload(v, "int")
+    return Val("", "")
+
+
+# ---- widening: storage that its first value typed, which an Any value reaches later
+
+def ann_binds(ns: list[Node], name: str) -> bool:
+    # does an annotated assignment among ns, outside the defs, lambdas and classes in them, declare
+    # name
+    for n in ns:
+        if n.kind == "annassign" and n.kids[0].kind == "name" and n.kids[0].s == name:
+            return True
+        if n.kind != "def" and n.kind != "lambda" and n.kind != "class" and n.kind != "subclass" and ann_binds(n.kids, name):
+            return True
+    return False
+
+
+def gen_dyn_widen(self, name: str, t: str) -> bool:
+    # an Any value stored into local name (or returned, name ""), which its earlier stores (the
+    # function's earlier returns) gave static type t, in a module that compiles Any as dyn: the
+    # function is compiled again with that storage dynamic from the start (gen_function), as
+    # CPython's variable holds whatever was assigned last. Not where something besides the code of
+    # this compilation holds t: an annotation, a closure's cell, a generator's frame, a value of t
+    # that cannot be boxed as it is. True where it will be (this compilation's store unboxes)
+    f = self.curfn
+    if self.drying > 0 or self.modlevel or f.gen or not self.dyn_policy(f.node.line) or self.dyn_boxable(t) != "":
+        return False
+    if name == "":
+        if not f.infer:
+            return False
+        if f.ll not in self.dynrets:
+            self.dynrets[f.ll] = f"{short(f.name)}() returns both {typestr(t)} and Any (each function has one return type)"
+            self.dynrline[f.ll] = self.line
+        return True
+    if name in self.cells or name in self.compvars or name in self.nlw or (f.clo >= 0 and name in self.closures[f.clo].caps):
+        return False
+    if len(f.params) > 0 and name == f.params[0] and takes_self(f):
+        return False
+    for p in f.node.kids[0].kids if f.node.kind == "def" else []:
+        if p.s == name and p.kids[0].kind != "noann":
+            return False
+    if f.node.kind != "def" or ann_binds(f.node.kids[2].kids, name):
+        return False
+    if f.ll not in self.dynwide:
+        self.dynwide[f.ll] = {}
+    self.dynwide[f.ll][name] = True
+    return True
+
+
+def gen_dyn_fields(self, ci: ClassInfo) -> None:
+    # in a module that compiles Any as dyn: the fields of class ci that __init__ gave a type
+    # (scan_fields), and a method of the class assigns an Any value later, made dynamic from the
+    # start. A field's type is decided before any code that reads it is compiled, so it is what the
+    # declarations show: the methods' Any parameters, fields and returns (dyn_guessed)
+    if not self.dyn_policy(ci.node.line) or ci.name in self.tmpl or ci.exc != "" or ci.origin != "":
+        return
+    for m in ci.methods:
+        f = ci.methods[m]
+        if f.cls == ci.name and f.node.kind == "def" and takes_self(f) and not f.pending:
+            self.dyn_field_stores(ci, f, f.node.kids[2].kids)
+
+
+def gen_dyn_field_stores(self, ci: ClassInfo, f: FnInfo, ns: list[Node]) -> None:
+    for st in ns:
+        if st.kind == "def" or st.kind == "lambda" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if st.kind == "assign" or st.kind == "augassign":
+            for x in st.kids[:-1]:
+                if x.kind == "attr" and x.kids[0].kind == "name" and x.kids[0].s == f.params[0] and x.s in ci.ftypes and ci.ftypes[x.s] != DYN:
+                    if x.s not in ci.fdefault and self.dyn_boxable(ci.ftypes[x.s]) == "" and not field_ann(ci, x.s) and self.dyn_guessed(st.kids[-1], f):
+                        ci.ftypes[x.s] = DYN
+        self.dyn_field_stores(ci, f, st.kids)
+
+
+def field_ann(ci: ClassInfo, name: str) -> bool:
+    # is field name of class ci declared with an annotation: in the class body (name: T) or in a
+    # method (self.name: T = v)
+    for st in ci.node.kids[0].kids:
+        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s == name:
+            return True
+    for m in ci.methods:
+        f = ci.methods[m]
+        if f.cls == ci.name and f.node.kind == "def" and len(f.params) > 0 and self_ann(f.node.kids[2].kids, f.params[0], name):
+            return True
+    return False
+
+
+def self_ann(ns: list[Node], me: str, name: str) -> bool:
+    for n in ns:
+        if n.kind == "annassign" and n.kids[0].kind == "attr" and n.kids[0].s == name and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == me:
+            return True
+        if n.kind != "def" and n.kind != "lambda" and n.kind != "class" and n.kind != "subclass" and self_ann(n.kids, me, name):
+            return True
+    return False
+
+
+def gen_dyn_guessed(self, e: Node, f: FnInfo) -> bool:
+    # is e, an expression of method f, an Any value as the declarations show (guess): a parameter,
+    # field or return annotated Any, an item of a container of Any items, arithmetic on one, or a
+    # conditional expression with one
+    if e.kind == "binop" and e.s in BINOPS:
+        return self.dyn_guessed(e.kids[0], f) or self.dyn_guessed(e.kids[1], f)
+    if e.kind == "unary" and e.s != "not":
+        return self.dyn_guessed(e.kids[0], f)
+    if e.kind == "ifexp":
+        return self.dyn_guessed(e.kids[1], f) or self.dyn_guessed(e.kids[2], f)
+    if e.kind == "index" and len(e.kids) == 2:
+        t = self.guess(e.kids[0], f)
+        return t == DYN or t == "list[dyn]" or t == "vtuple[dyn]" or (is_dict(t) and targs(t)[1] == DYN)
+    return self.guess(e, f) == DYN
+
+
+def gen_dyn_global_ahead(self, name: str, t: str) -> bool:
+    # module code's first store of module variable name, a value of static type t, in a module that
+    # compiles Any as dyn: does module code assign it an Any value later, as far as can be told
+    # before it runs (dyn_ahead)? Then it is dynamic from the start: a module variable's type is
+    # decided where it is first stored, since the functions compiled meanwhile read it
+    if not self.modlevel or self.drying > 0 or self.curfn.node.kind == "def" or not self.dyn_policy(self.line) or self.dyn_boxable(t) != "":
+        return False
+    return self.dyn_stores_ahead(self.curfn.node.kids, name, {})
+
+
+def gen_dyn_stores_ahead(self, ns: list[Node], name: str, env: dict[str, bool]) -> bool:
+    # does a statement among ns assign name a value dyn_ahead finds dynamic; env: the loop
+    # targets around them, whether each takes Any items
+    for st in ns:
+        if st.kind == "def" or st.kind == "lambda" or st.kind == "class" or st.kind == "subclass":
+            continue
+        if st.kind == "assign" or st.kind == "augassign":
+            for x in st.kids[:-1]:
+                if x.kind == "name" and x.s == name and self.dyn_ahead(st.kids[-1], env):
+                    return True
+        if st.kind == "for" and len(st.kids) >= 3:
+            inner = dict(env)
+            et = self.dyn_items_ahead(st.kids[1], env)
+            if st.kids[0].kind == "name":
+                inner[st.kids[0].s] = et == DYN
+            elif st.kids[0].kind == "tuple" or st.kids[0].kind == "list":
+                ts = targs(et) if is_tuple(et) and len(targs(et)) == len(st.kids[0].kids) else []
+                for j in range(len(st.kids[0].kids)):
+                    if st.kids[0].kids[j].kind == "name":
+                        inner[st.kids[0].kids[j].s] = et == DYN or (len(ts) > 0 and ts[j] == DYN)
+            if self.dyn_stores_ahead(st.kids[2].kids, name, inner):
+                return True
+            if self.dyn_stores_ahead(st.kids[3:], name, env):
+                return True  # (its else block)
+            continue
+        if self.dyn_stores_ahead(st.kids, name, env):
+            return True
+    return False
+
+
+def gen_dyn_ahead(self, e: Node, env: dict[str, bool]) -> bool:
+    # is e an Any value, as module code read before it runs tells (dyn_global_ahead), from the
+    # types its variables have now, without compiling it: a variable of type Any or a loop target
+    # that takes Any items (env), arithmetic on an Any value, an item, attribute or method result
+    # of one, an item of a container of Any items, or a call of a function declared to return Any
+    k = e.kind
+    if k == "name":
+        return env[e.s] if e.s in env else self.gtypes.get(e.s, "") == DYN
+    if k == "binop" and e.s in BINOPS:
+        return self.dyn_ahead(e.kids[0], env) or self.dyn_ahead(e.kids[1], env)
+    if k == "unary" and e.s != "not":
+        return self.dyn_ahead(e.kids[0], env)
+    if k == "ifexp":
+        return self.dyn_ahead(e.kids[1], env) or self.dyn_ahead(e.kids[2], env)
+    if (k == "index" or k == "attr") and self.dyn_ahead(e.kids[0], env):
+        return True
+    if k == "index" and e.kids[0].kind == "name" and e.kids[0].s not in env:
+        t = self.gtypes.get(e.kids[0].s, "")
+        return t == "list[dyn]" or t == "vtuple[dyn]" or (is_dict(t) and targs(t)[1] == DYN)
+    if k == "call" and e.kids[0].kind == "attr" and self.dyn_ahead(e.kids[0].kids[0], env):
+        return True
+    if k == "call" and e.kids[0].kind == "name" and e.kids[0].s in self.funcs and e.kids[0].s not in env and self.funcs[e.kids[0].s].ret == DYN:
+        return True
+    return False
+
+
+def gen_dyn_items_ahead(self, it: Node, env: dict[str, bool]) -> str:
+    # the type of the items of a loop over it in module code, as far as dyn_ahead can tell (DYN
+    # for a loop over an Any value), or ""
+    if self.dyn_ahead(it, env):
+        return DYN
+    if it.kind == "name" and it.s not in env:
+        return self.iter_elem(self.gtypes.get(it.s, ""))
+    if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr" and it.kids[0].kids[0].kind == "name" and it.kids[0].kids[0].s not in env:
+        # d.items(), d.keys() and d.values() of a dict variable
+        t = self.gtypes.get(it.kids[0].kids[0].s, "")
+        if is_dict(t):
+            m = it.kids[0].s
+            return self.ctype("tuple", targs(t)) if m == "items" else targs(t)[0] if m == "keys" else targs(t)[1] if m == "values" else ""
+    return ""
+
+
+def gen_dyn_widened(self, name: str) -> bool:
+    # is local name of the function being compiled dynamic from its first store (dyn_widen)
+    return self.curfn.ll in self.dynwide and name in self.dynwide[self.curfn.ll]
+
+
+def gen_dyn_asked(self, f: FnInfo) -> int:
+    # how many widenings of f's storage dyn_widen has been asked for
+    return (len(self.dynwide[f.ll]) if f.ll in self.dynwide else 0) + (1 if f.ll in self.dynrets else 0)
+
+
+def gen_dyn_again(self, f: FnInfo, asked: int) -> bool:
+    # after a compilation of f, which started with asked widenings: compile it again, with the
+    # ones asked for since? Not where another function's call took what f returns while f was
+    # compiled (functions that call each other): that compilation stands, whose stores unbox their
+    # Any values, and a return of one is the error it was
+    if self.dyn_asked(f) == asked:
+        return False
+    if f.ll in self.dynseen:
+        if f.ll in self.dynrets:
+            self.line = self.dynrline[f.ll]
+            self.err(self.dynrets[f.ll])
+        return False
+    # (what this compilation inferred of the values it returns, which the next one infers again)
+    if f.ll in self.guessed:
+        del self.guessed[f.ll]
+    if f.ll in self.qused:
+        del self.qused[f.ll]
+    if f.ll in self.retseen:
+        del self.retseen[f.ll]
+    if f.ll in self.qret:
+        del self.qret[f.ll]
+    if f.ll in self.qholes:
+        del self.qholes[f.ll]
+    if f.ll in self.qforward:
+        del self.qforward[f.ll]
+    return True
 
 
 # ---- operations
@@ -367,6 +618,12 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
     # define them (dyn_dispatchers), then pys_dyn_binop's builtin arithmetic
     if op not in BINOPS:
         self.err(f"the operator {op} on Any values is not supported")
+    pa = self.dyn_proven_int(a)
+    pb = self.dyn_proven_int(b)
+    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or b.t == "int"):
+        # (ints, or a bool and an int: the typed arithmetic, of an int result but for /'s float;
+        # ** may give a float, and & | ^ of two bools a bool)
+        return self.arith(op, pa, pb)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     f = self.dyn_dispatcher(("i" if inplace else "") + "op" + str(BINOPS[op]), [DYN, DYN], DYN, BINDUNDERS[op])
@@ -374,12 +631,20 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
 
 
 def gen_dyn_unary(self, op: str, v: Val) -> Val:
+    p = self.dyn_proven_int(v)
+    if p.t != "":
+        # (an int or a bool: -x, +x and ~x are ints)
+        return p if op == "+" else self.arith("-", Val("0", "int"), p) if op == "-" else self.arith("^", p, Val("-1", "int"))
     f = self.dyn_dispatcher("un" + str(UNOPS[op]), [DYN], DYN, {"-": "__neg__", "+": "__pos__", "~": "__invert__"}[op])
     return self.dyn_call(f, [v])
 
 
 def gen_dyn_compare(self, op: str, a: Val, b: Val) -> Val:
     # a op b where either is dyn: ==, !=, <, <=, >, >= (is, in: dyn_identity, dyn_contains)
+    pa = self.dyn_proven_int(a)
+    pb = self.dyn_proven_int(b)
+    if pa.t != "" and pb.t != "":
+        return self.num_cmp(op, pa, pb)  # (ints, or a bool and an int: compared as ints)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     if op == "==" or op == "!=":
@@ -421,6 +686,9 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
 
 
 def gen_dyn_truth(self, v: Val) -> str:
+    p = self.dyn_proven_int(v)
+    if p.t != "":
+        return self.num_cmp("!=", p, Val("0", "int")).v
     f = self.dyn_dispatcher("truth", [DYN], "bool", "__bool__")
     return self.dyn_call(f, [v]).v
 

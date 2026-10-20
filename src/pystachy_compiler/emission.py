@@ -51,6 +51,7 @@ def gen_save(self) -> Frame:
     fr.ret = self.ret
     fr.retann = self.retann
     fr.nn = self.nn
+    fr.dynints = self.dynints
     fr.selfname = self.selfname
     fr.uflags = self.uflags
     fr.lflag = self.lflag
@@ -93,6 +94,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.ret = fr.ret
     self.retann = fr.retann
     self.nn = fr.nn
+    self.dynints = fr.dynints
     self.selfname = fr.selfname
     self.uflags = fr.uflags
     self.lflag = fr.lflag

@@ -19,8 +19,11 @@ from src.pystachy_compiler.memory_ir import (
     gen_maddr as memory_ir_maddr,
 )
 from src.pystachy_compiler.dynamic import (
+    gen_dyn_again as dynamic_dyn_again,
+    gen_dyn_ahead as dynamic_dyn_ahead,
     gen_dyn_arith as dynamic_dyn_arith,
     gen_dyn_arm as dynamic_dyn_arm,
+    gen_dyn_asked as dynamic_dyn_asked,
     gen_dyn_body as dynamic_dyn_body,
     gen_dyn_box as dynamic_dyn_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
@@ -38,6 +41,8 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_dispatcher as dynamic_dyn_dispatcher,
     gen_dyn_dispatchers as dynamic_dyn_dispatchers,
     gen_dyn_fallback as dynamic_dyn_fallback,
+    gen_dyn_field_stores as dynamic_dyn_field_stores,
+    gen_dyn_fields as dynamic_dyn_fields,
     gen_dyn_float as dynamic_dyn_float,
     gen_dyn_fn_arms as dynamic_dyn_fn_arms,
     gen_dyn_fn_box as dynamic_dyn_fn_box,
@@ -46,22 +51,28 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_fresh as dynamic_dyn_fresh,
     gen_dyn_getattr as dynamic_dyn_getattr,
     gen_dyn_getitem as dynamic_dyn_getitem,
+    gen_dyn_global_ahead as dynamic_dyn_global_ahead,
+    gen_dyn_guessed as dynamic_dyn_guessed,
     gen_dyn_hash as dynamic_dyn_hash,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
     gen_dyn_isinst as dynamic_dyn_isinst,
     gen_dyn_isinst_types as dynamic_dyn_isinst_types,
+    gen_dyn_items_ahead as dynamic_dyn_items_ahead,
     gen_dyn_len as dynamic_dyn_len,
     gen_dyn_method as dynamic_dyn_method,
     gen_dyn_mixed as dynamic_dyn_mixed,
     gen_dyn_narrow_type as dynamic_dyn_narrow_type,
+    gen_dyn_narrowed as dynamic_dyn_narrowed,
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_policy as dynamic_dyn_policy,
+    gen_dyn_proven_int as dynamic_dyn_proven_int,
     gen_dyn_repr as dynamic_dyn_repr,
     gen_dyn_return as dynamic_dyn_return,
     gen_dyn_select as dynamic_dyn_select,
     gen_dyn_setattr as dynamic_dyn_setattr,
     gen_dyn_setitem as dynamic_dyn_setitem,
+    gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
     gen_dyn_str as dynamic_dyn_str,
     gen_dyn_sum as dynamic_dyn_sum,
     gen_dyn_supports as dynamic_dyn_supports,
@@ -75,6 +86,8 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_types_of as dynamic_dyn_types_of,
     gen_dyn_unary as dynamic_dyn_unary,
     gen_dyn_unbox as dynamic_dyn_unbox,
+    gen_dyn_widen as dynamic_dyn_widen,
+    gen_dyn_widened as dynamic_dyn_widened,
     gen_rtdata as dynamic_rtdata,
 )
 from src.pystachy_compiler.unions import (
@@ -706,6 +719,7 @@ from src.pystachy_compiler.functions import (
     gen_extern_args as functions_extern_args,
     gen_externtype as functions_externtype,
     gen_function as functions_function,
+    gen_function_body as functions_function_body,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -1033,6 +1047,7 @@ class Gen:
         self.ret = "None"
         self.retann = False
         self.nn: dict[str, bool] = {}
+        self.dynints: dict[str, bool] = {}  # the boxes a test proved hold an int or a bool (dynamic.py)
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
         self.lazyat: dict[str, int] = {}  # each lazy function's position in lazy, once it is complete
@@ -1258,6 +1273,14 @@ class Gen:
         self.dynfuncs: list[str] = []
         self.dynfnt: dict[str, str] = {}
         self.dynboxes: dict[str, bool] = {}
+        # and, by function, the locals made dynamic from their first store and the return types
+        # made dynamic (with the error a refusal reports, and its line), which compile it again
+        # (dyn_widen), and the functions a call from another function used the return type of while
+        # they were compiled (dyn_again)
+        self.dynwide: dict[str, dict[str, bool]] = {}
+        self.dynrets: dict[str, str] = {}
+        self.dynrline: dict[str, int] = {}
+        self.dynseen: dict[str, bool] = {}
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
@@ -1310,6 +1333,45 @@ class Gen:
 
     def dyn_narrow_type(self, c: Node, truth: bool) -> str:
         return dynamic_dyn_narrow_type(self, c, truth)
+
+    def dyn_narrowed(self, v: Val, nt: str) -> Val:
+        return dynamic_dyn_narrowed(self, v, nt)
+
+    def dyn_proven_int(self, v: Val) -> Val:
+        return dynamic_dyn_proven_int(self, v)
+
+    def dyn_widen(self, name: str, t: str) -> bool:
+        return dynamic_dyn_widen(self, name, t)
+
+    def dyn_fields(self, ci: ClassInfo) -> None:
+        return dynamic_dyn_fields(self, ci)
+
+    def dyn_field_stores(self, ci: ClassInfo, f: FnInfo, ns: list[Node]) -> None:
+        return dynamic_dyn_field_stores(self, ci, f, ns)
+
+    def dyn_guessed(self, e: Node, f: FnInfo) -> bool:
+        return dynamic_dyn_guessed(self, e, f)
+
+    def dyn_global_ahead(self, name: str, t: str) -> bool:
+        return dynamic_dyn_global_ahead(self, name, t)
+
+    def dyn_stores_ahead(self, ns: list[Node], name: str, env: dict[str, bool]) -> bool:
+        return dynamic_dyn_stores_ahead(self, ns, name, env)
+
+    def dyn_ahead(self, e: Node, env: dict[str, bool]) -> bool:
+        return dynamic_dyn_ahead(self, e, env)
+
+    def dyn_items_ahead(self, it: Node, env: dict[str, bool]) -> str:
+        return dynamic_dyn_items_ahead(self, it, env)
+
+    def dyn_widened(self, name: str) -> bool:
+        return dynamic_dyn_widened(self, name)
+
+    def dyn_asked(self, f: FnInfo) -> int:
+        return dynamic_dyn_asked(self, f)
+
+    def dyn_again(self, f: FnInfo, asked: int) -> bool:
+        return dynamic_dyn_again(self, f, asked)
 
     def dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
         return dynamic_dyn_arith(self, op, a, b, inplace)
@@ -2342,6 +2404,9 @@ class Gen:
 
     def function(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function(self, f, body)
+
+    def function_body(self, f: FnInfo, body: list[Node]) -> None:
+        return functions_function_body(self, f, body)
 
     def builtin_catch(self, b: str) -> str:
         return generators_builtin_catch(self, b)

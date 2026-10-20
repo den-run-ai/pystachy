@@ -619,6 +619,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
+            if g.ll != self.curfn.ll:
+                self.dynseen[g.ll] = True  # (nor compiling it again change what it returns: dyn_again)
         return g
     if f.bad != "":
         self.err(f.bad)

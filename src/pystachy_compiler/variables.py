@@ -1448,12 +1448,17 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.err(f"assigning '{owner(name)}.{short(name)}' anything but the literal {lit} is not supported: its module assigns it {lit} once, so its tests of it are decided at compile time")
         if name not in self.gtypes:
             t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
+            if v.t == "None" and t0 == "" and self.dyn_global_ahead(name, "None"):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
             if v.t == "None" and t0 == "":
                 # (module code's other values for it are typed here, as far as they can be)
                 self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
             if v.t == "":
                 self.err(f"cannot infer the type of '{name}'; add a type annotation")
-            self.declare(name, t0 if t0 != "" else v.t)
+            t0 = t0 if t0 != "" else v.t
+            if t0 != "dyn" and self.dyn_global_ahead(name, t0):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
+            self.declare(name, t0)
         t = self.gtypes[name]
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
@@ -1484,7 +1489,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
                 if name in self.narrowed:
                     del self.narrowed[name]
                 self.lkk.pop(name, "")
-        if name not in self.ltype and v.t == "None":
+        if name not in self.ltype and self.dyn_widened(name):
+            self.alloca("dyn", name)  # (one that an Any value is assigned later: dyn_widen)
+        elif name not in self.ltype and v.t == "None":
             # first None: T | None, typed by the first store of another value, or by a read
             # that needs the type before it (see none_read)
             self.alloca(NONEVAR, name)
@@ -1499,6 +1506,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
+        if v.t == "dyn" and t != "dyn":
+            self.dyn_widen(name, t)  # (an Any value: the next compilation makes the variable dynamic)
         self.mem_store(Val(self.lreg[name], "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
         if name in self.lflag and name not in self.compvars:
             self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
@@ -1523,7 +1532,7 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
     # name is only read, so in a function it can be a module-level variable
     if n.kind == "name":
         if base and n.s in self.narrowed and self.narrowable(n.s):
-            return self.narrowed[n.s]
+            return self.narrowed[n.s] if self.narrowed[n.s] != "dyn[int]" else "dyn"
         if base and n.s not in self.ltype and (n.s not in self.assigned or n.s in self.gdecl):
             return self.gtypes.get(n.s, "")
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")

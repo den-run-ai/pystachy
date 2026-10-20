@@ -214,7 +214,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     if nt == v.t:
         return v
     if v.t == "dyn":
-        return self.dyn_payload(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
+        return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
     if v.t in self.classes and nt in self.classes and self.derives(nt, v.t):
         return Val(v.v, nt)
     if not is_union(unopt(v.t)):

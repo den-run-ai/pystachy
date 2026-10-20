@@ -29,7 +29,8 @@ building IR. Every function instruction is a registered typed operation, includi
 arithmetic, internal storage, closure pointers and runtime byte accesses. There is no
 `raw` instruction or instruction-text builder. Module declarations, constants and ABI
 wrappers are serialized by the LLVM backend. This completes instruction coverage for
-the current backend; WebAssembly and dynamic `Any` values remain future work.
+the current backend; WebAssembly remains future work, and dynamic `Any` values are a
+[prototype](dynamic-any.md) that a module opts in to.
 
 <a id="4-passes"></a>
 <a id="41-the-pipeline"></a>
@@ -109,6 +110,13 @@ User callbacks are excluded from this paired-descriptor equality path.
 Native reference unions keep the original object/file pointer in that payload;
 their method calls dispatch by member tag. Narrowing checks the tag before reading
 the concrete payload.
+In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer to an immutable
+box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
+own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
+as the static type its `s` names, after a test has proved it; neither has a memory effect, since
+a box never changes. A box in a container slot is descriptor `A`, which runtime walks follow
+through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
+holds an `A` have every effect, as an `O` does.
 An `Ins` uses only the fields its operation needs:
 
 | Field | Meaning |

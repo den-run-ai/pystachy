@@ -1624,6 +1624,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
         if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name and ci.name not in self.tmpl:
             f = ci.methods["__init__"]
             self.scan_fields(ci, f, f.node.kids[2].kids, {})
+            self.dyn_fields(ci)  # (those an Any value is assigned later: dynamic.py)
     if ci.tag > 0:
         for name in ci.ftypes:
             if name in ci.methods:

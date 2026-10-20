@@ -29,6 +29,32 @@ of a compile error, and so are the displays among its items. Concrete annotation
 unannotated code keep their static types, layouts and templates: boxing is selective, at the
 boundary where a concrete value flows into `Any` storage.
 
+Storage that an unannotated first value types, and that a later store gives an `Any` value, is
+`Any` from that first store, as a CPython variable holds whatever was assigned last
+(`tests/dynany_widen.py`):
+
+- **Locals and unannotated parameters** (`total = 0`, then `total += x` with an `Any` `x` in a
+  loop): the function is compiled again with them dynamic. Other locals keep their types: in
+  the same loop, `count += 1` stays an `int`.
+- **Return types**: a function without a return annotation whose returns give an `int` and an
+  `Any` value returns `Any`, compiled again.
+- **Fields**: a field that `__init__` gives a concrete value is `Any` where a method of its class
+  assigns it an `Any` value, as the declarations show it: an `Any` parameter, field or return,
+  an item of a container of `Any` items, or arithmetic on one. A field's type is fixed before
+  any code that reads it is compiled.
+- **Module variables**: one that module code assigns an `Any` value after its first value, as
+  far as module code shows before it runs: the target of a loop over `Any` items, arithmetic on
+  one, a function declared to return `Any`, or what the expression types to where it can be
+  compiled early.
+
+Where something besides the function being compiled has already taken the first type, the
+storage keeps it, and storing an `Any` value of another type raises `TypeError` (a
+[deviation](#deviations)): a local that a closure takes (its cell is shared), a generator's
+local (its frame's layout), an annotated variable or field, a field that only code outside its
+class's methods assigns an `Any` value, or a value whose type only compiling shows. A return
+type that a call from another function took while the function was compiled (functions that
+call each other) stays the compile error it was.
+
 ## Representation
 
 A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
@@ -76,10 +102,13 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   made one automatically. Fresh lists that a builtin method returns (`str.split()`,
   `dict.items()` of an `Any` dict) are converted, since nothing else refers to them yet.
 - **Out of `Any`**: `isinstance()` narrows an `Any` local or parameter to the payload's type for
-  the builtin types and classes (`isinstance(x, int)` keeps it boxed, since a `bool` passes it
-  too). A concrete annotation that receives an `Any` value checks the box's type where it
-  unboxes it, raising `TypeError: expected int, got str` where CPython, which does not check
-  annotations, would go on: the one new runtime error, a [deviation](#deviations).
+  the builtin types and classes. `isinstance(x, int)` keeps the box, since a `bool` passes it
+  too, but proves that its payload is an int's or a bool's: arithmetic and comparisons on it
+  read the payload as an int, whose results are a bool's too but for `&`, `|` and `^` of two
+  bools and `**`, which stay dynamic (`tests/dynany_proven_int.py`). A concrete annotation that
+  receives an `Any` value checks the box's type where it unboxes it, raising
+  `TypeError: expected int, got str` where CPython, which does not check annotations, would go
+  on: the one new runtime error, a [deviation](#deviations).
 
 ## Operations
 
@@ -143,7 +172,8 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
 
 - A concrete annotation that receives an `Any` value raises `TypeError` where its type differs
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
-  so that a typed variable never prints another value than CPython's.
+  so that a typed variable never prints another value than CPython's. So does the storage that
+  [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
@@ -171,10 +201,11 @@ MEASUREMENTS
 
 ## Next steps
 
-- **Box elimination where it is proven**: keep a dynamic local's payload unboxed between a
-  type test and its uses (an `isinstance(x, int)` test proves `int` or `bool`, enough for
-  arithmetic); keep numeric `Any` loop accumulators in tag/payload slots, as #742 does for
-  numeric unions, once identity is unobservable.
+- **Box elimination where it is proven**: beyond `isinstance()` tests, keep numeric `Any` loop
+  accumulators in tag/payload slots, as #742 does for numeric unions, once identity is
+  unobservable, and float payloads unboxed across a loop.
+- **Widening**: a function that another function's call has taken the return type of, a
+  closure's cell and a generator's frame, which would need their users compiled again too.
 - **Typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: keyword arguments and `*args` through a generic binding entry; builtin functions
