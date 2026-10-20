@@ -1514,7 +1514,7 @@ def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) ->
                 unset = self.scalar('xor', [Val(self.mem_load(Val(self.fgep(ov, ci.fflag[k]), "*bool")).v, 'bool'), Val('true', 'bool')])
                 self.guard(unset, f"KeyError: '{k}'")
             args.append(self.vnode(self.getfield(ov, self.field(ov, k), k)))
-        r = self.percent(fmt, mk("tuple", "", self.line, args)) if what == "%" else self.str_format(fmt, "format", args)
+        r = self.percent(fmt, mk("tuple", "", self.line, args), False) if what == "%" else self.str_format(fmt, "format", args)
         vals.append(r)
         blocks.append(self.cur)
         self.br(end)

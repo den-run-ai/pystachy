@@ -1,0 +1,41 @@
+2 8 9 7 7 8
+[      x€] [   x€    ] [x€] [x€*****] [000000x€]
+9 x€  x|
+x€    |    x€|x€|
+ValueError Invalid format specifier 'x€' for object of type 'int'
+5 8 9 7 7 8
+[   Á¿abc] [  Á¿abc  ] [Á¿] [Á¿a****] [000Á¿abc]
+9 Á¿abc   x|
+Á¿abc | Á¿abc|Á¿a|
+ValueError Invalid format specifier 'Á¿abc' for object of type 'int'
+5 8 9 7 7 8
+[   â‚abc] [  â‚abc  ] [â‚] [â‚a****] [000â‚abc]
+9 â‚abc   x|
+â‚abc | â‚abc|â‚a|
+ValueError Invalid format specifier 'â‚abc' for object of type 'int'
+5 8 9 7 7 8
+[   õ€€€z] [  õ€€€z  ] [õ€] [õ€€****] [000õ€€€z]
+9 õ€€€z   x|
+õ€€€z | õ€€€z|õ€€|
+ValueError Invalid format specifier 'õ€€€z' for object of type 'int'
+4 8 9 7 7 8
+[    ô€€] [  ô€€   ] [ô] [ô€****] [0000ô€€]
+9 ô€€    x|
+ô€€  |  ô€€|ô€|
+ValueError Invalid format specifier 'ô€€' for object of type 'int'
+3 8 9 7 7 8
+[     à€¯] [   à€¯   ] [à€] [à€¯****] [00000à€¯]
+9 à€¯ x|
+à€¯   |   à€¯|à€¯|
+ValueError Invalid format specifier 'à€¯' for object of type 'int'
+3 8 9 7 7 8
+[     Ã©€Ã¼] [   Ã©€Ã¼   ] [Ã©€] [Ã©€Ã¼****] [00000Ã©€Ã¼]
+9 Ã©€Ã¼ x|
+Ã©€Ã¼   |   Ã©€Ã¼|Ã©€Ã¼|
+ValueError Invalid format specifier 'Ã©€Ã¼' for object of type 'int'
+3 8 9 7 7 8
+[     abc] [   abc   ] [ab] [abc****] [00000abc]
+9 abc x|
+abc   |   abc|abc|
+ValueError Invalid format specifier 'abc' for object of type 'int'
+[exit 0]
