@@ -1,9 +1,11 @@
 # Advisory configuration variants (docs/testing.md#configuration-variants): make variants, the corpus
-# JIT and AOT in configurations that CI's verification does not test and that must change no result,
-# a variant in a job of its own: the IR passes off in the rows of a covering array of their pairs
-# (PYSTACHY_OPT), and the runtime and AOT programs built at -O0 (PYSTACHY_CFLAGS). A failed test fails
-# a run; nothing waits for it. Daily and on demand, and on the pull requests and pushes to main that
-# change it. The matrix lists tools/variants.sh's variants, which rejects a name it lacks.
+# JIT and AOT in configurations that CI's verification does not test and that must change no result:
+# the IR passes off in the rows of a covering array of their pairs (PYSTACHY_OPT), and the runtime and
+# AOT programs built at -O0 (PYSTACHY_CFLAGS). Each variant runs in four shards of the corpus, each in a
+# job of its own, as CI's groups do: under ten minutes of work, within a 15-minute limit (Lint's
+# tools/test_workflow_limits.py). A failed test fails a run; nothing waits for it. Daily and on demand,
+# and on the pull requests and pushes to main that change it. The matrix lists tools/variants.sh's
+# variants, which rejects a name it lacks.
 name: Variants
 
 on:
@@ -14,10 +16,12 @@ on:
     branches: [main]
     paths:
       - .github/workflows/variants.yml
+      - tools/shard_cases.sh
       - tools/variants.sh
   pull_request:
     paths:
       - .github/workflows/variants.yml
+      - tools/shard_cases.sh
       - tools/variants.sh
 
 concurrency:
@@ -29,13 +33,15 @@ permissions:
 
 jobs:
   variant:
-    name: variant ${{ matrix.variant }} (JIT and AOT)
+    name: variant ${{ matrix.variant }} (shard ${{ matrix.shard }}, JIT and AOT)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # (the compiler's build, then a quarter of the corpus: about 5 minutes of work)
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         variant: [opt-1, opt-2, opt-3, opt-4, opt-5, cflags-O0]
+        shard: [0/4, 1/4, 2/4, 3/4]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -57,13 +63,14 @@ jobs:
         env:
           PY: python3
           VARIANTS: ${{ matrix.variant }}
+          VARIANTS_SHARD: ${{ matrix.shard }}
         run: tools/variants.sh
 
       - name: Upload the log
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: variant-${{ matrix.variant }}
+          name: variant-${{ matrix.variant }}-${{ strategy.job-index }}
           path: build/variants
           if-no-files-found: ignore
           retention-days: 14

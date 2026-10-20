@@ -1,13 +1,15 @@
 # Report-only coverage (docs/testing.md#compiler-coverage, #native-runtime-coverage). make coverage: the
 # CPython-hosted compiler's own source under coverage.py, while it runs the differential, rejection and
-# deviation suite (JIT and AOT, in three shards), the FFI and runtime-cache suites, its unit tests and
-# the IR checks of the programs the corpus does not compile (pystachy.py, runtime.py, bench/, tests/ir/),
-# each part in a job of its own, which a report job combines. make runtime-coverage: the native
-# runtime's C code under clang's source-based coverage, while the native compiler's programs run the
-# corpus and the FFI suite. A failed test, or a process that left no data, fails a run; no percentage
-# does, and nothing waits for it. Daily and on demand, and on the pull requests and pushes to main that
-# change its setup or the suites' runners. A pull request's run, and one run by hand (input base, by
-# default origin/main), also lists the changed code that no suite ran (COVERAGE_BASE), for review.
+# deviation suite (JIT and AOT, in eight shards), the FFI and runtime-cache suites, its unit tests and
+# the IR checks of the programs the corpus does not compile (pystachy.py, runtime.py, bench/, tests/ir/).
+# make runtime-coverage: the native runtime's C code under clang's source-based coverage, while the
+# native compiler's programs run the corpus (in six shards) and the FFI suite. Each part runs in a job
+# of its own, as CI's groups do: under ten minutes of work, within a 15-minute limit (Lint's
+# tools/test_workflow_limits.py); a report job for each combines them. A failed test, or a process that
+# left no data, fails a run; no percentage does, and nothing waits for it. Daily and on demand, and on
+# the pull requests and pushes to main that change its setup or the suites' runners. A pull request's
+# run, and one run by hand (input base, by default origin/main), also lists the changed code that no
+# suite ran (COVERAGE_BASE), for review.
 # Each run on main also commits its results to the badges branch, which the README's badges read
 # (coverage.json and coverage.md, runtime-coverage.json and runtime-coverage.md), from a job of its
 # own, which may write and runs no test.
@@ -34,6 +36,7 @@ on:
       - tools/coverage_report.py
       - tools/requirements-dev.txt
       - tools/runtime_coverage.sh
+      - tools/shard_cases.sh
   pull_request:
     paths:
       - .coveragerc
@@ -45,6 +48,7 @@ on:
       - tools/coverage_report.py
       - tools/requirements-dev.txt
       - tools/runtime_coverage.sh
+      - tools/shard_cases.sh
 
 concurrency:
   group: coverage-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
@@ -57,23 +61,22 @@ jobs:
   hosted:
     name: hosted compiler coverage (${{ matrix.name }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # (the corpus's eighth: 4-7 minutes of work on runners that took 9-14 for its third)
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: corpus 0 of 3
-            suites: corpus
-            shard: 0/3
-          - name: corpus 1 of 3
-            suites: corpus
-            shard: 1/3
-          - name: corpus 2 of 3
-            suites: corpus
-            shard: 2/3
-          - name: ffi, cache, unit, ir
-            suites: ffi cache unit ir
-            shard: ''
+          - {name: corpus 0 of 8, suites: corpus, shard: 0/8}
+          - {name: corpus 1 of 8, suites: corpus, shard: 1/8}
+          - {name: corpus 2 of 8, suites: corpus, shard: 2/8}
+          - {name: corpus 3 of 8, suites: corpus, shard: 3/8}
+          - {name: corpus 4 of 8, suites: corpus, shard: 4/8}
+          - {name: corpus 5 of 8, suites: corpus, shard: 5/8}
+          - {name: corpus 6 of 8, suites: corpus, shard: 6/8}
+          - {name: corpus 7 of 8, suites: corpus, shard: 7/8}
+          - {name: 'ffi, ir', suites: ffi ir, shard: ''}
+          - {name: 'cache, unit', suites: cache unit, shard: ''}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -111,7 +114,7 @@ jobs:
     name: hosted compiler coverage (report)
     needs: hosted
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -154,16 +157,27 @@ jobs:
           retention-days: 14
 
   runtime:
-    name: native runtime coverage (JIT and AOT)
+    name: native runtime coverage (${{ matrix.name }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # (the compiler's build, then the corpus's sixth: 4-7 minutes where all of it took 10-16)
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: corpus 0 of 6, suites: corpus, shard: 0/6}
+          - {name: corpus 1 of 6, suites: corpus, shard: 1/6}
+          - {name: corpus 2 of 6, suites: corpus, shard: 2/6}
+          - {name: corpus 3 of 6, suites: corpus, shard: 3/6}
+          - {name: corpus 4 of 6, suites: corpus, shard: 4/6}
+          - {name: corpus 5 of 6, suites: corpus, shard: 5/6}
+          - {name: ffi, suites: ffi, shard: ''}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -175,18 +189,60 @@ jobs:
       - name: The native compiler (make)
         run: make PY=python3
 
-      - name: tools/runtime_coverage.sh (make runtime-coverage)
+      - name: tools/runtime_coverage.sh (a part of make runtime-coverage)
+        env:
+          PY: python3
+          RUNTIME_COVERAGE_SUITES: ${{ matrix.suites }}
+          RUNTIME_COVERAGE_SHARD: ${{ matrix.shard }}
+          RUNTIME_COVERAGE_REPORT: '0'
+        run: tools/runtime_coverage.sh
+
+      - name: Upload the part
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: runtime-coverage-part-${{ strategy.job-index }}
+          path: build/runtime-coverage/parts
+          if-no-files-found: error
+          retention-days: 14
+
+  runtime-report:
+    name: native runtime coverage (report)
+    needs: runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0   # (the merge base of the changes the summary lists)
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: LLVM 18 toolchain
+        run: tools/setup.sh --minimal
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          pattern: runtime-coverage-part-*
+          path: build/runtime-coverage/parts
+          merge-multiple: true
+
+      - name: tools/runtime_coverage.sh --report (the parts combined)
         env:
           PY: python3
           COVERAGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base || '' }}
-        run: tools/runtime_coverage.sh
+        run: tools/runtime_coverage.sh --report
 
       - name: Job summary
         if: always()
         run: if [ -f build/runtime-coverage/summary.md ]; then cat build/runtime-coverage/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Upload the report
-        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: runtime-coverage
@@ -196,13 +252,14 @@ jobs:
             build/runtime-coverage/lcov.info
             build/runtime-coverage/summary.md
             build/runtime-coverage/badge.json
-            build/runtime-coverage/*.log
+            build/runtime-coverage/parts/*.json
+            build/runtime-coverage/parts/*.log
           if-no-files-found: error
           retention-days: 14
 
   badge:
     name: publish main's coverage to the badges branch
-    needs: [hosted-report, runtime]
+    needs: [hosted-report, runtime-report]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -218,7 +275,7 @@ jobs:
           name: coverage
           path: report
 
-      - if: needs.runtime.result == 'success'
+      - if: needs.runtime-report.result == 'success'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
           name: runtime-coverage

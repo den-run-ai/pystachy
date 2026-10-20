@@ -185,7 +185,7 @@ cache, so the runtime's build is measured too. `make coverage` fails when a test
 is missing, never because of a percentage: there is no threshold.
 
 `COVERAGE_SHARD=I/N` limits the corpus to the cases `I`, `I + N`, `I + 2N`... in the order of
-`tests/verify.sh`'s shards, and `COVERAGE_REPORT=0` leaves out the report.
+`tests/verify.sh`'s shards (`tools/shard_cases.sh`), and `COVERAGE_REPORT=0` leaves out the report.
 `tools/coverage_report.py` combines such parts later. It first checks that every part passed
 with complete data, that no suite was measured twice, that no shard is missing and that all
 parts measured one commit.
@@ -203,7 +203,12 @@ profile runtime (Ubuntu's `libclang-rt-18-dev`, which `tools/setup.sh` installs)
 `build/runtime-coverage/`: `html/` (llvm-cov's annotated source, with branch counts),
 `summary.md` (lines, branches, functions and regions for each file and for each section of
 `runtime.c`: the collector, strings, arithmetic, lists, dicts, sets, I/O, exceptions and the
-rest), `coverage.json` (llvm-cov's summary), `lcov.info`, `badge.json` and the suites' logs.
+rest), `coverage.json` (llvm-cov's summary), `lcov.info`, `badge.json` and `parts/`: each part's
+(a suite's, or a shard's of the corpus) profile, counts and log. `RUNTIME_COVERAGE_SHARD=I/N` and
+`RUNTIME_COVERAGE_REPORT=0` measure one part, as for the compiler's coverage, and
+`tools/runtime_coverage.sh --report` combines the parts in `parts/`. It first checks that every
+part passed with a profile, that no suite was measured twice, that no shard is missing and that
+every part measured the commit whose sources the report's objects are compiled from.
 
 Each instrumented program adds its counts at exit to one profile for each kind of binary (the
 JIT tier's shared runtime, AOT executables, extension modules); a program that ends by a signal,
@@ -242,10 +247,12 @@ it lists more.
 
 The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
 demand, and on pull requests and pushes to `main` that change its setup or the suites' runners.
-The compiler's coverage runs in four parallel jobs (the corpus in three shards; the FFI,
-runtime-cache, unit and IR suites in the fourth) and a fifth combines them; the runtime's runs
-in a job of its own, which bootstraps the native compiler first. Job summaries show the summaries, and
-the reports are workflow artifacts. After each run on `main`, a separate job, which runs no
+The compiler's coverage runs in ten parallel jobs (the corpus in eight shards, the FFI and IR
+suites in one, the runtime-cache and unit suites in another) and the runtime's in seven (the
+corpus in six shards, each after building the native compiler, and the FFI suite); a report job
+for each combines its parts. As for CI's groups, each job targets under ten minutes of work
+within a 15-minute limit. Job summaries show the summaries, and the reports are workflow
+artifacts. After each run on `main`, a separate job, which runs no
 tests, commits the summaries and badges of the reports that passed to the `badges` branch, which
 the README's badges read:
 [`coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md) and
@@ -268,12 +275,13 @@ allocation, and only that build showed `open()` keeping alive the writer it coll
 (`tests/rt_list_vacated.py`). With the fix reverted, the runtime built at `-O0`, `-O1`, `-O3`,
 `-Os` or `-Oz`, or with LLVM's basic or PBQP register allocator, still passes.
 
-`VARIANTS="opt-1 cflags-O0"` selects variants, `FILES=...` cases and `MODES=jit` one tier. The
-script drops the caller's settings that verification drops, builds each variant's runtime in a
-cache of its own and writes the logs to `build/variants/`, so run one at a time in a checkout.
-Each variant takes about as long as `make test`. The
-[Variants workflow](../.github/workflows/variants.yml) runs each one in a job of its own, daily,
-on demand and when the script or the workflow changes; no check requires it.
+`VARIANTS="opt-1 cflags-O0"` selects variants, `FILES=...` cases, `VARIANTS_SHARD=I/N` a shard of
+the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops the caller's
+settings that verification drops, builds each variant's runtime in a cache of its own and writes
+the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
+long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
+four shards, each in a job of its own (24 jobs, each about five minutes after the compiler's
+build), daily, on demand and when the script or the workflow changes; no check requires it.
 
 ## Continuous integration
 
@@ -352,6 +360,12 @@ The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, d
 setup changes, and no check requires it; [reading coverage](#reading-coverage) describes it. So
 does the [Variants workflow](../.github/workflows/variants.yml), which
 [configuration variants](#configuration-variants) describes.
+
+Every job of every workflow has a time limit of at most 15 minutes, which Lint checks
+(`tools/test_workflow_limits.py`): as for CI's groups, the target is under ten minutes of work,
+and a job that needs more is sharded rather than given a longer limit. Only the release
+workflow's jobs keep longer limits, which the check holds them to: its `prepare` job waits up to
+20 minutes for CI on the release commit.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from

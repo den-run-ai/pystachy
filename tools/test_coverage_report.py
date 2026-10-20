@@ -25,6 +25,17 @@ def part(d, name, suite, shard=None, processes=10, data_files=None, commit="c0",
         open(os.path.join(d, "parts", "data." + name), "w").close()
 
 
+def native_part(d, name, suite, shard=None, profiles=3, commit="abc", report="10 passed, 0 failed", seconds=5, data=True):
+    """A part of tools/runtime_coverage.sh's: PART.json, and PART.profdata unless not data."""
+    os.makedirs(os.path.join(d, "parts"), exist_ok=True)
+    m = {"part": name, "suite": suite, "shard": shard, "selected": False, "cases": None, "report": report,
+         "profiles": profiles, "seconds": seconds, "commit": commit, "dirty": False}
+    with open(os.path.join(d, "parts", name + ".json"), "w", encoding="utf-8") as f:
+        json.dump(m, f)
+    if data:
+        open(os.path.join(d, "parts", name + ".profdata"), "w").close()
+
+
 class PctTests(unittest.TestCase):
     def test_coverage_py_rounding(self):
         self.assertEqual(coverage_report.pct(0, 0), "-")
@@ -82,6 +93,25 @@ class PartsTests(unittest.TestCase):
     def test_nothing(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertIn("no parts", coverage_report.parts_of(d)[1][0])
+
+    def native(self, *parts):
+        with tempfile.TemporaryDirectory() as d:
+            for p in parts:
+                native_part(d, *p[0], **p[1])
+            return coverage_report.parts_of(d, native=True)[1]
+
+    def test_native(self):
+        shards = [((f"corpus-{i}", "corpus"), {"shard": [i, 3]}) for i in range(3)]
+        self.assertEqual(self.native(*shards, (("ffi", "ffi"), {})), [])
+        self.assertIn("not all 3", self.native(*shards[:2])[0])
+        self.assertIn("no profile", self.native((("ffi", "ffi"), {"profiles": 0}))[0])
+        self.assertIn("no data", self.native((("ffi", "ffi"), {"data": False}))[0])
+        self.assertIn("different commits", self.native((("corpus", "corpus"), {"commit": "a"}), (("ffi", "ffi"), {"commit": "b"}))[0])
+        # a hosted part is none of tools/runtime_coverage.sh's, nor the other way around
+        self.assertIn("not a part", self.native((("unit", "unit"), {}))[0])
+        with tempfile.TemporaryDirectory() as d:
+            native_part(d, "ffi", "ffi")
+            self.assertIn("no data", coverage_report.parts_of(d)[1][0])
 
 
 DIFF = """diff --git a/src/m.py b/src/m.py
@@ -183,8 +213,8 @@ class RuntimeTests(unittest.TestCase):
                 json.dump({"data": [{"files": files, "totals": total}]}, f)
             with open(os.path.join(d, "lcov.info"), "w", encoding="utf-8") as f:
                 f.write(LCOV)
-            with open(os.path.join(d, "suites.tsv"), "w", encoding="utf-8") as f:
-                f.write("corpus\t10 passed, 0 failed\t5\n")
+            for i in range(2):
+                native_part(d, f"corpus-{i}", "corpus", shard=[i, 2], report=f"{10 + i} passed, 0 failed", seconds=5 + i)
             with open(os.path.join(d, "runtime.c"), "w", encoding="utf-8") as f:
                 f.write(SOURCE)
             with open(os.devnull, "w") as null:
@@ -198,6 +228,7 @@ class RuntimeTests(unittest.TestCase):
             with open(os.path.join(d, "badge.json"), encoding="utf-8") as f:
                 b = json.load(f)
         self.assertIn("lines **60.0%** (3 of 5) and branches **25.0%** (1 of 4)", text)
+        self.assertIn("| corpus | `tests/run.sh`, JIT and AOT (2 shards) | 21 passed, 0 failed | 11 s |", text)
         self.assertIn("| `runtime.c` | 4 | 2 | 50.0% | 4 | 3 | 25.0% | 50.0% | 50.0% |", text)
         # sections: a's lines and its taken branch in "one: the first", b's in "two"
         self.assertIn("| one: the first | 2 | 2 | 100.0% | 2 | 50.0% | 1 | 100.0% |", text)
@@ -205,6 +236,21 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotIn("(declarations)", text)   # no line of it is counted
         self.assertEqual(b["message"], "60.0% lines, 25.0% branches")
         self.assertEqual(b["color"], "red")          # the lower one's
+
+    def test_parts_checked(self):
+        """No summary from incomplete parts, or from parts of another commit than the objects'."""
+        with tempfile.TemporaryDirectory() as d:
+            native_part(d, "corpus-0", "corpus", shard=[0, 2])
+            with open(os.devnull, "w") as null:
+                err, sys.stderr = sys.stderr, null
+                try:
+                    self.assertEqual(coverage_report.runtime(d, "abc", "false"), 1)
+                    os.remove(os.path.join(d, "parts", "corpus-0.json"))
+                    native_part(d, "corpus", "corpus", commit="old")
+                    self.assertEqual(coverage_report.runtime(d, "abc", "false"), 1)
+                finally:
+                    sys.stderr = err
+            self.assertFalse(os.path.exists(os.path.join(d, "summary.md")))
 
 
 if __name__ == "__main__":

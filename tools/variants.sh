@@ -17,7 +17,8 @@
 # logs go to build/variants/ (so a checkout runs one at a time). Fails when a variant fails a test.
 # usage: tools/variants.sh [FILE...]   (as tests/run.sh takes them; default: every case)
 #   env: COMPILER (default ./pystachy), MODES (default "jit aot"), VARIANTS (default: all, in the
-#        order above), PY (default python3, to read OPTS)
+#        order above), VARIANTS_SHARD=I/N (the corpus cases I, I + N, I + 2N... alone, as
+#        tests/verify.sh's shards are: tools/shard_cases.sh), PY (default python3, to read OPTS)
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
 PYS=${COMPILER:-./pystachy}
@@ -31,7 +32,6 @@ W=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-variants.XXXXXX") || exit 1
 trap 'rm -rf "$W"' EXIT
 trap 'exit 130' INT TERM
 L=$ROOT/build/variants
-rm -rf "$L"; mkdir -p "$L" || exit 1
 # opt-N and the PYSTACHY_OPT of row N, one a line
 $PY -I - "$ROOT" > "$W/rows" <<'EOF' || { echo "tools/variants.sh: $PY cannot read OPTS (src/pystachy_compiler/specs.py)" >&2; exit 2; }
 import itertools, sys
@@ -50,6 +50,13 @@ all="$(cut -d' ' -f1 "$W/rows" | tr '\n' ' ')cflags-O0"
 for v in ${VARIANTS:-$all}; do
   case " $all " in *" $v "*) ;; *) echo "tools/variants.sh: no variant $v (the variants: $all)" >&2; exit 2 ;; esac
 done
+if [ -n "${VARIANTS_SHARD:-}" ]; then
+  [ $# = 0 ] || { echo "tools/variants.sh: FILEs or VARIANTS_SHARD, not both" >&2; exit 2; }
+  tools/shard_cases.sh "$VARIANTS_SHARD" > "$W/cases" || exit 2
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$W/cases"
+  [ $# != 0 ] || { echo "tools/variants.sh: shard $VARIANTS_SHARD has no case" >&2; exit 1; }
+fi
+rm -rf "$L"; mkdir -p "$L" || exit 1
 failed=
 for v in ${VARIANTS:-$all}; do
   case $v in
@@ -59,7 +66,7 @@ for v in ${VARIANTS:-$all}; do
   t0=$(date +%s)
   env "$set" PYSTACHY_CACHE="$W/cache-$v" tests/run.sh "$PYS" "$MODES" "$@" > "$L/$v.log" 2>&1
   st=$?
-  echo "$v ($set; $MODES): $(tail -1 "$L/$v.log") in $(($(date +%s) - t0)) s"
+  echo "$v ($set; $MODES${VARIANTS_SHARD:+; shard $VARIANTS_SHARD}): $(tail -1 "$L/$v.log") in $(($(date +%s) - t0)) s"
   grep -v '^selected ' "$L/$v.log" | sed '$d' | head -40
   case $st in
     0) ;;

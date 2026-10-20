@@ -13,8 +13,10 @@ DIR/badge.json (both, as a shields.io endpoint badge). It fails on missing or in
 never on a percentage.
 
 The second form writes the summary.md and badge.json of tools/runtime_coverage.sh's DIR from llvm-cov's
-coverage.json and lcov.info there, and its suites.tsv: lines, branches, functions and regions for each
-file, and for each section of runtime.c (its "/* ---------- NAME" comments).
+coverage.json and lcov.info there, and its parts (DIR/parts/: PART.profdata, the part's profiles merged,
+and PART.json, its counts), which it checks as the first form checks its own and against COMMIT, the
+source of the objects that llvm-cov read the profiles through: lines, branches, functions and regions
+for each file, and for each section of runtime.c (its "/* ---------- NAME" comments).
 
 With COVERAGE_BASE set to a git ref (origin/main, a pull request's base), either summary also lists the
 code that changed since the merge base of that ref and HEAD (the working tree's, uncommitted changes
@@ -163,26 +165,30 @@ def runtime_changed(records: dict, changed: dict[str, set[int]]) -> tuple[list[t
     return rows, ln, br
 
 
-def parts_of(d: str) -> tuple[list[dict], list[str]]:
-    """The parts in d/parts/, and what is wrong with them."""
+def parts_of(d: str, native: bool = False) -> tuple[list[dict], list[str]]:
+    """The parts in d/parts/ (tools/coverage.sh's, or with native tools/runtime_coverage.sh's), and what
+    is wrong with them."""
+    suites, tool = (RUNTIME_SUITES, "tools/runtime_coverage.sh") if native else (SUITES, "tools/coverage.sh")
     parts: list[dict] = []
     errors: list[str] = []
     for path in sorted(glob.glob(os.path.join(d, "parts", "*.json"))):
         name = os.path.basename(path)[: -len(".json")]
         with open(path, encoding="utf-8") as f:
             m = json.load(f)
-        m["data"] = os.path.join(d, "parts", "data." + name)
-        if m.get("part") != name or m.get("suite") not in SUITES:
-            errors.append(f"{path}: not a part of tools/coverage.sh's suites")
+        m["data"] = os.path.join(d, "parts", name + ".profdata" if native else "data." + name)
+        if m.get("part") != name or m.get("suite") not in suites:
+            errors.append(f"{path}: not a part of {tool}'s suites")
             continue
         if not os.path.isfile(m["data"]):
             errors.append(f"{name}: no data ({m['data']})")
-        elif m["processes"] == 0 or m["data_files"] != m["processes"] - (1 if m["suite"] == "cache" else 0):
+        elif native and m["profiles"] == 0:
+            errors.append(f"{name}: no profile")
+        elif not native and (m["processes"] == 0 or m["data_files"] != m["processes"] - (1 if m["suite"] == "cache" else 0)):
             errors.append(f"{name}: {m['data_files']} coverage data files, for {m['processes']} processes")
         parts.append(m)
     if not parts and not errors:
-        errors.append(f"no parts in {os.path.join(d, 'parts')} (tools/coverage.sh writes them)")
-    for s in SUITES:
+        errors.append(f"no parts in {os.path.join(d, 'parts')} ({tool} writes them)")
+    for s in suites:
         mine = [m for m in parts if m["suite"] == s]
         shards = sorted(tuple(m["shard"]) for m in mine if m["shard"] is not None)
         if len(mine) > 1 and (len(shards) != len(mine) or len({n for _, n in shards}) != 1):
@@ -329,14 +335,28 @@ def lcov(path: str) -> dict[str, dict]:
 
 
 def runtime(d: str, rev: str, dirty: str, source: str = os.path.join(ROOT, "runtime.c")) -> int:
+    parts, errors = parts_of(d, native=True)
+    errors += [f"{m['part']} measured {m['commit']}, but llvm-cov read the profiles through objects of {rev}"
+               for m in parts if m["commit"] != rev]
+    if errors:
+        for e in errors:
+            print(f"tools/coverage_report.py: {e}", file=sys.stderr)
+        return 1
     with open(os.path.join(d, "coverage.json"), encoding="utf-8") as f:
         export = json.load(f)["data"][0]
     records = lcov(os.path.join(d, "lcov.info"))
     suites = []
-    with open(os.path.join(d, "suites.tsv"), encoding="utf-8") as f:
-        for line in f:
-            name, report, secs = line.rstrip("\n").split("\t")
-            suites.append((name, report, int(secs)))
+    for s in RUNTIME_SUITES:
+        mine = [m for m in parts if m["suite"] == s]
+        if not mine:
+            continue
+        runs = RUNTIME_SUITES[s]
+        if mine[0]["shard"] is not None:
+            runs += f" ({len(mine)} shards)"
+        if any(m["selected"] for m in mine):
+            runs += f", {sum(m['cases'] for m in mine)} cases selected"
+        suites.append((s, runs, checks(mine), sum(m["seconds"] for m in mine)))
+    dirty = "true" if dirty == "true" or any(m["dirty"] for m in parts) else "false"
     t = export["totals"]
     ln, br, fn, rg = t["lines"], t["branches"], t["functions"], t["regions"]
     rt = records.get("runtime.c", {"functions": {}})
@@ -356,7 +376,7 @@ def runtime(d: str, rev: str, dirty: str, source: str = os.path.join(ROOT, "runt
         "| Suite | Runs | Checks | Time |",
         "|---|---|---|---:|",
     ]
-    lines += [f"| {n} | {RUNTIME_SUITES[n]} | {r} | {s} s |" for n, r, s in suites]
+    lines += [f"| {n} | {runs} | {r} | {secs} s |" for n, runs, r, secs in suites]
     base = os.environ.get("COVERAGE_BASE", "")
     if base != "":
         commit, changed = changed_lines(base, ["runtime.c", "pyembed.c", "pyext.c", "ryu"])

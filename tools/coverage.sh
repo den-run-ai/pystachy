@@ -22,9 +22,10 @@
 # usage: tools/coverage.sh [FILE...]   env: PY (default python3), which has coverage.py
 #        (pip install -r tools/requirements-dev.txt); COVERAGE_SUITES, the suites to run (default
 #        "corpus ffi cache unit ir", or corpus alone for FILEs); COVERAGE_SHARD=I/N, the corpus cases I,
-#        I + N, I + 2N... alone, as tests/verify.sh's shards are; COVERAGE_REPORT=0, no report (CI
-#        measures the parts in jobs of their own, then combines them); COVERAGE_BASE=REF, the summary
-#        also lists the code changed since REF's merge base with HEAD that no suite ran
+#        I + N, I + 2N... alone, as tests/verify.sh's shards are (tools/shard_cases.sh);
+#        COVERAGE_REPORT=0, no report (CI measures the parts in jobs of their own, then combines them);
+#        COVERAGE_BASE=REF, the summary also lists the code changed since REF's merge base with HEAD
+#        that no suite ran
 cd "$(dirname "$0")/.." || exit 1
 R=$(pwd)
 PY=${PY:-python3}
@@ -36,15 +37,10 @@ for s in $SUITES; do
   case $s in corpus | ffi | cache | unit | ir) ;; *) echo "tools/coverage.sh: no suite '$s' (corpus, ffi, cache, unit, ir)" >&2; exit 2 ;; esac
 done
 si=; sn=
-case ${COVERAGE_SHARD:-} in
-  '') ;;
-  [0-9]*/[0-9]*) si=${COVERAGE_SHARD%/*}; sn=${COVERAGE_SHARD#*/} ;;
-  *) si=x ;;
-esac
-case $si$sn in *[!0-9]*) echo "tools/coverage.sh: COVERAGE_SHARD=$COVERAGE_SHARD is not I/N" >&2; exit 2 ;; esac
-if [ -n "$sn" ]; then
-  [ "$sn" -gt 0 ] && [ "$si" -lt "$sn" ] || { echo "tools/coverage.sh: COVERAGE_SHARD=$COVERAGE_SHARD: no shard $si of $sn" >&2; exit 2; }
+if [ -n "${COVERAGE_SHARD:-}" ]; then
   [ $# = 0 ] || { echo "tools/coverage.sh: FILEs or COVERAGE_SHARD, not both" >&2; exit 2; }
+  tools/shard_cases.sh "$COVERAGE_SHARD" > /dev/null || exit 2
+  si=${COVERAGE_SHARD%/*}; sn=${COVERAGE_SHARD#*/}
 fi
 rm -rf "$C" && mkdir -p "$C/parts" || exit 1
 W=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-coverage.XXXXXX") || exit 1
@@ -97,16 +93,7 @@ part() {
 
 nsel=$#
 if [ -n "$sn" ]; then
-  # the corpus cases whose position in C order is I modulo N (tests/verify.sh's shard_cases)
-  (
-    export LC_ALL=C
-    k=0
-    for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do
-      [ -f "$f" ] || continue
-      [ $((k % sn)) != "$si" ] || printf '%s\n' "$f"
-      k=$((k + 1))
-    done
-  ) > "$W/cases" || exit 1
+  tools/shard_cases.sh "$COVERAGE_SHARD" > "$W/cases" || exit 1
   while IFS= read -r f; do set -- "$@" "$f"; done < "$W/cases"
   [ $# != 0 ] || { echo "tools/coverage.sh: shard $si of $sn has no case" >&2; exit 1; }
 fi
