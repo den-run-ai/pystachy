@@ -746,7 +746,7 @@ supported alternatives.
   `Any` value or its method, and storage that holds `None` before an `Any` value but cannot be
   made `Any` from its first store: a generator's or closure's local, a module variable that a
   function gives the `Any` value, a field that code outside its class's methods gives it, a
-  display of `None` items (`tests/errors/dynany_*.py`)
+  display of `None` items (`tests/errors/inference/dynany_*.py`)
 
 ### Exceptions and exception classes
 

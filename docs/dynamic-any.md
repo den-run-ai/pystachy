@@ -31,7 +31,7 @@ boundary where a concrete value flows into `Any` storage.
 
 Storage that an unannotated first value types, and that a later store gives an `Any` value, is
 `Any` from that first store, as a CPython variable holds whatever was assigned last
-(`tests/dynany_widen.py`):
+(`tests/programs/inference/dynany_widen.py`):
 
 - **Locals and unannotated parameters** (`total = 0`, then `total += x` with an `Any` `x` in a
   loop): the function is compiled again with them dynamic. Other locals keep their types: in
@@ -47,7 +47,7 @@ Storage that an unannotated first value types, and that a later store gives an `
   over `Any` items, an item of a container of `Any` items, arithmetic, an attribute or a method
   result of an `Any` value, or a call of a function declared to return `Any`.
 - **Locals first assigned `None`**: `found = None`, then `found = x` with an `Any` `x`, also
-  where the code that assigns the `Any` value never runs (`tests/dynany_none_first.py`).
+  where the code that assigns the `Any` value never runs (`tests/programs/inference/dynany_none_first.py`).
 
 Where something besides the function being compiled has already taken the first type, the
 storage keeps it, and storing an `Any` value of another type raises `TypeError` (a
@@ -64,12 +64,12 @@ or closure's local (`last: Any = None`), a module variable that holds `None` unt
 gives it an `Any` value (`g: Any = None`), a field that `__init__` sets to `None` and code outside
 its class's methods gives an `Any` value (`self.v: Any = None`), and a display of `None` items
 that an `Any` value fills (`xs: list[Any] = [None] * n`, `d: dict[str, Any] = {...}`;
-`tests/errors/dynany_none_*.py`).
+`tests/errors/inference/dynany_none_*.py`).
 
 [Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
 variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
 value too is `Any` instead, and a union's value becomes an `Any` value by the member its tag
-selects (`tests/dynany_unions.py`). A display of items of several types (`[1, 2.5]`) is still a
+selects (`tests/programs/inference/dynany_unions.py`). A display of items of several types (`[1, 2.5]`) is still a
 container of `Any` values, as above, which any later store fits.
 
 ## Representation
@@ -104,7 +104,7 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   method's box is its own identity for `is` and `id()`, as each evaluation of `o.m` makes a new
   method object; a def's box is a constant, whose payload is its DynType's address, and a
   closure's holds the env its def made for it, so different functions have different `id()`s
-  (`tests/dynany_fn_identity.py`).
+  (`tests/programs/inference/dynany_fn_identity.py`).
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
@@ -128,7 +128,7 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   the builtin types and classes. `isinstance(x, int)` keeps the box, since a `bool` passes it
   too, but proves that its payload is an int's or a bool's: arithmetic and comparisons on it
   read the payload as an int, whose results are a bool's too but for `&`, `|` and `^` of two
-  bools and `**`, which stay dynamic (`tests/dynany_proven_int.py`). A concrete annotation that
+  bools and `**`, which stay dynamic (`tests/programs/inference/dynany_proven_int.py`). A concrete annotation that
   receives an `Any` value checks the box's type where it unboxes it (a union's: one of its
   members), raising
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
@@ -169,9 +169,9 @@ the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code compares them: a subclass
 or reflected ordering method first, also where the base class has none, and `x == x` runs
 `__eq__` too, while a container's search and a dict's lookup find an object as itself first.
 `!=` runs `__ne__` the same way where the class or a subclass defines it (`pys_dyn_ne`), and
-otherwise inverts `==` (`tests/dynany_subclass_eq.py`, `tests/dynany_subclass_cmp.py`,
-`tests/dynany_ne.py`). Objects of unrelated classes compare by identity. Arithmetic runs
-reflected methods in CPython's order too (`tests/dynany_reflected.py`), which typed code
+otherwise inverts `==` (`tests/programs/inference/dynany_subclass_eq.py`, `tests/programs/inference/dynany_subclass_cmp.py`,
+`tests/programs/inference/dynany_ne.py`). Objects of unrelated classes compare by identity. Arithmetic runs
+reflected methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
 
 ## Policy and programs that do not opt in
@@ -186,9 +186,9 @@ holds, and the lengths of the strings that hold them. The 35 that opt in differ,
 
 ## What works
 
-The tests are `tests/dynany_*.py` (differential, JIT and AOT, also with a collection at every
-allocation), `tests/errors/dynany_*.py` and `tests/deviations/dynany_*.py`.
-`tests/dynany_graph.py` is the acceptance workload: a deepcopy-style copy of a heterogeneous
+The tests are `tests/programs/inference/dynany_*.py` (differential, JIT and AOT, also with a collection at every
+allocation), `tests/errors/inference/dynany_*.py` and `tests/deviations/dynany_*.py`.
+`tests/programs/inference/dynany_graph.py` is the acceptance workload: a deepcopy-style copy of a heterogeneous
 object graph. One memo, keyed by `id()`, holds lists, dicts, tuples, scalars and objects of six
 unrelated classes; the graph has repeated references (a shared list in three places), cycles
 (parents, a registry that holds itself), a field whose type changes (an `int`, then a `float`,

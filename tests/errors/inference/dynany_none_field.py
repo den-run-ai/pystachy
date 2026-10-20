@@ -3,7 +3,7 @@
 # A field that __init__ sets to None, and that a function other than the class's methods gives
 # an Any value: until then its None is a null pointer, which `c.v is None` compiled so far tests,
 # not an Any value's box of None. Annotated (self.v: Any = None), it works: see
-# tests/dynany_none_first.py.
+# tests/programs/inference/dynany_none_first.py.
 from typing import Any
 
 

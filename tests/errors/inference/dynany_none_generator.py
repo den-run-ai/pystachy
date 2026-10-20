@@ -2,7 +2,7 @@
 # pystachy: dynamic-any
 # A generator's local is not made dynamic from its first store as other functions' locals are
 # (its frame is laid out once), so its None would stay a null pointer that the Any value's
-# storage reads. Annotated (last: Any = None), it works: see tests/dynany_none_first.py.
+# storage reads. Annotated (last: Any = None), it works: see tests/programs/inference/dynany_none_first.py.
 from typing import Any
 
 

@@ -2,7 +2,7 @@
 # pystachy: dynamic-any
 # A module variable that holds None until a function gives it an Any value: its None so far is a
 # null pointer, not an Any value's box of None. Annotated (g: Any = None), it works: see
-# tests/dynany_none_first.py.
+# tests/programs/inference/dynany_none_first.py.
 from typing import Any
 
 

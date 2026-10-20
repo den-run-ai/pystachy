@@ -3,7 +3,7 @@
 # that its None is an Any value's box of None also where the loop that gives it its Any value
 # never runs. A module variable, a container of None items, a field that code outside its class's
 # methods gives an Any value and a generator's local that are given an Any value later are annotated
-# Any (unannotated, they are rejected: tests/errors/dynany_none_*).
+# Any (unannotated, they are rejected: tests/errors/inference/dynany_none_*).
 from typing import Any
 
 

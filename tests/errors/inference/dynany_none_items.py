@@ -2,7 +2,7 @@
 # pystachy: dynamic-any
 # A list of None items, typed by its first fill, that an Any value fills: its None items are null
 # pointers, not an Any value's boxes of None. Annotated (xs: list[Any] = [None] * 3), it works:
-# see tests/dynany_none_first.py.
+# see tests/programs/inference/dynany_none_first.py.
 from typing import Any
 
 
