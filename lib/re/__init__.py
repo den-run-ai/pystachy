@@ -117,6 +117,8 @@ backward compatibility.
 """
 from typing import TypeVar
 
+import _pystachy_re_specialized
+
 from . import _sre
 from ._constants import *
 
@@ -1962,6 +1964,8 @@ class Pattern:
         self._indexgroup: list[str | None] = [None] * (groups + 1)
         for k in groupindex:
             self._indexgroup[groupindex[k]] = k
+        # (not _sre's) the matcher generated for this pattern and code, or -1: see _run_match
+        self._fast = _pystachy_re_specialized.lookup(pattern, flags, code)
 
     def _state(self, string: str, pos: int, endpos: int) -> "_sre.State[list[int]]":
         # state_init: pos and endpos clamped to the string, then made code point indices; where one
@@ -1987,6 +1991,7 @@ class Pattern:
                         self._prefilter)
         st.pos = pos
         st.endpos = endpos
+        st.fast = self._fast
         return st
 
     def _new_match(self, string: str, st: "_sre.State[_S]") -> "Match":
@@ -2003,6 +2008,21 @@ class Pattern:
                 mark.append(-1)
             j += 2
         return Match(self, string, mark, st.pos, st.endpos, st.lastindex)
+
+    def _run_match(self, st: "_sre.State[_S]") -> int:
+        # (not _sre's) sre_match() at the top level, by the matcher of a program's own build of
+        # _pystachy_re_specialized for this pattern and code (tools/re_specialize.py), where the
+        # state has one (st.fast: a subject read in place); where it declines (group repeats nested
+        # too deep), the state is as the caller left it, and sre_match() runs. (A search runs it at
+        # each position it tries: _sre._attempt.)
+        if st.fast >= 0:
+            ptr = st.ptr
+            r = _pystachy_re_specialized.match(st.fast, st)
+            if r >= 0:
+                return r
+            st.ptr = ptr
+            st.reset()
+        return _sre.sre_match(st, self._code, 0, True)
 
     # Each operation runs over a State of the string's bytes where it is _flat, else of its decoded
     # code points: the methods below with a State parameter are compiled for both.
@@ -2022,7 +2042,7 @@ class Pattern:
     def _match(self, string: str, st: "_sre.State[_S]", whole: bool) -> "Match | None":
         st.ptr = st.start
         st.match_all = whole
-        if _sre.sre_match(st, self._code, 0, True) == 0:
+        if self._run_match(st) == 0:
             return None
         return self._new_match(string, st)
 
