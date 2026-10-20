@@ -1,4 +1,4 @@
-"""A program's own module called ffi (tests/ffi_own.py): on the module path, it comes before
+"""A program's own module called ffi (tests/programs/language/ffi_own.py): on the module path, it comes before
 Pystachy's builtin ffi, as it comes first under CPython, whatever names it defines"""
 c_int = 7
 

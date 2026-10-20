@@ -16,11 +16,15 @@ on:
     branches: [main]
     paths:
       - .github/workflows/variants.yml
+      - tests/corpus.sh
+      - tests/run.sh
       - tools/shard_cases.sh
       - tools/variants.sh
   pull_request:
     paths:
       - .github/workflows/variants.yml
+      - tests/corpus.sh
+      - tests/run.sh
       - tools/shard_cases.sh
       - tools/variants.sh
 

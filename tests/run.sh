@@ -1,30 +1,33 @@
 #!/bin/sh
-# Differential tests. Every tests/*.py must print exactly what CPython printed
-# (stdout + exit code, recorded in tests/*.out) both JIT-run and AOT-compiled; where
-# CPython wrote to stderr, the last line (tests/*.err) must match too, and where it wrote
-# none (no tests/NAME.err), the program must write none either; an AOT build writes none.
-# Stdin comes from tests/*.in; where tests/NAME.full exists, stdout is /dev/full (writing it
-# fails); where tests/NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
+# Differential tests (the corpus's layout: tests/corpus.sh). Every program tests/programs/AREA/NAME.py
+# must print exactly what CPython printed (stdout + exit code, recorded in NAME.out beside it) both
+# JIT-run and AOT-compiled; where CPython wrote to stderr, the last line (NAME.err) must match too,
+# and where it wrote none (no NAME.err), the program must write none either; an AOT build writes
+# none. Stdin comes from NAME.in; where NAME.full exists, stdout is /dev/full (writing it fails);
+# where NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
 # A test program dies by no signal but SIGTERM and SIGINT: bash as sh reports a death by another
 # one with the process ID (and "core dumped" or not, by ulimit -c: 0 here, so that no core file
 # lands in the tree).
 # PYSTACHY_GC_STRESS_PROGRAM=N makes the programs collect every N allocations (JIT and AOT), whatever
 # PYSTACHY_GC_STRESS gives the compiler that builds them.
-# Every tests/errors/*.py must be rejected with the message in its first line (rtmode_*.py as
-# "pystachy rt" compiles runtime.py): exit status 1, and one line on stderr, the diagnostic
-# FILE:LINE: error: MESSAGE, which holds the expected message; and every
-# tests/deviations/*.py must print its hand-written .out (documented deviations from CPython).
-# "pystachy check", which only parses, must accept tests/syntax_*.py and report the error of a
-# tests/errors/syntax_*.py whose error is in its own file.
+# Every tests/errors/AREA/*.py must be rejected with the message in its first line (rtmode_*.py as
+# "pystachy rt" compiles runtime.py; its NAME.path, if any, is PYSTACHY_PATH): exit status 1, and
+# one line on stderr, the diagnostic FILE:LINE: error: MESSAGE, which holds the expected message;
+# and every tests/deviations/*.py must print its hand-written .out (documented deviations from
+# CPython). "pystachy check", which only parses, must accept the programs syntax_*.py and report
+# the error of a rejection syntax_*.py whose error is in its own file.
+# Without FILEs, it runs every case, and fails first if a test lies where none is looked for (a
+# program or rejection directly in tests/, from before the corpus's areas: corpus_strays).
 # The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
 # The cases run in PYSTACHY_JOBS workers at once (default: one per CPU), each taking the next case
 # no other worker has claimed (mkdir is atomic); the report lists them in the same order whatever
 # the number of workers. Worker 0 runs in this shell and is the only one to take the cases about
 # SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
 # usage: tests/run.sh [COMPILER [MODES [FILE...]]]   (default: ./pystachy "jit aot" and every case;
-#        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/str_*.py tests/errors/x.py;
-#        FILEs are relative to the repository root)
+#        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/programs/strings/str_*.py
+#        tests/errors/syntax/x.py; FILEs are relative to the repository root)
 cd "$(dirname "$0")/.." || exit 1
+. tests/corpus.sh
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null
 PYS=${1:-./pystachy}
@@ -33,21 +36,30 @@ if [ $# -gt 2 ]; then shift 2; else set --; fi
 nsel=$#; seen=" "
 for f; do
   f=${f#./}
-  case $f in tests/*.py) [ -f "$f" ] ;; *) false ;; esac || { echo "tests/run.sh: not a test: $f" >&2; exit 2; }
+  case $f in tests/programs/*/*.py | tests/deviations/*.py | tests/errors/*/*.py) [ -f "$f" ] ;; *) false ;; esac || {
+    echo "tests/run.sh: not a test: $f (programs are tests/programs/AREA/*.py, rejections tests/errors/AREA/*.py)" >&2; exit 2; }
   # once each (two copies of a case would write the same files at once, from two workers)
   case $seen in *" $f "*) continue ;; esac
   seen="$seen$f "; set -- "$@" "$f"
 done
 shift $nsel
-[ $nsel != 0 ] || for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do [ -f "$f" ] && set -- "$@" "$f"; done
+T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-tests.XXXXXX") || exit 1
+pids=
+trap 'rm -rf "$T"' EXIT
+if [ $nsel = 0 ]; then
+  corpus_strays > "$T/strays"
+  if [ -s "$T/strays" ]; then
+    echo "tests/run.sh: no run tests these files, which lie outside the corpus's areas (tests/corpus.sh):" >&2
+    cat "$T/strays" >&2; exit 2
+  fi
+  corpus > "$T/corpus"
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$T/corpus"
+fi
 [ $# != 0 ] || { echo "tests/run.sh: no test cases" >&2; exit 2; }
 export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
-T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-tests.XXXXXX") || exit 1
-pids=
-trap 'rm -rf "$T"' EXIT
 # Ctrl-C or TERM: name the cases that were running (on fd 4, this script's stdout), stop the workers
 trap 'for f in "$T"/now.*; do [ -f "$f" ] && echo "INTERRUPTED while running $(cat "$f")" >&4; done; kill $pids 2> /dev/null; exit 130' INT TERM
 exec 3> /dev/full 4>&1
@@ -55,10 +67,10 @@ exec 3> /dev/full 4>&1
 SIG=" $(grep -lE 'kill -INT|KeyboardInterrupt' "$@" | while read -r f; do printf '%s ' "$f"; done)"
 
 # Each case adds to $pass and $fail and prints what the report shows for it.
-program() { # tests/NAME.py
-  n=${1##*/}; n=${n%.py}; in=/dev/null; [ -f "tests/$n.in" ] && in="tests/$n.in"
-  o=1; [ -f "tests/$n.full" ] && o=3
-  mp=$PYSTACHY_PATH; [ -f "tests/$n.path" ] && mp=$(cat "tests/$n.path")
+program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the path without .py)
+  b=${1%.py}; n=${b##*/}; in=/dev/null; [ -f "$b.in" ] && in="$b.in"
+  o=1; [ -f "$b.full" ] && o=3
+  mp=$PYSTACHY_PATH; [ -f "$b.path" ] && mp=$(cat "$b.path")
   for mode in $MODES; do
     # the program's stderr goes to $n.err, an AOT build's to $n.build, which must stay empty (what
     # pystachy run writes before it becomes the program goes to $n.err: it must be nothing too)
@@ -69,11 +81,11 @@ program() { # tests/NAME.py
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.build" &&
         ($XENV "$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     fi
-    if cmp -s "$T/$n.$mode" "tests/$n.out" && [ ! -s "$T/$n.build" ] &&
-      if [ -f "tests/$n.err" ]; then [ "$(tail -1 "$T/$n.err")" = "$(cat "tests/$n.err")" ]; else [ ! -s "$T/$n.err" ]; fi; then
+    if cmp -s "$T/$n.$mode" "$b.out" && [ ! -s "$T/$n.build" ] &&
+      if [ -f "$b.err" ]; then [ "$(tail -1 "$T/$n.err")" = "$(cat "$b.err")" ]; else [ ! -s "$T/$n.err" ]; fi; then
       pass=$((pass + 1)); else
-      fail=$((fail + 1)); echo "FAIL $n ($mode)"; diff "tests/$n.out" "$T/$n.$mode" | head -10
-      if [ -f "tests/$n.err" ]; then echo "  stderr: want '$(cat "tests/$n.err")', got '$(tail -1 "$T/$n.err")'"
+      fail=$((fail + 1)); echo "FAIL $n ($mode)"; diff "$b.out" "$T/$n.$mode" | head -10
+      if [ -f "$b.err" ]; then echo "  stderr: want '$(cat "$b.err")', got '$(tail -1 "$T/$n.err")'"
       elif [ -s "$T/$n.err" ]; then echo "  stderr: want none (CPython wrote none), got:"; fi
       head -5 "$T/$n.err"
       [ ! -s "$T/$n.build" ] || { echo "  build's stderr:"; head -5 "$T/$n.build"; }
@@ -107,13 +119,14 @@ diag() {
   case $line in *.py:[0-9]*": error: "*) ;; *) return 1 ;; esac
   case $line in *"$want"*) ;; *) return 1 ;; esac
 }
-rejection() { # tests/errors/NAME.py
+rejection() { # tests/errors/AREA/NAME.py
   n=${1##*/}; n=${n%.py}
   IFS= read -r want < "$1"
   want=${want#"# error: "}
   how=ir
   case $n in rtmode_*) how=rt ;; esac  # compiled as runtime.py is
-  $PYS $how "$1" > /dev/null 2> "$T/rej.$n"; st=$?
+  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")
+  PYSTACHY_PATH=$mp $PYS $how "$1" > /dev/null 2> "$T/rej.$n"; st=$?
   if [ $st = 1 ] && diag "$T/rej.$n"; then pass=$((pass + 1)); else
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got (exit $st): $(cat "$T/rej.$n")"; fi
   case $n:$want in
@@ -134,7 +147,7 @@ worker() {
         {
           case $t in
             tests/deviations/*) deviation "$t" ;;
-            tests/errors/*) rejection "$t" ;;
+            tests/errors/*/*) rejection "$t" ;;
             *) program "$t" ;;
           esac
         } > "$T/$i.log" 2>&1

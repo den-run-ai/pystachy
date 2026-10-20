@@ -1,6 +1,6 @@
 # exception classes of a module whose methods call their base's as super(C, self).m(...),
 # super().m(...) and Base.m(self, ...), also in a static and a class method;
-# tests/exc_super_imported.py imports it as a package's submodule (mods.supers) and as a module of
+# tests/programs/exceptions/exc_super_imported.py imports it as a package's submodule (mods.supers) and as a module of
 # its own (supers)
 
 

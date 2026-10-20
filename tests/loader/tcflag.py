@@ -1,4 +1,4 @@
-# TYPE_CHECKING = False as humanize, prettytable and msgpack spell it (tests/fold_false.py): the
+# TYPE_CHECKING = False as humanize, prettytable and msgpack spell it (tests/programs/optimizations/fold_false.py): the
 # imports and the class under its test are never loaded or compiled.
 from __future__ import annotations
 

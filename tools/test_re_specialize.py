@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import re_specialize  # noqa: E402
 
 ROOT = re_specialize.ROOT
-TEST = os.path.join(ROOT, "tests", "re_specialize.py")
+TEST = os.path.join(ROOT, "tests", "programs", "library", "re_specialize.py")
 CHECKED_IN = os.path.join(ROOT, "tests", "re_specialize_matchers", "_pystachy_re_specialized.py")
 LIMIT = "re.findall() of a pattern with"  # (lib/re's deviations: NotImplementedError, lib/README.md)
 
@@ -310,7 +310,7 @@ class TestGenerated(unittest.TestCase):
         self.assertGreater(used[0], 20000)
 
     def test_html_parser(self):
-        # html.parser's patterns, as CPython compiles them, on HTML: tests/re_specialize.py leaves them out
+        # html.parser's patterns, as CPython compiles them, on HTML: tests/programs/library/re_specialize.py leaves them out
         # (their matchers take minutes to compile with the collections of CI's GC groups)
         import html
         import html.parser
@@ -557,7 +557,7 @@ class TestGenerated(unittest.TestCase):
                     self.assertEqual(json.load(f)["patterns"], [{"pattern": "d+", "flags": int(re.U), "calls": 1}])
 
     def test_checked_in(self):
-        # tests/re_specialize_matchers/ holds the matchers of tests/re_specialize.py's patterns, as the
+        # tests/re_specialize_matchers/ holds the matchers of tests/programs/library/re_specialize.py's patterns, as the
         # tool writes them from a profile of the test under CPython
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
             profile = os.path.join(tmp, "re_specialize.json")

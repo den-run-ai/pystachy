@@ -1,12 +1,13 @@
 #!/bin/sh
 # IR oracle for refactors of the code generator: compilers OLD and NEW run `ir` on every program
 # of the corpus, from the repository root as tests/run.sh runs them, and must print the same LLVM
-# IR byte for byte, the same messages (all of a tests/errors/*.py rejection) and the same exit status.
-# The corpus is pystachy.py (first: it takes longest), runtime.py, tests/*.py, tests/deviations/*.py,
-# bench/*.py, bench/pyperformance/*.py, tests/ir/*.py and tests/errors/*.py, with PYSTACHY_PATH
+# IR byte for byte, the same messages (all of a rejection's) and the same exit status.
+# The corpus is pystachy.py (first: it takes longest), runtime.py, tests/programs/*/*.py,
+# tests/deviations/*.py, bench/*.py, bench/pyperformance/*.py, tests/ir/*.py and the rejections
+# tests/errors/*/*.py (tests/corpus.sh), with PYSTACHY_PATH
 # from NAME.path where it exists, as tests/run.sh runs them. When both compilers have runtime mode
 # (`pystachy rt`), runtime.py and
-# tests/errors/rtmode_*.py are compiled with `rt`, as the driver and tests/run.sh compile them
+# tests/errors/runtime/rtmode_*.py are compiled with `rt`, as the driver and tests/run.sh compile them
 # (every program's executable holds runtime.py's code); otherwise with `ir`, as programs, which
 # runtime.py is not, so it then fails alike with both. tests/ir/*.py probe code-generation paths the others never
 # take: they are only compiled (here and by tools/check_ir.sh), never run. tests/ir/pending/ holds
@@ -24,8 +25,8 @@ for f; do [ -f "$f" ] || { echo "tools/irsame.sh: no such program: $f" >&2; exit
 RT=0  # (whether both have runtime mode: their usage names it)
 { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1
 if [ $# = 0 ]; then
-  for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py tests/ir/*.py \
-      tests/errors/*.py; do
+  for f in pystachy.py runtime.py tests/programs/*/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py \
+      tests/ir/*.py tests/errors/*/*.py; do
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi

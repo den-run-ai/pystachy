@@ -10,8 +10,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-CASES = ["tests/example.py", "tests/syntax_example.py", "tests/deviations/example.py",
-         "tests/errors/example.py", "tests/errors/syntax_example.py"]
+CASES = ["tests/programs/x/example.py", "tests/programs/x/syntax_example.py", "tests/deviations/example.py",
+         "tests/errors/x/example.py", "tests/errors/x/syntax_example.py"]
 # group, its suite step, the modes it reports, the checks of its shard (tests/verify.sh's checks), and
 # how many tests/run.sh runs make them
 SHARDS = [("hosted-0", "tests-cpython-0", ["jit", "aot"], 3, 1), ("hosted-1", "tests-cpython-1", ["jit", "aot"], 5, 1),
@@ -33,14 +33,16 @@ class ShardVerificationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for name in ("tests", "tests/deviations", "tests/errors", "src", "lib", "ryu", "bin"):
+        for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
+                     "tests/errors/x", "src", "lib", "ryu", "bin"):
             (self.root / name).mkdir()
-        shutil.copy(ROOT / "tests/verify.sh", self.root / "tests/verify.sh")
-        for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/example.py",
-                     "tests/syntax_example.py", "tests/deviations/example.py"):
+        for name in ("tests/verify.sh", "tests/corpus.sh"):
+            shutil.copy(ROOT / name, self.root / name)
+        for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
+                     "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
             (self.root / name).write_text("# fixture\n")
-        (self.root / "tests/errors/example.py").write_text("# error: mock rejection\n")
-        (self.root / "tests/errors/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
+        (self.root / "tests/errors/x/example.py").write_text("# error: mock rejection\n")
+        (self.root / "tests/errors/x/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 from pathlib import Path
@@ -101,10 +103,10 @@ checks=0
 for file; do
   echo "selected: $file"
   case "$file" in
-    tests/example.py|tests/deviations/example.py) checks=$((checks + m)) ;;
-    tests/syntax_example.py) checks=$((checks + m + 1)) ;;
-    tests/errors/example.py) checks=$((checks + 1)) ;;
-    tests/errors/syntax_example.py) checks=$((checks + 2)) ;;
+    tests/programs/x/example.py|tests/deviations/example.py) checks=$((checks + m)) ;;
+    tests/programs/x/syntax_example.py) checks=$((checks + m + 1)) ;;
+    tests/errors/x/example.py) checks=$((checks + 1)) ;;
+    tests/errors/x/syntax_example.py) checks=$((checks + 2)) ;;
     *) exit 9 ;;
   esac
 done

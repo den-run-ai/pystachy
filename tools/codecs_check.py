@@ -1,6 +1,6 @@
 """Check lib/_pystachy_codecs.py on CPython against CPython's C _codecs module.
 
-This checks the port's source, not compiled Pystachy (tests/lib_codecs.py compares that): for
+This checks the port's source, not compiled Pystachy (tests/programs/library/lib_codecs.py compares that): for
 random arguments of the functions the port implements (the UTF-8, Latin-1, ASCII and charmap
 codecs, encode(), decode(), lookup_error() and readbuffer_encode()), with every error handler, the
 port must return what the C module returns, or raise the same exception with the same message.

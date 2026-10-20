@@ -1,6 +1,6 @@
 """Check lib/random.py and lib/_pyrandom.py on CPython against CPython's own random.
 
-This checks the adapted sources, not compiled Pystachy (tests/lib_random*.py compare that): the
+This checks the adapted sources, not compiled Pystachy (tests/programs/library/lib_random*.py compare that): the
 port with CPython's C _random, and the port with _pyrandom in its place, must give the standard
 module's values for the same calls; _pyrandom's float hash must equal hash(); and random's port of
 math.lgamma() must equal math.lgamma(). With --upstream DIR, it also runs CPython 3.13.16's

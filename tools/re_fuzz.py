@@ -16,13 +16,13 @@ raise NotImplementedError (lib/README.md).
 
 Every other pattern runs on Pystachy's strs, which hold UTF-8 (see "the port on Pystachy's strs"
 below), the others on CPython's, where the port's positions are code points as CPython's are.
-Before them, Lib/test/test_re.py's cases that tests/upstream_re_*.py run smaller or leave out (too
+Before them, Lib/test/test_re.py's cases that tests/programs/upstream/upstream_re_*.py run smaller or leave out (too
 costly with a collection at every allocation, make verify's gc-stress) run here at upstream's
 sizes (UPSTREAM). A repeat of a group that holds an unbounded repeat or alternatives is bounded:
 unbounded, such patterns backtrack exponentially, in _sre too.
 
 Deterministic: the patterns and strings come from random.Random(SEED). Compiled Pystachy runs the
-same port: tests/upstream_re_*.py and tests/lib_re.py check it against CPython's re.
+same port: tests/programs/upstream/upstream_re_*.py and tests/programs/library/lib_re.py check it against CPython's re.
 After them, N/4 more patterns of the shapes the search's prefilters take (lib/re/_sre.py
 _prefilter: alternatives that all begin with literals and classes, or literals after a head of
 bounded width, case-insensitive ones too) run the same checks on longer strings as well, from a
@@ -446,7 +446,7 @@ def check_upstream(how, pat, fl, s):
         same(how, outcome(lambda: summary(getattr(pp, how)(enc(s))), own=True), outcome(lambda: summary(getattr(cp, how)(s))), args)
 
 
-# Lib/test/test_re.py's cases that tests/upstream_re_*.py run on smaller inputs or leave out, as too
+# Lib/test/test_re.py's cases that tests/programs/upstream/upstream_re_*.py run on smaller inputs or leave out, as too
 # costly with a collection at every allocation (make verify's gc-stress), here at upstream's sizes
 BIG = '|'.join(['%d' % x for x in range(10000)])
 UPSTREAM = [
@@ -468,7 +468,7 @@ UPSTREAM = [
     ("repr", 'Very %spattern' % ('long ' * 1000), 0, ''), ("repr", 'Very %spattern' % ('long ' * 1000), re.I, ''),
 ]
 # Keep this in the hosted gate: a million-character classification audit needs no native GC-stress
-# loop. The small tests/lib_re_inline_flags.py fixture checks all three parser paths compiled.
+# loop. The small tests/programs/library/lib_re_inline_flags.py fixture checks all three parser paths compiled.
 utf8(False)
 for cp in range(0x110000):
     ch = chr(cp)

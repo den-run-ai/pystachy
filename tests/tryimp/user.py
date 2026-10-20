@@ -1,5 +1,5 @@
 # A module the program imports, whose code and functions import in try statements
-# (tests/import_try_binding*.py)
+# (tests/programs/imports/import_try_binding*.py)
 import good
 
 

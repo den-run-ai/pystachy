@@ -3,7 +3,7 @@
 usage: python3 check_numpy.py
 
 It needs NumPy, which a compiled program cannot import, so it runs under CPython only;
-tests/example_ndarray.py carries representative NumPy results into the compiled tests. The counts
+tests/programs/apps/example_ndarray.py carries representative NumPy results into the compiled tests. The counts
 it prints are test results, not guarantees (README.md):
 
 - exact: elementwise arithmetic, broadcasting, views, out= and in-place operators, and the sums of
