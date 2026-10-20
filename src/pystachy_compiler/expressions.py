@@ -2998,6 +2998,13 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
     # arms are compiled in the order of the first pair of each, a's alternatives outermost.
     xs = self.cmp_alts(a)
     ys = self.cmp_alts(b)
+    for side in range(2):
+        o = a if side == 0 else b
+        if o.t in self.classes and self.classes[o.t].exc != "":
+            # (the classes but the last of an exception object, whose ExcClass its tests compare
+            # with: they are made, as before #625, whether or not cmp_branch tests them all)
+            for c in [x.t for x in (xs if side == 0 else ys) if x.t != "None"][:-1]:
+                self.xcls[c] = True
     keys: list[str] = []
     pairs: list[list[Val]] = []
     arm_of: dict[str, int] = {}
@@ -3098,9 +3105,10 @@ def uniform(to: list[str]) -> bool:
 
 def gen_cmp_branch(self, v: Val, alts: list[Val], to: list[str]) -> None:
     # go to to[i] where operand v is alternative i of alts (cmp_alts): None by a test of the
-    # pointer, an object by its class's tag (an exception object by its ExcClass). The
-    # target that the most classes share is where none of the tests matches (where targets
-    # tie, the last class's, as before #625)
+    # pointer, an object by its class's tag (an exception object by its ExcClass). Where no
+    # test matches is the target that the most classes share (where targets tie, the last
+    # class's), and for an exception object the last class's, as before #625: its ExcClass
+    # need not be made
     if uniform(to):
         self.br(to[0])
         return
@@ -3110,15 +3118,15 @@ def gen_cmp_branch(self, v: Val, alts: list[Val], to: list[str]) -> None:
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, to[0], some)
         self.place(some)
         first = 1
+    xc = self.classes[v.t].exc != ""
     n: dict[str, int] = {}
     for j in range(first, len(to)):
         n[to[j]] = n[to[j]] + 1 if to[j] in n else 1
     rest = to[len(to) - 1]
     for j in range(first, len(to)):
-        if n[to[j]] > n[rest]:
+        if n[to[j]] > n[rest] and not xc:
             rest = to[j]
     tested = [j for j in range(first, len(to)) if to[j] != rest]
-    xc = self.classes[v.t].exc != ""
     tag = self.mload('%ptr' if xc else 'int', v.v) if len(tested) > 0 else ""
     for i in range(len(tested)):
         c = alts[tested[i]].t
