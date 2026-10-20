@@ -35,7 +35,14 @@ proposed change: nothing here edits the compiler, the runtime or `lib/`.
    allocation, but AOT processing takes 1.6× CPython's time (165 ms against 101 ms; decoding is
    1.6× faster). Callgrind: `Any`-keyed dict lookups and hashing are about half of the processing
    instructions, box allocation and the collector a quarter, the dispatchers and boxing about
-   10%. A 6-line runtime fast path for two boxed `str` keys removes 16% of the instructions.
+   10%. A 5-line runtime fast path for two boxed `str` keys removes 16% of the instructions.
+6. **Opting in breaks some programs that compile today.** With the comment added as the first
+   line of every program of `tests/programs/`, 15 of the 1,445 that pass fail: 13 are rejected at
+   compile time (`Annotated[Any, ...]`, `Callable[..., Any]`, `**kwargs: Any` in `__init__`,
+   `__exit__` with `Any` parameters, mixed displays where a context expects a union list...) and
+   2 never finish compiling, because compile time doubles with each level of display nesting.
+
+The gaps are filed as #777-#783, and #772 has a comment with two more cases (section 8).
 
 ## Method
 
@@ -73,7 +80,7 @@ proposed change: nothing here edits the compiler, the runtime or `lib/`.
 | G3 | `object`, bare `Mapping`, `Mapping[str, Any]`, `tuple \| list` annotations are not `Any` in a module that opts in | `a03`, `b20` (#713, #597) | tomli-w (5 annotations) |
 | G4 | `isinstance(x, Mapping)` (any `collections.abc` class) of an `Any` value | (tomli-w) | tomli-w; jsonpointer, dictdiffer, mergedeep use the same tests |
 | G5 | An empty display that `Any` storage receives: `cont[k] = {}`, `[]` in a record inside a list (`b24`, `b25`), `empty = {}` passed as `Any`, `set()` in a display | `b24`, `b25` | `tomllib` (3 sites) |
-| G6 | Missing operations on `Any` values: slicing, `round`/`abs`/`ord`/`chr`/`divmod`, `sum()` of a `list[dyn]` or generator, `dict.update()` of a display, `type(x) is int`, keyword arguments | `a07`, `a16`, `a17`, `a18`, `b13`, `b18`, `b19` | the pipeline (W1 slicing, W2 `round`) |
+| G6 | Missing operations on `Any` values: slicing, `round`/`abs`/`ord`/`chr`/`divmod`, `sum()` of a generator of `Any` values, `dict.update()` of a display, `type(x) is int`, keyword arguments | `a07`, `a16`, `a17`, `a18`, `b13`, `b18`, `b19` | the pipeline (W1 slicing, W2 `round`) |
 | G7 | `json.loads()` gives `JSONValue` storage that cannot become `Any`; `json.dumps()` does not take `Any` | `a04`, `a05`; `b01` is the working copy | the pipeline's `to_any`/`to_json` (about a fifth of its decoding instructions) |
 | G8 | `set` values (and empty `set()`) in `Any` storage | (`tomllib`'s flags) | `tomllib` |
 | G9 | Storage given two incompatible concrete values (two functions) does not widen to `Any` in a module that opts in (#8) | (`tomllib`'s `parse_escapes`) | `tomllib`; `xml.etree.ElementPath` widens only because its display is mixed |
@@ -203,28 +210,61 @@ returning a str, an int or a bool, and writes a JSON summary. It needed two work
   of through `dkeyeq` → `keyeq` → `dyn_eqitem` → `pys_dyn_eq`. It is an experiment: the output
   matched for 100,000 events, but it has no tests.
 
+## 7. Opting in: the corpus sweep (`tools/optin_sweep.py`, `tools/optin_recheck.py`)
+
+Each `tests/programs/AREA/NAME.py` (not those with `NAME.full`, nor the SIGINT cases) is copied
+twice, as it is and with the comment as its first line, and both copies run as `tests/run.sh`'s
+JIT mode runs a program: from the checkout, with `NAME.in`, `NAME.path` after the program's own
+directory, and `PYSTACHY_IRCHECK=1`. Then each program that fails only with the comment runs
+under CPython and Pystachy from the same file (the comment after a byte order mark), which
+clears outputs that the added line shifts (`results/optin-sweep.json`).
+
+| | Programs |
+|---|---:|
+| run | 1,448 |
+| pass as they are (the other 3 need the harness's own setup: a SIGINT, a symlink, a signal) | 1,445 |
+| fail with the comment | 18 |
+| of which artifacts (two shifted `__firstlineno__` values, a byte order mark) | 3 |
+| **break once their module opts in** | **15** (13 rejected, 2 that do not finish compiling) |
+| pass only with the comment | 0 |
+
+The 13 rejections: `Annotated[Any, "metadata"]` annotations (3), `Callable[..., Any]` (1),
+`**kwargs: Any` in an `__init__` (1), a class template's `Box[Any]` annotation (1), a mixed
+display returned where `list[int | float]` is expected (2), a context manager whose `__exit__`
+takes `*args: Any` (1), an `__iter__` annotated `Any` (1), `yield from` with a `list[Any]`
+channel (1), an empty list in a tuple of a display (1) and a builtin function in a list of
+functions (1). The 2 others nest displays to CPython's 200-bracket limit: in a module that opts
+in, compile time doubles with each level of a list or dict display whose items have one type
+(131 ms at depth 16, 7.6 s at depth 22), and stays flat for tuples and mixed displays
+(`probes/issues/nest/`).
+
 ## Recommendations
 
+0. **Fix the silent wrong results first (#772).** Under #409 a wrong answer comes before any
+   missing feature, and `__eq__(self, other: Any)` is a common signature.
 1. **Lead with ordinary programs, opted in with one line.** The 25 idioms of section 1 are the
-   evidence that dynamic `Any` already makes unchanged heterogeneous code compile. Close G1, G5
-   and G6 next: they are the failures a user meets first, and G6's six opt-in regressions
-   (section 1) should be fixed before the comment is recommended for whole programs.
+   evidence that dynamic `Any` already makes unchanged heterogeneous code compile. Before the
+   comment is recommended for whole programs, opting in must stop breaking programs that compile
+   today (#782, #781); then the failures a user meets first, typed containers reaching `Any`
+   storage (#777) and the missing operations (#782).
 2. **Make `tomllib` the library milestone, then tomli-w.** It is unchanged stdlib code whose
-   result is inherently `dict[str, Any]`, it has a ready compliance corpus, it shares G1/G2/G5
-   with tomli-w, and its typed scanner already beats CPython 2×. Keep the shipped tomli-w port
-   until typed containers can cross into `Any` (G1), or its typed callers break.
-3. **Bridge JSON (G7).** `json.loads()` building `Any` storage in a module that opts in (or
+   result is inherently `dict[str, Any]`, it has a ready compliance corpus, it shares its
+   `Any` gaps with tomli-w (#777, #778, #782), and its typed scanner already beats CPython 2×; its
+   general blockers are #783. Keep the shipped tomli-w port until typed containers can cross
+   into `Any` (#777), or its typed callers break.
+3. **Bridge JSON (#779).** `json.loads()` building `Any` storage in a module that opts in (or
    converting its fresh result), and `json.dumps()` taking `Any`, turn the pipeline's copies into
    no-ops and connect JSON to user objects and callbacks.
-4. **Optimize lookups and boxes before guards.** On the pipeline, the dispatchers and boxing
+4. **Optimize lookups and boxes before guards (#780).** On the pipeline, the dispatchers and boxing
    are about 10% of processing; `Any`-keyed dict lookups with `str` keys (a boxed-str fast path,
    a precomputed hash for literal keys, shared key boxes) and box allocation for numeric fields
    and accumulators are the bulk. Guarded variants or inline caches (#392) come after those, if
    a measurement still shows dispatch.
-5. **Measure with functional probes, not import sweeps.** The comment moves one stdlib import;
-   PyPI's first blockers are stdlib and class-value gaps. A PyPI sweep would mostly measure those
-   until `copy`, `enum`, `inspect`/`importlib`, `collections.abc` and `types.MappingProxyType`
-   move.
+5. **Measure with functional probes and the opt-in sweep, not import sweeps.** The comment moves
+   one stdlib import; PyPI's first blockers are stdlib and class-value gaps. A PyPI sweep would
+   mostly measure those until `copy`, `enum`, `inspect`/`importlib`, `collections.abc` and
+   `types.MappingProxyType` move. The corpus sweep of section 7 is cheap (7 minutes on 3 cores) and
+   could become a check.
 
 ## Reproduce
 
@@ -249,6 +289,8 @@ cp -r /tmp/tw /tmp/tw-dyn && (cd /tmp/tw-dyn && patch -p1 < "$OLDPWD/$D/patches/
 mkdir -p /tmp/rt && cp runtime.c runtime.py pyext.c pyembed.c /tmp/rt/ && ln -s "$PWD/lib" "$PWD/ryu" /tmp/rt/
 (cd /tmp/rt && patch -p1 < "$OLDPWD/$D/patches/runtime-anykey-str-fastpath.diff")
 PYSTACHY_HOME=/tmp/rt ./pystachy build $D/pipeline/pipeline.py -o /tmp/pipeline_exp
+# the opt-in sweep of section 7 (3 workers), then the differential recheck of what it flags
+python3.13 $D/tools/optin_sweep.py /tmp/optin 3 && python3.13 $D/tools/optin_recheck.py /tmp/optin
 ```
 
 `u_tomllib_compliance.py` reads the files that `compliance_files.txt` lists from
@@ -282,22 +324,22 @@ matches CPython without the comment: a seventh opt-in regression beside section 
 
 None of this study's passing probes or workloads defines `__eq__` with an `Any` parameter, so
 their results stand. But a class whose `__eq__` takes `other: Any` is common, and #772 answers
-wrongly without an error. Under #409, #772 comes before recommendation 1 below: the comment
+wrongly without an error. Under #409, #772 comes before recommendation 1 above (item 0): the comment
 should not be recommended for whole programs until it is fixed.
 
-Where section 2's gaps are tracked now:
+## 8. Where the gaps are tracked
+
+Filed from this study on 2026-10-20: #777-#783, and a comment on #772 with its two extra cases.
 
 | Gap | Tracked by |
 |---|---|
-| G1 typed containers into `Any` (`dict[str, Any]`, locals holding displays, typed locals that later get `Any`) | none; #775 has its `[0] * n` case, and docs/dynamic-any.md lists "typed-container crossings" as a next step |
-| G2 tuples with `Any` items | none |
-| G3 `object`, `Mapping`, bare annotations in a module that opts in | none (#713 and #597 cover modules that do not opt in) |
-| G4 `isinstance()` with `collections.abc` classes | none |
-| G5 empty displays into `Any` storage | none |
-| G6 slicing, `sum()` of a `list[dyn]` or generator, `dict.update()` of a display, `type(x) is int` | none (#775 lists `sum(x)` of an `Any` value as working, which it is) |
-| G6 `round`, `abs`, `ord`, `chr`, `divmod`; keyword arguments | #775; #774 |
-| G7 JSON bridge | none |
-| G8 sets as `Any` values | #775 |
-| G9 widening for incompatible concrete stores | none (docs/dynamic-any.md's "widening" next step covers closures, generators and mutual returns) |
-| G10 library templates for `dyn` (`textwrap`: `ord`; `statistics`: `math.fsum`); module-level narrowing | #775 for the builtins; none for narrowing |
-| Performance: `Any`-keyed dict lookups, boxes of accumulators | none (docs/dynamic-any.md's "box elimination" next step covers boxes) |
+| G1 typed containers into `Any` (`dict[str, Any]`, locals holding displays, typed locals that later get `Any`) and G5 empty displays into `Any` storage | #777 (#775 has the `[0] * n` case) |
+| G2 tuples with `Any` items, G3 `object`, `Mapping` and bare annotations, G4 `isinstance()` with `collections.abc` classes | #778 |
+| G6 slicing, `type(x) is T`, `type(x).__qualname__`, `sum()` of a generator, `dict.update()` of a display; G9 widening for incompatible concrete stores; module-level narrowing; the opt-in regressions of sections 1 and 7 | #782 |
+| G6 `round`, `abs`, `ord`, `chr`, `divmod`, `math` functions; G8 sets; exceptions as `Any` values | #775 |
+| G6 keyword arguments, builtin functions as `Any` values | #774 |
+| G7 the JSON bridge | #779 |
+| Performance: `Any`-keyed dict lookups, number boxes | #780 |
+| Exponential compile time of nested displays in a module that opts in | #781 |
+| `tomllib`'s and tomli-w's general blockers (`MappingProxyType`, tuple concatenation, `re.Match` annotations, ...), `Counter()` of a generator, `os.environ` | #783 |
+| `__eq__(self, other: Any)` comparisons, also in dict lookups; typed comparisons of such objects in a module that opts in | #772 |
