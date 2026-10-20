@@ -874,7 +874,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     et = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
-        if not given and jt == "-" and self.dyn_policy(n.line):
+        if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
             et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
             for v in items:
@@ -946,7 +946,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
-        if self.dyn_policy(n.line) and ((not given and jt == "-") or (not kgiven and kj == "-")):
+        if self.dyn_policy(n.line) and ((not given and jt == "-" and not self.dyn_callables([b.t for b in vs])) or (not kgiven and kj == "-")):
             kv = ["dyn", "dyn"]  # (keys or values of no one type, in a module that compiles Any so: dynamic.py)
         ks = [self.store_key(x, kv[0]) for x in ks]
         if given and soft:

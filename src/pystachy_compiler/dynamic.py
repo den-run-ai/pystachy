@@ -1368,12 +1368,19 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
         ts.append(self.dyn_dry(e))
     if len(ts) < 2:
         return DYN in ts
-    if is_callable(unopt(ts[0])) and len([t for t in ts[1:] if t != ts[0] and not is_fn(t)]) == 0:
-        return False  # (functions after a Callable: Callables of its type, as the display compiles them)
+    if self.dyn_callables(ts):
+        return False
     j = ts[0]
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
     return j == "" or j == DYN
+
+
+def gen_dyn_callables(self, ts: list[str]) -> bool:
+    # are ts, the types of a display's items, a Callable's and functions' after it: Callables of
+    # its type, as the display compiles them in modules that do not opt in, rather than Any
+    # values, which no builtin function is yet (#782)
+    return len(ts) > 0 and is_callable(unopt(ts[0])) and len([t for t in ts[1:] if t != ts[0] and not is_fn(t)]) == 0
 
 
 def holds_empty(e: Node) -> bool:

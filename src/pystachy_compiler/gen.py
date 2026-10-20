@@ -37,6 +37,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
     gen_dyn_call as dynamic_dyn_call,
     gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
     gen_dyn_cmp2 as dynamic_dyn_cmp2,
@@ -1593,6 +1594,9 @@ class Gen:
 
     def dyn_dry(self, e: Node) -> str:
         return dynamic_dyn_dry(self, e)
+
+    def dyn_callables(self, ts: list[str]) -> bool:
+        return dynamic_dyn_callables(self, ts)
 
     def dyn_fn_type(self, ft: str) -> str:
         return dynamic_dyn_fn_type(self, ft)
