@@ -61,6 +61,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     s = ClassInfo(name, t.node)
     s.mod = t.mod
     s.origin = c
+    s.speckey = doing
     s.slots = t.slots
     s.slotlimit = t.slotlimit
     s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
@@ -619,6 +620,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
+        f.lastikey = key
         return g
     if f.bad != "":
         self.err(f.bad)
@@ -663,6 +665,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
     g.inst = True
+    g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly
     g.vararg = f.vararg
@@ -690,6 +693,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size
+    f.lastikey = key
     return g
 
 # ---- classes that specialize on literal arguments

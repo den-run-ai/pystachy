@@ -10,8 +10,11 @@ from src.pystachy_compiler.scalar_ir import (
     gen_verify_scalar as scalar_ir_verify_scalar,
 )
 from src.pystachy_compiler.union_arithmetic import (
+    gen_ucmp as union_arithmetic_ucmp,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
+    gen_uorders as union_arithmetic_uorders,
+    gen_usplit as union_arithmetic_usplit,
 )
 from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
@@ -19,8 +22,17 @@ from src.pystachy_compiler.memory_ir import (
     gen_maddr as memory_ir_maddr,
 )
 from src.pystachy_compiler.unions import (
+    gen_field_key as unions_field_key,
+    gen_fnkey as unions_fnkey,
+    gen_join_at as unions_join_at,
+    gen_join_hint as unions_join_hint,
+    gen_join_type as unions_join_type,
+    gen_joinable as unions_joinable,
+    gen_local_hint as unions_local_hint,
+    gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
+    gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -156,6 +168,10 @@ from src.pystachy_compiler.builtins import (
     gen_pwrite as builtins_pwrite,
     gen_reduce as builtins_reduce,
     gen_reduce_item as builtins_reduce_item,
+    gen_comp_end as builtins_comp_end,
+    gen_neumaier as builtins_neumaier,
+    gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
     gen_bytes_method as builtins_bytes_method,
@@ -213,6 +229,7 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
     gen_dkey as containers_dkey,
@@ -265,6 +282,7 @@ from src.pystachy_compiler.conversions import (
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
+    gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -309,6 +327,16 @@ from src.pystachy_compiler.declarations import (
     gen_fn_attr_read as declarations_fn_attr_read,
     gen_glue_field as declarations_glue_field,
     gen_field as declarations_field,
+    gen_field_early as declarations_field_early,
+    gen_field_fill as declarations_field_fill,
+    gen_field_modfill as declarations_field_modfill,
+    gen_field_guess as declarations_field_guess,
+    gen_field_root as declarations_field_root,
+    gen_field_type as declarations_field_type,
+    gen_none_field as declarations_none_field,
+    gen_none_field_store as declarations_none_field_store,
+    gen_refine_field as declarations_refine_field,
+    gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
     gen_dc_field as declarations_dc_field,
@@ -835,6 +863,11 @@ from src.pystachy_compiler.templates import (
 )
 from src.pystachy_compiler.utils import RtFn, fxmask
 from src.pystachy_compiler.variables import (
+    gen_none_extend as variables_none_extend,
+    gen_global_setters as variables_global_setters,
+    gen_none_arms as variables_none_arms,
+    gen_none_global as variables_none_global,
+    gen_none_global_store as variables_none_global_store,
     gen_adopt as variables_adopt,
     gen_ahead as variables_ahead,
     gen_applies as variables_applies,
@@ -1028,6 +1061,23 @@ class Gen:
         self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
         self.nokey = Node("", "", 0)
         self.stkkey = self.nokey  # a tuple display that a lookup takes as its key (lookup_key): made in the frame
+        self.cmpnode = self.nokey  # the operand of x is None (is not None) being compiled (see none_field)
+        self.fieldcmp = False  # the field read being compiled is that operand
+        self.nonereads: dict[str, str] = {}  # Class.field -> where it was read as None, the only value it gets (none_field)
+        self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
+        self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
+        self.attrown: dict[str, list[Node]] = {}  # and the class statement whose method stores each to its self (or nokey)
+        # joins (see join_hint): the types an earlier pass found for locations whose inferred type
+        # took no value stored to them, which this pass compiles them with, as if annotated; the
+        # ones this pass finds; whether a value a location does not take is an error (the last
+        # pass, as for every compilation but driver.compile_program's earlier ones)
+        self.hints: dict[str, str] = {}
+        self.newhints: dict[str, str] = {}
+        self.final = True
+        self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
+        self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
+        self.jointype = ""  # (and its type)
+        self.joinsrc = self.nokey  # the value being assigned (see join_hint)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -1581,6 +1631,9 @@ class Gen:
     def floats(self, v: Val) -> Val:
         return conversions_floats(self, v)
 
+    def ufloats(self, v: Val) -> Val:
+        return conversions_ufloats(self, v)
+
     def is_dc(self, t: str) -> bool:
         return conversions_is_dc(self, t)
 
@@ -1848,6 +1901,36 @@ class Gen:
     def field(self, o: Val, name: str, store: bool=False) -> Val:
         return declarations_field(self, o, name, store)
 
+    def field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
+        return declarations_field_root(self, ci, name)
+
+    def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
+        return declarations_refine_field(self, ci, name, t)
+
+    def none_field(self, cls: str, name: str, cmp: bool) -> str:
+        return declarations_none_field(self, cls, name, cmp)
+
+    def field_fill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_fill(self, root, name)
+
+    def field_guess(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_guess(self, root, name)
+
+    def field_modfill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_modfill(self, root, name)
+
+    def field_early(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_early(self, root, name)
+
+    def field_type(self, c: str, name: str) -> str:
+        return declarations_field_type(self, c, name)
+
+    def set_elsewhere(self, root: ClassInfo, name: str) -> bool:
+        return declarations_set_elsewhere(self, root, name)
+
+    def none_field_store(self, o: Val, name: str, v: Val) -> None:
+        return declarations_none_field_store(self, o, name, v)
+
     def fgep(self, o: Val, i: int) -> str:
         return declarations_fgep(self, o, i)
 
@@ -1922,6 +2005,57 @@ class Gen:
 
     def none_read(self, name: str) -> str:
         return variables_none_read(self, name)
+
+    def none_extend(self, name: str) -> None:
+        return variables_none_extend(self, name)
+
+    def none_container(self, e: Node) -> Val:
+        return containers_none_container(self, e)
+
+    def usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
+        return union_arithmetic_usplit(self, name, vals, i, want)
+
+    def uorders(self, a: str, b: str) -> bool:
+        return union_arithmetic_uorders(self, a, b)
+
+    def ucmp(self, op: str, a: Val, b: Val) -> Val:
+        return union_arithmetic_ucmp(self, op, a, b)
+
+    def join_hint(self, t: str, vt: str) -> bool:
+        return unions_join_hint(self, t, vt)
+
+    def joinable(self, t: str) -> bool:
+        return unions_joinable(self, t)
+
+    def join_type(self, a: str, b: str) -> str:
+        return unions_join_type(self, a, b)
+
+    def stable(self, s: str) -> str:
+        return unions_stable(self, s)
+
+    def fnkey(self, f: FnInfo) -> str:
+        return unions_fnkey(self, f)
+
+    def field_key(self, ci: ClassInfo, name: str) -> str:
+        return unions_field_key(self, ci, name)
+
+    def local_hint(self, name: str) -> str:
+        return unions_local_hint(self, name)
+
+    def join_at(self, kind: str, name: str, t: str) -> list[str]:
+        return unions_join_at(self, kind, name, t)
+
+    def none_global(self, name: str) -> str:
+        return variables_none_global(self, name)
+
+    def none_arms(self, name: str) -> str:
+        return variables_none_arms(self, name)
+
+    def global_setters(self, name: str) -> list[FnInfo]:
+        return variables_global_setters(self, name)
+
+    def none_global_store(self, name: str, v: Val) -> str:
+        return variables_none_global_store(self, name, v)
 
     def none_type(self, name: str) -> str:
         return variables_none_type(self, name)
@@ -2903,14 +3037,14 @@ class Gen:
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
 
-    def percent(self, fmt: str, rhs: Node) -> Val:
-        return expressions_percent(self, fmt, rhs)
+    def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
+        return expressions_percent(self, fmt, rhs, lit)
 
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
 
-    def pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
-        return expressions_pformat(self, fmt, items, rtnone)
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+        return expressions_pformat(self, fmt, items, rtnone, lazy)
 
     def nonefmt(self, t: str) -> str:
         return expressions_nonefmt(self, t)
@@ -3407,6 +3541,18 @@ class Gen:
     def reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return builtins_reduce(self, name, args, stt)
 
+    def comp_end(self, acc: str, comp: str) -> str:
+        return builtins_comp_end(self, acc, comp)
+
+    def neumaier(self, acc: str, comp: str, x: str) -> None:
+        return builtins_neumaier(self, acc, comp, x)
+
+    def sum_union_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_union_item(self, r, v)
+
+    def sum_union_end(self, r: Reduce) -> Val:
+        return builtins_sum_union_end(self, r)
+
     def reduce_item(self, r: Reduce, e: Node) -> None:
         return builtins_reduce_item(self, r, e)
 
@@ -3628,6 +3774,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def num_union(self, t: str) -> bool:
+        return unions_num_union(self, t)
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)

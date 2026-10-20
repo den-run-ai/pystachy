@@ -247,7 +247,7 @@ port-check:
 # These files also belong to the normal corpus, so every existing CI configuration runs them.
 CPYTHON_SUBSET_COMPILER ?= ./pystachy
 test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
-	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/upstream_textwrap_unicode.py tests/upstream_textwrap_field_rebind.py
 
 # Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
 # Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
@@ -268,6 +268,13 @@ re-fuzz:
 RE_PROBE ?=
 re-probe:
 	$(PY) tools/re_probe.py $(RE_PROBE)
+
+# matchers that tools/re_specialize.py generates for random patterns, run by lib/re on CPython, must
+# match as CPython's re does (deterministic: N=400 patterns, SEED=1, e.g. make re-specialize-check
+# RE_SPECIALIZE="4000 7"; tools/test_re_specialize.py, which Lint runs, checks 300)
+RE_SPECIALIZE ?=
+re-specialize-check:
+	$(PY) tools/re_specialize.py check $(RE_SPECIALIZE)
 
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
@@ -291,4 +298,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe re-specialize-check lint clean install uninstall test-install

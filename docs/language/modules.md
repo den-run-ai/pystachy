@@ -30,7 +30,10 @@ inspect and rewrite, without a parser. `_weakref` loads `lib/_pystachy_weakref.p
 [collector-backed references](../prototypes/weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
 has no attributes of its own, so its class's fields are the module's.
-Neither prototype makes `import ast` or `import weakref` work.
+`import ast` does not work; `import weakref` loads an adapted `lib/weakref.py`, whose `ref` is
+this one ([weakref](../../lib/compatibility.md#_weakref-prototype)).
+`_io` loads `lib/_pystachy__io.py`, which gives `io`'s classes and functions under the C module's
+names ([io](../../lib/compatibility.md#io)); `FileIO` and the other binary-file classes are not there.
 `_opcode` loads `lib/_pystachy_opcode.py`, a port of CPython's C module on CPython 3.13.16's
 opcode tables, under the shipped `opcode` ([opcode](../../lib/compatibility.md#opcode)).
 

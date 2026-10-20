@@ -47,7 +47,7 @@ ABSTRACT_DECOS: dict[str, str] = {"abc$abstractmethod": "", "abc$abstractpropert
 # that file as the module (Loader.modpath), where CPython imports its C module
 STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pystachy_codecs", "atexit": "_pystachy_atexit",
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
-                            "_imp": "_pystachy_imp", "_opcode": "_pystachy_opcode",
+                            "_imp": "_pystachy_imp", "_io": "_pystachy__io", "_opcode": "_pystachy_opcode",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
                             "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
 # the stand-ins whose objects have no attributes in CPython (a weak reference's C struct): their
@@ -55,8 +55,9 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # hasattr() nor reflect over, and a call of __init__ on an object cannot initialize it again
 OPAQUE: dict[str, bool] = {"_weakref": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
-# not the module's own: weakref.ReferenceType, ast.Constant
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast"}
+# not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
+# lib's io defines is the C module _io's in CPython)
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -70,6 +71,7 @@ HEX = "0123456789ABCDEF"
 # the type of a local that only None has been assigned so far (see none_type): a pointer, which
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
+NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -816,7 +818,7 @@ RUNTIME: dict[str, str] = {
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
     "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
-    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|",
+    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|", "m.ufloats": "list[float]:list[T],#|A rL|",
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor

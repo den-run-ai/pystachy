@@ -76,4 +76,7 @@ jobs:
       - name: Coverage report checks tests
         run: python3 -m unittest discover -s tools -p test_coverage_report.py
 
+      - name: Generated regex matcher tests
+        run: python3 -m unittest discover -s tools -p test_re_specialize.py
+
       - run: make check-recordings

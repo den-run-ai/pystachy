@@ -1,0 +1,2 @@
+NotImplementedError: IncrementalNewlineDecoder supports only decoder=None, which decodes str input
+[exit 0]

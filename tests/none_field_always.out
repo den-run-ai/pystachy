@@ -1,0 +1,6 @@
+setup
+level 3, no hook None None
+True True {'hook': None, 'ready': None, 'level': 3}
+flat, 6 levels None None
+flat, 2 levels
+[exit 0]
