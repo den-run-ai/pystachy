@@ -1026,8 +1026,10 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                 ts.extend(t.kids)
             elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
                 c = t.kids[0].s
-                if t.s == "__module__" and self.classes[c].exc != "":
-                    self.xmods[c] = True  # (its ExcClass's displayed name changes: exc_set_module)
+                if t.s == "__module__" and self.classes[c].exc != "" and self.classes[c].ftypes.get("__module__", "str") == "str":
+                    # (its ExcClass's displayed name changes: exc_set_module; a __module__ its class
+                    # body declares of another type, __module__: int = 1, stays a class variable)
+                    self.xmods[c] = True
                 if not self.is_dc(c) and t.s in self.classes[c].fdefault:
                     self.cvars[c + "." + t.s] = True
                     # (and of the exception classes that share it, see cvar)

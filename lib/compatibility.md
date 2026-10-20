@@ -1014,8 +1014,11 @@ the class of the object a `with` statement passes to `__exit__()` (see [Contextl
 `__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
 body defines nothing in Pystachy, so the class compiles as it does without it
 ([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations, evaluated or
-not, name the class, whatever their arguments, as CPython does not check them
-([test](../tests/programs/reflection/types_generic_alias_subscripts.py)); `re.Pattern` and `re.Match` follow
+not, name the class, as CPython does not check their arguments: types, or number, `None`,
+`True`, `False` and `...` constants (`C[1]`, `C[int, ...]`). A string argument is a forward
+reference, as elsewhere in an annotation, and any other argument must still be an annotation
+([test](../tests/programs/reflection/types_generic_alias_subscripts.py),
+[constants](../tests/programs/reflection/types_generic_alias_constants.py)); `re.Pattern` and `re.Match` follow
 the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
 `types.GenericAlias` objects, they are a compile-time error
 ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
@@ -1041,6 +1044,9 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   class it is unequal, where CPython compares its dict with the object, whose own `__eq__`, given
   the dict, may decide ([deviation](../tests/deviations/lib_types_mappingproxy_eq_other.py)).
   Comparing a dict with such an object is a compile-time error.
+- Through a dynamic `Any` value, a view is an object like others: it is not iterable, and its
+  `keys()`, `values()` and `items()`, typed lists, are compile-time errors (dynamic `Any`'s
+  [deviations](../docs/dynamic-any.md#deviations)).
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).

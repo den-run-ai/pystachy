@@ -198,9 +198,11 @@ def gen_ann(self, n: Node) -> str:
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:
         # C[...] of a class whose body binds __class_getitem__ = classmethod(GenericAlias), CPython's
         # idiom for a generic class (generic_aliases), which re.Pattern and re.Match follow too: the
-        # class, whose fields have one type each whatever the subscript names
+        # class, whose fields have one type each whatever the subscript names. CPython does not
+        # check the arguments: constants are any (C[1], C[None], C[int, ...]), and the others
+        # annotations, whose names must be bound (a string is a forward reference: Loader.qann)
         for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
-            t = self.ann(x)
+            t = "" if is_const(x) or x.kind == "ellipsis" else self.ann(x)
             if t.startswith("!"):
                 return t
         return self.ann(n.kids[0])
