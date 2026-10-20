@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `4f71b5a013ddcce19ab12c282690106467faf4df`.
+**Latest evaluated main:** `3ab11f03a9b1deedd90141cdf5d7e6345b0af5f0`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4554,3 +4554,89 @@ local full-matrix runs. Audit-head checks are read after publication. Only repor
 and evidence changes are added beyond evaluated main, preserving dated baselines
 and concurrent edits. No duplicate issue or external-contributor attestation was
 created, and no PR was merged by this audit.
+
+## 2026-10-20 — #765: less compiler allocation, unchanged compatibility
+
+Evaluated [main `3ab11f03`](https://github.com/den-run-ai/pystachy/commit/3ab11f03a9b1deedd90141cdf5d7e6345b0af5f0),
+the sole first-parent merge since evaluated `4f71b5a0`:
+[#765](https://github.com/den-run-ai/pystachy/pull/765). Re-fetched the PR, verified
+the merge is in main's history and the tree equals implementation head
+`5e997c7548c5a6893d1c5b69ee3007a56b2a2ad9`. Read current audit state and #491/#616
+coordination plus the PR review. #743 remains the audit destination; no other
+session's implementation branch was modified.
+
+Only `local_versions.py` and `optimizations.py` change: the former builds its
+excluded-node-kind dictionary once, rather than splitting the same string at
+every visited syntax node; the latter skips definition/use-table construction
+when a function has no numeric-union local-slot candidates. No runtime/library
+source or supported API is added. Retained selection covers 43 retyping/rebinding
+and scalar-union cases, 12 local-flow cases and three union IR-contract programs.
+
+Fresh **CPython 3.13.16 / LLVM 18.1.3** bootstrap reaches both fixed points:
+**677,993 compiler / 18,709 runtime IR lines**. Compiler build source and evaluated
+source both equal `3ab11f03`; compiler SHA-256:
+`8bda6dead36bf97d9208cbd2773f5fd3df224cd71b32e444da1ab87f5a230e87`.
+Reference compiler build source is `4f71b5a0`, SHA-256
+`dbe44e25653a36004511aeedddec03bdcb0084178b62b1a492793e64b3b8d121`.
+[Evidence and replay scripts](compatibility-2026-10-20-compiler-allocations.json)
+retain both identities, commands, selected fixture hashes, import metadata,
+paired GC samples and all validation results.
+
+### Compatibility and correctness
+
+| Fresh check | Result |
+|---|---|
+| Native / program-GC-stress / optimization-off / hosted | **78/78 each, 312 total** across 55 programs: 63 checks in the union/rebinding selection and 15 local-flow checks per configuration. Counts include expected rejections, not 312 unique upstream tests. |
+| CPython recordings | **22/22** selected positive programs match. |
+| UBSan plus per-allocation program GC | **38/38** JIT/AOT checks over 19 union/rebinding programs. |
+| Typed IR and LLVM validation | **3/3** union-contract programs pass, including `unionslots.calls`. |
+| Runtime contracts | **460** entries, **70** exception classes, **171** functions agree. |
+| Consumer execution | **12/12** JIT/AOT checks: four adapted iniconfig/tomli_w/roman/pylev workloads and textwrap/regex consumers. |
+| Retained compile oracle | **3,331/3,331 identical** IR, diagnostic and exit-status results after replacing only old/new checkout prefixes. Compiler, runtime, ordinary/rejection/deviation/IR tests and benchmark inputs are included. No newly accepted or rejected program. |
+
+Fresh isolated sweeps with `--metadata` remain **148/464 native** and **150/464
+with throwing C-module stubs**, with **58 overlay exclusions**, all **522** pinned
+CPython source hashes unchanged, zero timeouts and unchanged first errors after
+checkout-prefix normalization. Stubs remain dependency diagnostics. No new
+whole-library, PyPI, NumPy or upstream-suite support follows from these results.
+Existing adaptation assessments and unrelated gaps retain dated evidence rather
+than fresh pass/fail claims; they were not all rerun in this checkpoint.
+
+### Independent compiler-GC sample
+
+After all other audit jobs finished, compiled four retained inputs using both
+native compilers with `PYSTACHY_GC=stats PYSTACHY_GC_STRESS=1000`. Three paired
+rounds alternate old/new, new/old, old/new, pinned to one CPU on the same shared
+Linux host. Every one of the **24 compilations** emits identical normalized IR
+for its input. Collection counts are identical across each compiler's three
+repetitions; timings below are medians, not CI thresholds.
+
+| Input compiled | Collections, old → new | Wall seconds, old → new | Collector heap peak MiB, old → new |
+|---|---|---|---|
+| `tests/retype.py` | 10 → 9 | 0.0048 → 0.0035 | 4.0 → 4.0 |
+| `tests/union_slots.py` | 57 → 51 | 0.0119 → 0.0107 | 4.1 → 4.1 |
+| `tests/upstream_textwrap_wrap.py` | 3,067 → 2,080 | 22.061 → 11.047 | 35.7 → 35.7 |
+| `tests/lib_re_ignorecase_repeat.py` | 2,782 → 1,871 | 15.524 → 8.942 | 33.0 → 32.0 |
+
+The larger consumers show **32.2–32.7% fewer collections** and **42.4–49.9% lower
+median wall time under this artificial compiler-GC stress**. This is not normal
+bootstrap latency, application execution speed, regex matching speed or RSS.
+Millisecond-scale small-input timings are noise-sensitive. CPU quota/affinity,
+CPU model, per-sample load, raw GC time/heap statistics and timing spread are
+retained; no performance regression or universal speedup is inferred.
+
+Replay `audit-765.py` modes `build`, `references`, `checks`, `sanitize`, `ir`,
+`runtime`, `consumer-smoke`, `oracle`, `imports`, `stubs`; `audit-765-flow.py`
+modes `references`, `checks`; then `audit-765-gc.py` without other audit jobs,
+and `audit-765-assemble.py`. The embedded wrappers retain their `audit-737.py`
+and `audit-725.py` dependencies. All selected evaluations completed, with no
+failed/incomplete attempts. Correctness-group wall times overlap other work and
+are not used as performance evidence.
+
+Implementation-head CI, Lint, Packages and Installation all pass. The separately
+verified [CI run](https://github.com/den-run-ai/pystachy/actions/runs/39378331400)
+includes successful `gc-self` and combined verification-report gates on a tree
+identical to evaluated main. Full local `make verify`, full `gc-self`, broad
+benchmark execution and CPython regrtest were not repeated. Audit-head checks are
+read after publication. Only reviewed report/evidence changes are published
+beyond evaluated main; dated baseline files and concurrent edits are preserved.
