@@ -916,6 +916,7 @@ from src.pystachy_compiler.variables import (
     gen_none_type as variables_none_type,
     gen_none_values as variables_none_values,
     gen_only_empties as variables_only_empties,
+    gen_qchain as variables_qchain,
     gen_qtype as variables_qtype,
     gen_qualname as variables_qualname,
     gen_read as variables_read,
@@ -1214,6 +1215,7 @@ class Gen:
         self.qholes: dict[str, list[int]] = {}  # direct/forwarded empty returns' layout holes, typed by adopt
         self.qused: dict[str, str] = {}  # layouts already consumed by recursive calls
         self.qforward: dict[str, bool] = {}  # open returns include a forwarded empty result
+        self.qroot: dict[str, FnInfo] = {}  # by such a function: the one whose open result it returns, of a call cycle (qchain)
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
         self.galias: dict[str, bool] = {}  # the classes whose body binds __class_getitem__ = classmethod(GenericAlias) (generic_aliases)
@@ -2171,6 +2173,9 @@ class Gen:
 
     def typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
         return variables_typed_empty(self, v, want, f)
+
+    def qchain(self, f: FnInfo) -> list[FnInfo]:
+        return variables_qchain(self, f)
 
     def fills(self, body: list[Node], name: str, found: list[Node]) -> bool:
         return variables_fills(self, body, name, found)
