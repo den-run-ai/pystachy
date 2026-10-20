@@ -273,6 +273,9 @@ def gen_unionslots(self, fn: IFn) -> int:
     # allocates nothing. A generator's locals stay (its frame keeps them). How many slots it split
     if fn.coro:
         return 0
+    cands = [s for s in fn.slots if s.k == 0 and is_union(s.t) and len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) == 0]
+    if len(cands) == 0:
+        return 0  # (no local of a union of numbers: defs and uses would go unread)
     defs: dict[str, list[int]] = {}  # a value -> the block and position of the op that makes it
     uses: dict[str, list[list[int]]] = {}  # a value -> the block, position and operand of each use
     for j in range(len(fn.blocks)):
@@ -286,9 +289,7 @@ def gen_unionslots(self, fn: IFn) -> int:
                     uses[i.a[k].v] = []
                 uses[i.a[k].v].append([j, x, k])
     split: dict[str, Ins] = {}  # a slot that splits: its address -> its slot
-    for s in fn.slots:
-        if s.k != 0 or not is_union(s.t) or len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) > 0:
-            continue
+    for s in cands:
         addr = f"%{s.s or 'h'}.{s.r[0]}"
         ok = addr in uses
         for u in uses.get(addr, []):
