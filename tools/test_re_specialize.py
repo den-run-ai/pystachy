@@ -516,11 +516,15 @@ class TestGenerated(unittest.TestCase):
     def test_record_exit(self):
         # the program ends as python prog.py ends it, and its profile is written: sys.exit() of a
         # message prints it, an uncaught exception its traceback, each with status 1, and an uncaught
-        # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames). A
-        # directory runs its __main__.py, first on sys.path itself. A program that does not run (a
-        # SyntaxError, no such file, a directory without __main__.py) fails as there, and writes none.
+        # KeyboardInterrupt ends the tool as it ends the program (after the tool's own frames). Python
+        # ends by SIGINT on KeyboardInterrupt itself only: a subclass of it, an Exception too or not,
+        # is any other exception there. A directory runs its __main__.py, first on sys.path itself. A
+        # program that does not run (a SyntaxError, no such file, a directory without __main__.py)
+        # fails as there, and writes none.
         cases = [("file", "sys.exit('bye')"), ("file", "raise ValueError('boom')"), ("file", "sys.exit(3)"),
                  ("file", "class Stop(BaseException):\n    pass\nraise Stop('base')"),
+                 ("file", "class Stop(KeyboardInterrupt):\n    pass\nraise Stop('sub')"),
+                 ("file", "class Stop(KeyboardInterrupt, Exception):\n    pass\nraise Stop('hybrid')"),
                  ("file", "raise KeyboardInterrupt"), ("file", "def ("), ("file", None),
                  ("dir", "print(sys.path[:2])\nraise ValueError('in a directory')"), ("dir", None)]
         with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
